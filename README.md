@@ -1,0 +1,4 @@
+ethereum
+========
+
+Ethereum C++ Client.
