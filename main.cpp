@@ -67,7 +67,7 @@ public:
 	bool isSmallString() const { assert(!isNull()); return m_data[0] >= 0x40 && m_data[0] < 0x78; }
 	bool isSmallList() const { assert(!isNull()); return m_data[0] >= 0x80 && m_data[0] < 0xb8; }
 	bool isSmallInt() const { assert(!isNull()); return m_data[0] < 0x20; }
-	int intSize() const { return (!isInt() || isSmallInt()) ? 0 : m_data[0] - 0x1f; }
+	int intSize() const { return (!isInt() || isSmallInt()) ? 0 : (m_data[0] - 0x1f); }
 
 	uint64_t size() const
 	{
@@ -99,7 +99,8 @@ public:
 		if (isSmallInt())
 			return m_data[0];
 		uint64_t ret = 0;
-		for (int i = 0; i < intSize(); ++i)
+		auto s = intSize();
+		for (int i = 0; i < s; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 		return ret;
 	}
@@ -153,7 +154,7 @@ private:
 		if (n < 0x38)
 			return n;
 		uint64_t ret = 0;
-		for (int i = 0; i < n; ++i)
+		for (int i = 0; i < n - 0x37; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 		return ret;
 	}
@@ -162,7 +163,7 @@ private:
 	{
 		assert(isString() || isList());
 		auto n = (m_data[0] & 0x3f);
-		return m_data.cropped(1 + (n < 0x38 ? 0 : n));
+		return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37)));
 	}
 
 	Bytes m_data;
@@ -214,11 +215,17 @@ int main()
 	}
 	{
 		string t = "\x21\x2a\x45";
-		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
-		// 10821
+		cout << hex << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// 2a45
 	}
 	{
-		string t = "\x7838""Lorem ipsum dolor sit amet, consectetur adipisicing elit";
+		string t = "\x3f\x01\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f";
+		cout << hex << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+		// Well... not yet - we can only have 64-bit ints currently - need a bigint class.
+	}
+	{
+		string t = "\x78\x38""Lorem ipsum dolor sit amet, consectetur adipisicing elit";
 		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
 		// "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
 	}
