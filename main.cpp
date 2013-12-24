@@ -182,7 +182,7 @@ std::ostream& operator<<(std::ostream& _out, RLP _d)
 		int j = 0;
 		for (auto i: _d.toList())
 			_out << (j++ ? ", " : " ") << i;
-		_out << "]";
+		_out << " ]";
 	}
 
 	return _out;
@@ -192,7 +192,36 @@ using namespace std;
 
 int main()
 {
-	cout << "Hello World!" << endl;
+	{
+		string t = "\x0f";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// 15
+	}
+	{
+		string t = "\x43""dog";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// "dog"
+	}
+	{
+		string t = "\x82\x0f\x43""dog";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// [ 15, "dog" ]
+	}
+	{
+		string t = "\x20\x45";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// 69
+	}
+	{
+		string t = "\x21\x2a\x45";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// 10821
+	}
+	{
+		string t = "\x7838""Lorem ipsum dolor sit amet, consectetur adipisicing elit";
+		cout << RLP(Bytes((byte*)t.data(), t.size())) << endl;
+		// "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
+	}
 	return 0;
 }
 
