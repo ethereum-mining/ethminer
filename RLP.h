@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cassert>
 #include <iostream>
-#include <cstdint>
-#include <boost/multiprecision/cpp_int.hpp>
 #include "foreign.h"
 #include "Common.h"
 
@@ -12,9 +9,6 @@ namespace eth
 
 class RLP;
 typedef std::vector<RLP> RLPs;
-using bigint = boost::multiprecision::cpp_int;
-using uint = uint64_t;
-using sint = int64_t;
 
 /**
  * @brief Class for interpreting Recursive Linear-Prefix Data.
