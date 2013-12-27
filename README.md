@@ -1,2 +1,4 @@
-cpp-ethereum
-============
+ethereum
+========
+
+Ethereum C++ Client.
