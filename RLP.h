@@ -17,7 +17,7 @@ using uint = uint64_t;
 using sint = int64_t;
 
 /**
- * @brief Recursive Linear-Packed data structure.
+ * @brief Class for interpreting Recursive Linear-Prefix Data.
  * @by Gav Wood, 2013
  *
  * Class for reading byte arrays of data in RLP format.
