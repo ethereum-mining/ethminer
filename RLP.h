@@ -16,12 +16,28 @@ using bigint = boost::multiprecision::cpp_int;
 using uint = uint64_t;
 using sint = int64_t;
 
+/**
+ * @brief Recursive Linear-Packed data structure.
+ * @by Gav Wood, 2013
+ *
+ * Class for reading byte arrays of data in RLP format.
+ */
 class RLP
 {
 public:
+	/// Construct a null node.
 	RLP() {}
-	RLP(Bytes _d): m_data(_d) {}
 
+	/// Construct a node of value given in the bytes.
+	explicit RLP(ConstBytes _d): m_data(_d) {}
+
+	/// Construct a node to read RLP data in the bytes given.
+	RLP(byte const* _b, uint _s): m_data(ConstBytes(_b, _s)) {}
+
+	/// Construct a node to read RLP data in the string.
+	explicit RLP(std::string const& _s): m_data(ConstBytes((byte const*)_s.data(), _s.size())) {}
+
+	/// @returns true if the RLP is non-null.
 	explicit operator bool() const { return !isNull(); }
 
 	/// No value.
@@ -82,7 +98,7 @@ public:
 		if (!isList())
 			return ret;
 		uint64_t c = items();
-		Bytes d = payload();
+		ConstBytes d = payload();
 		for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).size()))
 			ret.push_back(RLP(d));
 		return ret;
@@ -112,7 +128,7 @@ private:
 			return payload().data() - m_data.data() + items();
 		if (isList())
 		{
-			Bytes d = payload();
+			ConstBytes d = payload();
 			uint64_t c = items();
 			for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).size())) {}
 			return d.data() - m_data.data();
@@ -134,14 +150,14 @@ private:
 		return ret;
 	}
 
-	Bytes payload() const
+	ConstBytes payload() const
 	{
 		assert(isString() || isList());
 		auto n = (m_data[0] & 0x3f);
 		return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37)));
 	}
 
-	Bytes m_data;
+	ConstBytes m_data;
 };
 
 }
