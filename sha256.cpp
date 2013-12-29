@@ -148,19 +148,30 @@ void SHA256::final(unsigned char *digest)
 	m_block[m_len] = 0x80;
 	SHA2_UNPACK32(len_b, m_block + pm_len - 4);
 	transform(m_block, block_nb);
+
 	for (i = 0 ; i < 8; i++) {
 		SHA2_UNPACK32(m_h[i], &digest[i << 2]);
 	}
 }
 
-std::string sha256(std::string input)
+std::string sha256(std::string const& _input, bool _hex)
 {
+	if (!_hex)
+	{
+		string ret(SHA256::DIGEST_SIZE);
+		SHA256 ctx = SHA256();
+		ctx.init();
+		ctx.update( (unsigned char*)_input.c_str(), _input.length());
+		ctx.final(ret.data());
+		return ret;
+	}
+
 	unsigned char digest[SHA256::DIGEST_SIZE];
 	memset(digest,0,SHA256::DIGEST_SIZE);
 
 	SHA256 ctx = SHA256();
 	ctx.init();
-	ctx.update( (unsigned char*)input.c_str(), input.length());
+	ctx.update( (unsigned char*)_input.c_str(), _input.length());
 	ctx.final(digest);
 
 	char buf[2*SHA256::DIGEST_SIZE+1];
@@ -168,4 +179,18 @@ std::string sha256(std::string input)
 	for (unsigned int i = 0; i < SHA256::DIGEST_SIZE; i++)
 		sprintf(buf+i*2, "%02x", digest[i]);
 	return std::string(buf);
+}
+
+uint256_t sha256(bytes const& _input)
+{
+	uint256_t ret = 0;
+
+	SHA256 ctx = SHA256();
+	ctx.init();
+	ctx.update(_input.data(), _input.size());
+	uint8_t buf[SHA256::DIGEST_SIZE];
+	ctx.final(buf);
+	for (uint i = 0; i < 32; ++i)
+		ret = (ret << 8) | buf[i];
+	return ret;
 }

@@ -5,15 +5,19 @@
 #include <cstdint>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "foreign.h"
+#include "uint256_t.h"
 
 namespace eth
 {
 
 using byte = uint8_t;
-using Bytes = foreign<byte>;
-using ConstBytes = foreign<byte const>;
+using bytes = vector<byte>;
+
+using fBytes = foreign<byte>;
+using fConstBytes = foreign<byte const>;
 
 using bigint = boost::multiprecision::cpp_int;
+using u256 = uint256_t;
 using uint = uint64_t;
 using sint = int64_t;
 
