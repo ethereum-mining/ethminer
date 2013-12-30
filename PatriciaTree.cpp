@@ -2,7 +2,7 @@
 #include "PatriciaTree.h"
 using namespace std;
 using namespace eth;
-
+/*
 PatriciaTree::PatriciaTree(RLP const& _data)
 {
 	// Make tree based on _data
@@ -20,3 +20,4 @@ PatriciaTree::PatriciaTree(RLP const& _data)
 		// Branch
 	}
 }
+*/

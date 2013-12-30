@@ -156,6 +156,111 @@ private:
 	fConstBytes m_data;
 };
 
+struct RLPList { RLPList(uint _count): count(_count) {} uint count; };
+
+class RLPStream
+{
+public:
+	RLPStream() {}
+
+	void append(uint _s) { appendNumeric(_s); }
+	void append(u256 _s) { appendNumeric(_s); }
+	void append(bigint _s) { appendNumeric(_s); }
+
+	void append(std::string const& _s)
+	{
+		if (_s.size() < 0x38)
+			m_out.push_back(_s.size() | 0x40);
+		else
+			pushCount(_s.size(), 0x40);
+		uint os = m_out.size();
+		m_out.resize(m_out.size() + _s.size());
+		memcpy(m_out.data() + os, _s.data(), _s.size());
+	}
+
+	void appendList(uint _count)
+	{
+		if (_count < 0x38)
+			m_out.push_back(_count | 0x80);
+		else
+			pushCount(_count, 0x80);
+	}
+
+	RLPStream operator<<(uint _i) { append(_i); return *this; }
+	RLPStream operator<<(u256 _i) { append(_i); return *this; }
+	RLPStream operator<<(bigint _i) { append(_i); return *this; }
+	RLPStream operator<<(std::string const& _s) { append(_s); return *this; }
+	RLPStream operator<<(RLPList _l) { appendList(_l.count); return *this; }
+
+	bytes const& out() const { return m_out; }
+
+private:
+	void appendNumeric(uint _i)
+	{
+		if (_i < 0x18)
+			m_out.push_back(_i);
+		else
+		{
+			auto br = bytesRequired(_i);
+			m_out.push_back(br + 0x17);	// max 8 bytes.
+			for (int i = br - 1; i >= 0; --i)
+				m_out.push_back((_i >> i) & 0xff);
+		}
+	}
+
+	void appendNumeric(u256 _i)
+	{
+		if (_i < 0x18)
+			m_out.push_back(_i);
+		else
+		{
+			auto br = bytesRequired(_i);
+			m_out.push_back(br + 0x17);	// max 8 bytes.
+			for (int i = br - 1; i >= 0; --i)
+				m_out.push_back((byte)(_i >> i));
+		}
+	}
+
+	void appendNumeric(bigint _i)
+	{
+		if (_i < 0x18)
+			m_out.push_back((byte)_i);
+		else
+		{
+			uint br = bytesRequired(_i);
+			if (br <= 32)
+				m_out.push_back(bytesRequired(_i) + 0x17);	// max 32 bytes.
+			else
+			{
+				auto brbr = bytesRequired(br);
+				m_out.push_back(0x37 + brbr);
+				for (int i = brbr - 1; i >= 0; --i)
+					m_out.push_back((br >> i) & 0xff);
+			}
+			for (uint i = 0; i < br; ++i)
+			{
+				bigint u = (_i >> (br - 1 - i));
+				m_out.push_back((uint)u);
+			}
+		}
+	}
+
+	void pushCount(uint _count, byte _base)
+	{
+		m_out.push_back(bytesRequired(_count) + 0x37 + _base);	// max 8 bytes.
+	}
+
+	template <class _T> static uint bytesRequired(_T _i)
+	{
+		_i >>= 8;
+		uint i = 1;
+		for (; _i != 0; ++i, _i >>= 8) {}
+		return i;
+	}
+
+	bytes m_out;
+};
+
 }
 
 inline std::ostream& operator<<(std::ostream& _out, eth::RLP _d)

@@ -11,7 +11,7 @@ namespace eth
 {
 
 using byte = uint8_t;
-using bytes = vector<byte>;
+using bytes = std::vector<byte>;
 
 using fBytes = foreign<byte>;
 using fConstBytes = foreign<byte const>;
