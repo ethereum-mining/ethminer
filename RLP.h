@@ -25,6 +25,9 @@ public:
 	/// Construct a node of value given in the bytes.
 	explicit RLP(fConstBytes _d): m_data(_d) {}
 
+	/// Construct a node of value given in the bytes.
+	explicit RLP(bytes const& _d): m_data(const_cast<bytes*>(&_d)) {}	// a bit horrible, but we know we won't be altering the data. TODO: allow vector<T> const* to be passed to foreign<T const>.
+
 	/// Construct a node to read RLP data in the bytes given.
 	RLP(byte const* _b, uint _s): m_data(fConstBytes(_b, _s)) {}
 
@@ -64,6 +67,26 @@ public:
 	/// @returns the number of characters in the string, or zero if it isn't a string.
 	uint stringSize() const { return isString() ? items() : 0; }
 
+	bool operator==(char const* _s) const { return isString() && toString() == _s; }
+	bool operator==(std::string const& _s) const { return isString() && toString() == _s; }
+	bool operator==(uint const& _i) const { return toSlimInt() == _i; }
+	bool operator==(u256 const& _i) const { return toFatInt() == _i; }
+	bool operator==(bigint const& _i) const { return toBigInt() == _i; }
+	RLP operator[](uint _i) const
+	{
+		if (!isList() || itemCount() <= _i)
+			return RLP();
+		fConstBytes d = payload();
+		for (uint64_t i = 0; i < _i; ++i, d = d.cropped(RLP(d).size())) {}
+		return RLP(d);
+	}
+
+	explicit operator std::string() const { return toString(); }
+	explicit operator RLPs() const { return toList(); }
+	explicit operator uint() const { return toSlimInt(); }
+	explicit operator u256() const { return toFatInt(); }
+	explicit operator bigint() const { return toBigInt(); }
+
 	std::string toString() const
 	{
 		if (!isString())
@@ -78,9 +101,10 @@ public:
 		if (isDirectValueInt())
 			return m_data[0];
 		_T ret = 0;
-		auto s = intSize();
+		auto s = intSize() - intLengthSize();
+		uint o = intLengthSize() + 1;
 		for (uint i = 0; i < s; ++i)
-			ret = (ret << 8) | m_data[i + 1];
+			ret = (ret << 8) | m_data[i + o];
 		return ret;
 	}
 
@@ -174,7 +198,7 @@ public:
 		else
 			pushCount(_s.size(), 0x40);
 		uint os = m_out.size();
-		m_out.resize(m_out.size() + _s.size());
+		m_out.resize(os + _s.size());
 		memcpy(m_out.data() + os, _s.data(), _s.size());
 	}
 
@@ -189,10 +213,12 @@ public:
 	RLPStream operator<<(uint _i) { append(_i); return *this; }
 	RLPStream operator<<(u256 _i) { append(_i); return *this; }
 	RLPStream operator<<(bigint _i) { append(_i); return *this; }
+	RLPStream operator<<(char const* _s) { append(std::string(_s)); return *this; }
 	RLPStream operator<<(std::string const& _s) { append(_s); return *this; }
 	RLPStream operator<<(RLPList _l) { appendList(_l.count); return *this; }
 
 	bytes const& out() const { return m_out; }
+	std::string str() const { return std::string((char const*)m_out.data(), (char const*)(m_out.data() + m_out.size())); }
 
 private:
 	void appendNumeric(uint _i)
@@ -203,8 +229,7 @@ private:
 		{
 			auto br = bytesRequired(_i);
 			m_out.push_back(br + 0x17);	// max 8 bytes.
-			for (int i = br - 1; i >= 0; --i)
-				m_out.push_back((_i >> i) & 0xff);
+			pushInt(_i, br);
 		}
 	}
 
@@ -216,8 +241,7 @@ private:
 		{
 			auto br = bytesRequired(_i);
 			m_out.push_back(br + 0x17);	// max 8 bytes.
-			for (int i = br - 1; i >= 0; --i)
-				m_out.push_back((byte)(_i >> i));
+			pushInt(_i, br);
 		}
 	}
 
@@ -234,20 +258,25 @@ private:
 			{
 				auto brbr = bytesRequired(br);
 				m_out.push_back(0x37 + brbr);
-				for (int i = brbr - 1; i >= 0; --i)
-					m_out.push_back((br >> i) & 0xff);
+				pushInt(br, brbr);
 			}
-			for (uint i = 0; i < br; ++i)
-			{
-				bigint u = (_i >> (br - 1 - i));
-				m_out.push_back((uint)u);
-			}
+			pushInt(_i, br);
 		}
+	}
+
+	template <class _T> void pushInt(_T _i, uint _br)
+	{
+		m_out.resize(m_out.size() + _br);
+		byte* b = &m_out.back();
+		for (; _i; _i >>= 8)
+			*(b--) = (byte)_i;
 	}
 
 	void pushCount(uint _count, byte _base)
 	{
-		m_out.push_back(bytesRequired(_count) + 0x37 + _base);	// max 8 bytes.
+		auto br = bytesRequired(_count);
+		m_out.push_back(br + 0x37 + _base);	// max 8 bytes.
+		pushInt(_count, br);
 	}
 
 	template <class _T> static uint bytesRequired(_T _i)
