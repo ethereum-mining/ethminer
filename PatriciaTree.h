@@ -25,7 +25,7 @@ using HexMap = std::map<bytes, std::string>;
  * [1,2,3,4,T]       0x201234
  */
 
-inline std::string fromHex(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1)
+inline std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1)
 {
 	uint begin = _begin;
 	uint end = _end < 0 ? _hexVector.size() + 1 + _end : _end;
@@ -43,40 +43,71 @@ inline std::string fromHex(bytes const& _hexVector, bool _terminated = false, in
 	return ret;
 }
 
-inline u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen)
-{
-	unsigned c = 0;
-	for (auto i = _begin; i != _end; ++i, ++c) {}
-
-	assert(c > 0);
-	RLPStream rlp;
-	if (c == 1)
-	{
-		// only one left - terminate with the pair.
-		rlp << RLPList(2) << fromHex(_begin->first, true, _preLen) << _begin->second;
-	}
-	else
-	{
-		// if they all have the same next nibble, we also want a pair.
-
-		// otherwise enumerate all 16+1 entries.
-		for (auto i = 0; i < 16; ++i)
-		{
-		}
-	}
-	return sha256(rlp.out());
-}
-
 inline bytes toHex(std::string const& _s)
 {
-	std::vector<uint8_t> ret(_s.size() * 2 + 1);
+	std::vector<uint8_t> ret;
+	ret.reserve(_s.size() * 2);
 	for (auto i: _s)
 	{
 		ret.push_back(i / 16);
 		ret.push_back(i % 16);
 	}
-	ret.push_back(16);
 	return ret;
+}
+
+inline u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen)
+{
+	RLPStream rlp;
+	if (_begin == _end)
+	{
+		rlp << "";	// NULL
+	}
+	else if (std::next(_begin) == _end)
+	{
+		// only one left - terminate with the pair.
+		rlp << RLPList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
+	}
+	else
+	{
+		// find the number of common prefix nibbles shared
+		// i.e. the minimum number of nibbles shared at the beginning between the first hex string and each successive.
+		uint sharedPre = (uint)-1;
+		uint c = 0;
+		for (auto i = std::next(_begin); i != _end && sharedPre; ++i, ++c)
+		{
+			uint x = std::min(sharedPre, std::min(_begin->first.size(), i->first.size()));
+			uint shared = _preLen;
+			for (; shared < x && _begin->first[shared] == i->first[shared]; ++shared) {}
+			sharedPre = std::min(shared, sharedPre);
+		}
+		if (sharedPre > _preLen)
+		{
+			// if they all have the same next nibble, we also want a pair.
+			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << hash256aux(_s, _begin, _end, sharedPre);
+		}
+		else
+		{
+			// otherwise enumerate all 16+1 entries.
+			rlp << RLPList(17);
+			auto b = _begin;
+			if (_preLen == b->first.size())
+				++b;
+			for (auto i = 0; i < 16; ++i)
+			{
+				auto n = b;
+				for (; n != _end && n->first[_preLen] == i; ++n) {}
+				if (b == n)
+					rlp << "";
+				else
+					rlp << hash256aux(_s, b, n, _preLen + 1);
+				b = n;
+			}
+			if (_preLen == _begin->first.size())
+				rlp << _begin->second;
+		}
+	}
+	std::cout << std::hex << sha256(rlp.out()) << ": " << RLP(rlp.out()) << std::endl;
+	return sha256(rlp.out());
 }
 
 inline u256 hash256(StringMap const& _s)

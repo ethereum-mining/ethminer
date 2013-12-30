@@ -23,4 +23,12 @@ using sint = int64_t;
 
 template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
 
+template <class _T> inline std::string asHex(_T const& _data)
+{
+	std::ostringstream ret;
+	for (auto i: _data)
+		ret << std::hex << std::setfill('0') << std::setw(2) << (int)i;
+	return ret.str();
+}
+
 }

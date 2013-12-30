@@ -1,24 +1,9 @@
+#include "Common.h"
 #include "RLP.h"
 #include "PatriciaTree.h"
 #include "VirtualMachine.h"
 using namespace std;
 using namespace eth;
-
-std::string asHex(std::string const& _data)
-{
-	std::ostringstream ret;
-	for (auto i: _data)
-		ret << hex << setfill('0') << setw(2) << (int)i;
-	return ret.str();
-}
-
-std::string asHex(bytes const& _data)
-{
-	std::ostringstream ret;
-	for (auto i: _data)
-		ret << hex << setfill('0') << setw(2) << (int)i;
-	return ret.str();
-}
 
 template <class _T> void rlpListAux(RLPStream& _out, _T _t)
 {
@@ -48,6 +33,11 @@ template <class ... _Ts> std::string rlpList(_Ts ... _ts)
 
 int main()
 {
+	cout << hex << hash256({{"dog", "puppy"}}) << endl;
+	cout << hex << hash256({{"dog", "puppy"}, {"horse", "stallion"}}) << endl;
+	cout << hex << hash256({{"dog", "puppy"}, {"doge", "coin"}}) << endl;
+	cout << hex << hash256({{"dog", "puppy"}, {"horse", "stallion"}, {"do", "verb"}, {"doge", "coin"}}) << endl;
+
 	// int of value 15
 	assert(RLP("\x0f") == 15);
 	assert(rlp(15) == "\x0f");
@@ -95,17 +85,17 @@ int main()
 	 * [1,2,3,4,5,T]     0x312345
 	 * [1,2,3,4,T]       0x201234
 	 */
-	assert(asHex(fromHex({0, 0, 1, 2, 3, 4, 5}, false)) == "10012345");
-	assert(asHex(fromHex({0, 1, 2, 3, 4, 5}, false)) == "00012345");
-	assert(asHex(fromHex({1, 2, 3, 4, 5}, false)) == "112345");
-	assert(asHex(fromHex({0, 0, 1, 2, 3, 4}, false)) == "00001234");
-	assert(asHex(fromHex({0, 1, 2, 3, 4}, false)) == "101234");
-	assert(asHex(fromHex({1, 2, 3, 4}, false)) == "001234");
-	assert(asHex(fromHex({0, 0, 1, 2, 3, 4, 5}, true)) == "30012345");
-	assert(asHex(fromHex({0, 0, 1, 2, 3, 4}, true)) == "20001234");
-	assert(asHex(fromHex({0, 1, 2, 3, 4, 5}, true)) == "20012345");
-	assert(asHex(fromHex({1, 2, 3, 4, 5}, true)) == "312345");
-	assert(asHex(fromHex({1, 2, 3, 4}, true)) == "201234");
+	assert(asHex(hexPrefixEncode({0, 0, 1, 2, 3, 4, 5}, false)) == "10012345");
+	assert(asHex(hexPrefixEncode({0, 1, 2, 3, 4, 5}, false)) == "00012345");
+	assert(asHex(hexPrefixEncode({1, 2, 3, 4, 5}, false)) == "112345");
+	assert(asHex(hexPrefixEncode({0, 0, 1, 2, 3, 4}, false)) == "00001234");
+	assert(asHex(hexPrefixEncode({0, 1, 2, 3, 4}, false)) == "101234");
+	assert(asHex(hexPrefixEncode({1, 2, 3, 4}, false)) == "001234");
+	assert(asHex(hexPrefixEncode({0, 0, 1, 2, 3, 4, 5}, true)) == "30012345");
+	assert(asHex(hexPrefixEncode({0, 0, 1, 2, 3, 4}, true)) == "20001234");
+	assert(asHex(hexPrefixEncode({0, 1, 2, 3, 4, 5}, true)) == "20012345");
+	assert(asHex(hexPrefixEncode({1, 2, 3, 4, 5}, true)) == "312345");
+	assert(asHex(hexPrefixEncode({1, 2, 3, 4}, true)) == "201234");
 
 	return 0;
 }

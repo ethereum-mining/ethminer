@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include "foreign.h"
 #include "Common.h"
 
@@ -142,6 +143,8 @@ private:
 
 	uint size() const
 	{
+		if (isNull())
+			return 0;
 		if (isInt())
 			return 1 + intSize();
 		if (isString())
@@ -210,12 +213,12 @@ public:
 			pushCount(_count, 0x80);
 	}
 
-	RLPStream operator<<(uint _i) { append(_i); return *this; }
-	RLPStream operator<<(u256 _i) { append(_i); return *this; }
-	RLPStream operator<<(bigint _i) { append(_i); return *this; }
-	RLPStream operator<<(char const* _s) { append(std::string(_s)); return *this; }
-	RLPStream operator<<(std::string const& _s) { append(_s); return *this; }
-	RLPStream operator<<(RLPList _l) { appendList(_l.count); return *this; }
+	RLPStream& operator<<(uint _i) { append(_i); return *this; }
+	RLPStream& operator<<(u256 _i) { append(_i); return *this; }
+	RLPStream& operator<<(bigint _i) { append(_i); return *this; }
+	RLPStream& operator<<(char const* _s) { append(std::string(_s)); return *this; }
+	RLPStream& operator<<(std::string const& _s) { append(_s); return *this; }
+	RLPStream& operator<<(RLPList _l) { appendList(_l.count); return *this; }
 
 	bytes const& out() const { return m_out; }
 	std::string str() const { return std::string((char const*)m_out.data(), (char const*)(m_out.data() + m_out.size())); }
@@ -292,14 +295,36 @@ private:
 
 }
 
+inline std::string escaped(std::string const& _s)
+{
+	std::string ret;
+	ret.reserve(_s.size());
+	ret.push_back('"');
+	for (auto i: _s)
+		if (i == '"')
+			ret += "\\\"";
+		else if (i == '\\')
+			ret += "\\\\";
+		else if (i < ' ' || i > 127)
+		{
+			ret += "\\x";
+			ret.push_back("0123456789abcdef"[i / 16]);
+			ret.push_back("0123456789abcdef"[i % 16]);
+		}
+		else
+			ret.push_back(i);
+	ret.push_back('"');
+	return ret;
+}
+
 inline std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
 {
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
-		_out << _d.toBigInt();
+		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt();
 	else if (_d.isString())
-		_out << "\"" << _d.toString() << "\"";
+		_out << escaped(_d.toString());
 	else if (_d.isList())
 	{
 		_out << "[";
