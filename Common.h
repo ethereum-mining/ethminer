@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "foreign.h"
-#include "uint256_t.h"
 
 namespace eth
 {
@@ -16,8 +15,9 @@ using bytes = std::vector<byte>;
 using fBytes = foreign<byte>;
 using fConstBytes = foreign<byte const>;
 
-using bigint = boost::multiprecision::cpp_int;
-using u256 = uint256_t;
+using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
+using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 using uint = uint64_t;
 using sint = int64_t;
 

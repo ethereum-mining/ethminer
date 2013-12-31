@@ -239,7 +239,7 @@ private:
 	void appendNumeric(u256 _i)
 	{
 		if (_i < 0x18)
-			m_out.push_back(_i);
+			m_out.push_back((byte)_i);
 		else
 		{
 			auto br = bytesRequired(_i);

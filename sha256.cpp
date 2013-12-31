@@ -181,9 +181,9 @@ std::string eth::sha256(std::string const& _input, bool _hex)
 	return std::string(buf);
 }
 
-uint256_t eth::sha256(bytes const& _input)
+u256 eth::sha256(bytes const& _input)
 {
-	uint256_t ret = 0;
+	u256 ret = 0;
 
 	SHA256 ctx = SHA256();
 	ctx.init();

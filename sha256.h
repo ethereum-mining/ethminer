@@ -27,7 +27,7 @@ protected:
 };
 
 std::string sha256(std::string const& input, bool _hex);
-uint256_t sha256(bytes const& input);
+u256 sha256(bytes const& input);
 
 #define SHA2_SHFR(x, n)    (x >> n)
 #define SHA2_ROTR(x, n)   ((x >> n) | (x << ((sizeof(x) << 3) - n)))

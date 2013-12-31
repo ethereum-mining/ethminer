@@ -116,8 +116,10 @@ inline u256 hash256(StringMap const& _s)
 	if (_s.empty())
 		return 0;
 	HexMap hexMap;
-	for (auto const& i: _s)
-		hexMap[toHex(i.first)] = i.second;
+	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
+		hexMap[toHex(i->first)] = i->second;
+//	for (auto const& i: _s)
+//		hexMap[toHex(i.first)] = i.second;
 	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
 }
 
