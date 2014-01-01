@@ -1,4 +1,3 @@
-#include "uint256_t.h"
 #include "VirtualMachine.h"
 using namespace std;
 using namespace eth;
@@ -53,8 +52,17 @@ void VirtualMachine::go()
 			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 		case Instruction::MOD:
+			require(2);
+			m_stack[m_stack.size() - 2] = m_stack.back() % m_stack[m_stack.size() - 2];
+			m_stack.pop_back();
 		case Instruction::SMOD:
+			require(2);
+			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2];
+			m_stack.pop_back();
 		case Instruction::EXP:
+			require(2);
+//			(s256&)m_stack[m_stack.size() - 2] = pow(m_stack.back(), m_stack[m_stack.size() - 2]);
+//			m_stack.pop_back();
 		case Instruction::NEG:
 		case Instruction::LT:
 		case Instruction::LE:

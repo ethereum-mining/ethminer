@@ -2,7 +2,6 @@
 
 #include <string>
 #include "Common.h"
-#include "uint256_t.h"
 
 namespace eth
 {

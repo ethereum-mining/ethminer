@@ -35,7 +35,7 @@ inline std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = f
 	std::string ret(1, ((termed ? 2 : 0) | (odd ? 1 : 0)) * 16);
 	if (odd)
 	{
-		ret[0] |= _hexVector[0];
+		ret[0] |= _hexVector[begin];
 		++begin;
 	}
 	for (uint i = begin; i < end; i += 2)
@@ -52,6 +52,15 @@ inline bytes toHex(std::string const& _s)
 		ret.push_back(i / 16);
 		ret.push_back(i % 16);
 	}
+	return ret;
+}
+
+inline std::string toBigEndianString(u256 _val)
+{
+	std::string ret;
+	ret.resize(32);
+	for (int i = 0; i <32; ++i, _val >>= 8)
+		ret[31 - i] = (char)(uint8_t)_val;
 	return ret;
 }
 
@@ -83,7 +92,7 @@ inline u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::
 		if (sharedPre > _preLen)
 		{
 			// if they all have the same next nibble, we also want a pair.
-			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << hash256aux(_s, _begin, _end, sharedPre);
+			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
 		}
 		else
 		{
@@ -99,14 +108,16 @@ inline u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::
 				if (b == n)
 					rlp << "";
 				else
-					rlp << hash256aux(_s, b, n, _preLen + 1);
+					rlp << toBigEndianString(hash256aux(_s, b, n, _preLen + 1));
 				b = n;
 			}
 			if (_preLen == _begin->first.size())
 				rlp << _begin->second;
+			else
+				rlp << "";
 		}
 	}
-	std::cout << std::hex << sha256(rlp.out()) << ": " << RLP(rlp.out()) << std::endl;
+//	std::cout << std::hex << sha256(rlp.out()) << ": " << asHex(rlp.out()) << ": " << RLP(rlp.out()) << std::endl;
 	return sha256(rlp.out());
 }
 

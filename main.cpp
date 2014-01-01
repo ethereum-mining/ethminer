@@ -34,8 +34,8 @@ template <class ... _Ts> std::string rlpList(_Ts ... _ts)
 int main()
 {
 	cout << hex << hash256({{"dog", "puppy"}}) << endl;
-	cout << hex << hash256({{"dog", "puppy"}, {"horse", "stallion"}}) << endl;
-	cout << hex << hash256({{"dog", "puppy"}, {"doge", "coin"}}) << endl;
+	cout << hex << hash256({{"dog", "puppy"}, {"doe", "reindeer"}}) << endl;
+	cout << hex << hash256({{"doe", "reindeer"}, {"dog", "puppy"}, {"dogglesworth", "cat"}}) << endl;
 	cout << hex << hash256({{"dog", "puppy"}, {"horse", "stallion"}, {"do", "verb"}, {"doge", "coin"}}) << endl;
 
 	// int of value 15

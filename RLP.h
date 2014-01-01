@@ -295,21 +295,21 @@ private:
 
 }
 
-inline std::string escaped(std::string const& _s)
+inline std::string escaped(std::string const& _s, bool _all = true)
 {
 	std::string ret;
 	ret.reserve(_s.size());
 	ret.push_back('"');
 	for (auto i: _s)
-		if (i == '"')
+		if (i == '"' && !_all)
 			ret += "\\\"";
-		else if (i == '\\')
+		else if (i == '\\' && !_all)
 			ret += "\\\\";
-		else if (i < ' ' || i > 127)
+		else if (i < ' ' || i > 127 || _all)
 		{
 			ret += "\\x";
-			ret.push_back("0123456789abcdef"[i / 16]);
-			ret.push_back("0123456789abcdef"[i % 16]);
+			ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);
+			ret.push_back("0123456789abcdef"[(uint8_t)i % 16]);
 		}
 		else
 			ret.push_back(i);
@@ -324,7 +324,7 @@ inline std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
 	else if (_d.isInt())
 		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt();
 	else if (_d.isString())
-		_out << escaped(_d.toString());
+		_out << escaped(_d.toString(), true);
 	else if (_d.isList())
 	{
 		_out << "[";
