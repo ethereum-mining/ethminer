@@ -21,5 +21,6 @@ else ()
 	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
 
-aux_source_directory(. SRC_LIST)
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+add_subdirectory(libethereum)
+add_subdirectory(test)
+
