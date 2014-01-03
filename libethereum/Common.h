@@ -61,7 +61,7 @@ inline std::string toBigEndianString(u256 _val)
 {
 	std::string ret;
 	ret.resize(32);
-	for (int i = 0; i <32; ++i, _val >>= 8)
+	for (int i = 0; i < 32; ++i, _val >>= 8)
 		ret[31 - i] = (char)(uint8_t)_val;
 	return ret;
 }

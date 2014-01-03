@@ -80,65 +80,47 @@ struct BlockInfo
 class State
 {
 public:
-	State() {}
+	explicit State(u256 _minerAddress): m_minerAddress(_minerAddress) {}
+
+	bool transact(bytes const& _rlp);
+
+private:
+	bool isContractAddress(u256 _address) const { return m_contractMemory.count(_address); }
+
+	u256 balance(u256 _id) const { auto it = m_balance.find(_id); return it == m_balance.end() ? 0 : it->second; }
+	void addBalance(u256 _id, u256 _amount) { auto it = m_balance.find(_id); if (it == m_balance.end()) it->second = _amount; else it->second += _amount; }
+	// bigint as we don't want any accidental problems with -ve numbers.
+	bool subBalance(u256 _id, bigint _amount) { auto it = m_balance.find(_id); if (it == m_balance.end() || (bigint)it->second < _amount) return false; it->second = (u256)((bigint)it->second - _amount); return true; }
 
 	u256 memory(u256 _contract, u256 _memory) const
 	{
-		auto m = m_memory.find(_contract);
-		if (m == m_memory.end())
+		auto m = m_contractMemory.find(_contract);
+		if (m == m_contractMemory.end())
 			return 0;
 		auto i = m->second.find(_memory);
 		return i == m->second.end() ? 0 : i->second;
 	}
 
-	std::map<u256, u256>& memory(u256 _contract)
-	{
-		return m_memory[_contract];
-	}
+	u256 transactionsFrom(u256 _address) { return 0; } // TODO
 
-	u256 balance(u256 _id) const { return 0; }
-	bool transact(u256 _src, u256 _dest, u256 _amount, u256 _fee, u256s const& _data) { return false; }
+	void execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee);
 
-private:
-	std::map<u256, std::map<u256, u256>> m_memory;
-};
+	std::map<u256, u256>& ensureMemory(u256 _contract) { return m_contractMemory[_contract]; }
 
-class VirtualMachine
-{
-public:
-	VirtualMachine(State& _s): m_state(&_s) {}
-
-	~VirtualMachine();
-
-
-	void initMemory(RLP _contract);
-	void setMemory(RLP _state);
-
-	void go();
-
-private:
-	State* m_state;
-
-	std::vector<u256> m_stack;
-	u256 m_stepCount;
-	u256 m_totalFee;
-	u256 m_stepFee;
-	u256 m_dataFee;
-	u256 m_memoryFee;
-	u256 m_extroFee;
-	u256 m_minerFee;
-	u256 m_voidFee;
-
-	u256 m_myAddress;
-	u256 m_txSender;
-	u256 m_txValue;
-	u256 m_txFee;
-	std::vector<u256> m_txData;
+	std::map<u256, std::map<u256, u256>> m_contractMemory;
+	std::map<u256, u256> m_balance;	// for now - might end up using Trie?
 
 	BlockInfo m_previousBlock;
 	BlockInfo m_currentBlock;
 
+	u256 m_minerAddress;
 
+	static const u256 c_stepFee;
+	static const u256 c_dataFee;
+	static const u256 c_memoryFee;
+	static const u256 c_extroFee;
+	static const u256 c_cryptoFee;
+	static const u256 c_newContractFee;
 };
 
 }

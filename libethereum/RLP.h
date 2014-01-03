@@ -59,6 +59,9 @@ public:
 	/// Fits only into eth::u256 type. Use only toFatInt() or toBigInt() to read.
 	bool isFatInt() const { assert(!isNull()); return m_data[0] >= 0x20 && m_data[0] < 0x38; }
 
+	/// Fits into eth::u256 type, though might fit into eth::uint type.
+	bool isFixedInt() const { assert(!isNull()); return m_data[0] < 0x38; }
+
 	/// Fits only into eth::bigint type. Use only toBigInt() to read.
 	bool isBigInt() const { assert(!isNull()); return m_data[0] >= 0x38 && m_data[0] < 0x40; }
 
@@ -95,23 +98,23 @@ public:
 		return payload().cropped(0, items()).toString();
 	}
 
-	template <class _T = uint> _T toInt(_T _def = 0) const
+	template <class _T = uint> _T toInt() const
 	{
-		if (!isInt())
-			return _def;
+		if (!isString() && !isInt())
+			return 0;
 		if (isDirectValueInt())
 			return m_data[0];
 		_T ret = 0;
-		auto s = intSize() - intLengthSize();
-		uint o = intLengthSize() + 1;
+		auto s = isInt() ? intSize() - lengthSize() : isString() ? items() : 0;
+		uint o = lengthSize() + 1;
 		for (uint i = 0; i < s; ++i)
 			ret = (ret << 8) | m_data[i + o];
 		return ret;
 	}
 
-	uint toSlimInt(uint _def = 0) const { return toInt<uint>(_def); }
-	u256 toFatInt(u256 _def = 0) const { return toInt<u256>(_def); }
-	bigint toBigInt(bigint _def = 0) const { return toInt<bigint>(_def); }
+	uint toSlimInt() const { return toInt<uint>(); }
+	u256 toFatInt() const { return toInt<u256>(); }
+	bigint toBigInt() const { return toInt<bigint>(); }
 
 	RLPs toList() const
 	{
@@ -159,9 +162,9 @@ private:
 		return 0;
 	}
 
-	uint intLengthSize() const { return isIndirectAddressedInt() ? m_data[0] - 0x37 : 0; }
-	uint intSize() const { return (!isInt() || isDirectValueInt()) ? 0 : isIndirectAddressedInt() ? intLengthSize() + items() : (m_data[0] - 0x17); }
+	uint intSize() const { return (!isInt() || isDirectValueInt()) ? 0 : isIndirectAddressedInt() ? lengthSize() + items() : (m_data[0] - 0x17); }
 
+	uint lengthSize() const { auto n = (m_data[0] & 0x3f); return n > 0x37 ? n - 0x37 : 0; }
 	uint items() const
 	{
 		auto n = (m_data[0] & 0x3f);
@@ -219,6 +222,7 @@ public:
 	RLPStream& operator<<(char const* _s) { append(std::string(_s)); return *this; }
 	RLPStream& operator<<(std::string const& _s) { append(_s); return *this; }
 	RLPStream& operator<<(RLPList _l) { appendList(_l.count); return *this; }
+	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	bytes const& out() const { return m_out; }
 	std::string str() const { return std::string((char const*)m_out.data(), (char const*)(m_out.data() + m_out.size())); }
