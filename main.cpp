@@ -1,3 +1,4 @@
+#include <random>
 #include "Common.h"
 #include "RLP.h"
 #include "PatriciaTree.h"
@@ -5,38 +6,74 @@
 using namespace std;
 using namespace eth;
 
-template <class _T> void rlpListAux(RLPStream& _out, _T _t)
+std::string randomWord()
 {
-	_out << _t;
-}
-
-template <class _T, class ... _Ts> void rlpListAux(RLPStream& _out, _T _t, _Ts ... _ts)
-{
-	_out << _t;
-	rlpListAux(_out, _ts...);
-}
-
-template <class _T> std::string rlp(_T _t)
-{
-	RLPStream out;
-	out << _t;
-	return out.str();
-}
-
-template <class ... _Ts> std::string rlpList(_Ts ... _ts)
-{
-	RLPStream out;
-	out << RLPList(sizeof ...(_Ts));
-	rlpListAux(out, _ts...);
-	return out.str();
+	static std::mt19937_64 s_eng(0);
+	std::string ret(uniform_int_distribution<int>(4, 10)(s_eng), ' ');
+	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+	uniform_int_distribution<int> d(0, sizeof(n) - 2);
+	for (char& c: ret)
+		c = n[d(s_eng)];
+	return ret;
 }
 
 int main()
 {
-	cout << hex << hash256({{"dog", "puppy"}}) << endl;
-	cout << hex << hash256({{"dog", "puppy"}, {"doe", "reindeer"}}) << endl;
-	cout << hex << hash256({{"doe", "reindeer"}, {"dog", "puppy"}, {"dogglesworth", "cat"}}) << endl;
-	cout << hex << hash256({{"dog", "puppy"}, {"horse", "stallion"}, {"do", "verb"}, {"doge", "coin"}}) << endl;
+	{
+		Trie t;
+		t.insert("dog", "puppy");
+		assert(t.sha256() == hash256({{"dog", "puppy"}}));
+		assert(t.at("dog") == "puppy");
+		t.insert("doe", "reindeer");
+		assert(t.sha256() == hash256({{"dog", "puppy"}, {"doe", "reindeer"}}));
+		assert(t.at("doe") == "reindeer");
+		assert(t.at("dog") == "puppy");
+		t.insert("dogglesworth", "cat");
+		assert(t.sha256() == hash256({{"doe", "reindeer"}, {"dog", "puppy"}, {"dogglesworth", "cat"}}));
+		assert(t.at("doe") == "reindeer");
+		assert(t.at("dog") == "puppy");
+		assert(t.at("dogglesworth") == "cat");
+		t.remove("dogglesworth");
+		t.remove("doe");
+		assert(t.at("doe").empty());
+		assert(t.at("dogglesworth").empty());
+		assert(t.at("dog") == "puppy");
+		assert(t.sha256() == hash256({{"dog", "puppy"}}));
+		t.insert("horse", "stallion");
+		t.insert("do", "verb");
+		t.insert("doge", "coin");
+		assert(t.sha256() == hash256({{"dog", "puppy"}, {"horse", "stallion"}, {"do", "verb"}, {"doge", "coin"}}));
+		assert(t.at("doge") == "coin");
+		assert(t.at("do") == "verb");
+		assert(t.at("horse") == "stallion");
+		assert(t.at("dog") == "puppy");
+		t.remove("horse");
+		t.remove("do");
+		t.remove("doge");
+		assert(t.sha256() == hash256({{"dog", "puppy"}}));
+		assert(t.at("dog") == "puppy");
+		t.remove("dog");
+
+		for (int a = 0; a < 20; ++a)
+		{
+			StringMap m;
+			for (int i = 0; i < 20; ++i)
+			{
+				auto k = randomWord();
+				auto v = toString(i);
+				m.insert(make_pair(k, v));
+				t.insert(k, v);
+				assert(hash256(m) == t.sha256());
+			}
+			while (!m.empty())
+			{
+				auto k = m.begin()->first;
+				t.remove(k);
+				m.erase(k);
+				assert(hash256(m) == t.sha256());
+			}
+		}
+	}
 
 	// int of value 15
 	assert(RLP("\x0f") == 15);

@@ -293,6 +293,49 @@ private:
 	bytes m_out;
 };
 
+template <class _T> void rlpListAux(RLPStream& _out, _T _t)
+{
+	_out << _t;
+}
+
+template <class _T, class ... _Ts> void rlpListAux(RLPStream& _out, _T _t, _Ts ... _ts)
+{
+	_out << _t;
+	rlpListAux(_out, _ts...);
+}
+
+template <class _T> std::string rlp(_T _t)
+{
+	RLPStream out;
+	out << _t;
+	return out.str();
+}
+
+template <class _T> bytes rlpBytes(_T _t)
+{
+	RLPStream out;
+	out << _t;
+	return out.out();
+}
+
+template <class ... _Ts> std::string rlpList(_Ts ... _ts)
+{
+	RLPStream out;
+	out << RLPList(sizeof ...(_Ts));
+	rlpListAux(out, _ts...);
+	return out.str();
+}
+
+template <class ... _Ts> bytes rlpListBytes(_Ts ... _ts)
+{
+	RLPStream out;
+	out << RLPList(sizeof ...(_Ts));
+	rlpListAux(out, _ts...);
+	return out.out();
+}
+
+extern bytes RLPNull;
+
 }
 
 inline std::string escaped(std::string const& _s, bool _all = true)

@@ -27,6 +27,7 @@ public:
 	_T* data() const { return m_data; }
 	unsigned count() const { return m_count; }
 	unsigned size() const { return m_count; }
+	unsigned empty() const { return !m_count; }
 	foreign<_T> next() const { return foreign<_T>(m_data + m_count, m_count); }
 	foreign<_T> cropped(unsigned _begin, int _count = -1) const { if (m_data && _begin + std::max(0, _count) <= m_count) return foreign<_T>(m_data + _begin, _count < 0 ? m_count - _begin : _count); else return foreign<_T>(); }
 	void retarget(_T const* _d, size_t _s) { m_data = _d; m_count = _s; }
