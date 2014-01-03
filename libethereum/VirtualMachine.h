@@ -65,7 +65,8 @@ enum class Instruction: uint8_t
 };
 
 class BadInstruction: public std::exception {};
-class StackTooSmall: public std::exception { public: StackTooSmall(uint _req, uint _got): req(_req), got(_got) {} uint req; uint got; };
+class StackTooSmall: public std::exception { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+class OperandOutOfRange: public std::exception { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 
 struct BlockInfo
 {
@@ -76,11 +77,39 @@ struct BlockInfo
 	u256 difficulty;
 };
 
+class State
+{
+public:
+	State() {}
+
+	u256 memory(u256 _contract, u256 _memory) const
+	{
+		auto m = m_memory.find(_contract);
+		if (m == m_memory.end())
+			return 0;
+		auto i = m->second.find(_memory);
+		return i == m->second.end() ? 0 : i->second;
+	}
+
+	std::map<u256, u256>& memory(u256 _contract)
+	{
+		return m_memory[_contract];
+	}
+
+	u256 balance(u256 _id) const { return 0; }
+	bool transact(u256 _src, u256 _dest, u256 _amount, u256 _fee, u256s const& _data) { return false; }
+
+private:
+	std::map<u256, std::map<u256, u256>> m_memory;
+};
+
 class VirtualMachine
 {
 public:
-	VirtualMachine();
+	VirtualMachine(State& _s): m_state(&_s) {}
+
 	~VirtualMachine();
+
 
 	void initMemory(RLP _contract);
 	void setMemory(RLP _state);
@@ -88,9 +117,9 @@ public:
 	void go();
 
 private:
-	std::map<u256, u256> m_memory;
+	State* m_state;
+
 	std::vector<u256> m_stack;
-	u256 m_pc;
 	u256 m_stepCount;
 	u256 m_totalFee;
 	u256 m_stepFee;

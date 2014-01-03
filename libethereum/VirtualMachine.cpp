@@ -1,11 +1,8 @@
 #include "sha256.h"
+#include <secp256k1.h>
 #include "VirtualMachine.h"
 using namespace std;
 using namespace eth;
-
-VirtualMachine::VirtualMachine()
-{
-}
 
 VirtualMachine::~VirtualMachine()
 {
@@ -14,19 +11,27 @@ VirtualMachine::~VirtualMachine()
 
 void VirtualMachine::go()
 {
-	bool stopped = false;
-	while (!stopped)
+	u256 curPC = 0;
+	u256 nextPC = 1;
+	auto& memory = m_state->memory(m_myAddress);
+
+	auto require = [&](u256 _n)
 	{
-		auto rawInst = m_memory[m_pc];
+		if (m_stack.size() < _n)
+			throw StackTooSmall(_n, m_stack.size());
+	};
+	auto mem = [&](u256 _n)
+	{
+		auto i = memory.find(_n);
+		return i == memory.end() ? 0 : i->second;
+	};
+
+	for (bool stopped = false; !stopped; curPC = nextPC, nextPC = curPC + 1)
+	{
+		auto rawInst = mem(curPC);
 		if (rawInst > 0xff)
 			throw BadInstruction();
 		Instruction inst = (Instruction)(uint8_t)rawInst;
-
-		auto require = [&](uint _n)
-		{
-			if (m_stack.size() < _n)
-				throw StackTooSmall(_n, m_stack.size());
-		};
 
 		switch (inst)
 		{
@@ -165,8 +170,8 @@ void VirtualMachine::go()
 			if (inst == Instruction::SHA256)
 				m_stack.back() = sha256(b);
 			else
+				// NOTE: this aligns to right of 256-bit container (low-order bytes). This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
 				m_stack.back() = ripemd160(&b);
-
 			break;
 		}
 		case Instruction::ECMUL:
@@ -174,21 +179,117 @@ void VirtualMachine::go()
 		case Instruction::ECSIGN:
 		case Instruction::ECRECOVER:
 		case Instruction::ECVALID:
-		case Instruction::PUSH:
-		case Instruction::POP:
-		case Instruction::DUP:
-		case Instruction::DUPN:
-		case Instruction::SWAP:
-		case Instruction::SWAPN:
-		case Instruction::LOAD:
-		case Instruction::STORE:
-		case Instruction::JMP:
-		case Instruction::JMPI:
-		case Instruction::IND:
-		case Instruction::EXTRO:
-		case Instruction::BALANCE:
-		case Instruction::MKTX:
+			// TODO
 			break;
+		case Instruction::PUSH:
+		{
+			m_stack.push_back(mem(curPC + 1));
+			nextPC = curPC + 2;
+			break;
+		}
+		case Instruction::POP:
+			require(1);
+			m_stack.pop_back();
+			break;
+		case Instruction::DUP:
+			require(1);
+			m_stack.push_back(m_stack.back());
+			break;
+		case Instruction::DUPN:
+		{
+			auto s = mem(curPC + 1);
+			if (s == 0 || s > m_stack.size())
+				throw OperandOutOfRange(1, m_stack.size(), s);
+			m_stack.push_back(m_stack[m_stack.size() - (uint)s]);
+			nextPC = curPC + 2;
+			break;
+		}
+		case Instruction::SWAP:
+		{
+			require(2);
+			auto d = m_stack.back();
+			m_stack.back() = m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = d;
+			break;
+		}
+		case Instruction::SWAPN:
+		{
+			require(1);
+			auto d = m_stack.back();
+			auto s = mem(curPC + 1);
+			if (s == 0 || s > m_stack.size())
+				throw OperandOutOfRange(1, m_stack.size(), s);
+			m_stack.back() = m_stack[m_stack.size() - (uint)s];
+			m_stack[m_stack.size() - (uint)s] = d;
+			nextPC = curPC + 2;
+			break;
+		}
+		case Instruction::LOAD:
+			require(1);
+			m_stack.back() = mem(m_stack.back());
+			break;
+		case Instruction::STORE:
+			require(2);
+			mem(m_stack.back()) = m_stack[m_stack.size() - 2];
+			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		case Instruction::JMP:
+			require(1);
+			nextPC = m_stack.back();
+			m_stack.pop_back();
+			break;
+		case Instruction::JMPI:
+			require(2);
+			if (m_stack.back())
+				nextPC = m_stack[m_stack.size() - 2];
+			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		case Instruction::IND:
+			m_stack.push_back(curPC);
+			break;
+		case Instruction::EXTRO:
+		{
+			require(2);
+			auto memoryAddress = m_stack.back();
+			m_stack.pop_back();
+			auto contractAddress = m_stack.back();
+			m_stack.back() = m_state->memory(contractAddress, memoryAddress);
+			break;
+		}
+		case Instruction::BALANCE:
+		{
+			require(1);
+			m_stack.back() = m_state->balance(m_stack.back());
+			break;
+		}
+		case Instruction::MKTX:
+		{
+			require(4);
+			auto dest = m_stack.back();
+			m_stack.pop_back();
+
+			auto amount = m_stack.back();
+			m_stack.pop_back();
+
+			auto fee = m_stack.back();
+			m_stack.pop_back();
+
+			auto itemCount = m_stack.back();
+			m_stack.pop_back();
+			if (m_stack.size() < itemCount)
+				throw OperandOutOfRange(0, m_stack.size(), itemCount);
+			u256s data;
+			data.reserve((uint)itemCount);
+			for (auto i = 0; i < itemCount; ++i)
+			{
+				data.push_back(m_stack.back());
+				m_stack.pop_back();
+			}
+			m_state->transact(m_myAddress, dest, amount, fee, data);
+			break;
+		}
 		case Instruction::SUICIDE:
 			// TODO: Suicide...
 		case Instruction::STOP:

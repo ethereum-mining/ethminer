@@ -20,6 +20,7 @@ using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backe
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 using uint = uint64_t;
 using sint = int64_t;
+using u256s = std::vector<u256>;
 
 template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
 

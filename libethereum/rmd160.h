@@ -18,6 +18,8 @@
 #ifndef  RMD160H           /* make sure this file is read only once */
 #define  RMD160H
 
+#include <cstdint>
+
 /********************************************************************/
 
 /* function prototypes */

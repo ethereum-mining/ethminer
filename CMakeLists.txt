@@ -1,6 +1,8 @@
 project(ethereum)
 cmake_minimum_required(VERSION 2.8)
 
+cmake_policy(SET CMP0015 NEW)
+
 # Initialize CXXFLAGS.
 set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
