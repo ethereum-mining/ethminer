@@ -74,4 +74,6 @@ template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
 	return s;
 }
 
+u256 ripemd160(fConstBytes _message);
+
 }
