@@ -1,5 +1,5 @@
 #include "Common.h"
-#include "PatriciaTree.h"
+#include "Trie.h"
 using namespace std;
 using namespace eth;
 
