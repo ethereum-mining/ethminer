@@ -89,7 +89,7 @@ public:
 		if (_i < m_lastIndex)
 		{
 			m_lastEnd = RLP(payload()).actualSize();
-			m_lastItem = payload().cropped(m_lastEnd);
+			m_lastItem = payload().cropped(0, m_lastEnd);
 			m_lastIndex = 0;
 		}
 		for (; m_lastIndex < _i; ++m_lastIndex)

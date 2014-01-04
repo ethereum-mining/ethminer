@@ -187,7 +187,10 @@ struct Signature
 	u256 r;
 	u256 s;
 
-	u160 address() const { return as160(s); }	// TODO!
+	u160 address(bytesConstRef _tx) const
+	{
+		return as160(s);
+	}
 };
 
 
@@ -214,7 +217,7 @@ public:
 	explicit State(u256 _minerAddress): m_minerAddress(_minerAddress) {}
 
 	bool verify(bytes const& _block);
-	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); return execute(t); } catch (...) { return false; } }
+	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); u160 sender = t.vrs.address(bytesConstRef(const_cast<bytes*>(&_rlp))); return execute(t, sender); } catch (...) { return false; } }	// remove const_cast once vector_ref can handle const vector* properly.
 
 private:
 	bool execute(Transaction const& _t);

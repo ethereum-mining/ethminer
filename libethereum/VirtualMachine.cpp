@@ -41,12 +41,6 @@ bytes Transaction::rlp() const
 	return rlp.out();
 }
 
-// Entry point for a user-originated transaction.
-bool State::execute(Transaction const& _t)
-{
-	return execute(_t, _t.vrs.address());
-}
-
 bool State::execute(Transaction const& _t, u160 _sender)
 {
 	// Entry point for a contract-originated transaction.
@@ -339,6 +333,7 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 			break;
 		}
 		case Instruction::ECMUL:
+
 		case Instruction::ECADD:
 		case Instruction::ECSIGN:
 		case Instruction::ECRECOVER:
