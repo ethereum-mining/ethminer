@@ -12,130 +12,96 @@ u256 const State::c_extroFee = 0;
 u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
 
-u256 extractSender(u256 _v, u256 _r, u256 _s)
+Transaction::Transaction(bytes const& _rlpData)
 {
-	// TODO...
-	return _s;
+	RLP rlp(_rlpData);
+	nonce = rlp[0].toFatIntFromString();
+	receiveAddress = as160(rlp[1].toFatIntFromString());
+	value = rlp[2].toFatIntStrict();
+	fee = rlp[3].toFatIntStrict();
+	data.reserve(rlp[4].itemCountStrict());
+	for (auto const& i: rlp[4])
+		data.push_back(i.toFatIntStrict());
+	vrs = Signature{ rlp[5].toFatIntFromString(), rlp[6].toFatIntFromString(), rlp[7].toFatIntFromString() };
 }
 
-template <class _T>
-inline _T low160(_T const& _t)
+bytes Transaction::rlp() const
 {
-	return _t & ((((_T)1) << 160) - 1);
+	RLPStream rlp;
+	rlp << RLPList(8);
+	if (nonce)
+		rlp << nonce;
+	else
+		rlp << "";
+	if (receiveAddress)
+		rlp << toCompactBigEndianString(receiveAddress);
+	else
+		rlp << "";
+	rlp << value << fee << data << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
+	return rlp.out();
 }
 
-bool State::transact(bytes const& _rlp)
+// Entry point for a user-originated transaction.
+bool State::execute(Transaction const& _t)
 {
-	RLP rlp(_rlp);
-	if (!rlp.isList())
-		return false;
-	RLPs items = rlp.toList();
+	return execute(_t, _t.vrs.address());
+}
 
-//	if (!items[0].isFixedInt())
-//		return false;
-	if (!items[0].isString())
-		return false;
-	u256 nonce = items[0].toFatInt();
+bool State::execute(Transaction const& _t, u160 _sender)
+{
+	// Entry point for a contract-originated transaction.
 
-//	if (!(items[1].isEmpty() || items[1].isFixedInt()))
-//		return false;
-	if (!items[1].isString())
-		return false;
-	u256 address = items[1].toFatInt();
-
-	if (!items[2].isFixedInt())
-		return false;
-	u256 value = items[2].toFatInt();
-
-	if (!items[3].isFixedInt())
-		return false;
-	u256 fee = items[3].toFatInt();
-
-	if (!items[4].isList())
-		return false;
-	u256s data;
-	data.reserve(items[4].itemCount());
-	for (auto const& i: items[4].toList())
-		if (i.isFixedInt())
-			data.push_back(i.toFatInt());
-		else
-			return false;
-
-	if (!items[5].isString())
-		return false;
-	u256 v = items[5].toFatInt();
-
-	if (!items[6].isString())
-		return false;
-	u256 r = items[6].toFatInt();
-
-	if (!items[7].isString())
-		return false;
-	u256 s = items[7].toFatInt();
-
-	u256 sender;
-	try
-	{
-		sender = extractSender(v, r, s);
-	}
-	catch (...)
-	{
-		// Invalid signiture.
-		// Error reporting?
-		return false;
-	}
-
-	if (nonce != transactionsFrom(sender))
+	if (_t.nonce != transactionsFrom(_sender))
 	{
 		// Nonce is wrong.
 		// Error reporting?
 		return false;
 	}
 
-	if (balance(sender) < value + fee)
+	if (balance(_sender) < _t.value + _t.fee)
 	{
 		// Sender balance too low.
 		// Error reporting?
 		return false;
 	}
 
-	if (address)
+	if (_t.receiveAddress)
 	{
-		assert(subBalance(sender, value));
-		addBalance(address, value);
+		assert(subBalance(_sender, _t.value));
+		addBalance(_t.receiveAddress, _t.value);
 
-		if (isContractAddress(address))
+		if (isContractAddress(_t.receiveAddress))
 		{
-			bool ret = true;
 			u256 minerFee = 0;
 
 			try
 			{
-				execute(address, sender, value, fee, data, &minerFee);
+				execute(_t.receiveAddress, _sender, _t.value, _t.fee, _t.data, &minerFee);
+				addBalance(m_minerAddress, minerFee);
+				return true;
 			}
 			catch (...)
 			{
 				// Execution error.
 				// Error reporting?
-				ret = false;
+				addBalance(m_minerAddress, minerFee);
+				throw ExecutionException();
 			}
-
-			addBalance(m_minerAddress, minerFee);
-			return ret;
 		}
 		else
 			return true;
 	}
 	else
 	{
-		if (fee < data.size() * c_memoryFee + c_newContractFee)
+		if (_t.fee < _t.data.size() * c_memoryFee + c_newContractFee)
 		{
 			// Fee too small.
 			// Error reporting?
 			return false;
 		}
 
-		u256 newAddress = low160(sha256(_rlp));
+		u160 newAddress = low160(_t.sha256());
+
 		if (isContractAddress(newAddress))
 		{
 			// Contract collision.
@@ -143,19 +109,23 @@ bool State::transact(bytes const& _rlp)
 			return false;
 		}
 
-		auto& mem = m_contractMemory[newAddress];
-		for (uint i = 0; i < data.size(); ++i)
-			mem[i] = data[i];
-		assert(subBalance(sender, value));
-		addBalance(newAddress, value);
+		//
+		auto& mem = m_current[newAddress].memory();
+		for (uint i = 0; i < _t.data.size(); ++i)
+			mem[i] = _t.data[i];
+		assert(subBalance(_sender, _t.value));
+		addBalance(newAddress, _t.value);
 		return true;
 	}
 }
 
-void State::execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
+void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
-	auto& myMemory = ensureMemory(_myAddress);
+	auto m = m_current.find(_myAddress);
+	if (m == m_current.end())
+		throw NoSuchContract();
+	auto& myMemory = m->second.memory();
 
 	auto require = [&](u256 _n)
 	{
@@ -334,7 +304,7 @@ void State::execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee,
 			stack.push_back(m_previousBlock.hash);
 			break;
 		case Instruction::BLK_COINBASE:
-			stack.push_back(m_currentBlock.coinbase);
+			stack.push_back(m_currentBlock.coinbaseAddress);
 			break;
 		case Instruction::BLK_TIMESTAMP:
 			stack.push_back(m_currentBlock.timestamp);
@@ -363,7 +333,8 @@ void State::execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee,
 			if (inst == Instruction::SHA256)
 				stack.back() = sha256(b);
 			else
-				// NOTE: this aligns to right of 256-bit container (low-order bytes). This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
+				// NOTE: this aligns to right of 256-bit container (low-order bytes).
+				// This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
 				stack.back() = ripemd160(&b);
 			break;
 		}
@@ -447,69 +418,52 @@ void State::execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee,
 			require(2);
 			auto memoryAddress = stack.back();
 			stack.pop_back();
-			auto contractAddress = stack.back();
-			stack.back() = memory(contractAddress, memoryAddress);
+			u160 contractAddress = as160(stack.back());
+			stack.back() = contractMemory(contractAddress, memoryAddress);
 			break;
 		}
 		case Instruction::BALANCE:
 		{
 			require(1);
-			stack.back() = balance(stack.back());
+			stack.back() = balance(as160(stack.back()));
 			break;
 		}
 		case Instruction::MKTX:
 		{
 			require(4);
-			auto dest = stack.back();
-			stack.pop_back();
 
-			auto value = stack.back();
+			Transaction t;
+			t.receiveAddress = as160(stack.back());
 			stack.pop_back();
-
-			auto fee = stack.back();
+			t.value = stack.back();
+			stack.pop_back();
+			t.fee = stack.back();
 			stack.pop_back();
 
 			auto itemCount = stack.back();
 			stack.pop_back();
 			if (stack.size() < itemCount)
 				throw OperandOutOfRange(0, stack.size(), itemCount);
-			u256s data;
-			data.reserve((uint)itemCount);
+			t.data.reserve((uint)itemCount);
 			for (auto i = 0; i < itemCount; ++i)
 			{
-				data.push_back(stack.back());
+				t.data.push_back(stack.back());
 				stack.pop_back();
 			}
 
-			u256 nonce = transactionsFrom(_myAddress);
-
-			u256 v = 42;	// TODO: turn our address into a v/r/s signature?
-			u256 r = 42;
-			u256 s = _myAddress;
-			// v/r/s are required to make the transaction hash (via the RLP serialisation) and thus are required in the creation of a contract.
-
-			RLPStream rlp;
-			if (nonce)
-				rlp << nonce;
-			else
-				rlp << "";
-			if (dest)
-				rlp << toBigEndianString(dest);
-			else
-				rlp << "";
-			rlp << value << fee << data << toBigEndianString(v) << toBigEndianString(r) << toBigEndianString(s);
-			transact(rlp.out());
+			t.nonce = transactionsFrom(_myAddress);
+			execute(t);
 
 			break;
 		}
 		case Instruction::SUICIDE:
 		{
 			require(1);
-			auto dest = stack.back();
-			u256 minusVoidFee = m_contractMemory[_myAddress].size() * c_memoryFee;
-			addBalance(dest, balance(_myAddress) + minusVoidFee - _txFee);
-			m_balance.erase(_myAddress);
-			m_contractMemory.erase(_myAddress);
+			u160 dest = as160(stack.back());
+			u256 minusVoidFee = m_current[_myAddress].memory().size() * c_memoryFee;
+			addBalance(dest, balance(_myAddress) + minusVoidFee);
+			subBalance(dest, _txFee);
+			m_current.erase(_myAddress);
 			// ...follow through to...
 		}
 		case Instruction::STOP:

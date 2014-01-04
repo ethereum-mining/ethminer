@@ -1,8 +1,9 @@
 #pragma once
 
+#include <exception>
 #include <iostream>
 #include <iomanip>
-#include "foreign.h"
+#include "vector_ref.h"
 #include "Common.h"
 
 namespace eth
@@ -20,20 +21,24 @@ typedef std::vector<RLP> RLPs;
 class RLP
 {
 public:
+	class BadCast: public std::exception {};
+
 	/// Construct a null node.
 	RLP() {}
 
 	/// Construct a node of value given in the bytes.
-	explicit RLP(fConstBytes _d): m_data(_d) {}
+	explicit RLP(bytesConstRef _d): m_data(_d) {}
 
 	/// Construct a node of value given in the bytes.
-	explicit RLP(bytes const& _d): m_data(const_cast<bytes*>(&_d)) {}	// a bit horrible, but we know we won't be altering the data. TODO: allow vector<T> const* to be passed to foreign<T const>.
+	explicit RLP(bytes const& _d): m_data(const_cast<bytes*>(&_d)) {}	// a bit horrible, but we know we won't be altering the data. TODO: allow vector<T> const* to be passed to vector_ref<T const>.
 
 	/// Construct a node to read RLP data in the bytes given.
-	RLP(byte const* _b, uint _s): m_data(fConstBytes(_b, _s)) {}
+	RLP(byte const* _b, uint _s): m_data(bytesConstRef(_b, _s)) {}
 
 	/// Construct a node to read RLP data in the string.
-	explicit RLP(std::string const& _s): m_data(fConstBytes((byte const*)_s.data(), _s.size())) {}
+	explicit RLP(std::string const& _s): m_data(bytesConstRef((byte const*)_s.data(), _s.size())) {}
+
+	bytesConstRef data() const { return m_data; }
 
 	/// @returns true if the RLP is non-null.
 	explicit operator bool() const { return !isNull(); }
@@ -67,6 +72,7 @@ public:
 
 	/// @returns the number of items in the list, or zero if it isn't a list.
 	uint itemCount() const { return isList() ? items() : 0; }
+	uint itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
 
 	/// @returns the number of characters in the string, or zero if it isn't a string.
 	uint stringSize() const { return isString() ? items() : 0; }
@@ -80,10 +86,68 @@ public:
 	{
 		if (!isList() || itemCount() <= _i)
 			return RLP();
-		fConstBytes d = payload();
-		for (uint64_t i = 0; i < _i; ++i, d = d.cropped(RLP(d).size())) {}
-		return RLP(d);
+		if (_i < m_lastIndex)
+		{
+			m_lastEnd = RLP(payload()).actualSize();
+			m_lastItem = payload().cropped(m_lastEnd);
+			m_lastIndex = 0;
+		}
+		for (; m_lastIndex < _i; ++m_lastIndex)
+		{
+			m_lastItem = payload().cropped(m_lastEnd);
+			m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem).actualSize());
+			m_lastEnd += m_lastItem.size();
+		}
+		return RLP(m_lastItem);
 	}
+
+	typedef RLP element_type;
+
+	class iterator
+	{
+		friend class RLP;
+
+	public:
+		typedef RLP value_type;
+		typedef RLP element_type;
+
+		iterator& operator++()
+		{
+			if (m_remaining)
+			{
+				m_lastItem.retarget(m_lastItem.next().data(), m_remaining);
+				m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem).actualSize());
+				m_remaining -= std::min<uint>(m_remaining, m_lastItem.size());
+			}
+			return *this;
+		}
+		iterator operator++(int) { auto ret = *this; operator++(); return ret; }
+		RLP operator*() const { return RLP(m_lastItem); }
+		bool operator==(iterator const& _cmp) const { return m_lastItem == _cmp.m_lastItem; }
+		bool operator!=(iterator const& _cmp) const { return !operator==(_cmp); }
+
+	private:
+		iterator() {}
+		iterator(bytesConstRef _payload, bool _begin)
+		{
+			if (_begin)
+			{
+				m_lastItem = _payload.cropped(RLP(_payload).actualSize());
+				m_remaining = _payload.size() - m_lastItem.size();
+			}
+			else
+			{
+				m_lastItem = _payload.cropped(m_lastItem.size());
+				m_remaining = 0;
+			}
+		}
+		uint m_remaining = 0;
+		bytesConstRef m_lastItem;
+	};
+	friend class iterator;
+
+	iterator begin() const { return iterator(payload(), true); }
+	iterator end() const { return iterator(payload(), false); }
 
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
@@ -115,6 +179,12 @@ public:
 	uint toSlimInt() const { return toInt<uint>(); }
 	u256 toFatInt() const { return toInt<u256>(); }
 	bigint toBigInt() const { return toInt<bigint>(); }
+	uint toSlimIntStrict() const { if (!isSlimInt()) throw BadCast(); return toInt<uint>(); }
+	u256 toFatIntStrict() const { if (!isFatInt() && !isSlimInt()) throw BadCast(); return toInt<u256>(); }
+	bigint toBigIntStrict() const { if (!isInt()) throw BadCast(); return toInt<bigint>(); }
+	uint toSlimIntFromString() const { if (!isString()) throw BadCast(); return toInt<uint>(); }
+	u256 toFatIntFromString() const { if (!isString()) throw BadCast(); return toInt<u256>(); }
+	bigint toBigIntFromString() const { if (!isString()) throw BadCast(); return toInt<bigint>(); }
 
 	RLPs toList() const
 	{
@@ -122,9 +192,8 @@ public:
 		if (!isList())
 			return ret;
 		uint64_t c = items();
-		fConstBytes d = payload();
-		for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).size()))
-			ret.push_back(RLP(d));
+		for (uint64_t i = 0; i < c; ++i)
+			ret.push_back(operator[](i));
 		return ret;
 	}
 
@@ -144,7 +213,7 @@ private:
 	/// Direct-length list.
 	bool isSmallList() const { assert(!isNull()); return m_data[0] >= 0x80 && m_data[0] < 0xb8; }
 
-	uint size() const
+	uint actualSize() const
 	{
 		if (isNull())
 			return 0;
@@ -154,9 +223,9 @@ private:
 			return payload().data() - m_data.data() + items();
 		if (isList())
 		{
-			fConstBytes d = payload();
+			bytesConstRef d = payload();
 			uint64_t c = items();
-			for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).size())) {}
+			for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).actualSize())) {}
 			return d.data() - m_data.data();
 		}
 		return 0;
@@ -176,14 +245,17 @@ private:
 		return ret;
 	}
 
-	fConstBytes payload() const
+	bytesConstRef payload() const
 	{
 		assert(isString() || isList());
 		auto n = (m_data[0] & 0x3f);
 		return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37)));
 	}
 
-	fConstBytes m_data;
+	bytesConstRef m_data;
+	mutable uint m_lastIndex = (uint)-1;
+	mutable uint m_lastEnd;
+	mutable bytesConstRef m_lastItem;
 };
 
 struct RLPList { RLPList(uint _count): count(_count) {} uint count; };
@@ -376,7 +448,7 @@ inline std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
 	{
 		_out << "[";
 		int j = 0;
-		for (auto i: _d.toList())
+		for (auto i: _d)
 			_out << (j++ ? ", " : " ") << i;
 		_out << " ]";
 	}

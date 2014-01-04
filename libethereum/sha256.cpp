@@ -194,3 +194,17 @@ u256 eth::sha256(bytes const& _input)
 		ret = (ret << 8) | buf[i];
 	return ret;
 }
+
+u256 eth::sha256(bytesConstRef _input)
+{
+	u256 ret = 0;
+
+	SHA256 ctx = SHA256();
+	ctx.init();
+	ctx.update(_input.data(), _input.size());
+	uint8_t buf[SHA256::DIGEST_SIZE];
+	ctx.final(buf);
+	for (unsigned i = 0; i < 32; ++i)
+		ret = (ret << 8) | buf[i];
+	return ret;
+}

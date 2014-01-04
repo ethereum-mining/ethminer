@@ -62,7 +62,7 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 		rlp << RLPList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
 #if ENABLE_DEBUG_PRINT
 		if (g_hashDebug)
-			std::cerr << s_indent << asHex(fConstBytes(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha256(rlp.out()) << std::endl;
+			std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha256(rlp.out()) << std::endl;
 #endif
 	}
 	else
@@ -83,9 +83,9 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			// if they all have the same next nibble, we also want a pair.
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << asHex(fConstBytes(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
+				std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
 #endif
-			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
+			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toCompactBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
 				std::cerr << s_indent << "= " << sha256(rlp.out()) << std::endl;
@@ -116,7 +116,7 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 					if (g_hashDebug)
 						std::cerr << s_indent << std::hex << i << ": " << std::endl;
 #endif
-					rlp << toBigEndianString(hash256aux(_s, b, n, _preLen + 1));
+					rlp << toCompactBigEndianString(hash256aux(_s, b, n, _preLen + 1));
 				}
 				b = n;
 			}
@@ -149,6 +149,17 @@ u256 hash256(StringMap const& _s)
 	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
 }
 
+u256 hash256(u256Map const& _s)
+{
+	// build patricia tree.
+	if (_s.empty())
+		return sha256(RLPNull);
+	HexMap hexMap;
+	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
+		hexMap[toHex(toBigEndianString(i->first))] = rlp(i->second);
+	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
+}
+
 
 class TrieNode
 {
@@ -156,9 +167,9 @@ public:
 	TrieNode() {}
 	virtual ~TrieNode() {}
 
-	virtual std::string const& at(fConstBytes _key) const = 0;
-	virtual TrieNode* insert(fConstBytes _key, std::string const& _value) = 0;
-	virtual TrieNode* remove(fConstBytes _key) = 0;
+	virtual std::string const& at(bytesConstRef _key) const = 0;
+	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) = 0;
+	virtual TrieNode* remove(bytesConstRef _key) = 0;
 	virtual bytes rlp() const = 0;
 
 #if ENABLE_DEBUG_PRINT
@@ -173,7 +184,7 @@ protected:
 	virtual void debugPrintBody(std::string const& _indent = "") const = 0;
 #endif
 
-	static TrieNode* newBranch(fConstBytes _k1, std::string const& _v1, fConstBytes _k2, std::string const& _v2);
+	static TrieNode* newBranch(bytesConstRef _k1, std::string const& _v1, bytesConstRef _k2, std::string const& _v2);
 
 private:
 	mutable u256 m_sha256 = 0;
@@ -184,7 +195,7 @@ static const std::string c_nullString;
 class TrieExtNode: public TrieNode
 {
 public:
-	TrieExtNode(fConstBytes _bytes): m_ext(_bytes.begin(), _bytes.end()) {}
+	TrieExtNode(bytesConstRef _bytes): m_ext(_bytes.begin(), _bytes.end()) {}
 
 	bytes m_ext;
 };
@@ -231,9 +242,9 @@ public:
 	}
 #endif
 
-	virtual std::string const& at(fConstBytes _key) const override;
-	virtual TrieNode* insert(fConstBytes _key, std::string const& _value) override;
-	virtual TrieNode* remove(fConstBytes _key) override;
+	virtual std::string const& at(bytesConstRef _key) const override;
+	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
+	virtual TrieNode* remove(bytesConstRef _key) override;
 	virtual bytes rlp() const override;
 
 private:
@@ -249,7 +260,7 @@ private:
 class TrieLeafNode: public TrieExtNode
 {
 public:
-	TrieLeafNode(fConstBytes _key, std::string const& _value): TrieExtNode(_key), m_value(_value) {}
+	TrieLeafNode(bytesConstRef _key, std::string const& _value): TrieExtNode(_key), m_value(_value) {}
 
 #if ENABLE_DEBUG_PRINT
 	virtual void debugPrintBody(std::string const& _indent) const
@@ -264,13 +275,13 @@ public:
 	}
 #endif
 
-	virtual std::string const& at(fConstBytes _key) const override { return contains(_key) ? m_value : c_nullString; }
-	virtual TrieNode* insert(fConstBytes _key, std::string const& _value) override;
-	virtual TrieNode* remove(fConstBytes _key) override;
+	virtual std::string const& at(bytesConstRef _key) const override { return contains(_key) ? m_value : c_nullString; }
+	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
+	virtual TrieNode* remove(bytesConstRef _key) override;
 	virtual bytes rlp() const override { return rlpListBytes(hexPrefixEncode(m_ext, true), m_value); }
 
 private:
-	bool contains(fConstBytes _key) const { return _key.size() == m_ext.size() && !memcmp(_key.data(), m_ext.data(), _key.size()); }
+	bool contains(bytesConstRef _key) const { return _key.size() == m_ext.size() && !memcmp(_key.data(), m_ext.data(), _key.size()); }
 
 	std::string m_value;
 };
@@ -278,7 +289,7 @@ private:
 class TrieInfixNode: public TrieExtNode
 {
 public:
-	TrieInfixNode(fConstBytes _key, TrieNode* _next): TrieExtNode(_key), m_next(_next) {}
+	TrieInfixNode(bytesConstRef _key, TrieNode* _next): TrieExtNode(_key), m_next(_next) {}
 	virtual ~TrieInfixNode() { delete m_next; }
 
 #if ENABLE_DEBUG_PRINT
@@ -289,18 +300,18 @@ public:
 	}
 #endif
 
-	virtual std::string const& at(fConstBytes _key) const override { assert(m_next); return contains(_key) ? m_next->at(_key.cropped(m_ext.size())) : c_nullString; }
-	virtual TrieNode* insert(fConstBytes _key, std::string const& _value) override;
-	virtual TrieNode* remove(fConstBytes _key) override;
-	virtual bytes rlp() const override { assert(m_next); return rlpListBytes(hexPrefixEncode(m_ext, false), toBigEndianString(m_next->sha256())); }
+	virtual std::string const& at(bytesConstRef _key) const override { assert(m_next); return contains(_key) ? m_next->at(_key.cropped(m_ext.size())) : c_nullString; }
+	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
+	virtual TrieNode* remove(bytesConstRef _key) override;
+	virtual bytes rlp() const override { assert(m_next); return rlpListBytes(hexPrefixEncode(m_ext, false), toCompactBigEndianString(m_next->sha256())); }
 
 private:
-	bool contains(fConstBytes _key) const { return _key.size() >= m_ext.size() && !memcmp(_key.data(), m_ext.data(), m_ext.size()); }
+	bool contains(bytesConstRef _key) const { return _key.size() >= m_ext.size() && !memcmp(_key.data(), m_ext.data(), m_ext.size()); }
 
 	TrieNode* m_next;
 };
 
-TrieNode* TrieNode::newBranch(fConstBytes _k1, std::string const& _v1, fConstBytes _k2, std::string const& _v2)
+TrieNode* TrieNode::newBranch(bytesConstRef _k1, std::string const& _v1, bytesConstRef _k2, std::string const& _v2)
 {
 	uint prefix = commonPrefix(_k1, _k2);
 
@@ -319,7 +330,7 @@ TrieNode* TrieNode::newBranch(fConstBytes _k1, std::string const& _v1, fConstByt
 	return ret;
 }
 
-std::string const& TrieBranchNode::at(fConstBytes _key) const
+std::string const& TrieBranchNode::at(bytesConstRef _key) const
 {
 	if (_key.empty())
 		return m_value;
@@ -328,7 +339,7 @@ std::string const& TrieBranchNode::at(fConstBytes _key) const
 	return c_nullString;
 }
 
-TrieNode* TrieBranchNode::insert(fConstBytes _key, std::string const& _value)
+TrieNode* TrieBranchNode::insert(bytesConstRef _key, std::string const& _value)
 {
 	assert(_value.size());
 	mark();
@@ -342,7 +353,7 @@ TrieNode* TrieBranchNode::insert(fConstBytes _key, std::string const& _value)
 	return this;
 }
 
-TrieNode* TrieBranchNode::remove(fConstBytes _key)
+TrieNode* TrieBranchNode::remove(bytesConstRef _key)
 {
 	if (_key.empty())
 		if (m_value.size())
@@ -367,7 +378,7 @@ TrieNode* TrieBranchNode::rejig()
 	if (n == (byte)-1 && m_value.size())
 	{
 		// switch to leaf
-		auto r = new TrieLeafNode(fConstBytes(), m_value);
+		auto r = new TrieLeafNode(bytesConstRef(), m_value);
 		delete this;
 		return r;
 	}
@@ -379,7 +390,7 @@ TrieNode* TrieBranchNode::rejig()
 			// switch to infix
 			m_nodes[n] = nullptr;
 			delete this;
-			return new TrieInfixNode(fConstBytes(&n, 1), b);
+			return new TrieInfixNode(bytesConstRef(&n, 1), b);
 		}
 		else
 		{
@@ -401,7 +412,7 @@ bytes TrieBranchNode::rlp() const
 	RLPStream s;
 	s << RLPList(17);
 	for (auto i: m_nodes)
-		s << (i ? toBigEndianString(i->sha256()) : "");
+		s << (i ? toCompactBigEndianString(i->sha256()) : "");
 	s << m_value;
 	return s.out();
 }
@@ -420,7 +431,7 @@ byte TrieBranchNode::activeBranch() const
 	return n;
 }
 
-TrieNode* TrieInfixNode::insert(fConstBytes _key, std::string const& _value)
+TrieNode* TrieInfixNode::insert(bytesConstRef _key, std::string const& _value)
 {
 	assert(_value.size());
 	mark();
@@ -458,7 +469,7 @@ TrieNode* TrieInfixNode::insert(fConstBytes _key, std::string const& _value)
 	}
 }
 
-TrieNode* TrieInfixNode::remove(fConstBytes _key)
+TrieNode* TrieInfixNode::remove(bytesConstRef _key)
 {
 	if (contains(_key))
 	{
@@ -485,7 +496,7 @@ TrieNode* TrieInfixNode::remove(fConstBytes _key)
 	return this;
 }
 
-TrieNode* TrieLeafNode::insert(fConstBytes _key, std::string const& _value)
+TrieNode* TrieLeafNode::insert(bytesConstRef _key, std::string const& _value)
 {
 	assert(_value.size());
 	mark();
@@ -497,13 +508,13 @@ TrieNode* TrieLeafNode::insert(fConstBytes _key, std::string const& _value)
 	else
 	{
 		// create new trie.
-		auto n = TrieNode::newBranch(_key, _value, fConstBytes(&m_ext), m_value);
+		auto n = TrieNode::newBranch(_key, _value, bytesConstRef(&m_ext), m_value);
 		delete this;
 		return n;
 	}
 }
 
-TrieNode* TrieLeafNode::remove(fConstBytes _key)
+TrieNode* TrieLeafNode::remove(bytesConstRef _key)
 {
 	if (contains(_key))
 	{
@@ -541,7 +552,7 @@ std::string const& Trie::at(std::string const& _key) const
 	if (!m_root)
 		return c_nullString;
 	auto h = toHex(_key);
-	return m_root->at(fConstBytes(&h));
+	return m_root->at(bytesConstRef(&h));
 }
 
 void Trie::insert(std::string const& _key, std::string const& _value)
@@ -549,7 +560,7 @@ void Trie::insert(std::string const& _key, std::string const& _value)
 	if (_value.empty())
 		remove(_key);
 	auto h = toHex(_key);
-	m_root = m_root ? m_root->insert(&h, _value) : new TrieLeafNode(fConstBytes(&h), _value);
+	m_root = m_root ? m_root->insert(&h, _value) : new TrieLeafNode(bytesConstRef(&h), _value);
 }
 
 void Trie::remove(std::string const& _key)

@@ -4,6 +4,7 @@
 #include <array>
 #include <map>
 #include <unordered_map>
+#include "Trie.h"
 #include "RLP.h"
 #include "Common.h"
 
@@ -67,14 +68,144 @@ enum class Instruction: uint8_t
 class BadInstruction: public std::exception {};
 class StackTooSmall: public std::exception { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
 class OperandOutOfRange: public std::exception { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
+class ExecutionException: public std::exception {};
+class NoSuchContract: public std::exception {};
+class InvalidTransactionFormat: public std::exception {};
+class InvalidBlockFormat: public std::exception {};
+class InvalidUnclesHash: public std::exception {};
+class InvalidTransactionsHash: public std::exception {};
+class InvalidTransaction: public std::exception {};
+class InvalidDifficulty: public std::exception {};
+class InvalidTimestamp: public std::exception {};
+class InvalidNonce: public std::exception {};
 
 struct BlockInfo
 {
+public:
 	u256 hash;
-	u256 coinbase;
-	u256 timestamp;
-	u256 number;
+	u256 parentHash;
+	u256 sha256Uncles;
+	u256 coinbaseAddress;
+	u256 sha256Transactions;
 	u256 difficulty;
+	u256 timestamp;
+	u256 nonce;
+	u256 number;
+
+	void populateAndVerify(bytesConstRef _block, u256 _number)
+	{
+		number = _number;
+
+		RLP root(_block);
+		try
+		{
+			RLP header = root[0];
+			hash = eth::sha256(_block);
+			parentHash = header[0].toFatInt();
+			sha256Uncles = header[1].toFatInt();
+			coinbaseAddress = header[2].toFatInt();
+			sha256Transactions = header[3].toFatInt();
+			difficulty = header[4].toFatInt();
+			timestamp = header[5].toFatInt();
+			nonce = header[6].toFatInt();
+		}
+		catch (RLP::BadCast)
+		{
+			throw InvalidBlockFormat();
+		}
+
+		if (sha256Transactions != sha256(root[1].data()))
+			throw InvalidTransactionsHash();
+
+		if (sha256Uncles != sha256(root[2].data()))
+			throw InvalidUnclesHash();
+
+		// TODO: check timestamp.
+		// TODO: check difficulty against timestamp.
+		// TODO: check proof of work.
+
+		// TODO: check each transaction.
+	}
+};
+
+enum class AddressType
+{
+	Normal,
+	Contract
+};
+
+class AddressState
+{
+public:
+	AddressState(AddressType _type = AddressType::Normal): m_type(_type), m_balance(0), m_nonce(0) {}
+
+	AddressType type() const { return m_type; }
+	u256& balance() { return m_balance; }
+	u256 const& balance() const { return m_balance; }
+	u256& nonce() { return m_nonce; }
+	u256 const& nonce() const { return m_nonce; }
+	std::map<u256, u256>& memory() { assert(m_type == AddressType::Contract); return m_memory; }
+	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract); return m_memory; }
+
+	u256 memoryHash() const
+	{
+		return hash256(m_memory);
+	}
+
+	std::string toString() const
+	{
+		if (m_type == AddressType::Normal)
+			return rlpList(m_balance, toCompactBigEndianString(m_nonce));
+		if (m_type == AddressType::Contract)
+			return rlpList(m_balance, toCompactBigEndianString(m_nonce), toCompactBigEndianString(memoryHash()));
+		return "";
+	}
+
+private:
+	AddressType m_type;
+	u256 m_balance;
+	u256 m_nonce;
+	u256Map m_memory;
+};
+
+template <class _T>
+inline u160 low160(_T const& _t)
+{
+	return (u160)(_t & ((((_T)1) << 160) - 1));
+}
+
+template <class _T>
+inline u160 as160(_T const& _t)
+{
+	return (u160)(_t & ((((_T)1) << 160) - 1));
+}
+
+
+struct Signature
+{
+	u256 v;
+	u256 r;
+	u256 s;
+
+	u160 address() const { return as160(s); }	// TODO!
+};
+
+
+// [ nonce, receiving_address, value, fee, [ data item 0, data item 1 ... data item n ], v, r, s ]
+struct Transaction
+{
+	Transaction() {}
+	Transaction(bytes const& _rlp);
+
+	u256 nonce;
+	u160 receiveAddress;
+	u256 value;
+	u256 fee;
+	u256s data;
+	Signature vrs;
+
+	bytes rlp() const;
+	u256 sha256() const { return eth::sha256(rlp()); }
 };
 
 class State
@@ -82,38 +213,41 @@ class State
 public:
 	explicit State(u256 _minerAddress): m_minerAddress(_minerAddress) {}
 
-	bool transact(bytes const& _rlp);
+	bool verify(bytes const& _block);
+	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); return execute(t); } catch (...) { return false; } }
 
 private:
-	bool isContractAddress(u256 _address) const { return m_contractMemory.count(_address); }
+	bool execute(Transaction const& _t);
+	bool execute(Transaction const& _t, u160 _sender);
 
-	u256 balance(u256 _id) const { auto it = m_balance.find(_id); return it == m_balance.end() ? 0 : it->second; }
-	void addBalance(u256 _id, u256 _amount) { auto it = m_balance.find(_id); if (it == m_balance.end()) it->second = _amount; else it->second += _amount; }
+	bool isNormalAddress(u160 _address) const { auto it = m_current.find(_address); return it != m_current.end() && it->second.type() == AddressType::Normal; }
+	bool isContractAddress(u160 _address) const { auto it = m_current.find(_address); return it != m_current.end() && it->second.type() == AddressType::Contract; }
+
+	u256 balance(u160 _id) const { auto it = m_current.find(_id); return it == m_current.end() ? 0 : it->second.balance(); }
+	void addBalance(u160 _id, u256 _amount) { auto it = m_current.find(_id); if (it == m_current.end()) it->second.balance() = _amount; else it->second.balance() += _amount; }
 	// bigint as we don't want any accidental problems with -ve numbers.
-	bool subBalance(u256 _id, bigint _amount) { auto it = m_balance.find(_id); if (it == m_balance.end() || (bigint)it->second < _amount) return false; it->second = (u256)((bigint)it->second - _amount); return true; }
+	bool subBalance(u160 _id, bigint _amount) { auto it = m_current.find(_id); if (it == m_current.end() || (bigint)it->second.balance() < _amount) return false; it->second.balance() = (u256)((bigint)it->second.balance() - _amount); return true; }
 
-	u256 memory(u256 _contract, u256 _memory) const
+	u256 contractMemory(u160 _contract, u256 _memory) const
 	{
-		auto m = m_contractMemory.find(_contract);
-		if (m == m_contractMemory.end())
+		auto m = m_current.find(_contract);
+		if (m == m_current.end())
 			return 0;
-		auto i = m->second.find(_memory);
-		return i == m->second.end() ? 0 : i->second;
+		auto i = m->second.memory().find(_memory);
+		return i == m->second.memory().end() ? 0 : i->second;
 	}
 
-	u256 transactionsFrom(u256 _address) { return 0; } // TODO
+	u256 transactionsFrom(u160 _address) { auto it = m_current.find(_address); return it == m_current.end() ? 0 : it->second.nonce(); }
 
-	void execute(u256 _myAddress, u256 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee);
+	void execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
 
-	std::map<u256, u256>& ensureMemory(u256 _contract) { return m_contractMemory[_contract]; }
+	std::map<u160, AddressState> m_current;
 
-	std::map<u256, std::map<u256, u256>> m_contractMemory;
-	std::map<u256, u256> m_balance;	// for now - might end up using Trie?
 
 	BlockInfo m_previousBlock;
 	BlockInfo m_currentBlock;
 
-	u256 m_minerAddress;
+	u160 m_minerAddress;
 
 	static const u256 c_stepFee;
 	static const u256 c_dataFee;

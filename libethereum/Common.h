@@ -4,7 +4,7 @@
 #include <sstream>
 #include <cstdint>
 #include <boost/multiprecision/cpp_int.hpp>
-#include "foreign.h"
+#include "vector_ref.h"
 
 namespace eth
 {
@@ -12,15 +12,18 @@ namespace eth
 using byte = uint8_t;
 using bytes = std::vector<byte>;
 
-using fBytes = foreign<byte>;
-using fConstBytes = foreign<byte const>;
+using bytesRef = vector_ref<byte>;
+using bytesConstRef = vector_ref<byte const>;
 
 using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
 using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
+using u160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+using s160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 using uint = uint64_t;
 using sint = int64_t;
 using u256s = std::vector<u256>;
+using u160s = std::vector<u160>;
 
 template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
 
@@ -57,13 +60,25 @@ inline bytes toHex(std::string const& _s)
 	return ret;
 }
 
-inline std::string toBigEndianString(u256 _val)
+template <class _T>
+inline std::string toBigEndianString(_T _val, uint _s)
 {
 	std::string ret;
-	ret.resize(32);
-	for (int i = 0; i < 32; ++i, _val >>= 8)
-		ret[31 - i] = (char)(uint8_t)_val;
+	ret.resize(_s);
+	for (uint i = 0; i < _s; ++i, _val >>= 8)
+		ret[_s - 1 - i] = (char)(uint8_t)_val;
 	return ret;
+}
+
+inline std::string toBigEndianString(u256 _val) { return toBigEndianString(_val, 32); }
+inline std::string toBigEndianString(u160 _val) { return toBigEndianString(_val, 20); }
+
+template <class _T>
+inline std::string toCompactBigEndianString(_T _val)
+{
+	int i;
+	for (i = 0; _val; ++i, _val >>= 8) {}
+	return toBigEndianString(_val, i);
 }
 
 template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
@@ -75,6 +90,6 @@ template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
 	return s;
 }
 
-u256 ripemd160(fConstBytes _message);
+u256 ripemd160(bytesConstRef _message);
 
 }
