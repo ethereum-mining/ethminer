@@ -3,6 +3,7 @@
 #include <cassert>
 #include <sstream>
 #include <cstdint>
+#include <type_traits>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "vector_ref.h"
 
@@ -31,7 +32,7 @@ template <class _T> inline std::string asHex(_T const& _data, int _w = 2)
 {
 	std::ostringstream ret;
 	for (auto i: _data)
-		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)i;
+		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
 	return ret.str();
 }
 
@@ -48,6 +49,32 @@ template <class _T, class _U> void pushFront(_T& _t, _U _e)
 	_t[0] = _e;
 }
 
+class BadHexCharacter: public std::exception {};
+
+inline int fromHex(char _i)
+{
+	if (_i >= '0' && _i <= '9')
+		return _i - '0';
+	if (_i >= 'a' && _i <= 'f')
+		return _i - 'a' + 10;
+	if (_i >= 'A' && _i <= 'F')
+		return _i - 'A' + 10;
+	throw BadHexCharacter();
+}
+
+inline bytes fromUserHex(std::string const& _s)
+{
+	assert(_s.size() % 2 == 0);
+	if (_s.size() < 2)
+		return bytes();
+	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
+	std::vector<uint8_t> ret;
+	ret.reserve((_s.size() - s) / 2);
+	for (uint i = s; i < _s.size(); i += 2)
+		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
+	return ret;
+}
+
 inline bytes toHex(std::string const& _s)
 {
 	std::vector<uint8_t> ret;
@@ -60,25 +87,25 @@ inline bytes toHex(std::string const& _s)
 	return ret;
 }
 
-template <class _T>
-inline std::string toBigEndianString(_T _val, uint _s)
+template <class _T, class _Out>
+inline void toBigEndian(_T _val, _Out& o_out)
 {
-	std::string ret;
-	ret.resize(_s);
-	for (uint i = 0; i < _s; ++i, _val >>= 8)
-		ret[_s - 1 - i] = (char)(uint8_t)_val;
-	return ret;
+	auto s = o_out.size();
+	for (uint i = 0; i < s; ++i, _val >>= 8)
+		o_out[s - 1 - i] = (typename _Out::value_type)(uint8_t)_val;
 }
 
-inline std::string toBigEndianString(u256 _val) { return toBigEndianString(_val, 32); }
-inline std::string toBigEndianString(u160 _val) { return toBigEndianString(_val, 20); }
+inline std::string toBigEndianString(u256 _val) { std::string ret(32, '\0'); toBigEndian(_val, ret); return ret; }
+inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toBigEndian(_val, ret); return ret; }
 
 template <class _T>
 inline std::string toCompactBigEndianString(_T _val)
 {
-	int i;
-	for (i = 0; _val; ++i, _val >>= 8) {}
-	return toBigEndianString(_val, i);
+	int i = 0;
+	for (_T v = _val; v; ++i, v >>= 8) {}
+	std::string ret(i, '\0');
+	toBigEndian(_val, ret);
+	return ret;
 }
 
 template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)

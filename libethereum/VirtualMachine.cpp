@@ -15,30 +15,21 @@ u256 const State::c_newContractFee = 0;
 Transaction::Transaction(bytes const& _rlpData)
 {
 	RLP rlp(_rlpData);
-	nonce = rlp[0].toFatIntFromString();
+	nonce = rlp[0].toFatIntStrict();
 	receiveAddress = as160(rlp[1].toFatIntFromString());
 	value = rlp[2].toFatIntStrict();
 	fee = rlp[3].toFatIntStrict();
 	data.reserve(rlp[4].itemCountStrict());
 	for (auto const& i: rlp[4])
 		data.push_back(i.toFatIntStrict());
-	vrs = Signature{ rlp[5].toFatIntFromString(), rlp[6].toFatIntFromString(), rlp[7].toFatIntFromString() };
+	vrs = Signature{ rlp[5].toFatIntStrict(), rlp[6].toFatIntStrict(), rlp[7].toFatIntStrict() };
 }
 
-bytes Transaction::rlp() const
+void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
-	RLPStream rlp;
-	rlp << RLPList(8);
-	if (nonce)
-		rlp << nonce;
-	else
-		rlp << "";
-	if (receiveAddress)
-		rlp << toCompactBigEndianString(receiveAddress);
-	else
-		rlp << "";
-	rlp << value << fee << data << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
-	return rlp.out();
+	_s << RLPList(8) << nonce << toCompactBigEndianString(receiveAddress) << value << fee << data;
+	if (_sig)
+		_s << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
 }
 
 bool State::execute(Transaction const& _t, u160 _sender)
@@ -447,7 +438,7 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 			}
 
 			t.nonce = transactionsFrom(_myAddress);
-			execute(t);
+			execute(t, _myAddress);
 
 			break;
 		}

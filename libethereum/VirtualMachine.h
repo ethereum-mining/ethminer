@@ -207,8 +207,10 @@ struct Transaction
 	u256s data;
 	Signature vrs;
 
-	bytes rlp() const;
-	u256 sha256() const { return eth::sha256(rlp()); }
+	void fillStream(RLPStream& _s, bool _sig = true) const;
+	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
+	std::string rlpString(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.str(); }
+	u256 sha256(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha256(s.out()); }
 };
 
 class State
@@ -220,7 +222,6 @@ public:
 	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); u160 sender = t.vrs.address(bytesConstRef(const_cast<bytes*>(&_rlp))); return execute(t, sender); } catch (...) { return false; } }	// remove const_cast once vector_ref can handle const vector* properly.
 
 private:
-	bool execute(Transaction const& _t);
 	bool execute(Transaction const& _t, u160 _sender);
 
 	bool isNormalAddress(u160 _address) const { auto it = m_current.find(_address); return it != m_current.end() && it->second.type() == AddressType::Normal; }

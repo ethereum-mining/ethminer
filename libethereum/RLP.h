@@ -119,6 +119,8 @@ public:
 				m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem).actualSize());
 				m_remaining -= std::min<uint>(m_remaining, m_lastItem.size());
 			}
+			else
+				m_lastItem.retarget(m_lastItem.next().data(), 0);
 			return *this;
 		}
 		iterator operator++(int) { auto ret = *this; operator++(); return ret; }
@@ -128,16 +130,17 @@ public:
 
 	private:
 		iterator() {}
-		iterator(bytesConstRef _payload, bool _begin)
+		iterator(RLP const& _parent, bool _begin)
 		{
 			if (_begin)
 			{
-				m_lastItem = _payload.cropped(RLP(_payload).actualSize());
-				m_remaining = _payload.size() - m_lastItem.size();
+				auto pl = _parent.payload();
+				m_lastItem = pl.cropped(0, RLP(pl).actualSize());
+				m_remaining = pl.size() - m_lastItem.size();
 			}
 			else
 			{
-				m_lastItem = _payload.cropped(m_lastItem.size());
+				m_lastItem = _parent.data().cropped(_parent.data().size());
 				m_remaining = 0;
 			}
 		}
@@ -146,8 +149,8 @@ public:
 	};
 	friend class iterator;
 
-	iterator begin() const { return iterator(payload(), true); }
-	iterator end() const { return iterator(payload(), false); }
+	iterator begin() const { return iterator(*this, true); }
+	iterator end() const { return iterator(*this, false); }
 
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
