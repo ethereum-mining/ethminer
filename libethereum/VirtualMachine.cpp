@@ -12,6 +12,23 @@ u256 const State::c_extroFee = 0;
 u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
 
+u160 Transaction::sender() const
+{
+	State::ensureCrypto();
+
+	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
+	assert(sig.size() == 64);
+	RLPStream rlp;
+	fillStream(rlp, false);
+	bytes msg = eth::sha256Bytes(rlp.out());
+
+	bytes pubkey(65);
+	int pubkeylen = 65;
+	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey.data(), &pubkeylen, 0, (int)vrs.v - 27))
+		throw InvalidSignature();
+	return low160(eth::sha256(bytesConstRef(&pubkey).cropped(1)));
+}
+
 Transaction::Transaction(bytes const& _rlpData)
 {
 	RLP rlp(_rlpData);
@@ -27,9 +44,14 @@ Transaction::Transaction(bytes const& _rlpData)
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
-	_s << RLPList(8) << nonce << toCompactBigEndianString(receiveAddress) << value << fee << data;
+	_s << RLPList(_sig ? 8 : 5) << nonce << toCompactBigEndianString(receiveAddress) << value << fee << data;
 	if (_sig)
 		_s << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
+}
+
+void State::ensureCrypto()
+{
+	secp256k1_start();
 }
 
 bool State::execute(Transaction const& _t, u160 _sender)

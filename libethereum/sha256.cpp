@@ -181,17 +181,13 @@ std::string eth::sha256(std::string const& _input, bool _hex)
 	return std::string(buf);
 }
 
-u256 eth::sha256(bytes const& _input)
+bytes eth::sha256Bytes(bytesConstRef _input)
 {
-	u256 ret = 0;
-
+	bytes ret(SHA256::DIGEST_SIZE);
 	SHA256 ctx = SHA256();
 	ctx.init();
-	ctx.update(_input.data(), _input.size());
-	uint8_t buf[SHA256::DIGEST_SIZE];
-	ctx.final(buf);
-	for (unsigned i = 0; i < 32; ++i)
-		ret = (ret << 8) | buf[i];
+	ctx.update((byte*)_input.data(), _input.size());
+	ctx.final(ret.data());
 	return ret;
 }
 

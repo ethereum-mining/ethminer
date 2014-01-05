@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <random>
 #include <sstream>
 #include <cstdint>
 #include <type_traits>
@@ -98,6 +99,9 @@ inline void toBigEndian(_T _val, _Out& o_out)
 inline std::string toBigEndianString(u256 _val) { std::string ret(32, '\0'); toBigEndian(_val, ret); return ret; }
 inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toBigEndian(_val, ret); return ret; }
 
+inline bytes toBigEndian(u256 _val) { bytes ret(32); toBigEndian(_val, ret); return ret; }
+inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); return ret; }
+
 template <class _T>
 inline std::string toCompactBigEndianString(_T _val)
 {
@@ -118,5 +122,26 @@ template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
 }
 
 u256 ripemd160(bytesConstRef _message);
+
+inline std::string randomWord()
+{
+	static std::mt19937_64 s_eng(0);
+	std::string ret(std::uniform_int_distribution<int>(4, 10)(s_eng), ' ');
+	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
+	for (char& c: ret)
+		c = n[d(s_eng)];
+	return ret;
+}
+
+template <class _T> inline std::vector<_T>& operator+=(std::vector<_T>& _a, std::vector<_T> const& _b)
+{
+	auto s = _a.size();
+	_a.resize(_a.size() + _b.size());
+	memcpy(_a.data() + s, _b.data(), _b.size() * sizeof(_T));
+	return _a;
+
+}
+template <class _T> inline std::vector<_T> operator+(std::vector<_T> const& _a, std::vector<_T> const& _b) { std::vector<_T> ret(_a); return ret += _b; }
 
 }

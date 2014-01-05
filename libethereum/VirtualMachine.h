@@ -70,6 +70,7 @@ class StackTooSmall: public std::exception { public: StackTooSmall(u256 _req, u2
 class OperandOutOfRange: public std::exception { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 class ExecutionException: public std::exception {};
 class NoSuchContract: public std::exception {};
+class InvalidSignature: public std::exception {};
 class InvalidTransactionFormat: public std::exception {};
 class InvalidBlockFormat: public std::exception {};
 class InvalidUnclesHash: public std::exception {};
@@ -186,11 +187,6 @@ struct Signature
 	u256 v;
 	u256 r;
 	u256 s;
-
-	u160 address(bytesConstRef _tx) const
-	{
-		return as160(s);
-	}
 };
 
 
@@ -207,6 +203,8 @@ struct Transaction
 	u256s data;
 	Signature vrs;
 
+	u160 sender() const;
+
 	void fillStream(RLPStream& _s, bool _sig = true) const;
 	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
 	std::string rlpString(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.str(); }
@@ -218,8 +216,10 @@ class State
 public:
 	explicit State(u256 _minerAddress): m_minerAddress(_minerAddress) {}
 
+	static void ensureCrypto();
+
 	bool verify(bytes const& _block);
-	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); u160 sender = t.vrs.address(bytesConstRef(const_cast<bytes*>(&_rlp))); return execute(t, sender); } catch (...) { return false; } }	// remove const_cast once vector_ref can handle const vector* properly.
+	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); return execute(t, t.sender()); } catch (...) { return false; } }	// remove const_cast once vector_ref can handle const vector* properly.
 
 private:
 	bool execute(Transaction const& _t, u160 _sender);

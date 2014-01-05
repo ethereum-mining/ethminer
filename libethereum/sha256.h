@@ -25,9 +25,14 @@ protected:
 	uint32_t m_h[8];
 };
 
-std::string sha256(std::string const& input, bool _hex);
-u256 sha256(bytes const& input);
-u256 sha256(bytesConstRef input);
+std::string sha256(std::string const& _input, bool _hex);
+
+bytes sha256Bytes(bytesConstRef  _input);
+inline bytes sha256Bytes(std::string const& _input) { return sha256Bytes((std::string*)&_input); }
+inline bytes sha256Bytes(bytes const& _input) { return sha256Bytes((bytes*)&_input); }
+
+u256 sha256(bytesConstRef _input);
+inline u256 sha256(bytes const& _input) { return sha256(bytesConstRef((bytes*)&_input)); }
 
 #define SHA2_SHFR(x, n)    (x >> n)
 #define SHA2_ROTR(x, n)   ((x >> n) | (x << ((sizeof(x) << 3) - n)))
