@@ -1,0 +1,131 @@
+0. Formatting
+
+a. Use tabs for indentation; 4 spaces wide. One indentation level -> exactly one byte (i.e. a tab character) in the source file.
+b. Don't worry about having lines > 80-char wide. We're not editing on terminals anymore.
+c. Don't use braces for condition-body one-liners.
+d. Never place condition bodies on same line as condition.
+e. Space between first paren and keyword, but *not* following first paren or preceeding final paren.
+f. No spaces when fewer than intra-expression three parens together; when three or more, space according to clarity.
+g. No spaces for subscripting.
+h. Space all other operators.
+i. Braces, when used, always have their own lines and are at same indentation level as "parent" scope.
+
+(WRONG)
+if( a==b[ i ] ) { printf ("Hello\n"); }
+
+(RIGHT)
+if (a == b[i])
+    printf("Hello\n");	// NOTE spaces used instead of tab here for clarify - first byte should be '\t'.
+
+
+
+1. Namespaces;
+
+a. No "using" declarations in header files.
+b. All symbols should be declared in a namespace except for final applications.
+c. Preprocessor symbols should be prefixed with the namespace in all-caps and an underscore.
+
+(WRONG)
+#include <cassert>
+using namespace std;
+tuple<float, float> meanAndSigma(vector<float> const& _v);
+
+(CORRECT)
+#include <cassert>
+std::tuple<float, float> meanAndSigma(std::vector<float> const& _v);
+
+
+
+2. Preprocessor;
+
+a. File comment is always at top, and includes:
+- Original author, date.
+- Later maintainers (not contributors - they can be seen through VCS log).
+- Copyright.
+- Licence (e.g. see COPYING).
+b. Never use #ifdef/#define/#endif file guards. Prefer #pragma once as first line below file comment.
+c. Prefer static const variable to value macros.
+d. Prefer inline constexpr functions to function macros.
+e. Split complex macro on multiple lines with '\'.
+
+
+
+3. Capitalization;
+
+a. Use camelCase for splitting words in names, except where obviously extending STL/boost functionality in which case follow those naming conventions.
+b. The following entities' first alpha is upper case:
+- Type names.
+- Template parameters.
+- Enum members.
+- static const variables that form an external API.
+c. All preprocessor symbols (macros, macro argments) in full uppercase with underscore word separation.
+
+All other entities' first alpha is lower case.
+
+
+
+4. Variable prefixes:
+
+a. Leading underscore "_" to parameter names (both normal and template).
+- Exception: "o_parameterName" when it is used exclusively for output. See 7(f).
+- Exception: "io_parameterName" when it is used for both input and output. See 7(f).
+b. Leading "c_" to const variables (unless part of an external API).
+c. Leading "g_" to global (non-const) variables.
+d. Leading "s_" to static (non-const, non-global) variables.
+
+
+
+5. Error reporting:
+
+- Prefer exception to bool/int return type.
+
+
+
+6. Declarations:
+
+a. {Typename} + {qualifiers} + {name}.
+b. Only one per line.
+c. Associate */& with type, not variable (at ends with parser, but more readable, and safe if in conjunction with (b)).
+d. Favour declarations close to use; don't habitually declare at top of scope ala C.
+e. Always pass non-trivial parameters with a const& suffix.
+f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
+g. Never use a macro where adequate non-preprocessor C++ can be written.
+
+(WRONG)
+const double d = 0;
+int i, j;
+char *s;
+float meanAndSigma(std::vector<float> _v, float* _sigma);
+
+(CORRECT)
+double const d = 0;
+int i;
+int j;
+char* s;
+std::tuple<float, float> meanAndSigma(std::vector<float> const& _v);
+
+
+
+7. Structs & classes
+
+a. Structs to be used when all members public and no virtual functions.
+b. Classes to be used in all other circumstances.
+
+
+
+8. Members:
+
+a. One member per line only.
+b. Private, non-static, non-const fields prefixed with m_.
+c. Avoid public fields, except in structs.
+d. Use override, final and const judiciously.
+e. No implementations with the class declaration, except:
+- template or force-inline method (though prefer implementation at bottom of header file).
+- one-line implementation (in which case include it in same line as declaration).
+
+
+
+9. Commenting
+
+a. Comments should be doxygen-compilable, using @notation rather than \notation.
+

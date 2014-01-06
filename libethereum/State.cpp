@@ -1,3 +1,24 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Foobar is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file State.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
 #include <secp256k1.h>
 #include <random>
 #include "Trie.h"
@@ -16,91 +37,51 @@ u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
 u256 const State::c_txFee = 0;
 
-std::mt19937_64* State::s_engine = nullptr;
-
-u256 kFromMessage(u256 _msg, u256 _priv)
-{
-	/*
-	v = '\x01' * 32
-	k = '\x00' * 32
-	priv = encode_privkey(priv,'bin')
-	msghash = encode(hash_to_int(msghash),256,32)
-	k = hmac.new(k, v+'\x00'+priv+msghash, hashlib.sha256).digest()
-	v = hmac.new(k, v, hashlib.sha256).digest()
-	k = hmac.new(k, v+'\x01'+priv+msghash, hashlib.sha256).digest()
-	v = hmac.new(k, v, hashlib.sha256).digest()
-	return decode(hmac.new(k, v, hashlib.sha256).digest(),256)
-	*/
-	return 0;
-}
-
-Address Transaction::sender() const
-{
-	State::ensureCrypto();
-
-	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
-	assert(sig.size() == 64);
-	bytes msg = sha256Bytes(false);
-
-	byte pubkey[65];
-	int pubkeylen = 65;
-	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
-		throw InvalidSignature();
-	return low160(eth::sha256(bytesConstRef(&pubkey[1], 64)));
-}
-
-void Transaction::sign(PrivateKey _priv)
-{
-	bytes sig(64);
-	bytes nonce(32);
-	for (auto& i: nonce)
-		i = std::uniform_int_distribution<byte>(0, 255)(State::engine());
-	int v = 0;
-
-	bytes msg = sha256Bytes(false);
-	if (!secp256k1_ecdsa_sign_compact(msg.data(), msg.size(), sig.data(), toBigEndian(_priv).data(), nonce.data(), &v))
-		throw InvalidSignature();
-
-	vrs.v = v + 27;
-	vrs.r = fromBigEndian<u256>(bytesConstRef(&sig).cropped(0, 32));
-	vrs.s = fromBigEndian<u256>(bytesConstRef(&sig).cropped(32));
-}
-
-Transaction::Transaction(bytes const& _rlpData)
-{
-	RLP rlp(_rlpData);
-	nonce = rlp[0].toFatIntStrict();
-	receiveAddress = as160(rlp[1].toFatIntFromString());
-	value = rlp[2].toFatIntStrict();
-	fee = rlp[3].toFatIntStrict();
-	data.reserve(rlp[4].itemCountStrict());
-	for (auto const& i: rlp[4])
-		data.push_back(i.toFatIntStrict());
-	vrs = Signature{ (byte)rlp[5].toSlimIntStrict(), rlp[6].toFatIntStrict(), rlp[7].toFatIntStrict() };
-}
-
-void Transaction::fillStream(RLPStream& _s, bool _sig) const
-{
-	_s << RLPList(_sig ? 8 : 5) << nonce << toCompactBigEndianString(receiveAddress) << value << fee << data;
-	if (_sig)
-		_s << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
-}
-
 State::State(Address _minerAddress): m_minerAddress(_minerAddress)
-{
-	ensureCrypto();
-}
-
-void State::ensureCrypto()
 {
 	secp256k1_start();
 }
 
-mt19937_64& State::engine()
+bool State::isNormalAddress(Address _address) const
 {
-	if (!s_engine)
-		s_engine = new mt19937_64(random_device()());
-	return *s_engine;
+	auto it = m_current.find(_address);
+	return it != m_current.end() && it->second.type() == AddressType::Normal;
+}
+
+bool State::isContractAddress(Address _address) const
+{
+	auto it = m_current.find(_address);
+	return it != m_current.end() && it->second.type() == AddressType::Contract;
+}
+
+u256 State::balance(Address _id) const
+{
+	auto it = m_current.find(_id);
+	return it == m_current.end() ? 0 : it->second.balance();
+}
+
+void State::addBalance(Address _id, u256 _amount)
+{
+	auto it = m_current.find(_id);
+	if (it == m_current.end())
+		it->second.balance() = _amount;
+	else
+		it->second.balance() += _amount;
+}
+
+bool State::subBalance(Address _id, bigint _amount)
+{
+	auto it = m_current.find(_id);
+	if (it == m_current.end() || (bigint)it->second.balance() < _amount)
+		return false;
+	it->second.balance() = (u256)((bigint)it->second.balance() - _amount);
+	return true;
+}
+
+u256 State::transactionsFrom(Address _address) const
+{
+	auto it = m_current.find(_address);
+	return it == m_current.end() ? 0 : it->second.nonce();
 }
 
 u256 State::contractMemory(Address _contract, u256 _memory) const
@@ -110,6 +91,11 @@ u256 State::contractMemory(Address _contract, u256 _memory) const
 		return 0;
 	auto i = m->second.memory().find(_memory);
 	return i == m->second.memory().end() ? 0 : i->second;
+}
+
+bool State::verify(bytes const& _block)
+{
+	return true;
 }
 
 void State::execute(Transaction const& _t, Address _sender)
@@ -445,7 +431,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 			u256 priv = stack.back();
 			stack.pop_back();
-			bytes nonce = toBigEndian(kFromMessage(msg, priv));
+			bytes nonce = toBigEndian(Transaction::kFromMessage(msg, priv));
 
 			if (!secp256k1_ecdsa_sign_compact(toBigEndian(msg).data(), 64, sig.data(), toBigEndian(priv).data(), nonce.data(), &v))
 				throw InvalidSignature();

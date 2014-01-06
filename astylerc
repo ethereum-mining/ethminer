@@ -1,0 +1,11 @@
+style=allman
+indent=force-tab=4
+convert-tabs
+indent-preprocessor
+min-conditional-indent=1
+pad-oper
+pad-header
+unpad-paren
+delete-empty-lines
+align-pointer=type
+

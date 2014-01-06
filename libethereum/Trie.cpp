@@ -1,3 +1,24 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Foobar is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file Trie.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
 #include "Common.h"
 #include "Trie.h"
 using namespace std;
@@ -59,7 +80,7 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 	else if (std::next(_begin) == _end)
 	{
 		// only one left - terminate with the pair.
-		rlp << RLPList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
+		rlp.appendList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
 #if ENABLE_DEBUG_PRINT
 		if (g_hashDebug)
 			std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha256(rlp.out()) << std::endl;
@@ -85,7 +106,7 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			if (g_hashDebug)
 				std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
 #endif
-			rlp << RLPList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toCompactBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
+			rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toCompactBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
 				std::cerr << s_indent << "= " << sha256(rlp.out()) << std::endl;
@@ -94,7 +115,7 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 		else
 		{
 			// otherwise enumerate all 16+1 entries.
-			rlp << RLPList(17);
+			rlp.appendList(17);
 			auto b = _begin;
 			if (_preLen == b->first.size())
 			{
@@ -156,7 +177,7 @@ u256 hash256(u256Map const& _s)
 		return sha256(RLPNull);
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[toHex(toBigEndianString(i->first))] = rlp(i->second);
+		hexMap[toHex(toBigEndianString(i->first))] = asString(rlp(i->second));
 	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
 }
 
@@ -278,7 +299,7 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const override { return contains(_key) ? m_value : c_nullString; }
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
 	virtual TrieNode* remove(bytesConstRef _key) override;
-	virtual bytes rlp() const override { return rlpListBytes(hexPrefixEncode(m_ext, true), m_value); }
+	virtual bytes rlp() const override { return rlpList(hexPrefixEncode(m_ext, true), m_value); }
 
 private:
 	bool contains(bytesConstRef _key) const { return _key.size() == m_ext.size() && !memcmp(_key.data(), m_ext.data(), _key.size()); }
@@ -303,7 +324,7 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const override { assert(m_next); return contains(_key) ? m_next->at(_key.cropped(m_ext.size())) : c_nullString; }
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
 	virtual TrieNode* remove(bytesConstRef _key) override;
-	virtual bytes rlp() const override { assert(m_next); return rlpListBytes(hexPrefixEncode(m_ext, false), toCompactBigEndianString(m_next->sha256())); }
+	virtual bytes rlp() const override { assert(m_next); return rlpList(hexPrefixEncode(m_ext, false), toCompactBigEndianString(m_next->sha256())); }
 
 private:
 	bool contains(bytesConstRef _key) const { return _key.size() >= m_ext.size() && !memcmp(_key.data(), m_ext.data(), m_ext.size()); }
@@ -409,8 +430,7 @@ TrieNode* TrieBranchNode::rejig()
 
 bytes TrieBranchNode::rlp() const
 {
-	RLPStream s;
-	s << RLPList(17);
+	RLPStream s(17);
 	for (auto i: m_nodes)
 		s << (i ? toCompactBigEndianString(i->sha256()) : "");
 	s << m_value;

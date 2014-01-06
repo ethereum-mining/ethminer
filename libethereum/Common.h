@@ -1,3 +1,26 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Foobar is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file Common.h
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ *
+ * Shared algorithms and data types.
+ */
+
 #pragma once
 
 #include <map>
@@ -35,6 +58,8 @@ using HexMap = std::map<bytes, std::string>;
 
 template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
 
+inline std::string asString(bytes const& _b) { return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size())); }
+
 template <class _T> inline std::string asHex(_T const& _data, int _w = 2)
 {
 	std::ostringstream ret;
@@ -58,41 +83,11 @@ template <class _T, class _U> void pushFront(_T& _t, _U _e)
 
 class BadHexCharacter: public std::exception {};
 
-inline int fromHex(char _i)
-{
-	if (_i >= '0' && _i <= '9')
-		return _i - '0';
-	if (_i >= 'a' && _i <= 'f')
-		return _i - 'a' + 10;
-	if (_i >= 'A' && _i <= 'F')
-		return _i - 'A' + 10;
-	throw BadHexCharacter();
-}
-
-inline bytes fromUserHex(std::string const& _s)
-{
-	assert(_s.size() % 2 == 0);
-	if (_s.size() < 2)
-		return bytes();
-	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
-	std::vector<uint8_t> ret;
-	ret.reserve((_s.size() - s) / 2);
-	for (uint i = s; i < _s.size(); i += 2)
-		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
-	return ret;
-}
-
-inline bytes toHex(std::string const& _s)
-{
-	std::vector<uint8_t> ret;
-	ret.reserve(_s.size() * 2);
-	for (auto i: _s)
-	{
-		ret.push_back(i / 16);
-		ret.push_back(i % 16);
-	}
-	return ret;
-}
+std::string randomWord();
+std::string escaped(std::string const& _s, bool _all = true);
+int fromHex(char _i);
+bytes fromUserHex(std::string const& _s);
+bytes toHex(std::string const& _s);
 
 template <class _T, class _Out>
 inline void toBigEndian(_T _val, _Out& o_out)
@@ -137,17 +132,6 @@ template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
 }
 
 u256 ripemd160(bytesConstRef _message);
-
-inline std::string randomWord()
-{
-	static std::mt19937_64 s_eng(0);
-	std::string ret(std::uniform_int_distribution<int>(4, 10)(s_eng), ' ');
-	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
-	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
-	for (char& c: ret)
-		c = n[d(s_eng)];
-	return ret;
-}
 
 template <class _T>
 inline u160 low160(_T const& _t)
