@@ -64,13 +64,3 @@ int main()
 
 	return 0;
 }
-
-/*
-while (net.incomingTransaction())
-{
-	bytes const& tx = net.incomingTransaction();
-	s.execute(tx);
-	net.popIncomingTransaction();
-}
-
-*/
