@@ -1,7 +1,7 @@
 #include <secp256k1.h>
 #include <random>
 #include "sha256.h"
-#include "VirtualMachine.h"
+#include "State.h"
 using namespace std;
 using namespace eth;
 
@@ -11,22 +11,56 @@ u256 const State::c_memoryFee = 0;
 u256 const State::c_extroFee = 0;
 u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
+u256 const State::c_txFee = 0;
 
-u160 Transaction::sender() const
+std::mt19937_64* State::s_engine = nullptr;
+
+u256 kFromMessage(u256 _msg, u256 _priv)
+{
+	/*
+	v = '\x01' * 32
+	k = '\x00' * 32
+	priv = encode_privkey(priv,'bin')
+	msghash = encode(hash_to_int(msghash),256,32)
+	k = hmac.new(k, v+'\x00'+priv+msghash, hashlib.sha256).digest()
+	v = hmac.new(k, v, hashlib.sha256).digest()
+	k = hmac.new(k, v+'\x01'+priv+msghash, hashlib.sha256).digest()
+	v = hmac.new(k, v, hashlib.sha256).digest()
+	return decode(hmac.new(k, v, hashlib.sha256).digest(),256)
+	*/
+	return 0;
+}
+
+Address Transaction::sender() const
 {
 	State::ensureCrypto();
 
 	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
 	assert(sig.size() == 64);
-	RLPStream rlp;
-	fillStream(rlp, false);
-	bytes msg = eth::sha256Bytes(rlp.out());
+	bytes msg = sha256Bytes(false);
 
-	bytes pubkey(65);
+	byte pubkey[65];
 	int pubkeylen = 65;
-	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey.data(), &pubkeylen, 0, (int)vrs.v - 27))
+	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
 		throw InvalidSignature();
-	return low160(eth::sha256(bytesConstRef(&pubkey).cropped(1)));
+	return low160(eth::sha256(bytesConstRef(&pubkey[1], 64)));
+}
+
+void Transaction::sign(PrivateKey _priv)
+{
+	bytes sig(64);
+	bytes nonce(32);
+	for (auto& i: nonce)
+		i = std::uniform_int_distribution<byte>(0, 255)(State::engine());
+	int v = 0;
+
+	bytes msg = sha256Bytes(false);
+	if (!secp256k1_ecdsa_sign_compact(msg.data(), msg.size(), sig.data(), toBigEndian(_priv).data(), nonce.data(), &v))
+		throw InvalidSignature();
+
+	vrs.v = v + 27;
+	vrs.r = fromBigEndian<u256>(bytesConstRef(&sig).cropped(0, 32));
+	vrs.s = fromBigEndian<u256>(bytesConstRef(&sig).cropped(32));
 }
 
 Transaction::Transaction(bytes const& _rlpData)
@@ -39,7 +73,7 @@ Transaction::Transaction(bytes const& _rlpData)
 	data.reserve(rlp[4].itemCountStrict());
 	for (auto const& i: rlp[4])
 		data.push_back(i.toFatIntStrict());
-	vrs = Signature{ rlp[5].toFatIntStrict(), rlp[6].toFatIntStrict(), rlp[7].toFatIntStrict() };
+	vrs = Signature{ (byte)rlp[5].toSlimIntStrict(), rlp[6].toFatIntStrict(), rlp[7].toFatIntStrict() };
 }
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
@@ -49,12 +83,24 @@ void Transaction::fillStream(RLPStream& _s, bool _sig) const
 		_s << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
 }
 
+State::State(Address _minerAddress): m_minerAddress(_minerAddress)
+{
+	ensureCrypto();
+}
+
 void State::ensureCrypto()
 {
 	secp256k1_start();
 }
 
-bool State::execute(Transaction const& _t, u160 _sender)
+mt19937_64& State::engine()
+{
+	if (!s_engine)
+		s_engine = new mt19937_64(random_device()());
+	return *s_engine;
+}
+
+bool State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
 
@@ -107,7 +153,7 @@ bool State::execute(Transaction const& _t, u160 _sender)
 			return false;
 		}
 
-		u160 newAddress = low160(_t.sha256());
+		Address newAddress = low160(_t.sha256());
 
 		if (isContractAddress(newAddress))
 		{
@@ -126,7 +172,7 @@ bool State::execute(Transaction const& _t, u160 _sender)
 	}
 }
 
-void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
+void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
 	auto m = m_current.find(_myAddress);
@@ -151,6 +197,12 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 		else
 			myMemory.erase(_n);
 	};
+
+	if (balance(_myAddress) < _txFee)
+		throw NotEnoughCash();
+
+	subBalance(_myAddress, _txFee);
+	*_totalFee += _txFee;
 
 	u256 curPC = 0;
 	u256 nextPC = 1;
@@ -185,6 +237,10 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 			minerFee += c_extroFee;
 			break;
 
+		case Instruction::MKTX:
+			minerFee += c_txFee;
+			break;
+
 		case Instruction::SHA256:
 		case Instruction::RIPEMD160:
 		case Instruction::ECMUL:
@@ -199,7 +255,7 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 		}
 
 		if (minerFee + voidFee > balance(_myAddress))
-			return;
+			throw NotEnoughCash();
 		subBalance(_myAddress, minerFee + voidFee);
 		*_totalFee += (u256)minerFee;
 
@@ -346,13 +402,122 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 			break;
 		}
 		case Instruction::ECMUL:
+		{
+			// ECMUL - pops three items.
+			// If (S[-2],S[-1]) are a valid point in secp256k1, including both coordinates being less than P, pushes (S[-1],S[-2]) * S[-3], using (0,0) as the point at infinity.
+			// Otherwise, pushes (0,0).
+			require(3);
 
-		case Instruction::ECADD:
-		case Instruction::ECSIGN:
-		case Instruction::ECRECOVER:
-		case Instruction::ECVALID:
-			// TODO
+			bytes pub(1, 4);
+			pub += toBigEndian(stack[stack.size() - 2]);
+			pub += toBigEndian(stack.back());
+			stack.pop_back();
+			stack.pop_back();
+
+			bytes x = toBigEndian(stack.back());
+			stack.pop_back();
+
+			if (secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()))	// TODO: Check both are less than P.
+			{
+				secp256k1_ecdsa_pubkey_tweak_mul(pub.data(), pub.size(), x.data());
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
+			}
+			else
+			{
+				stack.push_back(0);
+				stack.push_back(0);
+			}
 			break;
+		}
+		case Instruction::ECADD:
+		{
+			// ECADD - pops four items and pushes (S[-4],S[-3]) + (S[-2],S[-1]) if both points are valid, otherwise (0,0).
+			require(4);
+
+			bytes pub(1, 4);
+			pub += toBigEndian(stack[stack.size() - 2]);
+			pub += toBigEndian(stack.back());
+			stack.pop_back();
+			stack.pop_back();
+
+			bytes tweak(1, 4);
+			tweak += toBigEndian(stack[stack.size() - 2]);
+			tweak += toBigEndian(stack.back());
+			stack.pop_back();
+			stack.pop_back();
+
+			if (secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()) && secp256k1_ecdsa_pubkey_verify(tweak.data(), tweak.size()))
+			{
+				secp256k1_ecdsa_pubkey_tweak_add(pub.data(), pub.size(), tweak.data());
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
+			}
+			else
+			{
+				stack.push_back(0);
+				stack.push_back(0);
+			}
+			break;
+		}
+		case Instruction::ECSIGN:
+		{
+			require(2);
+			bytes sig(64);
+			int v = 0;
+
+			u256 msg = stack.back();
+			stack.pop_back();
+			u256 priv = stack.back();
+			stack.pop_back();
+			bytes nonce = toBigEndian(kFromMessage(msg, priv));
+
+			if (!secp256k1_ecdsa_sign_compact(toBigEndian(msg).data(), 64, sig.data(), toBigEndian(priv).data(), nonce.data(), &v))
+				throw InvalidSignature();
+
+			stack.push_back(v + 27);
+			stack.push_back(fromBigEndian<u256>(bytesConstRef(&sig).cropped(0, 32)));
+			stack.push_back(fromBigEndian<u256>(bytesConstRef(&sig).cropped(32)));
+			break;
+		}
+		case Instruction::ECRECOVER:
+		{
+			require(4);
+
+			bytes sig = toBigEndian(stack[stack.size() - 2]) + toBigEndian(stack.back());
+			stack.pop_back();
+			stack.pop_back();
+			int v = (int)stack.back();
+			stack.pop_back();
+			bytes msg = toBigEndian(stack.back());
+			stack.pop_back();
+
+			byte pubkey[65];
+			int pubkeylen = 65;
+			if (secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, v - 27))
+			{
+				stack.push_back(0);
+				stack.push_back(0);
+			}
+			else
+			{
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pubkey[1], 32)));
+				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pubkey[33], 32)));
+			}
+			break;
+		}
+		case Instruction::ECVALID:
+		{
+			require(2);
+			bytes pub(1, 4);
+			pub += toBigEndian(stack[stack.size() - 2]);
+			pub += toBigEndian(stack.back());
+			stack.pop_back();
+			stack.pop_back();
+
+			stack.back() = secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()) ? 1 : 0;
+			break;
+		}
 		case Instruction::PUSH:
 		{
 			stack.push_back(mem(curPC + 1));
@@ -426,7 +591,7 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 			require(2);
 			auto memoryAddress = stack.back();
 			stack.pop_back();
-			u160 contractAddress = as160(stack.back());
+			Address contractAddress = as160(stack.back());
 			stack.back() = contractMemory(contractAddress, memoryAddress);
 			break;
 		}
@@ -467,10 +632,9 @@ void State::execute(u160 _myAddress, u160 _txSender, u256 _txValue, u256 _txFee,
 		case Instruction::SUICIDE:
 		{
 			require(1);
-			u160 dest = as160(stack.back());
+			Address dest = as160(stack.back());
 			u256 minusVoidFee = m_current[_myAddress].memory().size() * c_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
-			subBalance(dest, _txFee);
 			m_current.erase(_myAddress);
 			// ...follow through to...
 		}

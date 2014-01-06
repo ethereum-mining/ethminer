@@ -96,6 +96,15 @@ inline void toBigEndian(_T _val, _Out& o_out)
 		o_out[s - 1 - i] = (typename _Out::value_type)(uint8_t)_val;
 }
 
+template <class _T, class _In>
+inline _T fromBigEndian(_In const& _bytes)
+{
+	_T ret = 0;
+	for (auto i: _bytes)
+		ret = (ret << 8) | (byte)(typename std::make_unsigned<typename _In::value_type>::type)i;
+	return ret;
+}
+
 inline std::string toBigEndianString(u256 _val) { std::string ret(32, '\0'); toBigEndian(_val, ret); return ret; }
 inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toBigEndian(_val, ret); return ret; }
 
