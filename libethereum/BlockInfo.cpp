@@ -27,9 +27,27 @@
 using namespace std;
 using namespace eth;
 
+BlockInfo* BlockInfo::s_genesis = nullptr;
+
 BlockInfo::BlockInfo()
 {
 	number = Invalid256;
+}
+
+bytes BlockInfo::createGenesisBlock()
+{
+	RLPStream block(3);
+	auto sha256EmptyList = sha256(RLPEmptyList);
+	block.appendList(7) << (uint)0 << sha256EmptyList << (uint)0 << sha256EmptyList << (uint)0 << (uint)0 << (uint)0;
+	block.appendRaw(RLPEmptyList);
+	block.appendRaw(RLPEmptyList);
+	return block.out();
+}
+
+void BlockInfo::populateGenesis()
+{
+	bytes genesisBlock = createGenesisBlock();
+	populate(&genesisBlock, 0);
 }
 
 void BlockInfo::populate(bytesConstRef _block, u256 _number)
@@ -70,5 +88,5 @@ void BlockInfo::verify(bytesConstRef _block, u256 _number)
 	// TODO: check difficulty against timestamp.
 	// TODO: check proof of work.
 
-	// TODO: check each transaction - allow any destination for the miner fees, but everything else must be exactly how we would do it.
+	// TODO: check each transaction - allow coinbaseAddress for the miner fees, but everything else must be exactly how we would do it.
 }

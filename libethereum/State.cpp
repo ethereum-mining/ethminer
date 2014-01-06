@@ -41,7 +41,8 @@ u256 const State::c_txFee = 0;
 State::State(Address _minerAddress): m_minerAddress(_minerAddress)
 {
 	secp256k1_start();
-	// TODO: Initialise current block/previous block, ready for sync.
+	m_previousBlock = BlockInfo::genesis();
+	m_currentBlock.number = 1;
 }
 
 void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
@@ -156,11 +157,15 @@ bool State::verify(bytes const& _block, uint _number)
 void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
-	m_transactions.push_back(_t);
 
+	// Ignore invalid transactions.
 	if (_t.nonce != transactionsFrom(_sender))
 		throw InvalidNonce();
 
+	// Add to the transactions in
+	m_transactions.push_back(_t);
+
+	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
 
@@ -198,11 +203,14 @@ void State::execute(Transaction const& _t, Address _sender)
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
+
+	// Find our memory.
 	auto m = m_current.find(_myAddress);
 	if (m == m_current.end())
 		throw NoSuchContract();
 	auto& myMemory = m->second.memory();
 
+	// Set up some local functions.
 	auto require = [&](u256 _n)
 	{
 		if (stack.size() < _n)

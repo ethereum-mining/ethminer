@@ -45,8 +45,16 @@ public:
 
 	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce && number == _cmp.number; }
 
+	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populate(bytesConstRef _block, u256 _number);
 	void verify(bytesConstRef _block, u256 _number);
+
+	static bytes createGenesisBlock();
+
+private:
+	void populateGenesis();
+
+	static BlockInfo* s_genesis;
 };
 
 }

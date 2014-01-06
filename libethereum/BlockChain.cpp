@@ -20,12 +20,16 @@
  */
 
 #include "Common.h"
+#include "BlockInfo.h"
 #include "BlockChain.h"
 using namespace std;
 using namespace eth;
 
 BlockChain::BlockChain()
 {
+	// Initialise with the genesis as the last block on the longest chain.
+	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
+	m_genesisBlock = BlockInfo::createGenesisBlock();
 }
 
 BlockChain::~BlockChain()
@@ -34,4 +38,32 @@ BlockChain::~BlockChain()
 
 void BlockChain::import(bytes const& _block)
 {
+}
+
+bytesConstRef BlockChain::block(u256 _hash) const
+{
+	auto it = m_cache.find(_hash);
+	if (it == m_cache.end())
+	{
+		// Load block from disk.
+		pair<u256, std::shared_ptr<MappedBlock>> loaded;
+		it = m_cache.insert(loaded).first;
+	}
+	return it->second->data();
+}
+
+bytesConstRef BlockChain::lastBlock() const
+{
+	if (m_lastBlockHash == m_genesisHash)
+		return bytesConstRef((bytes*)&m_genesisBlock);
+
+	return block(m_lastBlockHash);
+}
+
+u256 BlockChain::lastBlockNumber() const
+{
+	if (m_lastBlockHash == m_genesisHash)
+		return 0;
+
+	return m_numberAndParent[m_lastBlockHash].first;
 }

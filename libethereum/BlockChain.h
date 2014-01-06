@@ -40,30 +40,41 @@ private:
 };
 
 /**
- * @brief Models the blockchain database.
+ * @brief Implements the blockchain database. All data this gives is disk-backed.
  */
 class BlockChain
 {
 public:
 	BlockChain();
 	~BlockChain();
+
+	/// (Potentiall) renders invalid existing bytesConstRef returned by lastBlock.
+	/// To be called from main loop every 100ms or so.
+	void process();
 	
 	/// Import block into disk-backed DB
 	void import(bytes const& _block);
 
 	/// Get the last block of the longest chain.
-	bytesConstRef lastBlock() const { return bytesConstRef(); }
+	bytesConstRef lastBlock() const;	// TODO: switch to return MappedBlock or add the lock into vector_ref
 
 	/// Get the number of the last block of the longest chain.
-	u256 lastBlockNumber() const { return Invalid256; }
+	u256 lastBlockNumber() const;
+
+	bytesConstRef block(u256 _hash) const;
 
 private:
-	// Get fully populated from disk DB.
+	/// Get fully populated from disk DB.
 	mutable std::map<u256, std::pair<u256, u256>> m_numberAndParent;
 	mutable std::multimap<u256, u256> m_children;
 
-	// Gets populated on demand and reduced after a while.
+	/// Gets populated on demand. Inactive nodes are pruned after a while.
 	mutable std::map<u256, std::shared_ptr<MappedBlock>> m_cache;
+
+	/// Hash of the last (valid) block on the longest chain.
+	u256 m_lastBlockHash;
+	u256 m_genesisHash;
+	bytes m_genesisBlock;
 };
 
 }

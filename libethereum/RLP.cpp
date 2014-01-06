@@ -24,6 +24,7 @@ using namespace std;
 using namespace eth;
 
 bytes eth::RLPNull = rlp("");
+bytes eth::RLPEmptyList = rlpList();
 
 RLP::iterator& RLP::iterator::operator++()
 {
@@ -118,6 +119,14 @@ RLPStream& RLPStream::append(std::string const& _s)
 		m_out.push_back(_s.size() | 0x40);
 	else
 		pushCount(_s.size(), 0x40);
+	uint os = m_out.size();
+	m_out.resize(os + _s.size());
+	memcpy(m_out.data() + os, _s.data(), _s.size());
+	return *this;
+}
+
+RLPStream& RLPStream::appendRaw(bytes const& _s)
+{
 	uint os = m_out.size();
 	m_out.resize(os + _s.size());
 	memcpy(m_out.data() + os, _s.data(), _s.size());

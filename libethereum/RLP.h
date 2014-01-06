@@ -277,6 +277,7 @@ public:
 	RLPStream& append(bigint _s);
 	RLPStream& append(std::string const& _s);
 	RLPStream& appendList(uint _count);
+	RLPStream& appendRaw(bytes const& _rlp);
 
 	/// Shift operators for appending data items.
 	RLPStream& operator<<(uint _i) { return append(_i); }
@@ -333,6 +334,9 @@ template <class ... _Ts> bytes rlpList(_Ts ... _ts)
 
 /// The empty string in RLP format.
 extern bytes RLPNull;
+
+/// The empty list in RLP format.
+extern bytes RLPEmptyList;
 
 }
 
