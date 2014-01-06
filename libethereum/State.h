@@ -39,7 +39,7 @@ class State
 public:
 	explicit State(Address _minerAddress);
 
-	bool verify(bytes const& _block);
+	bool verify(bytes const& _block, uint _number = 0);
 	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); execute(t, t.sender()); } catch (...) { return false; } }
 
 	bool isNormalAddress(Address _address) const;

@@ -36,13 +36,13 @@ void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
 	{
 		RLP header = root[0];
 		hash = eth::sha256(_block);
-		parentHash = header[0].toFatInt();
-		sha256Uncles = header[1].toFatInt();
-		coinbaseAddress = header[2].toFatInt();
-		sha256Transactions = header[3].toFatInt();
-		difficulty = header[4].toFatInt();
-		timestamp = header[5].toFatInt();
-		nonce = header[6].toFatInt();
+		parentHash = header[0].toInt<u256>();
+		sha256Uncles = header[1].toInt<u256>();
+		coinbaseAddress = header[2].toInt<u160>();
+		sha256Transactions = header[3].toInt<u256>();
+		difficulty = header[4].toInt<uint>();
+		timestamp = header[5].toInt<u256>();
+		nonce = header[6].toInt<u256>();
 	}
 	catch (RLP::BadCast)
 	{

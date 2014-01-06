@@ -35,6 +35,11 @@ namespace eth
 class RLP;
 typedef std::vector<RLP> RLPs;
 
+template <class _T> struct intTraits { static const uint maxSize = sizeof(_T); };
+template <> struct intTraits<u160> { static const uint maxSize = 20; };
+template <> struct intTraits<u256> { static const uint maxSize = 32; };
+template <> struct intTraits<bigint> { static const uint maxSize = ~(uint)0; };
+
 /**
  * @brief Class for interpreting Recursive Linear-Prefix Data.
  * @by Gav Wood, 2013
@@ -160,15 +165,41 @@ public:
 	/// Converts to string. @throws BadCast if not a string.
 	std::string toStringStrict() const { if (!isString()) throw BadCast(); return payload().cropped(0, items()).toString(); }
 
-	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
-	template <class _T = uint> _T toInt() const
+	/// Int conversion flags
+	enum
 	{
-		if (!isString() && !isInt())
-			return 0;
+		AllowString = 1,
+		AllowInt = 2,
+		ThrowOnFail = 4,
+		FailIfTooBig = 8,
+		Strict = AllowString | AllowInt | ThrowOnFail | FailIfTooBig,
+		StrictlyString = AllowString | ThrowOnFail | FailIfTooBig,
+		StrictlyInt = AllowInt | ThrowOnFail | FailIfTooBig,
+		LaisezFaire = AllowString | AllowInt
+	};
+
+	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
+	template <class _T = uint> _T toInt(int _flags = Strict) const
+	{
+		if ((isString() && !(_flags & AllowString)) || (isInt() && !(_flags & AllowInt)) || isList() || isNull())
+			if (_flags & ThrowOnFail)
+				throw BadCast();
+			else
+				return 0;
+		else {}
+
 		if (isDirectValueInt())
 			return m_data[0];
-		_T ret = 0;
+
 		auto s = isInt() ? intSize() - lengthSize() : isString() ? items() : 0;
+		if (s > intTraits<_T>::maxSize && (_flags & FailIfTooBig))
+			if (_flags & ThrowOnFail)
+				throw BadCast();
+			else
+				return 0;
+		else {}
+
+		_T ret = 0;
 		uint o = lengthSize() + 1;
 		for (uint i = 0; i < s; ++i)
 			ret = (ret << 8) | m_data[i + o];
@@ -176,25 +207,13 @@ public:
 	}
 
 	/// Converts to eth::uint. @see toInt()
-	uint toSlimInt() const { return toInt<uint>(); }
+	uint toSlimInt(int _flags = Strict) const { return toInt<uint>(_flags); }
+
 	/// Converts to eth::u256. @see toInt()
-	u256 toFatInt() const { return toInt<u256>(); }
+	u256 toFatInt(int _flags = Strict) const { return toInt<u256>(_flags); }
+
 	/// Converts to eth::bigint. @see toInt()
-	bigint toBigInt() const { return toInt<bigint>(); }
-
-	/// Converts to eth::uint. @throws BadCast if not isInt(). @see toInt()
-	uint toSlimIntStrict() const { if (!isSlimInt()) throw BadCast(); return toInt<uint>(); }
-	/// Converts to eth::u256. @throws BadCast if not isInt(). @see toInt()
-	u256 toFatIntStrict() const { if (!isFatInt() && !isSlimInt()) throw BadCast(); return toInt<u256>(); }
-	/// Converts to eth::bigint. @throws BadCast if not isInt(). @see toInt()
-	bigint toBigIntStrict() const { if (!isInt()) throw BadCast(); return toInt<bigint>(); }
-
-	/// Converts to eth::uint using the toString() as a big-endian bytestream. @throws BadCast if not isString(). @see toInt()
-	uint toSlimIntFromString() const { if (!isString()) throw BadCast(); return toInt<uint>(); }
-	/// Converts to eth::u256 using the toString() as a big-endian bytestream. @throws BadCast if not isString(). @see toInt()
-	u256 toFatIntFromString() const { if (!isString()) throw BadCast(); return toInt<u256>(); }
-	/// Converts to eth::bigint using the toString() as a big-endian bytestream. @throws BadCast if not isString(). @see toInt()
-	bigint toBigIntFromString() const { if (!isString()) throw BadCast(); return toInt<bigint>(); }
+	bigint toBigInt(int _flags = Strict) const { return toInt<bigint>(_flags); }
 
 	/// Converts to RLPs collection object. Useful if you need random access to sub items or will iterate over multiple times.
 	RLPs toList() const;

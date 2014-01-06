@@ -191,7 +191,7 @@ std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
-		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt();
+		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt(RLP::LaisezFaire);
 	else if (_d.isString())
 		_out << eth::escaped(_d.toString(), true);
 	else if (_d.isList())

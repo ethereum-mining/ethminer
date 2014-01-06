@@ -93,8 +93,17 @@ u256 State::contractMemory(Address _contract, u256 _memory) const
 	return i == m->second.memory().end() ? 0 : i->second;
 }
 
-bool State::verify(bytes const& _block)
+bool State::verify(bytes const& _block, uint _number)
 {
+	BlockInfo bi;
+	try
+	{
+		bi.populateAndVerify(bytesConstRef((bytes*)&_block), _number);
+	}
+	catch (...)
+	{
+		return false;
+	}
 	return true;
 }
 

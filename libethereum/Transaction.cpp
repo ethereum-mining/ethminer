@@ -28,14 +28,14 @@ using namespace eth;
 Transaction::Transaction(bytes const& _rlpData)
 {
 	RLP rlp(_rlpData);
-	nonce = rlp[0].toFatIntStrict();
-	receiveAddress = as160(rlp[1].toFatIntFromString());
-	value = rlp[2].toFatIntStrict();
-	fee = rlp[3].toFatIntStrict();
+	nonce = rlp[0].toInt<u256>(RLP::StrictlyInt);
+	receiveAddress = rlp[1].toInt<u160>(RLP::StrictlyString);
+	value = rlp[2].toInt<u256>(RLP::StrictlyInt);
+	fee = rlp[3].toInt<u256>(RLP::StrictlyInt);
 	data.reserve(rlp[4].itemCountStrict());
 	for (auto const& i: rlp[4])
-		data.push_back(i.toFatIntStrict());
-	vrs = Signature{ (byte)rlp[5].toSlimIntStrict(), rlp[6].toFatIntStrict(), rlp[7].toFatIntStrict() };
+		data.push_back(i.toInt<u256>(RLP::StrictlyInt));
+	vrs = Signature{ rlp[5].toInt<byte>(RLP::StrictlyInt), rlp[6].toInt<u256>(RLP::StrictlyInt), rlp[7].toInt<u256>(RLP::StrictlyInt) };
 }
 
 Address Transaction::sender() const
