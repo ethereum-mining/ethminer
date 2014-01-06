@@ -6,6 +6,7 @@
 namespace eth
 {
 
+class BadHexCharacter: public std::exception {};
 class NotEnoughCash: public std::exception {};
 class BadInstruction: public std::exception {};
 class StackTooSmall: public std::exception { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };

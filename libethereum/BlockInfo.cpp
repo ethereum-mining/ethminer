@@ -27,7 +27,12 @@
 using namespace std;
 using namespace eth;
 
-void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
+BlockInfo::BlockInfo()
+{
+	number = Invalid256;
+}
+
+void BlockInfo::populate(bytesConstRef _block, u256 _number)
 {
 	number = _number;
 
@@ -48,7 +53,13 @@ void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
 	{
 		throw InvalidBlockFormat();
 	}
+}
 
+void BlockInfo::verify(bytesConstRef _block, u256 _number)
+{
+	populate(_block, _number);
+
+	RLP root(_block);
 	if (sha256Transactions != sha256(root[1].data()))
 		throw InvalidTransactionsHash();
 
@@ -59,5 +70,5 @@ void BlockInfo::populateAndVerify(bytesConstRef _block, u256 _number)
 	// TODO: check difficulty against timestamp.
 	// TODO: check proof of work.
 
-	// TODO: check each transaction.
+	// TODO: check each transaction - allow any destination for the miner fees, but everything else must be exactly how we would do it.
 }

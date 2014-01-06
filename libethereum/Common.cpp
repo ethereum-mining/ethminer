@@ -19,10 +19,85 @@
  * @date 2014
  */
 
+#include <random>
 #include "Common.h"
+#include "Exceptions.h"
 #include "rmd160.h"
 using namespace std;
 using namespace eth;
+
+std::string eth::escaped(std::string const& _s, bool _all)
+{
+	std::string ret;
+	ret.reserve(_s.size());
+	ret.push_back('"');
+	for (auto i: _s)
+		if (i == '"' && !_all)
+			ret += "\\\"";
+		else if (i == '\\' && !_all)
+			ret += "\\\\";
+		else if (i < ' ' || i > 127 || _all)
+		{
+			ret += "\\x";
+			ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);
+			ret.push_back("0123456789abcdef"[(uint8_t)i % 16]);
+		}
+		else
+			ret.push_back(i);
+	ret.push_back('"');
+	return ret;
+}
+
+std::string eth::randomWord()
+{
+	static std::mt19937_64 s_eng(0);
+	std::string ret(std::uniform_int_distribution<int>(4, 10)(s_eng), ' ');
+	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
+	for (char& c: ret)
+		c = n[d(s_eng)];
+	return ret;
+}
+
+int eth::fromHex(char _i)
+{
+	if (_i >= '0' && _i <= '9')
+		return _i - '0';
+	if (_i >= 'a' && _i <= 'f')
+		return _i - 'a' + 10;
+	if (_i >= 'A' && _i <= 'F')
+		return _i - 'A' + 10;
+	throw BadHexCharacter();
+}
+
+bytes eth::fromUserHex(std::string const& _s)
+{
+	assert(_s.size() % 2 == 0);
+	if (_s.size() < 2)
+		return bytes();
+	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
+	std::vector<uint8_t> ret;
+	ret.reserve((_s.size() - s) / 2);
+	for (uint i = s; i < _s.size(); i += 2)
+		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
+	return ret;
+}
+
+bytes eth::toHex(std::string const& _s)
+{
+	std::vector<uint8_t> ret;
+	ret.reserve(_s.size() * 2);
+	for (auto i: _s)
+	{
+		ret.push_back(i / 16);
+		ret.push_back(i % 16);
+	}
+	return ret;
+}
+
+// /////////////////////////////////////////////////
+// RIPEMD-160 stuff. Leave well alone.
+// /////////////////////////////////////////////////
 
 /* collect four bytes into one word: */
 #define BYTES_TO_DWORD(strptr)                    \
@@ -73,74 +148,4 @@ u256 eth::ripemd160(bytesConstRef _message)
    for (i = 0; i < RMDsize / 8; ++i)
 	   ret = (ret << 8) | hashcode[i];
    return ret;
-}
-
-std::string eth::escaped(std::string const& _s, bool _all)
-{
-	std::string ret;
-	ret.reserve(_s.size());
-	ret.push_back('"');
-	for (auto i: _s)
-		if (i == '"' && !_all)
-			ret += "\\\"";
-		else if (i == '\\' && !_all)
-			ret += "\\\\";
-		else if (i < ' ' || i > 127 || _all)
-		{
-			ret += "\\x";
-			ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);
-			ret.push_back("0123456789abcdef"[(uint8_t)i % 16]);
-		}
-		else
-			ret.push_back(i);
-	ret.push_back('"');
-	return ret;
-}
-
-std::string eth::randomWord()
-{
-	static std::mt19937_64 s_eng(0);
-	std::string ret(std::uniform_int_distribution<int>(4, 10)(s_eng), ' ');
-	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
-	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
-	for (char& c: ret)
-		c = n[d(s_eng)];
-	return ret;
-}
-
-
-int eth::fromHex(char _i)
-{
-	if (_i >= '0' && _i <= '9')
-		return _i - '0';
-	if (_i >= 'a' && _i <= 'f')
-		return _i - 'a' + 10;
-	if (_i >= 'A' && _i <= 'F')
-		return _i - 'A' + 10;
-	throw BadHexCharacter();
-}
-
-bytes eth::fromUserHex(std::string const& _s)
-{
-	assert(_s.size() % 2 == 0);
-	if (_s.size() < 2)
-		return bytes();
-	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
-	std::vector<uint8_t> ret;
-	ret.reserve((_s.size() - s) / 2);
-	for (uint i = s; i < _s.size(); i += 2)
-		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
-	return ret;
-}
-
-bytes eth::toHex(std::string const& _s)
-{
-	std::vector<uint8_t> ret;
-	ret.reserve(_s.size() * 2);
-	for (auto i: _s)
-	{
-		ret.push_back(i / 16);
-		ret.push_back(i % 16);
-	}
-	return ret;
 }

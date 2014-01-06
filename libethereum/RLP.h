@@ -75,28 +75,28 @@ public:
 	bool isNull() const { return m_data.size() == 0; }
 
 	/// Contains a zero-length string or zero-length list.
-	bool isEmpty() const { return m_data[0] == 0x40 || m_data[0] == 0x80; }
+	bool isEmpty() const { return !isNull() && (m_data[0] == 0x40 || m_data[0] == 0x80); }
 
 	/// String value.
-	bool isString() const { assert(!isNull()); return m_data[0] >= 0x40 && m_data[0] < 0x80; }
+	bool isString() const { return !isNull() && m_data[0] >= 0x40 && m_data[0] < 0x80; }
 
 	/// List value.
-	bool isList() const { assert(!isNull()); return m_data[0] >= 0x80 && m_data[0] < 0xc0; }
+	bool isList() const { return !isNull() && m_data[0] >= 0x80 && m_data[0] < 0xc0; }
 
 	/// Integer value. Either isSlimInt(), isFatInt() or isBigInt().
-	bool isInt() const { assert(!isNull()); return m_data[0] < 0x40; }
+	bool isInt() const { return !isNull() && m_data[0] < 0x40; }
 
 	/// Fits into eth::uint type. Can use toSlimInt() to read (as well as toFatInt() or toBigInt() ).
-	bool isSlimInt() const { assert(!isNull()); return m_data[0] < 0x20; }
+	bool isSlimInt() const { return !isNull() && m_data[0] < 0x20; }
 
 	/// Fits into eth::u256 or eth::bigint type. Use only toFatInt() or toBigInt() to read.
-	bool isFatInt() const { assert(!isNull()); return m_data[0] >= 0x20 && m_data[0] < 0x38; }
+	bool isFatInt() const { return !isNull() && m_data[0] >= 0x20 && m_data[0] < 0x38; }
 
 	/// Fits into eth::u256 type, though might fit into eth::uint type.
-	bool isFixedInt() const { assert(!isNull()); return m_data[0] < 0x38; }
+	bool isFixedInt() const { return !isNull() && m_data[0] < 0x38; }
 
 	/// Fits only into eth::bigint type. Use only toBigInt() to read.
-	bool isBigInt() const { assert(!isNull()); return m_data[0] >= 0x38 && m_data[0] < 0x40; }
+	bool isBigInt() const { return !isNull() && m_data[0] >= 0x38 && m_data[0] < 0x40; }
 
 	/// @returns the number of items in the list, or zero if it isn't a list.
 	uint itemCount() const { return isList() ? items() : 0; }

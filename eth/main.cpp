@@ -32,11 +32,9 @@ int main()
 	Address us;				// TODO: should be loaded from config file/set at command-line.
 
 	BlockChain bc;			// TODO: Implement - should look for block database.
-
+	TransactionQueue tq;	// TODO: Implement.
 	State s(us);
 //	s.restore();			// TODO: Implement - key optimisation.
-
-	TransactionQueue tq;	// TODO: Implement.
 
 	// Synchronise the state according to the block chain - i.e. replay all transactions, in order. Will take a while if the state isn't restored.
 	s.sync(bc, tq);
@@ -48,16 +46,24 @@ int main()
 		net.process();
 
 		// Synchronise block chain with network.
+		// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 		net.sync(bc, tq);
 
 		// Synchronise state to block chain.
-		// This should remove any transactions on our queue that are included in the block chain.
+		// This should remove any transactions on our queue that are included within our state.
+		// It also guarantees that the state reflects the longest (valid!) chain on the block chain.
+		//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
+		//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
+		//   all blocks.
 		s.sync(bc, tq);		// Resynchronise state with block chain & trans
 
+		// Mine for a while.
 		if (s.mine(100))
 		{
 			// Mined block
 			bytes b = s.blockData();
+
+			// Import block.
 			bc.import(b);
 		}
 	}

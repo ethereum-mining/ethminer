@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include "Common.h"
 #include "RLP.h"
+#include "TransactionQueue.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 #include "AddressState.h"
@@ -35,19 +36,6 @@ namespace eth
 {
 
 class BlockChain;
-
-// TODO: Repot.
-/**
- * @brief A queue of Transactions, each stored as RLP.
- */
-class TransactionQueue
-{
-public:
-	void sync(BlockChain const& _bc) {}
-
-private:
-	std::vector<bytes> m_data;
-};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -67,14 +55,14 @@ public:
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns true if it got lucky.
-	bool mine(uint _msTimeout = 1000) const { (void)_msTimeout; return false; }
+	bool mine(uint _msTimeout = 1000) const;
 
 	/// Get the complete current block, including valid nonce.
-	bytes blockData() const { return bytes(); }
+	bytes const& blockData() const { return m_currentBytes; }
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	void sync(BlockChain const& _bc, TransactionQueue const& _tq) {}
+	void sync(BlockChain const& _bc, TransactionQueue const& _tq);
 
 	/// Execute a given transaction.
 	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); execute(t, t.sender()); } catch (...) { return false; } }
@@ -117,6 +105,7 @@ private:
 	};
 
 	/// Execute a decoded transaction object, given a sender.
+	/// This will append @a _t to the transaction list and change the state accordingly.
 	void execute(Transaction const& _t, Address _sender);
 
 	/// Execute a contract transaction.
@@ -129,6 +118,7 @@ private:
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
+	bytes m_currentBytes;						///< The current block.
 
 	Address m_minerAddress;						///< Our address (i.e. the address to which fees go).
 

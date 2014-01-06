@@ -25,5 +25,5 @@ endif ()
 
 add_subdirectory(libethereum)
 add_subdirectory(test)
-#add_subdirectory(eth)
+add_subdirectory(eth)
 

@@ -26,7 +26,6 @@
 #include <map>
 #include <string>
 #include <cassert>
-#include <random>
 #include <sstream>
 #include <cstdint>
 #include <type_traits>
@@ -56,11 +55,24 @@ using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
 using HexMap = std::map<bytes, std::string>;
 
-template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
+static const u256 Invalid256 = ~(u256)0;
+static const bytes NullBytes;
 
-inline std::string asString(bytes const& _b) { return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size())); }
+template <class _T>
+std::string toString(_T const& _t)
+{
+	std::ostringstream o;
+	o << _t;
+	return o.str();
+}
 
-template <class _T> inline std::string asHex(_T const& _data, int _w = 2)
+inline std::string asString(bytes const& _b)
+{
+	return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
+}
+
+template <class _T>
+std::string asHex(_T const& _data, int _w = 2)
 {
 	std::ostringstream ret;
 	for (auto i: _data)
@@ -68,20 +80,20 @@ template <class _T> inline std::string asHex(_T const& _data, int _w = 2)
 	return ret.str();
 }
 
-template <class _T> void trimFront(_T& _t, uint _elements)
+template <class _T>
+void trimFront(_T& _t, uint _elements)
 {
 	memmove(_t.data(), _t.data() + _elements, (_t.size() - _elements) * sizeof(_t[0]));
 	_t.resize(_t.size() - _elements);
 }
 
-template <class _T, class _U> void pushFront(_T& _t, _U _e)
+template <class _T, class _U>
+void pushFront(_T& _t, _U _e)
 {
 	_t.push_back(_e);
 	memmove(_t.data() + 1, _t.data(), (_t.size() - 1) * sizeof(_e));
 	_t[0] = _e;
 }
-
-class BadHexCharacter: public std::exception {};
 
 std::string randomWord();
 std::string escaped(std::string const& _s, bool _all = true);
@@ -122,7 +134,8 @@ inline std::string toCompactBigEndianString(_T _val)
 	return ret;
 }
 
-template <class _T, class _U> uint commonPrefix(_T const& _t, _U const& _u)
+template <class _T, class _U>
+uint commonPrefix(_T const& _t, _U const& _u)
 {
 	uint s = std::min<uint>(_t.size(), _u.size());
 	for (uint i = 0;; ++i)
@@ -145,7 +158,8 @@ inline u160 as160(_T const& _t)
 	return (u160)(_t & ((((_T)1) << 160) - 1));
 }
 
-template <class _T> inline std::vector<_T>& operator+=(std::vector<_T>& _a, std::vector<_T> const& _b)
+template <class _T>
+inline std::vector<_T>& operator+=(std::vector<_T>& _a, std::vector<_T> const& _b)
 {
 	auto s = _a.size();
 	_a.resize(_a.size() + _b.size());
@@ -153,6 +167,12 @@ template <class _T> inline std::vector<_T>& operator+=(std::vector<_T>& _a, std:
 	return _a;
 
 }
-template <class _T> inline std::vector<_T> operator+(std::vector<_T> const& _a, std::vector<_T> const& _b) { std::vector<_T> ret(_a); return ret += _b; }
+
+template <class _T>
+inline std::vector<_T> operator+(std::vector<_T> const& _a, std::vector<_T> const& _b)
+{
+	std::vector<_T> ret(_a);
+	return ret += _b;
+}
 
 }
