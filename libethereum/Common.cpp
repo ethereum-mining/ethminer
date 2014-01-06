@@ -106,7 +106,7 @@ bytes eth::toHex(std::string const& _s)
 			 ((uint32_t) *((strptr)+1) <<  8) | \
 			 ((uint32_t) *(strptr)))
 
-u256 eth::ripemd160(bytesConstRef _message)
+u160 eth::ripemd160(bytesConstRef _message)
 /*
  * returns RMD(message)
  * message should be a string terminated by '\0'
@@ -144,7 +144,7 @@ u256 eth::ripemd160(bytesConstRef _message)
 	  hashcode[i+3] = (MDbuf[i>>2] >> 24);
    }
 
-   u256 ret = 0;
+   u160 ret = 0;
    for (i = 0; i < RMDsize / 8; ++i)
 	   ret = (ret << 8) | hashcode[i];
    return ret;

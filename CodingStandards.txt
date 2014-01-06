@@ -1,7 +1,11 @@
 0. Formatting
 
-a. Use tabs for indentation; 4 spaces wide. One indentation level -> exactly one byte (i.e. a tab character) in the source file.
-b. Don't worry about having lines > 80-char wide. We're not editing on terminals anymore.
+a. Use tabs for indentation!
+- 1 tab is 4 spaces wide.
+- One indentation level -> exactly one byte (i.e. a tab character) in the source file.
+b. Line widths:
+- Don't worry about having lines of code > 80-char wide.
+- Lines of comments should be formatted according to ease of viewing, but simplicity is to be prefered over beauty.
 c. Don't use braces for condition-body one-liners.
 d. Never place condition bodies on same line as condition.
 e. Space between first paren and keyword, but *not* following first paren or preceeding final paren.
@@ -21,7 +25,7 @@ if (a == b[i])
 
 1. Namespaces;
 
-a. No "using" declarations in header files.
+a. No "using namespace" declarations in header files.
 b. All symbols should be declared in a namespace except for final applications.
 c. Preprocessor symbols should be prefixed with the namespace in all-caps and an underscore.
 
@@ -90,6 +94,7 @@ d. Favour declarations close to use; don't habitually declare at top of scope al
 e. Always pass non-trivial parameters with a const& suffix.
 f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
 g. Never use a macro where adequate non-preprocessor C++ can be written.
+h. Prefer "using NewType = OldType" to "typedef OldType NewType".
 
 (WRONG)
 const double d = 0;
@@ -125,7 +130,25 @@ e. No implementations with the class declaration, except:
 
 
 
-9. Commenting
+9. Naming
+
+a. Collection conventions:
+- -s means std::vector e.g. using MyTypes = std::vector<MyType>
+- -Set means std::set e.g. using MyTypeSet = std::set<MyType>
+- -Hash means std::unordered_set e.g. using MyTypeHash = std::unordered_set<MyType>
+b. Class conventions:
+- -Face means the interface of some shared concept. (e.g. FooFace might be a pure virtual class.)
+c. Avoid unpronouncable names;
+- If you need to shorten a name favour a pronouncable slice of the original to a scatterred set of consonants.
+- e.g. Manager shortens to Man rather than Mgr.
+d. Avoid prefixes of initials (e.g. DON'T use IMyInterface, CMyImplementation)
+e. A dictionary and thesaurus are your friends.
+- Spell correctly.
+- Find short, memorable & (at least semi-) descriptive names for commonly used classes or name-fragments.
+
+
+
+10. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
 
