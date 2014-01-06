@@ -69,13 +69,12 @@ void State::addBalance(Address _id, u256 _amount)
 		it->second.balance() += _amount;
 }
 
-bool State::subBalance(Address _id, bigint _amount)
+void State::subBalance(Address _id, bigint _amount)
 {
 	auto it = m_current.find(_id);
 	if (it == m_current.end() || (bigint)it->second.balance() < _amount)
-		return false;
+		throw NotEnoughCash();
 	it->second.balance() = (u256)((bigint)it->second.balance() - _amount);
-	return true;
 }
 
 u256 State::transactionsFrom(Address _address) const

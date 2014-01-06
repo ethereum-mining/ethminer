@@ -61,7 +61,9 @@ private:
 	AddressType m_type;
 	u256 m_balance;
 	u256 m_nonce;
-	u256Map m_memory;
+	// TODO: std::hash<u256> and then move to unordered_map.
+	// Will need to sort on hash construction.
+	std::map<u256, u256> m_memory;
 };
 
 }

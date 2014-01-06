@@ -34,26 +34,49 @@
 namespace eth
 {
 
+/**
+ * @brief Model of the current state of the ledger.
+ * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
+ * Should maintain ledger as of last N blocks, also, in case we end up on the wrong branch.
+ * TODO: Block database I/O class.
+ */
 class State
 {
 public:
+	/// Construct state object.
 	explicit State(Address _minerAddress);
 
+	/// Verify a given block.
 	bool verify(bytes const& _block, uint _number = 0);
+
+	/// Execute a given transaction.
 	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); execute(t, t.sender()); } catch (...) { return false; } }
 
+	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
+	/// Check if the address is a valid contract's address.
 	bool isContractAddress(Address _address) const;
 
+	/// Get an account's balance.
 	u256 balance(Address _id) const;
-	void addBalance(Address _id, u256 _amount);
-	// bigint as we don't want any accidental problems with -ve numbers.
-	bool subBalance(Address _id, bigint _amount);
 
+	/// Add some amount to balance.
+	void addBalance(Address _id, u256 _amount);
+
+	/** Subtract some amount from balance.
+	 * @throws NotEnoughCash if balance of @a _id is less than @a _value.
+	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
+	 */
+	void subBalance(Address _id, bigint _value);
+
+	/// Get the value of a memory position of a contract.
 	u256 contractMemory(Address _contract, u256 _memory) const;
+
+	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
 	u256 transactionsFrom(Address _address) const;
 
 private:
+	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
 	{
 		~MinerFeeAdder() { state->addBalance(state->m_minerAddress, fee); }
@@ -61,15 +84,21 @@ private:
 		u256 fee;
 	};
 
+	/// Execute a decoded transaction object, given a sender.
 	void execute(Transaction const& _t, Address _sender);
+
+	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
 
-	std::map<Address, AddressState> m_current;
-	BlockInfo m_previousBlock;
-	BlockInfo m_currentBlock;
+	// TODO: std::hash<Address> and then move to unordered_map.
+	// Will need to sort on hash construction.
+	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
+	BlockInfo m_previousBlock;					///< The previous block's information.
+	BlockInfo m_currentBlock;					///< The current block's information.
 
-	Address m_minerAddress;
+	Address m_minerAddress;						///< Our address (i.e. the address to which fees go).
 
+	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;
 	static const u256 c_dataFee;
 	static const u256 c_memoryFee;
