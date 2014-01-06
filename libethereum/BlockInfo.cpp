@@ -73,18 +73,23 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 	}
 }
 
-void BlockInfo::verify(bytesConstRef _block, u256 _number)
+void BlockInfo::verify(bytesConstRef _block, u256 _number, u256 _parentHash)
 {
 	populate(_block, _number);
 
 	RLP root(_block);
+	if (root[0][0].toInt<u256>() != _parentHash)
+		throw InvalidParentHash();
+
 	if (sha256Transactions != sha256(root[1].data()))
 		throw InvalidTransactionsHash();
 
 	if (sha256Uncles != sha256(root[2].data()))
 		throw InvalidUnclesHash();
 
-	// TODO: check timestamp.
+	// TODO: check timestamp after previous timestamp.
+	// TODO: check parent's hash
+
 	// TODO: check difficulty against timestamp.
 	// TODO: check proof of work.
 

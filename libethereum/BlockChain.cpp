@@ -38,6 +38,35 @@ BlockChain::~BlockChain()
 
 void BlockChain::import(bytes const& _block)
 {
+	BlockInfo bi;
+	try
+	{
+		bi.populate(_block, 0);
+		auto newHash = sha256(_block);
+
+		// Check block doesn't already exist first!
+		if (m_numberAndParent.count(newHash))
+			return;
+
+		// Work out its number as the parent's number + 1
+		auto it = m_numberAndParent.find(bi.parentHash);
+		if (it == m_numberAndParent.end())
+			// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+			return;
+		bi.number = it->second.first + 1;
+
+		// Insert into DB
+		m_numberAndParent[newHash] = make_pair(bi.number, bi.parentHash);
+		m_children.insert(make_pair(bi.parentHash, newHash));
+		// TODO: put _block onto disk and load into cache.
+
+		// This might be the new last block; count back through ancestors to common shared ancestor and compare to current.
+	}
+	catch (...)
+	{
+		// Exit silently on exception(?)
+		return;
+	}
 }
 
 bytesConstRef BlockChain::block(u256 _hash) const

@@ -47,7 +47,7 @@ public:
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populate(bytesConstRef _block, u256 _number);
-	void verify(bytesConstRef _block, u256 _number);
+	void verify(bytesConstRef _block, u256 _number, u256 _parentHash);
 
 	static bytes createGenesisBlock();
 

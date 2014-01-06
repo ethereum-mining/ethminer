@@ -48,7 +48,7 @@ public:
 	BlockChain();
 	~BlockChain();
 
-	/// (Potentiall) renders invalid existing bytesConstRef returned by lastBlock.
+	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
 	
@@ -78,5 +78,3 @@ private:
 };
 
 }
-
-
