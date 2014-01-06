@@ -22,10 +22,10 @@ On Ubuntu:
 
 ## Building
 
-mkdir /path/to/cpp-ethereum/../cpp-ethereum-build
-cd /path/to/cpp-ethereum-build
-cmake -DCMAKE_BUILD_TYPE=Debug /path/to/cpp-ethereum
-make
+	mkdir /path/to/cpp-ethereum/../cpp-ethereum-build
+	cd /path/to/cpp-ethereum-build
+	cmake -DCMAKE_BUILD_TYPE=Debug /path/to/cpp-ethereum
+	make
 
 ## Contributing
 
