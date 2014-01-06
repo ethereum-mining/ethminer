@@ -1,5 +1,8 @@
 #include <secp256k1.h>
 #include <random>
+#include "Trie.h"
+#include "Instruction.h"
+#include "Exceptions.h"
 #include "sha256.h"
 #include "State.h"
 using namespace std;
@@ -100,75 +103,53 @@ mt19937_64& State::engine()
 	return *s_engine;
 }
 
-bool State::execute(Transaction const& _t, Address _sender)
+u256 State::contractMemory(Address _contract, u256 _memory) const
+{
+	auto m = m_current.find(_contract);
+	if (m == m_current.end())
+		return 0;
+	auto i = m->second.memory().find(_memory);
+	return i == m->second.memory().end() ? 0 : i->second;
+}
+
+void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
 
 	if (_t.nonce != transactionsFrom(_sender))
-	{
-		// Nonce is wrong.
-		// Error reporting?
-		return false;
-	}
+		throw InvalidNonce();
 
 	if (balance(_sender) < _t.value + _t.fee)
-	{
-		// Sender balance too low.
-		// Error reporting?
-		return false;
-	}
+		throw NotEnoughCash();
 
 	if (_t.receiveAddress)
 	{
-		assert(subBalance(_sender, _t.value));
+		assert(subBalance(_sender, _t.value + _t.fee));
 		addBalance(_t.receiveAddress, _t.value);
+		addBalance(m_minerAddress, _t.fee);
 
 		if (isContractAddress(_t.receiveAddress))
 		{
-			u256 minerFee = 0;
-
-			try
-			{
-				execute(_t.receiveAddress, _sender, _t.value, _t.fee, _t.data, &minerFee);
-				addBalance(m_minerAddress, minerFee);
-				return true;
-			}
-			catch (...)
-			{
-				// Execution error.
-				// Error reporting?
-				addBalance(m_minerAddress, minerFee);
-				throw ExecutionException();
-			}
+			MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
+			execute(_t.receiveAddress, _sender, _t.value, _t.fee, _t.data, &feeAdder.fee);
 		}
-		else
-			return true;
 	}
 	else
 	{
 		if (_t.fee < _t.data.size() * c_memoryFee + c_newContractFee)
-		{
-			// Fee too small.
-			// Error reporting?
-			return false;
-		}
+			throw FeeTooSmall();
 
 		Address newAddress = low160(_t.sha256());
 
 		if (isContractAddress(newAddress))
-		{
-			// Contract collision.
-			// Error reporting?
-			return false;
-		}
+			throw ContractAddressCollision();
 
-		//
 		auto& mem = m_current[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
 			mem[i] = _t.data[i];
-		assert(subBalance(_sender, _t.value));
+		assert(subBalance(_sender, _t.value + _t.fee));
 		addBalance(newAddress, _t.value);
-		return true;
+		addBalance(m_minerAddress, _t.fee);
 	}
 }
 
@@ -197,12 +178,6 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		else
 			myMemory.erase(_n);
 	};
-
-	if (balance(_myAddress) < _txFee)
-		throw NotEnoughCash();
-
-	subBalance(_myAddress, _txFee);
-	*_totalFee += _txFee;
 
 	u256 curPC = 0;
 	u256 nextPC = 1;

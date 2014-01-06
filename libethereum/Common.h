@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+#include <string>
 #include <cassert>
 #include <random>
 #include <sstream>
@@ -26,6 +28,10 @@ using uint = uint64_t;
 using sint = int64_t;
 using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
+
+using StringMap = std::map<std::string, std::string>;
+using u256Map = std::map<u256, u256>;
+using HexMap = std::map<bytes, std::string>;
 
 template <class _T> std::string toString(_T const& _t) { std::ostringstream o; o << _t; return o.str(); }
 
@@ -141,6 +147,18 @@ inline std::string randomWord()
 	for (char& c: ret)
 		c = n[d(s_eng)];
 	return ret;
+}
+
+template <class _T>
+inline u160 low160(_T const& _t)
+{
+	return (u160)(_t & ((((_T)1) << 160) - 1));
+}
+
+template <class _T>
+inline u160 as160(_T const& _t)
+{
+	return (u160)(_t & ((((_T)1) << 160) - 1));
 }
 
 template <class _T> inline std::vector<_T>& operator+=(std::vector<_T>& _a, std::vector<_T> const& _b)

@@ -7,10 +7,6 @@
 namespace eth
 {
 
-using StringMap = std::map<std::string, std::string>;
-using u256Map = std::map<u256, u256>;
-using HexMap = std::map<bytes, std::string>;
-
 u256 hash256(StringMap const& _s);
 u256 hash256(u256Map const& _s);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1);
