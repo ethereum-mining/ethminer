@@ -34,6 +34,21 @@
 namespace eth
 {
 
+class BlockChain;
+
+// TODO: Repot.
+/**
+ * @brief A queue of Transactions, each stored as RLP.
+ */
+class TransactionQueue
+{
+public:
+	void sync(BlockChain const& _bc) {}
+
+private:
+	std::vector<bytes> m_data;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -49,30 +64,47 @@ public:
 	/// Verify a given block.
 	bool verify(bytes const& _block, uint _number = 0);
 
+	/// Attempt to find valid nonce for block that this state represents.
+	/// @param _msTimeout Timeout before return in milliseconds.
+	/// @returns true if it got lucky.
+	bool mine(uint _msTimeout = 1000) const { (void)_msTimeout; return false; }
+
+	/// Get the complete current block, including valid nonce.
+	bytes blockData() const { return bytes(); }
+
+	/// Sync our state with the block chain.
+	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
+	void sync(BlockChain const& _bc, TransactionQueue const& _tq) {}
+
 	/// Execute a given transaction.
 	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); execute(t, t.sender()); } catch (...) { return false; } }
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
+
 	/// Check if the address is a valid contract's address.
 	bool isContractAddress(Address _address) const;
 
 	/// Get an account's balance.
+	/// @returns 0 if the address has never been used.
 	u256 balance(Address _id) const;
 
 	/// Add some amount to balance.
+	/// Will initialise the address if it has never been used.
 	void addBalance(Address _id, u256 _amount);
 
 	/** Subtract some amount from balance.
-	 * @throws NotEnoughCash if balance of @a _id is less than @a _value.
+	 * @throws NotEnoughCash if balance of @a _id is less than @a _value (or has never been used).
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
 	void subBalance(Address _id, bigint _value);
 
 	/// Get the value of a memory position of a contract.
+	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
 
 	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
+	/// @returns 0 if the address has never been used.
 	u256 transactionsFrom(Address _address) const;
 
 private:
@@ -93,6 +125,8 @@ private:
 	// TODO: std::hash<Address> and then move to unordered_map.
 	// Will need to sort on hash construction.
 	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
+	std::vector<Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 
