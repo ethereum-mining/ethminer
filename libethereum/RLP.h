@@ -278,6 +278,7 @@ public:
 	RLPStream& append(std::string const& _s);
 	RLPStream& appendList(uint _count);
 	RLPStream& appendRaw(bytes const& _rlp);
+	RLPStream& appendString(bytes const& _rlp);
 
 	/// Shift operators for appending data items.
 	RLPStream& operator<<(uint _i) { return append(_i); }

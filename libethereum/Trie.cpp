@@ -29,6 +29,12 @@ namespace eth
 
 #define ENABLE_DEBUG_PRINT 0
 
+/*/
+#define APPEND_CHILD appendString
+/*/
+#define APPEND_CHILD appendRaw
+/**/
+
 #if ENABLE_DEBUG_PRINT
 bool g_hashDebug = false;
 #endif
@@ -111,7 +117,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			hash256aux(_s, _begin, _end, sharedPre, _rlp);
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << sha3(_rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << std::endl;
 #endif
 		}
 		else
@@ -150,7 +156,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << sha3(_rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << std::endl;
 #endif
 		}
 	}
@@ -165,9 +171,20 @@ void hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 	RLPStream rlp;
 	hash256rlp(_s, _begin, _end, _preLen, rlp);
 	if (rlp.out().size() < 32)
-		_rlp.appendRaw(rlp.out());
+	{
+		// RECURSIVE RLP
+#if ENABLE_DEBUG_PRINT
+		cerr << "[INLINE: " << dec << rlp.out().size() << " < 32]" << endl;
+#endif
+		_rlp.APPEND_CHILD(rlp.out());
+	}
 	else
+	{
+#if ENABLE_DEBUG_PRINT
+		cerr << "[HASH: " << dec << rlp.out().size() << " >= 32]" << endl;
+#endif
 		_rlp << toCompactBigEndianString(sha3(rlp.out()));
+	}
 }
 
 u256 hash256(StringMap const& _s)
@@ -208,7 +225,7 @@ public:
 	void putRLP(RLPStream& _parentStream) const;
 
 #if ENABLE_DEBUG_PRINT
-	void debugPrint(std::string const& _indent = "") const { std::cerr << std::hex << sha3() << ":" << std::endl; debugPrintBody(_indent); }
+	void debugPrint(std::string const& _indent = "") const { std::cerr << std::hex << hash256() << ":" << std::endl; debugPrintBody(_indent); }
 #endif
 
 	/// 256-bit hash of the node - this is a SHA-3/256 hash of the RLP of the node.
@@ -217,7 +234,6 @@ public:
 	void mark() { m_hash256 = 0; }
 
 protected:
-	void submitRLP(RLPStream& _rlpStream, bytes const& _rlpFragment) const;
 	virtual void makeRLP(RLPStream& _intoStream) const = 0;
 
 #if ENABLE_DEBUG_PRINT
@@ -356,7 +372,7 @@ void TrieNode::putRLP(RLPStream& _parentStream) const
 	RLPStream s;
 	makeRLP(s);
 	if (s.out().size() < 32)
-		_parentStream.appendRaw(s.out());
+		_parentStream.APPEND_CHILD(s.out());
 	else
 		_parentStream << toCompactBigEndianString(eth::sha3(s.out()));
 }

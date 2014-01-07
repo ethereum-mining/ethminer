@@ -125,6 +125,18 @@ RLPStream& RLPStream::append(std::string const& _s)
 	return *this;
 }
 
+RLPStream& RLPStream::appendString(bytes const& _s)
+{
+	if (_s.size() < 0x38)
+		m_out.push_back(_s.size() | 0x40);
+	else
+		pushCount(_s.size(), 0x40);
+	uint os = m_out.size();
+	m_out.resize(os + _s.size());
+	memcpy(m_out.data() + os, _s.data(), _s.size());
+	return *this;
+}
+
 RLPStream& RLPStream::appendRaw(bytes const& _s)
 {
 	uint os = m_out.size();
@@ -202,7 +214,7 @@ std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
 	else if (_d.isInt())
 		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt(RLP::LaisezFaire);
 	else if (_d.isString())
-		_out << eth::escaped(_d.toString(), true);
+		_out << eth::escaped(_d.toString(), false);
 	else if (_d.isList())
 	{
 		_out << "[";
