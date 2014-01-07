@@ -66,7 +66,9 @@ std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated, int _begi
 	return ret;
 }
 
-u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen)
+void hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen, RLPStream& _rlp);
+
+void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen, RLPStream& _rlp)
 {
 #if ENABLE_DEBUG_PRINT
 	static std::string s_indent;
@@ -74,16 +76,15 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 		s_indent += "  ";
 #endif
 
-	RLPStream rlp;
 	if (_begin == _end)
-		rlp << "";	// NULL
+		_rlp << "";	// NULL
 	else if (std::next(_begin) == _end)
 	{
 		// only one left - terminate with the pair.
-		rlp.appendList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
+		_rlp.appendList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
 #if ENABLE_DEBUG_PRINT
 		if (g_hashDebug)
-			std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha256(rlp.out()) << std::endl;
+			std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha3(_rlp.out()) << std::endl;
 #endif
 	}
 	else
@@ -106,16 +107,17 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			if (g_hashDebug)
 				std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
 #endif
-			rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre) << toCompactBigEndianString(hash256aux(_s, _begin, _end, sharedPre));
+			_rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre);
+			hash256aux(_s, _begin, _end, sharedPre, _rlp);
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << sha256(rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << sha3(_rlp.out()) << std::endl;
 #endif
 		}
 		else
 		{
 			// otherwise enumerate all 16+1 entries.
-			rlp.appendList(17);
+			_rlp.appendList(17);
 			auto b = _begin;
 			if (_preLen == b->first.size())
 			{
@@ -130,25 +132,25 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 				auto n = b;
 				for (; n != _end && n->first[_preLen] == i; ++n) {}
 				if (b == n)
-					rlp << "";
+					_rlp << "";
 				else
 				{
 #if ENABLE_DEBUG_PRINT
 					if (g_hashDebug)
 						std::cerr << s_indent << std::hex << i << ": " << std::endl;
 #endif
-					rlp << toCompactBigEndianString(hash256aux(_s, b, n, _preLen + 1));
+					hash256aux(_s, b, n, _preLen + 1, _rlp);
 				}
 				b = n;
 			}
 			if (_preLen == _begin->first.size())
-				rlp << _begin->second;
+				_rlp << _begin->second;
 			else
-				rlp << "";
+				_rlp << "";
 
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << sha256(rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << sha3(_rlp.out()) << std::endl;
 #endif
 		}
 	}
@@ -156,31 +158,43 @@ u256 hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 	if (_preLen)
 		s_indent.resize(s_indent.size() - 2);
 #endif
-	return sha256(rlp.out());
+}
+
+void hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_iterator _end, unsigned _preLen, RLPStream& _rlp)
+{
+	RLPStream rlp;
+	hash256rlp(_s, _begin, _end, _preLen, rlp);
+	if (rlp.out().size() < 32)
+		_rlp.appendRaw(rlp.out());
+	else
+		_rlp << toCompactBigEndianString(sha3(rlp.out()));
 }
 
 u256 hash256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha256(RLPNull);
+		return sha3(RLPNull);
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(i->first)] = i->second;
-	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
+	RLPStream s;
+	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
+	return sha3(s.out());
 }
 
 u256 hash256(u256Map const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha256(RLPNull);
+		return sha3(RLPNull);
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(toBigEndianString(i->first))] = asString(rlp(i->second));
-	return hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0);
+	RLPStream s;
+	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
+	return sha3(s.out());
 }
-
 
 class TrieNode
 {
@@ -191,16 +205,21 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const = 0;
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) = 0;
 	virtual TrieNode* remove(bytesConstRef _key) = 0;
-	virtual bytes rlp() const = 0;
+	void putRLP(RLPStream& _parentStream) const;
 
 #if ENABLE_DEBUG_PRINT
-	void debugPrint(std::string const& _indent = "") const { std::cerr << std::hex << sha256() << ":" << std::endl; debugPrintBody(_indent); }
+	void debugPrint(std::string const& _indent = "") const { std::cerr << std::hex << sha3() << ":" << std::endl; debugPrintBody(_indent); }
 #endif
 
-	u256 sha256() const { /*if (!m_sha256)*/ m_sha256 = eth::sha256(rlp()); return m_sha256; }
-	void mark() { m_sha256 = 0; }
+	/// 256-bit hash of the node - this is a SHA-3/256 hash of the RLP of the node.
+	u256 hash256() const { RLPStream s; makeRLP(s); return eth::sha3(s.out()); }
+	bytes rlp() const { RLPStream s; makeRLP(s); return s.out(); }
+	void mark() { m_hash256 = 0; }
 
 protected:
+	void submitRLP(RLPStream& _rlpStream, bytes const& _rlpFragment) const;
+	virtual void makeRLP(RLPStream& _intoStream) const = 0;
+
 #if ENABLE_DEBUG_PRINT
 	virtual void debugPrintBody(std::string const& _indent = "") const = 0;
 #endif
@@ -208,7 +227,7 @@ protected:
 	static TrieNode* newBranch(bytesConstRef _k1, std::string const& _v1, bytesConstRef _k2, std::string const& _v2);
 
 private:
-	mutable u256 m_sha256 = 0;
+	mutable u256 m_hash256 = 0;
 };
 
 static const std::string c_nullString;
@@ -266,7 +285,7 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const override;
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
 	virtual TrieNode* remove(bytesConstRef _key) override;
-	virtual bytes rlp() const override;
+	virtual void makeRLP(RLPStream& _parentStream) const override;
 
 private:
 	/// @returns (byte)-1 when no active branches, 16 when multiple active and the index of the active branch otherwise.
@@ -299,7 +318,7 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const override { return contains(_key) ? m_value : c_nullString; }
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
 	virtual TrieNode* remove(bytesConstRef _key) override;
-	virtual bytes rlp() const override { return rlpList(hexPrefixEncode(m_ext, true), m_value); }
+	virtual void makeRLP(RLPStream& _parentStream) const override;
 
 private:
 	bool contains(bytesConstRef _key) const { return _key.size() == m_ext.size() && !memcmp(_key.data(), m_ext.data(), _key.size()); }
@@ -324,13 +343,47 @@ public:
 	virtual std::string const& at(bytesConstRef _key) const override { assert(m_next); return contains(_key) ? m_next->at(_key.cropped(m_ext.size())) : c_nullString; }
 	virtual TrieNode* insert(bytesConstRef _key, std::string const& _value) override;
 	virtual TrieNode* remove(bytesConstRef _key) override;
-	virtual bytes rlp() const override { assert(m_next); return rlpList(hexPrefixEncode(m_ext, false), toCompactBigEndianString(m_next->sha256())); }
+	virtual void makeRLP(RLPStream& _parentStream) const override;
 
 private:
 	bool contains(bytesConstRef _key) const { return _key.size() >= m_ext.size() && !memcmp(_key.data(), m_ext.data(), m_ext.size()); }
 
 	TrieNode* m_next;
 };
+
+void TrieNode::putRLP(RLPStream& _parentStream) const
+{
+	RLPStream s;
+	makeRLP(s);
+	if (s.out().size() < 32)
+		_parentStream.appendRaw(s.out());
+	else
+		_parentStream << toCompactBigEndianString(eth::sha3(s.out()));
+}
+
+void TrieBranchNode::makeRLP(RLPStream& _intoStream) const
+{
+	_intoStream.appendList(17);
+	for (auto i: m_nodes)
+		if (i)
+			i->putRLP(_intoStream);
+		else
+			_intoStream << "";
+	_intoStream << m_value;
+}
+
+void TrieLeafNode::makeRLP(RLPStream& _intoStream) const
+{
+	_intoStream.appendList(2) << hexPrefixEncode(m_ext, true) << m_value;
+}
+
+void TrieInfixNode::makeRLP(RLPStream& _intoStream) const
+{
+	assert(m_next);
+	_intoStream.appendList(2);
+	_intoStream << hexPrefixEncode(m_ext, false);
+	m_next->putRLP(_intoStream);
+}
 
 TrieNode* TrieNode::newBranch(bytesConstRef _k1, std::string const& _v1, bytesConstRef _k2, std::string const& _v2)
 {
@@ -426,15 +479,6 @@ TrieNode* TrieBranchNode::rejig()
 	}
 
 	return this;
-}
-
-bytes TrieBranchNode::rlp() const
-{
-	RLPStream s(17);
-	for (auto i: m_nodes)
-		s << (i ? toCompactBigEndianString(i->sha256()) : "");
-	s << m_value;
-	return s.out();
 }
 
 byte TrieBranchNode::activeBranch() const
@@ -549,9 +593,9 @@ Trie::~Trie()
 	delete m_root;
 }
 
-u256 Trie::sha256() const
+u256 Trie::hash256() const
 {
-	return m_root ? m_root->sha256() : eth::sha256(RLPNull);
+	return m_root ? m_root->hash256() : eth::sha3(RLPNull);
 }
 
 bytes Trie::rlp() const

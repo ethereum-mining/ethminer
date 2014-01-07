@@ -22,7 +22,6 @@
 #pragma once
 
 #include "Common.h"
-#include "sha256.h"
 #include "RLP.h"
 
 namespace eth
@@ -59,8 +58,8 @@ struct Transaction
 	void fillStream(RLPStream& _s, bool _sig = true) const;
 	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
 	std::string rlpString(bool _sig = true) const { return asString(rlp()); }
-	u256 sha256(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha256(s.out()); }
-	bytes sha256Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha256Bytes(s.out()); }
+	u256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
+	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
 };
 
 }

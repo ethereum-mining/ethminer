@@ -21,11 +21,11 @@
 
 #include <secp256k1.h>
 #include <random>
+#include "sha256.h"
 #include "Trie.h"
 #include "BlockChain.h"
 #include "Instruction.h"
 #include "Exceptions.h"
-#include "sha256.h"
 #include "State.h"
 using namespace std;
 using namespace eth;
@@ -50,7 +50,8 @@ void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
 	BlockInfo bi;
 	try
 	{
-		bi.verify(_bc.lastBlock(), _bc.lastBlockNumber());
+		bi.populate(_bc.lastBlock(), _bc.lastBlockNumber());
+		bi.verifyInternals(_bc.lastBlock());
 	}
 	catch (...)
 	{
@@ -140,20 +141,6 @@ u256 State::contractMemory(Address _contract, u256 _memory) const
 	return i == m->second.memory().end() ? 0 : i->second;
 }
 
-bool State::verify(bytes const& _block, uint _number)
-{
-	BlockInfo bi;
-	try
-	{
-		bi.verify(bytesConstRef((bytes*)&_block), _number);
-	}
-	catch (...)
-	{
-		return false;
-	}
-	return true;
-}
-
 void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
@@ -186,7 +173,7 @@ void State::execute(Transaction const& _t, Address _sender)
 		if (_t.fee < _t.data.size() * c_memoryFee + c_newContractFee)
 			throw FeeTooSmall();
 
-		Address newAddress = low160(_t.sha256());
+		Address newAddress = low160(_t.sha3());
 
 		if (isContractAddress(newAddress))
 			throw ContractAddressCollision();

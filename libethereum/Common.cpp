@@ -19,12 +19,15 @@
  * @date 2014
  */
 
+#include <sha3.h>
 #include <random>
 #include "Common.h"
 #include "Exceptions.h"
 #include "rmd160.h"
 using namespace std;
 using namespace eth;
+
+
 
 std::string eth::escaped(std::string const& _s, bool _all)
 {
@@ -148,4 +151,48 @@ u160 eth::ripemd160(bytesConstRef _message)
    for (i = 0; i < RMDsize / 8; ++i)
 	   ret = (ret << 8) | hashcode[i];
    return ret;
+}
+
+std::string eth::sha3(std::string const& _input, bool _hex)
+{
+	if (!_hex)
+	{
+		string ret(32, '\0');
+		CryptoPP::SHA3_256 ctx;
+		ctx.Update( (unsigned char*)_input.c_str(), _input.length());
+		ctx.Final((byte*)ret.data());
+		return ret;
+	}
+
+	CryptoPP::SHA3_256 ctx;
+	ctx.Update( (unsigned char*)_input.c_str(), _input.length());
+	unsigned char digest[32];
+	ctx.Final(digest);
+
+	std::string ret(64, '\0');
+	for (unsigned int i = 0; i < 32; i++)
+		sprintf((char*)(ret.data())+i*2, "%02x", digest[i]);
+	return ret;
+}
+
+bytes eth::sha3Bytes(bytesConstRef _input)
+{
+	CryptoPP::SHA3_256 ctx;
+	ctx.Update((byte*)_input.data(), _input.size());
+	bytes ret(32);
+	ctx.Final(ret.data());
+	return ret;
+}
+
+u256 eth::sha3(bytesConstRef _input)
+{
+	CryptoPP::SHA3_256 ctx;
+	ctx.Update(_input.data(), _input.size());
+	uint8_t buf[32];
+	ctx.Final(buf);
+
+	u256 ret = 0;
+	for (unsigned i = 0; i < 32; ++i)
+		ret = (ret << 8) | buf[i];
+	return ret;
 }

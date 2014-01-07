@@ -20,7 +20,6 @@
  */
 
 #include "Common.h"
-#include "sha256.h"
 #include "Exceptions.h"
 #include "RLP.h"
 #include "BlockInfo.h"
@@ -37,8 +36,8 @@ BlockInfo::BlockInfo()
 bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
-	auto sha256EmptyList = sha256(RLPEmptyList);
-	block.appendList(7) << (uint)0 << sha256EmptyList << (uint)0 << sha256EmptyList << (uint)0 << (uint)0 << (uint)0;
+	auto sha256EmptyList = sha3(RLPEmptyList);
+	block.appendList(7) << (uint)0 << sha256EmptyList << (uint)0 << sha256EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -58,7 +57,7 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 	try
 	{
 		RLP header = root[0];
-		hash = eth::sha256(_block);
+		hash = eth::sha3(_block);
 		parentHash = header[0].toInt<u256>();
 		sha256Uncles = header[1].toInt<u256>();
 		coinbaseAddress = header[2].toInt<u160>();
@@ -73,22 +72,15 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 	}
 }
 
-void BlockInfo::verify(bytesConstRef _block, u256 _number, u256 _parentHash)
+void BlockInfo::verifyInternals(bytesConstRef _block)
 {
-	populate(_block, _number);
-
 	RLP root(_block);
-	if (root[0][0].toInt<u256>() != _parentHash)
-		throw InvalidParentHash();
 
-	if (sha256Transactions != sha256(root[1].data()))
+	if (sha256Transactions != sha3(root[1].data()))
 		throw InvalidTransactionsHash();
 
-	if (sha256Uncles != sha256(root[2].data()))
+	if (sha256Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();
-
-	// TODO: check timestamp after previous timestamp.
-	// TODO: check parent's hash
 
 	// TODO: check difficulty against timestamp.
 	// TODO: check proof of work.

@@ -49,9 +49,6 @@ public:
 	/// Construct state object.
 	explicit State(Address _minerAddress);
 
-	/// Verify a given block.
-	bool verify(bytes const& _block, uint _number = 0);
-
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns true if it got lucky.

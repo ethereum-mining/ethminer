@@ -228,4 +228,13 @@ inline std::vector<_T> operator+(std::vector<typename std::enable_if<std::is_pod
 /// Calculate RIPEMD-160 hash of the given message.
 u160 ripemd160(bytesConstRef _message);
 
+std::string sha3(std::string const& _input, bool _hex);
+
+bytes sha3Bytes(bytesConstRef  _input);
+inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::string*)&_input); }
+inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
+
+u256 sha3(bytesConstRef _input);
+inline u256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+
 }

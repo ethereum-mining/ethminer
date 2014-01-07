@@ -23,7 +23,6 @@
 
 #include <map>
 #include "RLP.h"
-#include "sha256.h"
 
 namespace eth
 {
@@ -43,7 +42,7 @@ public:
 	Trie(): m_root(nullptr) {}
 	~Trie();
 
-	u256 sha256() const;
+	u256 hash256() const;
 	bytes rlp() const;
 
 	void debugPrint();

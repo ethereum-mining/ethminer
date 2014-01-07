@@ -41,8 +41,11 @@ void BlockChain::import(bytes const& _block)
 	BlockInfo bi;
 	try
 	{
-		bi.populate(_block, 0);
-		auto newHash = sha256(_block);
+		// VERIFY: populates from the block and checks the block is internally coherent.
+		bi.populate(&_block);
+		bi.verifyInternals(&_block);
+
+		auto newHash = eth::sha3(_block);
 
 		// Check block doesn't already exist first!
 		if (m_numberAndParent.count(newHash))
@@ -54,6 +57,10 @@ void BlockChain::import(bytes const& _block)
 			// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 			return;
 		bi.number = it->second.first + 1;
+
+		// CHECK ANCESTRY:
+		// TODO: check timestamp is after previous timestamp.
+		// TODO: check difficulty is correct given the two timestamps.
 
 		// Insert into DB
 		m_numberAndParent[newHash] = make_pair(bi.number, bi.parentHash);

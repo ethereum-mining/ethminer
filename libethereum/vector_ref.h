@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <cassert>
 #include <vector>
 #include <string>
@@ -18,7 +19,8 @@ public:
 	vector_ref(std::vector<typename std::remove_const<_T>::type>* _data): m_data(_data->data()), m_count(_data->size()) {}
 	vector_ref(_T* _data, unsigned _count): m_data(_data), m_count(_count) {}
 	vector_ref(std::string* _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
-	// TODO: const variants enabled only if is_const<_T>
+	vector_ref(std::vector<typename std::enable_if<std::is_const<_T>::value, typename std::remove_const<_T>::type>::type> const* _data): m_data(_data->data()), m_count(_data->size()) {}
+	vector_ref(std::enable_if<std::is_const<_T>::value, std::string const&> _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
 
 	explicit operator bool() const { return m_data && m_count; }
 

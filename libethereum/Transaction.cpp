@@ -44,20 +44,20 @@ Address Transaction::sender() const
 
 	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
 	assert(sig.size() == 64);
-	bytes msg = sha256Bytes(false);
+	bytes msg = sha3Bytes(false);
 
 	byte pubkey[65];
 	int pubkeylen = 65;
 	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
 		throw InvalidSignature();
-	return low160(eth::sha256(bytesConstRef(&(pubkey[1]), 64)));
+	return low160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 }
 
 void Transaction::sign(PrivateKey _priv)
 {
 	int v = 0;
 
-	u256 msg = sha256(false);
+	u256 msg = sha3(false);
 	byte sig[64];
 	if (!secp256k1_ecdsa_sign_compact(toBigEndian(msg).data(), 32, sig, toBigEndian(_priv).data(), toBigEndian(kFromMessage(msg, _priv)).data(), &v))
 		throw InvalidSignature();
