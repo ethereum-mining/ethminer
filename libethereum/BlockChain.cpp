@@ -36,6 +36,13 @@ BlockChain::~BlockChain()
 {
 }
 
+std::vector<u256> blockChain() const
+{
+	// TODO: return the current valid block chain from most recent to genesis.
+	// TODO: arguments for specifying a set of early-ends
+	return std::vector<u256>();
+}
+
 void BlockChain::import(bytes const& _block)
 {
 	BlockInfo bi;
@@ -59,6 +66,7 @@ void BlockChain::import(bytes const& _block)
 		bi.number = it->second.first + 1;
 
 		// CHECK ANCESTRY:
+		// TODO: check it hashes according to proof of work.
 		// TODO: check timestamp is after previous timestamp.
 		// TODO: check difficulty is correct given the two timestamps.
 

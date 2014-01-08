@@ -45,8 +45,10 @@ State::State(Address _minerAddress): m_minerAddress(_minerAddress)
 	m_currentBlock.number = 1;
 }
 
-void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
+void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 {
+	// BLOCK
+
 	BlockInfo bi;
 	try
 	{
@@ -55,6 +57,7 @@ void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
 	}
 	catch (...)
 	{
+		// TODO: Slightly nicer handling? :-)
 		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
 		exit(1);
 	}
@@ -79,6 +82,69 @@ void State::sync(BlockChain const& _bc, TransactionQueue const& _tq)
 		// New blocks available, or we've switched to a different branch. All change.
 		// TODO: Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
+		std::vector<u256> l = _bc.blockChain();	// TODO: take u256Set "restorePoints" argument so it needs only give us the chain up until some restore point in the past where we stored the state.
+
+		if (l.back() == BlockInfo::genesis().hash)
+		{
+			// Reset to genesis block.
+			m_current.clear();
+			m_previousBlock = BlockInfo::genesis();
+		}
+		else
+		{
+			// TODO: Begin at a restore point.
+		}
+
+		// Iterate through in reverse, playing back each of the blocks.
+		for (auto it = next(l.cbegin()); it != l.cend(); ++it)
+			playback(_bc.block(*it));
+
+		m_transactions.clear();
+	}
+
+
+	// TRANSACTIONS
+
+	auto ts = _tq.transactions();
+	for (auto const& i: ts)
+		if (!m_transactions.count(i.first))
+			// don't have it yet! Execute it now.
+			try
+			{
+				Transaction t(i.second);
+				execute(t, t.sender());
+			}
+			catch (InvalidNonce in)
+			{
+				if (in.required > in.candidate)
+					// too old
+					_tq.drop(i.first);
+			}
+			catch (...)
+			{
+			}
+}
+
+void State::playback(bytesConstRef _block)
+{
+	BlockInfo bi;
+	try
+	{
+		bi.populate(_block, m_previousBlock.number + 1);
+		bi.verifyInternals(_block);
+		if (bi.parentHash != m_previousBlock.hash)
+			throw InvalidParentHash();
+
+		// All ok with the block generally. Play back the transactions now...
+		RLP txs = _block[1];
+		for (auto const& i: txs)
+			execute(i.data());
+	}
+	catch (...)
+	{
+		// TODO: Slightly nicer handling? :-)
+		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+		exit(1);
 	}
 }
 
@@ -149,12 +215,12 @@ void State::execute(Transaction const& _t, Address _sender)
 	if (_t.nonce != transactionsFrom(_sender))
 		throw InvalidNonce();
 
-	// Add to the transactions in
-	m_transactions.push_back(_t);
-
 	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
+
+	// Add to the transactions in
+	m_transactions.push_back(_t.sha3(), _t);
 
 	if (_t.receiveAddress)
 	{

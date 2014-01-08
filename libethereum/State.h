@@ -108,10 +108,13 @@ private:
 	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
 
+	/// Execute all transactions within a given block.
+	void playback(bytesConstRef _block);
+
 	// TODO: std::hash<Address> and then move to unordered_map.
 	// Will need to sort on hash construction.
 	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
-	std::vector<Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+	std::map<u256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.

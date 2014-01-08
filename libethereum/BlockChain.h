@@ -52,11 +52,16 @@ public:
 	/// To be called from main loop every 100ms or so.
 	void process();
 	
+	/// Attempt to import the given block.
+	bool attemptImport(bytes const& _block) { try { import(_bytes); return true; } catch (...) { return false; } }
+
 	/// Import block into disk-backed DB
 	void import(bytes const& _block);
 
 	/// Get the last block of the longest chain.
 	bytesConstRef lastBlock() const;	// TODO: switch to return MappedBlock or add the lock into vector_ref
+
+	std::vector<u256> blockChain()
 
 	/// Get the number of the last block of the longest chain.
 	u256 lastBlockNumber() const;
