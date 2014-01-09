@@ -30,7 +30,5 @@ On Ubuntu:
 
 ## Contributing
 
-Read CodingStandards.txt thoroughly, before making alterations to the code base.
-
-Do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formating guidelines as describled in CodingStandards.txt. Your contributions will be refused and your commits will be reversed.
+Please read CodingStandards.txt thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formating guidelines as describled in CodingStandards.txt.
 

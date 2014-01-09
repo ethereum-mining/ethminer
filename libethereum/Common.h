@@ -201,6 +201,13 @@ inline u160 low160(_T const& _t)
 	return (u160)(_t & ((((_T)1) << 160) - 1));
 }
 
+/// Convert the given value into u160 (160-bit unsigned integer) by taking the lowest order 160-bits and discarding the rest.
+template <class _T>
+inline u160 high160(_T const& _t)
+{
+	return (u160)(_t >> 96);
+}
+
 /// Convert the given value safely into u160 (160-bit unsigned integer).
 /// @note Currently unsafe.
 template <class _T>
@@ -230,6 +237,8 @@ inline std::vector<_T> operator+(std::vector<typename std::enable_if<std::is_pod
 
 /// Calculate RIPEMD-160 hash of the given message.
 u160 ripemd160(bytesConstRef _message);
+
+void sha3(bytesConstRef _input, bytesRef _output);
 
 std::string sha3(std::string const& _input, bool _hex);
 

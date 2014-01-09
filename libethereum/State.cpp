@@ -20,8 +20,9 @@
  */
 
 #include <secp256k1.h>
+#include <sha.h>
+#include <ripemd.h>
 #include <random>
-#include "sha256.h"
 #include "Trie.h"
 #include "BlockChain.h"
 #include "Instruction.h"
@@ -490,26 +491,41 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.push_back(m_currentBlock.difficulty);
 			break;
 		case Instruction::SHA256:
-		case Instruction::RIPEMD160:
 		{
 			uint s = (uint)min(stack.back(), (u256)(stack.size() - 1) * 32);
-			bytes b(s);
+			stack.pop_back();
+
+			CryptoPP::SHA256 digest;
 			uint i = 0;
 			for (; s; s = (s >= 32 ? s - 32 : 0), i += 32)
 			{
+				bytes b = toBigEndian(stack.back());
+				digest.Update(b.data(), (int)min<u256>(32, s));			// b.size() == 32
 				stack.pop_back();
-				u256 v = stack.back();
-				int sz = (int)min<u256>(32, s) - 1;						// sz is one fewer than the number of bytes we're interested in.
-				v >>= ((31 - sz) * 8);									// kill unused low-order bytes.
-				for (int j = 0; j <= sz; ++j, v >>= 8)					// cycle through bytes, starting at low-order end.
-					b[i + sz - j] = (byte)(v & 0xff);					// set each 32-byte (256-bit) chunk in reverse - (i.e. we want to put low-order last).
 			}
-			if (inst == Instruction::SHA256)
-				stack.back() = sha256(b);
-			else
-				// NOTE: this aligns to right of 256-bit container (low-order bytes).
-				// This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
-				stack.back() = ripemd160(&b);
+			array<byte, 32> final;
+			digest.TruncatedFinal(final.data(), 32);
+			stack.push_back(fromBigEndian<u256>(final));
+			break;
+		}
+		case Instruction::RIPEMD160:
+		{
+			uint s = (uint)min(stack.back(), (u256)(stack.size() - 1) * 32);
+			stack.pop_back();
+
+			CryptoPP::RIPEMD160 digest;
+			uint i = 0;
+			for (; s; s = (s >= 32 ? s - 32 : 0), i += 32)
+			{
+				bytes b = toBigEndian(stack.back());
+				digest.Update(b.data(), (int)min<u256>(32, s));			// b.size() == 32
+				stack.pop_back();
+			}
+			array<byte, 20> final;
+			digest.TruncatedFinal(final.data(), 20);
+			// NOTE: this aligns to right of 256-bit container (low-order bytes).
+			// This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
+			stack.push_back((u256)fromBigEndian<u160>(final));
 			break;
 		}
 		case Instruction::ECMUL:
