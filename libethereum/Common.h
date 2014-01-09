@@ -24,6 +24,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <cassert>
 #include <sstream>
@@ -51,6 +52,8 @@ using uint = uint64_t;
 using sint = int64_t;
 using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
+using u256Set = std::set<u256>;
+using u160Set = std::set<u160>;
 
 // Map types.
 using StringMap = std::map<std::string, std::string>;

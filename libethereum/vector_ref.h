@@ -4,6 +4,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <leveldb/db.h>
 
 namespace eth
 {
@@ -21,6 +22,7 @@ public:
 	vector_ref(std::string* _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
 	vector_ref(std::vector<typename std::enable_if<std::is_const<_T>::value, typename std::remove_const<_T>::type>::type> const* _data): m_data(_data->data()), m_count(_data->size()) {}
 	vector_ref(std::enable_if<std::is_const<_T>::value, std::string const&> _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
+	vector_ref(leveldb::Slice const& _s): m_data(_s.data()), m_count(_s.size() / sizeof(_T)) {}
 
 	explicit operator bool() const { return m_data && m_count; }
 
@@ -48,11 +50,18 @@ public:
 	bool operator==(vector_ref<_T> const& _cmp) const { return m_data == _cmp.m_data && m_count == _cmp.m_count; }
 	bool operator!=(vector_ref<_T> const& _cmp) const { return !operator==(); }
 
+	operator leveldb::Slice() const { return leveldb::Slice((char const*)m_data, m_count * sizeof(_T)); }
+
 	void reset() { m_data = nullptr; m_count = 0; }
 
 private:
 	_T* m_data;
 	unsigned m_count;
 };
+
+template<class _T> vector_ref<_T const> ref(_T const& _t) { return vector_ref<_T const>(&_t, 1); }
+template<class _T> vector_ref<_T> ref(_T& _t) { return vector_ref<_T>(&_t, 1); }
+template<class _T> vector_ref<_T const> ref(std::vector<_T> const& _t) { return vector_ref<_T const>(&_t); }
+template<class _T> vector_ref<_T> ref(std::vector<_T>& _t) { return vector_ref<_T>(&_t); }
 
 }

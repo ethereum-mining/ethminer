@@ -41,7 +41,8 @@ struct Signature
 struct Transaction
 {
 	Transaction() {}
-	Transaction(bytes const& _rlp);
+	Transaction(bytesConstRef _rlp);
+	Transaction(bytes const& _rlp): Transaction(&_rlp) {}
 
 	u256 nonce;
 	Address receiveAddress;

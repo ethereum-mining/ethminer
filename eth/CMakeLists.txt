@@ -14,6 +14,7 @@ link_directories(../libethereum)
 add_executable(eth ${SRC_LIST})
 
 target_link_libraries(eth ethereum)
+target_link_libraries(eth leveldb)
 target_link_libraries(eth secp256k1)
 target_link_libraries(eth cryptopp)
 target_link_libraries(eth gmp)

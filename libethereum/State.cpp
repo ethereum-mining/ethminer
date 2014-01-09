@@ -87,7 +87,6 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 		if (l.back() == BlockInfo::genesis().hash)
 		{
 			// Reset to genesis block.
-			m_current.clear();
 			m_previousBlock = BlockInfo::genesis();
 		}
 		else
@@ -100,6 +99,9 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 			playback(_bc.block(*it));
 
 		m_transactions.clear();
+		m_current.clear();
+		m_currentBlock = BlockInfo();
+		m_currentBlock.number = m_previousBlock.number + 1;
 	}
 
 
@@ -127,18 +129,23 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 
 void State::playback(bytesConstRef _block)
 {
-	BlockInfo bi;
 	try
 	{
-		bi.populate(_block, m_previousBlock.number + 1);
-		bi.verifyInternals(_block);
-		if (bi.parentHash != m_previousBlock.hash)
+		m_currentBlock.populate(_block, m_previousBlock.number + 1);
+		m_currentBlock.verifyInternals(_block);
+		if (m_currentBlock.parentHash != m_previousBlock.hash)
 			throw InvalidParentHash();
 
 		// All ok with the block generally. Play back the transactions now...
-		RLP txs = _block[1];
+		RLP txs = RLP(_block)[1];
 		for (auto const& i: txs)
 			execute(i.data());
+
+		// Hash the state trie and check against the state_root hash in m_currentBlock.
+		if (m_currentBlock.stateRoot != currentHash())
+			throw InvalidStateRoot();
+
+		m_previousBlock = m_currentBlock;
 	}
 	catch (...)
 	{
@@ -146,6 +153,12 @@ void State::playback(bytesConstRef _block)
 		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
 		exit(1);
 	}
+}
+
+u256 State::currentHash() const
+{
+	// TODO!
+	return 0;
 }
 
 bool State::mine(uint _msTimeout) const
@@ -207,20 +220,40 @@ u256 State::contractMemory(Address _contract, u256 _memory) const
 	return i == m->second.memory().end() ? 0 : i->second;
 }
 
+bool State::execute(bytesConstRef _rlp)
+{
+	// Entry point for a user-executed transaction.
+	try
+	{
+		Transaction t(_rlp);
+		execute(t, t.sender());
+
+		// Add to the user-originated transactions that we've executed.
+		// NOTE: Here, contract-originated transactions will not get added to the transaction list.
+		// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
+		// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
+		m_transactions.insert(make_pair(t.sha3(), t));
+
+		return true;
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
 void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
 
 	// Ignore invalid transactions.
-	if (_t.nonce != transactionsFrom(_sender))
-		throw InvalidNonce();
+	auto nonceReq = transactionsFrom(_sender);
+	if (_t.nonce != nonceReq)
+		throw InvalidNonce(nonceReq, _t.nonce);
 
 	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
-
-	// Add to the transactions in
-	m_transactions.push_back(_t.sha3(), _t);
 
 	if (_t.receiveAddress)
 	{

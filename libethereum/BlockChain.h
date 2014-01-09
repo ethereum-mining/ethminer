@@ -22,22 +22,11 @@
 #pragma once
 
 #include "Common.h"
+#include <leveldb/db.h>
+namespace ldb = leveldb;
 
 namespace eth
 {
-
-class MappedBlock
-{
-public:
-	MappedBlock() {}
-	MappedBlock(u256 _hash) {}	// TODO: map memory from disk.
-	~MappedBlock() {}			// TODO: unmap memory from disk
-
-	bytesConstRef data() const { return bytesConstRef(); }
-
-private:
-	// TODO: memory mapping.
-};
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -53,15 +42,16 @@ public:
 	void process();
 	
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block) { try { import(_bytes); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _block) { try { import(_block); return true; } catch (...) { return false; } }
 
 	/// Import block into disk-backed DB
 	void import(bytes const& _block);
 
 	/// Get the last block of the longest chain.
-	bytesConstRef lastBlock() const;	// TODO: switch to return MappedBlock or add the lock into vector_ref
+	bytesConstRef lastBlock() const { return block(m_lastBlockHash); }
 
-	std::vector<u256> blockChain()
+	/// Get the full block chain, according to the GHOST algo and the blocks available in the db.
+	u256s blockChain() const;
 
 	/// Get the number of the last block of the longest chain.
 	u256 lastBlockNumber() const;
@@ -73,8 +63,7 @@ private:
 	mutable std::map<u256, std::pair<u256, u256>> m_numberAndParent;
 	mutable std::multimap<u256, u256> m_children;
 
-	/// Gets populated on demand. Inactive nodes are pruned after a while.
-	mutable std::map<u256, std::shared_ptr<MappedBlock>> m_cache;
+	ldb::DB* m_db;
 
 	/// Hash of the last (valid) block on the longest chain.
 	u256 m_lastBlockHash;

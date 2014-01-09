@@ -59,11 +59,12 @@ public:
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	void sync(BlockChain const& _bc, TransactionQueue const& _tq);
+	/// We also sync our transactions, killing those from the queue that we have and assimilating those that we don't.
+	void sync(BlockChain const& _bc, TransactionQueue& _tq);
 
 	/// Execute a given transaction.
-	bool execute(bytes const& _rlp) { try { Transaction t(_rlp); execute(t, t.sender()); } catch (...) { return false; } }
-
+	bool execute(bytes const& _rlp) { return execute(&_rlp); }
+	bool execute(bytesConstRef _rlp);
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
 
@@ -110,6 +111,8 @@ private:
 
 	/// Execute all transactions within a given block.
 	void playback(bytesConstRef _block);
+
+	u256 currentHash() const;
 
 	// TODO: std::hash<Address> and then move to unordered_map.
 	// Will need to sort on hash construction.

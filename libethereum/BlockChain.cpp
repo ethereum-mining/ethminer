@@ -20,6 +20,9 @@
  */
 
 #include "Common.h"
+#include "RLP.h"
+#include "Exceptions.h"
+#include "Dagger.h"
 #include "BlockInfo.h"
 #include "BlockChain.h"
 using namespace std;
@@ -27,6 +30,9 @@ using namespace eth;
 
 BlockChain::BlockChain()
 {
+	ldb::Options o;
+	auto s = ldb::DB::Open(o, "blockchain", &m_db);
+
 	// Initialise with the genesis as the last block on the longest chain.
 	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
 	m_genesisBlock = BlockInfo::createGenesisBlock();
@@ -36,11 +42,13 @@ BlockChain::~BlockChain()
 {
 }
 
-std::vector<u256> blockChain() const
+u256s BlockChain::blockChain() const
 {
 	// TODO: return the current valid block chain from most recent to genesis.
 	// TODO: arguments for specifying a set of early-ends
-	return std::vector<u256>();
+	u256s ret;
+
+	return ret;
 }
 
 void BlockChain::import(bytes const& _block)
@@ -65,17 +73,35 @@ void BlockChain::import(bytes const& _block)
 			return;
 		bi.number = it->second.first + 1;
 
-		// CHECK ANCESTRY:
-		// TODO: check it hashes according to proof of work.
-		// TODO: check timestamp is after previous timestamp.
+		// Check Ancestry:
+		// Check timestamp is after previous timestamp.
+		if (bi.timestamp <= BlockInfo(block(bi.parentHash)).timestamp)
+			throw InvalidTimestamp();
+
 		// TODO: check difficulty is correct given the two timestamps.
+//		if (bi.timestamp )
+
+		// TODO: check transactions are valid and that they result in a state equivalent to our state_root.
+		// this saves us from an embarrassing exit later.
+
+		// Check uncles.
+		for (auto const& i: RLP(_block)[2])
+		{
+			auto it = m_numberAndParent.find(i.toInt<u256>());
+			if (it == m_numberAndParent.end())
+				return;	// Don't (yet) have the uncle in our list.
+			if (it->second.second != bi.parentHash)
+				throw InvalidUncle();
+		}
 
 		// Insert into DB
 		m_numberAndParent[newHash] = make_pair(bi.number, bi.parentHash);
 		m_children.insert(make_pair(bi.parentHash, newHash));
-		// TODO: put _block onto disk and load into cache.
+		ldb::WriteOptions o;
+		m_db->Put(o, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
 
 		// This might be the new last block; count back through ancestors to common shared ancestor and compare to current.
+		// TODO: Use GHOST algorithm.
 	}
 	catch (...)
 	{
@@ -86,22 +112,9 @@ void BlockChain::import(bytes const& _block)
 
 bytesConstRef BlockChain::block(u256 _hash) const
 {
-	auto it = m_cache.find(_hash);
-	if (it == m_cache.end())
-	{
-		// Load block from disk.
-		pair<u256, std::shared_ptr<MappedBlock>> loaded;
-		it = m_cache.insert(loaded).first;
-	}
-	return it->second->data();
-}
-
-bytesConstRef BlockChain::lastBlock() const
-{
-	if (m_lastBlockHash == m_genesisHash)
-		return bytesConstRef((bytes*)&m_genesisBlock);
-
-	return block(m_lastBlockHash);
+	if (_hash == m_genesisHash)
+		return &m_genesisBlock;
+	return &m_genesisBlock;
 }
 
 u256 BlockChain::lastBlockNumber() const

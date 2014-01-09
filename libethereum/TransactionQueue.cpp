@@ -28,14 +28,14 @@ void TransactionQueue::import(bytes const& _block)
 {
 	// Check if we already know this transaction.
 	u256 h = sha3(_block);
-	if (m_hashes.count(h))
+	if (m_data.count(h))
 		return;
 
 	// Check validity of _block as a transaction. To do this we just deserialise and attempt to determine the sender. If it doesn't work, the signature is bad.
 	// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 	Transaction t(_block);
-	u160 sender = t.sender();
+	t.sender();
 
 	// If valid, append to blocks.
-	m_data[h] = m_data;
+	m_data[h] = _block;
 }

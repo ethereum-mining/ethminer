@@ -34,13 +34,13 @@ class BlockChain;
 class TransactionQueue
 {
 public:
-	bool attemptImport(bytes const& _block) { try { import(_bytes); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _block) { try { import(_block); return true; } catch (...) { return false; } }
 
 	void import(bytes const& _block);
 
 	void drop(u256 _txHash) { m_data.erase(_txHash); }
 
-	std::map<u256, bytes> const& transactions() const;
+	std::map<u256, bytes> const& transactions() const { return m_data; }
 
 private:
 	std::map<u256, bytes> m_data;	///< the queue.

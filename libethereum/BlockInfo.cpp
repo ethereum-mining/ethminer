@@ -20,6 +20,7 @@
  */
 
 #include "Common.h"
+#include "Dagger.h"
 #include "Exceptions.h"
 #include "RLP.h"
 #include "BlockInfo.h"
@@ -33,14 +34,24 @@ BlockInfo::BlockInfo()
 	number = Invalid256;
 }
 
+BlockInfo::BlockInfo(bytesConstRef _block, u256 _number)
+{
+	populate(_block, _number);
+}
+
 bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
-	auto sha256EmptyList = sha3(RLPEmptyList);
-	block.appendList(7) << (uint)0 << sha256EmptyList << (uint)0 << sha256EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0;
+	auto sha3EmptyList = sha3(RLPEmptyList);
+	block.appendList(8) << (uint)0 << sha3EmptyList << (uint)0 << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
+}
+
+u256 BlockInfo::headerHashWithoutNonce() const
+{
+	return sha3((RLPStream(7) << toBigEndianString(parentHash) << toBigEndianString(sha3Uncles) << coinbaseAddress << toBigEndianString(stateRoot) << toBigEndianString(sha3Transactions) << difficulty << timestamp).out());
 }
 
 void BlockInfo::populateGenesis()
@@ -59,12 +70,13 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 		RLP header = root[0];
 		hash = eth::sha3(_block);
 		parentHash = header[0].toInt<u256>();
-		sha256Uncles = header[1].toInt<u256>();
+		sha3Uncles = header[1].toInt<u256>();
 		coinbaseAddress = header[2].toInt<u160>();
-		sha256Transactions = header[3].toInt<u256>();
-		difficulty = header[4].toInt<uint>();
-		timestamp = header[5].toInt<u256>();
-		nonce = header[6].toInt<u256>();
+		stateRoot = header[3].toInt<u256>();
+		sha3Transactions = header[4].toInt<u256>();
+		difficulty = header[5].toInt<u256>();
+		timestamp = header[6].toInt<u256>();
+		nonce = header[7].toInt<u256>();
 	}
 	catch (RLP::BadCast)
 	{
@@ -76,14 +88,14 @@ void BlockInfo::verifyInternals(bytesConstRef _block)
 {
 	RLP root(_block);
 
-	if (sha256Transactions != sha3(root[1].data()))
+	if (sha3Transactions != sha3(root[1].data()))
 		throw InvalidTransactionsHash();
 
-	if (sha256Uncles != sha3(root[2].data()))
+	if (sha3Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();
 
-	// TODO: check difficulty against timestamp.
-	// TODO: check proof of work.
-
-	// TODO: check each transaction - allow coinbaseAddress for the miner fees, but everything else must be exactly how we would do it.
+	// check it hashes according to proof of work.
+	Dagger d(headerHashWithoutNonce());
+	if (d.eval(nonce) >= difficulty)
+		throw InvalidNonce();
 }

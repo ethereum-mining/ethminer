@@ -17,16 +17,21 @@ Dagger::~Dagger()
 {
 }
 
+u256 Dagger::bound(u256 _diff)
+{
+	return (u256)((bigint(1) << 256) / _diff);
+}
+
 u256 Dagger::search(uint _msTimeout, u256 _diff)
 {
 	static mt19937_64 s_engine((std::random_device())());
-	u256 bound = (u256)((bigint(1) << 256) / _diff);
+	u256 b = bound(_diff);
 
 	auto start = steady_clock::now();
 
 	while (steady_clock::now() - start < milliseconds(_msTimeout))
 		for (uint sp = std::uniform_int_distribution<uint>()(s_engine), j = 0; j < 1000; ++j, ++sp)
-			if (eval(sp) < bound)
+			if (eval(sp) < b)
 				return sp;
 	return 0;
 }

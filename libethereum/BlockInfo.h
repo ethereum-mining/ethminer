@@ -31,15 +31,17 @@ struct BlockInfo
 public:
 	u256 hash;
 	u256 parentHash;
-	u256 sha256Uncles;
+	u256 sha3Uncles;
 	u256 coinbaseAddress;
-	u256 sha256Transactions;
+	u256 stateRoot;
+	u256 sha3Transactions;
 	u256 difficulty;
 	u256 timestamp;
 	u256 nonce;
 	u256 number;
 
 	BlockInfo();
+	explicit BlockInfo(bytesConstRef _block, u256 _number = 0);
 
 	explicit operator bool() { return number != Invalid256; }
 
@@ -48,6 +50,9 @@ public:
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populate(bytesConstRef _block, u256 _number = 0);
 	void verifyInternals(bytesConstRef _block);
+
+	/// No-nonce sha3 of the header only.
+	u256 headerHashWithoutNonce() const;
 
 	static bytes createGenesisBlock();
 
