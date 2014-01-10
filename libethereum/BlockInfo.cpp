@@ -84,7 +84,7 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 	}
 }
 
-void BlockInfo::verifyInternals(bytesConstRef _block)
+void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
@@ -98,4 +98,33 @@ void BlockInfo::verifyInternals(bytesConstRef _block)
 	Dagger d(headerHashWithoutNonce());
 	if (d.eval(nonce) >= difficulty)
 		throw InvalidNonce();
+}
+
+u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
+{
+	/*
+	D(genesis_block) = 2^36
+	D(block) =
+		if block.timestamp >= block.parent.timestamp + 42: D(block.parent) - floor(D(block.parent) / 1024)
+		else:                                              D(block.parent) + floor(D(block.parent) / 1024)
+			*/
+	if (number == 0)
+		return (u256)1 << 36;
+	else
+		return timestamp >= _parent.timestamp + 42 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
+}
+
+void BlockInfo::verifyParent(BlockInfo const& _parent) const
+{
+	if (number == 0)
+		// Genesis block - no parent.
+		return;
+
+	// Check timestamp is after previous timestamp.
+	if (_parent.timestamp <= _parent.timestamp)
+		throw InvalidTimestamp();
+
+	// Check difficulty is correct given the two timestamps.
+	if (difficulty != calculateDifficulty(_parent))
+		throw InvalidDifficulty();
 }

@@ -49,7 +49,10 @@ public:
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populate(bytesConstRef _block, u256 _number = 0);
-	void verifyInternals(bytesConstRef _block);
+	void verifyInternals(bytesConstRef _block) const;
+	void verifyParent(BlockInfo const& _parent) const;
+
+	u256 calculateDifficulty(BlockInfo const& _bi) const;
 
 	/// No-nonce sha3 of the header only.
 	u256 headerHashWithoutNonce() const;

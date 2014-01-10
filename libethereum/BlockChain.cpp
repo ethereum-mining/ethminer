@@ -42,12 +42,16 @@ BlockChain::~BlockChain()
 {
 }
 
-u256s BlockChain::blockChain() const
+u256s BlockChain::blockChain(u256Set const& _earlyExit) const
 {
 	// TODO: return the current valid block chain from most recent to genesis.
 	// TODO: arguments for specifying a set of early-ends
 	u256s ret;
-
+	ret.reserve(m_numberAndParent[m_lastBlockHash].first + 1);
+	auto i = m_lastBlockHash;
+	for (; i != m_genesisHash && !_earlyExit.count(i); i = m_numberAndParent[i].second)
+		ret.push_back(i);
+	ret.push_back(i);
 	return ret;
 }
 
@@ -73,13 +77,9 @@ void BlockChain::import(bytes const& _block)
 			return;
 		bi.number = it->second.first + 1;
 
-		// Check Ancestry:
-		// Check timestamp is after previous timestamp.
-		if (bi.timestamp <= BlockInfo(block(bi.parentHash)).timestamp)
-			throw InvalidTimestamp();
-
-		// TODO: check difficulty is correct given the two timestamps.
-//		if (bi.timestamp )
+		// Check family:
+		BlockInfo bip(block(bi.parentHash));
+		bi.verifyParent(bip);
 
 		// TODO: check transactions are valid and that they result in a state equivalent to our state_root.
 		// this saves us from an embarrassing exit later.
@@ -95,13 +95,14 @@ void BlockChain::import(bytes const& _block)
 		}
 
 		// Insert into DB
-		m_numberAndParent[newHash] = make_pair(bi.number, bi.parentHash);
+		m_numberAndParent[newHash] = make_pair((uint)bi.number, bi.parentHash);
 		m_children.insert(make_pair(bi.parentHash, newHash));
 		ldb::WriteOptions o;
 		m_db->Put(o, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
 
 		// This might be the new last block; count back through ancestors to common shared ancestor and compare to current.
 		// TODO: Use GHOST algorithm.
+
 	}
 	catch (...)
 	{

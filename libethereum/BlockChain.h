@@ -51,7 +51,7 @@ public:
 	bytesConstRef lastBlock() const { return block(m_lastBlockHash); }
 
 	/// Get the full block chain, according to the GHOST algo and the blocks available in the db.
-	u256s blockChain() const;
+	u256s blockChain(u256Set const& _earlyExit) const;
 
 	/// Get the number of the last block of the longest chain.
 	u256 lastBlockNumber() const;
@@ -60,7 +60,7 @@ public:
 
 private:
 	/// Get fully populated from disk DB.
-	mutable std::map<u256, std::pair<u256, u256>> m_numberAndParent;
+	mutable std::map<u256, std::pair<uint, u256>> m_numberAndParent;
 	mutable std::multimap<u256, u256> m_children;
 
 	ldb::DB* m_db;

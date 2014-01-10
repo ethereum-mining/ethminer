@@ -83,7 +83,7 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 		// New blocks available, or we've switched to a different branch. All change.
 		// TODO: Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
-		std::vector<u256> l = _bc.blockChain();	// TODO: take u256Set "restorePoints" argument so it needs only give us the chain up until some restore point in the past where we stored the state.
+		std::vector<u256> l = _bc.blockChain(u256Set());	// TODO: take u256Set "restorePoints" argument so it needs only give us the chain up until some restore point in the past where we stored the state.
 
 		if (l.back() == BlockInfo::genesis().hash)
 		{
@@ -125,6 +125,8 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 			}
 			catch (...)
 			{
+				// Something else went wrong - drop it.
+				_tq.drop(i.first);
 			}
 }
 
