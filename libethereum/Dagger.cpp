@@ -36,12 +36,14 @@ u256 Dagger::search(uint _msTimeout, u256 _diff)
 	return 0;
 }
 
-template <class _T>
-inline void update(_T& _sha, u256 const& _value)
+template <class _T, class _U>
+inline void update(_T& _sha, _U const& _value)
 {
-	std::array<byte, 32> buf;
+	int i = 0;
+	for (_U v = _value; v; ++i, v >>= 8) {}
+	bytes buf(i);
 	toBigEndian(_value, buf);
-	_sha.Update(buf.data(), 32);
+	_sha.Update(buf.data(), buf.size());
 }
 
 template <class _T>
@@ -54,7 +56,7 @@ inline u256 get(_T& _sha)
 
 u256 Dagger::node(uint_fast32_t _L, uint_fast32_t _i) const
 {
-	if (!_L && !_i)
+	if (_L == _i)
 		return m_hash;
 	u256 m = (_L == 9) ? 16 : 3;
 	CryptoPP::SHA3_256 bsha;
@@ -67,7 +69,8 @@ u256 Dagger::node(uint_fast32_t _L, uint_fast32_t _i) const
 		update(sha, (u256)_i);
 		update(sha, (u256)k);
 		uint_fast32_t pk = (uint_fast32_t)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
-		update(bsha, node(_L - 1, pk));
+		auto u = node(_L - 1, pk);
+		update(bsha, u);
 	}
 	return get(bsha);
 }
@@ -85,7 +88,8 @@ u256 Dagger::eval(u256 _N)
 		update(sha, _N);
 		update(sha, (u256)k);
 		uint_fast32_t pk = (uint_fast32_t)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
-		update(bsha, node(9, pk));
+		auto u = node(9, pk);
+		update(bsha, u);
 	}
 	return get(bsha);
 }
