@@ -48,7 +48,7 @@ bytes BlockInfo::createGenesisBlock()
 	return block.out();
 }
 
-u256 BlockInfo::headerHashWithoutNonce() const
+h256 BlockInfo::headerHashWithoutNonce() const
 {
 	return sha3((RLPStream(7) << toBigEndianString(parentHash) << toBigEndianString(sha3Uncles) << coinbaseAddress << toBigEndianString(stateRoot) << toBigEndianString(sha3Transactions) << difficulty << timestamp).out());
 }
@@ -66,11 +66,11 @@ void BlockInfo::populate(bytesConstRef _block)
 	{
 		RLP header = root[0];
 		hash = eth::sha3(_block);
-		parentHash = header[0].toInt<u256>();
-		sha3Uncles = header[1].toInt<u256>();
-		coinbaseAddress = header[2].toInt<u160>();
-		stateRoot = header[3].toInt<u256>();
-		sha3Transactions = header[4].toInt<u256>();
+		parentHash = header[0].toHash<h256>();
+		sha3Uncles = header[1].toHash<h256>();
+		coinbaseAddress = header[2].toHash<Address>();
+		stateRoot = header[3].toHash<h256>();
+		sha3Transactions = header[4].toHash<h256>();
 		difficulty = header[5].toInt<u256>();
 		timestamp = header[6].toInt<u256>();
 		nonce = header[7].toInt<u256>();

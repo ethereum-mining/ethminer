@@ -29,7 +29,7 @@ Transaction::Transaction(bytesConstRef _rlpData)
 {
 	RLP rlp(_rlpData);
 	nonce = rlp[0].toInt<u256>(RLP::StrictlyInt);
-	receiveAddress = rlp[1].toInt<u160>(RLP::StrictlyString);
+	receiveAddress = rlp[1].toHash<Address>();
 	value = rlp[2].toInt<u256>(RLP::StrictlyInt);
 	fee = rlp[3].toInt<u256>(RLP::StrictlyInt);
 	data.reserve(rlp[4].itemCountStrict());
@@ -44,22 +44,23 @@ Address Transaction::sender() const
 
 	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
 	assert(sig.size() == 64);
-	bytes msg = sha3Bytes(false);
+	h256 msg = sha3(false);
 
 	byte pubkey[65];
 	int pubkeylen = 65;
-	if (!secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
+	if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
 		throw InvalidSignature();
-	return low160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+	// TODO: check right160 is correct and shouldn't be left160.
+	return right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 }
 
 void Transaction::sign(PrivateKey _priv)
 {
 	int v = 0;
 
-	u256 msg = sha3(false);
+	h256 msg = sha3(false);
 	byte sig[64];
-	if (!secp256k1_ecdsa_sign_compact(toBigEndian(msg).data(), 32, sig, toBigEndian(_priv).data(), toBigEndian(kFromMessage(msg, _priv)).data(), &v))
+	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig, _priv.data(), kFromMessage(msg, _priv).data(), &v))
 		throw InvalidSignature();
 
 	vrs.v = v + 27;
@@ -70,12 +71,13 @@ void Transaction::sign(PrivateKey _priv)
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
 	_s.appendList(_sig ? 8 : 5);
-	_s << nonce << toCompactBigEndianString(receiveAddress) << value << fee << data;
+	_s << nonce << receiveAddress << value << fee << data;
 	if (_sig)
-		_s << toCompactBigEndianString(vrs.v) << toCompactBigEndianString(vrs.r) << toCompactBigEndianString(vrs.s);
+		_s << vrs.v << vrs.r << vrs.s;
 }
 
-u256 Transaction::kFromMessage(u256 _msg, u256 _priv)
+// If the h256 return is an integer, store it in bigendian (i.e. u256 ret; ... return (h256)ret; )
+h256 Transaction::kFromMessage(h256 _msg, h256 _priv)
 {
 	// TODO!
 	/*
@@ -89,6 +91,6 @@ u256 Transaction::kFromMessage(u256 _msg, u256 _priv)
 	v = hmac.new(k, v, hashlib.sha256).digest()
 	return decode(hmac.new(k, v, hashlib.sha256).digest(),256)
 	*/
-	return 0;
+	return h256();
 }
 

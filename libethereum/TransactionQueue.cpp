@@ -27,7 +27,7 @@ using namespace eth;
 void TransactionQueue::import(bytes const& _block)
 {
 	// Check if we already know this transaction.
-	u256 h = sha3(_block);
+	h256 h = sha3(_block);
 	if (m_data.count(h))
 		return;
 

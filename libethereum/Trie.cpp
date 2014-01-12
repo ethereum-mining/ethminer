@@ -183,11 +183,11 @@ void hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 #if ENABLE_DEBUG_PRINT
 		cerr << "[HASH: " << dec << rlp.out().size() << " >= 32]" << endl;
 #endif
-		_rlp << toCompactBigEndianString(sha3(rlp.out()));
+		_rlp << sha3(rlp.out());
 	}
 }
 
-u256 hash256(StringMap const& _s)
+h256 hash256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
@@ -200,7 +200,7 @@ u256 hash256(StringMap const& _s)
 	return sha3(s.out());
 }
 
-u256 hash256(u256Map const& _s)
+h256 hash256(u256Map const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
@@ -229,9 +229,9 @@ public:
 #endif
 
 	/// 256-bit hash of the node - this is a SHA-3/256 hash of the RLP of the node.
-	u256 hash256() const { RLPStream s; makeRLP(s); return eth::sha3(s.out()); }
+	h256 hash256() const { RLPStream s; makeRLP(s); return eth::sha3(s.out()); }
 	bytes rlp() const { RLPStream s; makeRLP(s); return s.out(); }
-	void mark() { m_hash256 = 0; }
+	void mark() { m_hash256 = h256(); }
 
 protected:
 	virtual void makeRLP(RLPStream& _intoStream) const = 0;
@@ -243,7 +243,7 @@ protected:
 	static TrieNode* newBranch(bytesConstRef _k1, std::string const& _v1, bytesConstRef _k2, std::string const& _v2);
 
 private:
-	mutable u256 m_hash256 = 0;
+	mutable h256 m_hash256;
 };
 
 static const std::string c_nullString;
@@ -374,7 +374,7 @@ void TrieNode::putRLP(RLPStream& _parentStream) const
 	if (s.out().size() < 32)
 		_parentStream.APPEND_CHILD(s.out());
 	else
-		_parentStream << toCompactBigEndianString(eth::sha3(s.out()));
+		_parentStream << eth::sha3(s.out());
 }
 
 void TrieBranchNode::makeRLP(RLPStream& _intoStream) const
@@ -609,7 +609,7 @@ Trie::~Trie()
 	delete m_root;
 }
 
-u256 Trie::hash256() const
+h256 Trie::hash256() const
 {
 	return m_root ? m_root->hash256() : eth::sha3(RLPNull);
 }

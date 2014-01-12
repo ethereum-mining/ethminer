@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Common.h"
+#include "Transaction.h"
 
 namespace eth
 {
@@ -29,12 +30,12 @@ namespace eth
 struct BlockInfo
 {
 public:
-	u256 hash;
-	u256 parentHash;
-	u256 sha3Uncles;
-	u160 coinbaseAddress;
-	u256 stateRoot;
-	u256 sha3Transactions;
+	h256 hash;
+	h256 parentHash;
+	h256 sha3Uncles;
+	Address coinbaseAddress;
+	h256 stateRoot;
+	h256 sha3Transactions;
 	u256 difficulty;
 	u256 timestamp;
 	u256 nonce;
@@ -54,7 +55,7 @@ public:
 	u256 calculateDifficulty(BlockInfo const& _bi) const;
 
 	/// No-nonce sha3 of the header only.
-	u256 headerHashWithoutNonce() const;
+	h256 headerHashWithoutNonce() const;
 
 	static bytes createGenesisBlock();
 

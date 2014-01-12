@@ -32,10 +32,10 @@ struct BlockDetails
 {
 	uint number;
 	u256 totalDifficulty;
-	u256 parent;
+	h256 parent;
 };
 
-static const BlockDetails NullBlockDetails({0, 0, 0});
+static const BlockDetails NullBlockDetails({0, 0, h256()});
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -57,29 +57,29 @@ public:
 	void import(bytes const& _block);
 
 	/// Get the full block chain, according to the GHOST algo and the blocks available in the db.
-	u256s blockChain(u256Set const& _earlyExit) const;
+	h256s blockChain(h256Set const& _earlyExit) const;
 
 	/// Get the number of the last block of the longest chain.
-	BlockDetails const& details(u256 _hash) const;
+	BlockDetails const& details(h256 _hash) const;
 
 	/// Get a given block (RLP format).
-	bytesConstRef block(u256 _hash) const;
+	bytesConstRef block(h256 _hash) const;
 
 	/// Get a given block (RLP format).
-	u256 currentHash() const { return m_lastBlockHash; }
+	h256 currentHash() const { return m_lastBlockHash; }
 
 private:
 	/// Get fully populated from disk DB.
-	mutable std::map<u256, BlockDetails> m_details;
-	mutable std::multimap<u256, u256> m_children;
+	mutable std::map<h256, BlockDetails> m_details;
+	mutable std::multimap<h256, h256> m_children;
 
-	mutable std::map<u256, std::string> m_cache;
+	mutable std::map<h256, std::string> m_cache;
 
 	ldb::DB* m_db;
 
 	/// Hash of the last (valid) block on the longest chain.
-	u256 m_lastBlockHash;
-	u256 m_genesisHash;
+	h256 m_lastBlockHash;
+	h256 m_genesisHash;
 	bytes m_genesisBlock;
 
 	ldb::ReadOptions m_readOptions;

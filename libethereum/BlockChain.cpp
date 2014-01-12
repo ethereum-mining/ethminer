@@ -43,11 +43,11 @@ BlockChain::~BlockChain()
 {
 }
 
-u256s BlockChain::blockChain(u256Set const& _earlyExit) const
+h256s BlockChain::blockChain(h256Set const& _earlyExit) const
 {
 	// TODO: return the current valid block chain from most recent to genesis.
 	// TODO: arguments for specifying a set of early-ends
-	u256s ret;
+	h256s ret;
 	ret.reserve(m_details[m_lastBlockHash].number + 1);
 	auto i = m_lastBlockHash;
 	for (; i != m_genesisHash && !_earlyExit.count(i); i = m_details[i].parent)
@@ -122,7 +122,7 @@ void BlockChain::import(bytes const& _block)
 	}
 }
 
-bytesConstRef BlockChain::block(u256 _hash) const
+bytesConstRef BlockChain::block(h256 _hash) const
 {
 	if (_hash == m_genesisHash)
 		return &m_genesisBlock;
@@ -131,7 +131,7 @@ bytesConstRef BlockChain::block(u256 _hash) const
 	return bytesConstRef(&m_cache[_hash]);
 }
 
-BlockDetails const& BlockChain::details(u256 _h) const
+BlockDetails const& BlockChain::details(h256 _h) const
 {
 	auto it = m_details.find(_h);
 	if (it == m_details.end())

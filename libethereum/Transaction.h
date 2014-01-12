@@ -27,8 +27,8 @@
 namespace eth
 {
 
-using PrivateKey = u256;
-using Address = u160;
+using PrivateKey = h256;
+using Address = h160;
 
 struct Signature
 {
@@ -54,12 +54,12 @@ struct Transaction
 	Address sender() const;
 	void sign(PrivateKey _priv);
 
-	static u256 kFromMessage(u256 _msg, u256 _priv);
+	static h256 kFromMessage(h256 _msg, h256 _priv);
 
 	void fillStream(RLPStream& _s, bool _sig = true) const;
 	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
 	std::string rlpString(bool _sig = true) const { return asString(rlp()); }
-	u256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
+	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
 	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
 };
 

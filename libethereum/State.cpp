@@ -51,7 +51,7 @@ void State::sync(BlockChain const& _bc)
 	sync(_bc, _bc.currentHash());
 }
 
-void State::sync(BlockChain const& _bc, u256 _block)
+void State::sync(BlockChain const& _bc, h256 _block)
 {
 	// BLOCK
 	BlockInfo bi;
@@ -88,7 +88,7 @@ void State::sync(BlockChain const& _bc, u256 _block)
 		// New blocks available, or we've switched to a different branch. All change.
 		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
-		std::vector<u256> l = _bc.blockChain(u256Set());
+		std::vector<h256> l = _bc.blockChain(h256Set());
 
 		if (l.back() == BlockInfo::genesis().hash)
 		{
@@ -165,10 +165,10 @@ void State::playback(bytesConstRef _block)
 	}
 }
 
-u256 State::rootHash() const
+h256 State::rootHash() const
 {
 	// TODO.
-	return 0;
+	return h256();
 }
 
 bool State::mine(uint _msTimeout) const
@@ -466,10 +466,10 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 			break;
 		case Instruction::MYADDRESS:
-			stack.push_back(_myAddress);
+			stack.push_back((u160)_myAddress);
 			break;
 		case Instruction::TXSENDER:
-			stack.push_back(_txSender);
+			stack.push_back((u160)_txSender);
 			break;
 		case Instruction::TXVALUE:
 			stack.push_back(_txValue);
@@ -488,7 +488,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.push_back(m_previousBlock.hash);
 			break;
 		case Instruction::BLK_COINBASE:
-			stack.push_back(m_currentBlock.coinbaseAddress);
+			stack.push_back((u160)m_currentBlock.coinbaseAddress);
 			break;
 		case Instruction::BLK_TIMESTAMP:
 			stack.push_back(m_currentBlock.timestamp);
@@ -745,14 +745,14 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			require(2);
 			auto memoryAddress = stack.back();
 			stack.pop_back();
-			Address contractAddress = as160(stack.back());
+			Address contractAddress = left160(stack.back());
 			stack.back() = contractMemory(contractAddress, memoryAddress);
 			break;
 		}
 		case Instruction::BALANCE:
 		{
 			require(1);
-			stack.back() = balance(as160(stack.back()));
+			stack.back() = balance(low160(stack.back()));
 			break;
 		}
 		case Instruction::MKTX:
@@ -760,7 +760,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			require(4);
 
 			Transaction t;
-			t.receiveAddress = as160(stack.back());
+			t.receiveAddress = left160(stack.back());
 			stack.pop_back();
 			t.value = stack.back();
 			stack.pop_back();
@@ -786,7 +786,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		case Instruction::SUICIDE:
 		{
 			require(1);
-			Address dest = as160(stack.back());
+			Address dest = left160(stack.back());
 			u256 minusVoidFee = m_current[_myAddress].memory().size() * c_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
 			m_current.erase(_myAddress);

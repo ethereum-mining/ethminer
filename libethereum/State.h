@@ -65,7 +65,7 @@ public:
 	void sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block sync to the given block.
-	void sync(BlockChain const& _bc, u256 _blockHash);
+	void sync(BlockChain const& _bc, h256 _blockHash);
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
 	void sync(TransactionQueue& _tq);
@@ -103,7 +103,7 @@ public:
 	u256 transactionsFrom(Address _address) const;
 
 	/// The hash of the root of our state tree.
-	u256 rootHash() const;
+	h256 rootHash() const;
 
 private:
 	/// Fee-adder on destruction RAII class.
@@ -127,7 +127,7 @@ private:
 	// TODO: std::hash<Address> and then move to unordered_map.
 	// Will need to sort on hash construction.
 	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
-	std::map<u256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.

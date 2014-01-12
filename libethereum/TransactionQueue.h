@@ -38,12 +38,12 @@ public:
 
 	void import(bytes const& _block);
 
-	void drop(u256 _txHash) { m_data.erase(_txHash); }
+	void drop(h256 _txHash) { m_data.erase(_txHash); }
 
-	std::map<u256, bytes> const& transactions() const { return m_data; }
+	std::map<h256, bytes> const& transactions() const { return m_data; }
 
 private:
-	std::map<u256, bytes> m_data;	///< the queue.
+	std::map<h256, bytes> m_data;	///< the queue.
 };
 
 }

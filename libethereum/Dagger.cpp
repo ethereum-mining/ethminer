@@ -9,7 +9,7 @@ using namespace std;
 using namespace std::chrono;
 using namespace eth;
 
-Dagger::Dagger(u256 _hash): m_hash(_hash)
+Dagger::Dagger(h256 _hash): m_hash(_hash)
 {
 }
 

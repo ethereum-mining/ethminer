@@ -9,7 +9,7 @@ namespace eth
 class Dagger
 {
 public:
-	Dagger(u256 _hash);
+	Dagger(h256 _hash);
 	~Dagger();
 	
 	u256 node(uint_fast32_t _L, uint_fast32_t _i) const;

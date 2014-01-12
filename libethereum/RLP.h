@@ -110,6 +110,8 @@ public:
 	bool operator!=(char const* _s) const { return isString() && toString() != _s; }
 	bool operator==(std::string const& _s) const { return isString() && toString() == _s; }
 	bool operator!=(std::string const& _s) const { return isString() && toString() != _s; }
+	template <unsigned _N> bool operator==(FixedHash<_N> const& _h) const { return isString() && toHash<_N>() == _h; }
+	template <unsigned _N> bool operator!=(FixedHash<_N> const& _s) const { return isString() && toHash<_N>() != _s; }
 	bool operator==(uint const& _i) const { return (isInt() || isString()) && toSlimInt() == _i; }
 	bool operator!=(uint const& _i) const { return (isInt() || isString()) && toSlimInt() != _i; }
 	bool operator==(u256 const& _i) const { return (isInt() || isString()) && toFatInt() == _i; }
@@ -159,6 +161,7 @@ public:
 	explicit operator uint() const { return toSlimInt(); }
 	explicit operator u256() const { return toFatInt(); }
 	explicit operator bigint() const { return toBigInt(); }
+	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<_N>(); }
 
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
@@ -203,6 +206,21 @@ public:
 		uint o = lengthSize() + 1;
 		for (uint i = 0; i < s; ++i)
 			ret = (ret << 8) | m_data[i + o];
+		return ret;
+	}
+
+	template <class _N> _N toHash(int _flags = Strict) const
+	{
+		if (!isString() || (items() >= _N::size && (_flags & FailIfTooBig)))
+			if (_flags & ThrowOnFail)
+				throw BadCast();
+			else
+				return _N();
+		else{}
+
+		_N ret;
+		unsigned s = std::min<unsigned>(_N::size, items());
+		memcpy(ret.data() + _N::size - s, payload().data(), s);
 		return ret;
 	}
 
@@ -275,6 +293,8 @@ public:
 	RLPStream& append(uint _s);
 	RLPStream& append(u160 _s);
 	RLPStream& append(u256 _s);
+	RLPStream& append(h160 _s, bool _compact = false) { return appendFixed(_s, _compact); }
+	RLPStream& append(h256 _s, bool _compact = false) { return appendFixed(_s, _compact); }
 	RLPStream& append(bigint _s);
 	RLPStream& append(std::string const& _s);
 	RLPStream& appendList(uint _count);
@@ -285,6 +305,8 @@ public:
 	RLPStream& operator<<(uint _i) { return append(_i); }
 	RLPStream& operator<<(u160 _i) { return append(_i); }
 	RLPStream& operator<<(u256 _i) { return append(_i); }
+	RLPStream& operator<<(h160 _i) { return append(_i); }
+	RLPStream& operator<<(h256 _i) { return append(_i); }
 	RLPStream& operator<<(bigint _i) { return append(_i); }
 	RLPStream& operator<<(char const* _s) { return append(std::string(_s)); }
 	RLPStream& operator<<(std::string const& _s) { return append(_s); }
@@ -305,6 +327,24 @@ private:
 		byte* b = &m_out.back();
 		for (; _i; _i >>= 8)
 			*(b--) = (byte)_i;
+	}
+
+	template <unsigned _N>
+	RLPStream& appendFixed(FixedHash<_N> const& _s, bool _compact)
+	{
+		uint s = _N;
+		byte const* d = _s.data();
+		if (_compact)
+			for (unsigned i = 0; i < _N && !*d; ++i, --s, ++d) {}
+
+		if (s < 0x38)
+			m_out.push_back(s | 0x40);
+		else
+			pushCount(s, 0x40);
+		uint os = m_out.size();
+		m_out.resize(os + s);
+		memcpy(m_out.data() + os, d, s);
+		return *this;
 	}
 
 	/// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.

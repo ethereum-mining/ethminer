@@ -127,12 +127,9 @@ bytes eth::sha3Bytes(bytesConstRef _input)
 	return ret;
 }
 
-u256 eth::sha3(bytesConstRef _input)
+h256 eth::sha3(bytesConstRef _input)
 {
-	uint8_t buf[32];
-	sha3(_input, bytesRef(&buf[0], 32));
-	u256 ret = 0;
-	for (unsigned i = 0; i < 32; ++i)
-		ret = (ret << 8) | buf[i];
+	h256 ret;
+	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
 }

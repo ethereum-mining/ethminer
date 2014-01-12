@@ -27,8 +27,8 @@
 namespace eth
 {
 
-u256 hash256(StringMap const& _s);
-u256 hash256(u256Map const& _s);
+h256 hash256(StringMap const& _s);
+h256 hash256(u256Map const& _s);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1);
 
 class TrieNode;
@@ -42,7 +42,7 @@ public:
 	Trie(): m_root(nullptr) {}
 	~Trie();
 
-	u256 hash256() const;
+	h256 hash256() const;
 	bytes rlp() const;
 
 	void debugPrint();

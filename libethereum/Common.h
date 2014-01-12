@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -54,6 +55,45 @@ using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
+
+template <class _T, class _Out> inline void toBigEndian(_T _val, _Out& o_out);
+template <class _T, class _In> inline _T fromBigEndian(_In const& _bytes);
+
+template <unsigned _N>
+class FixedHash
+{
+	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<_N * 8, _N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+
+public:
+	static const unsigned size = _N;
+
+	FixedHash() { m_data.fill(0); }
+	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
+
+	operator Arith() const { return fromBigEndian<Arith>(m_data); }
+
+	operator bool() const { return ((Arith)*this) != 0; }
+
+	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }
+	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
+	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
+
+	byte& operator[](unsigned _i) { return m_data[_i]; }
+	byte operator[](unsigned _i) const { return m_data[_i]; }
+
+	byte* data() { return m_data.data(); }
+	byte const* data() const { return m_data.data(); }
+
+private:
+	std::array<byte, _N> m_data;
+};
+
+using h256 = FixedHash<32>;
+using h160 = FixedHash<20>;
+using h256s = std::vector<h256>;
+using h160s = std::vector<h160>;
+using h256Set = std::set<h256>;
+using h160Set = std::set<h160>;
 
 // Map types.
 using StringMap = std::map<std::string, std::string>;
@@ -194,27 +234,39 @@ uint commonPrefix(_T const& _t, _U const& _u)
 	return s;
 }
 
-/// Convert the given value into u160 (160-bit unsigned integer) by taking the lowest order 160-bits and discarding the rest.
-template <class _T>
-inline u160 low160(_T const& _t)
+/// Convert the given value into h160 (160-bit unsigned integer) using the right 20 bytes.
+inline h160 right160(h256 const& _t)
 {
-	return (u160)(_t & ((((_T)1) << 160) - 1));
+	h160 ret;
+	memcpy(ret.data(), _t.data() + 10, 20);
+	return ret;
+}
+
+/// Convert the given value into h160 (160-bit unsigned integer) using the left 20 bytes.
+inline h160 left160(h256 const& _t)
+{
+	h160 ret;
+	memcpy(&ret[0], _t.data(), 20);
+	return ret;
 }
 
 /// Convert the given value into u160 (160-bit unsigned integer) by taking the lowest order 160-bits and discarding the rest.
-template <class _T>
-inline u160 high160(_T const& _t)
+inline u160 low160(u256 const& _t)
+{
+	return (u160)(_t & ((((u256)1) << 160) - 1));
+}
+
+inline u160 low160(bigint const& _t)
+{
+	return (u160)(_t & ((((bigint)1) << 160) - 1));
+}
+
+/// Convert the given value into u160 (160-bit unsigned integer) by taking the lowest order 160-bits and discarding the rest.
+inline u160 high160(u256 const& _t)
 {
 	return (u160)(_t >> 96);
 }
 
-/// Convert the given value safely into u160 (160-bit unsigned integer).
-/// @note Currently unsafe.
-template <class _T>
-inline u160 as160(_T const& _t)
-{
-	return low160(_t);
-}
 
 /// Concatenate two vectors of elements. _T must be POD.
 template <class _T>
@@ -235,18 +287,13 @@ inline std::vector<_T> operator+(std::vector<typename std::enable_if<std::is_pod
 	return ret += _b;
 }
 
-/// Calculate RIPEMD-160 hash of the given message.
-u160 ripemd160(bytesConstRef _message);
-
+/// SHA-3 convenience routines.
 void sha3(bytesConstRef _input, bytesRef _output);
-
 std::string sha3(std::string const& _input, bool _hex);
-
-bytes sha3Bytes(bytesConstRef  _input);
+bytes sha3Bytes(bytesConstRef _input);
 inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::string*)&_input); }
 inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
-
-u256 sha3(bytesConstRef _input);
-inline u256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+h256 sha3(bytesConstRef _input);
+inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
 
 }
