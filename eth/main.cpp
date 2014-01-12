@@ -37,7 +37,8 @@ int main()
 //	s.restore();			// TODO: Implement - key optimisation.
 
 	// Synchronise the state according to the block chain - i.e. replay all transactions, in order. Will take a while if the state isn't restored.
-	s.sync(bc, tq);
+	s.sync(bc);
+	s.sync(tq);
 
 	PeerNetwork net;		// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
 	while (true)
@@ -55,7 +56,8 @@ int main()
 		//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
 		//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 		//   all blocks.
-		s.sync(bc, tq);		// Resynchronise state with block chain & trans
+		s.sync(bc);		// Resynchronise state with block chain & trans
+		s.sync(tq);
 
 		// Mine for a while.
 		if (s.mine(100))

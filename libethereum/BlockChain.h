@@ -28,6 +28,15 @@ namespace ldb = leveldb;
 namespace eth
 {
 
+struct BlockDetails
+{
+	uint number;
+	u256 totalDifficulty;
+	u256 parent;
+};
+
+static const BlockDetails NullBlockDetails({0, 0, 0});
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  */
@@ -47,21 +56,24 @@ public:
 	/// Import block into disk-backed DB
 	void import(bytes const& _block);
 
-	/// Get the last block of the longest chain.
-	bytesConstRef lastBlock() const { return block(m_lastBlockHash); }
-
 	/// Get the full block chain, according to the GHOST algo and the blocks available in the db.
 	u256s blockChain(u256Set const& _earlyExit) const;
 
 	/// Get the number of the last block of the longest chain.
-	u256 lastBlockNumber() const;
+	BlockDetails const& details(u256 _hash) const;
 
+	/// Get a given block (RLP format).
 	bytesConstRef block(u256 _hash) const;
+
+	/// Get a given block (RLP format).
+	u256 currentHash() const { return m_lastBlockHash; }
 
 private:
 	/// Get fully populated from disk DB.
-	mutable std::map<u256, std::pair<uint, u256>> m_numberAndParent;
+	mutable std::map<u256, BlockDetails> m_details;
 	mutable std::multimap<u256, u256> m_children;
+
+	mutable std::map<u256, std::string> m_cache;
 
 	ldb::DB* m_db;
 
@@ -69,6 +81,9 @@ private:
 	u256 m_lastBlockHash;
 	u256 m_genesisHash;
 	bytes m_genesisBlock;
+
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
 };
 
 }

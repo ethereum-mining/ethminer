@@ -46,8 +46,11 @@ class BlockChain;
 class State
 {
 public:
+	/// Construct null state object.
+	State() {}
+
 	/// Construct state object.
-	explicit State(Address _minerAddress);
+	explicit State(Address _coinbaseAddress);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
@@ -59,12 +62,18 @@ public:
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	/// We also sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	void sync(BlockChain const& _bc, TransactionQueue& _tq);
+	void sync(BlockChain const& _bc);
+
+	/// Sync with the block chain, but rather than synching to the latest block sync to the given block.
+	void sync(BlockChain const& _bc, u256 _blockHash);
+
+	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
+	void sync(TransactionQueue& _tq);
 
 	/// Execute a given transaction.
 	bool execute(bytes const& _rlp) { return execute(&_rlp); }
 	bool execute(bytesConstRef _rlp);
+
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
 
@@ -93,11 +102,14 @@ public:
 	/// @returns 0 if the address has never been used.
 	u256 transactionsFrom(Address _address) const;
 
+	/// The hash of the root of our state tree.
+	u256 rootHash() const;
+
 private:
 	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
 	{
-		~MinerFeeAdder() { state->addBalance(state->m_minerAddress, fee); }
+		~MinerFeeAdder() { state->addBalance(state->m_coinbaseAddress, fee); }
 		State* state;
 		u256 fee;
 	};
@@ -112,8 +124,6 @@ private:
 	/// Execute all transactions within a given block.
 	void playback(bytesConstRef _block);
 
-	u256 currentHash() const;
-
 	// TODO: std::hash<Address> and then move to unordered_map.
 	// Will need to sort on hash construction.
 	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
@@ -122,8 +132,9 @@ private:
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
+	uint m_currentNumber;
 
-	Address m_minerAddress;						///< Our address (i.e. the address to which fees go).
+	Address m_coinbaseAddress;							///< Our address (i.e. the address to which fees go).
 
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;

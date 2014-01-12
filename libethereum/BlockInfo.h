@@ -32,23 +32,22 @@ public:
 	u256 hash;
 	u256 parentHash;
 	u256 sha3Uncles;
-	u256 coinbaseAddress;
+	u160 coinbaseAddress;
 	u256 stateRoot;
 	u256 sha3Transactions;
 	u256 difficulty;
 	u256 timestamp;
 	u256 nonce;
-	u256 number;
 
 	BlockInfo();
-	explicit BlockInfo(bytesConstRef _block, u256 _number = 0);
+	explicit BlockInfo(bytesConstRef _block);
 
-	explicit operator bool() { return number != Invalid256; }
+	explicit operator bool() { return timestamp != Invalid256; }
 
-	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce && number == _cmp.number; }
+	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
-	void populate(bytesConstRef _block, u256 _number = 0);
+	void populate(bytesConstRef _block);
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 

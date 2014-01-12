@@ -24,6 +24,7 @@
 #include "Exceptions.h"
 #include "Dagger.h"
 #include "BlockInfo.h"
+#include "State.h"
 #include "BlockChain.h"
 using namespace std;
 using namespace eth;
@@ -47,9 +48,9 @@ u256s BlockChain::blockChain(u256Set const& _earlyExit) const
 	// TODO: return the current valid block chain from most recent to genesis.
 	// TODO: arguments for specifying a set of early-ends
 	u256s ret;
-	ret.reserve(m_numberAndParent[m_lastBlockHash].first + 1);
+	ret.reserve(m_details[m_lastBlockHash].number + 1);
 	auto i = m_lastBlockHash;
-	for (; i != m_genesisHash && !_earlyExit.count(i); i = m_numberAndParent[i].second)
+	for (; i != m_genesisHash && !_earlyExit.count(i); i = m_details[i].parent)
 		ret.push_back(i);
 	ret.push_back(i);
 	return ret;
@@ -57,52 +58,62 @@ u256s BlockChain::blockChain(u256Set const& _earlyExit) const
 
 void BlockChain::import(bytes const& _block)
 {
-	BlockInfo bi;
 	try
 	{
 		// VERIFY: populates from the block and checks the block is internally coherent.
-		bi.populate(&_block);
+		BlockInfo bi(&_block);
 		bi.verifyInternals(&_block);
 
 		auto newHash = eth::sha3(_block);
 
 		// Check block doesn't already exist first!
-		if (m_numberAndParent.count(newHash))
+		if (m_details.count(newHash))
 			return;
 
 		// Work out its number as the parent's number + 1
-		auto it = m_numberAndParent.find(bi.parentHash);
-		if (it == m_numberAndParent.end())
+		auto it = m_details.find(bi.parentHash);
+		if (it == m_details.end())
 			// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 			return;
-		bi.number = it->second.first + 1;
 
 		// Check family:
 		BlockInfo bip(block(bi.parentHash));
 		bi.verifyParent(bip);
 
-		// TODO: check transactions are valid and that they result in a state equivalent to our state_root.
+		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// this saves us from an embarrassing exit later.
+		State s(bi.coinbaseAddress);
+		s.sync(*this, bi.parentHash);
+		for (auto const& i: RLP(_block)[1])
+			s.execute(i.data());
+		if (s.rootHash() != bi.stateRoot)
+			throw InvalidStateRoot();
+
+		// Initalise total difficulty calculation.
+		u256 td = it->second.totalDifficulty + bi.difficulty;
 
 		// Check uncles.
 		for (auto const& i: RLP(_block)[2])
 		{
-			auto it = m_numberAndParent.find(i.toInt<u256>());
-			if (it == m_numberAndParent.end())
-				return;	// Don't (yet) have the uncle in our list.
-			if (it->second.second != bi.parentHash)
+			BlockInfo uncle(i.data());
+
+			if (it->second.parent != bi.parentHash)
 				throw InvalidUncle();
+
+			uncle.verifyParent(bip);
+
+			td += uncle.difficulty;
 		}
 
-		// Insert into DB
-		m_numberAndParent[newHash] = make_pair((uint)bi.number, bi.parentHash);
+		// All ok - insert into DB
+		m_details[newHash] = BlockDetails{(uint)it->second.number + 1, bi.parentHash, td};
+
 		m_children.insert(make_pair(bi.parentHash, newHash));
-		ldb::WriteOptions o;
-		m_db->Put(o, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
+		m_db->Put(m_writeOptions, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
 
-		// This might be the new last block; count back through ancestors to common shared ancestor and compare to current.
-		// TODO: Use GHOST algorithm.
-
+		// This might be the new last block...
+		if (td > m_details[m_lastBlockHash].totalDifficulty)
+			m_lastBlockHash = newHash;
 	}
 	catch (...)
 	{
@@ -115,13 +126,15 @@ bytesConstRef BlockChain::block(u256 _hash) const
 {
 	if (_hash == m_genesisHash)
 		return &m_genesisBlock;
-	return &m_genesisBlock;
+
+	m_db->Get(m_readOptions, ldb::Slice(toBigEndianString(_hash)), &m_cache[_hash]);
+	return bytesConstRef(&m_cache[_hash]);
 }
 
-u256 BlockChain::lastBlockNumber() const
+BlockDetails const& BlockChain::details(u256 _h) const
 {
-	if (m_lastBlockHash == m_genesisHash)
-		return 0;
-
-	return m_numberAndParent[m_lastBlockHash].first;
+	auto it = m_details.find(_h);
+	if (it == m_details.end())
+		return NullBlockDetails;
+	return it->second;
 }

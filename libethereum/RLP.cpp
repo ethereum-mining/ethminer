@@ -167,6 +167,19 @@ RLPStream& RLPStream::append(uint _i)
 	return *this;
 }
 
+RLPStream& RLPStream::append(u160 _i)
+{
+	if (_i < 0x18)
+		m_out.push_back((byte)_i);
+	else
+	{
+		auto br = bytesRequired(_i);
+		m_out.push_back(br + 0x17);	// max 8 bytes.
+		pushInt(_i, br);
+	}
+	return *this;
+}
+
 RLPStream& RLPStream::append(u256 _i)
 {
 	if (_i < 0x18)

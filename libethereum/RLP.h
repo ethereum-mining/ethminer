@@ -273,6 +273,7 @@ public:
 
 	/// Append given data to the byte stream.
 	RLPStream& append(uint _s);
+	RLPStream& append(u160 _s);
 	RLPStream& append(u256 _s);
 	RLPStream& append(bigint _s);
 	RLPStream& append(std::string const& _s);
@@ -282,6 +283,7 @@ public:
 
 	/// Shift operators for appending data items.
 	RLPStream& operator<<(uint _i) { return append(_i); }
+	RLPStream& operator<<(u160 _i) { return append(_i); }
 	RLPStream& operator<<(u256 _i) { return append(_i); }
 	RLPStream& operator<<(bigint _i) { return append(_i); }
 	RLPStream& operator<<(char const* _s) { return append(std::string(_s)); }

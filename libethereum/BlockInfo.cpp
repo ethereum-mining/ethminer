@@ -29,14 +29,13 @@ using namespace eth;
 
 BlockInfo* BlockInfo::s_genesis = nullptr;
 
-BlockInfo::BlockInfo()
+BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
-	number = Invalid256;
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, u256 _number)
+BlockInfo::BlockInfo(bytesConstRef _block)
 {
-	populate(_block, _number);
+	populate(_block);
 }
 
 bytes BlockInfo::createGenesisBlock()
@@ -57,13 +56,11 @@ u256 BlockInfo::headerHashWithoutNonce() const
 void BlockInfo::populateGenesis()
 {
 	bytes genesisBlock = createGenesisBlock();
-	populate(&genesisBlock, 0);
+	populate(&genesisBlock);
 }
 
-void BlockInfo::populate(bytesConstRef _block, u256 _number)
+void BlockInfo::populate(bytesConstRef _block)
 {
-	number = _number;
-
 	RLP root(_block);
 	try
 	{
@@ -82,6 +79,11 @@ void BlockInfo::populate(bytesConstRef _block, u256 _number)
 	{
 		throw InvalidBlockFormat();
 	}
+
+	// check it hashes according to proof of work.
+	Dagger d(headerHashWithoutNonce());
+	if (d.eval(nonce) >= difficulty)
+		throw InvalidNonce();
 }
 
 void BlockInfo::verifyInternals(bytesConstRef _block) const
@@ -93,22 +95,11 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 
 	if (sha3Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();
-
-	// check it hashes according to proof of work.
-	Dagger d(headerHashWithoutNonce());
-	if (d.eval(nonce) >= difficulty)
-		throw InvalidNonce();
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
-	/*
-	D(genesis_block) = 2^36
-	D(block) =
-		if block.timestamp >= block.parent.timestamp + 42: D(block.parent) - floor(D(block.parent) / 1024)
-		else:                                              D(block.parent) + floor(D(block.parent) / 1024)
-			*/
-	if (number == 0)
+	if (!parentHash)
 		return (u256)1 << 36;
 	else
 		return timestamp >= _parent.timestamp + 42 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
@@ -116,15 +107,11 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {
-	if (number == 0)
-		// Genesis block - no parent.
-		return;
-
-	// Check timestamp is after previous timestamp.
-	if (_parent.timestamp <= _parent.timestamp)
-		throw InvalidTimestamp();
-
 	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
 		throw InvalidDifficulty();
+
+	// Check timestamp is after previous timestamp.
+	if (parentHash && _parent.timestamp <= _parent.timestamp)
+		throw InvalidTimestamp();
 }

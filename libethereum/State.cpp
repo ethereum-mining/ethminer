@@ -21,6 +21,7 @@
 
 #include <secp256k1.h>
 #include <sha.h>
+#include <sha3.h>
 #include <ripemd.h>
 #include <random>
 #include "Trie.h"
@@ -39,22 +40,26 @@ u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
 u256 const State::c_txFee = 0;
 
-State::State(Address _minerAddress): m_minerAddress(_minerAddress)
+State::State(Address _coinbaseAddress): m_coinbaseAddress(_coinbaseAddress)
 {
 	secp256k1_start();
 	m_previousBlock = BlockInfo::genesis();
-	m_currentBlock.number = 1;
 }
 
-void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
+void State::sync(BlockChain const& _bc)
+{
+	sync(_bc, _bc.currentHash());
+}
+
+void State::sync(BlockChain const& _bc, u256 _block)
 {
 	// BLOCK
-
 	BlockInfo bi;
 	try
 	{
-		bi.populate(_bc.lastBlock(), _bc.lastBlockNumber());
-		bi.verifyInternals(_bc.lastBlock());
+		auto b = _bc.block(_block);
+		bi.populate(b);
+		bi.verifyInternals(_bc.block(_block));
 	}
 	catch (...)
 	{
@@ -71,7 +76,7 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 		m_current.clear();
 		m_transactions.clear();
 		m_currentBlock = BlockInfo();
-		m_currentBlock.number = m_previousBlock.number + 1;
+		++m_currentNumber;
 	}
 	else if (bi == m_previousBlock)
 	{
@@ -81,9 +86,9 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 	else
 	{
 		// New blocks available, or we've switched to a different branch. All change.
-		// TODO: Find most recent state dump and replay what's left.
+		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
-		std::vector<u256> l = _bc.blockChain(u256Set());	// TODO: take u256Set "restorePoints" argument so it needs only give us the chain up until some restore point in the past where we stored the state.
+		std::vector<u256> l = _bc.blockChain(u256Set());
 
 		if (l.back() == BlockInfo::genesis().hash)
 		{
@@ -102,12 +107,14 @@ void State::sync(BlockChain const& _bc, TransactionQueue& _tq)
 		m_transactions.clear();
 		m_current.clear();
 		m_currentBlock = BlockInfo();
-		m_currentBlock.number = m_previousBlock.number + 1;
+		m_currentNumber = _bc.details(_bc.currentHash()).number + 1;
 	}
+}
 
 
+void State::sync(TransactionQueue& _tq)
+{
 	// TRANSACTIONS
-
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
 		if (!m_transactions.count(i.first))
@@ -134,7 +141,7 @@ void State::playback(bytesConstRef _block)
 {
 	try
 	{
-		m_currentBlock.populate(_block, m_previousBlock.number + 1);
+		m_currentBlock.populate(_block);
 		m_currentBlock.verifyInternals(_block);
 		if (m_currentBlock.parentHash != m_previousBlock.hash)
 			throw InvalidParentHash();
@@ -145,7 +152,7 @@ void State::playback(bytesConstRef _block)
 			execute(i.data());
 
 		// Hash the state trie and check against the state_root hash in m_currentBlock.
-		if (m_currentBlock.stateRoot != currentHash())
+		if (m_currentBlock.stateRoot != rootHash())
 			throw InvalidStateRoot();
 
 		m_previousBlock = m_currentBlock;
@@ -158,9 +165,9 @@ void State::playback(bytesConstRef _block)
 	}
 }
 
-u256 State::currentHash() const
+u256 State::rootHash() const
 {
-	// TODO!
+	// TODO.
 	return 0;
 }
 
@@ -262,7 +269,7 @@ void State::execute(Transaction const& _t, Address _sender)
 	{
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(_t.receiveAddress, _t.value);
-		addBalance(m_minerAddress, _t.fee);
+		addBalance(m_coinbaseAddress, _t.fee);
 
 		if (isContractAddress(_t.receiveAddress))
 		{
@@ -285,7 +292,7 @@ void State::execute(Transaction const& _t, Address _sender)
 			mem[i] = _t.data[i];
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(newAddress, _t.value);
-		addBalance(m_minerAddress, _t.fee);
+		addBalance(m_coinbaseAddress, _t.fee);
 	}
 }
 
@@ -487,7 +494,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.push_back(m_currentBlock.timestamp);
 			break;
 		case Instruction::BLK_NUMBER:
-			stack.push_back(m_currentBlock.number);
+			stack.push_back(m_currentNumber);
 			break;
 		case Instruction::BLK_DIFFICULTY:
 			stack.push_back(m_currentBlock.difficulty);
@@ -645,6 +652,24 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 
 			stack.back() = secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()) ? 1 : 0;
+			break;
+		}
+		case Instruction::SHA3:
+		{
+			uint s = (uint)min(stack.back(), (u256)(stack.size() - 1) * 32);
+			stack.pop_back();
+
+			CryptoPP::SHA3_256 digest;
+			uint i = 0;
+			for (; s; s = (s >= 32 ? s - 32 : 0), i += 32)
+			{
+				bytes b = toBigEndian(stack.back());
+				digest.Update(b.data(), (int)min<u256>(32, s));			// b.size() == 32
+				stack.pop_back();
+			}
+			array<byte, 32> final;
+			digest.TruncatedFinal(final.data(), 32);
+			stack.push_back(fromBigEndian<u256>(final));
 			break;
 		}
 		case Instruction::PUSH:
