@@ -43,9 +43,9 @@ inline void update(_T& _sha, _U const& _value)
 {
 	int i = 0;
 	for (_U v = _value; v; ++i, v >>= 8) {}
-	bytes buf(i);
-	toBigEndian(_value, buf);
-	_sha.Update(buf.data(), buf.size());
+	byte buf[32];
+	toBigEndian(_value, bytesRef(buf, i));
+	_sha.Update(buf, i);
 }
 
 template <class _T>
