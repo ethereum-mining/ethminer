@@ -43,7 +43,7 @@ public:
 	BlockInfo();
 	explicit BlockInfo(bytesConstRef _block);
 
-	explicit operator bool() { return timestamp != Invalid256; }
+	explicit operator bool() const { return timestamp != Invalid256; }
 
 	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
 

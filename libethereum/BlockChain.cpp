@@ -37,6 +37,8 @@ BlockChain::BlockChain()
 	// Initialise with the genesis as the last block on the longest chain.
 	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
 	m_genesisBlock = BlockInfo::createGenesisBlock();
+
+	// TODO: Insert details of genesis block.
 }
 
 BlockChain::~BlockChain()
@@ -45,8 +47,8 @@ BlockChain::~BlockChain()
 
 h256s BlockChain::blockChain(h256Set const& _earlyExit) const
 {
-	// TODO: return the current valid block chain from most recent to genesis.
-	// TODO: arguments for specifying a set of early-ends
+	// Return the current valid block chain from most recent to genesis.
+	// Arguments for specifying a set of early-ends
 	h256s ret;
 	ret.reserve(m_details[m_lastBlockHash].number + 1);
 	auto i = m_lastBlockHash;
@@ -55,7 +57,8 @@ h256s BlockChain::blockChain(h256Set const& _earlyExit) const
 	ret.push_back(i);
 	return ret;
 }
-
+// _bc.details(m_previousBlock.parentHash).children
+// _bc->coinbaseAddress(i)
 void BlockChain::import(bytes const& _block)
 {
 	try
@@ -77,38 +80,22 @@ void BlockChain::import(bytes const& _block)
 			return;
 
 		// Check family:
-		BlockInfo bip(block(bi.parentHash));
-		bi.verifyParent(bip);
+		BlockInfo biParent(block(bi.parentHash));
+		bi.verifyParent(biParent);
 
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
-		// this saves us from an embarrassing exit later.
 		State s(bi.coinbaseAddress);
 		s.sync(*this, bi.parentHash);
-		for (auto const& i: RLP(_block)[1])
-			s.execute(i.data());
-		if (s.rootHash() != bi.stateRoot)
-			throw InvalidStateRoot();
 
-		// Initalise total difficulty calculation.
-		u256 td = it->second.totalDifficulty + bi.difficulty;
-
-		// Check uncles.
-		for (auto const& i: RLP(_block)[2])
-		{
-			BlockInfo uncle(i.data());
-
-			if (it->second.parent != bi.parentHash)
-				throw InvalidUncle();
-
-			uncle.verifyParent(bip);
-
-			td += uncle.difficulty;
-		}
+		// Get total difficulty increase and update state, checking it.
+		BlockInfo biGrandParent;
+		if (it->second.number)
+			biGrandParent.populate(block(it->second.parent));
+		u256 td = it->second.totalDifficulty + s.playback(&_block, bi, biParent, biGrandParent);
 
 		// All ok - insert into DB
 		m_details[newHash] = BlockDetails{(uint)it->second.number + 1, bi.parentHash, td};
-
-		m_children.insert(make_pair(bi.parentHash, newHash));
+		m_details[bi.parentHash].children.push_back(newHash);
 		m_db->Put(m_writeOptions, ldb::Slice(toBigEndianString(newHash)), (ldb::Slice)ref(_block));
 
 		// This might be the new last block...

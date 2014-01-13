@@ -27,9 +27,6 @@
 namespace eth
 {
 
-using PrivateKey = h256;
-using Address = h160;
-
 struct Signature
 {
 	byte v;

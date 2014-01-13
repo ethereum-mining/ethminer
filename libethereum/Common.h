@@ -95,6 +95,10 @@ using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
 
+using PrivateKey = h256;
+using Address = h160;
+using Addresses = h160s;
+
 // Map types.
 using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;

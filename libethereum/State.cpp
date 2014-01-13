@@ -39,8 +39,9 @@ u256 const State::c_extroFee = 0;
 u256 const State::c_cryptoFee = 0;
 u256 const State::c_newContractFee = 0;
 u256 const State::c_txFee = 0;
+u256 const State::c_blockReward = 0;
 
-State::State(Address _coinbaseAddress): m_coinbaseAddress(_coinbaseAddress)
+State::State(Address _coinbaseAddress): m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
 	m_previousBlock = BlockInfo::genesis();
@@ -137,25 +138,13 @@ void State::sync(TransactionQueue& _tq)
 			}
 }
 
-void State::playback(bytesConstRef _block)
+u256 State::playback(bytesConstRef _block)
 {
 	try
 	{
 		m_currentBlock.populate(_block);
 		m_currentBlock.verifyInternals(_block);
-		if (m_currentBlock.parentHash != m_previousBlock.hash)
-			throw InvalidParentHash();
-
-		// All ok with the block generally. Play back the transactions now...
-		RLP txs = RLP(_block)[1];
-		for (auto const& i: txs)
-			execute(i.data());
-
-		// Hash the state trie and check against the state_root hash in m_currentBlock.
-		if (m_currentBlock.stateRoot != rootHash())
-			throw InvalidStateRoot();
-
-		m_previousBlock = m_currentBlock;
+		return playback(_block, BlockInfo());
 	}
 	catch (...)
 	{
@@ -165,9 +154,53 @@ void State::playback(bytesConstRef _block)
 	}
 }
 
+u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent)
+{
+	m_currentBlock = _bi;
+	m_previousBlock = _parent;
+	return playback(_block, _grandParent);
+}
+
+u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
+{
+	if (m_currentBlock.parentHash != m_previousBlock.hash)
+		throw InvalidParentHash();
+
+	// All ok with the block generally. Play back the transactions now...
+	for (auto const& i: RLP(_block)[1])
+		execute(i.data());
+
+	// Initialise total difficulty calculation.
+	u256 tdIncrease = m_currentBlock.difficulty;
+
+	// Check uncles & apply their rewards to state.
+	Addresses rewarded;
+	for (auto const& i: RLP(_block)[2])
+	{
+		BlockInfo uncle(i.data());
+		if (m_previousBlock.parentHash != uncle.parentHash)
+			throw InvalidUncle();
+		if (_grandParent)
+			uncle.verifyParent(_grandParent);
+		tdIncrease += uncle.difficulty;
+		rewarded.push_back(uncle.coinbaseAddress);
+	}
+	applyRewards(rewarded);
+
+	// Hash the state trie and check against the state_root hash in m_currentBlock.
+	if (m_currentBlock.stateRoot != rootHash())
+		throw InvalidStateRoot();
+
+	m_previousBlock = m_currentBlock;
+	m_currentBlock = BlockInfo();
+	m_currentBlock.coinbaseAddress = m_ourAddress;
+
+	return tdIncrease;
+}
+
 h256 State::rootHash() const
 {
-	// TODO.
+	// TODO!
 	return h256();
 }
 
@@ -252,6 +285,17 @@ bool State::execute(bytesConstRef _rlp)
 	}
 }
 
+void State::applyRewards(Addresses const& _uncleAddresses)
+{
+	u256 r = c_blockReward;
+	for (auto const& i: _uncleAddresses)
+	{
+		addBalance(i, c_blockReward * 4 / 3);
+		r += c_blockReward / 8;
+	}
+	addBalance(m_currentBlock.coinbaseAddress, r);
+}
+
 void State::execute(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
@@ -269,7 +313,7 @@ void State::execute(Transaction const& _t, Address _sender)
 	{
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(_t.receiveAddress, _t.value);
-		addBalance(m_coinbaseAddress, _t.fee);
+		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
 
 		if (isContractAddress(_t.receiveAddress))
 		{
@@ -292,7 +336,7 @@ void State::execute(Transaction const& _t, Address _sender)
 			mem[i] = _t.data[i];
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(newAddress, _t.value);
-		addBalance(m_coinbaseAddress, _t.fee);
+		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
 	}
 }
 

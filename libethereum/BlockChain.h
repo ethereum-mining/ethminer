@@ -33,9 +33,11 @@ struct BlockDetails
 	uint number;
 	u256 totalDifficulty;
 	h256 parent;
+	h256s children;
 };
 
 static const BlockDetails NullBlockDetails({0, 0, h256()});
+static const h256s NullH256s;
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -68,10 +70,12 @@ public:
 	/// Get a given block (RLP format).
 	h256 currentHash() const { return m_lastBlockHash; }
 
+	/// Get the coinbase address of a given block.
+	Address coinbaseAddress(h256 _hash) const;
+
 private:
 	/// Get fully populated from disk DB.
 	mutable std::map<h256, BlockDetails> m_details;
-	mutable std::multimap<h256, h256> m_children;
 
 	mutable std::map<h256, std::string> m_cache;
 

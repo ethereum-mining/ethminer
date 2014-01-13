@@ -105,14 +105,31 @@ public:
 	/// The hash of the root of our state tree.
 	h256 rootHash() const;
 
+	/// Finalise the block, applying the earned rewards.
+	void applyRewards(Addresses const& _uncleAddresses);
+
+	/// Execute all transactions within a given block.
+	/// @returns the additional total difficulty.
+	/// If the _grandParent is passed, it will check the validity of each of the uncles.
+	/// This might throw.
+	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent);
+
 private:
 	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
 	{
-		~MinerFeeAdder() { state->addBalance(state->m_coinbaseAddress, fee); }
+		~MinerFeeAdder() { state->addBalance(state->m_currentBlock.coinbaseAddress, fee); }
 		State* state;
 		u256 fee;
 	};
+
+	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
+	/// Any failure will be critical.
+	u256 playback(bytesConstRef _block);
+
+	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
+	/// Throws on failure.
+	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent);
 
 	/// Execute a decoded transaction object, given a sender.
 	/// This will append @a _t to the transaction list and change the state accordingly.
@@ -121,11 +138,7 @@ private:
 	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
 
-	/// Execute all transactions within a given block.
-	void playback(bytesConstRef _block);
-
-	// TODO: std::hash<Address> and then move to unordered_map.
-	// Will need to sort on hash construction.
+	// TODO: move over to Trie in leveldb; specify a snapshot for .
 	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
 
@@ -134,7 +147,7 @@ private:
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
 
-	Address m_coinbaseAddress;							///< Our address (i.e. the address to which fees go).
+	Address m_ourAddress;					///< Our address (i.e. the address to which fees go).
 
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;
@@ -144,6 +157,7 @@ private:
 	static const u256 c_cryptoFee;
 	static const u256 c_newContractFee;
 	static const u256 c_txFee;
+	static const u256 c_blockReward;
 };
 
 }
