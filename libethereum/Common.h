@@ -190,9 +190,8 @@ bytes toHex(std::string const& _s);
 template <class _T, class _Out>
 inline void toBigEndian(_T _val, _Out& o_out)
 {
-	auto s = o_out.size();
-	for (uint i = 0; i < s; ++i, _val >>= 8)
-		o_out[s - 1 - i] = (typename _Out::value_type)(uint8_t)_val;
+	for (auto i = o_out.size(); i-- != 0; _val >>= 8)
+		o_out[i] = (typename _Out::value_type)(uint8_t)_val;
 }
 
 /// Converts a big-endian byte-stream represented on a templated collection to a templated integer value.

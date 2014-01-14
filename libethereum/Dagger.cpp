@@ -7,7 +7,9 @@
 #include "Dagger.h"
 using namespace std;
 using namespace std::chrono;
-using namespace eth;
+
+namespace eth
+{
 
 Dagger::Dagger(h256 _hash): m_hash(_hash)
 {
@@ -92,4 +94,6 @@ u256 Dagger::eval(u256 _N)
 		update(bsha, u);
 	}
 	return get(bsha);
+}
+
 }
