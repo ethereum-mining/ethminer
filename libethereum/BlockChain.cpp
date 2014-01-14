@@ -38,7 +38,8 @@ BlockChain::BlockChain()
 	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
 	m_genesisBlock = BlockInfo::createGenesisBlock();
 
-	// TODO: Insert details of genesis block.
+	// Insert details of genesis block.
+	m_details[m_genesisHash] = { 0, (u256)1 << 36, h256(), {} };
 }
 
 BlockChain::~BlockChain()
@@ -57,8 +58,7 @@ h256s BlockChain::blockChain(h256Set const& _earlyExit) const
 	ret.push_back(i);
 	return ret;
 }
-// _bc.details(m_previousBlock.parentHash).children
-// _bc->coinbaseAddress(i)
+
 void BlockChain::import(bytes const& _block)
 {
 	try

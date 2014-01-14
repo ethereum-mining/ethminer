@@ -315,6 +315,8 @@ public:
 	/// Read the byte stream.
 	bytes const& out() const { return m_out; }
 
+	void swapOut(bytes& _dest) { swap(m_out, _dest); }
+
 private:
 	/// Push the node-type byte (using @a _base) along with the item count @a _count.
 	/// @arg _count is number of characters for strings, data-bytes for ints, or items for lists.

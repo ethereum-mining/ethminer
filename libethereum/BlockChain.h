@@ -36,7 +36,7 @@ struct BlockDetails
 	h256s children;
 };
 
-static const BlockDetails NullBlockDetails({0, 0, h256()});
+static const BlockDetails NullBlockDetails({ 0, 0, h256(), {} });
 static const h256s NullH256s;
 
 /**

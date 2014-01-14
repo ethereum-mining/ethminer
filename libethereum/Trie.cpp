@@ -200,6 +200,19 @@ h256 hash256(StringMap const& _s)
 	return sha3(s.out());
 }
 
+bytes rlp256(StringMap const& _s)
+{
+	// build patricia tree.
+	if (_s.empty())
+		return RLPNull;
+	HexMap hexMap;
+	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
+		hexMap[toHex(i->first)] = i->second;
+	RLPStream s;
+	hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
+	return s.out();
+}
+
 h256 hash256(u256Map const& _s)
 {
 	// build patricia tree.

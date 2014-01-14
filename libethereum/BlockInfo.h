@@ -46,6 +46,7 @@ public:
 	explicit operator bool() const { return timestamp != Invalid256; }
 
 	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
+	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populate(bytesConstRef _block);
@@ -56,6 +57,7 @@ public:
 
 	/// No-nonce sha3 of the header only.
 	h256 headerHashWithoutNonce() const;
+	void fillStream(RLPStream& _s, bool _nonce) const;
 
 	static bytes createGenesisBlock();
 

@@ -45,6 +45,7 @@ State::State(Address _coinbaseAddress): m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
 	m_previousBlock = BlockInfo::genesis();
+	m_currentBlock.coinbaseAddress = m_ourAddress;
 }
 
 void State::sync(BlockChain const& _bc)
@@ -77,6 +78,7 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		m_current.clear();
 		m_transactions.clear();
 		m_currentBlock = BlockInfo();
+		m_currentBlock.coinbaseAddress = m_ourAddress;
 		++m_currentNumber;
 	}
 	else if (bi == m_previousBlock)
@@ -109,6 +111,7 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		m_current.clear();
 		m_currentBlock = BlockInfo();
 		m_currentNumber = _bc.details(_bc.currentHash()).number + 1;
+		m_currentBlock.coinbaseAddress = m_ourAddress;
 	}
 }
 
@@ -196,6 +199,40 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 
 	return tdIncrease;
+}
+
+// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
+// (i.e. all the transactions we executed).
+bytes State::compileBlock(BlockChain const& _bc)
+{
+	RLPStream uncles;
+	if (m_previousBlock != BlockInfo::genesis())
+	{
+		// Find uncles if we're not a direct child of the genesis.
+		auto us = _bc.details(m_previousBlock.parentHash).children;
+		uncles.appendList(us.size());
+		for (auto const& u: us)
+			BlockInfo(_bc.block(u)).fillStream(uncles, true);
+	}
+	else
+		uncles.appendList(0);
+
+	RLPStream txs(m_transactions.size());
+	for (auto const& i: m_transactions)
+		i.second.fillStream(txs);
+
+	txs.swapOut(m_currentTxs);
+	uncles.swapOut(m_currentUncles);
+
+	m_currentBlock.sha3Transactions = sha3(m_currentTxs);
+	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
+	RLPStream ret;
+	ret.appendList(3);
+	m_currentBlock.fillStream(ret, true);
+	ret.appendRaw(m_currentTxs);
+	ret.appendRaw(m_currentUncles);
+	return ret.out();
 }
 
 h256 State::rootHash() const

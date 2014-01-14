@@ -114,6 +114,8 @@ public:
 	/// This might throw.
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent);
 
+	bytes compileBlock(BlockChain const& _bc);
+
 private:
 	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
@@ -146,6 +148,9 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
+
+	bytes m_currentTxs;
+	bytes m_currentUncles;
 
 	Address m_ourAddress;					///< Our address (i.e. the address to which fees go).
 

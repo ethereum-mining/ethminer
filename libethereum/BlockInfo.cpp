@@ -50,7 +50,14 @@ bytes BlockInfo::createGenesisBlock()
 
 h256 BlockInfo::headerHashWithoutNonce() const
 {
-	return sha3((RLPStream(7) << toBigEndianString(parentHash) << toBigEndianString(sha3Uncles) << coinbaseAddress << toBigEndianString(stateRoot) << toBigEndianString(sha3Transactions) << difficulty << timestamp).out());
+	return sha3((RLPStream(7) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp).out());
+}
+
+void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
+{
+	_s.appendList(_nonce ? 8 : 7) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp;
+	if (_nonce)
+		_s << nonce;
 }
 
 void BlockInfo::populateGenesis()

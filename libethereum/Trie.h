@@ -27,6 +27,7 @@
 namespace eth
 {
 
+bytes rlp256(StringMap const& _s);
 h256 hash256(StringMap const& _s);
 h256 hash256(u256Map const& _s);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1);

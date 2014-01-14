@@ -31,9 +31,9 @@ int main()
 	// Our address.
 	Address us;				// TODO: should be loaded from config file/set at command-line.
 
-	BlockChain bc;			// TODO: Implement - should maintain block database.
-	TransactionQueue tq;	// TODO: Implement.
-	State s(us);			// TODO: Switch to disk-backed state (leveldb)
+	BlockChain bc;			// Maintains block database.
+	TransactionQueue tq;	// Maintains list of incoming transactions not yet on the block chain.
+	State s(us);			// TODO: Switch to disk-backed state (leveldb? could do with a diffing DB)
 //	s.restore();			// TODO: Implement - key optimisation.
 
 	// Synchronise the state according to the block chain - i.e. replay all transactions, in order. Will take a while if the state isn't restored.
