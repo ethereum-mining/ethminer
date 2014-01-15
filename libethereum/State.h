@@ -31,6 +31,7 @@
 #include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
+#include "Trie.h"
 
 namespace eth
 {
@@ -47,15 +48,18 @@ class State
 {
 public:
 	/// Construct null state object.
-	State() {}
+//	State() {}
 
 	/// Construct state object.
 	explicit State(Address _coinbaseAddress);
 
+	/// Compiles uncles and transactions list, and puts hashes into the current block header.
+	void prepareToMine(BlockChain const& _bc);
+
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns true if it got lucky.
-	bool mine(uint _msTimeout = 1000) const;
+	bool mine(uint _msTimeout = 1000);
 
 	/// Get the complete current block, including valid nonce.
 	bytes const& blockData() const { return m_currentBytes; }
@@ -98,12 +102,21 @@ public:
 	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
 
+	/// Set the value of a memory position of a contract.
+	void setContractMemory(Address _contract, u256 _memory, u256 _value);
+
+	/// Get the full memory of a contract.
+//	std::map<u256, u256> contractMemory(Address _contract) const;
+
+	/// Note that the given address is sending a transaction and thus increment the associated ticker.
+	void noteSending(Address _id);
+
 	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
 	/// @returns 0 if the address has never been used.
 	u256 transactionsFrom(Address _address) const;
 
 	/// The hash of the root of our state tree.
-	h256 rootHash() const;
+	h256 rootHash() const { return m_state.root(); }
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);
@@ -113,8 +126,6 @@ public:
 	/// If the _grandParent is passed, it will check the validity of each of the uncles.
 	/// This might throw.
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent);
-
-	bytes compileBlock(BlockChain const& _bc);
 
 private:
 	/// Fee-adder on destruction RAII class.
@@ -140,8 +151,16 @@ private:
 	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
 
-	// TODO: move over to Trie in leveldb; specify a snapshot for .
-	std::map<Address, AddressState> m_current;	///< The current state. We work with a C++ hash map rather than a Trie.
+	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
+	void resetCurrent();
+
+	void mergeOverlay() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); }
+	void dropOverlay() { m_over.clear(); }
+
+	ldb::DB* m_db;								///< The DB, holding all of our Tries' backend data.
+	ldb::WriteOptions m_writeOptions;
+	std::map<h256, std::string> m_over;			///< The current overlay onto the state DB.
+	TrieDB<Address> m_state;					///< Our state tree.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
@@ -152,7 +171,7 @@ private:
 	bytes m_currentTxs;
 	bytes m_currentUncles;
 
-	Address m_ourAddress;					///< Our address (i.e. the address to which fees go).
+	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;

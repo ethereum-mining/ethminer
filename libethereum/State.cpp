@@ -23,11 +23,13 @@
 #include <sha.h>
 #include <sha3.h>
 #include <ripemd.h>
+#include <time.h>
 #include <random>
 #include "Trie.h"
 #include "BlockChain.h"
 #include "Instruction.h"
 #include "Exceptions.h"
+#include "Dagger.h"
 #include "State.h"
 using namespace std;
 using namespace eth;
@@ -46,6 +48,10 @@ State::State(Address _coinbaseAddress): m_ourAddress(_coinbaseAddress)
 	secp256k1_start();
 	m_previousBlock = BlockInfo::genesis();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
+
+	ldb::Options o;
+	ldb::DB::Open(o, "state", &m_db);
+	m_state.open(m_db, m_currentBlock.stateRoot, &m_over);
 }
 
 void State::sync(BlockChain const& _bc)
@@ -75,11 +81,8 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		// We mined the last block.
 		// Our state is good - we just need to move on to next.
 		m_previousBlock = m_currentBlock;
-		m_current.clear();
-		m_transactions.clear();
-		m_currentBlock = BlockInfo();
-		m_currentBlock.coinbaseAddress = m_ourAddress;
-		++m_currentNumber;
+		resetCurrent();
+		m_currentNumber++;
 	}
 	else if (bi == m_previousBlock)
 	{
@@ -107,14 +110,18 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		for (auto it = next(l.cbegin()); it != l.cend(); ++it)
 			playback(_bc.block(*it));
 
-		m_transactions.clear();
-		m_current.clear();
-		m_currentBlock = BlockInfo();
 		m_currentNumber = _bc.details(_bc.currentHash()).number + 1;
-		m_currentBlock.coinbaseAddress = m_ourAddress;
+		resetCurrent();
 	}
 }
 
+void State::resetCurrent()
+{
+	m_transactions.clear();
+	m_currentBlock = BlockInfo();
+	m_currentBlock.coinbaseAddress = m_ourAddress;
+	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
+}
 
 void State::sync(TransactionQueue& _tq)
 {
@@ -195,15 +202,14 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 		throw InvalidStateRoot();
 
 	m_previousBlock = m_currentBlock;
-	m_currentBlock = BlockInfo();
-	m_currentBlock.coinbaseAddress = m_ourAddress;
+	resetCurrent();
 
 	return tdIncrease;
 }
 
 // @returns the block that represents the difference between m_previousBlock and m_currentBlock.
 // (i.e. all the transactions we executed).
-bytes State::compileBlock(BlockChain const& _bc)
+void State::prepareToMine(BlockChain const& _bc)
 {
 	RLPStream uncles;
 	if (m_previousBlock != BlockInfo::genesis())
@@ -226,78 +232,126 @@ bytes State::compileBlock(BlockChain const& _bc)
 
 	m_currentBlock.sha3Transactions = sha3(m_currentTxs);
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
-
-	RLPStream ret;
-	ret.appendList(3);
-	m_currentBlock.fillStream(ret, true);
-	ret.appendRaw(m_currentTxs);
-	ret.appendRaw(m_currentUncles);
-	return ret.out();
 }
 
-h256 State::rootHash() const
+bool State::mine(uint _msTimeout)
 {
-	// TODO!
-	return h256();
-}
+	// Update timestamp according to clock.
+	m_currentBlock.timestamp = time(0);
 
-bool State::mine(uint _msTimeout) const
-{
-	// TODO: update timestamp according to clock.
-	// TODO: update difficulty according to timestamp.
-	// TODO: look for a nonce that makes a good hash.
-	// ...but don't take longer than _msTimeout ms.
+	// Update difficulty according to timestamp.
+	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
+
+	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
+
+	Dagger d(m_currentBlock.headerHashWithoutNonce());
+	m_currentBlock.nonce = d.search(_msTimeout, m_currentBlock.difficulty);
+	if (m_currentBlock.nonce)
+	{
+		// Got it! Compile block:
+		RLPStream ret;
+		ret.appendList(3);
+		m_currentBlock.fillStream(ret, true);
+		ret.appendRaw(m_currentTxs);
+		ret.appendRaw(m_currentUncles);
+		ret.swapOut(m_currentBytes);
+		return true;
+	}
+
 	return false;
 }
 
-bool State::isNormalAddress(Address _address) const
+bool State::isNormalAddress(Address _id) const
 {
-	auto it = m_current.find(_address);
-	return it != m_current.end() && it->second.type() == AddressType::Normal;
+	return RLP(m_state[_id]).itemCount() == 2;
 }
 
-bool State::isContractAddress(Address _address) const
+bool State::isContractAddress(Address _id) const
 {
-	auto it = m_current.find(_address);
-	return it != m_current.end() && it->second.type() == AddressType::Contract;
+	return RLP(m_state[_id]).itemCount() == 3;
 }
 
 u256 State::balance(Address _id) const
 {
-	auto it = m_current.find(_id);
-	return it == m_current.end() ? 0 : it->second.balance();
+	RLP rlp(m_state[_id]);
+	if (rlp.isList())
+		return rlp[0].toInt<u256>();
+	else
+		return 0;
+}
+
+void State::noteSending(Address _id)
+{
+	RLP rlp(m_state[_id]);
+	if (rlp.isList())
+		if (rlp.itemCount() == 2)
+			m_state.insert(_id, rlpList(rlp[0], rlp[1].toInt<u256>() + 1));
+		else
+			m_state.insert(_id, rlpList(rlp[0], rlp[1].toInt<u256>() + 1, rlp[2]));
+	else
+		m_state.insert(_id, rlpList(0, 1));
 }
 
 void State::addBalance(Address _id, u256 _amount)
 {
-	auto it = m_current.find(_id);
-	if (it == m_current.end())
-		it->second.balance() = _amount;
+	RLP rlp(m_state[_id]);
+	if (rlp.isList())
+		if (rlp.itemCount() == 2)
+			m_state.insert(_id, rlpList(rlp[0].toInt<u256>() + _amount, rlp[1]));
+		else
+			m_state.insert(_id, rlpList(rlp[0].toInt<u256>() + _amount, rlp[1], rlp[2]));
 	else
-		it->second.balance() += _amount;
+		m_state.insert(_id, rlpList(_amount, 0));
 }
 
 void State::subBalance(Address _id, bigint _amount)
 {
-	auto it = m_current.find(_id);
-	if (it == m_current.end() || (bigint)it->second.balance() < _amount)
+	RLP rlp(m_state[_id]);
+	if (rlp.isList())
+	{
+		bigint bal = rlp[0].toInt<u256>();
+		if (bal < _amount)
+			throw NotEnoughCash();
+		bal -= _amount;
+		if (rlp.itemCount() == 2)
+			m_state.insert(_id, rlpList(bal, rlp[1]));
+		else
+			m_state.insert(_id, rlpList(bal, rlp[1], rlp[2]));
+	}
+	else
 		throw NotEnoughCash();
-	it->second.balance() = (u256)((bigint)it->second.balance() - _amount);
 }
 
-u256 State::transactionsFrom(Address _address) const
+u256 State::transactionsFrom(Address _id) const
 {
-	auto it = m_current.find(_address);
-	return it == m_current.end() ? 0 : it->second.nonce();
-}
-
-u256 State::contractMemory(Address _contract, u256 _memory) const
-{
-	auto m = m_current.find(_contract);
-	if (m == m_current.end())
+	RLP rlp(m_state[_id]);
+	if (rlp.isList())
+		return rlp[0].toInt<u256>(RLP::LaisezFaire);
+	else
 		return 0;
-	auto i = m->second.memory().find(_memory);
-	return i == m->second.memory().end() ? 0 : i->second;
+}
+
+u256 State::contractMemory(Address _id, u256 _memory) const
+{
+	RLP rlp(m_state[_id]);
+	if (rlp.itemCount() != 3)
+		throw InvalidContractAddress();
+	return fromBigEndian<u256>(TrieDB<h256>(m_db, rlp[2].toHash<h256>(), (std::map<h256, std::string>*)&m_over)[_memory]);
+}
+
+void State::setContractMemory(Address _contract, u256 _memory, u256 _value)
+{
+	RLP rlp(m_state[_contract]);
+	TrieDB<h256> c(m_db, &m_over);
+	std::string s = toBigEndianString(_value);
+	if (rlp.itemCount() == 3)
+	{
+		c.setRoot(rlp[2].toHash<h256>());
+		c.insert(_memory, bytesConstRef(s));
+		m_state.insert(_contract, rlpList(rlp[0], rlp[1], c.root()));
+	}
+	else
+		throw InvalidContractAddress();
 }
 
 bool State::execute(bytesConstRef _rlp)
@@ -346,6 +400,9 @@ void State::execute(Transaction const& _t, Address _sender)
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
 
+	// Increment associated nonce for sender.
+	noteSending(_sender);
+
 	if (_t.receiveAddress)
 	{
 		subBalance(_sender, _t.value + _t.fee);
@@ -368,9 +425,8 @@ void State::execute(Transaction const& _t, Address _sender)
 		if (isContractAddress(newAddress))
 			throw ContractAddressCollision();
 
-		auto& mem = m_current[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
-			mem[i] = _t.data[i];
+			setContractMemory(newAddress, i, _t.data[i]);
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(newAddress, _t.value);
 		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
@@ -381,12 +437,6 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 {
 	std::vector<u256> stack;
 
-	// Find our memory.
-	auto m = m_current.find(_myAddress);
-	if (m == m_current.end())
-		throw NoSuchContract();
-	auto& myMemory = m->second.memory();
-
 	// Set up some local functions.
 	auto require = [&](u256 _n)
 	{
@@ -395,15 +445,17 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 	};
 	auto mem = [&](u256 _n) -> u256
 	{
-		auto i = myMemory.find(_n);
-		return i == myMemory.end() ? 0 : i->second;
+		return contractMemory(_myAddress, _n);
+//		auto i = myMemory.find(_n);
+//		return i == myMemory.end() ? 0 : i->second;
 	};
 	auto setMem = [&](u256 _n, u256 _v)
 	{
-		if (_v)
+		setContractMemory(_myAddress, _n, _v);
+/*		if (_v)
 			myMemory[_n] = _v;
 		else
-			myMemory.erase(_n);
+			myMemory.erase(_n);*/
 	};
 
 	u256 curPC = 0;
@@ -868,9 +920,10 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		{
 			require(1);
 			Address dest = left160(stack.back());
-			u256 minusVoidFee = m_current[_myAddress].memory().size() * c_memoryFee;
+			// TODO: easy once we have the local cache of memory in place.
+			u256 minusVoidFee = 0;//m_current[_myAddress].memory().size() * c_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
-			m_current.erase(_myAddress);
+			m_state.remove(_myAddress);
 			// ...follow through to...
 		}
 		case Instruction::STOP:

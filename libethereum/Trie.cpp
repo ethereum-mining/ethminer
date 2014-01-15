@@ -665,4 +665,6 @@ void Trie::remove(std::string const& _key)
 	}
 }
 
+h256 const GenericTrieDB::c_null = sha3(RLPNull);
+
 }

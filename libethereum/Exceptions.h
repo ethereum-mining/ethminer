@@ -27,5 +27,6 @@ class InvalidDifficulty: public std::exception {};
 class InvalidTimestamp: public std::exception {};
 class InvalidNonce: public std::exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; };
 class InvalidParentHash: public std::exception {};
+class InvalidContractAddress: public std::exception {};
 
 }

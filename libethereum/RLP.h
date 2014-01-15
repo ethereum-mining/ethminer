@@ -163,6 +163,10 @@ public:
 	explicit operator bigint() const { return toBigInt(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<_N>(); }
 
+	/// Converts to bytearray. @returns the empty byte array if not a string.
+	bytes toBytes() const { if (!isString()) return bytes(); bytes(payload().data(), payload().data() + items()); }
+	/// Converts to bytearray. @returns the empty byte array if not a string.
+	bytesConstRef toBytesConstRef() const { if (!isString()) return bytesConstRef(); payload().cropped(0, items()); }
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
@@ -296,10 +300,13 @@ public:
 	RLPStream& append(h160 _s, bool _compact = false) { return appendFixed(_s, _compact); }
 	RLPStream& append(h256 _s, bool _compact = false) { return appendFixed(_s, _compact); }
 	RLPStream& append(bigint _s);
-	RLPStream& append(std::string const& _s);
 	RLPStream& appendList(uint _count);
-	RLPStream& appendRaw(bytes const& _rlp);
-	RLPStream& appendString(bytes const& _rlp);
+	RLPStream& appendString(bytesConstRef _s);
+	RLPStream& appendString(bytes const& _s) { return appendString(bytesConstRef(&_s)); }
+	RLPStream& appendString(std::string const& _s);
+	RLPStream& appendRaw(bytesConstRef _rlp);
+	RLPStream& appendRaw(bytes const& _rlp) { return appendRaw(&_rlp); }
+	RLPStream& appendRaw(RLP const& _rlp) { return appendRaw(_rlp.data()); }
 
 	/// Shift operators for appending data items.
 	RLPStream& operator<<(uint _i) { return append(_i); }
@@ -308,8 +315,9 @@ public:
 	RLPStream& operator<<(h160 _i) { return append(_i); }
 	RLPStream& operator<<(h256 _i) { return append(_i); }
 	RLPStream& operator<<(bigint _i) { return append(_i); }
-	RLPStream& operator<<(char const* _s) { return append(std::string(_s)); }
-	RLPStream& operator<<(std::string const& _s) { return append(_s); }
+	RLPStream& operator<<(char const* _s) { return appendString(std::string(_s)); }
+	RLPStream& operator<<(std::string const& _s) { return appendString(_s); }
+	RLPStream& operator<<(RLP const& _i) { return appendRaw(_i); }
 	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Read the byte stream.

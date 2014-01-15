@@ -42,7 +42,7 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(8) << (uint)0 << sha3EmptyList << (uint)0 << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0;
+	block.appendList(9) << (uint)0 << sha3EmptyList << (uint)0 << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0 << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -50,12 +50,14 @@ bytes BlockInfo::createGenesisBlock()
 
 h256 BlockInfo::headerHashWithoutNonce() const
 {
-	return sha3((RLPStream(7) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp).out());
+	RLPStream s;
+	fillStream(s, false);
+	return sha3(s.out());
 }
 
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 8 : 7) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp;
+	_s.appendList(_nonce ? 9 : 8) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
 }
@@ -80,7 +82,8 @@ void BlockInfo::populate(bytesConstRef _block)
 		sha3Transactions = header[4].toHash<h256>();
 		difficulty = header[5].toInt<u256>();
 		timestamp = header[6].toInt<u256>();
-		nonce = header[7].toInt<u256>();
+		extraData = header[7].toHash<h256>();
+		nonce = header[8].toInt<u256>();
 	}
 	catch (RLP::BadCast)
 	{

@@ -113,7 +113,7 @@ eth::uint RLP::items() const
 	return ret;
 }
 
-RLPStream& RLPStream::append(std::string const& _s)
+RLPStream& RLPStream::appendString(bytesConstRef _s)
 {
 	if (_s.size() < 0x38)
 		m_out.push_back(_s.size() | 0x40);
@@ -125,7 +125,7 @@ RLPStream& RLPStream::append(std::string const& _s)
 	return *this;
 }
 
-RLPStream& RLPStream::appendString(bytes const& _s)
+RLPStream& RLPStream::appendString(string const& _s)
 {
 	if (_s.size() < 0x38)
 		m_out.push_back(_s.size() | 0x40);
@@ -137,7 +137,7 @@ RLPStream& RLPStream::appendString(bytes const& _s)
 	return *this;
 }
 
-RLPStream& RLPStream::appendRaw(bytes const& _s)
+RLPStream& RLPStream::appendRaw(bytesConstRef _s)
 {
 	uint os = m_out.size();
 	m_out.resize(os + _s.size());
