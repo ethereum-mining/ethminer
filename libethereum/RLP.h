@@ -58,7 +58,7 @@ public:
 	explicit RLP(bytesConstRef _d): m_data(_d) {}
 
 	/// Construct a node of value given in the bytes.
-	explicit RLP(bytes const& _d): m_data(const_cast<bytes*>(&_d)) {}	// a bit horrible, but we know we won't be altering the data. TODO: allow vector<T> const* to be passed to vector_ref<T const>.
+	explicit RLP(bytes const& _d): m_data(&_d) {}
 
 	/// Construct a node to read RLP data in the bytes given.
 	RLP(byte const* _b, uint _s): m_data(bytesConstRef(_b, _s)) {}

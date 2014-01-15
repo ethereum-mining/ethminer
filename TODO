@@ -1,0 +1,24 @@
+Tests
+- Use standard tests.
+
+Config file & command line options.
+
+Peer network.
+
+Trie on DB.
+- Modularise overlay and DB.
+- Iterate.
+- Kill all the restore point stuff.
+
+Cache some state
+- Contract memory, balances - for single commit into Trie.
+
+Better handling of corrupt blocks.
+
+Stateful Miner class.
+
+Better Mod-Exp.
+
+Crypto stuff:
+- kFromMessage
+- Check all the tweak instructions.
