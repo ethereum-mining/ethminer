@@ -86,6 +86,8 @@ public:
 
 private:
 	std::string node(h256 _h) const { if (_h == c_null) return std::string(); if (m_over) { auto it = m_over->find(_h); if (it != m_over->end()) return it->second; } std::string ret; m_db->Get(m_readOptions, ldb::Slice((char const*)&m_root, 32), &ret); return ret; }
+	void insertNode(h256 _h, bytesConstRef _v) const {}
+	void killNode(h256 _h) const {}	// only from overlay - no killing from DB proper.
 
 	static const h256 c_null;
 	h256 m_root = c_null;

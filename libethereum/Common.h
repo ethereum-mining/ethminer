@@ -65,7 +65,7 @@ class FixedHash
 	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<_N * 8, _N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 
 public:
-	static const unsigned size = _N;
+	enum { size = _N };
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }

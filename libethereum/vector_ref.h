@@ -25,6 +25,7 @@ public:
 
 	explicit operator bool() const { return m_data && m_count; }
 
+	bool contentsEqual(std::vector<_T> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
 	std::vector<_T> toVector() const { return std::vector<_T>(m_data, m_data + m_count); }
 	std::string toString() const { return std::string((char const*)m_data, ((char const*)m_data) + m_count); }
 	template <class _T2> operator vector_ref<_T2>() const { assert(m_count * sizeof(_T) / sizeof(_T2) * sizeof(_T2) / sizeof(_T) == m_count); return vector_ref<_T2>((_T2*)m_data, m_count * sizeof(_T) / sizeof(_T2)); }

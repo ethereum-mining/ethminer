@@ -154,8 +154,11 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
-	void mergeOverlay() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); }
-	void dropOverlay() { m_over.clear(); }
+	/// Commit all pending state modifications for archival. This cannot be undone.
+	void commit() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); }
+
+	/// Rollback all pending state modifictions.
+	void rollback() { m_over.clear(); }
 
 	ldb::DB* m_db;								///< The DB, holding all of our Tries' backend data.
 	ldb::WriteOptions m_writeOptions;
