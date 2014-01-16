@@ -57,6 +57,8 @@ private:
 	TrieNode* m_root;
 };
 
+#pragma warning(push)
+#pragma warning(disable:4100) // disable warnings so it compiles
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
  * This version uses an LDB backend - TODO: split off m_db & m_over into opaque key/value map layer and allow caching & testing without DB.
@@ -96,6 +98,7 @@ private:
 
 	ldb::ReadOptions m_readOptions;
 };
+#pragma warning(pop)
 
 template <class KeyType>
 class TrieDB: public GenericTrieDB
