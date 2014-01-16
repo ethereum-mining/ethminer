@@ -55,7 +55,7 @@ struct Transaction
 
 	void fillStream(RLPStream& _s, bool _sig = true) const;
 	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
-	std::string rlpString(bool _sig = true) const { return asString(rlp()); }
+	std::string rlpString(bool _sig = true) const { return asString(rlp(_sig)); }
 	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
 	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
 };

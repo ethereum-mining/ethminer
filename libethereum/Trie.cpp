@@ -669,13 +669,13 @@ h256 const GenericTrieDB::c_null = sha3(RLPNull);
 
 inline byte nibble(bytesConstRef _data, uint _i)
 {
-	return (i & 1) ? (_data[i / 2] & 15) : (_data[i / 2] >> 4);
+	return (_i & 1) ? (_data[_i / 2] & 15) : (_data[_i / 2] >> 4);
 }
 
 std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble)
 {
-	uint begin = _begin;
-	uint end = _end < 0 ? _data.size() * 2 + 1 + _end : _end;
+	uint begin = _beginNibble;
+	uint end = _endNibble < 0 ? _data.size() * 2 + 1 + _endNibble : _endNibble;
 	bool odd = (end - begin) & 1;
 
 	std::string ret(1, ((_terminated ? 2 : 0) | (odd ? 1 : 0)) * 16);
@@ -702,46 +702,71 @@ uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint 
 
 // alters given RLP such that the given key[_begin:_end]/value exists under it, and puts the new RLP into _s.
 // _s's size could be anything.
-void GenericTrieDB::insertHelper(RLPStream& _s, RLP const& _node, bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end)
+void GenericTrieDB::mergeHelper(RLPStream& _s, RLP const& _replace, bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end, uint _nodeBegin)
 {
-	if (_node.isNull() || _node.isEmpty())
+/*	if (_replace.isNull() || _replace.isEmpty())
 	{
 		_s.insertList(2);
 		_s << hexPrefixEncode(_key, true, _begin, _end);
 		_s.appendString(_value);
 	}
-	else if (_node.itemCount() == 2)
+	else if (_replace.itemCount() == 2)
 	{
 		// split [k,v] into branch
-		auto pl = _node[0].payload();
-		auto plb = (_node[0] & 0x10) ? 1 : 2;
+		auto pl = _replace[0].payload();
+		auto plb = ((pl[0] & 0x10) ? 1 : 2) + _nodeBegin;
 		auto ple = pl.size() - plb;
 		uint pivot = sharedNibbles(_key, _begin, _end, pl, plb, ple);
-		// special case for pivot == first nibble, pivot == last nibble. if it's anything else, need stem, branch, 2 stems (old & new)
-		if (pivot == _end - _begin && pivot == ple - plb)
+		// special case for pivot == first nibble, pivot == last nibble. if it's anything else, then it's recursive.
+		if (pivot == ple - plb && !(pl[0] & 0x20))									// key begins with node-partial and is non-terminated - leave it as the child node's problem.
+		{
+			// share this non-termed 2-item node - merge in below.
+			_s.insertList(2);
+			_s << _replace[0];
+			mergeNode(_s, _replace[1], _key, _value, _begin + pivot, _end, 0);
+		}
+		else if (pivot == ple - plb && pivot == _end - _begin && (pl[0] & 0x20))	// key and value exactly the same and is terminated - just replace value.
 		{
 			_s.insertList(2);
-			_s << _node[0];
+			_s << hexPrefixEncode(_key, true, _begin, _end);
 			_s.appendString(_value);
 		}
 		else
 		{
 			if (pivot == 0)
 			{
-				// branch immediately
+				// branch since the pivot is right here.
 				_s.insertList(17);
-				if (_begin == _end)
+
+				auto n = plb == ple ? 16 : nibble(pl, plb);
+				auto m = _begin == _end ? 16 : nibble(_key, _begin);
+				for (auto i = 0; i < 16; ++i)
+					if (i == n)
+						remerge(_s, _replace, _nodeBegin);
+					else if (i == m)
+						mergeItem(_s, RLP(), _key, _value, _begin, _end);
+					else
+						_s << "";
+				if (n == 16)
 				{
-					// as value
-					for (auto i = 0; i < 16; ++i)
-						_s << _node[i];
-					_s << _value;
+					assert(pl[0] & 0x20);
+					// this should be terminated - if it's not and we share the entire 2-node partial key's worth of nibbles, then why didn't we skip over the 2-item node and merge directly into the branch below?
+					_s.appendRaw(_replace[1]);
 				}
+				else if (m == 16)
+					_s << _value;
+				else
+					s << "";
 			}
 			else
+			{
+				_s.insertList(2);
+				_s << hexPrefixEncode(_key, false, _begin, _begin + pivot);
+				mergeItem(_s, _replace, _key, _value, _begin + pivot, _end, _nodeBegin + pivot);
+			}
 		}
 	}
-	else if (_node.itemCount() == 17)
+	else if (_replace.itemCount() == 17)
 	{
 		// insert into branch
 		_s.insertList(17);
@@ -749,7 +774,7 @@ void GenericTrieDB::insertHelper(RLPStream& _s, RLP const& _node, bytesConstRef 
 		{
 			// as value
 			for (auto i = 0; i < 16; ++i)
-				_s << _node[i];
+				_s << _replace[i];
 			_s << _value;
 		}
 		else
@@ -758,36 +783,44 @@ void GenericTrieDB::insertHelper(RLPStream& _s, RLP const& _node, bytesConstRef 
 			auto n = nibble(_key, _begin);
 			for (auto i = 0; i < 17; ++i)
 				if (n == i)
-					insertItem(s, _node[i], _key, _value, _begin, _end);
+					insertItem(s, _replace[i], _key, _value, _begin, _end);
 				else
-					_s << _node[i];
+					_s << _replace[i];
 		}
-	}
+	}*/
 }
 
 // Inserts the given item into an RLPStream, either inline (if RLP < 32) or creating a node and inserting the hash.
-void GenericTrieDB::insertItem(RLPStream& _s, RLP const& _node, bytesConstRef _k, bytesConstRef _v, uint _begin, uint _end)
+// Assumes we are _nodeBegin of the way through the key of the _replace.
+void GenericTrieDB::mergeItem(RLPStream& _s, RLP const& _replace, bytesConstRef _k, bytesConstRef _v, uint _begin, uint _end, uint _nodeBegin)
 {
-	// Kill old node.
-	if (_node.isString() || _node.isInt())
-		killNode(_node.toHash());
-
+	/*
 	RLPStream s;
-	insertHelper(s, _node, _k, _v, _begin, _end);
-	if (s.size() < 32)
-		_s.insertRaw(s.out());
-	else
-		_s << insertNode(s.out());
+	mergeHelper(s, (_replace.isString() || _replace.isInt()) ? RLP(node(_replace.toHash())) : _replace, _k, _v, _begin, _end, _nodeBegin);
+	streamNode(s, s.out());
+
+	// Kill old node.
+	if ((_replace.isString() || _replace.isInt()) && _nodeBegin == 0)
+		killNode(_replace.toHash());
+		*/
 }
 
-void GenericTrieDB::insert(bytesConstRef _key, bytesConstRef _value, )
+void GenericTrieDB::streamNode(RLPStream& _s, bytes const& _b)
+{
+	if (_b.size() < 32)
+		_s.appendRaw(_b);
+	else
+		_s << insertNode(&_b);
+}
+
+void GenericTrieDB::insert(bytesConstRef _key, bytesConstRef _value)
 {
 	string rv = node(m_root);
 	killNode(m_root);
 
 	RLPStream s;
-	insertHelper(s, RLP(rv), _key, _value, 0, _key.size() * 2);
-	m_root = insertNode(s.out());
+	mergeHelper(s, RLP(rv), _key, _value, 0, _key.size() * 2, 0);
+	m_root = insertNode(&s.out());
 }
 
 void GenericTrieDB::remove(bytesConstRef _key)

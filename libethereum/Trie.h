@@ -96,18 +96,20 @@ public:
 
 	void debugPrint() {}
 
-	std::string at(bytesConstRef _key) const { return std::string(); }
+	std::string at(bytesConstRef _key) const;
 	void insert(bytesConstRef _key, bytesConstRef _value);
-	void remove(bytesConstRef _key) {}
+	void remove(bytesConstRef _key);
 
 	// TODO: iterators.
 
 private:
-	void insertHelper(bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end);
+	void streamNode(RLPStream& _s, bytes const& _b);
+	void mergeHelper(RLPStream& _s, RLP const& _replace, bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end, uint _nodeBegin = 0);
+	void mergeItem(RLPStream& _s, RLP const& _replace, bytesConstRef _k, bytesConstRef _v, uint _begin, uint _end, uint _nodeBegin = 0);
 
 	std::string node(h256 _h) const { if (_h == c_null) return std::string(); if (m_over) { auto it = m_over->find(_h); if (it != m_over->end()) return it->second; } std::string ret; if (m_db) m_db->Get(m_readOptions, ldb::Slice((char const*)&m_root, 32), &ret); return ret; }
-	void insertNode(h256 _h, bytesConstRef _v) const { m_over[_h] = _v; }
-	h256 insertNode(bytesConstRef _v) const { auto h = sha3(_v); m_over[h] = _v; return h; }
+	void insertNode(h256 _h, bytesConstRef _v) const { (*m_over)[_h] = _v.toString(); }
+	h256 insertNode(bytesConstRef _v) const { auto h = sha3(_v); (*m_over)[h] = _v.toString(); return h; }
 	void killNode(h256 _h) const { m_over->erase(_h); }	// only from overlay - no killing from DB proper.
 
 	static const h256 c_null;
