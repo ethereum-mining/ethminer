@@ -240,6 +240,9 @@ public:
 	/// Converts to RLPs collection object. Useful if you need random access to sub items or will iterate over multiple times.
 	RLPs toList() const;
 
+	/// @returns the data payload. Valid for all types.
+	bytesConstRef payload() const { auto n = (m_data[0] & 0x3f); return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37))); }
+
 private:
 	/// Direct value integer.
 	bool isDirectValueInt() const { assert(!isNull()); return m_data[0] < 0x18; }
@@ -269,9 +272,6 @@ private:
 	/// @returns the number of data items (bytes in the case of strings & ints, items in the case of lists). Valid for all types.
 	uint items() const;
 
-	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { auto n = (m_data[0] & 0x3f); return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37))); }
-
 	/// Our byte data.
 	bytesConstRef m_data;
 
@@ -297,8 +297,8 @@ public:
 	RLPStream& append(uint _s);
 	RLPStream& append(u160 _s);
 	RLPStream& append(u256 _s);
-	RLPStream& append(h160 _s, bool _compact = false) { return appendFixed(_s, _compact); }
-	RLPStream& append(h256 _s, bool _compact = false) { return appendFixed(_s, _compact); }
+	RLPStream& append(h160 _s, bool _compact = true) { return appendFixed(_s, _compact); }
+	RLPStream& append(h256 _s, bool _compact = true) { return appendFixed(_s, _compact); }
 	RLPStream& append(bigint _s);
 	RLPStream& appendList(uint _count);
 	RLPStream& appendString(bytesConstRef _s);

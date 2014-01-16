@@ -667,4 +667,138 @@ void Trie::remove(std::string const& _key)
 
 h256 const GenericTrieDB::c_null = sha3(RLPNull);
 
+inline byte nibble(bytesConstRef _data, uint _i)
+{
+	return (i & 1) ? (_data[i / 2] & 15) : (_data[i / 2] >> 4);
+}
+
+std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble)
+{
+	uint begin = _begin;
+	uint end = _end < 0 ? _data.size() * 2 + 1 + _end : _end;
+	bool odd = (end - begin) & 1;
+
+	std::string ret(1, ((_terminated ? 2 : 0) | (odd ? 1 : 0)) * 16);
+	ret.reserve((end - begin) / 2 + 1);
+
+	uint d = odd ? 1 : 2;
+	for (auto i = begin; i < end; ++i, ++d)
+	{
+		byte n = nibble(_data, i);
+		if (d & 1)	// odd
+			ret.back() |= n;		// or the nibble onto the back
+		else
+			ret.push_back(n << 4);	// push the nibble on to the back << 4
+	}
+	return ret;
+}
+
+uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be)
+{
+	uint ret = 0;
+	for (uint ai = _ab, bi = _bb; ai < _ae && bi < _be && nibble(_a, ai) == nibble(_b, bi); ++ai, ++bi) {}
+	return ret;
+}
+
+// alters given RLP such that the given key[_begin:_end]/value exists under it, and puts the new RLP into _s.
+// _s's size could be anything.
+void GenericTrieDB::insertHelper(RLPStream& _s, RLP const& _node, bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end)
+{
+	if (_node.isNull() || _node.isEmpty())
+	{
+		_s.insertList(2);
+		_s << hexPrefixEncode(_key, true, _begin, _end);
+		_s.appendString(_value);
+	}
+	else if (_node.itemCount() == 2)
+	{
+		// split [k,v] into branch
+		auto pl = _node[0].payload();
+		auto plb = (_node[0] & 0x10) ? 1 : 2;
+		auto ple = pl.size() - plb;
+		uint pivot = sharedNibbles(_key, _begin, _end, pl, plb, ple);
+		// special case for pivot == first nibble, pivot == last nibble. if it's anything else, need stem, branch, 2 stems (old & new)
+		if (pivot == _end - _begin && pivot == ple - plb)
+		{
+			_s.insertList(2);
+			_s << _node[0];
+			_s.appendString(_value);
+		}
+		else
+		{
+			if (pivot == 0)
+			{
+				// branch immediately
+				_s.insertList(17);
+				if (_begin == _end)
+				{
+					// as value
+					for (auto i = 0; i < 16; ++i)
+						_s << _node[i];
+					_s << _value;
+				}
+			}
+			else
+		}
+	}
+	else if (_node.itemCount() == 17)
+	{
+		// insert into branch
+		_s.insertList(17);
+		if (_begin == _end)
+		{
+			// as value
+			for (auto i = 0; i < 16; ++i)
+				_s << _node[i];
+			_s << _value;
+		}
+		else
+		{
+			// underneath
+			auto n = nibble(_key, _begin);
+			for (auto i = 0; i < 17; ++i)
+				if (n == i)
+					insertItem(s, _node[i], _key, _value, _begin, _end);
+				else
+					_s << _node[i];
+		}
+	}
+}
+
+// Inserts the given item into an RLPStream, either inline (if RLP < 32) or creating a node and inserting the hash.
+void GenericTrieDB::insertItem(RLPStream& _s, RLP const& _node, bytesConstRef _k, bytesConstRef _v, uint _begin, uint _end)
+{
+	// Kill old node.
+	if (_node.isString() || _node.isInt())
+		killNode(_node.toHash());
+
+	RLPStream s;
+	insertHelper(s, _node, _k, _v, _begin, _end);
+	if (s.size() < 32)
+		_s.insertRaw(s.out());
+	else
+		_s << insertNode(s.out());
+}
+
+void GenericTrieDB::insert(bytesConstRef _key, bytesConstRef _value, )
+{
+	string rv = node(m_root);
+	killNode(m_root);
+
+	RLPStream s;
+	insertHelper(s, RLP(rv), _key, _value, 0, _key.size() * 2);
+	m_root = insertNode(s.out());
+}
+
+void GenericTrieDB::remove(bytesConstRef _key)
+{
+
+}
+
+std::string GenericTrieDB::at(bytesConstRef _key) const
+{
+	return std::string();
+}
+
+
 }

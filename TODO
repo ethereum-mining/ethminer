@@ -1,3 +1,5 @@
+### UP FOR GRABS
+
 Tests
 - Use standard tests.
 
@@ -5,20 +7,29 @@ Config file & command line options.
 
 Peer network.
 
+Crypto stuff:
+- kFromMessage
+- Check all the tweak instructions.
+
+Better handling of corrupt blocks.
+
+
+### GAV
+
 Trie on DB.
 - Modularise overlay and DB.
 - Iterate.
-- Kill all the restore point stuff.
+- Move the restore point stuff into block restore points
+  - i.e. keep all nodes from last 127 blocks with counter, at 128, kill but keep every (60*24*7)th or so i.e. one per week as a restore point.
+  - maybe allow this to be configured.
 
 Cache some state
 - Contract memory, balances - for single commit into Trie.
 
-Better handling of corrupt blocks.
+
+### TIM
 
 Stateful Miner class.
 
 Better Mod-Exp.
 
-Crypto stuff:
-- kFromMessage
-- Check all the tweak instructions.
