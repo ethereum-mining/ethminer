@@ -39,7 +39,7 @@ public:
 	size_t size() const { return m_count; }
 	bool empty() const { return !m_count; }
 	vector_ref<_T> next() const { return vector_ref<_T>(m_data + m_count, m_count); }
-	vector_ref<_T> cropped(size_t _begin, int _count = -1) const { if (m_data && _begin + std::max(0, _count) <= m_count) return vector_ref<_T>(m_data + _begin, _count < 0 ? m_count - _begin : _count); else return vector_ref<_T>(); }
+	vector_ref<_T> cropped(size_t _begin, size_t _count = ~size_t(0)) const { if (m_data && _begin + std::max(size_t(0), _count) <= m_count) return vector_ref<_T>(m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count); else return vector_ref<_T>(); }
 	void retarget(_T const* _d, size_t _s) { m_data = _d; m_count = _s; }
 	void retarget(std::vector<_T> const& _t) { m_data = _t.data(); m_count = _t.size(); }
 

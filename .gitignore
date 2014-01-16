@@ -12,4 +12,11 @@
 *.la
 *.a
 
+# VS stuff
+build
+ipch
+*.sdf
+*.opensdf
+*.suo
+
 *.user

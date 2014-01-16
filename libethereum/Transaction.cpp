@@ -63,7 +63,7 @@ void Transaction::sign(PrivateKey _priv)
 	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig, _priv.data(), kFromMessage(msg, _priv).data(), &v))
 		throw InvalidSignature();
 
-	vrs.v = v + 27;
+	vrs.v = (byte)(v + 27);
 	vrs.r = fromBigEndian<u256>(bytesConstRef(sig, 32));
 	vrs.s = fromBigEndian<u256>(bytesConstRef(&(sig[32]), 32));
 }

@@ -223,7 +223,7 @@ public:
 		else{}
 
 		_N ret;
-		unsigned s = std::min<unsigned>(_N::size, items());
+		size_t s = std::min((size_t)_N::size, (size_t)items());
 		memcpy(ret.data() + _N::size - s, payload().data(), s);
 		return ret;
 	}
@@ -348,7 +348,7 @@ private:
 			for (unsigned i = 0; i < _N && !*d; ++i, --s, ++d) {}
 
 		if (s < 0x38)
-			m_out.push_back(s | 0x40);
+			m_out.push_back((byte)(s | 0x40));
 		else
 			pushCount(s, 0x40);
 		uint os = m_out.size();

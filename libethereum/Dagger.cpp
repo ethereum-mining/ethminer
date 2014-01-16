@@ -1,7 +1,10 @@
 #include <boost/detail/endian.hpp>
 #include <chrono>
 #include <array>
+#pragma warning(push)
+#pragma warning(disable:4244)
 #include <sha3.h>
+#pragma warning(pop)
 #include <random>
 #include "Common.h"
 #include "Dagger.h"
@@ -44,7 +47,8 @@ inline void update(_T& _sha, _U const& _value)
 	int i = 0;
 	for (_U v = _value; v; ++i, v >>= 8) {}
 	byte buf[32];
-	toBigEndian(_value, bytesRef(buf, i));
+	bytesRef bufRef(buf, i);
+	toBigEndian(_value, bufRef);
 	_sha.Update(buf, i);
 }
 

@@ -22,7 +22,6 @@
 #pragma once
 
 #include <map>
-#include <leveldb/db.h>
 #include "RLP.h"
 namespace ldb = leveldb;
 

@@ -22,7 +22,6 @@
 #pragma once
 
 #include "Common.h"
-#include <leveldb/db.h>
 namespace ldb = leveldb;
 
 namespace eth
