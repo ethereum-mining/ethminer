@@ -14,7 +14,7 @@ using namespace std::chrono;
 namespace eth
 {
 
-Dagger::Dagger(h256 _hash): m_hash(_hash)
+Dagger::Dagger()
 {
 }
 
@@ -22,30 +22,45 @@ Dagger::~Dagger()
 {
 }
 
-u256 Dagger::bound(u256 _diff)
+u256 Dagger::bound(u256 const& _difficulty)
 {
-	return (u256)((bigint(1) << 256) / _diff);
+	return (u256)((bigint(1) << 256) / _difficulty);
 }
 
-u256 Dagger::search(uint _msTimeout, u256 _diff)
+bool Dagger::verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty)
 {
-	static mt19937_64 s_engine((std::random_device())());
-	u256 b = bound(_diff);
-
-	auto start = steady_clock::now();
-
-	while (steady_clock::now() - start < milliseconds(_msTimeout))
-		for (uint sp = std::uniform_int_distribution<uint>()(s_engine), j = 0; j < 1000; ++j, ++sp)
-			if (eval(sp) < b)
-				return sp;
-	return 0;
+	return eval(_root, _nonce) < bound(_difficulty);
 }
 
-template <class _T, class _U>
-inline void update(_T& _sha, _U const& _value)
+bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout)
+{
+	// restart search if root has changed
+	if (m_root != _root)
+	{
+		m_root = _root;
+		m_nonce = 0;
+	}
+
+	// compute bound
+	u256 const b = bound(_difficulty);
+
+	// evaluate until we run out of time
+	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout); m_nonce += 1)
+	{
+		if (eval(_root, m_nonce) < b)
+		{
+			o_solution = m_nonce;
+			return true;
+		}
+	}
+	return false;
+}
+
+template <class _T>
+inline void update(_T& _sha, u256 const& _value)
 {
 	int i = 0;
-	for (_U v = _value; v; ++i, v >>= 8) {}
+	for (u256 v = _value; v; ++i, v >>= 8) {}
 	byte buf[32];
 	bytesRef bufRef(buf, i);
 	toBigEndian(_value, bufRef);
@@ -53,48 +68,57 @@ inline void update(_T& _sha, _U const& _value)
 }
 
 template <class _T>
-inline u256 get(_T& _sha)
+inline void update(_T& _sha, h256 const& _value)
 {
-	byte buf[32];
-	_sha.TruncatedFinal(buf, 32);
-	return fromBigEndian<u256>(bytesConstRef(buf, 32));
+	int i = 0;
+	byte const* data = _value.data();
+	for (; i != 32 && data[i] == 0; ++i);
+	_sha.Update(data + i, 32 - i);
 }
 
-u256 Dagger::node(uint_fast32_t _L, uint_fast32_t _i) const
+template <class _T>
+inline h256 get(_T& _sha)
+{
+	h256 ret;
+	_sha.TruncatedFinal(&ret[0], 32);
+	return ret;
+}
+
+h256 Dagger::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
 {
 	if (_L == _i)
-		return m_hash;
+		return _root;
 	u256 m = (_L == 9) ? 16 : 3;
 	CryptoPP::SHA3_256 bsha;
 	for (uint_fast32_t k = 0; k < m; ++k)
 	{
 		CryptoPP::SHA3_256 sha;
-		update(sha, m_hash);
-		update(sha, m_xn);
+		update(sha, _root);
+		update(sha, _xn);
 		update(sha, (u256)_L);
 		update(sha, (u256)_i);
 		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
-		auto u = node(_L - 1, pk);
+		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
+		auto u = node(_root, _xn, _L - 1, pk);
 		update(bsha, u);
 	}
 	return get(bsha);
 }
 
-u256 Dagger::eval(u256 _N)
+h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
 {
-	m_xn = _N >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
+	h256 extranonce = _nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
 	CryptoPP::SHA3_256 bsha;
 	for (uint_fast32_t k = 0; k < 4; ++k)
 	{
 		//sha256(D || xn || i || k)		-> sha256(D || xn || k)	- there's no 'i' here!
 		CryptoPP::SHA3_256 sha;
-		update(sha, m_hash);
-		update(sha, m_xn);
-		update(sha, _N);
+		update(sha, _root);
+		update(sha, extranonce);
+		update(sha, _nonce);
 		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
-		auto u = node(9, pk);
+		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
+		auto u = node(_root, extranonce, 9, pk);
 		update(bsha, u);
 	}
 	return get(bsha);

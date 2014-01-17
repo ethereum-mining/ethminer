@@ -9,18 +9,21 @@ namespace eth
 class Dagger
 {
 public:
-	Dagger(h256 _hash);
+	Dagger();
 	~Dagger();
 	
-	u256 node(uint_fast32_t _L, uint_fast32_t _i) const;
-	u256 eval(u256 _N);
-	u256 search(uint _msTimeout, u256 _diff);
+	static u256 bound(u256 const& _difficulty);
+	static h256 eval(h256 const& _root, u256 const& _nonce);
+	static bool verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty);
 
-	static u256 bound(u256 _diff);
+	bool mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100);
 
 private:
-	u256 m_hash;
-	u256 m_xn;
+
+	static h256 node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i);
+
+	h256 m_root;
+	u256 m_nonce;
 };
 
 }

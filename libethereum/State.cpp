@@ -250,10 +250,7 @@ bool State::mine(uint _msTimeout)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-
-	Dagger d(m_currentBlock.headerHashWithoutNonce());
-	m_currentBlock.nonce = d.search(_msTimeout, m_currentBlock.difficulty);
-	if (m_currentBlock.nonce)
+	if (m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout))
 	{
 		// Got it! Compile block:
 		RLPStream ret;

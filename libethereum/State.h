@@ -176,6 +176,8 @@ private:
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
+	Dagger m_dagger;
+
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;
 	static const u256 c_dataFee;
