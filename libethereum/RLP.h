@@ -215,7 +215,7 @@ public:
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
-		if (!isString() || (items() >= _N::size && (_flags & FailIfTooBig)))
+		if (!isString() || (items() > _N::size && (_flags & FailIfTooBig)))
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else

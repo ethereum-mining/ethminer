@@ -713,9 +713,9 @@ std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNib
 std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _terminated)
 {
 	uint begin1 = _o1;
-	uint end1 = _d1.size() * 2 - _o1;
+	uint end1 = _d1.size() * 2;
 	uint begin2 = _o2;
-	uint end2 = _d2.size() * 2 - _o2;
+	uint end2 = _d2.size() * 2;
 
 	bool odd = (end1 - begin1 + end2 - begin2) & 1;
 
@@ -765,6 +765,20 @@ bool NibbleSlice::operator==(NibbleSlice _k) const
 uint NibbleSlice::shared(NibbleSlice _k) const
 {
 	return sharedNibbles(data, offset, offset + size(), _k.data, _k.offset, _k.offset + _k.size());
+}
+
+byte uniqueInUse(RLP const& _orig, byte _except)
+{
+	byte used = 255;
+	for (unsigned i = 0; i < 17; ++i)
+		if (i != _except && !_orig[i].isEmpty())
+		{
+			if (used == 255)
+				used = i;
+			else
+				return 255;
+		}
+	return used;
 }
 
 }
