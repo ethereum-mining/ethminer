@@ -665,17 +665,34 @@ void Trie::remove(std::string const& _key)
 	}
 }
 
-h256 const GenericTrieDB::c_null = sha3(RLPNull);
-
-inline byte nibble(bytesConstRef _data, uint _i)
+uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be)
 {
-	return (_i & 1) ? (_data[_i / 2] & 15) : (_data[_i / 2] >> 4);
+	uint ret = 0;
+	for (uint ai = _ab, bi = _bb; ai < _ae && bi < _be && nibble(_a, ai) == nibble(_b, bi); ++ai, ++bi, ++ret) {}
+	return ret;
 }
 
-std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble)
+bool isLeaf(RLP const& _twoItem)
 {
-	uint begin = _beginNibble;
-	uint end = _endNibble < 0 ? _data.size() * 2 + 1 + _endNibble : _endNibble;
+	assert(_twoItem.isList() && _twoItem.itemCount() == 2);
+	auto pl = _twoItem[0].payload();
+	return (pl[0] & 0x20);
+}
+
+NibbleSlice keyOf(RLP const& _twoItem)
+{
+	assert(_twoItem.isList() && _twoItem.itemCount() == 2);
+	auto pl = _twoItem[0].payload();
+	if (pl[0] & 0x10)
+		return NibbleSlice(pl, 1);
+	else
+		return NibbleSlice(pl, 2);
+}
+
+std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble, uint _offset)
+{
+	uint begin = _beginNibble + _offset;
+	uint end = (_endNibble < 0 ? (_data.size() * 2 - _offset) + 1 + _endNibble : _endNibble) + _offset;
 	bool odd = (end - begin) & 1;
 
 	std::string ret(1, ((_terminated ? 2 : 0) | (odd ? 1 : 0)) * 16);
@@ -693,145 +710,61 @@ std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNib
 	return ret;
 }
 
-uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be)
+std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _terminated)
 {
-	uint ret = 0;
-	for (uint ai = _ab, bi = _bb; ai < _ae && bi < _be && nibble(_a, ai) == nibble(_b, bi); ++ai, ++bi) {}
+	uint begin1 = _o1;
+	uint end1 = _d1.size() * 2 - _o1;
+	uint begin2 = _o2;
+	uint end2 = _d2.size() * 2 - _o2;
+
+	bool odd = (end1 - begin1 + end2 - begin2) & 1;
+
+	std::string ret(1, ((_terminated ? 2 : 0) | (odd ? 1 : 0)) * 16);
+	ret.reserve((end1 - begin1 + end2 - begin2) / 2 + 1);
+
+	uint d = odd ? 1 : 2;
+	for (auto i = begin1; i < end1; ++i, ++d)
+	{
+		byte n = nibble(_d1, i);
+		if (d & 1)	// odd
+			ret.back() |= n;		// or the nibble onto the back
+		else
+			ret.push_back(n << 4);	// push the nibble on to the back << 4
+	}
+	for (auto i = begin2; i < end2; ++i, ++d)
+	{
+		byte n = nibble(_d2, i);
+		if (d & 1)	// odd
+			ret.back() |= n;		// or the nibble onto the back
+		else
+			ret.push_back(n << 4);	// push the nibble on to the back << 4
+	}
 	return ret;
 }
 
-// alters given RLP such that the given key[_begin:_end]/value exists under it, and puts the new RLP into _s.
-// _s's size could be anything.
-void GenericTrieDB::mergeHelper(RLPStream& _s, RLP const& _replace, bytesConstRef _key, bytesConstRef _value, uint _begin, uint _end, uint _nodeBegin)
+std::string hexPrefixEncode(NibbleSlice _s, bool _leaf, int _begin, int _end)
 {
-/*	if (_replace.isNull() || _replace.isEmpty())
-	{
-		_s.insertList(2);
-		_s << hexPrefixEncode(_key, true, _begin, _end);
-		_s.appendString(_value);
-	}
-	else if (_replace.itemCount() == 2)
-	{
-		// split [k,v] into branch
-		auto pl = _replace[0].payload();
-		auto plb = ((pl[0] & 0x10) ? 1 : 2) + _nodeBegin;
-		auto ple = pl.size() - plb;
-		uint pivot = sharedNibbles(_key, _begin, _end, pl, plb, ple);
-		// special case for pivot == first nibble, pivot == last nibble. if it's anything else, then it's recursive.
-		if (pivot == ple - plb && !(pl[0] & 0x20))									// key begins with node-partial and is non-terminated - leave it as the child node's problem.
-		{
-			// share this non-termed 2-item node - merge in below.
-			_s.insertList(2);
-			_s << _replace[0];
-			mergeNode(_s, _replace[1], _key, _value, _begin + pivot, _end, 0);
-		}
-		else if (pivot == ple - plb && pivot == _end - _begin && (pl[0] & 0x20))	// key and value exactly the same and is terminated - just replace value.
-		{
-			_s.insertList(2);
-			_s << hexPrefixEncode(_key, true, _begin, _end);
-			_s.appendString(_value);
-		}
-		else
-		{
-			if (pivot == 0)
-			{
-				// branch since the pivot is right here.
-				_s.insertList(17);
-
-				auto n = plb == ple ? 16 : nibble(pl, plb);
-				auto m = _begin == _end ? 16 : nibble(_key, _begin);
-				for (auto i = 0; i < 16; ++i)
-					if (i == n)
-						remerge(_s, _replace, _nodeBegin);
-					else if (i == m)
-						mergeItem(_s, RLP(), _key, _value, _begin, _end);
-					else
-						_s << "";
-				if (n == 16)
-				{
-					assert(pl[0] & 0x20);
-					// this should be terminated - if it's not and we share the entire 2-node partial key's worth of nibbles, then why didn't we skip over the 2-item node and merge directly into the branch below?
-					_s.appendRaw(_replace[1]);
-				}
-				else if (m == 16)
-					_s << _value;
-				else
-					s << "";
-			}
-			else
-			{
-				_s.insertList(2);
-				_s << hexPrefixEncode(_key, false, _begin, _begin + pivot);
-				mergeItem(_s, _replace, _key, _value, _begin + pivot, _end, _nodeBegin + pivot);
-			}
-		}
-	}
-	else if (_replace.itemCount() == 17)
-	{
-		// insert into branch
-		_s.insertList(17);
-		if (_begin == _end)
-		{
-			// as value
-			for (auto i = 0; i < 16; ++i)
-				_s << _replace[i];
-			_s << _value;
-		}
-		else
-		{
-			// underneath
-			auto n = nibble(_key, _begin);
-			for (auto i = 0; i < 17; ++i)
-				if (n == i)
-					insertItem(s, _replace[i], _key, _value, _begin, _end);
-				else
-					_s << _replace[i];
-		}
-	}*/
+	return hexPrefixEncode(_s.data, _leaf, _begin, _end, _s.offset);
 }
 
-// Inserts the given item into an RLPStream, either inline (if RLP < 32) or creating a node and inserting the hash.
-// Assumes we are _nodeBegin of the way through the key of the _replace.
-void GenericTrieDB::mergeItem(RLPStream& _s, RLP const& _replace, bytesConstRef _k, bytesConstRef _v, uint _begin, uint _end, uint _nodeBegin)
+std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf)
 {
-	/*
-	RLPStream s;
-	mergeHelper(s, (_replace.isString() || _replace.isInt()) ? RLP(node(_replace.toHash())) : _replace, _k, _v, _begin, _end, _nodeBegin);
-	streamNode(s, s.out());
-
-	// Kill old node.
-	if ((_replace.isString() || _replace.isInt()) && _nodeBegin == 0)
-		killNode(_replace.toHash());
-		*/
+	return hexPrefixEncode(_s1.data, _s1.offset, _s2.data, _s2.offset, _leaf);
 }
 
-void GenericTrieDB::streamNode(RLPStream& _s, bytes const& _b)
+bool NibbleSlice::contains(NibbleSlice _k) const
 {
-	if (_b.size() < 32)
-		_s.appendRaw(_b);
-	else
-		_s << insertNode(&_b);
+	return shared(_k) == _k.size();
 }
 
-void GenericTrieDB::insert(bytesConstRef _key, bytesConstRef _value)
+bool NibbleSlice::operator==(NibbleSlice _k) const
 {
-	string rv = node(m_root);
-	killNode(m_root);
-
-	RLPStream s;
-	mergeHelper(s, RLP(rv), _key, _value, 0, _key.size() * 2, 0);
-	m_root = insertNode(&s.out());
+	return _k.size() == size() && shared(_k) == _k.size();
 }
 
-void GenericTrieDB::remove(bytesConstRef _key)
+uint NibbleSlice::shared(NibbleSlice _k) const
 {
-
+	return sharedNibbles(data, offset, offset + size(), _k.data, _k.offset, _k.offset + _k.size());
 }
-
-std::string GenericTrieDB::at(bytesConstRef _key) const
-{
-	return std::string();
-}
-
 
 }

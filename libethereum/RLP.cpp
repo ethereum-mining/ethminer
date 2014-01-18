@@ -45,6 +45,14 @@ RLP::iterator::iterator(RLP const& _parent, bool _begin)
 	{
 		auto pl = _parent.payload();
 		m_lastItem = pl.cropped(0, RLP(pl).actualSize());
+
+		uint t = 0;
+		for (uint i = 0; i < _parent.itemCount(); ++i)
+			t += _parent[i].actualSize();
+		if (pl.size() != t)
+			cout << _parent.itemCount() << " " << asHex(pl);
+		assert(pl.size() == t);
+
 		m_remaining = pl.size() - m_lastItem.size();
 	}
 	else

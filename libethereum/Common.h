@@ -56,16 +56,16 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
-template <class _T, class _Out> inline void toBigEndian(_T _val, _Out& o_out);
-template <class _T, class _In> inline _T fromBigEndian(_In const& _bytes);
+template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
+template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
-template <unsigned _N>
+template <unsigned N>
 class FixedHash
 {
-	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<_N * 8, _N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 
 public:
-	enum { size = _N };
+	enum { size = N };
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -84,9 +84,19 @@ public:
 	byte* data() { return m_data.data(); }
 	byte const* data() const { return m_data.data(); }
 
+	bytes asBytes() const { return bytes(data(), data() + 32); }
+
 private:
-	std::array<byte, _N> m_data;
+	std::array<byte, N> m_data;
 };
+
+template <unsigned N>
+inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
+{
+	for (unsigned i = 0; i < N; ++i)
+		_out << std::hex << std::setfill('0') << std::setw(2) << (int)_h[i];
+	return _out;
+}
 
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;

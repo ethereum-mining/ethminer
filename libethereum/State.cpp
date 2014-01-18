@@ -43,15 +43,19 @@ u256 const State::c_newContractFee = 0;
 u256 const State::c_txFee = 0;
 u256 const State::c_blockReward = 0;
 
-State::State(Address _coinbaseAddress): m_ourAddress(_coinbaseAddress)
+State::State(Address _coinbaseAddress): m_state(&m_db), m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
 	m_previousBlock = BlockInfo::genesis();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 
 	ldb::Options o;
-	ldb::DB::Open(o, "state", &m_db);
-	m_state.open(m_db, m_currentBlock.stateRoot, &m_over);
+	ldb::DB* db = nullptr;
+	ldb::DB::Open(o, "state", &db);
+
+	m_db.setDB(db);
+	m_state.init();
+	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
 void State::sync(BlockChain const& _bc)
@@ -336,13 +340,13 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	RLP rlp(m_state[_id]);
 	if (rlp.itemCount() != 3)
 		throw InvalidContractAddress();
-	return fromBigEndian<u256>(TrieDB<h256>(m_db, rlp[2].toHash<h256>(), (std::map<h256, std::string>*)&m_over)[_memory]);
+	return fromBigEndian<u256>(TrieDB<h256, Overlay>(const_cast<Overlay*>(&m_db), rlp[2].toHash<h256>())[_memory]);
 }
 
 void State::setContractMemory(Address _contract, u256 _memory, u256 _value)
 {
 	RLP rlp(m_state[_contract]);
-	TrieDB<h256> c(m_db, &m_over);
+	TrieDB<h256, Overlay> c(&m_db);
 	std::string s = toBigEndianString(_value);
 	if (rlp.itemCount() == 3)
 	{

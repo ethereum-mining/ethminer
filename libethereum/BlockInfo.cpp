@@ -92,7 +92,7 @@ void BlockInfo::populate(bytesConstRef _block)
 
 	// check it hashes according to proof of work.
 	Dagger d(headerHashWithoutNonce());
-	if (d.eval(nonce) >= difficulty)
+	if (d.eval(nonce) >= (u256)(((bigint)1 << 256) / difficulty))
 		throw InvalidNonce();
 }
 

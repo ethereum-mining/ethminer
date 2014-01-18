@@ -154,16 +154,8 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
-	/// Commit all pending state modifications for archival. This cannot be undone.
-	void commit() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); }
-
-	/// Rollback all pending state modifictions.
-	void rollback() { m_over.clear(); }
-
-	ldb::DB* m_db;								///< The DB, holding all of our Tries' backend data.
-	ldb::WriteOptions m_writeOptions;
-	std::map<h256, std::string> m_over;			///< The current overlay onto the state DB.
-	TrieDB<Address> m_state;					///< Our state tree.
+	Overlay m_db;								///< Our overlay for the state tree.
+	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
