@@ -32,6 +32,7 @@
 #include "AddressState.h"
 #include "Transaction.h"
 #include "Trie.h"
+#include "Dagger.h"
 
 namespace eth
 {
@@ -167,6 +168,8 @@ private:
 	bytes m_currentUncles;
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
+
+	Dagger m_dagger;
 
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;

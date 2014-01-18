@@ -22,7 +22,6 @@
 #pragma once
 
 #include <map>
-#include <leveldb/db.h>
 #include "RLP.h"
 namespace ldb = leveldb;
 
@@ -58,23 +57,6 @@ public:
 private:
 	TrieNode* m_root;
 };
-
-/*class HashDBFace
-{
-public:
-	virtual void insert(h256 _key, bytesConstRef _value) = 0;
-	virtual void remove(h256 _key) = 0;
-	virtual std::string at(h256 _key) const = 0;
-};
-
-class HashDBOverlay
-{
-public:
-
-	virtual void insert(h256 _key, bytesConstRef _value) = 0;
-	virtual void remove(h256 _key) = 0;
-	virtual std::string at(h256 _key) const = 0;
-};*/
 
 inline byte nibble(bytesConstRef _data, uint _i)
 {
@@ -163,7 +145,10 @@ private:
 	ldb::WriteOptions m_writeOptions;
 };
 
-
+#if WIN32
+#pragma warning(push)
+#pragma warning(disable:4100) // disable warnings so it compiles
+#endif
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
@@ -263,6 +248,10 @@ private:
 	h256 m_root;
 	DB* m_db = nullptr;
 };
+
+#if WIN32
+#pragma warning(pop)
+#endif
 
 template <class KeyType, class DB>
 class TrieDB: public GenericTrieDB<DB>

@@ -59,7 +59,7 @@ std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated, int _begi
 	uint begin = _begin;
 	uint end = _end < 0 ? _hexVector.size() + 1 + _end : _end;
 	bool termed = _terminated;
-	bool odd = (end - begin) % 2;
+	bool odd = ((end - begin) % 2) != 0;
 
 	std::string ret(1, ((termed ? 2 : 0) | (odd ? 1 : 0)) * 16);
 	if (odd)
@@ -101,7 +101,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 		uint c = 0;
 		for (auto i = std::next(_begin); i != _end && sharedPre; ++i, ++c)
 		{
-			uint x = std::min(sharedPre, std::min(_begin->first.size(), i->first.size()));
+			uint x = std::min(sharedPre, std::min((uint)_begin->first.size(), (uint)i->first.size()));
 			uint shared = _preLen;
 			for (; shared < x && _begin->first[shared] == i->first[shared]; ++shared) {}
 			sharedPre = std::min(shared, sharedPre);
@@ -113,8 +113,8 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			if (g_hashDebug)
 				std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
 #endif
-			_rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, sharedPre);
-			hash256aux(_s, _begin, _end, sharedPre, _rlp);
+			_rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, (int)sharedPre);
+			hash256aux(_s, _begin, _end, (unsigned)sharedPre, _rlp);
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
 				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << std::endl;
@@ -517,7 +517,7 @@ byte TrieBranchNode::activeBranch() const
 		if (m_nodes[i] != nullptr)
 		{
 			if (n == (byte)-1)
-				n = i;
+				n = (byte)i;
 			else
 				return 16;
 		}
@@ -535,7 +535,7 @@ TrieNode* TrieInfixNode::insert(bytesConstRef _key, std::string const& _value)
 	}
 	else
 	{
-		int prefix = commonPrefix(_key, m_ext);
+		uint prefix = commonPrefix(_key, m_ext);
 		if (prefix)
 		{
 			// one infix becomes two infixes, then insert into the second

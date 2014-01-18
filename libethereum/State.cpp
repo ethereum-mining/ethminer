@@ -20,9 +20,16 @@
  */
 
 #include <secp256k1.h>
+#if WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif
 #include <sha.h>
 #include <sha3.h>
 #include <ripemd.h>
+#if WIN32
+#pragma warning(pop)
+#endif
 #include <time.h>
 #include <random>
 #include "Trie.h"
@@ -132,7 +139,9 @@ void State::sync(TransactionQueue& _tq)
 	// TRANSACTIONS
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
+	{
 		if (!m_transactions.count(i.first))
+		{
 			// don't have it yet! Execute it now.
 			try
 			{
@@ -150,6 +159,8 @@ void State::sync(TransactionQueue& _tq)
 				// Something else went wrong - drop it.
 				_tq.drop(i.first);
 			}
+		}
+	}
 }
 
 u256 State::playback(bytesConstRef _block)
@@ -247,10 +258,7 @@ bool State::mine(uint _msTimeout)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-
-	Dagger d(m_currentBlock.headerHashWithoutNonce());
-	m_currentBlock.nonce = d.search(_msTimeout, m_currentBlock.difficulty);
-	if (m_currentBlock.nonce)
+	if (m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout))
 	{
 		// Got it! Compile block:
 		RLPStream ret;
@@ -690,9 +698,9 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			bytes x = toBigEndian(stack.back());
 			stack.pop_back();
 
-			if (secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()))	// TODO: Check both are less than P.
+			if (secp256k1_ecdsa_pubkey_verify(pub.data(), (int)pub.size()))	// TODO: Check both are less than P.
 			{
-				secp256k1_ecdsa_pubkey_tweak_mul(pub.data(), pub.size(), x.data());
+				secp256k1_ecdsa_pubkey_tweak_mul(pub.data(), (int)pub.size(), x.data());
 				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
 				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
 			}
@@ -720,9 +728,9 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 			stack.pop_back();
 
-			if (secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()) && secp256k1_ecdsa_pubkey_verify(tweak.data(), tweak.size()))
+			if (secp256k1_ecdsa_pubkey_verify(pub.data(),(int) pub.size()) && secp256k1_ecdsa_pubkey_verify(tweak.data(),(int) tweak.size()))
 			{
-				secp256k1_ecdsa_pubkey_tweak_add(pub.data(), pub.size(), tweak.data());
+				secp256k1_ecdsa_pubkey_tweak_add(pub.data(), (int)pub.size(), tweak.data());
 				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
 				stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
 			}
@@ -767,7 +775,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 
 			byte pubkey[65];
 			int pubkeylen = 65;
-			if (secp256k1_ecdsa_recover_compact(msg.data(), msg.size(), sig.data(), pubkey, &pubkeylen, 0, v - 27))
+			if (secp256k1_ecdsa_recover_compact(msg.data(), (int)msg.size(), sig.data(), pubkey, &pubkeylen, 0, v - 27))
 			{
 				stack.push_back(0);
 				stack.push_back(0);
@@ -788,7 +796,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 			stack.pop_back();
 
-			stack.back() = secp256k1_ecdsa_pubkey_verify(pub.data(), pub.size()) ? 1 : 0;
+			stack.back() = secp256k1_ecdsa_pubkey_verify(pub.data(), (int)pub.size()) ? 1 : 0;
 			break;
 		}
 		case Instruction::SHA3:

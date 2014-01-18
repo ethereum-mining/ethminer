@@ -19,7 +19,14 @@
  * @date 2014
  */
 
+#if WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif
 #include <sha3.h>
+#if WIN32
+#pragma warning(pop)
+#endif
 #include <random>
 #include "Common.h"
 #include "Exceptions.h"
@@ -79,7 +86,7 @@ bytes eth::fromUserHex(std::string const& _s)
 	std::vector<uint8_t> ret;
 	ret.reserve((_s.size() - s) / 2);
 	for (uint i = s; i < _s.size(); i += 2)
-		ret.push_back(fromHex(_s[i]) * 16 + fromHex(_s[i + 1]));
+		ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 	return ret;
 }
 
