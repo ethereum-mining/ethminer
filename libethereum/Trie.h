@@ -191,6 +191,17 @@ public:
 	void remove(bytesConstRef _key);
 
 	// TODO: iterators.
+	/*class iterator
+	{
+	public:
+		iterator()
+		{
+		}
+		operator++()
+
+	private:
+		std::vector<std::pair<RLP, std::string>> m_lineage;
+	};*/
 
 private:
 	RLPStream& streamNode(RLPStream& _s, bytes const& _b);
@@ -245,7 +256,6 @@ private:
 	std::string node(h256 _h) const { return m_db->lookup(_h); }
 	void insertNode(h256 _h, bytesConstRef _v) { m_db->insert(_h, _v); }
 	void killNode(h256 _h) { m_db->kill(_h); }
-
 
 	h256 insertNode(bytesConstRef _v) { auto h = sha3(_v); insertNode(h, _v); return h; }
 	void killNode(RLP const& _d) { if (_d.data().size() >= 32) killNode(sha3(_d.data())); }
@@ -371,7 +381,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		}
 
 		auto sh = _k.shared(k);
-//		5 << _k << " sh " << k << " = " << sh << std::endl;
+//		std::cout << _k << " sh " << k << " = " << sh << std::endl;
 		if (sh)
 			// shared stuff - cleve at disagreement.
 			return mergeAt(RLP(cleve(_orig, sh)), _k, _v);
