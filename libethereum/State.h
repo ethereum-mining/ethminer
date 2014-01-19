@@ -103,12 +103,6 @@ public:
 	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
 
-	/// Set the value of a memory position of a contract.
-	void setContractMemory(Address _contract, u256 _memory, u256 _value);
-
-	/// Get the full memory of a contract.
-//	std::map<u256, u256> contractMemory(Address _contract) const;
-
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 
@@ -137,6 +131,15 @@ private:
 		u256 fee;
 	};
 
+	/// Retrieve all information about a given address into the cache.
+	void ensureCached(Address _a, bool _requireMemory = false) const;
+
+	/// Commit all changes waiting in the address cache.
+	void commit();
+
+	/// Commit all changes waiting in the address cache.
+	void rollback() { m_cache.clear(); }
+
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
 	u256 playback(bytesConstRef _block);
@@ -158,6 +161,8 @@ private:
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+
+	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.

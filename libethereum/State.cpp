@@ -60,11 +60,66 @@ State::State(Address _coinbaseAddress): m_state(&m_db), m_ourAddress(_coinbaseAd
 
 	ldb::Options o;
 	ldb::DB* db = nullptr;
-	ldb::DB::Open(o, "state", &db);
+	ldb::DB::Open(o, string(getenv("HOME")) + "/.ethereum++/state", &db);
 
 	m_db.setDB(db);
 	m_state.init();
 	m_state.setRoot(m_currentBlock.stateRoot);
+}
+
+void State::ensureCached(Address _a, bool _requireMemory) const
+{
+	auto it = m_cache.find(_a);
+	if (it == m_cache.end())
+	{
+		// populate basic info.
+		string stateBack = m_state.at(_a);
+		RLP state(stateBack);
+		AddressState s;
+		if (state.itemCount() == 2)
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>());
+		else
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>());
+		bool ok;
+		tie(it, ok) = m_cache.insert(make_pair(_a, s));
+	}
+	if (_requireMemory && !it->second.haveMemory())
+	{
+		// Populate memory.
+		assert(it->second.type() == AddressType::Contract);
+		TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+		map<u256, u256>& mem = it->second.takeMemory();
+		for (auto const& i: memdb)
+			mem[i.first] = RLP(i.second).toInt<u256>();
+	}
+}
+
+void State::commit()
+{
+	for (auto const& i: m_cache)
+		if (i.second.type() == AddressType::Dead)
+			m_state.remove(i.first);
+		else
+		{
+			RLPStream s;
+			s << i.second.balance() << i.second.nonce();
+			if (i.second.type() == AddressType::Contract)
+			{
+				if (i.second.haveMemory())
+				{
+					TrieDB<u256, Overlay> memdb(&m_db);
+					memdb.init();
+					for (auto const& j: i.second.memory())
+						if (j.second)
+							memdb.insert(j.first, rlp(j.second));	// TODO: CHECK: check this isn't RLP or compact
+					s << memdb.root();
+				}
+				else
+					s << i.second.oldRoot();
+			}
+			m_state.insert(i.first, &s.out());
+		}
+	m_cache.clear();
 }
 
 void State::sync(BlockChain const& _bc)
@@ -131,6 +186,7 @@ void State::sync(BlockChain const& _bc, h256 _block)
 void State::resetCurrent()
 {
 	m_transactions.clear();
+	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
@@ -214,9 +270,19 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 	}
 	applyRewards(rewarded);
 
+	// Commit all cached state changes to the state trie.
+	commit();
+
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
+	{
+		// Rollback the trie.
+		m_db.rollback();
 		throw InvalidStateRoot();
+	}
+
+	// Commit the new trie to disk.
+	m_db.commit();
 
 	m_previousBlock = m_currentBlock;
 	resetCurrent();
@@ -249,6 +315,10 @@ void State::prepareToMine(BlockChain const& _bc)
 
 	m_currentBlock.sha3Transactions = sha3(m_currentTxs);
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
+	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
+	commit();
+	m_currentBlock.stateRoot = m_state.root();
 }
 
 bool State::mine(uint _msTimeout)
@@ -277,95 +347,87 @@ bool State::mine(uint _msTimeout)
 
 bool State::isNormalAddress(Address _id) const
 {
-	return RLP(m_state[_id]).itemCount() == 2;
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
+		return false;
+	return it->second.type() == AddressType::Normal;
 }
 
 bool State::isContractAddress(Address _id) const
 {
-	return RLP(m_state[_id]).itemCount() == 3;
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
+		return false;
+	return it->second.type() == AddressType::Contract;
 }
 
 u256 State::balance(Address _id) const
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.isList())
-		return rlp[0].toInt<u256>();
-	else
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
 		return 0;
+	return it->second.balance();
 }
 
 void State::noteSending(Address _id)
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.isList())
-		if (rlp.itemCount() == 2)
-			m_state.insert(_id, rlpList(rlp[0], rlp[1].toInt<u256>() + 1));
-		else
-			m_state.insert(_id, rlpList(rlp[0], rlp[1].toInt<u256>() + 1, rlp[2]));
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
+		m_cache[_id] = AddressState(0, 1);
 	else
-		m_state.insert(_id, rlpList(0, 1));
+		it->second.incNonce();
 }
 
 void State::addBalance(Address _id, u256 _amount)
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.isList())
-		if (rlp.itemCount() == 2)
-			m_state.insert(_id, rlpList(rlp[0].toInt<u256>() + _amount, rlp[1]));
-		else
-			m_state.insert(_id, rlpList(rlp[0].toInt<u256>() + _amount, rlp[1], rlp[2]));
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
+		m_cache[_id] = AddressState(_amount, 0);
 	else
-		m_state.insert(_id, rlpList(_amount, 0));
+		it->second.addBalance(_amount);
 }
 
 void State::subBalance(Address _id, bigint _amount)
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.isList())
-	{
-		bigint bal = rlp[0].toInt<u256>();
-		if (bal < _amount)
-			throw NotEnoughCash();
-		bal -= _amount;
-		if (rlp.itemCount() == 2)
-			m_state.insert(_id, rlpList(bal, rlp[1]));
-		else
-			m_state.insert(_id, rlpList(bal, rlp[1], rlp[2]));
-	}
-	else
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end() || (bigint)it->second.balance() < _amount)
 		throw NotEnoughCash();
+	else
+		it->second.addBalance(-_amount);
 }
 
 u256 State::transactionsFrom(Address _id) const
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.isList())
-		return rlp[0].toInt<u256>(RLP::LaisezFaire);
-	else
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end())
 		return 0;
+	else
+		return it->second.nonce();
 }
 
 u256 State::contractMemory(Address _id, u256 _memory) const
 {
-	RLP rlp(m_state[_id]);
-	if (rlp.itemCount() != 3)
-		throw InvalidContractAddress();
-	return fromBigEndian<u256>(TrieDB<h256, Overlay>(const_cast<Overlay*>(&m_db), rlp[2].toHash<h256>())[_memory]);
-}
-
-void State::setContractMemory(Address _contract, u256 _memory, u256 _value)
-{
-	RLP rlp(m_state[_contract]);
-	TrieDB<h256, Overlay> c(&m_db);
-	std::string s = toBigEndianString(_value);
-	if (rlp.itemCount() == 3)
+	ensureCached(_id);
+	auto it = m_cache.find(_id);
+	if (it == m_cache.end() || it->second.type() != AddressType::Contract)
+		return 0;
+	else if (it->second.haveMemory())
 	{
-		c.setRoot(rlp[2].toHash<h256>());
-		c.insert(_memory, bytesConstRef(s));
-		m_state.insert(_contract, rlpList(rlp[0], rlp[1], c.root()));
+		auto mit = it->second.memory().find(_memory);
+		if (mit == it->second.memory().end())
+			return 0;
+		return mit->second;
 	}
-	else
-		throw InvalidContractAddress();
+	// Memory not cached - just grab one item from the DB rather than cache the lot.
+	TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
+	return RLP(memdb.at(_memory)).toInt<u256>();	// TODO: CHECK: check if this is actually an RLP decode
 }
 
 bool State::execute(bytesConstRef _rlp)
@@ -431,16 +493,20 @@ void State::execute(Transaction const& _t, Address _sender)
 	}
 	else
 	{
+		// Try to make a new contract
 		if (_t.fee < _t.data.size() * c_memoryFee + c_newContractFee)
 			throw FeeTooSmall();
 
 		Address newAddress = low160(_t.sha3());
 
-		if (isContractAddress(newAddress))
+		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
 			throw ContractAddressCollision();
 
+		// All OK - set it up.
+		m_cache[newAddress] = AddressState(0, 0, sha3(RLPNull));
+		auto& mem = m_cache[newAddress].takeMemory();
 		for (uint i = 0; i < _t.data.size(); ++i)
-			setContractMemory(newAddress, i, _t.data[i]);
+			mem[i] = _t.data[i];
 		subBalance(_sender, _t.value + _t.fee);
 		addBalance(newAddress, _t.value);
 		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
@@ -449,7 +515,7 @@ void State::execute(Transaction const& _t, Address _sender)
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the left (high-order in BE) 160-bits.
-// TODO: check that this is correct.
+// TODO: CHECK: check that this is correct.
 inline Address asAddress(u256 _item)
 {
 	return left160(h256(_item));
@@ -465,19 +531,20 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		if (stack.size() < _n)
 			throw StackTooSmall(_n, stack.size());
 	};
+	ensureCached(_myAddress, true);
+	auto& myMemory = m_cache[_myAddress].takeMemory();
+
 	auto mem = [&](u256 _n) -> u256
 	{
-		return contractMemory(_myAddress, _n);
-//		auto i = myMemory.find(_n);
-//		return i == myMemory.end() ? 0 : i->second;
+		auto i = myMemory.find(_n);
+		return i == myMemory.end() ? 0 : i->second;
 	};
 	auto setMem = [&](u256 _n, u256 _v)
 	{
-		setContractMemory(_myAddress, _n, _v);
-/*		if (_v)
+		if (_v)
 			myMemory[_n] = _v;
 		else
-			myMemory.erase(_n);*/
+			myMemory.erase(_n);
 	};
 
 	u256 curPC = 0;
@@ -942,10 +1009,9 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		{
 			require(1);
 			Address dest = asAddress(stack.back());
-			// TODO: easy once we have the local cache of memory in place.
-			u256 minusVoidFee = 0;//m_current[_myAddress].memory().size() * c_memoryFee;
+			u256 minusVoidFee = myMemory.size() * c_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
-			m_state.remove(_myAddress);
+			m_cache[_myAddress].kill();
 			// ...follow through to...
 		}
 		case Instruction::STOP:

@@ -348,6 +348,32 @@ public:
 	void insert(KeyType _k, bytesConstRef _value) { GenericTrieDB<DB>::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
 	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
 	void remove(KeyType _k) { GenericTrieDB<DB>::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+
+	class iterator: public GenericTrieDB<DB>::iterator
+	{
+	public:
+		using Super = typename GenericTrieDB<DB>::iterator;
+		using value_type = std::pair<KeyType, bytesConstRef>;
+
+		iterator() {}
+		iterator(TrieDB const* _db): Super(_db) {}
+
+		value_type operator*() const { return at(); }
+		value_type operator->() const { return at(); }
+
+		value_type at() const
+		{
+			auto p = Super::at();
+			value_type ret;
+			assert(p.first.size() == sizeof(ret));
+			memcpy(&ret.first, p.first.data(), sizeof(ret));
+			ret.second = p.second;
+			return ret;
+		}
+	};
+
+	iterator begin() const { return this; }
+	iterator end() const { return iterator(); }
 };
 
 template <class KeyType, class DB>
