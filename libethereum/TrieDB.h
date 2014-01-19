@@ -706,9 +706,10 @@ template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 		n = _orig[1];
 	else
 	{
-		// remove second item from the trie.
-		s = node(_orig[1].toHash<h256>());
-		killNode(_orig[1]);
+		// remove second item from the trie after derefrencing it into s & n.
+		auto lh = _orig[1].toHash<h256>();
+		s = node(lh);
+		killNode(lh);
 		n = RLP(s);
 	}
 	assert(n.itemCount() == 2);
