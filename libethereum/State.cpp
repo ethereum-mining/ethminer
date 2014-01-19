@@ -447,6 +447,14 @@ void State::execute(Transaction const& _t, Address _sender)
 	}
 }
 
+// Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
+// Currently we just pull out the left (high-order in BE) 160-bits.
+// TODO: check that this is correct.
+inline Address asAddress(u256 _item)
+{
+	return left160(h256(_item));
+}
+
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
@@ -892,14 +900,14 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			require(2);
 			auto memoryAddress = stack.back();
 			stack.pop_back();
-			Address contractAddress = left160(stack.back());
+			Address contractAddress = asAddress(stack.back());
 			stack.back() = contractMemory(contractAddress, memoryAddress);
 			break;
 		}
 		case Instruction::BALANCE:
 		{
 			require(1);
-			stack.back() = balance(low160(stack.back()));
+			stack.back() = balance(asAddress(stack.back()));
 			break;
 		}
 		case Instruction::MKTX:
@@ -907,7 +915,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			require(4);
 
 			Transaction t;
-			t.receiveAddress = left160(stack.back());
+			t.receiveAddress = asAddress(stack.back());
 			stack.pop_back();
 			t.value = stack.back();
 			stack.pop_back();
@@ -933,7 +941,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		case Instruction::SUICIDE:
 		{
 			require(1);
-			Address dest = left160(stack.back());
+			Address dest = asAddress(stack.back());
 			// TODO: easy once we have the local cache of memory in place.
 			u256 minusVoidFee = 0;//m_current[_myAddress].memory().size() * c_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);

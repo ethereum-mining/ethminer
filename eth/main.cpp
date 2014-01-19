@@ -29,14 +29,16 @@ using namespace eth;
 int main()
 {
 	// Our address.
-	Address us;				// TODO: should be loaded from config file/set at command-line.
+	h256 privkey = sha3("123");
+	Address us = toPublic(privkey);	// TODO: should be loaded from config file/set at command-line.
 
 	BlockChain bc;			// Maintains block database.
 	TransactionQueue tq;	// Maintains list of incoming transactions not yet on the block chain.
-	State s(us);			// TODO: Switch to disk-backed state (leveldb? could do with a diffing DB)
-//	s.restore();			// TODO: Implement - key optimisation.
+	State s(us);
 
-	// Synchronise the state according to the block chain - i.e. replay all transactions, in order. Will take a while if the state isn't restored.
+	// Synchronise the state according to the block chain - i.e. replay all transactions in block chain, in order.
+	// In practise this won't need to be done since the State DB will contain the keys for the tries for most recent (and many old) blocks.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	s.sync(bc);
 	s.sync(tq);
 

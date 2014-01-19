@@ -24,11 +24,11 @@
 #else
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
+#include <secp256k1.h>
 #include <sha3.h>
 #if WIN32
 #pragma warning(pop)
 #else
-#pragma GCC diagnostic warning "-Wunused-function"
 #endif
 #include <random>
 #include "Common.h"
@@ -142,4 +142,21 @@ h256 eth::sha3(bytesConstRef _input)
 	h256 ret;
 	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
+}
+
+Address eth::toPublic(h256 _private)
+{
+	bytes pubkey(65);
+	int pubkeylen = 65;
+	int ret = secp256k1_ecdsa_seckey_verify(_private.data());
+	if (!ret)
+		return Address();
+	ret = secp256k1_ecdsa_pubkey_create(pubkey.data(), &pubkeylen, _private.data(), 1);
+	if (!ret)
+		return Address();
+		pubkey.resize(pubkeylen);
+	ret = secp256k1_ecdsa_pubkey_verify(pubkey.data(), pubkey.size());
+	if (!ret)
+		return Address();
+	return left160(eth::sha3(bytesConstRef(&pubkey).cropped(1)));
 }

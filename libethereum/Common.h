@@ -313,5 +313,10 @@ inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::strin
 inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
 h256 sha3(bytesConstRef _input);
 inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
+
+/// Convert a private key into the public key equivalent.
+/// @returns 0 if it's not a valid private key.
+Address toPublic(h256 _private);
 
 }
