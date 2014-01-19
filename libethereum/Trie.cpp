@@ -681,12 +681,17 @@ bool isLeaf(RLP const& _twoItem)
 
 NibbleSlice keyOf(RLP const& _twoItem)
 {
-	assert(_twoItem.isList() && _twoItem.itemCount() == 2);
-	auto pl = _twoItem[0].payload();
-	if (pl[0] & 0x10)
-		return NibbleSlice(pl, 1);
+	return keyOf(_twoItem[0].payload());
+}
+
+NibbleSlice keyOf(bytesConstRef _hpe)
+{
+	if (!_hpe.size())
+		return NibbleSlice(_hpe, 0);
+	if (_hpe[0] & 0x10)
+		return NibbleSlice(_hpe, 1);
 	else
-		return NibbleSlice(pl, 2);
+		return NibbleSlice(_hpe, 2);
 }
 
 std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble, uint _offset)

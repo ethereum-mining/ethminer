@@ -150,6 +150,16 @@ private:
 #pragma warning(disable:4100) // disable warnings so it compiles
 #endif
 
+uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be);
+bool isLeaf(RLP const& _twoItem);
+byte uniqueInUse(RLP const& _orig, byte _except);
+NibbleSlice keyOf(RLP const& _twoItem);
+NibbleSlice keyOf(bytesConstRef _hpe);
+std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble, uint _offset);
+std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _terminated);
+std::string hexPrefixEncode(NibbleSlice _s, bool _leaf, int _begin = 0, int _end = -1);
+std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf);
+
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
  * This version uses an LDB backend - TODO: split off m_db & m_over into opaque key/value map layer and allow caching & testing without DB.
@@ -175,18 +185,148 @@ public:
 	void insert(bytesConstRef _key, bytesConstRef _value);
 	void remove(bytesConstRef _key);
 
-	// TODO: iterators.
-	/*class iterator
+	class iterator
 	{
 	public:
-		iterator()
+		using value_type = std::pair<bytesConstRef, bytesConstRef>;
+
+		iterator() {}
+		iterator(GenericTrieDB const* _db)
 		{
+			m_that = _db;
+			m_trail.push_back(Node{_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
+			next();
 		}
-		operator++()
+
+		iterator& operator++()
+		{
+			next();
+			return *this;
+		}
+
+		value_type operator*() const { return at(); }
+		value_type operator->() const { return at(); }
+
+		bool operator==(iterator const& _c) const { return _c.m_trail == m_trail; }
+		bool operator!=(iterator const& _c) const { return _c.m_trail != m_trail; }
+
+		value_type at() const
+		{
+			assert(m_trail.size());
+			Node const& b = m_trail.back();
+			assert(b.key.size());
+			assert(!(b.key[0] & 0x10));	// should be an integer number of bytes (i.e. not an odd number of nibbles).
+
+			RLP rlp(b.rlp);
+			if (rlp.itemCount() == 2)
+				return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[1].payload());
+			else
+				return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[16].payload());
+		}
 
 	private:
-		std::vector<std::pair<RLP, std::string>> m_lineage;
-	};*/
+		void next()
+		{
+			while (true)
+			{
+				if (m_trail.empty())
+				{
+					m_that = nullptr;
+					return;
+				}
+
+				Node const& b = m_trail.back();
+				RLP rlp(b.rlp);
+
+				if (m_trail.back().child == 255)
+				{
+					// Entering. Look for first...
+					if (rlp.isEmpty())
+					{
+						m_trail.pop_back();
+						continue;
+					}
+					assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+					if (rlp.itemCount() == 2)
+					{
+						// Just turn it into a valid Branch
+						m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), keyOf(rlp), false);
+						if (isLeaf(rlp))
+						{
+							// leaf - exit now.
+							m_trail.back().child = 0;
+							return;
+						}
+
+						// enter child.
+						m_trail.back().rlp = m_that->deref(rlp[1]);
+						// no need to set .child as 255 - it's already done.
+						continue;
+					}
+					else
+					{
+						// Already a branch - look for first valid.
+						m_trail.back().setFirstChild();
+						// run through to...
+					}
+				}
+				else
+				{
+					// Continuing/exiting. Look for next...
+					if (!(rlp.isList() && rlp.itemCount() == 17))
+					{
+						m_trail.pop_back();
+						continue;
+					}
+					// else run through to...
+					m_trail.back().incrementChild();
+				}
+
+				// ...here. should only get here if we're a list.
+				assert(rlp.isList() && rlp.itemCount() == 17);
+				for (;; m_trail.back().incrementChild())
+					if (m_trail.back().child == 17)
+					{
+						// finished here.
+						m_trail.pop_back();
+						break;
+					}
+					else if (!rlp[m_trail.back().child].isEmpty())
+					{
+						if (m_trail.back().child == 16)
+							return;	// have a value at this node - exit now.
+						else
+						{
+							// lead-on to another node - enter child.
+							m_trail.push_back(m_trail.back());
+							m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), NibbleSlice(bytesConstRef(&m_trail.back().child, 1), 1), false);
+							m_trail.back().rlp = m_that->deref(rlp[m_trail.back().child]);
+							m_trail.back().child = 255;
+							break;
+						}
+					}
+			}
+		}
+
+		struct Node
+		{
+			std::string rlp;
+			std::string key;		// as hexPrefixEncoding.
+			byte child;				// 255 -> entering
+
+			void setFirstChild() { child = 16; }
+			void incrementChild() { child = child == 16 ? 0 : child == 15 ? 17 : (child + 1); }
+
+			bool operator==(Node const& _c) const { return rlp == _c.rlp && key == _c.key && child == _c.child; }
+			bool operator!=(Node const& _c) const { return !operator==(_c); }
+		};
+
+		std::vector<Node> m_trail;
+		GenericTrieDB<DB> const* m_that;
+	};
+
+	iterator begin() const { return this; }
+	iterator end() const { return iterator(); }
 
 private:
 	RLPStream& streamNode(RLPStream& _s, bytes const& _b);
@@ -237,6 +377,7 @@ private:
 	bytes branch(RLP const& _orig);
 
 	bool isTwoItemNode(RLP const& _n) const;
+	std::string deref(RLP const& _n) const;
 
 	std::string node(h256 _h) const { return m_db->lookup(_h); }
 	void insertNode(h256 _h, bytesConstRef _v) { m_db->insert(_h, _v); }
@@ -248,6 +389,14 @@ private:
 	h256 m_root;
 	DB* m_db = nullptr;
 };
+
+template <class DB>
+std::ostream& operator<<(std::ostream& _out, GenericTrieDB<DB> const& _db)
+{
+	for (auto const& i: _db)
+		_out << escaped(i.first.toString(), false) << ": " << escaped(i.second.toString(), false) << std::endl;
+	return _out;
+}
 
 #if WIN32
 #pragma warning(pop)
@@ -268,20 +417,19 @@ public:
 	void remove(KeyType _k) { GenericTrieDB<DB>::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 };
 
+template <class KeyType, class DB>
+std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
+{
+	for (auto const& i: _db)
+		_out << i.first << ": " << escaped(i.second.toString(), false) << std::endl;
+	return _out;
+}
+
 }
 
 // Template implementations...
 namespace eth
 {
-
-uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be);
-bool isLeaf(RLP const& _twoItem);
-byte uniqueInUse(RLP const& _orig, byte _except);
-NibbleSlice keyOf(RLP const& _twoItem);
-std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble, uint _offset);
-std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _terminated);
-std::string hexPrefixEncode(NibbleSlice _s, bool _leaf, int _begin = 0, int _end = -1);
-std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf);
 
 template <class DB> void GenericTrieDB<DB>::init()
 {
@@ -438,6 +586,11 @@ template <class DB> bool GenericTrieDB<DB>::isTwoItemNode(RLP const& _n) const
 			|| (_n.isList() && _n.itemCount() == 2);
 }
 
+template <class DB> std::string GenericTrieDB<DB>::deref(RLP const& _n) const
+{
+	return _n.isList() ? _n.data().toString() : node(_n.toHash<h256>());
+}
+
 template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSlice _k)
 {
 	// The caller will make sure that the bytes are inserted properly.
@@ -545,10 +698,6 @@ template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP con
 	return true;
 }
 
-// in1: null  -- OR --  [_k, V]
-// out1: [_k, _s]
-// in2: [V0, ..., V15, S16]  AND  _k == {}
-// out2: [V0, ..., V15, _s]
 template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice _k, bytesConstRef _s)
 {
 //	::operator<<(std::cout << "place ", _orig) << ", " << _k << ", " << _s.toString() << std::endl;
@@ -595,8 +744,6 @@ template <class DB> RLPStream& GenericTrieDB<DB>::streamNode(RLPStream& _s, byte
 	return _s;
 }
 
-// in: [K1 & K2, V] (DEL) : nibbles(K1) == _s, 0 < _s <= nibbles(K1 & K2)
-// out: [K1, H] (INS) ; [K2, V] => H (INS)  (being  [K1, [K2, V]]  if necessary)
 template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 {
 //	::operator<<(std::cout << "cleve ", _orig) << ", " << _s << std::endl;
@@ -617,8 +764,6 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 	return top.out();
 }
 
-// in: [K1, H] (DEL) ; H <= [K2, V] (DEL)  (being  [K1, [K2, V]] (DEL)  if necessary)
-// out: [K1 & K2, V] (INS)
 template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 {
 	assert(_orig.isList() && _orig.itemCount() == 2);
@@ -641,9 +786,6 @@ template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 //	return ret;
 }
 
-// in: [V0, ... V15, S] (DEL) : (exists unique i: !!Vi  AND  !S  "out1") OR (all i: !Vi  AND  !!S  "out2")
-// out1: [k{i}, Vi] (INS)
-// out2: [k{}, S] (INS)
 template <class DB> bytes GenericTrieDB<DB>::merge(RLP const& _orig, byte _i)
 {
 	assert(_orig.isList() && _orig.itemCount() == 17);
@@ -659,14 +801,6 @@ template <class DB> bytes GenericTrieDB<DB>::merge(RLP const& _orig, byte _i)
 	return s.out();
 }
 
-// in: [k{}, S] (DEL)
-// out: [null ** 16, S] (INS)
-// -- OR --
-// in: [k{i}, S] (DEL)
-// out: [null ** i, H, null ** (16 - i)], H <= [k{}, S] (INS)
-// -- OR --
-// in: [k{i}, N] (DEL)
-// out: [null ** i, N, null ** (16 - i)] (INS)
 template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 {
 //	::operator<<(std::cout << "branch ", _orig) << std::endl;

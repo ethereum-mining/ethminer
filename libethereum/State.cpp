@@ -23,12 +23,15 @@
 #if WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
+#else
+#pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include <sha.h>
 #include <sha3.h>
 #include <ripemd.h>
 #if WIN32
 #pragma warning(pop)
+#else
 #endif
 #include <time.h>
 #include <random>

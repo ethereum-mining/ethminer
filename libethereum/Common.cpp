@@ -18,14 +18,17 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
-
 #if WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
+#else
+#pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include <sha3.h>
 #if WIN32
 #pragma warning(pop)
+#else
+#pragma GCC diagnostic warning "-Wunused-function"
 #endif
 #include <random>
 #include "Common.h"
