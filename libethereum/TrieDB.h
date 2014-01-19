@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Trie.h
+/** @file TrieDB.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -22,69 +22,12 @@
 #pragma once
 
 #include <map>
-#include "RLP.h"
+#include <leveldb/db.h>
+#include "TrieCommon.h"
 namespace ldb = leveldb;
 
 namespace eth
 {
-
-bytes rlp256(StringMap const& _s);
-h256 hash256(StringMap const& _s);
-h256 hash256(u256Map const& _s);
-
-std::string hexPrefixEncode(bytes const& _hexVector, bool _terminated = false, int _begin = 0, int _end = -1);
-
-class TrieNode;
-
-/**
- * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
- */
-class Trie
-{
-public:
-	Trie(): m_root(nullptr) {}
-	~Trie();
-
-	h256 hash256() const;
-	bytes rlp() const;
-
-	void debugPrint();
-
-	std::string const& at(std::string const& _key) const;
-	void insert(std::string const& _key, std::string const& _value);
-	void remove(std::string const& _key);
-
-private:
-	TrieNode* m_root;
-};
-
-inline byte nibble(bytesConstRef _data, uint _i)
-{
-	return (_i & 1) ? (_data[_i / 2] & 15) : (_data[_i / 2] >> 4);
-}
-
-struct NibbleSlice
-{
-	bytesConstRef data;
-	uint offset;
-
-	NibbleSlice(bytesConstRef _d = bytesConstRef(), uint _o = 0): data(_d), offset(_o) {}
-	byte operator[](uint _index) const { return nibble(data, offset + _index); }
-	uint size() const { return data.size() * 2 - offset; }
-	NibbleSlice mid(uint _index) const { return NibbleSlice(data, offset + _index); }
-
-	uint shared(NibbleSlice _s) const;
-	bool contains(NibbleSlice _s) const;
-	bool operator==(NibbleSlice _s) const;
-	bool operator!=(NibbleSlice _s) const { return !operator==(_s); }
-};
-
-inline std::ostream& operator<<(std::ostream& _out, NibbleSlice const& _m)
-{
-	for (uint i = 0; i < _m.size(); ++i)
-		_out << std::hex << (int)_m[i];
-	return _out;
-}
 
 class DBFace
 {
@@ -149,16 +92,6 @@ private:
 #pragma warning(push)
 #pragma warning(disable:4100) // disable warnings so it compiles
 #endif
-
-uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be);
-bool isLeaf(RLP const& _twoItem);
-byte uniqueInUse(RLP const& _orig, byte _except);
-NibbleSlice keyOf(RLP const& _twoItem);
-NibbleSlice keyOf(bytesConstRef _hpe);
-std::string hexPrefixEncode(bytesConstRef _data, bool _terminated, int _beginNibble, int _endNibble, uint _offset);
-std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _terminated);
-std::string hexPrefixEncode(NibbleSlice _s, bool _leaf, int _begin = 0, int _end = -1);
-std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf);
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.

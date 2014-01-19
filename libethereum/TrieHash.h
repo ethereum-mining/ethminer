@@ -14,12 +14,20 @@
 	You should have received a copy of the GNU General Public License
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AddressState.cpp
+/** @file TrieHash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "AddressState.h"
-using namespace std;
-using namespace eth;
+#pragma once
 
+#include "Common.h"
+
+namespace eth
+{
+
+bytes rlp256(StringMap const& _s);
+h256 hash256(StringMap const& _s);
+h256 hash256(u256Map const& _s);
+
+}

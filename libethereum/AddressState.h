@@ -46,17 +46,6 @@ public:
 	std::map<u256, u256>& memory() { assert(m_type == AddressType::Contract); return m_memory; }
 	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract); return m_memory; }
 
-	h256 memoryHash() const;
-
-	std::string toString() const
-	{
-		if (m_type == AddressType::Normal)
-			return asString(rlpList(m_balance, toCompactBigEndianString(m_nonce)));
-		if (m_type == AddressType::Contract)
-			return asString(rlpList(m_balance, toCompactBigEndianString(m_nonce), memoryHash()));
-		return "";
-	}
-
 private:
 	AddressType m_type;
 	u256 m_balance;

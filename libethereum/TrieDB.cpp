@@ -14,12 +14,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AddressState.cpp
+/** @file TrieDB.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "AddressState.h"
+#include "Common.h"
+#include "TrieDB.h"
 using namespace std;
 using namespace eth;
 
+namespace eth
+{
+}

@@ -31,7 +31,7 @@
 #include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "Trie.h"
+#include "TrieDB.h"
 #include "Dagger.h"
 
 namespace eth

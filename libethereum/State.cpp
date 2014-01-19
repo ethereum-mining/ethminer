@@ -35,7 +35,6 @@
 #endif
 #include <time.h>
 #include <random>
-#include "Trie.h"
 #include "BlockChain.h"
 #include "Instruction.h"
 #include "Exceptions.h"
