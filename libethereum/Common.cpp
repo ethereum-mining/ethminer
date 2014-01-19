@@ -144,8 +144,10 @@ h256 eth::sha3(bytesConstRef _input)
 	return ret;
 }
 
-Address eth::toPublic(h256 _private)
+Address eth::toPublic(PrivateKey _private)
 {
+	secp256k1_start();
+
 	bytes pubkey(65);
 	int pubkeylen = 65;
 	int ret = secp256k1_ecdsa_seckey_verify(_private.data());

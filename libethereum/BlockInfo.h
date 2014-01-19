@@ -38,7 +38,7 @@ public:
 	h256 sha3Transactions;
 	u256 difficulty;
 	u256 timestamp;
-	h256 extraData;
+	bytes extraData;
 	u256 nonce;
 
 	BlockInfo();

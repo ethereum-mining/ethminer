@@ -20,6 +20,20 @@ using namespace std::chrono;
 namespace eth
 {
 
+#if FAKE_DAGGER
+
+bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout)
+{
+	o_solution = 0;
+	// evaluate until we run out of time
+	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout); o_solution += 1)
+		if (verify(_root, o_solution, _difficulty))
+			return true;
+	return false;
+}
+
+#else
+
 Dagger::Dagger()
 {
 }
@@ -130,4 +144,5 @@ h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
 	return get(bsha);
 }
 
+#endif
 }

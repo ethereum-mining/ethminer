@@ -42,7 +42,7 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(9) << (uint)0 << sha3EmptyList << (uint)0 << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << (uint)0 << (uint)0;
+	block.appendList(9) << h256() << sha3EmptyList << h160() << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 36) << (uint)0 << string() << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -82,7 +82,7 @@ void BlockInfo::populate(bytesConstRef _block)
 		sha3Transactions = header[4].toHash<h256>();
 		difficulty = header[5].toInt<u256>();
 		timestamp = header[6].toInt<u256>();
-		extraData = header[7].toHash<h256>();
+		extraData = header[7].toBytes();
 		nonce = header[8].toInt<u256>();
 	}
 	catch (RLP::BadCast)

@@ -20,6 +20,7 @@
  */
 
 #include <secp256k1.h>
+#include <boost/filesystem.hpp>
 #if WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -58,9 +59,11 @@ State::State(Address _coinbaseAddress): m_state(&m_db), m_ourAddress(_coinbaseAd
 	m_previousBlock = BlockInfo::genesis();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 
+	boost::filesystem::create_directory(string(getenv("HOME")) + "/.ethereum/");
+
 	ldb::Options o;
 	ldb::DB* db = nullptr;
-	ldb::DB::Open(o, string(getenv("HOME")) + "/.ethereum++/state", &db);
+	ldb::DB::Open(o, string(getenv("HOME")) + "/.ethereum/state", &db);
 
 	m_db.setDB(db);
 	m_state.init();
@@ -292,7 +295,7 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 
 // @returns the block that represents the difference between m_previousBlock and m_currentBlock.
 // (i.e. all the transactions we executed).
-void State::prepareToMine(BlockChain const& _bc)
+void State::commitToMine(BlockChain const& _bc)
 {
 	RLPStream uncles;
 	if (m_previousBlock != BlockInfo::genesis())

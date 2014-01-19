@@ -48,28 +48,35 @@ class BlockChain;
 class State
 {
 public:
-	/// Construct null state object.
-//	State() {}
-
 	/// Construct state object.
 	explicit State(Address _coinbaseAddress);
 
-	/// Compiles uncles and transactions list, and puts hashes into the current block header.
-	void prepareToMine(BlockChain const& _bc);
+	/// Cancels transactions and rolls back the state to the end of the previous block.
+	/// @warning This will only work for on any transactions after you called the last commitToMine().
+	/// It's one or the other.
+	void rollback() { m_cache.clear(); }
+
+	/// Prepares the current state for mining.
+	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
+	/// rewards and populates the current block header with the appropriate hashes.
+	/// The only thing left to do after this is to actually mine().
+	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns true if it got lucky.
+	/// @returns true if it got lucky. In this case, call blockData() to get the block for
+	/// spreading far and wide.
 	bool mine(uint _msTimeout = 1000);
 
 	/// Get the complete current block, including valid nonce.
+	/// Only valid after mine() returns true.
 	bytes const& blockData() const { return m_currentBytes; }
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
 	void sync(BlockChain const& _bc);
 
-	/// Sync with the block chain, but rather than synching to the latest block sync to the given block.
+	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
 	void sync(BlockChain const& _bc, h256 _blockHash);
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
@@ -136,9 +143,6 @@ private:
 
 	/// Commit all changes waiting in the address cache.
 	void commit();
-
-	/// Commit all changes waiting in the address cache.
-	void rollback() { m_cache.clear(); }
 
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
