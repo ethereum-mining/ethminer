@@ -30,7 +30,7 @@ int main()
 {
 	// Our address.
 	h256 privkey = sha3("123");
-	Address us = toPublic(privkey);	// TODO: should be loaded from config file/set at command-line.
+	Address us = toAddress(privkey);	// TODO: should be loaded from config file/set at command-line.
 
 	BlockChain bc;			// Maintains block database.
 	TransactionQueue tq;	// Maintains list of incoming transactions not yet on the block chain.

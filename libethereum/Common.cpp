@@ -144,7 +144,7 @@ h256 eth::sha3(bytesConstRef _input)
 	return ret;
 }
 
-Address eth::toPublic(PrivateKey _private)
+Address eth::toAddress(Secret _private)
 {
 	secp256k1_start();
 

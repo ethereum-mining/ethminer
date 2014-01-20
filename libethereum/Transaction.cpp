@@ -54,13 +54,16 @@ Address Transaction::sender() const
 	return right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 }
 
-void Transaction::sign(PrivateKey _priv)
+void Transaction::sign(Secret _priv)
 {
 	int v = 0;
 
+	secp256k1_start();
+
 	h256 msg = sha3(false);
 	byte sig[64];
-	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig, _priv.data(), kFromMessage(msg, _priv).data(), &v))
+	h256 nonce = kFromMessage(msg, _priv);
+	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig, _priv.data(), nonce.data(), &v))
 		throw InvalidSignature();
 
 	vrs.v = (byte)(v + 27);
@@ -91,6 +94,6 @@ h256 Transaction::kFromMessage(h256 _msg, h256 _priv)
 	v = hmac.new(k, v, hashlib.sha256).digest()
 	return decode(hmac.new(k, v, hashlib.sha256).digest(),256)
 	*/
-	return h256();
+	return _msg ^ _priv;
 }
 

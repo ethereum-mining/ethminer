@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <boost/filesystem.hpp>
 #include "Common.h"
 #include "RLP.h"
 #include "Exceptions.h"
@@ -29,10 +30,17 @@
 using namespace std;
 using namespace eth;
 
-BlockChain::BlockChain()
+BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
+	if (_path.empty())
+		_path = string(getenv("HOME")) + "/.ethereum";
+	boost::filesystem::create_directory(_path);
+	if (_killExisting)
+		boost::filesystem::remove_all(_path + "/blocks");
+
 	ldb::Options o;
-	auto s = ldb::DB::Open(o, "blockchain", &m_db);
+	o.create_if_missing = true;
+	auto s = ldb::DB::Open(o, _path + "/blocks", &m_db);
 
 	// Initialise with the genesis as the last block on the longest chain.
 	m_lastBlockHash = m_genesisHash = BlockInfo::genesis().hash;
@@ -91,7 +99,7 @@ void BlockChain::import(bytes const& _block)
 		BlockInfo biGrandParent;
 		if (it->second.number)
 			biGrandParent.populate(block(it->second.parent));
-		u256 td = it->second.totalDifficulty + s.playback(&_block, bi, biParent, biGrandParent);
+		u256 td = it->second.totalDifficulty + s.playback(&_block, bi, biParent, biGrandParent, true);
 
 		// All ok - insert into DB
 		m_details[newHash] = BlockDetails{(uint)it->second.number + 1, bi.parentHash, td};

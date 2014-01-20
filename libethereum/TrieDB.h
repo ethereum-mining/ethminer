@@ -95,7 +95,7 @@ private:
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
- * This version uses an LDB backend - TODO: split off m_db & m_over into opaque key/value map layer and allow caching & testing without DB.
+ * This version uses an LDB backend
  */
 template <class DB>
 class GenericTrieDB
@@ -365,8 +365,8 @@ public:
 		{
 			auto p = Super::at();
 			value_type ret;
-			assert(p.first.size() == sizeof(ret));
-			memcpy(&ret.first, p.first.data(), sizeof(ret));
+			assert(p.first.size() == sizeof(KeyType));
+			memcpy(&ret.first, p.first.data(), sizeof(KeyType));
 			ret.second = p.second;
 			return ret;
 		}
@@ -415,7 +415,7 @@ template <class DB> std::string GenericTrieDB<DB>::at(bytesConstRef _key) const
 
 template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, NibbleSlice _key) const
 {
-	if (_here.isEmpty())
+	if (_here.isEmpty() || _here.isNull())
 		// not found.
 		return std::string();
 	assert(_here.isList() && (_here.itemCount() == 2 || _here.itemCount() == 17));

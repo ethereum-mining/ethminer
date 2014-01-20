@@ -83,6 +83,14 @@ public:
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
 
+	FixedHash& operator^=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
+	FixedHash operator^(FixedHash const& _c) const { return FixedHash(*this) ^= _c; }
+	FixedHash& operator|=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] |= _c.m_data[i]; return *this; }
+	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
+	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
+	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
+	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
 
@@ -98,8 +106,9 @@ private:
 template <unsigned N>
 inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 {
+	_out << std::noshowbase << std::hex << std::setfill('0');
 	for (unsigned i = 0; i < N; ++i)
-		_out << std::hex << std::setfill('0') << std::setw(2) << (int)_h[i];
+		_out << std::setw(2) << (int)_h[i];
 	return _out;
 }
 
@@ -110,7 +119,7 @@ using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
 
-using PrivateKey = h256;
+using Secret = h256;
 using Address = h160;
 using Addresses = h160s;
 
@@ -317,6 +326,20 @@ inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input))
 
 /// Convert a private key into the public key equivalent.
 /// @returns 0 if it's not a valid private key.
-Address toPublic(h256 _private);
+Address toAddress(h256 _private);
+
+class KeyPair
+{
+public:
+	KeyPair() {}
+	KeyPair(Secret _k): m_secret(_k), m_address(toAddress(_k)) {}
+
+	Secret secret() const { return m_secret; }
+	Address address() const { return m_address; }
+
+private:
+	Secret m_secret;
+	Address m_address;
+};
 
 }

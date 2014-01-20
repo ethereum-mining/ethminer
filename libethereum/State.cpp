@@ -44,30 +44,35 @@
 using namespace std;
 using namespace eth;
 
-u256 const State::c_stepFee = 0;
-u256 const State::c_dataFee = 0;
-u256 const State::c_memoryFee = 0;
-u256 const State::c_extroFee = 0;
-u256 const State::c_cryptoFee = 0;
-u256 const State::c_newContractFee = 0;
+u256 const State::c_stepFee = 10000;
+u256 const State::c_dataFee = 20000;
+u256 const State::c_memoryFee = 30000;
+u256 const State::c_extroFee = 40000;
+u256 const State::c_cryptoFee = 50000;
+u256 const State::c_newContractFee = 60000;
 u256 const State::c_txFee = 0;
-u256 const State::c_blockReward = 0;
+u256 const State::c_blockReward = 1000000000;
 
-State::State(Address _coinbaseAddress): m_state(&m_db), m_ourAddress(_coinbaseAddress)
+State::State(Address _coinbaseAddress, std::string _path, bool _killExisting): m_state(&m_db), m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
-	m_previousBlock = BlockInfo::genesis();
-	m_currentBlock.coinbaseAddress = m_ourAddress;
 
-	boost::filesystem::create_directory(string(getenv("HOME")) + "/.ethereum/");
+	if (_path.empty())
+		_path = string(getenv("HOME")) + "/.ethereum";
+	boost::filesystem::create_directory(_path);
+	if (_killExisting)
+		boost::filesystem::remove_all(_path + "/state");
 
 	ldb::Options o;
+	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
-	ldb::DB::Open(o, string(getenv("HOME")) + "/.ethereum/state", &db);
+	ldb::DB::Open(o, _path + "/state", &db);
 
 	m_db.setDB(db);
 	m_state.init();
-	m_state.setRoot(m_currentBlock.stateRoot);
+
+	m_previousBlock = BlockInfo::genesis();
+	resetCurrent();
 }
 
 void State::ensureCached(Address _a, bool _requireMemory) const
@@ -79,7 +84,9 @@ void State::ensureCached(Address _a, bool _requireMemory) const
 		string stateBack = m_state.at(_a);
 		RLP state(stateBack);
 		AddressState s;
-		if (state.itemCount() == 2)
+		if (state.isNull())
+			s = AddressState(0, 0);
+		else if (state.itemCount() == 2)
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>());
 		else
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>());
@@ -104,7 +111,7 @@ void State::commit()
 			m_state.remove(i.first);
 		else
 		{
-			RLPStream s;
+			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
 			s << i.second.balance() << i.second.nonce();
 			if (i.second.type() == AddressType::Contract)
 			{
@@ -114,7 +121,7 @@ void State::commit()
 					memdb.init();
 					for (auto const& j: i.second.memory())
 						if (j.second)
-							memdb.insert(j.first, rlp(j.second));	// TODO: CHECK: check this isn't RLP or compact
+							memdb.insert(j.first, rlp(j.second));
 					s << memdb.root();
 				}
 				else
@@ -179,7 +186,7 @@ void State::sync(BlockChain const& _bc, h256 _block)
 
 		// Iterate through in reverse, playing back each of the blocks.
 		for (auto it = next(l.cbegin()); it != l.cend(); ++it)
-			playback(_bc.block(*it));
+			playback(_bc.block(*it), true);
 
 		m_currentNumber = _bc.details(_bc.currentHash()).number + 1;
 		resetCurrent();
@@ -193,6 +200,8 @@ void State::resetCurrent()
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
+	m_currentBlock.parentHash = m_previousBlock.hash;
+	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
 void State::sync(TransactionQueue& _tq)
@@ -224,13 +233,13 @@ void State::sync(TransactionQueue& _tq)
 	}
 }
 
-u256 State::playback(bytesConstRef _block)
+u256 State::playback(bytesConstRef _block, bool _fullCommit)
 {
 	try
 	{
 		m_currentBlock.populate(_block);
 		m_currentBlock.verifyInternals(_block);
-		return playback(_block, BlockInfo());
+		return playback(_block, BlockInfo(), _fullCommit);
 	}
 	catch (...)
 	{
@@ -240,14 +249,14 @@ u256 State::playback(bytesConstRef _block)
 	}
 }
 
-u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent)
+u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit)
 {
 	m_currentBlock = _bi;
 	m_previousBlock = _parent;
-	return playback(_block, _grandParent);
+	return playback(_block, _grandParent, _fullCommit);
 }
 
-u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
+u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit)
 {
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
@@ -279,16 +288,27 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
 	{
+		cout << m_state;
+		cout << TrieDB<Address, Overlay>(&m_db, m_state.root());
+		cout << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot) << endl;
 		// Rollback the trie.
 		m_db.rollback();
 		throw InvalidStateRoot();
 	}
 
-	// Commit the new trie to disk.
-	m_db.commit();
+	if (_fullCommit)
+	{
+		// Commit the new trie to disk.
+		m_db.commit();
 
-	m_previousBlock = m_currentBlock;
-	resetCurrent();
+		m_previousBlock = m_currentBlock;
+		resetCurrent();
+	}
+	else
+	{
+		m_db.rollback();
+		resetCurrent();
+	}
 
 	return tdIncrease;
 }
@@ -298,16 +318,24 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent)
 void State::commitToMine(BlockChain const& _bc)
 {
 	RLPStream uncles;
+	Addresses uncleAddresses;
+
 	if (m_previousBlock != BlockInfo::genesis())
 	{
 		// Find uncles if we're not a direct child of the genesis.
 		auto us = _bc.details(m_previousBlock.parentHash).children;
 		uncles.appendList(us.size());
 		for (auto const& u: us)
-			BlockInfo(_bc.block(u)).fillStream(uncles, true);
+		{
+			BlockInfo ubi(_bc.block(u));
+			ubi.fillStream(uncles, true);
+			uncleAddresses.push_back(ubi.coinbaseAddress);
+		}
 	}
 	else
 		uncles.appendList(0);
+
+	applyRewards(uncleAddresses);
 
 	RLPStream txs(m_transactions.size());
 	for (auto const& i: m_transactions)
@@ -321,7 +349,9 @@ void State::commitToMine(BlockChain const& _bc)
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
+	cout << m_state;
 	m_currentBlock.stateRoot = m_state.root();
+	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
 bool State::mine(uint _msTimeout)

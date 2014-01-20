@@ -49,7 +49,7 @@ class State
 {
 public:
 	/// Construct state object.
-	explicit State(Address _coinbaseAddress);
+	explicit State(Address _coinbaseAddress, std::string _path = std::string(), bool _killExisting = false);
 
 	/// Cancels transactions and rolls back the state to the end of the previous block.
 	/// @warning This will only work for on any transactions after you called the last commitToMine().
@@ -60,6 +60,7 @@ public:
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
 	/// The only thing left to do after this is to actually mine().
+	/// @warning Only call this once!
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
@@ -127,7 +128,7 @@ public:
 	/// @returns the additional total difficulty.
 	/// If the _grandParent is passed, it will check the validity of each of the uncles.
 	/// This might throw.
-	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent);
+	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
 private:
 	/// Fee-adder on destruction RAII class.
@@ -146,11 +147,11 @@ private:
 
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
-	u256 playback(bytesConstRef _block);
+	u256 playback(bytesConstRef _block, bool _fullCommit);
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent);
+	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
 
 	/// Execute a decoded transaction object, given a sender.
 	/// This will append @a _t to the transaction list and change the state accordingly.

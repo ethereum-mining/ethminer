@@ -49,7 +49,7 @@ struct Transaction
 	Signature vrs;
 
 	Address sender() const;
-	void sign(PrivateKey _priv);
+	void sign(Secret _priv);
 
 	static h256 kFromMessage(h256 _msg, h256 _priv);
 

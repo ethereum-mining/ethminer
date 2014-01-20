@@ -44,7 +44,7 @@ static const h256s NullH256s;
 class BlockChain
 {
 public:
-	BlockChain();
+	BlockChain(std::string _path = std::string(), bool _killExisting = false);
 	~BlockChain();
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
