@@ -154,6 +154,10 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		exit(1);
 	}
 
+	// TODO: why are the hashes different when the essentials are the same?
+//	cout << bi << endl;
+//	cout << m_currentBlock << endl;
+
 	if (bi == m_currentBlock)
 	{
 		// We mined the last block.
@@ -288,9 +292,6 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
 	{
-		cout << m_state;
-		cout << TrieDB<Address, Overlay>(&m_db, m_state.root());
-		cout << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot) << endl;
 		// Rollback the trie.
 		m_db.rollback();
 		throw InvalidStateRoot();
@@ -349,7 +350,6 @@ void State::commitToMine(BlockChain const& _bc)
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
-	cout << m_state;
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
@@ -368,7 +368,12 @@ bool State::mine(uint _msTimeout)
 		// Got it! Compile block:
 		RLPStream ret;
 		ret.appendList(3);
-		m_currentBlock.fillStream(ret, true);
+		{
+			RLPStream s;
+			m_currentBlock.fillStream(s, true);
+			m_currentBlock.hash = sha3(s.out());
+			ret.appendRaw(s.out());
+		}
 		ret.appendRaw(m_currentTxs);
 		ret.appendRaw(m_currentUncles);
 		ret.swapOut(m_currentBytes);
@@ -508,6 +513,8 @@ void State::execute(Transaction const& _t, Address _sender)
 	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + _t.fee)
 		throw NotEnoughCash();
+
+	// TODO: check fee is sufficient?
 
 	// Increment associated nonce for sender.
 	noteSending(_sender);

@@ -46,7 +46,7 @@ public:
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
-	bool operator==(BlockInfo const& _cmp) const { return hash == _cmp.hash && parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
+	bool operator==(BlockInfo const& _cmp) const { return parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
@@ -67,6 +67,13 @@ private:
 
 	static BlockInfo* s_genesis;
 };
+
+inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
+{
+	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.sha3Transactions << " " <<
+			_bi.difficulty << " " << _bi.timestamp << " " << _bi.nonce;
+	return _out;
+}
 
 }
 

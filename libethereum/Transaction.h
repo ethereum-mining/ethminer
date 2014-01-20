@@ -30,8 +30,8 @@ namespace eth
 struct Signature
 {
 	byte v;
-	h256 r;
-	h256 s;
+	u256 r;
+	u256 s;
 };
 
 // [ nonce, receiving_address, value, fee, [ data item 0, data item 1 ... data item n ], v, r, s ]

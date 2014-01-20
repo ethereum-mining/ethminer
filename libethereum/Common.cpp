@@ -148,17 +148,24 @@ Address eth::toAddress(Secret _private)
 {
 	secp256k1_start();
 
-	bytes pubkey(65);
+	byte pubkey[65];
 	int pubkeylen = 65;
-	int ret = secp256k1_ecdsa_seckey_verify(_private.data());
-	if (!ret)
+	int ok = secp256k1_ecdsa_seckey_verify(_private.data());
+	if (!ok)
 		return Address();
-	ret = secp256k1_ecdsa_pubkey_create(pubkey.data(), &pubkeylen, _private.data(), 1);
-	if (!ret)
+	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _private.data(), 0);
+	assert(pubkeylen == 65);
+	if (!ok)
 		return Address();
-		pubkey.resize(pubkeylen);
-	ret = secp256k1_ecdsa_pubkey_verify(pubkey.data(), pubkey.size());
-	if (!ret)
+	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
+	if (!ok)
 		return Address();
-	return left160(eth::sha3(bytesConstRef(&pubkey).cropped(1)));
+	auto ret = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+#if ETH_ADDRESS_DEBUG
+	cout << "---- ADDRESS -------------------------------" << endl;
+	cout << "SEC: " << _private << endl;
+	cout << "PUB: " << asHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+	cout << "ADR: " << ret << endl;
+#endif
+	return ret;
 }

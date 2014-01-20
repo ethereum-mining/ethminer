@@ -20,6 +20,7 @@
  */
 
 #include <secp256k1.h>
+#include "vector_ref.h"
 #include "Exceptions.h"
 #include "Transaction.h"
 using namespace std;
@@ -42,16 +43,25 @@ Address Transaction::sender() const
 {
 	secp256k1_start();
 
-	bytes sig = toBigEndian(vrs.r) + toBigEndian(vrs.s);
-	assert(sig.size() == 64);
+	h256 sig[2] = { vrs.r, vrs.s };
 	h256 msg = sha3(false);
 
 	byte pubkey[65];
 	int pubkeylen = 65;
-	if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig.data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
+	if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig[0].data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
 		throw InvalidSignature();
+
 	// TODO: check right160 is correct and shouldn't be left160.
-	return right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+	auto ret = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+
+#if ETH_ADDRESS_DEBUG
+	cout << "---- RECOVER -------------------------------" << endl;
+	cout << "MSG: " << msg << endl;
+	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
+	cout << "PUB: " << asHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+	cout << "ADR: " << ret << endl;
+#endif
+	return ret;
 }
 
 void Transaction::sign(Secret _priv)
@@ -61,14 +71,22 @@ void Transaction::sign(Secret _priv)
 	secp256k1_start();
 
 	h256 msg = sha3(false);
-	byte sig[64];
+	h256 sig[2];
 	h256 nonce = kFromMessage(msg, _priv);
-	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig, _priv.data(), nonce.data(), &v))
+
+	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig[0].data(), _priv.data(), nonce.data(), &v))
 		throw InvalidSignature();
+#if ETH_ADDRESS_DEBUG
+	cout << "---- SIGN -------------------------------" << endl;
+	cout << "MSG: " << msg << endl;
+	cout << "SEC: " << _priv << endl;
+	cout << "NON: " << nonce << endl;
+	cout << "R S V: " << sig[0] << " " << sig[1] << " " << v << "+27" << endl;
+#endif
 
 	vrs.v = (byte)(v + 27);
-	vrs.r = fromBigEndian<u256>(bytesConstRef(sig, 32));
-	vrs.s = fromBigEndian<u256>(bytesConstRef(&(sig[32]), 32));
+	vrs.r = (u256)sig[0];
+	vrs.s = (u256)sig[1];
 }
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
