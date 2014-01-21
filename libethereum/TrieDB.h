@@ -22,6 +22,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <leveldb/db.h>
 #include "TrieCommon.h"
 namespace ldb = leveldb;
@@ -71,8 +72,8 @@ class Overlay: public BasicMap
 public:
 	Overlay(ldb::DB* _db = nullptr): m_db(_db) {}
 
-	ldb::DB* db() const { return m_db; }
-	void setDB(ldb::DB* _db, bool _clearOverlay = true) { m_db = _db; if (_clearOverlay) m_over.clear(); }
+	ldb::DB* db() const { return m_db.get(); }
+	void setDB(ldb::DB* _db, bool _clearOverlay = true) { m_db = std::shared_ptr<ldb::DB>(_db); if (_clearOverlay) m_over.clear(); }
 
 	void commit() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); m_refCount.clear(); }
 	void rollback() { m_over.clear(); m_refCount.clear(); }
@@ -82,7 +83,7 @@ public:
 private:
 	using BasicMap::clear;
 
-	ldb::DB* m_db = nullptr;
+	std::shared_ptr<ldb::DB> m_db;
 
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;

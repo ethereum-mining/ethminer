@@ -30,7 +30,7 @@ namespace eth
 struct BlockInfo
 {
 public:
-	h256 hash;
+	h256 hash;						///< SHA3 hash of the entire block!
 	h256 parentHash;
 	h256 sha3Uncles;
 	Address coinbaseAddress;
@@ -46,7 +46,18 @@ public:
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
-	bool operator==(BlockInfo const& _cmp) const { return parentHash == _cmp.parentHash && nonce == _cmp.nonce; }
+	bool operator==(BlockInfo const& _cmp) const
+	{
+		return parentHash == _cmp.parentHash &&
+				sha3Uncles == _cmp.sha3Uncles &&
+				coinbaseAddress == _cmp.coinbaseAddress &&
+				stateRoot == _cmp.stateRoot &&
+				sha3Transactions == _cmp.sha3Transactions &&
+				difficulty == _cmp.difficulty &&
+				timestamp == _cmp.timestamp &&
+				extraData == _cmp.extraData &&
+				nonce == _cmp.nonce;
+	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }

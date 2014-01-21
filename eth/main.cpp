@@ -32,9 +32,10 @@ int main()
 	h256 privkey = sha3("123");
 	Address us = toAddress(privkey);	// TODO: should be loaded from config file/set at command-line.
 
-	BlockChain bc;			// Maintains block database.
-	TransactionQueue tq;	// Maintains list of incoming transactions not yet on the block chain.
-	State s(us);
+	BlockChain bc;						// Maintains block database.
+	TransactionQueue tq;				// Maintains list of incoming transactions not yet on the block chain.
+	Overlay stateDB = State::openDB();	// Acts as the central point for the state database, so multiple States can share it.
+	State s(us, stateDB);
 
 	// Synchronise the state according to the block chain - i.e. replay all transactions in block chain, in order.
 	// In practise this won't need to be done since the State DB will contain the keys for the tries for most recent (and many old) blocks.
@@ -42,7 +43,7 @@ int main()
 	s.sync(bc);
 	s.sync(tq);
 
-	PeerNetwork net;		// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
+	PeerNetwork net;					// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
 	while (true)
 	{
 		// Process network events.
@@ -62,14 +63,10 @@ int main()
 		s.sync(tq);
 
 		// Mine for a while.
-		if (s.mine(100))
-		{
-			// Mined block
-			bytes b = s.blockData();
-
+		bytes b = s.mine(100);
+		if (b.size())
 			// Import block.
-			bc.import(b);
-		}
+			bc.attemptImport(b, stateDB);
 	}
 
 	return 0;

@@ -43,13 +43,16 @@ class BlockChain;
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
  * Should maintain ledger as of last N blocks, also, in case we end up on the wrong branch.
- * TODO: Block database I/O class.
  */
 class State
 {
 public:
 	/// Construct state object.
-	explicit State(Address _coinbaseAddress, std::string _path = std::string(), bool _killExisting = false);
+	State(Address _coinbaseAddress, Overlay const& _db);
+
+	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
+	static Overlay openDB(std::string _path, bool _killExisting = false);
+	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
 
 	/// Cancels transactions and rolls back the state to the end of the previous block.
 	/// @warning This will only work for on any transactions after you called the last commitToMine().
@@ -65,9 +68,9 @@ public:
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns true if it got lucky. In this case, call blockData() to get the block for
-	/// spreading far and wide.
-	bool mine(uint _msTimeout = 1000);
+	/// @returns a non-empty byte array containing the block if it got lucky. In this case, call blockData()
+	/// to get the block if you need it later.
+	bytes const& mine(uint _msTimeout = 1000);
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -140,7 +143,10 @@ private:
 	};
 
 	/// Retrieve all information about a given address into the cache.
-	void ensureCached(Address _a, bool _requireMemory = false) const;
+	/// If _requireMemory is true, grab the full memory should it be a contract item.
+	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
+	/// exist in the DB.
+	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache.
 	void commit();
@@ -190,7 +196,34 @@ private:
 	static const u256 c_newContractFee;
 	static const u256 c_txFee;
 	static const u256 c_blockReward;
+
+	static std::string c_defaultPath;
+
+	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
+
+inline std::ostream& operator<<(std::ostream& _out, State const& _s)
+{
+	_out << "--- " << _s.rootHash() << std::endl;
+	std::set<Address> d;
+	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.m_currentBlock.stateRoot))
+	{
+		auto it = _s.m_cache.find(i.first);
+		if (it == _s.m_cache.end())
+		{
+			RLP r(i.second);
+			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>() << std::endl;
+		}
+		else
+			d.insert(i.first);
+	}
+	for (auto i: _s.m_cache)
+		if (i.second.type() == AddressType::Dead)
+			_out << "[XXX " << i.first << std::endl;
+		else
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
+	return _out;
+}
 
 }
 

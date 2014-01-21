@@ -161,7 +161,7 @@ public:
 	explicit operator uint() const { return toSlimInt(); }
 	explicit operator u256() const { return toFatInt(); }
 	explicit operator bigint() const { return toBigInt(); }
-	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<_N>(); }
+	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
 	bytes toBytes() const { if (!isString()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
@@ -171,6 +171,8 @@ public:
 	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
 	std::string toStringStrict() const { if (!isString()) throw BadCast(); return payload().cropped(0, items()).toString(); }
+
+	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
 
 	/// Int conversion flags
 	enum

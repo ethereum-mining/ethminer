@@ -53,12 +53,10 @@ u256 const State::c_newContractFee = 60000;
 u256 const State::c_txFee = 0;
 u256 const State::c_blockReward = 1000000000;
 
-State::State(Address _coinbaseAddress, std::string _path, bool _killExisting): m_state(&m_db), m_ourAddress(_coinbaseAddress)
+Overlay State::openDB(std::string _path, bool _killExisting)
 {
-	secp256k1_start();
-
 	if (_path.empty())
-		_path = string(getenv("HOME")) + "/.ethereum";
+		_path = Defaults::s_dbPath;
 	boost::filesystem::create_directory(_path);
 	if (_killExisting)
 		boost::filesystem::remove_all(_path + "/state");
@@ -67,21 +65,26 @@ State::State(Address _coinbaseAddress, std::string _path, bool _killExisting): m
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
+	return Overlay(db);
+}
 
-	m_db.setDB(db);
+State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&m_db), m_ourAddress(_coinbaseAddress)
+{
+	secp256k1_start();
 	m_state.init();
-
 	m_previousBlock = BlockInfo::genesis();
 	resetCurrent();
 }
 
-void State::ensureCached(Address _a, bool _requireMemory) const
+void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
 {
 	auto it = m_cache.find(_a);
 	if (it == m_cache.end())
 	{
 		// populate basic info.
 		string stateBack = m_state.at(_a);
+		if (stateBack.empty() && !_forceCreate)
+			return;
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
@@ -176,23 +179,22 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		// New blocks available, or we've switched to a different branch. All change.
 		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
-		std::vector<h256> l = _bc.blockChain(h256Set());
 
-		if (l.back() == BlockInfo::genesis().hash)
+		std::vector<h256> chain;
+		while (bi.stateRoot != BlockInfo::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
-			// Reset to genesis block.
-			m_previousBlock = BlockInfo::genesis();
+			chain.push_back(bi.hash);				// push back for later replay.
+			bi.populate(_bc.block(bi.parentHash));	// move to parent.
 		}
-		else
-		{
-			// TODO: Begin at a restore point.
-		}
+
+		m_previousBlock = bi;
+		resetCurrent();
 
 		// Iterate through in reverse, playing back each of the blocks.
-		for (auto it = next(l.cbegin()); it != l.cend(); ++it)
+		for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			playback(_bc.block(*it), true);
 
-		m_currentNumber = _bc.details(_bc.currentHash()).number + 1;
+		m_currentNumber = _bc.details(_block).number + 1;
 		resetCurrent();
 	}
 }
@@ -289,6 +291,8 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	// Commit all cached state changes to the state trie.
 	commit();
 
+//	cout << m_state << endl << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
+
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
 	{
@@ -325,13 +329,15 @@ void State::commitToMine(BlockChain const& _bc)
 	{
 		// Find uncles if we're not a direct child of the genesis.
 		auto us = _bc.details(m_previousBlock.parentHash).children;
-		uncles.appendList(us.size());
+		assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
+		uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
 		for (auto const& u: us)
-		{
-			BlockInfo ubi(_bc.block(u));
-			ubi.fillStream(uncles, true);
-			uncleAddresses.push_back(ubi.coinbaseAddress);
-		}
+			if (u != m_previousBlock.hash)	// ignore our own parent - it's not an uncle.
+			{
+				BlockInfo ubi(_bc.block(u));
+				ubi.fillStream(uncles, true);
+				uncleAddresses.push_back(ubi.coinbaseAddress);
+			}
 	}
 	else
 		uncles.appendList(0);
@@ -354,7 +360,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
-bool State::mine(uint _msTimeout)
+bytes const& State::mine(uint _msTimeout)
 {
 	// Update timestamp according to clock.
 	m_currentBlock.timestamp = time(0);
@@ -365,27 +371,29 @@ bool State::mine(uint _msTimeout)
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
 	if (m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout))
 	{
-		// Got it! Compile block:
+		// Got it!
+
+		// Commit our database to disk or nothing other than this state will understand, which would make verifying the state_root rather difficult no?
+		m_db.commit();
+
+		// Compile block:
 		RLPStream ret;
 		ret.appendList(3);
-		{
-			RLPStream s;
-			m_currentBlock.fillStream(s, true);
-			m_currentBlock.hash = sha3(s.out());
-			ret.appendRaw(s.out());
-		}
+		m_currentBlock.fillStream(ret, true);
 		ret.appendRaw(m_currentTxs);
 		ret.appendRaw(m_currentUncles);
 		ret.swapOut(m_currentBytes);
-		return true;
+		m_currentBlock.hash = sha3(m_currentBytes);
 	}
+	else
+		m_currentBytes.clear();
 
-	return false;
+	return m_currentBytes;
 }
 
 bool State::isNormalAddress(Address _id) const
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
@@ -394,7 +402,7 @@ bool State::isNormalAddress(Address _id) const
 
 bool State::isContractAddress(Address _id) const
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
@@ -403,7 +411,7 @@ bool State::isContractAddress(Address _id) const
 
 u256 State::balance(Address _id) const
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return 0;
@@ -412,7 +420,7 @@ u256 State::balance(Address _id) const
 
 void State::noteSending(Address _id)
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		m_cache[_id] = AddressState(0, 1);
@@ -422,7 +430,7 @@ void State::noteSending(Address _id)
 
 void State::addBalance(Address _id, u256 _amount)
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		m_cache[_id] = AddressState(_amount, 0);
@@ -432,7 +440,7 @@ void State::addBalance(Address _id, u256 _amount)
 
 void State::subBalance(Address _id, bigint _amount)
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end() || (bigint)it->second.balance() < _amount)
 		throw NotEnoughCash();
@@ -442,7 +450,7 @@ void State::subBalance(Address _id, bigint _amount)
 
 u256 State::transactionsFrom(Address _id) const
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return 0;
@@ -452,7 +460,7 @@ u256 State::transactionsFrom(Address _id) const
 
 u256 State::contractMemory(Address _id, u256 _memory) const
 {
-	ensureCached(_id);
+	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end() || it->second.type() != AddressType::Contract)
 		return 0;
@@ -571,7 +579,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		if (stack.size() < _n)
 			throw StackTooSmall(_n, stack.size());
 	};
-	ensureCached(_myAddress, true);
+	ensureCached(_myAddress, true, true);
 	auto& myMemory = m_cache[_myAddress].takeMemory();
 
 	auto mem = [&](u256 _n) -> u256
