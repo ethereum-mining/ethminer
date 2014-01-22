@@ -43,7 +43,7 @@ int main()
 	s.sync(bc);
 	s.sync(tq);
 
-	PeerNetwork net;					// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
+	PeerServer net(0, 30303);					// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
 	while (true)
 	{
 		// Process network events.
