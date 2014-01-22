@@ -53,95 +53,22 @@ enum PacketType
 class PeerSession: public std::enable_shared_from_this<PeerSession>
 {
 public:
-	PeerSession(bi::tcp::socket _socket, uint _rNId): m_socket(std::move(_socket)), m_reqNetworkId(_rNId)
-	{
-	}
+	PeerSession(bi::tcp::socket _socket, uint _rNId);
+	~PeerSession();
 
-	void start()
-	{
-		doRead();
-	}
+	void start();
 
-	bool interpret(RLP const& _r)
-	{
-		switch (_r[0].toInt<unsigned>())
-		{
-		case Hello:
-			m_protocolVersion = _r[1].toInt<uint>();
-			m_networkId = _r[2].toInt<uint>();
-			m_clientVersion = _r[3].toString();
-			if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
-			{
-				disconnect();
-				return false;
-			}
-			break;
-		}
-		return true;
-	}
+	bool interpret(RLP const& _r);
 
-	void disconnect()
-	{
-		RLPStream s;
-		prep(s);
-		s.appendList(1) << Disconnect;
-		sealAndSend(s);
-		sleep(1);
-	}
+	void disconnect();
 
 private:
-	void doRead()
-	{
-		auto self(shared_from_this());
-		m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
-		{
-			if (!ec)
-				doWrite(length);
-		});
-	}
+	void doRead();
+	void doWrite(std::size_t length);
 
-	void doWrite(std::size_t length)
-	{
-		auto self(shared_from_this());
-		boost::asio::async_write(m_socket, boost::asio::buffer(m_data, length), [this, self](boost::system::error_code ec, std::size_t /*length*/)
-		{
-			if (!ec)
-				doRead();
-		});
-	}
-
-	void prep(RLPStream& _s)
-	{
-		_s.appendRaw(bytes(8, 0));
-	}
-
-	void sealAndSend(RLPStream& _s)
-	{
-		bytes b;
-		_s.swapOut(b);
-		b[0] = 0x22;
-		b[1] = 0x40;
-		b[2] = 0x08;
-		b[3] = 0x91;
-		uint32_t len = b.size() - 8;
-		b[4] = len >> 24;
-		b[5] = len >> 16;
-		b[6] = len >> 8;
-		b[7] = len;
-		send(b);
-	}
-
-	void send(bytes& _msg)
-	{
-		bytes* buffer = new bytes;
-		swap(*buffer, _msg);
-		ba::async_write(m_socket, ba::buffer(*buffer), [&](boost::system::error_code ec, std::size_t length)
-		{
-			if (!ec)
-				// Callback for how the write went. For now, just kill the buffer.
-				delete buffer;
-		});
-	}
+	void prep(RLPStream& _s);
+	void sealAndSend(RLPStream& _s);
+	void send(bytes& _msg);
 
 	bi::tcp::socket m_socket;
 	std::array<byte, 1024> m_data;
@@ -156,20 +83,8 @@ private:
 class PeerServer
 {
 public:
-	PeerServer(uint _networkId, short _port):
-		m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
-		m_socket(m_ioService),
-		m_requiredNetworkId(_networkId)
-	{
-		doAccept();
-	}
-
-	PeerServer(uint _networkId):
-		m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
-		m_socket(m_ioService),
-		m_requiredNetworkId(_networkId)
-	{
-	}
+	PeerServer(uint _networkId, short _port);
+	PeerServer(uint _networkId);
 
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
@@ -179,7 +94,7 @@ public:
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	void sync(BlockChain& _bc, TransactionQueue const&) {}
+	void sync(BlockChain& _bc, TransactionQueue const&);
 
 	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
 	bytes const& incomingTransaction() { return NullBytes; }
@@ -188,19 +103,7 @@ public:
 	void popIncomingTransaction() {}
 
 private:
-	void doAccept()
-	{
-		m_acceptor.async_accept(m_socket, [&](boost::system::error_code ec)
-		{
-			if (!ec)
-			{
-				auto p = std::make_shared<PeerSession>(std::move(m_socket), m_requiredNetworkId);
-				m_peers.push_back(p);
-				p->start();
-			}
-			doAccept();
-		});
-	}
+	void doAccept();
 
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;
