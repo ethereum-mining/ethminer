@@ -28,9 +28,27 @@ using namespace eth;
 
 int main()
 {
+	short listenPort = 30303;
+	string remoteHost;
+	short remotePort = 30303;
+
 	// Our address.
-	h256 privkey = sha3("123");
-	Address us = toAddress(privkey);	// TODO: should be loaded from config file/set at command-line.
+	Address us;							// TODO: should be loaded from config file
+
+	for (int i = 1; i < argc; ++i)
+	{
+		string arg = argv[i];
+		if (arg == "-l" && i + 1 < argc)
+			listenPort = atoi(argv[++i]);
+		else if (arg == "-r" && i + 1 < argc)
+			remoteHost = argv[++i];
+		else if (arg == "-p" && i + 1 < argc)
+			remotePort = atoi(argv[++i]);
+		else if (arg == "-a" && i + 1 < argc)
+			us = h256(fromUserHex(argv[++i]));
+		else
+			remoteHost = argv[i];
+	}
 
 	BlockChain bc;						// Maintains block database.
 	TransactionQueue tq;				// Maintains list of incoming transactions not yet on the block chain.
@@ -43,7 +61,7 @@ int main()
 	s.sync(bc);
 	s.sync(tq);
 
-	PeerServer net(0, 30303);					// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
+	PeerServer net(bc, 0, 30303);		// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
 	while (true)
 	{
 		// Process network events.

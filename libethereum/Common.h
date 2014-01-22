@@ -74,6 +74,7 @@ public:
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
+	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), min<uint>(_b.size(), N)); }
 
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
@@ -97,7 +98,7 @@ public:
 	byte* data() { return m_data.data(); }
 	byte const* data() const { return m_data.data(); }
 
-	bytes asBytes() const { return bytes(data(), data() + 32); }
+	bytes asBytes() const { return bytes(data(), data() + N); }
 
 private:
 	std::array<byte, N> m_data;
