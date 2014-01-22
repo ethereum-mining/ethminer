@@ -71,9 +71,11 @@ private:
 	void doWrite(std::size_t length);
 	bool interpret(RLP const& _r);
 
-	RLPStream& prep(RLPStream& _s);
+	static RLPStream& prep(RLPStream& _s);
+	static void seal(bytes& _b);
 	void sealAndSend(RLPStream& _s);
-	void send(bytes& _msg);
+	void sendDestroy(bytes& _msg);
+	void send(bytesConstRef _msg);
 
 	PeerServer* m_server;
 	bi::tcp::socket m_socket;
@@ -86,6 +88,14 @@ private:
 	uint m_reqNetworkId;
 
 	std::chrono::steady_clock::time_point m_ping;
+	std::chrono::steady_clock::duration m_lastPing;
+};
+
+struct PeerInfo
+{
+	std::string clientVersion;
+	bi::tcp::endpoint endpoint;
+	std::chrono::steady_clock::duration lastPing;
 };
 
 class PeerServer
@@ -94,9 +104,9 @@ class PeerServer
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerServer(BlockChain const& _ch, uint _networkId, short _port);
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port);
 	/// Start server, but don't listen.
-	PeerServer(uint _networkId);
+	PeerServer(std::string const& _clientVersion, uint _networkId);
 
 	/// Connect to a peer explicitly.
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
@@ -104,27 +114,26 @@ public:
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
-	void process(BlockChain& _bc, TransactionQueue const&);
-
-	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
-	std::vector<bytes> const& incomingTransactions() { return m_incomingTransactions; }
-
-	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
-	void incomingTransactions(std::vector<bytes>& o_out) { swap(o_out, m_incomingTransactions); m_incomingTransactions.clear(); }
-
-	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
-	void incomingBlocks(std::vector<bytes>& o_out) { swap(o_out, m_blocks); m_blocks.clear(); }
+	void process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	void process(BlockChain& _bc);
 
 	/// Get number of peers connected.
 	unsigned peerCount() const { return m_peers.size(); }
 
-	/// Remove incoming transactions from the queue.
-	void clearIncomingTransactions() {}
+	/// Set ideal number of peers.
+	void setIdealPeerCount(uint _n) { m_idealPeerCount = _n; }
+
+	/// Get peer information.
+	std::vector<PeerInfo> peers() const;
+
+	/// Ping the peers.
 	void pingAll();
 
 private:
 	void doAccept();
-	std::vector<bi::tcp::endpoint> peers();
+	std::vector<bi::tcp::endpoint> potentialPeers();
+
+	std::string m_clientVersion;
 
 	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;
@@ -137,6 +146,11 @@ private:
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
 	std::vector<bi::tcp::endpoint> m_incomingPeers;
+
+	h256 m_latestBlockSent;
+	std::set<h256> m_transactionsSent;
+
+	unsigned m_idealPeerCount;
 };
 
 

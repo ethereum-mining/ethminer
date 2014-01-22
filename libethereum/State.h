@@ -50,6 +50,11 @@ public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
 
+	/// Set the coinbase address for any transactions we do.
+	/// This causes a complete reset of current block.
+	void setAddress(Address _coinbaseAddress) { m_ourAddress = _coinbaseAddress; resetCurrent(); }
+	Address address() const { return m_ourAddress; }
+
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
 	static Overlay openDB(std::string _path, bool _killExisting = false);
 	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
@@ -70,7 +75,7 @@ public:
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns a non-empty byte array containing the block if it got lucky. In this case, call blockData()
 	/// to get the block if you need it later.
-	bytes const& mine(uint _msTimeout = 1000);
+	MineInfo mine(uint _msTimeout = 1000);
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.

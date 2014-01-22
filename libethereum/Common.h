@@ -74,7 +74,7 @@ public:
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
-	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), min<uint>(_b.size(), N)); }
+	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
 
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
@@ -99,6 +99,8 @@ public:
 	byte const* data() const { return m_data.data(); }
 
 	bytes asBytes() const { return bytes(data(), data() + N); }
+	std::array<byte, N>& asArray() { return m_data; }
+	std::array<byte, N> const& asArray() const { return m_data; }
 
 private:
 	std::array<byte, N> m_data;
@@ -334,6 +336,8 @@ class KeyPair
 public:
 	KeyPair() {}
 	KeyPair(Secret _k): m_secret(_k), m_address(toAddress(_k)) {}
+
+	static KeyPair create();
 
 	Secret secret() const { return m_secret; }
 	Address address() const { return m_address; }

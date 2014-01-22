@@ -7,6 +7,18 @@
 namespace eth
 {
 
+inline uint toLog2(u256 _d)
+{
+	return (uint)log2((double)_d);
+}
+
+struct MineInfo
+{
+	uint requirement;
+	uint best;
+	bool completed() { return best > requirement; }
+};
+
 #if FAKE_DAGGER
 
 class Dagger
@@ -15,7 +27,7 @@ public:
 	static h256 eval(h256 const& _root, u256 const& _nonce) { h256 b = (h256)((u256)_root ^ _nonce); return sha3(bytesConstRef((byte const*)&b, 32)); }
 	static bool verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty) { return (u256)eval(_root, _nonce) > _difficulty; }
 
-	bool mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
+	MineInfo mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
 };
 
 #else

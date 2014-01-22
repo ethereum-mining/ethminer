@@ -20,17 +20,20 @@
  * Ethereum client.
  */
 
+#include "Client.h"
 #include "PeerNetwork.h"
 #include "BlockChain.h"
 #include "State.h"
 using namespace std;
 using namespace eth;
 
-int main()
+int main(int argc, char** argv)
 {
 	short listenPort = 30303;
 	string remoteHost;
 	short remotePort = 30303;
+	bool interactive = false;
+	string dbPath;
 
 	// Our address.
 	Address us;							// TODO: should be loaded from config file
@@ -45,47 +48,72 @@ int main()
 		else if (arg == "-p" && i + 1 < argc)
 			remotePort = atoi(argv[++i]);
 		else if (arg == "-a" && i + 1 < argc)
-			us = h256(fromUserHex(argv[++i]));
+			us = h160(fromUserHex(argv[++i]));
+		else if (arg == "-i")
+			interactive = true;
+		else if (arg == "-d")
+			dbPath = arg;
 		else
 			remoteHost = argv[i];
 	}
 
-	BlockChain bc;						// Maintains block database.
-	TransactionQueue tq;				// Maintains list of incoming transactions not yet on the block chain.
-	Overlay stateDB = State::openDB();	// Acts as the central point for the state database, so multiple States can share it.
-	State s(us, stateDB);
-
-	// Synchronise the state according to the block chain - i.e. replay all transactions in block chain, in order.
-	// In practise this won't need to be done since the State DB will contain the keys for the tries for most recent (and many old) blocks.
-	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	s.sync(bc);
-	s.sync(tq);
-
-	PeerServer net(bc, 0, 30303);		// TODO: Implement - should run in background and send us events when blocks found and allow us to send blocks as required.
-	while (true)
+	Client c("Ethereum(++)/v0.1", us, dbPath);
+	if (interactive)
 	{
-		// Process network events.
-		net.process();
+		cout << "Ethereum (++)" << endl;
+		cout << "  By Gav Wood, Tim Hughes & team Ethereum, (c) 2013, 2014" << endl << endl;
 
-		// Synchronise block chain with network.
-		// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-		net.sync(bc, tq);
-
-		// Synchronise state to block chain.
-		// This should remove any transactions on our queue that are included within our state.
-		// It also guarantees that the state reflects the longest (valid!) chain on the block chain.
-		//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
-		//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
-		//   all blocks.
-		s.sync(bc);		// Resynchronise state with block chain & trans
-		s.sync(tq);
-
-		// Mine for a while.
-		bytes b = s.mine(100);
-		if (b.size())
-			// Import block.
-			bc.attemptImport(b, stateDB);
+		while (true)
+		{
+			cout << "> " << flush;
+			std::string cmd;
+			cin >> cmd;
+			if (cmd == "netstart")
+			{
+				eth::uint port;
+				cin >> port;
+				c.startNetwork(port);
+			}
+			else if (cmd == "connect")
+			{
+				string addr;
+				eth::uint port;
+				cin >> addr >> port;
+				c.connect(addr, port);
+			}
+			else if (cmd == "netstop")
+			{
+				c.stopNetwork();
+			}
+			else if (cmd == "minestart")
+			{
+				c.startMining();
+			}
+			else if (cmd == "minestop")
+			{
+				c.stopMining();
+			}
+			else if (cmd == "transact")
+			{
+				string sechex;
+				string rechex;
+				u256 amount;
+				u256 fee;
+				cin >> sechex >> rechex >> amount >> fee;
+				Secret secret = h256(fromUserHex(sechex));
+				Address dest = h160(fromUserHex(rechex));
+				c.transact(secret, dest, amount, fee);
+			}
+		}
 	}
+	else
+	{
+		c.startNetwork(listenPort, remoteHost, remotePort);
+		c.startMining();
+		while (true)
+			sleep(1);
+	}
+
 
 	return 0;
 }

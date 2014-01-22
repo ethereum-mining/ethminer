@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>787</width>
-    <height>555</height>
+    <width>978</width>
+    <height>556</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,6 +30,29 @@
        <number>0</number>
       </property>
       <item>
+       <widget class="QToolButton" name="net">
+        <property name="text">
+         <string>Net</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="port">
+        <property name="minimum">
+         <number>1024</number>
+        </property>
+        <property name="maximum">
+         <number>32767</number>
+        </property>
+        <property name="value">
+         <number>30303</number>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QToolButton" name="connect">
         <property name="text">
          <string>Connect</string>
@@ -37,9 +60,28 @@
        </widget>
       </item>
       <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
        <widget class="QSpinBox" name="value">
         <property name="suffix">
          <string> wei</string>
+        </property>
+        <property name="maximum">
+         <number>430000000</number>
+        </property>
+        <property name="value">
+         <number>1000</number>
         </property>
        </widget>
       </item>
@@ -50,6 +92,12 @@
         </property>
         <property name="prefix">
          <string>(fee </string>
+        </property>
+        <property name="maximum">
+         <number>430000000</number>
+        </property>
+        <property name="value">
+         <number>100</number>
         </property>
        </widget>
       </item>
@@ -64,17 +112,27 @@
        </widget>
       </item>
       <item>
+       <widget class="QToolButton" name="create">
+        <property name="text">
+         <string>Create</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>205</width>
+          <width>40</width>
           <height>20</height>
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QWidget" name="mineProgress" native="true"/>
       </item>
       <item>
        <widget class="QToolButton" name="mine">
@@ -85,9 +143,6 @@
          <bool>true</bool>
         </property>
        </widget>
-      </item>
-      <item>
-       <widget class="QWidget" name="mineProgress" native="true"/>
       </item>
      </layout>
     </widget>
@@ -103,14 +158,15 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="QListView" name="accounts">
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
-      </property>
-     </widget>
      <widget class="QTextEdit" name="transactions">
       <property name="readOnly">
        <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QListWidget" name="peers"/>
+     <widget class="QListWidget" name="accounts">
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
       </property>
      </widget>
     </widget>
@@ -129,10 +185,21 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="address"/>
+       <widget class="QLineEdit" name="address">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item>
-       <widget class="QLabel" name="peers">
+       <widget class="QLabel" name="blockChain">
+        <property name="text">
+         <string>1 block</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="peerCount">
         <property name="text">
          <string>0 peers</string>
         </property>

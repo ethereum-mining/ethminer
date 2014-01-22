@@ -62,6 +62,9 @@ static const h256s NullH256s;
 
 class Overlay;
 
+class AlreadyHaveBlock: public std::exception {};
+class UnknownParent: public std::exception {};
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  */
@@ -84,15 +87,18 @@ public:
 
 	/// Get the number of the last block of the longest chain.
 	BlockDetails const& details(h256 _hash) const;
+	BlockDetails const& details() const { return details(currentHash()); }
 
 	/// Get a given block (RLP format).
 	bytesConstRef block(h256 _hash) const;
+	bytesConstRef block() const { return block(currentHash()); }
 
 	/// Get a given block (RLP format).
 	h256 currentHash() const { return m_lastBlockHash; }
 
 	/// Get the coinbase address of a given block.
 	Address coinbaseAddress(h256 _hash) const;
+	Address coinbaseAddress() const { return coinbaseAddress(currentHash()); }
 
 private:
 	/// Get fully populated from disk DB.

@@ -169,3 +169,14 @@ Address eth::toAddress(Secret _private)
 #endif
 	return ret;
 }
+
+KeyPair KeyPair::create()
+{
+	static std::mt19937_64 s_eng(time(0));
+	std::uniform_int_distribution<byte> d(0, 255);
+	KeyPair ret;
+	for (uint i = 0; i < 20; ++i)
+		ret.m_secret[i] = d(s_eng);
+	ret.m_address = toAddress(ret.m_secret);
+	return ret;
+}
