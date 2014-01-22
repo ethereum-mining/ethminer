@@ -57,40 +57,48 @@ public:
 	~PeerSession();
 
 	void start();
-
-	bool interpret(RLP const& _r);
-
 	void disconnect();
+
+	void ping();
 
 private:
 	void doRead();
 	void doWrite(std::size_t length);
+	bool interpret(RLP const& _r);
 
-	void prep(RLPStream& _s);
+	RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void send(bytes& _msg);
 
 	bi::tcp::socket m_socket;
-	std::array<byte, 1024> m_data;
+	std::array<byte, 65536> m_data;
 
 	bytes m_incoming;
 	std::string m_clientVersion;
 	uint m_protocolVersion;
 	uint m_networkId;
 	uint m_reqNetworkId;
+
+	std::vector<bytes> m_incomingTransactions;
+	std::vector<bytes> m_incomingBlocks;
+	std::vector<bi::tcp::endpoint> m_incomingPeers;
+
+	std::chrono::steady_clock::time_point m_ping;
 };
 
 class PeerServer
 {
 public:
+	/// Start server, listening for connections on the given port.
 	PeerServer(uint _networkId, short _port);
+	/// Start server, but don't listen.
 	PeerServer(uint _networkId);
 
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
-	void run() { m_ioService.run(); }
-	void process() { m_ioService.poll(); }
+	void process();
 
+	/// Connect to a peer explicitly.
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
@@ -101,6 +109,8 @@ public:
 
 	/// Remove incoming transaction from the queue. Make sure you've finished with the data from any previous incomingTransaction() calls.
 	void popIncomingTransaction() {}
+
+	void pingAll();
 
 private:
 	void doAccept();

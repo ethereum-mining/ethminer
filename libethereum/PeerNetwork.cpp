@@ -24,6 +24,15 @@
 using namespace std;
 using namespace eth;
 
+PeerSession::PeerSession(bi::tcp::socket _socket, uint _rNId): m_socket(std::move(_socket)), m_reqNetworkId(_rNId)
+{
+}
+
+PeerSession::~PeerSession()
+{
+	disconnect();
+}
+
 bool PeerSession::interpret(RLP const& _r)
 {
 	switch (_r[0].toInt<unsigned>())
@@ -39,22 +48,34 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		cout << std::setw(2) << m_socket.native_handle() << " | Client version: " << m_clientVersion << endl;
 		break;
+	case Disconnect:
+		m_socket.close();
+		return false;
+	case Ping:
+	{
+		RLPStream s;
+		sealAndSend(prep(s).appendList(1) << Pong);
+		break;
+	}
+	case Pong:
+		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(std::chrono::steady_clock::now() - m_ping).count() << " ms" << endl;
+		break;
+	default:
+		break;
 	}
 	return true;
 }
 
-PeerSession::PeerSession(bi::tcp::socket _socket, uint _rNId): m_socket(std::move(_socket)), m_reqNetworkId(_rNId)
+void PeerSession::ping()
 {
+	RLPStream s;
+	sealAndSend(prep(s).appendList(1) << Ping);
+	m_ping = std::chrono::steady_clock::now();
 }
 
-PeerSession::~PeerSession()
+RLPStream& PeerSession::prep(RLPStream& _s)
 {
-	disconnect();
-}
-
-void PeerSession::prep(RLPStream& _s)
-{
-	_s.appendRaw(bytes(8, 0));
+	return _s.appendRaw(bytes(8, 0));
 }
 
 void PeerSession::sealAndSend(RLPStream& _s)
@@ -89,6 +110,7 @@ void PeerSession::disconnect()
 	s.appendList(1) << Disconnect;
 	sealAndSend(s);
 	sleep(1);
+	m_socket.close();
 }
 
 void PeerSession::start()
@@ -108,7 +130,6 @@ void PeerSession::doRead()
 	{
 		if (!ec)
 		{
-			std::cout << "Got data" << std::endl;
 			m_incoming.resize(m_incoming.size() + length);
 			memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
 			while (m_incoming.size() > 8)
@@ -128,7 +149,6 @@ void PeerSession::doRead()
 					break;
 			}
 		}
-		//doWrite(length);
 		doRead();
 	});
 }
@@ -183,6 +203,19 @@ bool PeerServer::connect(string const& _addr, uint _port)
 		cout << "Connection refused (" << _e.what() << ")" << endl;
 		return false;
 	}
+}
+
+void PeerServer::process()
+{
+	m_ioService.poll();
+	// TODO: Gather all transactions, blocks & peers.
+}
+
+void PeerServer::pingAll()
+{
+	for (auto& i: m_peers)
+		if (auto j = i.lock())
+			j->ping();
 }
 
 void PeerServer::sync(BlockChain& _bc, TransactionQueue const& _tq)
