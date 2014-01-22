@@ -22,15 +22,20 @@ namespace eth
 
 #if FAKE_DAGGER
 
-bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
+MineInfo Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
 {
+	MineInfo ret{toLog2(_difficulty), 0};
 	static std::mt19937_64 s_eng((time(0)));
 	o_solution = std::uniform_int_distribution<uint>(0, ~(uint)0)(s_eng);
 	// evaluate until we run out of time
 	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; o_solution += 1)
-		if (verify(_root, o_solution, _difficulty))
-			return true;
-	return false;
+	{
+		auto e = (u256)eval(_root, o_solution);
+		ret.best = max(ret.best, (uint)log2((double)e));
+		if (e > _difficulty)
+			return ret;
+	}
+	return ret;
 }
 
 #else

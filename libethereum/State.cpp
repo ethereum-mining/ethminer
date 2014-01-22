@@ -360,7 +360,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
-bytes const& State::mine(uint _msTimeout)
+MineInfo State::mine(uint _msTimeout)
 {
 	// Update timestamp according to clock.
 	m_currentBlock.timestamp = time(0);
@@ -369,11 +369,12 @@ bytes const& State::mine(uint _msTimeout)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	if (m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout))
+	MineInfo ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
+	if (ret.completed())
 	{
 		// Got it!
 
-		// Commit our database to disk or nothing other than this state will understand, which would make verifying the state_root rather difficult no?
+		// Commit to disk.
 		m_db.commit();
 
 		// Compile block:
@@ -388,7 +389,7 @@ bytes const& State::mine(uint _msTimeout)
 	else
 		m_currentBytes.clear();
 
-	return m_currentBytes;
+	return ret;
 }
 
 bool State::isNormalAddress(Address _id) const

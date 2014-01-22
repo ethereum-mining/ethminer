@@ -27,34 +27,47 @@
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
+#include "Dagger.h"
 #include "PeerNetwork.h"
 
 namespace eth
 {
 
+struct MineProgress
+{
+	uint requirement;
+	uint best;
+	uint current;
+};
+
 class Client
 {
 public:
-	Client(std::string const& _dbPath);
+	Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string());
 	~Client();
 
-	void transact(Address _dest, u256 _amount, u256 _fee, u256s _data = u256s(), Secret _secret);
+	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
 
-	BlockChain const& blockChain() const;
-	TransactionQueue const& transactionQueue() const;
+	State const& state() const { return m_s; }
+	BlockChain const& blockChain() const { return m_bc; }
+	TransactionQueue const& transactionQueue() const { return m_tq; }
 
-	unsigned peerCount() const;
+	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
+	unsigned peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
-	void startNetwork(short _listenPort = 30303, std::string const& _seedHost, short _port = 30303);
+	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303);
+	void connect(std::string const& _seedHost, short _port = 30303);
 	void stopNetwork();
 
+	void setAddress(Address _us) { m_s.setAddress(_us); }
 	void startMining();
 	void stopMining();
-	std::pair<unsigned, unsigned> miningProgress() const;
+	MineProgress miningProgress() const { return m_mineProgress; }
 
 private:
 	void work();
 
+	std::string m_clientVersion;		///< Our end-application client's name/version.
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
@@ -63,6 +76,7 @@ private:
 	std::thread* m_work;				///< The work thread.
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
+	MineProgress m_mineProgress;
 };
 
 }

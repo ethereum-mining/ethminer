@@ -36,7 +36,7 @@ class TransactionQueue
 public:
 	bool attemptImport(bytes const& _block) { try { import(_block); return true; } catch (...) { return false; } }
 
-	void import(bytes const& _block);
+	bool import(bytes const& _block);
 
 	void drop(h256 _txHash) { m_data.erase(_txHash); }
 
