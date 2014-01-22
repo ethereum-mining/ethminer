@@ -20,11 +20,12 @@
  */
 
 #include "Common.h"
+#include "BlockChain.h"
 #include "PeerNetwork.h"
 using namespace std;
 using namespace eth;
 
-PeerSession::PeerSession(bi::tcp::socket _socket, uint _rNId): m_socket(std::move(_socket)), m_reqNetworkId(_rNId)
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId): m_server(_s), m_socket(std::move(_socket)), m_reqNetworkId(_rNId)
 {
 }
 
@@ -60,6 +61,61 @@ bool PeerSession::interpret(RLP const& _r)
 	case Pong:
 		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(std::chrono::steady_clock::now() - m_ping).count() << " ms" << endl;
 		break;
+	case GetPeers:
+	{
+		std::vector<bi::tcp::endpoint> peers = m_server->peers();
+		RLPStream s;
+		prep(s).appendList(2);
+		s << Peers;
+		s.appendList(peers.size());
+		for (auto i: peers)
+			s.appendList(2) << i.address().to_v4().to_bytes() << i.port();
+		sealAndSend(s);
+		break;
+	}
+	case Peers:
+		for (auto i: _r[1])
+		{
+			auto ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+			m_server->m_incomingPeers.push_back(ep);
+			cout << "New peer: " << ep << endl;
+		}
+		break;
+	case Transactions:
+		for (auto i: _r[1])
+			m_server->m_incomingTransactions.push_back(i.data().toBytes());
+		break;
+	case Blocks:
+		for (auto i: _r[1])
+			m_server->m_incomingBlocks.push_back(i.data().toBytes());
+		break;
+	case GetChain:
+	{
+		h256 parent = _r[1].toHash<h256>();
+		// return 256 block max.
+		uint count = (uint)min<bigint>(_r[1].toInt<bigint>(), 256);
+		h256 latest = m_server->m_chain->currentHash();
+		uint latestNumber = 0;
+		uint parentNumber = 0;
+		if (m_server->m_chain->details(parent))
+		{
+			latestNumber = m_server->m_chain->details(latest).number;
+			parentNumber = m_server->m_chain->details(parent).number;
+		}
+		count = min<uint>(latestNumber - parentNumber, count);
+		RLPStream s;
+		prep(s);
+		s.appendList(2);
+		s.append(Blocks);
+		s.appendList(count);
+		uint startNumber = m_server->m_chain->details(parent).number + count;
+		auto h = m_server->m_chain->currentHash();
+		for (uint n = latestNumber; h != parent; n--, h = m_server->m_chain->details(h).parent)
+			if (m_server->m_chain->details(h).number <= startNumber)
+				s.appendRaw(m_server->m_chain->block(h));
+		sealAndSend(s);
+		break;
+	}
 	default:
 		break;
 	}
@@ -98,9 +154,7 @@ void PeerSession::send(bytes& _msg)
 {
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
-	{
-	});
+	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length) {});
 }
 
 void PeerSession::disconnect()
@@ -153,7 +207,8 @@ void PeerSession::doRead()
 	});
 }
 
-PeerServer::PeerServer(uint _networkId, short _port):
+PeerServer::PeerServer(BlockChain const& _ch, uint _networkId, short _port):
+	m_chain(&_ch),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
 	m_socket(m_ioService),
 	m_requiredNetworkId(_networkId)
@@ -168,6 +223,21 @@ PeerServer::PeerServer(uint _networkId):
 {
 }
 
+std::vector<bi::tcp::endpoint> PeerServer::peers()
+{
+	std::vector<bi::tcp::endpoint> ret;
+	bool haveLocal = false;
+	for (auto i: m_peers)
+		if (auto j = i.lock())
+		{
+			if (!haveLocal)
+				ret.push_back(j->m_socket.local_endpoint());
+			haveLocal = true;
+			ret.push_back(j->m_socket.remote_endpoint());
+		}
+	return ret;
+}
+
 void PeerServer::doAccept()
 {
 	cout << "Listening on " << m_acceptor.local_endpoint() << endl;
@@ -176,7 +246,7 @@ void PeerServer::doAccept()
 		if (!ec)
 		{
 			std::cout << "Accepted connection from " << m_socket.remote_endpoint() << std::endl;
-			auto p = std::make_shared<PeerSession>(std::move(m_socket), m_requiredNetworkId);
+			auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId);
 			m_peers.push_back(p);
 			p->start();
 		}
@@ -192,7 +262,7 @@ bool PeerServer::connect(string const& _addr, uint _port)
 	{
 		bi::tcp::socket s(m_ioService);
 		boost::asio::connect(s, resolver.resolve({ _addr, toString(_port) }));
-		auto p = make_shared<PeerSession>(std::move(s), m_requiredNetworkId);
+		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
 		m_peers.push_back(p);
 		cout << "Connected." << endl;
 		p->start();
@@ -205,10 +275,24 @@ bool PeerServer::connect(string const& _addr, uint _port)
 	}
 }
 
-void PeerServer::process()
+void PeerServer::process(BlockChain& _bc, TransactionQueue const& _tq)
 {
 	m_ioService.poll();
-	// TODO: Gather all transactions, blocks & peers.
+	for (auto i = m_peers.begin(); i != m_peers.end();)
+		if (auto j = i->lock())
+		{}
+		else
+			i = m_peers.erase(i);
+	/*
+		while (incomingData())
+		{
+			// import new block
+			bytes const& data = net.incomingData();
+			if (!tq.attemptImport(data) && !_bc.attemptImport(data))
+				handleMessage(data);
+			popIncoming();
+		}
+	*/
 }
 
 void PeerServer::pingAll()
@@ -216,18 +300,4 @@ void PeerServer::pingAll()
 	for (auto& i: m_peers)
 		if (auto j = i.lock())
 			j->ping();
-}
-
-void PeerServer::sync(BlockChain& _bc, TransactionQueue const& _tq)
-{
-/*
-	while (incomingData())
-	{
-		// import new block
-		bytes const& data = net.incomingData();
-		if (!tq.attemptImport(data) && !_bc.attemptImport(data))
-			handleMessage(data);
-		popIncoming();
-	}
-*/
 }

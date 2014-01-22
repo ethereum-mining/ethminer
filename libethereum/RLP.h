@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <vector>
+#include <array>
 #include <exception>
 #include <iostream>
 #include <iomanip>
@@ -158,9 +160,10 @@ public:
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
-	explicit operator uint() const { return toSlimInt(); }
-	explicit operator u256() const { return toFatInt(); }
-	explicit operator bigint() const { return toBigInt(); }
+	explicit operator byte() const { return toInt<byte>(); }
+	explicit operator uint() const { return toInt<uint>(); }
+	explicit operator u256() const { return toInt<u256>(); }
+	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
@@ -173,6 +176,7 @@ public:
 	std::string toStringStrict() const { if (!isString()) throw BadCast(); return payload().cropped(0, items()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
+	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
 	enum
@@ -321,6 +325,7 @@ public:
 	RLPStream& operator<<(std::string const& _s) { return appendString(_s); }
 	RLPStream& operator<<(RLP const& _i) { return appendRaw(_i); }
 	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T, size_t S> RLPStream& operator<<(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Read the byte stream.
 	bytes const& out() const { return m_out; }

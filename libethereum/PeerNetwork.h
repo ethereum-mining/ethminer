@@ -36,6 +36,7 @@ namespace eth
 
 class BlockChain;
 class TransactionQueue;
+class BlockChain;
 
 enum PacketType
 {
@@ -50,10 +51,14 @@ enum PacketType
 	GetChain
 };
 
+class PeerServer;
+
 class PeerSession: public std::enable_shared_from_this<PeerSession>
 {
+	friend class PeerServer;
+
 public:
-	PeerSession(bi::tcp::socket _socket, uint _rNId);
+	PeerSession(PeerServer* _server, bi::tcp::socket _socket, uint _rNId);
 	~PeerSession();
 
 	void start();
@@ -70,6 +75,7 @@ private:
 	void sealAndSend(RLPStream& _s);
 	void send(bytes& _msg);
 
+	PeerServer* m_server;
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
 
@@ -79,48 +85,58 @@ private:
 	uint m_networkId;
 	uint m_reqNetworkId;
 
-	std::vector<bytes> m_incomingTransactions;
-	std::vector<bytes> m_incomingBlocks;
-	std::vector<bi::tcp::endpoint> m_incomingPeers;
-
 	std::chrono::steady_clock::time_point m_ping;
 };
 
 class PeerServer
 {
+	friend class PeerSession;
+
 public:
 	/// Start server, listening for connections on the given port.
-	PeerServer(uint _networkId, short _port);
+	PeerServer(BlockChain const& _ch, uint _networkId, short _port);
 	/// Start server, but don't listen.
 	PeerServer(uint _networkId);
-
-	/// Conduct I/O, polling, syncing, whatever.
-	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
-	void process();
 
 	/// Connect to a peer explicitly.
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	void sync(BlockChain& _bc, TransactionQueue const&);
+	/// Conduct I/O, polling, syncing, whatever.
+	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
+	void process(BlockChain& _bc, TransactionQueue const&);
 
 	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
-	bytes const& incomingTransaction() { return NullBytes; }
+	std::vector<bytes> const& incomingTransactions() { return m_incomingTransactions; }
 
-	/// Remove incoming transaction from the queue. Make sure you've finished with the data from any previous incomingTransaction() calls.
-	void popIncomingTransaction() {}
+	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
+	void incomingTransactions(std::vector<bytes>& o_out) { swap(o_out, m_incomingTransactions); m_incomingTransactions.clear(); }
 
+	/// Get an incoming transaction from the queue. @returns bytes() if nothing waiting.
+	void incomingBlocks(std::vector<bytes>& o_out) { swap(o_out, m_blocks); m_blocks.clear(); }
+
+	/// Get number of peers connected.
+	unsigned peerCount() const { return m_peers.size(); }
+
+	/// Remove incoming transactions from the queue.
+	void clearIncomingTransactions() {}
 	void pingAll();
 
 private:
 	void doAccept();
+	std::vector<bi::tcp::endpoint> peers();
 
+	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;
 	bi::tcp::socket m_socket;
 
 	uint m_requiredNetworkId;
 	std::vector<std::weak_ptr<PeerSession>> m_peers;
+
+	std::vector<bytes> m_incomingTransactions;
+	std::vector<bytes> m_incomingBlocks;
+	std::vector<bi::tcp::endpoint> m_incomingPeers;
 };
 
 
