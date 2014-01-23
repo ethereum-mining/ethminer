@@ -338,6 +338,7 @@ void State::commitToMine(BlockChain const& _bc)
 	if (m_previousBlock != BlockInfo::genesis())
 	{
 		// Find uncles if we're not a direct child of the genesis.
+		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
 		auto us = _bc.details(m_previousBlock.parentHash).children;
 		assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
 		uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
@@ -380,7 +381,7 @@ MineInfo State::mine(uint _msTimeout)
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
 	MineInfo ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
-	if (ret.completed())
+	if (ret.completed)
 	{
 		// Got it!
 
@@ -395,6 +396,7 @@ MineInfo State::mine(uint _msTimeout)
 		ret.appendRaw(m_currentUncles);
 		ret.swapOut(m_currentBytes);
 		m_currentBlock.hash = sha3(m_currentBytes);
+		cout << "*** SUCCESS: Mined " << m_currentBlock.hash << " (parent: " << m_currentBlock.parentHash << ")" << endl;
 	}
 	else
 		m_currentBytes.clear();

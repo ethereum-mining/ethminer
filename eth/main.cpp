@@ -34,9 +34,10 @@ int main(int argc, char** argv)
 	short remotePort = 30303;
 	bool interactive = false;
 	string dbPath;
+	eth::uint mining = ~(eth::uint)0;
 
 	// Our address.
-	Address us;							// TODO: should be loaded from config file
+	Address us;							// TODO: load from config file?
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -51,8 +52,15 @@ int main(int argc, char** argv)
 			us = h160(fromUserHex(argv[++i]));
 		else if (arg == "-i")
 			interactive = true;
-		else if (arg == "-d")
-			dbPath = arg;
+		else if (arg == "-d" && i + 1 < argc)
+			dbPath = argv[++i];
+		else if (arg == "-m" && i + 1 < argc)
+			if (string(argv[++i]) == "on")
+				mining = ~(eth::uint)0;
+			else if (string(argv[i]) == "off")
+				mining = 0;
+			else
+				mining = atoi(argv[i]);
 		else
 			remoteHost = argv[i];
 	}
@@ -61,7 +69,8 @@ int main(int argc, char** argv)
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;
-		cout << "  By Gav Wood, Tim Hughes & team Ethereum, (c) 2013, 2014" << endl << endl;
+		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
+		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
 
 		while (true)
 		{
@@ -109,9 +118,15 @@ int main(int argc, char** argv)
 	else
 	{
 		c.startNetwork(listenPort, remoteHost, remotePort);
-		c.startMining();
+		eth::uint n = c.blockChain().details().number;
 		while (true)
-			sleep(1);
+		{
+			if (c.blockChain().details().number - n > mining)
+				c.stopMining();
+			else
+				c.startMining();
+			usleep(100000);
+		}
 	}
 
 

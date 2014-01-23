@@ -16,7 +16,7 @@ struct MineInfo
 {
 	uint requirement;
 	uint best;
-	bool completed() { return best > requirement; }
+	bool completed;
 };
 
 #if FAKE_DAGGER
@@ -25,7 +25,7 @@ class Dagger
 {
 public:
 	static h256 eval(h256 const& _root, u256 const& _nonce) { h256 b = (h256)((u256)_root ^ _nonce); return sha3(bytesConstRef((byte const*)&b, 32)); }
-	static bool verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty) { return (u256)eval(_root, _nonce) > _difficulty; }
+	static bool verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty) { return (u256)eval(_root, _nonce) > _difficulty * 1000; }
 
 	MineInfo mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
 };

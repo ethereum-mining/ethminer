@@ -327,6 +327,8 @@ public:
 	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class _T, size_t S> RLPStream& operator<<(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
+	void clear() { m_out.clear(); }
+
 	/// Read the byte stream.
 	bytes const& out() const { return m_out; }
 
@@ -398,7 +400,7 @@ extern bytes RLPNull;
 /// The empty list in RLP format.
 extern bytes RLPEmptyList;
 
-}
-
 /// Human readable version of RLP.
-std::ostream& operator<<(std::ostream& _out, eth::RLP _d);
+std::ostream& operator<<(std::ostream& _out, eth::RLP const& _d);
+
+}

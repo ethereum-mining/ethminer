@@ -36,7 +36,6 @@ namespace eth
 
 class BlockChain;
 class TransactionQueue;
-class BlockChain;
 
 enum PacketType
 {
@@ -48,7 +47,8 @@ enum PacketType
 	Peers,
 	Transactions,
 	Blocks,
-	GetChain
+	GetChain,
+	NotInChain
 };
 
 class PeerServer;

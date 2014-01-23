@@ -24,16 +24,23 @@ namespace eth
 
 MineInfo Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
 {
-	MineInfo ret{toLog2(_difficulty), 0};
+	MineInfo ret{toLog2(_difficulty), 0, false};
 	static std::mt19937_64 s_eng((time(0)));
 	o_solution = std::uniform_int_distribution<uint>(0, ~(uint)0)(s_eng);
+
+	u256 d = ((u256)1 << 235) - _difficulty;
+	ret.requirement = toLog2(d);
+
+	// 2^ 0      32      64      128      256
+	//   [--------*-------------------------]
+	//
 	// evaluate until we run out of time
-	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; o_solution += 1)
+	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue && !ret.completed; o_solution += 1)
 	{
 		auto e = (u256)eval(_root, o_solution);
-		ret.best = max(ret.best, (uint)log2((double)e));
-		if (e > _difficulty)
-			return ret;
+		ret.best = max(ret.best, 256 - toLog2(e));
+		if (e < d)
+			ret.completed = true;
 	}
 	return ret;
 }

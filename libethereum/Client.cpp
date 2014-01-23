@@ -123,7 +123,7 @@ void Client::work()
 		m_mineProgress.current = mineInfo.best;
 		m_mineProgress.requirement = mineInfo.requirement;
 
-		if (mineInfo.completed())
+		if (mineInfo.completed)
 		{
 			// Import block.
 			m_lock.lock();
