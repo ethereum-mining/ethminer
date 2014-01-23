@@ -89,6 +89,9 @@ private:
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::duration m_lastPing;
+
+	std::set<h256> m_knownBlocks;
+	std::set<h256> m_knownTransactions;
 };
 
 struct PeerInfo
@@ -110,6 +113,7 @@ public:
 
 	/// Connect to a peer explicitly.
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
+	bool connect(bi::tcp::endpoint _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
