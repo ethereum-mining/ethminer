@@ -48,6 +48,9 @@ public:
 
 	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
 
+	void lock();
+	void unlock();
+
 	State const& state() const { return m_s; }
 	BlockChain const& blockChain() const { return m_bc; }
 	TransactionQueue const& transactionQueue() const { return m_tq; }
@@ -74,6 +77,7 @@ private:
 	State m_s;							///< The present state of the client.
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	std::thread* m_work;				///< The work thread.
+	std::mutex m_lock;
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;

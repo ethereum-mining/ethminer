@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Main</string>
+   <string>AlephZero Etherium Client</string>
   </property>
   <property name="sizeGripEnabled">
    <bool>true</bool>
@@ -158,17 +158,14 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="QTextEdit" name="transactions">
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
      <widget class="QListWidget" name="peers"/>
      <widget class="QListWidget" name="accounts">
       <property name="frameShape">
        <enum>QFrame::NoFrame</enum>
       </property>
      </widget>
+     <widget class="QListWidget" name="transactionQueue"/>
+     <widget class="QListWidget" name="transactions"/>
     </widget>
    </item>
    <item>

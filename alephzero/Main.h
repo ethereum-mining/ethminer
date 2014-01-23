@@ -3,6 +3,7 @@
 
 #include <QAbstractListModel>
 #include <QDialog>
+#include <QMutex>
 #include <libethereum/Client.h>
 
 namespace Ui {
@@ -37,6 +38,7 @@ private:
 	eth::KeyPair m_myKey;
 	std::vector<bi::tcp::endpoint> m_peers;
 
+	QMutex m_guiLock;
 	QTimer* m_refresh;
 };
 

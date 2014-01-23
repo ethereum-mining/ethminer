@@ -83,6 +83,7 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data)
 {
+	m_lock.lock();
 	Transaction t;
 	t.nonce = m_s.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
@@ -91,10 +92,12 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u2
 	t.data = _data;
 	t.sign(_secret);
 	m_tq.attemptImport(t.rlp());
+	m_lock.unlock();
 }
 
 void Client::work()
 {
+	m_lock.lock();
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
@@ -110,9 +113,11 @@ void Client::work()
 	m_s.sync(m_bc);		// Resynchronise state with block chain & trans
 	m_s.sync(m_tq);
 
+	m_lock.unlock();
 	if (m_doMine)
 	{
 		// Mine for a while.
+		m_s.commitToMine(m_bc);
 		MineInfo mineInfo = m_s.mine(100);
 		m_mineProgress.best = max(m_mineProgress.best, mineInfo.best);
 		m_mineProgress.current = mineInfo.best;
@@ -121,10 +126,22 @@ void Client::work()
 		if (mineInfo.completed())
 		{
 			// Import block.
+			m_lock.lock();
 			m_bc.attemptImport(m_s.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
+			m_lock.unlock();
 		}
 	}
 	else
 		usleep(100000);
+}
+
+void Client::lock()
+{
+	m_lock.lock();
+}
+
+void Client::unlock()
+{
+	m_lock.unlock();
 }
