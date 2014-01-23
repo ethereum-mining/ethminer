@@ -157,10 +157,6 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		exit(1);
 	}
 
-	// TODO: why are the hashes different when the essentials are the same?
-//	cout << bi << endl;
-//	cout << m_currentBlock << endl;
-
 	if (bi == m_currentBlock)
 	{
 		// We mined the last block.
@@ -199,6 +195,18 @@ void State::sync(BlockChain const& _bc, h256 _block)
 	}
 }
 
+map<Address, u256> State::addresses() const
+{
+	map<Address, u256> ret;
+	for (auto i: m_cache)
+		if (i.second.type() != AddressType::Dead)
+			ret[i.first] = i.second.balance();
+	for (auto const& i: m_state)
+		if (m_cache.find(i.first) == m_cache.end())
+			ret[i.first] = RLP(i.second)[0].toInt<u256>();
+	return ret;
+}
+
 void State::resetCurrent()
 {
 	m_transactions.clear();
@@ -221,8 +229,7 @@ void State::sync(TransactionQueue& _tq)
 			// don't have it yet! Execute it now.
 			try
 			{
-				Transaction t(i.second);
-				execute(t, t.sender());
+				execute(i.second);
 			}
 			catch (InvalidNonce in)
 			{
@@ -291,11 +298,11 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	// Commit all cached state changes to the state trie.
 	commit();
 
-//	cout << m_state << endl << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
-
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
 	{
+		cout << "*** BAD STATE ROOT!" << endl;
+		cout << m_state << endl << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
 		// Rollback the trie.
 		m_db.rollback();
 		throw InvalidStateRoot();
@@ -322,6 +329,9 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
+	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
+		return;
+
 	RLPStream uncles;
 	Addresses uncleAddresses;
 
@@ -483,7 +493,7 @@ bool State::execute(bytesConstRef _rlp)
 	try
 	{
 		Transaction t(_rlp);
-		execute(t, t.sender());
+		executeBare(t, t.sender());
 
 		// Add to the user-originated transactions that we've executed.
 		// NOTE: Here, contract-originated transactions will not get added to the transaction list.
@@ -510,7 +520,7 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }
 
-void State::execute(Transaction const& _t, Address _sender)
+void State::executeBare(Transaction const& _t, Address _sender)
 {
 	// Entry point for a contract-originated transaction.
 
@@ -1050,7 +1060,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			}
 
 			t.nonce = transactionsFrom(_myAddress);
-			execute(t, _myAddress);
+			executeBare(t, _myAddress);
 
 			break;
 		}

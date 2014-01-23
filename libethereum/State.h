@@ -59,6 +59,9 @@ public:
 	static Overlay openDB(std::string _path, bool _killExisting = false);
 	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
 
+	/// @returns the set containing all addresses currently in use in Ethereum.
+	std::map<Address, u256> addresses() const;
+
 	/// Cancels transactions and rolls back the state to the end of the previous block.
 	/// @warning This will only work for on any transactions after you called the last commitToMine().
 	/// It's one or the other.
@@ -68,7 +71,9 @@ public:
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
 	/// The only thing left to do after this is to actually mine().
-	/// @warning Only call this once!
+	///
+	/// This may be called multiple times and without issue, however, until the current state is cleared,
+	/// calls after the first are ignored.
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
@@ -166,7 +171,7 @@ private:
 
 	/// Execute a decoded transaction object, given a sender.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	void execute(Transaction const& _t, Address _sender);
+	void executeBare(Transaction const& _t, Address _sender);
 
 	/// Execute a contract transaction.
 	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);

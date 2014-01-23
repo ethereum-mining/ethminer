@@ -51,6 +51,8 @@ void Main::readSettings()
 	}
 	m_client.setAddress(m_myKey.address());
 
+	writeSettings();
+
 	/*for (uint i = 0; !s.value(QString("peer%1").arg(i)).isNull(); ++i)
 	{
 		s.value(QString("peer%1").arg(i)).toString();
@@ -59,6 +61,7 @@ void Main::readSettings()
 
 void Main::refresh()
 {
+	m_client.lock();
 	ui->balance->setText(QString::fromStdString(toString(m_client.state().balance(m_myKey.address()))) + " wei");
 	ui->peerCount->setText(QString::fromStdString(toString(m_client.peerCount())) + " peer(s)");
 	ui->address->setText(QString::fromStdString(asHex(m_client.state().address().asArray())));
@@ -68,7 +71,42 @@ void Main::refresh()
 
 	auto d = m_client.blockChain().details();
 	auto diff = BlockInfo(m_client.blockChain().block()).difficulty;
-	ui->blockChain->setText(QString("%1 blocks @ (%3) - %2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+	ui->blockChain->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+
+	auto acs = m_client.state().addresses();
+	ui->accounts->clear();
+	for (auto i: acs)
+		ui->accounts->addItem(QString("%1 wei @ %2").arg(toString(i.second).c_str()).arg(asHex(i.first.asArray()).c_str()));
+
+	ui->transactionQueue->clear();
+	for (pair<h256, bytes> const& i: m_client.transactionQueue().transactions())
+	{
+		Transaction t(i.second);
+		ui->transactionQueue->addItem(QString("%1 wei (%2 fee) @ %3 <- %4")
+							  .arg(toString(t.value).c_str())
+							  .arg(toString(t.fee).c_str())
+							  .arg(asHex(t.receiveAddress.asArray()).c_str())
+							  .arg(asHex(t.sender().asArray()).c_str()) );
+	}
+
+	ui->transactions->clear();
+	auto const& bc = m_client.blockChain();
+	for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
+	{
+		auto d = bc.details(h);
+		ui->transactions->addItem(QString("# %1 ==== %2").arg(d.number).arg(asHex(h.asArray()).c_str()));
+		for (auto const& i: RLP(bc.block(h))[1])
+		{
+			Transaction t(i.data());
+			ui->transactions->addItem(QString("%1 wei (%2 fee) @ %3 <- %4")
+							  .arg(toString(t.value).c_str())
+							  .arg(toString(t.fee).c_str())
+							  .arg(asHex(t.receiveAddress.asArray()).c_str())
+							  .arg(asHex(t.sender().asArray()).c_str()) );
+		}
+	}
+
+	m_client.unlock();
 }
 
 void Main::on_net_toggled()
@@ -81,7 +119,7 @@ void Main::on_net_toggled()
 
 void Main::on_connect_clicked()
 {
-	QString s = QInputDialog::getText(this, "Enter first peer", "Enter a peer to which a connection may be made", QLineEdit::Normal, "127.0.0.1:30303");
+	QString s = QInputDialog::getText(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", QLineEdit::Normal, "127.0.0.1:30303");
 	string host = s.section(":", 0, 0).toStdString();
 	short port = s.section(":", 1).toInt();
 	m_client.connect(host, port);
@@ -97,7 +135,7 @@ void Main::on_mine_toggled()
 
 void Main::on_send_clicked()
 {
-	Secret s = Secret(fromUserHex(ui->address->text().toStdString()));
+	Secret s = m_myKey.secret();
 	Address r = Address(fromUserHex(ui->destination->text().toStdString()));
 	m_client.transact(s, r, ui->value->value(), ui->fee->value());
 	refresh();
@@ -106,6 +144,6 @@ void Main::on_send_clicked()
 void Main::on_create_clicked()
 {
 	KeyPair p = KeyPair::create();
-	QString s = QString::fromStdString("New key:\n" + asHex(p.secret().asArray()) + "\nAddress: " + asHex(p.address().asArray()));
-	QMessageBox::information(this, "New Key", s, QMessageBox::Ok);
+	QString s = QString::fromStdString("The new secret key is:\n" + asHex(p.secret().asArray()) + "\n\nAddress:\n" + asHex(p.address().asArray()));
+	QMessageBox::information(this, "Create Key", s, QMessageBox::Ok);
 }

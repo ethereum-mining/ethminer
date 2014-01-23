@@ -100,6 +100,8 @@ public:
 	Address coinbaseAddress(h256 _hash) const;
 	Address coinbaseAddress() const { return coinbaseAddress(currentHash()); }
 
+	h256 genesisHash() const { return m_genesisHash; }
+
 private:
 	/// Get fully populated from disk DB.
 	mutable std::map<h256, BlockDetails> m_details;
