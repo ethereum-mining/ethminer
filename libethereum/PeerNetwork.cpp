@@ -40,7 +40,6 @@ PeerSession::~PeerSession()
 
 bool PeerSession::interpret(RLP const& _r)
 {
-	::operator<<(cout, _r) << endl;
 	switch (_r[0].toInt<unsigned>())
 	{
 	case Hello:
@@ -68,14 +67,14 @@ bool PeerSession::interpret(RLP const& _r)
 		return false;
 	case Ping:
 	{
-		cout << std::setw(2) << m_socket.native_handle() << " | Ping" << endl;
+//		cout << std::setw(2) << m_socket.native_handle() << " | Ping" << endl;
 		RLPStream s;
 		sealAndSend(prep(s).appendList(1) << (uint)Pong);
 		break;
 	}
 	case Pong:
 		m_lastPing = std::chrono::steady_clock::now() - m_ping;
-		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms" << endl;
+//		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms" << endl;
 		break;
 	case GetPeers:
 	{
@@ -102,12 +101,18 @@ bool PeerSession::interpret(RLP const& _r)
 	case Transactions:
 		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << _r[1].itemCount() << " entries)" << endl;
 		for (auto i: _r[1])
+		{
 			m_server->m_incomingTransactions.push_back(i.data().toBytes());
+			m_knownTransactions.insert(sha3(i.data()));
+		}
 		break;
 	case Blocks:
 		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << _r[1].itemCount() << " entries)" << endl;
 		for (auto i: _r[1])
+		{
 			m_server->m_incomingBlocks.push_back(i.data().toBytes());
+			m_knownBlocks.insert(sha3(i.data()));
+		}
 		break;
 	case GetChain:
 	{
@@ -204,10 +209,12 @@ void PeerSession::sendDestroy(bytes& _msg)
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
 	assert((*buffer)[0] == 0x22);
-	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
+//	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
-		cout << length << " bytes written (EC: " << ec << ")" << endl;
+		if (ec)
+			disconnect();
+//		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
 }
 
@@ -215,10 +222,12 @@ void PeerSession::send(bytesConstRef _msg)
 {
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
 	assert((*buffer)[0] == 0x22);
-	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
+//	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
-		cout << length << " bytes written (EC: " << ec << ")" << endl;
+		if (ec)
+			disconnect();
+//		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
 }
 
@@ -234,8 +243,6 @@ void PeerSession::disconnect()
 
 void PeerSession::start()
 {
-	cout << "Starting session." << endl;
-
 	RLPStream s;
 	prep(s);
 	s.appendList(4) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion;
@@ -251,7 +258,9 @@ void PeerSession::doRead()
 	auto self(shared_from_this());
 	m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
 	{
-		if (!ec)
+		if (ec)
+			disconnect();
+		else
 		{
 			m_incoming.resize(m_incoming.size() + length);
 			memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
@@ -266,7 +275,7 @@ void PeerSession::doRead()
 				else
 				{
 					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-					cout << "Received packet of " << len << " bytes" << endl;
+//					cout << "Received packet of " << len << " bytes" << endl;
 					if (m_incoming.size() - 8 < len)
 						break;
 
@@ -354,12 +363,36 @@ bool PeerServer::connect(string const& _addr, uint _port)
 	}
 }
 
+bool PeerServer::connect(bi::tcp::endpoint _ep)
+{
+	bi::tcp::resolver resolver(m_ioService);
+	cout << "Attempting connection to " << _ep << endl;
+	try
+	{
+		bi::tcp::socket s(m_ioService);
+		boost::asio::connect(s, resolver.resolve(_ep));
+		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
+		m_peers.push_back(p);
+		cout << "Connected." << endl;
+		p->start();
+		return true;
+	}
+	catch (exception& _e)
+	{
+		cout << "Connection refused (" << _e.what() << ")" << endl;
+		return false;
+	}
+}
+
 void PeerServer::process(BlockChain& _bc)
 {
 	m_ioService.poll();
 	for (auto i = m_peers.begin(); i != m_peers.end();)
 		if (auto j = i->lock())
-			++i;
+			if (j->m_socket.is_open())
+				++i;
+			else
+				i = m_peers.erase(i);
 		else
 			i = m_peers.erase(i);
 }
@@ -382,29 +415,29 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	m_incomingTransactions.clear();
 
 	// Send any new transactions.
-	if (m_peers.size())
-	{
-		bytes b;
-		uint n = 0;
-		for (auto const& i: _tq.transactions())
-			if (!m_transactionsSent.count(i.first))
-			{
-				b += i.second;
-				++n;
-				m_transactionsSent.insert(i.first);
-			}
-		if (n)
+	for (auto j: m_peers)
+		if (auto p = j.lock())
 		{
-			RLPStream ts;
-			PeerSession::prep(ts);
-			ts.appendList(2) << Transactions;
-			ts.appendList(n).appendRaw(b).swapOut(b);
-			PeerSession::seal(b);
-			for (auto j: m_peers)
-				if (auto p = j.lock())
-					p->send(&b);
+			bytes b;
+			uint n = 0;
+			for (auto const& i: _tq.transactions())
+				if (!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first))
+				{
+					b += i.second;
+					++n;
+					m_transactionsSent.insert(i.first);
+				}
+			if (n)
+			{
+				RLPStream ts;
+				PeerSession::prep(ts);
+				ts.appendList(2) << Transactions;
+				ts.appendList(n).appendRaw(b).swapOut(b);
+				PeerSession::seal(b);
+				p->send(&b);
+			}
+			p->m_knownTransactions.clear();
 		}
-	}
 
 	// Send any new blocks.
 	{
@@ -420,7 +453,11 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			PeerSession::seal(b);
 			for (auto j: m_peers)
 				if (auto p = j.lock())
-					p->send(&b);
+				{
+					if (!p->m_knownBlocks.count(_bc.currentHash()))
+						p->send(&b);
+					p->m_knownBlocks.clear();
+				}
 		}
 		m_latestBlockSent = h;
 	}
@@ -447,6 +484,13 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				it = m_incomingBlocks.erase(it);
 			}
 		}
+	}
+
+	// Connect to additional peers
+	while (m_peers.size() < m_idealPeerCount && m_incomingPeers.size())
+	{
+		connect(m_incomingPeers.back());
+		m_incomingPeers.pop_back();
 	}
 }
 

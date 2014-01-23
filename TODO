@@ -3,10 +3,6 @@
 Tests
 - Use standard tests.
 
-Config file & command line options.
-
-Peer network.
-
 Crypto stuff:
 - kFromMessage
 - Check all the tweak instructions.
@@ -22,15 +18,16 @@ Network:
 
 ### GAV
 
+Network:
+** Don't crash when a peer leaves!
+** Check peer utility (useful transactions & blocks passed) for when dismissing.
+** Respect peer count & dismiss/collect/stop listening for peers as necessary.
+** Manage GetBlocks properly; should work for when > 256 blocks away.
+
 Trie on DB.
-- Modularise overlay and DB.
-- Iterate.
 - Move the restore point stuff into block restore points
   - i.e. keep all nodes from last 127 blocks with counter, at 128, kill but keep every (60*24*7)th or so i.e. one per week as a restore point.
   - maybe allow this to be configured.
-
-Cache some state
-- Contract memory, balances - for single commit into Trie.
 
 
 ### TIM

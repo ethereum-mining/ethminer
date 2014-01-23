@@ -164,18 +164,19 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 	checkConsistency();
 
-	cout << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
+//	cout << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
 
 	// This might be the new last block...
 	if (td > m_details[m_lastBlockHash].totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		cout << "Block " << newHash << " is best." << endl;
+		cout << "   Imported and best." << endl;
 	}
 	else
 	{
-		cerr << "*** WARNING: Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")" << endl;
+		cout << "   Imported." << endl;
+//		cerr << "*** WARNING: Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")" << endl;
 	}
 }
 
@@ -184,17 +185,18 @@ void BlockChain::checkConsistency()
 	m_details.clear();
 	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
-	{
-		h256 h((byte const*)it->key().data());
-		auto dh = details(h);
-		auto p = dh.parent;
-		if (p != h256())
+		if (it->key().size() == 32)
 		{
-			auto dp = details(p);
-			assert(contains(dp.children, h));
-			assert(dp.number == dh.number - 1);
+			h256 h((byte const*)it->key().data());
+			auto dh = details(h);
+			auto p = dh.parent;
+			if (p != h256())
+			{
+				auto dp = details(p);
+				assert(contains(dp.children, h));
+				assert(dp.number == dh.number - 1);
+			}
 		}
-	}
 	delete it;
 }
 
@@ -216,7 +218,7 @@ BlockDetails const& BlockChain::details(h256 _h) const
 		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
 		if (s.empty())
 		{
-			cout << "Not found in DB: " << _h << endl;
+//			cout << "Not found in DB: " << _h << endl;
 			return NullBlockDetails;
 		}
 		bool ok;

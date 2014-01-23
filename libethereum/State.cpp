@@ -223,27 +223,23 @@ void State::sync(TransactionQueue& _tq)
 	// TRANSACTIONS
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
-	{
 		if (!m_transactions.count(i.first))
-		{
 			// don't have it yet! Execute it now.
 			try
 			{
 				execute(i.second);
 			}
-			catch (InvalidNonce in)
+			catch (InvalidNonce const& in)
 			{
 				if (in.required > in.candidate)
 					// too old
 					_tq.drop(i.first);
 			}
-			catch (...)
+			catch (std::exception const&)
 			{
 				// Something else went wrong - drop it.
 				_tq.drop(i.first);
 			}
-		}
-	}
 }
 
 u256 State::playback(bytesConstRef _block, bool _fullCommit)
@@ -338,7 +334,7 @@ void State::commitToMine(BlockChain const& _bc)
 	if (m_previousBlock != BlockInfo::genesis())
 	{
 		// Find uncles if we're not a direct child of the genesis.
-		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
+//		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
 		auto us = _bc.details(m_previousBlock.parentHash).children;
 		assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
 		uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
@@ -489,26 +485,17 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	return RLP(memdb.at(_memory)).toInt<u256>();	// TODO: CHECK: check if this is actually an RLP decode
 }
 
-bool State::execute(bytesConstRef _rlp)
+void State::execute(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	try
-	{
-		Transaction t(_rlp);
-		executeBare(t, t.sender());
+	Transaction t(_rlp);
+	executeBare(t, t.sender());
 
-		// Add to the user-originated transactions that we've executed.
-		// NOTE: Here, contract-originated transactions will not get added to the transaction list.
-		// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
-		// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
-		m_transactions.insert(make_pair(t.sha3(), t));
-
-		return true;
-	}
-	catch (...)
-	{
-		return false;
-	}
+	// Add to the user-originated transactions that we've executed.
+	// NOTE: Here, contract-originated transactions will not get added to the transaction list.
+	// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
+	// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
+	m_transactions.insert(make_pair(t.sha3(), t));
 }
 
 void State::applyRewards(Addresses const& _uncleAddresses)

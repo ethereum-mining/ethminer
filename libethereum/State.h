@@ -97,8 +97,8 @@ public:
 	void sync(TransactionQueue& _tq);
 
 	/// Execute a given transaction.
-	bool execute(bytes const& _rlp) { return execute(&_rlp); }
-	bool execute(bytesConstRef _rlp);
+	void execute(bytes const& _rlp) { return execute(&_rlp); }
+	void execute(bytesConstRef _rlp);
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;

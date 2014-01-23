@@ -20,12 +20,33 @@
  * Ethereum client.
  */
 
+#include <fstream>
 #include "Client.h"
 #include "PeerNetwork.h"
 #include "BlockChain.h"
 #include "State.h"
 using namespace std;
 using namespace eth;
+
+bytes contents(std::string const& _file)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return bytes();
+	// get length of file:
+	is.seekg (0, is.end);
+	int length = is.tellg();
+	is.seekg (0, is.beg);
+	bytes ret(length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
+void writeFile(std::string const& _file, bytes const& _data)
+{
+	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+}
 
 int main(int argc, char** argv)
 {
@@ -37,7 +58,23 @@ int main(int argc, char** argv)
 	eth::uint mining = ~(eth::uint)0;
 
 	// Our address.
-	Address us;							// TODO: load from config file?
+	KeyPair us = KeyPair::create();
+	Address coinbase = us.address();
+
+	string configFile = string(getenv("HOME")) + "/.ethereum/config.rlp";
+	bytes b = contents(configFile);
+	if (b.size())
+	{
+		RLP config(b);
+		us = KeyPair(config[0].toHash<Secret>());
+		coinbase = config[1].toHash<Address>();
+	}
+	else
+	{
+		RLPStream config(2);
+		config << us.secret() << coinbase;
+		writeFile(configFile, config.out());
+	}
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -49,7 +86,9 @@ int main(int argc, char** argv)
 		else if (arg == "-p" && i + 1 < argc)
 			remotePort = atoi(argv[++i]);
 		else if (arg == "-a" && i + 1 < argc)
-			us = h160(fromUserHex(argv[++i]));
+			coinbase = h160(fromUserHex(argv[++i]));
+		else if (arg == "-s" && i + 1 < argc)
+			us = KeyPair(h256(fromUserHex(argv[++i])));
 		else if (arg == "-i")
 			interactive = true;
 		else if (arg == "-d" && i + 1 < argc)
@@ -65,7 +104,7 @@ int main(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	Client c("Ethereum(++)/v0.1", us, dbPath);
+	Client c("Ethereum(++)/v0.1", coinbase, dbPath);
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;
@@ -112,6 +151,15 @@ int main(int argc, char** argv)
 				Secret secret = h256(fromUserHex(sechex));
 				Address dest = h160(fromUserHex(rechex));
 				c.transact(secret, dest, amount, fee);
+			}
+			else if (cmd == "send")
+			{
+				string rechex;
+				u256 amount;
+				u256 fee;
+				cin >> rechex >> amount >> fee;
+				Address dest = h160(fromUserHex(rechex));
+				c.transact(us.secret(), dest, amount, fee);
 			}
 		}
 	}
