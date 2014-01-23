@@ -82,8 +82,15 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	m_genesisHash = BlockInfo::genesis().hash;
 	m_genesisBlock = BlockInfo::createGenesisBlock();
 
-	// Insert details of genesis block.
-	m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 36, h256(), {});
+	if (!details(m_genesisHash))
+	{
+		// Insert details of genesis block.
+		m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 36, h256(), {});
+		auto r = m_details[m_genesisHash].rlp();
+		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
+	}
+
+	checkConsistency();
 
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
@@ -95,6 +102,15 @@ BlockChain::~BlockChain()
 {
 }
 
+template <class T, class V>
+bool contains(T const& _t, V const& _v)
+{
+	for (auto const& i: _t)
+		if (i == _v)
+			return true;
+	return false;
+}
+
 void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
@@ -102,16 +118,23 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	bi.verifyInternals(&_block);
 
 	auto newHash = eth::sha3(_block);
+	cout << "Attempting import of " << newHash << "..." << endl;
 
 	// Check block doesn't already exist first!
 	if (details(newHash))
+	{
+		cout << "   Not new." << endl;
 		throw AlreadyHaveBlock();
+	}
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
 	if (!pd)
+	{
+		cout << "   Unknown parent " << bi.parentHash << endl;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
+	}
 
 	// Check family:
 	BlockInfo biParent(block(bi.parentHash));
@@ -128,6 +151,8 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
 	u256 td = pd.totalDifficulty + tdIncrease;
 
+	checkConsistency();
+
 	// All ok - insert into DB
 	m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
 	m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
@@ -137,16 +162,40 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 	m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
 
+	checkConsistency();
+
+	cout << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
+
 	// This might be the new last block...
 	if (td > m_details[m_lastBlockHash].totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
+		cout << "Block " << newHash << " is best." << endl;
 	}
 	else
 	{
 		cerr << "*** WARNING: Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")" << endl;
 	}
+}
+
+void BlockChain::checkConsistency()
+{
+	m_details.clear();
+	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
+	for (it->SeekToFirst(); it->Valid(); it->Next())
+	{
+		h256 h((byte const*)it->key().data());
+		auto dh = details(h);
+		auto p = dh.parent;
+		if (p != h256())
+		{
+			auto dp = details(p);
+			assert(contains(dp.children, h));
+			assert(dp.number == dh.number - 1);
+		}
+	}
+	delete it;
 }
 
 bytesConstRef BlockChain::block(h256 _hash) const
@@ -166,7 +215,10 @@ BlockDetails const& BlockChain::details(h256 _h) const
 		std::string s;
 		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
 		if (s.empty())
+		{
+			cout << "Not found in DB: " << _h << endl;
 			return NullBlockDetails;
+		}
 		bool ok;
 		tie(it, ok) = m_details.insert(make_pair(_h, BlockDetails(RLP(s))));
 	}

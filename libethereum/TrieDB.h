@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
 	for (auto i: _m.get())
 	{
 		_out << i.first << ": ";
-		::operator<<(_out, RLP(i.second));
+		_out << RLP(i.second);
 		_out << " " << asHex(i.second);
 		_out << std::endl;
 	}

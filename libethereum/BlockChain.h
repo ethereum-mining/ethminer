@@ -103,6 +103,8 @@ public:
 	h256 genesisHash() const { return m_genesisHash; }
 
 private:
+	void checkConsistency();
+
 	/// Get fully populated from disk DB.
 	mutable std::map<h256, BlockDetails> m_details;
 	mutable std::map<h256, std::string> m_cache;

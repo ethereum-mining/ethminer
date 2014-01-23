@@ -228,7 +228,7 @@ void RLPStream::pushCount(uint _count, byte _base)
 	pushInt(_count, br);
 }
 
-std::ostream& operator<<(std::ostream& _out, eth::RLP _d)
+std::ostream& eth::operator<<(std::ostream& _out, eth::RLP const& _d)
 {
 	if (_d.isNull())
 		_out << "null";

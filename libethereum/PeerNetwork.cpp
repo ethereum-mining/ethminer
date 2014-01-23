@@ -40,9 +40,11 @@ PeerSession::~PeerSession()
 
 bool PeerSession::interpret(RLP const& _r)
 {
+	::operator<<(cout, _r) << endl;
 	switch (_r[0].toInt<unsigned>())
 	{
 	case Hello:
+		cout << std::setw(2) << m_socket.native_handle() << " | Hello" << endl;
 		m_protocolVersion = _r[1].toInt<uint>();
 		m_networkId = _r[2].toInt<uint>();
 		m_clientVersion = _r[3].toString();
@@ -52,14 +54,23 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 		cout << std::setw(2) << m_socket.native_handle() << " | Client version: " << m_clientVersion << endl;
+
+		// Grab their block chain off them.
+		{
+			RLPStream s;
+			prep(s);
+			s.appendList(3) << (uint)GetChain << m_server->m_latestBlockSent << 256;
+			sealAndSend(s);
+		}
 		break;
 	case Disconnect:
 		m_socket.close();
 		return false;
 	case Ping:
 	{
+		cout << std::setw(2) << m_socket.native_handle() << " | Ping" << endl;
 		RLPStream s;
-		sealAndSend(prep(s).appendList(1) << Pong);
+		sealAndSend(prep(s).appendList(1) << (uint)Pong);
 		break;
 	}
 	case Pong:
@@ -68,10 +79,11 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	case GetPeers:
 	{
+		cout << std::setw(2) << m_socket.native_handle() << " | GetPeers" << endl;
 		std::vector<bi::tcp::endpoint> peers = m_server->potentialPeers();
 		RLPStream s;
 		prep(s).appendList(2);
-		s << Peers;
+		s << (uint)Peers;
 		s.appendList(peers.size());
 		for (auto i: peers)
 			s.appendList(2) << i.address().to_v4().to_bytes() << i.port();
@@ -79,6 +91,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	}
 	case Peers:
+		cout << std::setw(2) << m_socket.native_handle() << " | Peers (" << _r[1].itemCount() << " entries)" << endl;
 		for (auto i: _r[1])
 		{
 			auto ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
@@ -87,10 +100,12 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	case Transactions:
+		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << _r[1].itemCount() << " entries)" << endl;
 		for (auto i: _r[1])
 			m_server->m_incomingTransactions.push_back(i.data().toBytes());
 		break;
 	case Blocks:
+		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << _r[1].itemCount() << " entries)" << endl;
 		for (auto i: _r[1])
 			m_server->m_incomingBlocks.push_back(i.data().toBytes());
 		break;
@@ -99,6 +114,7 @@ bool PeerSession::interpret(RLP const& _r)
 		h256 parent = _r[1].toHash<h256>();
 		// return 256 block max.
 		uint count = (uint)min<bigint>(_r[1].toInt<bigint>(), 256);
+		cout << std::setw(2) << m_socket.native_handle() << " | GetChain (" << count << " max, from " << parent << ")" << endl;
 		h256 latest = m_server->m_chain->currentHash();
 		uint latestNumber = 0;
 		uint parentNumber = 0;
@@ -110,15 +126,38 @@ bool PeerSession::interpret(RLP const& _r)
 		count = min<uint>(latestNumber - parentNumber, count);
 		RLPStream s;
 		prep(s);
-		s.appendList(2);
-		s.append(Blocks);
+		s.appendList(2) << (uint)Blocks;
 		s.appendList(count);
-		uint startNumber = m_server->m_chain->details(parent).number + count;
+		uint endNumber = m_server->m_chain->details(parent).number;
+		uint startNumber = endNumber + count;
 		auto h = m_server->m_chain->currentHash();
-		for (uint n = latestNumber; h != parent; n--, h = m_server->m_chain->details(h).parent)
-			if (m_server->m_chain->details(h).number <= startNumber)
-				s.appendRaw(m_server->m_chain->block(h));
+		uint n = latestNumber;
+		for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
+		for (; h != parent && n > endNumber; n--, h = m_server->m_chain->details(h).parent)
+			s.appendRaw(m_server->m_chain->block(h));
+
+		if (h != parent)
+		{
+			cout << std::setw(2) << m_socket.native_handle() << " | GetChain failed; not in chain" << endl;
+			// No good - must have been on a different branch.
+			s.clear();
+			prep(s).appendList(2) << (uint)NotInChain << parent;
+		}
 		sealAndSend(s);
+		break;
+	}
+	case NotInChain:
+	{
+		h256 noGood = _r[1].toHash<h256>();
+		cout << std::setw(2) << m_socket.native_handle() << " | NotInChain (" << noGood << ")" << endl;
+		if (noGood != m_server->m_chain->genesisHash())
+		{
+			RLPStream s;
+			prep(s).appendList(3);
+			s << (uint)GetChain << m_server->m_chain->details(noGood).parent << 256;
+			sealAndSend(s);
+		}
+		// else our peer obviously knows nothing if they're unable to give the descendents of the genesis!
 		break;
 	}
 	default:
@@ -156,6 +195,7 @@ void PeerSession::sealAndSend(RLPStream& _s)
 {
 	bytes b;
 	_s.swapOut(b);
+	seal(b);
 	sendDestroy(b);
 }
 
@@ -163,20 +203,30 @@ void PeerSession::sendDestroy(bytes& _msg)
 {
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length) {});
+	assert((*buffer)[0] == 0x22);
+	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
+	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+	{
+		cout << length << " bytes written (EC: " << ec << ")" << endl;
+	});
 }
 
 void PeerSession::send(bytesConstRef _msg)
 {
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length) {});
+	assert((*buffer)[0] == 0x22);
+	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
+	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+	{
+		cout << length << " bytes written (EC: " << ec << ")" << endl;
+	});
 }
 
 void PeerSession::disconnect()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(1) << Disconnect;
+	s.appendList(1) << (uint)Disconnect;
 	sealAndSend(s);
 	sleep(1);
 	m_socket.close();
@@ -185,13 +235,15 @@ void PeerSession::disconnect()
 void PeerSession::start()
 {
 	cout << "Starting session." << endl;
+
 	RLPStream s;
 	prep(s);
 	s.appendList(4) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion;
 	sealAndSend(s);
+
 	ping();
+
 	doRead();
-	// TODO: ask for latest block chain.
 }
 
 void PeerSession::doRead()
@@ -205,9 +257,19 @@ void PeerSession::doRead()
 			memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
 			while (m_incoming.size() > 8)
 			{
-				uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-				if (m_incoming.size() - 8 >= len)
+				if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 				{
+					cout << "*** Out of alignment: skipping: " << hex << showbase << (int)m_incoming[0] << endl;
+					memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
+					m_incoming.resize(m_incoming.size() - 1);
+				}
+				else
+				{
+					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
+					cout << "Received packet of " << len << " bytes" << endl;
+					if (m_incoming.size() - 8 < len)
+						break;
+
 					// enough has come in.
 					RLP r(bytesConstRef(m_incoming.data() + 8, len));
 					if (!interpret(r))
@@ -216,8 +278,6 @@ void PeerSession::doRead()
 					memmove(m_incoming.data(), m_incoming.data() + len + 8, m_incoming.size() - (len + 8));
 					m_incoming.resize(m_incoming.size() - (len + 8));
 				}
-				else
-					break;
 			}
 		}
 		doRead();
@@ -299,7 +359,7 @@ void PeerServer::process(BlockChain& _bc)
 	m_ioService.poll();
 	for (auto i = m_peers.begin(); i != m_peers.end();)
 		if (auto j = i->lock())
-		{}
+			++i;
 		else
 			i = m_peers.erase(i);
 }
@@ -316,12 +376,13 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 
 	process(_bc);
 
-	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end();)
+	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
 		if (!_tq.import(*it))
 			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 	m_incomingTransactions.clear();
 
 	// Send any new transactions.
+	if (m_peers.size())
 	{
 		bytes b;
 		uint n = 0;
@@ -361,6 +422,7 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				if (auto p = j.lock())
 					p->send(&b);
 		}
+		m_latestBlockSent = h;
 	}
 
 	for (bool accepted = 1; accepted;)
