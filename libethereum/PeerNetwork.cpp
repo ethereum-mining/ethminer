@@ -118,7 +118,7 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		h256 parent = _r[1].toHash<h256>();
 		// return 256 block max.
-		uint count = (uint)min<bigint>(_r[1].toInt<bigint>(), 256);
+		uint count = (uint)min<bigint>(_r[1].toInt<bigint>(), 2048);
 		cout << std::setw(2) << m_socket.native_handle() << " | GetChain (" << count << " max, from " << parent << ")" << endl;
 		h256 latest = m_server->m_chain->currentHash();
 		uint latestNumber = 0;
@@ -138,7 +138,7 @@ bool PeerSession::interpret(RLP const& _r)
 		auto h = m_server->m_chain->currentHash();
 		uint n = latestNumber;
 		for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
-		for (; h != parent && n > endNumber; n--, h = m_server->m_chain->details(h).parent)
+		for (uint i = 0; h != parent && n > endNumber && i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
 			s.appendRaw(m_server->m_chain->block(h));
 
 		if (h != parent)
@@ -159,7 +159,7 @@ bool PeerSession::interpret(RLP const& _r)
 		{
 			RLPStream s;
 			prep(s).appendList(3);
-			s << (uint)GetChain << m_server->m_chain->details(noGood).parent << 256;
+			s << (uint)GetChain << m_server->m_chain->details(noGood).parent << 2048;
 			sealAndSend(s);
 		}
 		// else our peer obviously knows nothing if they're unable to give the descendents of the genesis!
@@ -213,7 +213,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
-			disconnect();
+			dropped();
 //		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
 }
@@ -226,9 +226,20 @@ void PeerSession::send(bytesConstRef _msg)
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
-			disconnect();
+			dropped();
 //		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
+}
+
+void PeerSession::dropped()
+{
+	m_socket.close();
+	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
+		if (i->lock().get() == this)
+		{
+			m_server->m_peers.erase(i);
+			break;
+		}
 }
 
 void PeerSession::disconnect()
@@ -259,7 +270,7 @@ void PeerSession::doRead()
 	m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
-			disconnect();
+			dropped();
 		else
 		{
 			m_incoming.resize(m_incoming.size() + length);
@@ -288,8 +299,8 @@ void PeerSession::doRead()
 					m_incoming.resize(m_incoming.size() - (len + 8));
 				}
 			}
+			doRead();
 		}
-		doRead();
 	});
 }
 
@@ -501,7 +512,8 @@ std::vector<PeerInfo> PeerServer::peers() const
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
 		if (auto j = i.lock())
-			ret.push_back(PeerInfo{j->m_clientVersion, j->m_socket.remote_endpoint(), j->m_lastPing});
+			if (j->m_socket.is_open())
+				ret.push_back(PeerInfo{j->m_clientVersion, j->m_socket.remote_endpoint(), j->m_lastPing});
 	return ret;
 }
 
