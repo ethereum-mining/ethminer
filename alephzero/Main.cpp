@@ -67,7 +67,7 @@ void Main::refresh()
 	ui->address->setText(QString::fromStdString(asHex(m_client.state().address().asArray())));
 	ui->peers->clear();
 	for (PeerInfo const& i: m_client.peers())
-		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.endpoint.address().to_string().c_str()).arg(i.endpoint.port()).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
+		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
 
 	auto d = m_client.blockChain().details();
 	auto diff = BlockInfo(m_client.blockChain().block()).difficulty;

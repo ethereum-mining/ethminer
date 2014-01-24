@@ -31,6 +31,7 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId)
 {
+
 }
 
 PeerSession::~PeerSession()
@@ -43,16 +44,19 @@ bool PeerSession::interpret(RLP const& _r)
 	switch (_r[0].toInt<unsigned>())
 	{
 	case Hello:
+	{
 		cout << std::setw(2) << m_socket.native_handle() << " | Hello" << endl;
 		m_protocolVersion = _r[1].toInt<uint>();
 		m_networkId = _r[2].toInt<uint>();
-		m_clientVersion = _r[3].toString();
+		auto clientVersion = _r[3].toString();
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
 			disconnect();
 			return false;
 		}
-		cout << std::setw(2) << m_socket.native_handle() << " | Client version: " << m_clientVersion << endl;
+		m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), (short)m_socket.remote_endpoint().port(), std::chrono::steady_clock::duration()});
+
+		cout << std::setw(2) << m_socket.native_handle() << " | Client version: " << clientVersion << endl;
 
 		// Grab their block chain off them.
 		{
@@ -62,6 +66,7 @@ bool PeerSession::interpret(RLP const& _r)
 			sealAndSend(s);
 		}
 		break;
+	}
 	case Disconnect:
 		m_socket.close();
 		return false;
@@ -73,7 +78,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	}
 	case Pong:
-		m_lastPing = std::chrono::steady_clock::now() - m_ping;
+		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
 //		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms" << endl;
 		break;
 	case GetPeers:
@@ -513,7 +518,7 @@ std::vector<PeerInfo> PeerServer::peers() const
 	for (auto& i: m_peers)
 		if (auto j = i.lock())
 			if (j->m_socket.is_open())
-				ret.push_back(PeerInfo{j->m_clientVersion, j->m_socket.remote_endpoint(), j->m_lastPing});
+				ret.push_back(j->m_info);
 	return ret;
 }
 
