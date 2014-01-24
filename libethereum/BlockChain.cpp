@@ -118,14 +118,15 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	bi.verifyInternals(&_block);
 
 	auto newHash = eth::sha3(_block);
-	cout << "Attempting import of " << newHash << "..." << endl;
 
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-		cout << "   Not new." << endl;
+//		cout << "   Not new." << endl;
 		throw AlreadyHaveBlock();
 	}
+
+	cout << "Attempting import of " << newHash << "..." << endl;
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
