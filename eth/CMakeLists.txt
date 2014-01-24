@@ -13,6 +13,9 @@ link_directories(../libethereum)
 
 add_executable(eth ${SRC_LIST})
 
+find_package(Threads REQUIRED)
+target_link_libraries(eth ${CMAKE_THREAD_LIBS_INIT})
+
 target_link_libraries(eth ethereum)
 target_link_libraries(eth leveldb)
 target_link_libraries(eth secp256k1)
