@@ -67,6 +67,7 @@ public:
 	void ping();
 
 private:
+	void dropped();
 	void doRead();
 	void doWrite(std::size_t length);
 	bool interpret(RLP const& _r);

@@ -19,10 +19,12 @@ Network:
 ### GAV
 
 Network:
-** Don't crash when a peer leaves!
 ** Check peer utility (useful transactions & blocks passed) for when dismissing.
 ** Respect peer count & dismiss/collect/stop listening for peers as necessary.
 ** Manage GetBlocks properly; should work for when > 256 blocks away.
+
+UI:
+** State panel shouldn't show pending (i.e. post-mined) transactions.
 
 Trie on DB.
 - Move the restore point stuff into block restore points
