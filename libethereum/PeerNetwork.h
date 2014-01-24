@@ -53,7 +53,6 @@ enum PacketType
 
 class PeerServer;
 
-// TODO: include in PeerSession for ease of copying out later.
 struct PeerInfo
 {
 	std::string clientVersion;
@@ -112,6 +111,7 @@ public:
 	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port);
 	/// Start server, but don't listen.
 	PeerServer(std::string const& _clientVersion, uint _networkId);
+	~PeerServer();
 
 	/// Connect to a peer explicitly.
 	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
@@ -119,12 +119,9 @@ public:
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
-	/// Ideally all time-consuming I/O is done in a background thread, but you get this call every 100ms or so anyway.
+	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
 	void process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
 	void process(BlockChain& _bc);
-
-	/// Get number of peers connected.
-	unsigned peerCount() const { return m_peers.size(); }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(uint _n) { m_idealPeerCount = _n; }
@@ -132,7 +129,10 @@ public:
 	/// Get peer information.
 	std::vector<PeerInfo> peers() const;
 
-	/// Ping the peers.
+	/// Get number of peers connected; equivalent to, but faster than, peers().size().
+	unsigned peerCount() const { return m_peers.size(); }
+
+	/// Ping the peers, to update the latency information.
 	void pingAll();
 
 private:
@@ -156,6 +156,7 @@ private:
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;
 
+	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;
 };
 
