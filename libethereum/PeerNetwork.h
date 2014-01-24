@@ -53,6 +53,15 @@ enum PacketType
 
 class PeerServer;
 
+// TODO: include in PeerSession for ease of copying out later.
+struct PeerInfo
+{
+	std::string clientVersion;
+	std::string host;
+	short port;
+	std::chrono::steady_clock::duration lastPing;
+};
+
 class PeerSession: public std::enable_shared_from_this<PeerSession>
 {
 	friend class PeerServer;
@@ -81,25 +90,17 @@ private:
 	PeerServer* m_server;
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
+	PeerInfo m_info;
 
 	bytes m_incoming;
-	std::string m_clientVersion;
 	uint m_protocolVersion;
 	uint m_networkId;
 	uint m_reqNetworkId;
 
 	std::chrono::steady_clock::time_point m_ping;
-	std::chrono::steady_clock::duration m_lastPing;
 
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
-};
-
-struct PeerInfo
-{
-	std::string clientVersion;
-	bi::tcp::endpoint endpoint;
-	std::chrono::steady_clock::duration lastPing;
 };
 
 class PeerServer
@@ -155,7 +156,7 @@ private:
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;
 
-	unsigned m_idealPeerCount;
+	unsigned m_idealPeerCount = 5;
 };
 
 
