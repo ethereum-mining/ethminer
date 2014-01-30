@@ -135,13 +135,14 @@ void State::commit()
 	m_cache.clear();
 }
 
-void State::sync(BlockChain const& _bc)
+bool State::sync(BlockChain const& _bc)
 {
-	sync(_bc, _bc.currentHash());
+	return sync(_bc, _bc.currentHash());
 }
 
-void State::sync(BlockChain const& _bc, h256 _block)
+bool State::sync(BlockChain const& _bc, h256 _block)
 {
+	bool ret = false;
 	// BLOCK
 	BlockInfo bi;
 	try
@@ -164,6 +165,7 @@ void State::sync(BlockChain const& _bc, h256 _block)
 		m_previousBlock = m_currentBlock;
 		resetCurrent();
 		m_currentNumber++;
+		ret = true;
 	}
 	else if (bi == m_previousBlock)
 	{
@@ -192,7 +194,9 @@ void State::sync(BlockChain const& _bc, h256 _block)
 
 		m_currentNumber = _bc.details(_block).number + 1;
 		resetCurrent();
+		ret = true;
 	}
+	return ret;
 }
 
 map<Address, u256> State::addresses() const
@@ -218,9 +222,10 @@ void State::resetCurrent()
 	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
-void State::sync(TransactionQueue& _tq)
+bool State::sync(TransactionQueue& _tq)
 {
 	// TRANSACTIONS
+	bool ret = false;
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
 		if (!m_transactions.count(i.first))
@@ -228,18 +233,24 @@ void State::sync(TransactionQueue& _tq)
 			try
 			{
 				execute(i.second);
+				ret = true;
 			}
 			catch (InvalidNonce const& in)
 			{
 				if (in.required > in.candidate)
+				{
 					// too old
 					_tq.drop(i.first);
+					ret = true;
+				}
 			}
 			catch (std::exception const&)
 			{
 				// Something else went wrong - drop it.
 				_tq.drop(i.first);
+				ret = true;
 			}
+	return ret;
 }
 
 u256 State::playback(bytesConstRef _block, bool _fullCommit)

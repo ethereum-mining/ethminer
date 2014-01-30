@@ -51,6 +51,8 @@ public:
 	void lock();
 	void unlock();
 
+	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
+
 	State const& state() const { return m_s; }
 	BlockChain const& blockChain() const { return m_bc; }
 	TransactionQueue const& transactionQueue() const { return m_tq; }
@@ -63,6 +65,7 @@ public:
 	void stopNetwork();
 
 	void setAddress(Address _us) { m_s.setAddress(_us); }
+	Address address() const { return m_s.address(); }
 	void startMining();
 	void stopMining();
 	MineProgress miningProgress() const { return m_mineProgress; }
@@ -81,6 +84,8 @@ private:
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
+
+	mutable bool m_changed;
 };
 
 }

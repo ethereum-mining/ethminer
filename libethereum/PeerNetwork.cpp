@@ -38,6 +38,8 @@ PeerSession::~PeerSession()
 	disconnect();
 }
 
+// TODO: BUG! 256 -> work out why things start to break with big packet sizes -> g.t. ~370 blocks.
+
 bool PeerSession::interpret(RLP const& _r)
 {
 	switch (_r[0].toInt<unsigned>())
@@ -164,15 +166,15 @@ bool PeerSession::interpret(RLP const& _r)
 				latestNumber = m_server->m_chain->details(latest).number;
 				parentNumber = m_server->m_chain->details(parent).number;
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
-				cout << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber << endl;
-				cout << latest << " - " << parent << endl;
+//				cout << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber << endl;
+//				cout << latest << " - " << parent << endl;
 
 				prep(s);
 				s.appendList(2) << (uint)Blocks;
 				s.appendList(count);
 				uint endNumber = m_server->m_chain->details(parent).number;
 				uint startNumber = endNumber + count;
-				cout << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber << endl;
+//				cout << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber << endl;
 
 				uint n = latestNumber;
 				for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
@@ -181,7 +183,7 @@ bool PeerSession::interpret(RLP const& _r)
 //					cout << "   " << dec << i << " " << h << endl;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
-				cout << "Parent: " << h << endl;
+//				cout << "Parent: " << h << endl;
 			}
 			else if (parent != parents.back())
 				continue;
@@ -256,10 +258,10 @@ void PeerSession::seal(bytes& _b)
 	_b[2] = 0x08;
 	_b[3] = 0x91;
 	uint32_t len = _b.size() - 8;
-	_b[4] = len >> 24;
-	_b[5] = len >> 16;
-	_b[6] = len >> 8;
-	_b[7] = len;
+	_b[4] = (len >> 24) & 0xff;
+	_b[5] = (len >> 16) & 0xff;
+	_b[6] = (len >> 8) & 0xff;
+	_b[7] = len & 0xff;
 }
 
 void PeerSession::sealAndSend(RLPStream& _s)
@@ -275,13 +277,13 @@ void PeerSession::sendDestroy(bytes& _msg)
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
 	assert((*buffer)[0] == 0x22);
-	cout << "Sending " << (buffer->size() - 8) << endl;
+//	cout << "Sending " << (buffer->size() - 8) << endl;
 //	cout << "Sending " << RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
 			dropped();
-		cout << length << " bytes written (EC: " << ec << ")" << endl;
+//		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
 }
 
@@ -289,12 +291,12 @@ void PeerSession::send(bytesConstRef _msg)
 {
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
 	assert((*buffer)[0] == 0x22);
-	cout << "Sending " << (_msg.size() - 8) << endl;// RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
+//	cout << "Sending " << (_msg.size() - 8) << endl;// RLP(bytesConstRef(buffer.get()).cropped(8)) << endl;
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
 			dropped();
-		cout << length << " bytes written (EC: " << ec << ")" << endl;
+//		cout << length << " bytes written (EC: " << ec << ")" << endl;
 	});
 }
 
@@ -353,7 +355,7 @@ void PeerSession::doRead()
 				else
 				{
 					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-					cout << "Received packet of " << len << " bytes" << endl;
+//					cout << "Received packet of " << len << " bytes" << endl;
 					if (m_incoming.size() - 8 < len)
 						break;
 
@@ -418,7 +420,7 @@ void PeerServer::doAccept()
 	{
 		if (!ec)
 		{
-			std::cout << "Accepted connection from " << m_socket.remote_endpoint() << std::endl;
+			cout << "Accepted connection from " << m_socket.remote_endpoint() << std::endl;
 			auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId);
 			m_peers.push_back(p);
 			p->start();
@@ -469,21 +471,30 @@ bool PeerServer::connect(bi::tcp::endpoint _ep)
 	}
 }
 
-void PeerServer::process(BlockChain& _bc)
+bool PeerServer::process(BlockChain& _bc)
 {
+	bool ret = false;
 	m_ioService.poll();
 	for (auto i = m_peers.begin(); i != m_peers.end();)
 		if (auto j = i->lock())
 			if (j->m_socket.is_open())
 				++i;
 			else
+			{
 				i = m_peers.erase(i);
+				ret = true;
+			}
 		else
+		{
 			i = m_peers.erase(i);
+			ret = true;
+		}
+	return ret;
 }
 
-void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 {
+	bool ret = false;
 	if (m_latestBlockSent == h256())
 	{
 		// First time - just initialise.
@@ -491,12 +502,16 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
 		m_lastPeersRequest = chrono::steady_clock::now();
+		ret = true;
 	}
 
-	process(_bc);
+	if (process(_bc))
+		ret = true;
 
 	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-		if (!_tq.import(*it))
+		if (_tq.import(*it))
+			ret = true;
+		else
 			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 	m_incomingTransactions.clear();
 
@@ -559,6 +574,7 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					_bc.import(*it, _o);
 					it = m_incomingBlocks.erase(it);
 					++accepted;
+					ret = true;
 				}
 				catch (UnknownParent)
 				{
@@ -574,6 +590,10 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					break;
 			}
 	}
+
+	// platform for consensus of social contract.
+	// restricts your freedom but does so fairly. and that's the value proposition.
+	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
 	// Connect to additional peers
 	// TODO: Need to avoid connecting to self & existing peers. Existing peers is easy, but need portable method of listing all addresses we can listen to avoid self.
@@ -598,6 +618,7 @@ void PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		connect(m_incomingPeers.back());
 		m_incomingPeers.pop_back();
 	}*/
+	return ret;
 }
 
 std::vector<PeerInfo> PeerServer::peers() const

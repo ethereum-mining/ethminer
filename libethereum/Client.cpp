@@ -37,6 +37,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	m_s.sync(m_bc);
 	m_s.sync(m_tq);
+	m_changed = true;
 
 	m_work = new thread([&](){ while (m_workState != Deleting) work(); m_workState = Deleted; });
 }
@@ -93,6 +94,7 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u2
 	t.sign(_secret);
 	m_tq.attemptImport(t.rlp());
 	m_lock.unlock();
+	m_changed = true;
 }
 
 void Client::work()
@@ -102,7 +104,8 @@ void Client::work()
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
-		m_net->process(m_bc, m_tq, m_stateDB);
+		if (m_net->process(m_bc, m_tq, m_stateDB))
+			m_changed = true;
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -110,8 +113,11 @@ void Client::work()
 	//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
-	m_s.sync(m_bc);		// Resynchronise state with block chain & trans
-	m_s.sync(m_tq);
+	 // Resynchronise state with block chain & trans
+	if (m_s.sync(m_bc))
+		m_changed = true;
+	if (m_s.sync(m_tq))
+		m_changed = true;
 
 	m_lock.unlock();
 	if (m_doMine)
@@ -130,6 +136,7 @@ void Client::work()
 			m_bc.attemptImport(m_s.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
 			m_lock.unlock();
+			m_changed = true;
 		}
 	}
 	else

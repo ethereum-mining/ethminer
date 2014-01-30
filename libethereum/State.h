@@ -88,13 +88,13 @@ public:
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	void sync(BlockChain const& _bc);
+	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	void sync(BlockChain const& _bc, h256 _blockHash);
+	bool sync(BlockChain const& _bc, h256 _blockHash);
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	void sync(TransactionQueue& _tq);
+	bool sync(TransactionQueue& _tq);
 
 	/// Execute a given transaction.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
@@ -196,7 +196,7 @@ private:
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
 	Dagger m_dagger;
-
+	
 	/// The fee structure. Values yet to be agreed on...
 	static const u256 c_stepFee;
 	static const u256 c_dataFee;
