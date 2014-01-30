@@ -48,9 +48,9 @@ bool PeerSession::interpret(RLP const& _r)
 	case Hello:
 	{
 		cout << std::setw(2) << m_socket.native_handle() << " | Hello" << endl;
-		m_protocolVersion = _r[1][0].toInt<uint>();
-		m_networkId = _r[1][1].toInt<uint>();
-		auto clientVersion = _r[1][2].toString();
+		m_protocolVersion = _r[1].toInt<uint>();
+		m_networkId = _r[2].toInt<uint>();
+		auto clientVersion = _r[3].toString();
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
 			disconnect();
@@ -326,8 +326,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(2) << (uint)Hello;
-	s.appendList(3) << (uint)0 << (uint)0 << m_server->m_clientVersion;
+	s.appendList(4) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion;
 	sealAndSend(s);
 
 	ping();
