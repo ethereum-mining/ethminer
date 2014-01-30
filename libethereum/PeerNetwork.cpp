@@ -254,6 +254,7 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 
 void PeerSession::seal(bytes& _b)
 {
+	cout << "<<< " << RLP(bytesConstRef(&_b).cropped(8)) << endl;
 	_b[0] = 0x22;
 	_b[1] = 0x40;
 	_b[2] = 0x08;
