@@ -144,12 +144,14 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		// ********************************************************************
 		// NEEDS FULL REWRITE!
-
-		h256s parents = _r[1].toVector<h256>();
-		if (!parents.size())
+		h256s parents;
+		parents.reserve(_r.itemCount() - 2);
+		for (unsigned i = 1; i < _r.itemCount() - 1; ++i)
+			parents.push_back(_r[i].toHash<h256>());
+		if (_r.itemCount() == 2)
 			break;
 		// return 2048 block max.
-		uint baseCount = (uint)min<bigint>(_r[2].toInt<bigint>(), 256);
+		uint baseCount = (uint)min<bigint>(_r[_r.itemCount() - 1].toInt<bigint>(), 256);
 		cout << std::setw(2) << m_socket.native_handle() << " | GetChain (" << baseCount << " max, from " << parents.front() << " to " << parents.back() << ")" << endl;
 		for (auto parent: parents)
 		{
