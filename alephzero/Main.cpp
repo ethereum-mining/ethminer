@@ -119,7 +119,7 @@ void Main::on_net_toggled()
 
 void Main::on_connect_clicked()
 {
-	QString s = QInputDialog::getText(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", QLineEdit::Normal, "192.168.0.141:30303");
+	QString s = QInputDialog::getText(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", QLineEdit::Normal, "54.201.244.25:30303");
 	string host = s.section(":", 0, 0).toStdString();
 	short port = s.section(":", 1).toInt();
 	m_client.connect(host, port);

@@ -120,8 +120,8 @@ public:
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
-	void process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
-	void process(BlockChain& _bc);
+	bool process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	bool process(BlockChain& _bc);
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(uint _n) { m_idealPeerCount = _n; }

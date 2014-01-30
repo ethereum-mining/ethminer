@@ -10,21 +10,32 @@ Crypto stuff:
 Better handling of corrupt blocks.
 
 Network:
-- Firewall-busting PeerConnections.
-- Crypto on network.
+- Firewall-busting PeerConnections. UPnP?
+- Crypto on network. TLS?
 - Respect idealPeerCount.
 - Peer network traversal for peer discovery. 
+- Check peer utility (useful transactions & blocks passed) for when dismissing.
+- Respect peer count & dismiss/collect/stop listening for peers as necessary.
 
 
 ### GAV
 
+FOR ALPHA:
+
 Network:
-** Check peer utility (useful transactions & blocks passed) for when dismissing.
-** Respect peer count & dismiss/collect/stop listening for peers as necessary.
-** Manage GetBlocks properly; should work for when > 256 blocks away.
+* Manage GetBlocks properly; should work for when > 256 blocks away.
 
 UI:
-** State panel shouldn't show pending (i.e. post-mined) transactions.
+* State panel shouldn't show pending (i.e. post-mined) transactions.
+
+PoW:
+* Minute mine times.
+
+Build:
+* Windows build.
+
+
+LATER:
 
 Trie on DB.
 - Move the restore point stuff into block restore points

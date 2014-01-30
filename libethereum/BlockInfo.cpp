@@ -90,8 +90,8 @@ void BlockInfo::populate(bytesConstRef _block)
 		throw InvalidBlockFormat();
 	}
 
-	// check it hashes according to proof of work.
-	if (!Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
+	// check it hashes according to proof of work or that it's the genesis block.
+	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
 		throw InvalidNonce();
 }
 
