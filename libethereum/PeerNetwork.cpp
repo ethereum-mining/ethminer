@@ -19,6 +19,9 @@
  * @date 2014
  */
 
+#include <sys/types.h>
+#include <ifaddrs.h>
+
 #include "Common.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
@@ -38,6 +41,11 @@ PeerSession::~PeerSession()
 	disconnect();
 }
 
+bi::tcp::endpoint PeerSession::endpoint() const
+{
+	return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_listenPort);
+}
+
 // TODO: BUG! 256 -> work out why things start to break with big packet sizes -> g.t. ~370 blocks.
 
 bool PeerSession::interpret(RLP const& _r)
@@ -51,6 +59,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_protocolVersion = _r[1].toInt<uint>();
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
+		m_listenPort = _r.itemCount() > 4 ? _r[4].toInt<short>() : -1;
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
 			disconnect();
@@ -102,7 +111,10 @@ bool PeerSession::interpret(RLP const& _r)
 		prep(s).appendList(peers.size() + 1);
 		s << (uint)Peers;
 		for (auto i: peers)
+		{
+			cout << "  Sending peer " << i << endl;
 			s.appendList(2) << i.address().to_v4().to_bytes() << i.port();
+		}
 		sealAndSend(s);
 		break;
 	}
@@ -111,8 +123,18 @@ bool PeerSession::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto ep = bi::tcp::endpoint(bi::address_v4(_r[i][0].toArray<byte, 4>()), _r[i][1].toInt<short>());
+			cout << "Checking: " << ep << endl;
+			// check that we're not already connected to addr:
+			for (auto i: m_server->m_addresses)
+				if (ep.address() == i && ep.port() == m_server->listenPort())
+					goto CONTINUE;
+			for (auto i: m_server->m_peers)
+				if (shared_ptr<PeerSession> p = i.lock())
+					if (p->m_socket.is_open() && p->endpoint() == ep)
+						goto CONTINUE;
 			m_server->m_incomingPeers.push_back(ep);
 			cout << "New peer: " << ep << endl;
+			CONTINUE:;
 		}
 		break;
 	case Transactions:
@@ -324,7 +346,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(4) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion;
+	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << m_server->m_acceptor.local_endpoint().port();
 	sealAndSend(s);
 
 	ping();
@@ -380,6 +402,8 @@ void PeerSession::doRead()
 	});
 }
 
+class NoNetworking: public std::exception {};
+
 PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port):
 	m_clientVersion(_clientVersion),
 	m_chain(&_ch),
@@ -387,6 +411,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	m_socket(m_ioService),
 	m_requiredNetworkId(_networkId)
 {
+	populateAddresses();
 	doAccept();
 }
 
@@ -396,6 +421,8 @@ PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId):
 	m_socket(m_ioService),
 	m_requiredNetworkId(_networkId)
 {
+	// populate addresses.
+	populateAddresses();
 }
 
 PeerServer::~PeerServer()
@@ -405,18 +432,43 @@ PeerServer::~PeerServer()
 			p->disconnect();
 }
 
+void PeerServer::populateAddresses()
+{
+	ifaddrs* ifaddr;
+	if (getifaddrs(&ifaddr) == -1)
+		throw NoNetworking();
+
+	bi::tcp::resolver r(m_ioService);
+
+	for (ifaddrs* ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+	{
+		if (!ifa->ifa_addr)
+			continue;
+		if (ifa->ifa_addr->sa_family == AF_INET)
+		{
+			char host[NI_MAXHOST];
+			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
+				continue;
+			auto it = r.resolve({host, "30303"});
+			bi::tcp::endpoint ep = it->endpoint();
+			m_addresses.push_back(ep.address().to_v4());
+			if (ifa->ifa_name != string("lo"))
+				m_peerAddresses.push_back(ep.address().to_v4());
+			cout << "Address: " << host << " = " << m_addresses.back() << (ifa->ifa_name != string("lo") ? " [PEER]" : " [LOCAL]") << endl;
+		}
+	}
+
+	freeifaddrs(ifaddr);
+}
+
 std::vector<bi::tcp::endpoint> PeerServer::potentialPeers()
 {
 	std::vector<bi::tcp::endpoint> ret;
-	bool haveLocal = false;
+	for (auto i: m_peerAddresses)
+		ret.push_back(bi::tcp::endpoint(i, listenPort()));
 	for (auto i: m_peers)
 		if (auto j = i.lock())
-		{
-			if (!haveLocal)
-				ret.push_back(j->m_socket.local_endpoint());
-			haveLocal = true;
-			ret.push_back(j->m_socket.remote_endpoint());
-		}
+			ret.push_back(j->endpoint());
 	return ret;
 }
 
@@ -604,7 +656,6 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 
 	// Connect to additional peers
 	// TODO: Need to avoid connecting to self & existing peers. Existing peers is easy, but need portable method of listing all addresses we can listen to avoid self.
-	/*
 	while (m_peers.size() < m_idealPeerCount)
 	{
 		if (m_incomingPeers.empty())
@@ -624,7 +675,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		}
 		connect(m_incomingPeers.back());
 		m_incomingPeers.pop_back();
-	}*/
+	}
 	return ret;
 }
 

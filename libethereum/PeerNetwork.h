@@ -74,6 +74,8 @@ public:
 
 	void ping();
 
+	bi::tcp::endpoint endpoint() const;
+
 private:
 	void dropped();
 	void doRead();
@@ -95,6 +97,7 @@ private:
 	uint m_protocolVersion;
 	uint m_networkId;
 	uint m_reqNetworkId;
+	short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
 
 	std::chrono::steady_clock::time_point m_ping;
 
@@ -135,7 +138,11 @@ public:
 	/// Ping the peers, to update the latency information.
 	void pingAll();
 
+	/// Get the port we're listening on currently.
+	short listenPort() const { return m_acceptor.local_endpoint().port(); }
+
 private:
+	void populateAddresses();
 	void doAccept();
 	std::vector<bi::tcp::endpoint> potentialPeers();
 
@@ -158,6 +165,9 @@ private:
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;
+
+	std::vector<bi::address_v4> m_addresses;
+	std::vector<bi::address_v4> m_peerAddresses;
 };
 
 
