@@ -1,6 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include <QtNetwork/QNetworkAccessManager>
 #include <QAbstractListModel>
 #include <QDialog>
 #include <QMutex>
@@ -40,6 +41,9 @@ private:
 
 	QMutex m_guiLock;
 	QTimer* m_refresh;
+	QStringList m_servers;
+
+	QNetworkAccessManager m_webCtrl;
 };
 
 #endif // MAIN_H

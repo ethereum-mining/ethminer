@@ -31,7 +31,10 @@ UI:
 * State panel shouldn't show pending (i.e. post-mined) transactions.
 
 PoW:
-* Minute mine times.
+* Minute mine times. DONE (ish)
+
+
+### ERIC
 
 Build:
 * Windows build.
