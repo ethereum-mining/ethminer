@@ -85,7 +85,7 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 36, h256(), {});
+		m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 32, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
 	}
