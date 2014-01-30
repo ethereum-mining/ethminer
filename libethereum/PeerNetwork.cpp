@@ -341,33 +341,41 @@ void PeerSession::doRead()
 			dropped();
 		else
 		{
-			m_incoming.resize(m_incoming.size() + length);
-			memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
-			while (m_incoming.size() > 8)
+			try
 			{
-				if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
+				m_incoming.resize(m_incoming.size() + length);
+				memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
+				while (m_incoming.size() > 8)
 				{
-					cout << "*** Out of alignment: skipping: " << hex << showbase << (int)m_incoming[0] << endl;
-					memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
-					m_incoming.resize(m_incoming.size() - 1);
-				}
-				else
-				{
-					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-//					cout << "Received packet of " << len << " bytes" << endl;
-					if (m_incoming.size() - 8 < len)
-						break;
+					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
+					{
+						cout << "*** Out of alignment: skipping: " << hex << showbase << (int)m_incoming[0] << endl;
+						memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
+						m_incoming.resize(m_incoming.size() - 1);
+					}
+					else
+					{
+						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
+	//					cout << "Received packet of " << len << " bytes" << endl;
+						if (m_incoming.size() - 8 < len)
+							break;
 
-					// enough has come in.
-					RLP r(bytesConstRef(m_incoming.data() + 8, len));
-					if (!interpret(r))
-						// error
-						break;
-					memmove(m_incoming.data(), m_incoming.data() + len + 8, m_incoming.size() - (len + 8));
-					m_incoming.resize(m_incoming.size() - (len + 8));
+						// enough has come in.
+						RLP r(bytesConstRef(m_incoming.data() + 8, len));
+						if (!interpret(r))
+							// error
+							break;
+						memmove(m_incoming.data(), m_incoming.data() + len + 8, m_incoming.size() - (len + 8));
+						m_incoming.resize(m_incoming.size() - (len + 8));
+					}
 				}
+				doRead();
 			}
-			doRead();
+			catch (std::exception const& _e)
+			{
+				cout << std::setw(2) << m_socket.native_handle() << " | ERROR: " << _e.what() << endl;
+				dropped();
+			}
 		}
 	});
 }
