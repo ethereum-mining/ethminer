@@ -68,11 +68,10 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
-			RLPStream s;
-			prep(s).appendList(3);
-			s << (uint)GetChain;
 			unsigned count = std::min<unsigned>(256, m_server->m_chain->details(m_server->m_latestBlockSent).number);
-			s.appendList(count);
+			RLPStream s;
+			prep(s).appendList(2 + count);
+			s << (uint)GetChain;
 			auto h = m_server->m_chain->details(m_server->m_latestBlockSent).parent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
@@ -100,44 +99,42 @@ bool PeerSession::interpret(RLP const& _r)
 		cout << std::setw(2) << m_socket.native_handle() << " | GetPeers" << endl;
 		std::vector<bi::tcp::endpoint> peers = m_server->potentialPeers();
 		RLPStream s;
-		prep(s).appendList(2);
+		prep(s).appendList(peers.size() + 1);
 		s << (uint)Peers;
-		s.appendList(peers.size());
 		for (auto i: peers)
 			s.appendList(2) << i.address().to_v4().to_bytes() << i.port();
 		sealAndSend(s);
 		break;
 	}
 	case Peers:
-		cout << std::setw(2) << m_socket.native_handle() << " | Peers (" << dec << _r[1].itemCount() << " entries)" << endl;
-		for (auto i: _r[1])
+		cout << std::setw(2) << m_socket.native_handle() << " | Peers (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
+		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			auto ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+			auto ep = bi::tcp::endpoint(bi::address_v4(_r[i][0].toArray<byte, 4>()), _r[i][1].toInt<short>());
 			m_server->m_incomingPeers.push_back(ep);
 			cout << "New peer: " << ep << endl;
 		}
 		break;
 	case Transactions:
-		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << dec << _r[1].itemCount() << " entries)" << endl;
-		for (auto i: _r[1])
+		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
+		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_server->m_incomingTransactions.push_back(i.data().toBytes());
-			m_knownTransactions.insert(sha3(i.data()));
+			m_server->m_incomingTransactions.push_back(_r[i].data().toBytes());
+			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
 	case Blocks:
-		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << dec << _r[1].itemCount() << " entries)" << endl;
-		for (auto i: _r[1])
+		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
+		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_server->m_incomingBlocks.push_back(i.data().toBytes());
-			m_knownBlocks.insert(sha3(i.data()));
+			m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
+			m_knownBlocks.insert(sha3(_r[i].data()));
 		}
 		if (_r[1].itemCount())	// we received some - check if there's any more
 		{
 			RLPStream s;
 			prep(s).appendList(3);
 			s << (uint)GetChain;
-			s.appendList(1);
 			s << sha3(_r[1][0].data());
 			s << 256;
 			sealAndSend(s);
@@ -171,8 +168,7 @@ bool PeerSession::interpret(RLP const& _r)
 //				cout << latest << " - " << parent << endl;
 
 				prep(s);
-				s.appendList(2) << (uint)Blocks;
-				s.appendList(count);
+				s.appendList(1 + count) << (uint)Blocks;
 				uint endNumber = m_server->m_chain->details(parent).number;
 				uint startNumber = endNumber + count;
 //				cout << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber << endl;
@@ -220,15 +216,14 @@ bool PeerSession::interpret(RLP const& _r)
 		cout << std::setw(2) << m_socket.native_handle() << " | NotInChain (" << noGood << ")" << endl;
 		if (noGood != m_server->m_chain->genesisHash())
 		{
-			RLPStream s;
-			prep(s).appendList(3);
-			s << (uint)GetChain;
 			unsigned count = std::min<unsigned>(256, m_server->m_chain->details(noGood).number);
-			s.appendList(count);
+			RLPStream s;
+			prep(s).appendList(2 + count);
+			s << (uint)GetChain;
 			auto h = m_server->m_chain->details(noGood).parent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
-			s << 2048;
+			s << 256;
 			sealAndSend(s);
 		}
 		// else our peer obviously knows nothing if they're unable to give the descendents of the genesis!
