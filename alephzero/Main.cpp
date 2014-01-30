@@ -1,3 +1,4 @@
+#include <QtNetwork/QNetworkReply>
 #include <QtWidgets>
 #include <QtCore>
 #include <libethereum/Dagger.h>
@@ -20,6 +21,15 @@ Main::Main(QWidget *parent) :
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(1000);
+
+	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+	{
+		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
+	});
+	QNetworkRequest r(QUrl("http://gavwood.com/servers.txt"));
+	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
+	m_webCtrl.get(r);
+	srand(time(0));
 }
 
 Main::~Main()
@@ -119,7 +129,9 @@ void Main::on_net_toggled()
 
 void Main::on_connect_clicked()
 {
-	QString s = QInputDialog::getText(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", QLineEdit::Normal, "54.201.244.25:30303");
+	if (!ui->net->isChecked())
+		ui->net->setChecked(true);
+	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, rand() % m_servers.count(), true);
 	string host = s.section(":", 0, 0).toStdString();
 	short port = s.section(":", 1).toInt();
 	m_client.connect(host, port);
