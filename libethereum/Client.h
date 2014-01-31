@@ -60,7 +60,7 @@ public:
 	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
 	unsigned peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
-	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303, unsigned _verbosity = 0, NodeMode _mode = NodeMode::Full, unsigned _peers = 5);
+	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303, unsigned _verbosity = 4, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string());
 	void connect(std::string const& _seedHost, short _port = 30303);
 	void stopNetwork();
 

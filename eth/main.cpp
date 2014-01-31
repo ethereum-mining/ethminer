@@ -59,6 +59,7 @@ int main(int argc, char** argv)
 	unsigned verbosity = 1;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
+	string publicIP;
 
 	// Our address.
 	KeyPair us = KeyPair::create();
@@ -84,6 +85,8 @@ int main(int argc, char** argv)
 		string arg = argv[i];
 		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 			listenPort = atoi(argv[++i]);
+		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
+			publicIP = argv[++i];
 		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
@@ -185,7 +188,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers);
+		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers, publicIP);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{

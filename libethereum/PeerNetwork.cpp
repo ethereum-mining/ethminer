@@ -662,7 +662,7 @@ struct UPnP
 
 class NoNetworking: public std::exception {};
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -672,7 +672,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	m_requiredNetworkId(_networkId)
 {
 	populateAddresses();
-	determinePublic();
+	determinePublic(_publicAddress);
 	ensureAccepting();
 	if (m_verbosity)
 		cout << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full") << endl;
@@ -699,7 +699,7 @@ PeerServer::~PeerServer()
 	delete m_upnp;
 }
 
-void PeerServer::determinePublic()
+void PeerServer::determinePublic(string const& _publicAddress)
 {
 	m_upnp = new UPnP;
 	if (m_upnp->isValid() && m_peerAddresses.size())
@@ -714,9 +714,14 @@ void PeerServer::determinePublic()
 			p = m_listenPort;
 		}
 
-		auto it = r.resolve({m_upnp->externalIP(), toString(p)});
-		m_public = it->endpoint();
-		m_addresses.push_back(m_public.address().to_v4());
+		if (m_upnp->externalIP() == string("0.0.0.0") && _publicAddress.empty())
+			m_public = bi::tcp::endpoint(bi::address(), p);
+		else
+		{
+			auto it = r.resolve({_publicAddress.empty() ? m_upnp->externalIP() : _publicAddress, toString(p)});
+			m_public = it->endpoint();
+			m_addresses.push_back(m_public.address().to_v4());
+		}
 	}
 /*	int er;
 	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
@@ -762,8 +767,8 @@ void PeerServer::populateAddresses()
 std::vector<bi::tcp::endpoint> PeerServer::potentialPeers()
 {
 	std::vector<bi::tcp::endpoint> ret;
-	for (auto i: m_peerAddresses)
-		ret.push_back(bi::tcp::endpoint(i, listenPort()));
+	if (!m_public.address().is_unspecified())
+		ret.push_back(m_public);
 	for (auto i: m_peers)
 		if (auto j = i.lock())
 			ret.push_back(j->endpoint());
