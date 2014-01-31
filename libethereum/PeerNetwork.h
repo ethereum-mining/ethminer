@@ -83,7 +83,6 @@ private:
 	bool interpret(RLP const& _r);
 
 	static RLPStream& prep(RLPStream& _s);
-	static void seal(bytes& _b);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
@@ -140,6 +139,7 @@ public:
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
 	void setMode(NodeMode _m) { m_mode = _m; }
+	void setVerbosity(unsigned _i) { m_verbosity = _i; }
 
 	/// Get peer information.
 	std::vector<PeerInfo> peers() const;
@@ -154,12 +154,24 @@ public:
 	short listenPort() const { return m_acceptor.local_endpoint().port(); }
 
 private:
+	void seal(bytes& _b);
 	void populateAddresses();
-	void doAccept();
+	void ensureAccepting();
 	std::vector<bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
 	NodeMode m_mode = NodeMode::Full;
+
+	/**
+	 * 0: Quiet - just errors on stderr.
+	 * 1: Accepting/connecting/connected & one-off info.
+	 * 2: Messages summary.
+	 * 3: Messages detail.
+	 * 4: Received raw.
+	 * 5: Sent raw.
+	 * 6: Debug details.
+	 */
+	unsigned m_verbosity = 4;
 
 	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;
@@ -179,8 +191,12 @@ private:
 	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;
 
+	std::chrono::steady_clock::time_point m_lastFullProcess;
+
 	std::vector<bi::address_v4> m_addresses;
 	std::vector<bi::address_v4> m_peerAddresses;
+
+	bool m_accepting = false;
 };
 
 
