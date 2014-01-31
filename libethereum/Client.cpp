@@ -54,8 +54,7 @@ void Client::startNetwork(short _listenPort, std::string const& _seedHost, short
 {
 	if (m_net)
 		return;
-	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort);
-	m_net->setMode(_mode);
+	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode);
 	m_net->setIdealPeerCount(_peers);
 	m_net->setVerbosity(_verbosity);
 	if (_seedHost.size())

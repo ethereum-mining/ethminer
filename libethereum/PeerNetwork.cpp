@@ -74,11 +74,11 @@ bool PeerSession::interpret(RLP const& _r)
 		m_protocolVersion = _r[1].toInt<uint>();
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
-		if (m_server->m_verbosity >= 2)
-			cout << std::setw(2) << m_socket.native_handle() << " | Hello: " << clientVersion << endl;
-
 		m_caps = _r.itemCount() > 4 ? _r[4].toInt<uint>() : 0x07;
 		m_listenPort = _r.itemCount() > 5 ? _r[5].toInt<short>() : -1;
+
+		if (m_server->m_verbosity >= 2)
+			cout << std::setw(2) << m_socket.native_handle() << " | Hello: " << clientVersion << showbase << hex << m_caps << dec << endl;
 
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
@@ -662,8 +662,9 @@ struct UPnP
 
 class NoNetworking: public std::exception {};
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m):
 	m_clientVersion(_clientVersion),
+	m_mode(_m),
 	m_listenPort(_port),
 	m_chain(&_ch),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
@@ -674,7 +675,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	determinePublic();
 	ensureAccepting();
 	if (m_verbosity)
-		cout << "Genesis: " << m_chain->genesisHash() << endl;
+		cout << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full") << endl;
 }
 
 PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId):
@@ -911,6 +912,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 
 		// Send any new transactions.
 		if (fullProcess)
+		{
 			for (auto j: m_peers)
 				if (auto p = j.lock())
 				{
@@ -936,9 +938,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					p->m_requireTransactions = false;
 				}
 
-		// Send any new blocks.
-		if (fullProcess)
-		{
+			// Send any new blocks.
 			auto h = _bc.currentHash();
 			if (h != m_latestBlockSent)
 			{
@@ -958,9 +958,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					}
 			}
 			m_latestBlockSent = h;
-		}
 
-		if (fullProcess)
 			for (bool accepted = 1; accepted;)
 			{
 				accepted = 0;
@@ -987,10 +985,9 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						if (it == m_incomingBlocks.begin())
 							break;
 					}
-		}
-		// Connect to additional peers
-		if (fullProcess)
-		{
+			}
+
+			// Connect to additional peers
 			while (m_peers.size() < m_idealPeerCount)
 			{
 				if (m_incomingPeers.empty())
