@@ -23,11 +23,8 @@ FOR ALPHA:
 Network:
 * Manage GetBlocks properly; should work for when > 256 blocks away.
   - configurable (lower) mine times, configurable (reduced) max blocks to be sent then check.
-* Kill peers when too many
-  - Respect idealPeerCount.
-  - Peer network traversal for peer discovery. 
-  - Check peer utility (useful transactions & blocks passed) for when dismissing.
-  - Respect peer count & dismiss/collect/stop listening for peers as necessary.
+* Respect and handle capabilities.
+* Use GetTransactions on connect & respect it.
 
 UI:
 * State panel shouldn't show pending (i.e. post-mined) transactions.
