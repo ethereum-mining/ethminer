@@ -22,6 +22,7 @@ Main::Main(QWidget *parent) :
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(1000);
 
+#if NDEBUG
 	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
@@ -30,6 +31,9 @@ Main::Main(QWidget *parent) :
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
+#else
+	m_servers.append("192.168.0.10:30301");
+#endif
 }
 
 Main::~Main()

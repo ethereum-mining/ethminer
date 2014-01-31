@@ -189,7 +189,7 @@ int main(int argc, char** argv)
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{
-			if (c.blockChain().details().number - n > mining)
+			if (c.blockChain().details().number - n >= mining)
 				c.stopMining();
 			else
 				c.startMining();

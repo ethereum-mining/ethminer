@@ -233,7 +233,7 @@ std::ostream& eth::operator<<(std::ostream& _out, eth::RLP const& _d)
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
-		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt(RLP::LaisezFaire);
+		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt(RLP::LaisezFaire) << dec;
 	else if (_d.isString())
 		_out << eth::escaped(_d.toString(), false);
 	else if (_d.isList())

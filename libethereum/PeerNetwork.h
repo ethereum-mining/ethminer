@@ -48,7 +48,8 @@ enum PacketType
 	Transactions,
 	Blocks,
 	GetChain,
-	NotInChain
+	NotInChain,
+	GetTransactions
 };
 
 class PeerServer;
@@ -103,6 +104,7 @@ private:
 	std::chrono::steady_clock::time_point m_disconnect;
 
 	unsigned m_rating;
+	bool m_requireTransactions;
 
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
@@ -167,9 +169,9 @@ private:
 	 * 1: Accepting/connecting/connected & one-off info.
 	 * 2: Messages summary.
 	 * 3: Messages detail.
-	 * 4: Received raw.
-	 * 5: Sent raw.
 	 * 6: Debug details.
+	 * 8: Received raw.
+	 * 9: Sent raw.
 	 */
 	unsigned m_verbosity = 4;
 

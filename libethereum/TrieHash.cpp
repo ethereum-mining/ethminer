@@ -85,7 +85,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			hash256aux(_s, _begin, _end, (unsigned)sharedPre, _rlp);
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << dec << std::endl;
 #endif
 		}
 		else
@@ -111,7 +111,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 				{
 #if ENABLE_DEBUG_PRINT
 					if (g_hashDebug)
-						std::cerr << s_indent << std::hex << i << ": " << std::endl;
+						std::cerr << s_indent << std::hex << i << ": " << std::dec << std::endl;
 #endif
 					hash256aux(_s, b, n, _preLen + 1, _rlp);
 				}
@@ -124,7 +124,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << std::endl;
+				std::cerr << s_indent << "= " << hex << sha3(_rlp.out()) << dec << std::endl;
 #endif
 		}
 	}

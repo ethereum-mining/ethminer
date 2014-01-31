@@ -42,7 +42,7 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(9) << h256() << sha3EmptyList << h160() << sha3(RLPNull) << sha3EmptyList << ((uint)1 << 32) << (uint)0 << string() << (uint)0;
+	block.appendList(9) << h256() << sha3EmptyList << h160() << sha3(RLPNull) << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -109,7 +109,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return (u256)1 << 32;
+		return c_genesisDifficulty;
 	else
 		return timestamp >= _parent.timestamp + 42 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
 }

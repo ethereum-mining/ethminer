@@ -18,6 +18,10 @@ Network:
 CLI client
 - Implement CLI option "--help".
 
+General:
+- Better logging.
+  - Colours.
+  - Time/thread/channel stamp.
 
 ### GAV
 
@@ -25,9 +29,9 @@ FOR ALPHA:
 
 Network:
 * Manage GetBlocks properly; should work for when > 256 blocks away.
-  - configurable (lower) mine times, configurable (reduced) max blocks to be sent then check.
+* NotInChain will be very bad for new peers - it'll run through until the genesis.
 * Respect and handle capabilities.
-* Use GetTransactions on connect & respect it.
+* Use GetTransactions on connect & respect it. DONE
 
 UI:
 * State panel shouldn't show pending (i.e. post-mined) transactions.
