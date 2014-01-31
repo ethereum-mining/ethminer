@@ -56,6 +56,9 @@ int main(int argc, char** argv)
 	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;
+	unsigned verbosity = 1;
+	NodeMode mode = NodeMode::Full;
+	unsigned peers = 5;
 
 	// Our address.
 	KeyPair us = KeyPair::create();
@@ -79,27 +82,44 @@ int main(int argc, char** argv)
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
-		if (arg == "-l" && i + 1 < argc)
+		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 			listenPort = atoi(argv[++i]);
-		else if (arg == "-r" && i + 1 < argc)
+		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
-		else if (arg == "-p" && i + 1 < argc)
+		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
 			remotePort = atoi(argv[++i]);
-		else if (arg == "-a" && i + 1 < argc)
+		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			coinbase = h160(fromUserHex(argv[++i]));
-		else if (arg == "-s" && i + 1 < argc)
+		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromUserHex(argv[++i])));
-		else if (arg == "-i")
+		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
-		else if (arg == "-d" && i + 1 < argc)
+		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "-m" && i + 1 < argc)
+		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
 			if (string(argv[++i]) == "on")
 				mining = ~(eth::uint)0;
 			else if (string(argv[i]) == "off")
 				mining = 0;
 			else
 				mining = atoi(argv[i]);
+		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
+			verbosity = atoi(argv[++i]);
+		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
+			peers = atoi(argv[++i]);
+		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (m == "full")
+				mode = NodeMode::Full;
+			else if (m == "peer")
+				mode = NodeMode::PeerServer;
+			else
+			{
+				cerr << "Unknown mode: " << m << endl;
+				return -1;
+			}
+		}
 		else
 			remoteHost = argv[i];
 	}
@@ -165,7 +185,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		c.startNetwork(listenPort, remoteHost, remotePort);
+		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{

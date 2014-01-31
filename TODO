@@ -15,6 +15,9 @@ Network:
 - Make work with IPv6
 - Consider node addresses
 
+CLI client
+- Implement CLI option "--help".
+
 
 ### GAV
 
