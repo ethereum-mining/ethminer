@@ -100,11 +100,19 @@ private:
 	short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
 
 	std::chrono::steady_clock::time_point m_ping;
+	std::chrono::steady_clock::time_point m_connect;
+	std::chrono::steady_clock::time_point m_disconnect;
 
 	unsigned m_rating;
 
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
+};
+
+enum class NodeMode
+{
+	Full,
+	PeerServer
 };
 
 class PeerServer
@@ -129,7 +137,9 @@ public:
 	bool process(BlockChain& _bc);
 
 	/// Set ideal number of peers.
-	void setIdealPeerCount(uint _n) { m_idealPeerCount = _n; }
+	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
+
+	void setMode(NodeMode _m) { m_mode = _m; }
 
 	/// Get peer information.
 	std::vector<PeerInfo> peers() const;
@@ -149,6 +159,7 @@ private:
 	std::vector<bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
+	NodeMode m_mode = NodeMode::Full;
 
 	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;

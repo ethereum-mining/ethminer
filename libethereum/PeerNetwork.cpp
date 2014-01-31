@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 
+#include <chrono>
 #include "Common.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
@@ -35,11 +36,13 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_reqNetworkId(_rNId),
 	m_rating(0)
 {
+	m_disconnect = std::chrono::steady_clock::time_point::max();
+	m_connect = std::chrono::steady_clock::now();
 }
 
 PeerSession::~PeerSession()
 {
-	disconnect();
+	m_socket.close();
 }
 
 bi::tcp::endpoint PeerSession::endpoint() const
@@ -139,6 +142,8 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	case Transactions:
+		if (m_server->m_mode == NodeMode::PeerServer)
+			break;
 		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
 		m_rating += _r.itemCount() - 1;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -148,6 +153,8 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	case Blocks:
+		if (m_server->m_mode == NodeMode::PeerServer)
+			break;
 		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
 		m_rating += _r.itemCount() - 1;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -167,6 +174,8 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	case GetChain:
 	{
+		if (m_server->m_mode == NodeMode::PeerServer)
+			break;
 		// ********************************************************************
 		// NEEDS FULL REWRITE!
 		h256s parents;
@@ -239,6 +248,8 @@ bool PeerSession::interpret(RLP const& _r)
 	}
 	case NotInChain:
 	{
+		if (m_server->m_mode == NodeMode::PeerServer)
+			break;
 		h256 noGood = _r[1].toHash<h256>();
 		cout << std::setw(2) << m_socket.native_handle() << " | NotInChain (" << noGood << ")" << endl;
 		if (noGood != m_server->m_chain->genesisHash())
@@ -337,12 +348,19 @@ void PeerSession::dropped()
 
 void PeerSession::disconnect()
 {
-	RLPStream s;
-	prep(s);
-	s.appendList(1) << (uint)Disconnect;
-	sealAndSend(s);
-	sleep(1);
-	m_socket.close();
+	if (m_socket.is_open())
+	{
+		if (m_disconnect == chrono::steady_clock::time_point::max())
+		{
+			RLPStream s;
+			prep(s);
+			s.appendList(1) << (uint)Disconnect;
+			sealAndSend(s);
+			m_disconnect = chrono::steady_clock::now();
+		}
+		else
+			m_socket.close();
+	}
 }
 
 void PeerSession::start()
@@ -538,19 +556,17 @@ bool PeerServer::process(BlockChain& _bc)
 	bool ret = false;
 	m_ioService.poll();
 	for (auto i = m_peers.begin(); i != m_peers.end();)
-		if (auto j = i->lock())
-			if (j->m_socket.is_open())
-				++i;
-			else
-			{
-				i = m_peers.erase(i);
-				ret = true;
-			}
+	{
+		auto p = i->lock();
+		if (p && p->m_socket.is_open() &&
+				(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
+			++i;
 		else
 		{
 			i = m_peers.erase(i);
 			ret = true;
 		}
+	}
 	return ret;
 }
 
@@ -658,7 +674,6 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
 	// Connect to additional peers
-	// TODO: Need to avoid connecting to self & existing peers. Existing peers is easy, but need portable method of listing all addresses we can listen to avoid self.
 	while (m_peers.size() < m_idealPeerCount)
 	{
 		if (m_incomingPeers.empty())
@@ -678,6 +693,25 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		}
 		connect(m_incomingPeers.back());
 		m_incomingPeers.pop_back();
+	}
+
+	while (m_peers.size() > m_idealPeerCount)
+	{
+		// look for worst peer to kick off
+		// first work out how many are old enough to kick off.
+		shared_ptr<PeerSession> worst;
+		unsigned agedPeers = 0;
+		for (auto i: m_peers)
+			if (auto p = i.lock())
+				if (chrono::steady_clock::now() - p->m_connect > chrono::seconds(10))
+				{
+					++agedPeers;
+					if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// keep younger ones.
+						worst = p;
+				}
+		if (!worst || agedPeers <= m_idealPeerCount)
+			break;
+		worst->dropped();	// should really disconnect, but that's no good.
 	}
 	return ret;
 }
