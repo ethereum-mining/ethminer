@@ -101,6 +101,8 @@ private:
 
 	std::chrono::steady_clock::time_point m_ping;
 
+	unsigned m_rating;
+
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
 };
