@@ -76,7 +76,9 @@ bool PeerSession::interpret(RLP const& _r)
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | Hello: " << clientVersion << endl;
 
-		m_listenPort = _r.itemCount() > 4 ? _r[4].toInt<short>() : -1;
+		m_caps = _r.itemCount() > 4 ? _r[4].toInt<uint>() : 0x07;
+		m_listenPort = _r.itemCount() > 5 ? _r[5].toInt<short>() : -1;
+
 		if (m_protocolVersion != 0 || m_networkId != m_reqNetworkId)
 		{
 			disconnect();
@@ -448,7 +450,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << m_server->m_acceptor.local_endpoint().port();
+	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_acceptor.local_endpoint().port();
 	sealAndSend(s);
 
 	ping();
@@ -800,58 +802,63 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 							break;
 					}
 		}
+		// Connect to additional peers
+		if (fullProcess)
+		{
+			while (m_peers.size() < m_idealPeerCount)
+			{
+				if (m_incomingPeers.empty())
+				{
+					if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+					{
+						RLPStream s;
+						bytes b;
+						(PeerSession::prep(s).appendList(1) << GetPeers).swapOut(b);
+						seal(b);
+						for (auto const& i: m_peers)
+							if (auto p = i.lock())
+								p->send(&b);
+						m_lastPeersRequest = chrono::steady_clock::now();
+					}
+
+
+					if (!m_accepting)
+						ensureAccepting();
+
+					break;
+				}
+				connect(m_incomingPeers.back());
+				m_incomingPeers.pop_back();
+			}
+		}
 	}
 
 	// platform for consensus of social contract.
 	// restricts your freedom but does so fairly. and that's the value proposition.
 	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
-	// Connect to additional peers
 	if (fullProcess)
 	{
-		while (m_peers.size() < m_idealPeerCount)
-		{
-			if (m_incomingPeers.empty())
+		// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
+		for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+			while (m_peers.size() > m_idealPeerCount)
 			{
-				if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
-				{
-					RLPStream s;
-					bytes b;
-					(PeerSession::prep(s).appendList(1) << GetPeers).swapOut(b);
-					seal(b);
-					for (auto const& i: m_peers)
-						if (auto p = i.lock())
-							p->send(&b);
-					m_lastPeersRequest = chrono::steady_clock::now();
-				}
-
-
-				if (!m_accepting)
-					ensureAccepting();
-
-				break;
+				// look for worst peer to kick off
+				// first work out how many are old enough to kick off.
+				shared_ptr<PeerSession> worst;
+				unsigned agedPeers = 0;
+				for (auto i: m_peers)
+					if (auto p = i.lock())
+						if ((m_mode != NodeMode::PeerServer || p->m_caps != 0x01) && chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+						{
+							++agedPeers;
+							if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
+								worst = p;
+						}
+				if (!worst || agedPeers <= m_idealPeerCount)
+					break;
+				worst->disconnect();
 			}
-			connect(m_incomingPeers.back());
-			m_incomingPeers.pop_back();
-		}
-		while (m_peers.size() > m_idealPeerCount)
-		{
-			// look for worst peer to kick off
-			// first work out how many are old enough to kick off.
-			shared_ptr<PeerSession> worst;
-			unsigned agedPeers = 0;
-			for (auto i: m_peers)
-				if (auto p = i.lock())
-					if (chrono::steady_clock::now() > p->m_connect + chrono::seconds(10))
-					{
-						++agedPeers;
-						if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// keep younger ones.
-							worst = p;
-					}
-			if (!worst || agedPeers <= m_idealPeerCount)
-				break;
-			worst->dropped();	// should really disconnect, but that's no good.
-		}
 	}
 
 	return ret;

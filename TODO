@@ -28,16 +28,11 @@ General:
 FOR ALPHA:
 
 Network:
-* Manage GetBlocks properly; should work for when > 256 blocks away.
 * NotInChain will be very bad for new peers - it'll run through until the genesis.
-* Respect and handle capabilities.
-* Use GetTransactions on connect & respect it. DONE
+* UPnP is needed.
 
 UI:
 * State panel shouldn't show pending (i.e. post-mined) transactions.
-
-PoW:
-* Minute mine times. DONE (ish)
 
 
 ### ERIC
