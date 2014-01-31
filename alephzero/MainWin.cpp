@@ -126,7 +126,7 @@ void Main::refresh()
 void Main::on_net_toggled()
 {
 	if (ui->net->isChecked())
-		m_client.startNetwork(ui->port->value());
+		m_client.startNetwork(ui->port->value(), string(), 30303, 6);
 	else
 		m_client.stopNetwork();
 }
