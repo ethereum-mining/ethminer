@@ -75,7 +75,7 @@ public:
 
 	void ping();
 
-	bi::tcp::endpoint endpoint() const;
+	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 private:
 	void dropped();
@@ -98,6 +98,7 @@ private:
 	uint m_networkId;
 	uint m_reqNetworkId;
 	short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
+	uint m_caps;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
