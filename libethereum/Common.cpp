@@ -36,7 +36,11 @@
 using namespace std;
 using namespace eth;
 
-u256 const eth::c_genesisDifficulty = (u256)1 << 20;
+#if NDEBUG
+u256 const eth::c_genesisDifficulty = (u256)1 << 32;
+#else
+u256 const eth::c_genesisDifficulty = (u256)1 << 28;	// should be << 32
+#endif
 
 std::string eth::escaped(std::string const& _s, bool _all)
 {
