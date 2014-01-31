@@ -117,6 +117,8 @@ enum class NodeMode
 	PeerServer
 };
 
+class UPnP;
+
 class PeerServer
 {
 	friend class PeerSession;
@@ -159,6 +161,7 @@ public:
 private:
 	void seal(bytes& _b);
 	void populateAddresses();
+	void determinePublic();
 	void ensureAccepting();
 	std::vector<bi::tcp::endpoint> potentialPeers();
 
@@ -176,10 +179,15 @@ private:
 	 */
 	unsigned m_verbosity = 4;
 
+	short m_listenPort;
+
 	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;
 	bi::tcp::socket m_socket;
+
+	UPnP* m_upnp = nullptr;
+	bi::tcp::endpoint m_public;
 
 	uint m_requiredNetworkId;
 	std::vector<std::weak_ptr<PeerSession>> m_peers;
