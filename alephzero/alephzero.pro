@@ -15,10 +15,11 @@ QMAKE_LIBDIR += ../../cpp-ethereum-build/libethereum ../../secp256k1 ../../crypt
 LIBS += -Wl,-rpath,../../cpp-ethereum-build/libethereum -Wl,-rpath,../../secp256k1 -Wl,-rpath,../../cryptopp562 -lethereum -lsecp256k1 -lleveldb -lcryptopp -lgmp -lboost_filesystem -lboost_system
 INCLUDEPATH = ../../secp256k1/include ../../cryptopp562 ../../cpp-ethereum
 
-SOURCES += main.cpp\
-        Main.cpp
+SOURCES += main.cpp \
+    MainWin.cpp
 
-HEADERS  += Main.h
+HEADERS  += \
+    MainWin.h
 
 FORMS    += Main.ui
 

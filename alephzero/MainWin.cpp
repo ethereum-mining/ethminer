@@ -2,7 +2,7 @@
 #include <QtWidgets>
 #include <QtCore>
 #include <libethereum/Dagger.h>
-#include "Main.h"
+#include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace eth;
@@ -26,7 +26,7 @@ Main::Main(QWidget *parent) :
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
 	});
-	QNetworkRequest r(QUrl("http://gavwood.com/servers.txt"));
+	QNetworkRequest r(QUrl("http://ethereum.org/servers.txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -131,10 +131,14 @@ void Main::on_connect_clicked()
 {
 	if (!ui->net->isChecked())
 		ui->net->setChecked(true);
-	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, rand() % m_servers.count(), true);
-	string host = s.section(":", 0, 0).toStdString();
-	short port = s.section(":", 1).toInt();
-	m_client.connect(host, port);
+	bool ok = false;
+	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, m_servers.count() ? rand() % m_servers.count() : 0, true, &ok);
+	if (ok)
+	{
+		string host = s.section(":", 0, 0).toStdString();
+		short port = s.section(":", 1).toInt();
+		m_client.connect(host, port);
+	}
 }
 
 void Main::on_mine_toggled()

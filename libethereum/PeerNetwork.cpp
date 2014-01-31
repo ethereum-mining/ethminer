@@ -32,7 +32,8 @@ using namespace eth;
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_reqNetworkId(_rNId)
+	m_reqNetworkId(_rNId),
+	m_rating(0)
 {
 }
 
@@ -139,6 +140,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	case Transactions:
 		cout << std::setw(2) << m_socket.native_handle() << " | Transactions (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
+		m_rating += _r.itemCount() - 1;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			m_server->m_incomingTransactions.push_back(_r[i].data().toBytes());
@@ -147,6 +149,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	case Blocks:
 		cout << std::setw(2) << m_socket.native_handle() << " | Blocks (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
+		m_rating += _r.itemCount() - 1;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
