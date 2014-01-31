@@ -12,6 +12,7 @@ add_library(ethereum ${SRC_LIST})
 find_package(Threads REQUIRED)
 
 target_link_libraries(ethereum secp256k1)
+target_link_libraries(ethereum miniupnpc)
 target_link_libraries(ethereum leveldb)
 target_link_libraries(ethereum cryptopp)
 target_link_libraries(ethereum gmp)

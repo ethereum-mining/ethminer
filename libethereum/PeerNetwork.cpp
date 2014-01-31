@@ -23,6 +23,7 @@
 #include <ifaddrs.h>
 
 #include <chrono>
+#include <miniupnpc/miniupnpc.h>
 #include "Common.h"
 #include "BlockChain.h"
 #include "BlockInfo.h"
@@ -450,7 +451,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_acceptor.local_endpoint().port();
+	s.appendList(5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port();
 	sealAndSend(s);
 
 	ping();
@@ -508,16 +509,169 @@ void PeerSession::doRead()
 	});
 }
 
+#include <stdio.h>
+#include <string.h>
+
+#include <miniupnpc/miniwget.h>
+#include <miniupnpc/miniupnpc.h>
+#include <miniupnpc/upnpcommands.h>
+
+namespace eth {
+struct UPnP
+{
+	UPnP()
+	{
+		ok = false;
+
+		struct UPNPDev * devlist;
+		struct UPNPDev * dev;
+		char * descXML;
+		int descXMLsize = 0;
+		int upnperror = 0;
+		printf("TB : init_upnp()\n");
+		memset(&urls, 0, sizeof(struct UPNPUrls));
+		memset(&data, 0, sizeof(struct IGDdatas));
+		devlist = upnpDiscover(2000, NULL/*multicast interface*/, NULL/*minissdpd socket path*/, 0/*sameport*/, 0/*ipv6*/, &upnperror);
+		if (devlist)
+		{
+			dev = devlist;
+			while (dev)
+			{
+				if (strstr (dev->st, "InternetGatewayDevice"))
+					break;
+				dev = dev->pNext;
+			}
+			if (!dev)
+				dev = devlist; /* defaulting to first device */
+
+			printf("UPnP device :\n"
+				   " desc: %s\n st: %s\n",
+				   dev->descURL, dev->st);
+
+			descXML = (char*)miniwget(dev->descURL, &descXMLsize);
+			if (descXML)
+			{
+				parserootdesc (descXML, descXMLsize, &data);
+				free (descXML); descXML = 0;
+				GetUPNPUrls (&urls, &data, dev->descURL);
+				ok = true;
+			}
+			freeUPNPDevlist(devlist);
+		}
+		else
+		{
+			/* error ! */
+		}
+	}
+	~UPnP()
+	{
+		auto r = m_reg;
+		for (auto i: r)
+			removeRedirect(i);
+	}
+
+	string externalIP()
+	{
+		char addr[16];
+		UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr);
+		return addr;
+	}
+
+	int addRedirect(char const* addr, int port)
+	{
+		char port_str[16];
+		int r;
+		printf("TB : upnp_add_redir (%d)\n", port);
+		if (urls.controlURL[0] == '\0')
+		{
+			printf("TB : the init was not done !\n");
+			return -1;
+		}
+		sprintf(port_str, "%d", port);
+		r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, port_str, port_str, addr, "ethereum", "TCP", NULL, NULL);
+		if (r)
+		{
+			printf("AddPortMapping(%s, %s, %s) failed with %d. Trying non-specific external port...\n", port_str, port_str, addr, r);
+			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, port_str, NULL, addr, "ethereum", "TCP", NULL, NULL);
+		}
+		if (r)
+		{
+			printf("AddPortMapping(%s, NULL, %s) failed with %d. Trying non-specific internal port...\n", port_str, addr, r);
+			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, NULL, port_str, addr, "ethereum", "TCP", NULL, NULL);
+		}
+		if (r)
+		{
+			printf("AddPortMapping(NULL, %s, %s) failed with %d. Trying non-specific both ports...\n", port_str, addr, r);
+			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, NULL, NULL, addr, "ethereum", "TCP", NULL, NULL);
+		}
+		if (r)
+			printf("AddPortMapping(NULL, NULL, %s) failed with %d\n", addr, r);
+		else
+		{
+			unsigned num = 0;
+			UPNP_GetPortMappingNumberOfEntries(urls.controlURL, data.first.servicetype, &num);
+			for (unsigned i = 0; i < num; ++i)
+			{
+				char extPort[16];
+				char intClient[16];
+				char intPort[6];
+				char protocol[4];
+				char desc[80];
+				char enabled[4];
+				char rHost[64];
+				char duration[16];
+				UPNP_GetGenericPortMappingEntry(urls.controlURL, data.first.servicetype, toString(i).c_str(), extPort, intClient, intPort, protocol, desc, enabled, rHost, duration);
+				if (string("ethereum") == desc)
+				{
+					m_reg.insert(atoi(extPort));
+					return atoi(extPort);
+				}
+			}
+			cerr << "ERROR: Mapped port not found." << endl;
+		}
+		return -1;
+	}
+
+	void removeRedirect(int port)
+	{
+		char port_str[16];
+//		int t;
+		printf("TB : upnp_rem_redir (%d)\n", port);
+		if (urls.controlURL[0] == '\0')
+		{
+			printf("TB : the init was not done !\n");
+			return;
+		}
+		sprintf(port_str, "%d", port);
+		UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port_str, "TCP", NULL);
+		m_reg.erase(port);
+	}
+
+	bool isValid() const
+	{
+		return ok;
+	}
+
+	set<int> m_reg;
+
+	bool ok;
+	struct UPNPUrls urls;
+	struct IGDdatas data;
+};
+}
+
 class NoNetworking: public std::exception {};
 
 PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port):
 	m_clientVersion(_clientVersion),
+	m_listenPort(_port),
 	m_chain(&_ch),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
 	m_socket(m_ioService),
 	m_requiredNetworkId(_networkId)
 {
 	populateAddresses();
+	determinePublic();
 	ensureAccepting();
 	if (m_verbosity)
 		cout << "Genesis: " << m_chain->genesisHash() << endl;
@@ -525,6 +679,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 
 PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId):
 	m_clientVersion(_clientVersion),
+	m_listenPort(-1),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
 	m_requiredNetworkId(_networkId)
@@ -540,6 +695,37 @@ PeerServer::~PeerServer()
 	for (auto const& i: m_peers)
 		if (auto p = i.lock())
 			p->disconnect();
+	delete m_upnp;
+}
+
+void PeerServer::determinePublic()
+{
+	m_upnp = new UPnP;
+	if (m_upnp->isValid() && m_peerAddresses.size())
+	{
+		bi::tcp::resolver r(m_ioService);
+		cout << "external addr: " << m_upnp->externalIP() << endl;
+		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
+		if (p == -1)
+		{
+			// couldn't map
+			cerr << "*** WARNING: Couldn't punch through NAT (or no NAT in place). Using " << m_listenPort << endl;
+			p = m_listenPort;
+		}
+
+		auto it = r.resolve({m_upnp->externalIP(), toString(p)});
+		m_public = it->endpoint();
+		m_addresses.push_back(m_public.address().to_v4());
+	}
+/*	int er;
+	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
+	for (UPNPDev* d = dlist; d; d = dlist->pNext)
+	{
+		IGDdatas data;
+		parserootdesc(d->descURL, 0, &data);
+		data.presentationurl()
+	}
+	freeUPNPDevlist(dlist);*/
 }
 
 void PeerServer::populateAddresses()
@@ -588,7 +774,7 @@ void PeerServer::ensureAccepting()
 	if (m_accepting == false)
 	{
 		if (m_verbosity >= 1)
-			cout << "Listening on port " << m_acceptor.local_endpoint().port() << endl;
+			cout << "Listening on local port " << m_listenPort << " (public: " << m_public << ")" << endl;
 		m_accepting = true;
 		m_acceptor.async_accept(m_socket, [&](boost::system::error_code ec)
 		{
