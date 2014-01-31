@@ -61,6 +61,8 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
+extern const u256 c_genesisDifficulty;
+
 template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
 template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
@@ -113,6 +115,7 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 	_out << std::noshowbase << std::hex << std::setfill('0');
 	for (unsigned i = 0; i < N; ++i)
 		_out << std::setw(2) << (int)_h[i];
+	_out << std::dec;
 	return _out;
 }
 

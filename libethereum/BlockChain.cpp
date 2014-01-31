@@ -85,7 +85,7 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, (u256)1 << 32, h256(), {});
+		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
 	}
@@ -96,6 +96,8 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	std::string l;
 	m_detailsDB->Get(m_readOptions, ldb::Slice("best"), &l);
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
+
+	cout << "Opened blockchain db. Latest: " << m_lastBlockHash << endl;
 }
 
 BlockChain::~BlockChain()

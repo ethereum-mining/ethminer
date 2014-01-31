@@ -25,10 +25,15 @@
 #include <chrono>
 #include "Common.h"
 #include "BlockChain.h"
+#include "BlockInfo.h"
 #include "TransactionQueue.h"
 #include "PeerNetwork.h"
 using namespace std;
 using namespace eth;
+
+static const eth::uint c_maxHashes = 4;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 4;		///< Maximum number of blocks Blocks will ever send.
+static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_server(_s),
@@ -47,14 +52,19 @@ PeerSession::~PeerSession()
 
 bi::tcp::endpoint PeerSession::endpoint() const
 {
-	return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_listenPort);
+	if (m_socket.is_open())
+		try {
+			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_listenPort);
+		} catch (...){}
+
+	return bi::tcp::endpoint();
 }
 
 // TODO: BUG! 256 -> work out why things start to break with big packet sizes -> g.t. ~370 blocks.
 
 bool PeerSession::interpret(RLP const& _r)
 {
-	if (m_server->m_verbosity >= 4)
+	if (m_server->m_verbosity >= 8)
 		cout << ">>> " << _r << endl;
 	switch (_r[0].toInt<unsigned>())
 	{
@@ -82,14 +92,18 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
-			unsigned count = std::min<unsigned>(256, m_server->m_chain->details(m_server->m_latestBlockSent).number);
+			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << (uint)GetChain;
-			auto h = m_server->m_chain->details(m_server->m_latestBlockSent).parent;
+			auto h = m_server->m_latestBlockSent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
-			s << 256;
+			s << c_maxBlocksAsk;
+			sealAndSend(s);
+			s.clear();
+			prep(s).appendList(1);
+			s << GetTransactions;
 			sealAndSend(s);
 		}
 		break;
@@ -150,6 +164,9 @@ bool PeerSession::interpret(RLP const& _r)
 				if (shared_ptr<PeerSession> p = i.lock())
 					if (p->m_socket.is_open() && p->endpoint() == ep)
 						goto CONTINUE;
+			for (auto i: m_server->m_incomingPeers)
+				if (i == ep)
+					goto CONTINUE;
 			m_server->m_incomingPeers.push_back(ep);
 			if (m_server->m_verbosity >= 3)
 				cout << "New peer: " << ep << endl;
@@ -179,13 +196,23 @@ bool PeerSession::interpret(RLP const& _r)
 			m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
 			m_knownBlocks.insert(sha3(_r[i].data()));
 		}
-		if (_r[1].itemCount())	// we received some - check if there's any more
+		if (m_server->m_verbosity >= 3)
+			for (unsigned i = 1; i < _r.itemCount(); ++i)
+			{
+				auto h = sha3(_r[i].data());
+				BlockInfo bi(_r[i].data());
+				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
+					cerr << "*** Unknown parent " << bi.parentHash << " of block " << h << endl;
+				else
+					cerr << "--- Known parent " << bi.parentHash << " of block " << h << endl;
+			}
+		if (_r.itemCount() > 1)	// we received some - check if there's any more
 		{
 			RLPStream s;
 			prep(s).appendList(3);
 			s << (uint)GetChain;
-			s << sha3(_r[1][0].data());
-			s << 256;
+			s << sha3(_r[1].data());
+			s << c_maxBlocksAsk;
 			sealAndSend(s);
 		}
 		break;
@@ -199,10 +226,12 @@ bool PeerSession::interpret(RLP const& _r)
 		parents.reserve(_r.itemCount() - 2);
 		for (unsigned i = 1; i < _r.itemCount() - 1; ++i)
 			parents.push_back(_r[i].toHash<h256>());
+		if (m_server->m_verbosity >= 2)
+			cout << std::setw(2) << m_socket.native_handle() << " | GetChain (" << (_r.itemCount() - 2) << " hashes, " << (_r[_r.itemCount() - 1].toInt<bigint>()) << ")" << endl;
 		if (_r.itemCount() == 2)
 			break;
 		// return 2048 block max.
-		uint baseCount = (uint)min<bigint>(_r[_r.itemCount() - 1].toInt<bigint>(), 256);
+		uint baseCount = (uint)min<bigint>(_r[_r.itemCount() - 1].toInt<bigint>(), c_maxBlocks);
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | GetChain (" << baseCount << " max, from " << parents.front() << " to " << parents.back() << ")" << endl;
 		for (auto parent: parents)
@@ -218,31 +247,32 @@ bool PeerSession::interpret(RLP const& _r)
 				latestNumber = m_server->m_chain->details(latest).number;
 				parentNumber = m_server->m_chain->details(parent).number;
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
-//				cout << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber << endl;
-//				cout << latest << " - " << parent << endl;
+				if (m_server->m_verbosity >= 6)
+					cout << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber << endl
+					<< latest << " - " << parent << endl;
 
 				prep(s);
 				s.appendList(1 + count) << (uint)Blocks;
 				uint endNumber = m_server->m_chain->details(parent).number;
 				uint startNumber = endNumber + count;
-//				cout << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber << endl;
+				if (m_server->m_verbosity >= 6)
+					cout << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber << endl;
 
 				uint n = latestNumber;
 				for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
 				for (uint i = 0; h != parent && n > endNumber && i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
 				{
-//					cout << "   " << dec << i << " " << h << endl;
+					if (m_server->m_verbosity >= 6)
+						cout << "   " << dec << i << " " << h << endl;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
-//				cout << "Parent: " << h << endl;
+				if (m_server->m_verbosity >= 6)
+					cout << "Parent: " << h << endl;
 			}
 			else if (parent != parents.back())
 				continue;
 
-			if (h == parent)
-			{
-			}
-			else
+			if (h != parent)
 			{
 				// not in the blockchain;
 				if (parent == parents.back())
@@ -272,19 +302,31 @@ bool PeerSession::interpret(RLP const& _r)
 		h256 noGood = _r[1].toHash<h256>();
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | NotInChain (" << noGood << ")" << endl;
-		if (noGood != m_server->m_chain->genesisHash())
+		if (noGood == m_server->m_chain->genesisHash())
 		{
-			unsigned count = std::min<unsigned>(256, m_server->m_chain->details(noGood).number);
+			if (m_server->m_verbosity)
+				cout << std::setw(2) << m_socket.native_handle() << " | Discordance over genesis block! Disconnect." << endl;
+			disconnect();
+		}
+		else
+		{
+			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(noGood).number);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << (uint)GetChain;
 			auto h = m_server->m_chain->details(noGood).parent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
-			s << 256;
+			s << c_maxBlocksAsk;
 			sealAndSend(s);
 		}
-		// else our peer obviously knows nothing if they're unable to give the descendents of the genesis!
+		break;
+	}
+	case GetTransactions:
+	{
+		if (m_server->m_mode == NodeMode::PeerServer)
+			break;
+		m_requireTransactions = true;
 		break;
 	}
 	default:
@@ -307,7 +349,7 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 
 void PeerServer::seal(bytes& _b)
 {
-	if (m_verbosity >= 5)
+	if (m_verbosity >= 9)
 		cout << "<<< " << RLP(bytesConstRef(&_b).cropped(8)) << endl;
 	_b[0] = 0x22;
 	_b[1] = 0x40;
@@ -361,7 +403,9 @@ void PeerSession::dropped()
 	if (m_server->m_verbosity >= 1)
 	{
 		if (m_socket.is_open())
-			cout << "Closing " << m_socket.remote_endpoint() << endl;
+			try {
+				cout << "Closing " << m_socket.remote_endpoint() << endl;
+			}catch (...){}
 	}
 	m_socket.close();
 	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
@@ -389,7 +433,9 @@ void PeerSession::disconnect()
 			if (m_server->m_verbosity >= 1)
 			{
 				if (m_socket.is_open())
-					cout << "Closing " << m_socket.remote_endpoint() << endl;
+					try {
+						cout << "Closing " << m_socket.remote_endpoint() << endl;
+					} catch (...){}
 				else
 					cout << "Remote closed on" << m_socket.native_handle() << endl;
 			}
@@ -428,7 +474,7 @@ void PeerSession::doRead()
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 					{
 						if (m_server->m_verbosity)
-							cerr << std::setw(2) << m_socket.native_handle() << " | Out of alignment. Skipping: " << hex << showbase << (int)m_incoming[0] << endl;
+							cerr << std::setw(2) << m_socket.native_handle() << " | Out of alignment. Skipping: " << hex << showbase << (int)m_incoming[0] << dec << endl;
 						memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
 						m_incoming.resize(m_incoming.size() - 1);
 					}
@@ -471,6 +517,8 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 {
 	populateAddresses();
 	ensureAccepting();
+	if (m_verbosity)
+		cout << "Genesis: " << m_chain->genesisHash() << endl;
 }
 
 PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId):
@@ -481,6 +529,8 @@ PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId):
 {
 	// populate addresses.
 	populateAddresses();
+	if (m_verbosity)
+		cout << "Genesis: " << m_chain->genesisHash() << endl;
 }
 
 PeerServer::~PeerServer()
@@ -544,7 +594,9 @@ void PeerServer::ensureAccepting()
 				try
 				{
 					if (m_verbosity >= 1)
-						cout << "Accepted connection from " << m_socket.remote_endpoint() << std::endl;
+						try {
+							cout << "Accepted connection from " << m_socket.remote_endpoint() << std::endl;
+						} catch (...){}
 					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId);
 					m_peers.push_back(p);
 					p->start();
@@ -644,6 +696,9 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	{
 		// First time - just initialise.
 		m_latestBlockSent = _bc.currentHash();
+		if (m_verbosity)
+			cout << "Initialising: latest=" << m_latestBlockSent << endl;
+
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
 		m_lastPeersRequest = chrono::steady_clock::time_point::min();
@@ -657,90 +712,94 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	if (process(_bc))
 		ret = true;
 
-	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-		if (_tq.import(*it))
-			ret = true;
-		else
-			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-	m_incomingTransactions.clear();
-
-	// Send any new transactions.
-	if (fullProcess)
-		for (auto j: m_peers)
-			if (auto p = j.lock())
-			{
-				bytes b;
-				uint n = 0;
-				for (auto const& i: _tq.transactions())
-					if (!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first))
-					{
-						b += i.second;
-						++n;
-						m_transactionsSent.insert(i.first);
-					}
-				if (n)
-				{
-					RLPStream ts;
-					PeerSession::prep(ts);
-					ts.appendList(2) << Transactions;
-					ts.appendList(n).appendRaw(b).swapOut(b);
-					seal(b);
-					p->send(&b);
-				}
-				p->m_knownTransactions.clear();
-			}
-
-	// Send any new blocks.
-	if (fullProcess)
+	if (m_mode == NodeMode::Full)
 	{
-		auto h = _bc.currentHash();
-		if (h != m_latestBlockSent)
-		{
-			// TODO: find where they diverge and send complete new branch.
-			RLPStream ts;
-			PeerSession::prep(ts);
-			ts.appendList(2) << Blocks;
-			bytes b;
-			ts.appendList(1).appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
-			seal(b);
+		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
+			if (_tq.import(*it))
+				ret = true;
+			else
+				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
+		m_incomingTransactions.clear();
+
+		// Send any new transactions.
+		if (fullProcess)
 			for (auto j: m_peers)
 				if (auto p = j.lock())
 				{
-					if (!p->m_knownBlocks.count(_bc.currentHash()))
+					bytes b;
+					uint n = 0;
+					for (auto const& i: _tq.transactions())
+						if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+						{
+							b += i.second;
+							++n;
+							m_transactionsSent.insert(i.first);
+						}
+					if (n)
+					{
+						RLPStream ts;
+						PeerSession::prep(ts);
+						ts.appendList(n + 1) << Transactions;
+						ts.appendRaw(b).swapOut(b);
+						seal(b);
 						p->send(&b);
-					p->m_knownBlocks.clear();
+					}
+					p->m_knownTransactions.clear();
+					p->m_requireTransactions = false;
 				}
-		}
-		m_latestBlockSent = h;
-	}
 
-	if (fullProcess)
-		for (bool accepted = 1; accepted;)
+		// Send any new blocks.
+		if (fullProcess)
 		{
-			accepted = 0;
-			if (m_incomingBlocks.size())
-				for (auto it = prev(m_incomingBlocks.end());; --it)
-				{
-					try
+			auto h = _bc.currentHash();
+			if (h != m_latestBlockSent)
+			{
+				// TODO: find where they diverge and send complete new branch.
+				RLPStream ts;
+				PeerSession::prep(ts);
+				ts.appendList(2) << Blocks;
+				bytes b;
+				ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
+				seal(b);
+				for (auto j: m_peers)
+					if (auto p = j.lock())
 					{
-						_bc.import(*it, _o);
-						it = m_incomingBlocks.erase(it);
-						++accepted;
-						ret = true;
+						if (!p->m_knownBlocks.count(_bc.currentHash()))
+							p->send(&b);
+						p->m_knownBlocks.clear();
 					}
-					catch (UnknownParent)
-					{
-						// Don't (yet) know its parent. Leave it for later.
-					}
-					catch (...)
-					{
-						// Some other error - erase it.
-						it = m_incomingBlocks.erase(it);
-					}
+			}
+			m_latestBlockSent = h;
+		}
 
-					if (it == m_incomingBlocks.begin())
-						break;
-				}
+		if (fullProcess)
+			for (bool accepted = 1; accepted;)
+			{
+				accepted = 0;
+				if (m_incomingBlocks.size())
+					for (auto it = prev(m_incomingBlocks.end());; --it)
+					{
+						try
+						{
+							_bc.import(*it, _o);
+							it = m_incomingBlocks.erase(it);
+							++accepted;
+							ret = true;
+						}
+						catch (UnknownParent)
+						{
+							// Don't (yet) know its parent. Leave it for later.
+						}
+						catch (...)
+						{
+							// Some other error - erase it.
+							it = m_incomingBlocks.erase(it);
+						}
+
+						if (it == m_incomingBlocks.begin())
+							break;
+					}
+		}
 	}
 
 	// platform for consensus of social contract.

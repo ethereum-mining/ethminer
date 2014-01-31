@@ -58,7 +58,7 @@ struct NibbleSlice
 inline std::ostream& operator<<(std::ostream& _out, NibbleSlice const& _m)
 {
 	for (uint i = 0; i < _m.size(); ++i)
-		_out << std::hex << (int)_m[i];
+		_out << std::hex << (int)_m[i] << std::dec;
 	return _out;
 }
 
