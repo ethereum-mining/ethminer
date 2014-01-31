@@ -156,7 +156,7 @@ public:
 	void pingAll();
 
 	/// Get the port we're listening on currently.
-	short listenPort() const { return m_acceptor.local_endpoint().port(); }
+	short listenPort() const { return m_public.port(); }
 
 private:
 	void seal(bytes& _b);
