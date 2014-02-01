@@ -42,7 +42,7 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(9) << h256() << sha3EmptyList << h160() << sha3(RLPNull) << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)0;
+	block.appendList(9) << h256() << sha3EmptyList << h160() << h256() << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
