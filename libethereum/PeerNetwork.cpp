@@ -794,7 +794,7 @@ void PeerServer::ensureAccepting()
 		if (m_verbosity >= 1)
 			cout << "Listening on local port " << m_listenPort << " (public: " << m_public << ")" << endl;
 		m_accepting = true;
-		m_acceptor.async_accept(m_socket, [&](boost::system::error_code ec)
+		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
 		{
 			if (!ec)
 				try
@@ -820,52 +820,28 @@ void PeerServer::ensureAccepting()
 	}
 }
 
-bool PeerServer::connect(string const& _addr, uint _port)
+void PeerServer::connect(bi::tcp::endpoint const& _ep)
 {
-	bi::tcp::resolver resolver(m_ioService);
-	if (m_verbosity >= 1)
-		cout << "Attempting connection to " << _addr << ":" << dec << _port << endl;
-	try
-	{
-		bi::tcp::socket s(m_ioService);
-		boost::asio::connect(s, resolver.resolve({ _addr, toString(_port) }));
-		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
-		m_peers.push_back(p);
-		if (m_verbosity >= 1)
-			cout << "Connected." << endl;
-		p->start();
-		return true;
-	}
-	catch (exception& _e)
-	{
-		if (m_verbosity >= 1)
-			cout << "Connection refused (" << _e.what() << ")" << endl;
-		return false;
-	}
-}
-
-bool PeerServer::connect(bi::tcp::endpoint _ep)
-{
-	bi::tcp::resolver resolver(m_ioService);
 	if (m_verbosity >= 1)
 		cout << "Attempting connection to " << _ep << endl;
-	try
+	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
-		bi::tcp::socket s(m_ioService);
-		boost::asio::connect(s, resolver.resolve(_ep));
-		auto p = make_shared<PeerSession>(this, std::move(s), m_requiredNetworkId);
-		m_peers.push_back(p);
-		if (m_verbosity >= 1)
-			cout << "Connected." << endl;
-		p->start();
-		return true;
-	}
-	catch (exception& _e)
-	{
-		if (m_verbosity >= 1)
-			cout << "Connection refused (" << _e.what() << ")" << endl;
-		return false;
-	}
+		if (ec)
+		{
+			if (m_verbosity >= 1)
+				cout << "Connection refused to " << _ep << " (" << ec.message() << ")" << endl;
+		}
+		else
+		{
+			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId);
+			m_peers.push_back(p);
+			if (m_verbosity >= 1)
+				cout << "Connected to " << p->endpoint() << endl;
+			p->start();
+		}
+		delete s;
+	});
 }
 
 bool PeerServer::process(BlockChain& _bc)
