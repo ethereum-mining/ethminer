@@ -555,13 +555,20 @@ struct UPnP
 			printf("UPnP device :\n"
 				   " desc: %s\n st: %s\n",
 				   dev->descURL, dev->st);
-
+#if MINIUPNPC_API_VERSION >= 9
+			descXML = (char*)miniwget(dev->descURL, &descXMLsize, 0);
+#else
 			descXML = (char*)miniwget(dev->descURL, &descXMLsize);
+#endif
 			if (descXML)
 			{
 				parserootdesc (descXML, descXMLsize, &data);
 				free (descXML); descXML = 0;
+#if MINIUPNPC_API_VERSION >= 9
+				GetUPNPUrls (&urls, &data, dev->descURL, 0);
+#else
 				GetUPNPUrls (&urls, &data, dev->descURL);
+#endif
 				ok = true;
 			}
 			freeUPNPDevlist(devlist);
