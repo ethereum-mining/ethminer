@@ -94,6 +94,8 @@ private:
 #pragma warning(disable:4100) // disable warnings so it compiles
 #endif
 
+extern const h256 c_shaNull;
+
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
  * This version uses an LDB backend
@@ -111,7 +113,7 @@ public:
 	void init();
 	void setRoot(h256 _root) { m_root = _root; }
 
-	h256 root() const { return m_root; }
+	h256 root() const { return m_root == c_shaNull ? h256() : m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
