@@ -131,8 +131,8 @@ public:
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
-	bool connect(std::string const& _addr = "127.0.0.1", uint _port = 30303);
-	bool connect(bi::tcp::endpoint _ep);
+	void connect(std::string const& _addr, uint _port = 30303) { connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port)); }
+	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	/// Conduct I/O, polling, syncing, whatever.
