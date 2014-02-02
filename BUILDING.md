@@ -13,7 +13,7 @@ A decent C++11 compiler (I use GNU GCC 4.8.1). CMake, version 2.8 or greater.
 
 On Ubuntu:
 
-	sudo apt-get install libgmp3-dev libcrypto++-dev libssl-dev libboost-all-dev cmake libleveldb-dev
+	sudo apt-get install libgmp3-dev libcrypto++-dev libssl-dev libboost-all-dev cmake libleveldb-dev  libminiupnpc-dev
 
 ## Building
 
