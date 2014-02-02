@@ -103,8 +103,8 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 		TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 		map<u256, u256>& mem = it->second.takeMemory();
 		for (auto const& i: memdb)
-			if(mem.find(i.first)==mem.end())
-				mem.insert(std::pair<u256,u256>(i.first,RLP(i.second).toInt<u256>()));
+			if (mem.find(i.first) == mem.end())
+				mem.insert(make_pair(i.first, RLP(i.second).toInt<u256>()));
 			else
 				mem.at(i.first) = RLP(i.second).toInt<u256>();
 	}
@@ -568,8 +568,8 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		m_cache[newAddress] = AddressState(0, 0, sha3(RLPNull));
 		auto& mem = m_cache[newAddress].takeMemory();
 		for (uint i = 0; i < _t.data.size(); ++i)
-			if(mem.find(i)==mem.end())
-				mem.insert(std::pair<u256,u256>(i,_t.data[i]));
+			if (mem.find(i) == mem.end())
+				mem.insert(make_pair(i, _t.data[i]));
 			else
 				mem.at(i) = _t.data[i];
         
@@ -607,14 +607,16 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 	};
 	auto setMem = [&](u256 _n, u256 _v)
 	{
-		if (_v) {
-			if(myMemory.find(_n)==myMemory.end())
-				myMemory.insert(std::pair<u256,u256>(_n,_v));
+		if (_v)
+		{
+			auto it = myMemory.find(_n);
+			if (it == myMemory.end())
+				myMemory.insert(make_pair(_n, _v));
 			else
 				myMemory.at(_n) = _v;
-		} else {
-			myMemory.erase(_n);
 		}
+		else
+			myMemory.erase(_n);
 	};
 
 	u256 curPC = 0;

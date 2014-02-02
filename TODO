@@ -29,7 +29,7 @@ FOR ALPHA:
 
 Network:
 * NotInChain will be very bad for new peers - it'll run through until the genesis.
-* UPnP is needed.
+  - Check how many it has first.
 
 UI:
 * State panel shouldn't show pending (i.e. post-mined) transactions.
