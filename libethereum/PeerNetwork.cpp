@@ -959,7 +959,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 			m_latestBlockSent = h;
 
-			for (bool accepted = 1; accepted;)
+			for (int accepted = 1; accepted;)
 			{
 				accepted = 0;
 				if (m_incomingBlocks.size())
