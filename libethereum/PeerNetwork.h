@@ -117,7 +117,7 @@ enum class NodeMode
 	PeerServer
 };
 
-class UPnP;
+struct UPnP;
 
 class PeerServer
 {

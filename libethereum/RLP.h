@@ -169,7 +169,7 @@ public:
 	/// Converts to bytearray. @returns the empty byte array if not a string.
 	bytes toBytes() const { if (!isString()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytesConstRef toBytesConstRef() const { if (!isString()) return bytesConstRef(); payload().cropped(0, items()); }
+	bytesConstRef toBytesConstRef() const { if (!isString()) return bytesConstRef(); return payload().cropped(0, items()); }
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
