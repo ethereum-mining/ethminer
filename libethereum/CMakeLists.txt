@@ -3,9 +3,6 @@ cmake_policy(SET CMP0015 NEW)
 include_directories(../../secp256k1/include)
 link_directories(../../secp256k1)
 
-include_directories(../../cryptopp562)
-link_directories(../../cryptopp562)
-
 aux_source_directory(. SRC_LIST)
 add_library(ethereum ${SRC_LIST})
 
