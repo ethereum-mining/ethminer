@@ -105,15 +105,15 @@ class GenericTrieDB
 {
 public:
 	GenericTrieDB(DB* _db): m_db(_db) {}
-	GenericTrieDB(DB* _db, h256 _root): m_root(_root), m_db(_db) {}
+	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
-	void open(DB* _db, h256 _root) { m_root = _root; m_db = _db; }
+	void open(DB* _db, h256 _root) { setRoot(_root); m_db = _db; assert(node(m_root).size()); }
 
 	void init();
-	void setRoot(h256 _root) { m_root = _root; }
+	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ assert(node(m_root).size()); }
 
-	h256 root() const { return m_root == c_shaNull ? h256() : m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -396,11 +396,14 @@ namespace eth
 template <class DB> void GenericTrieDB<DB>::init()
 {
 	m_root = insertNode(&RLPNull);
+//	std::cout << "Initialised root to " << m_root << std::endl;
+	assert(node(m_root).size());
 }
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
 	std::string rv = node(m_root);
+	assert(rv.size());
 	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
 
 	// mergeAt won't attempt to delete the node is it's less than 32 bytes
