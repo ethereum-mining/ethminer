@@ -456,7 +456,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 	// We will take care to ensure that (our reference to) _orig is killed.
 
 	// Empty - just insert here
-	if (_orig.isEmpty())
+	if (_orig.isEmpty() || _orig.isNull())
 		return place(_orig, _k, _v);
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
@@ -665,7 +665,7 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 //	::operator<<(std::cout << "place ", _orig) << ", " << _k << ", " << _s.toString() << std::endl;
 
 	killNode(_orig);
-	if (_orig.isEmpty())
+	if (_orig.isEmpty() || _orig.isNull())
 		return RLPStream(2).appendString(hexPrefixEncode(_k, true)).appendString(_s).out();
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
