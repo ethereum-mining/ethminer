@@ -27,6 +27,6 @@ using namespace eth;
 namespace eth
 {
 
-const h256 c_shaNull = sha3("");
+const h256 c_shaNull = sha3(rlp(""));
 
 }
