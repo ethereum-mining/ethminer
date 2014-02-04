@@ -42,6 +42,15 @@ template <> struct intTraits<u160> { static const uint maxSize = 20; };
 template <> struct intTraits<u256> { static const uint maxSize = 32; };
 template <> struct intTraits<bigint> { static const uint maxSize = ~(uint)0; };
 
+static const byte c_rlpMaxLengthBytes = 8;
+static const byte c_rlpDataImmLenStart = 0x80;
+static const byte c_rlpListStart = 0xc0;
+
+static const byte c_rlpDataImmLenCount = c_rlpListStart - c_rlpDataImmLenStart - c_rlpMaxLengthBytes;
+static const byte c_rlpDataIndLenZero = c_rlpDataImmLenStart + c_rlpDataImmLenCount - 1;
+static const byte c_rlpListImmLenCount = 256 - c_rlpListStart - c_rlpMaxLengthBytes;
+static const byte c_rlpListIndLenZero = c_rlpListStart + c_rlpListImmLenCount - 1;
+
 /**
  * @brief Class for interpreting Recursive Linear-Prefix Data.
  * @by Gav Wood, 2013
@@ -68,6 +77,7 @@ public:
 	/// Construct a node to read RLP data in the string.
 	explicit RLP(std::string const& _s): m_data(bytesConstRef((byte const*)_s.data(), _s.size())) {}
 
+	/// The bare data of the RLP.
 	bytesConstRef data() const { return m_data; }
 
 	/// @returns true if the RLP is non-null.
@@ -77,49 +87,38 @@ public:
 	bool isNull() const { return m_data.size() == 0; }
 
 	/// Contains a zero-length string or zero-length list.
-	bool isEmpty() const { return !isNull() && (m_data[0] == 0x40 || m_data[0] == 0x80); }
+	bool isEmpty() const { return !isNull() && (m_data[0] == c_rlpDataImmLenStart || m_data[0] == c_rlpListStart); }
 
 	/// String value.
-	bool isString() const { return !isNull() && m_data[0] >= 0x40 && m_data[0] < 0x80; }
+	bool isData() const { return !isNull() && m_data[0] < c_rlpListStart; }
 
 	/// List value.
-	bool isList() const { return !isNull() && m_data[0] >= 0x80 && m_data[0] < 0xc0; }
+	bool isList() const { return !isNull() && m_data[0] >= c_rlpListStart; }
 
-	/// Integer value. Either isSlimInt(), isFatInt() or isBigInt().
-	bool isInt() const { return !isNull() && m_data[0] < 0x40; }
-
-	/// Fits into eth::uint type. Can use toSlimInt() to read (as well as toFatInt() or toBigInt() ).
-	bool isSlimInt() const { return !isNull() && m_data[0] < 0x20; }
-
-	/// Fits into eth::u256 or eth::bigint type. Use only toFatInt() or toBigInt() to read.
-	bool isFatInt() const { return !isNull() && m_data[0] >= 0x20 && m_data[0] < 0x38; }
-
-	/// Fits into eth::u256 type, though might fit into eth::uint type.
-	bool isFixedInt() const { return !isNull() && m_data[0] < 0x38; }
-
-	/// Fits only into eth::bigint type. Use only toBigInt() to read.
-	bool isBigInt() const { return !isNull() && m_data[0] >= 0x38 && m_data[0] < 0x40; }
+	/// Integer value. Must not have a leading zero.
+	bool isInt() const;
 
 	/// @returns the number of items in the list, or zero if it isn't a list.
 	uint itemCount() const { return isList() ? items() : 0; }
 	uint itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
 
-	/// @returns the number of characters in the string, or zero if it isn't a string.
-	uint stringSize() const { return isString() ? items() : 0; }
+	/// @returns the number of bytes in the data, or zero if it isn't data.
+	uint size() const { return isData() ? items() : 0; }
+	uint sizeStrict() const { if (!isData()) throw BadCast(); return items(); }
 
 	/// Equality operators; does best-effort conversion and checks for equality.
-	bool operator==(char const* _s) const { return isString() && toString() == _s; }
-	bool operator!=(char const* _s) const { return isString() && toString() != _s; }
-	bool operator==(std::string const& _s) const { return isString() && toString() == _s; }
-	bool operator!=(std::string const& _s) const { return isString() && toString() != _s; }
-	template <unsigned _N> bool operator==(FixedHash<_N> const& _h) const { return isString() && toHash<_N>() == _h; }
-	template <unsigned _N> bool operator!=(FixedHash<_N> const& _s) const { return isString() && toHash<_N>() != _s; }
-	bool operator==(uint const& _i) const { return (isInt() || isString()) && toSlimInt() == _i; }
-	bool operator!=(uint const& _i) const { return (isInt() || isString()) && toSlimInt() != _i; }
-	bool operator==(u256 const& _i) const { return (isInt() || isString()) && toFatInt() == _i; }
-	bool operator!=(u256 const& _i) const { return (isInt() || isString()) && toFatInt() != _i; }
-	bool operator==(bigint const& _i) const { return (isInt() || isString()) && toBigInt() == _i; }
-	bool operator!=(bigint const& _i) const { return (isInt() || isString()) && toBigInt() != _i; }
+	bool operator==(char const* _s) const { return isData() && toString() == _s; }
+	bool operator!=(char const* _s) const { return isData() && toString() != _s; }
+	bool operator==(std::string const& _s) const { return isData() && toString() == _s; }
+	bool operator!=(std::string const& _s) const { return isData() && toString() != _s; }
+	template <unsigned _N> bool operator==(FixedHash<_N> const& _h) const { return isData() && toHash<_N>() == _h; }
+	template <unsigned _N> bool operator!=(FixedHash<_N> const& _s) const { return isData() && toHash<_N>() != _s; }
+	bool operator==(uint const& _i) const { return isInt() && toInt<uint>() == _i; }
+	bool operator!=(uint const& _i) const { return isInt() && toInt<uint>() != _i; }
+	bool operator==(u256 const& _i) const { return isInt() && toInt<u256>() == _i; }
+	bool operator!=(u256 const& _i) const { return isInt() && toInt<u256>() != _i; }
+	bool operator==(bigint const& _i) const { return isInt() && toInt<bigint>() == _i; }
+	bool operator!=(bigint const& _i) const { return isInt() && toInt<bigint>() != _i; }
 
 	/// Subscript operator.
 	/// @returns the list item @a _i if isList() and @a _i < listItems(), or RLP() otherwise.
@@ -167,13 +166,13 @@ public:
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytes toBytes() const { if (!isString()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
+	bytes toBytes() const { if (!isData()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytesConstRef toBytesConstRef() const { if (!isString()) return bytesConstRef(); return payload().cropped(0, items()); }
+	bytesConstRef toBytesConstRef() const { if (!isData()) return bytesConstRef(); return payload().cropped(0, items()); }
 	/// Converts to string. @returns the empty string if not a string.
-	std::string toString() const { if (!isString()) return std::string(); return payload().cropped(0, items()).toString(); }
+	std::string toString() const { if (!isData()) return std::string(); return payload().cropped(0, items()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
-	std::string toStringStrict() const { if (!isString()) throw BadCast(); return payload().cropped(0, items()).toString(); }
+	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, items()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
 	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
@@ -181,47 +180,37 @@ public:
 	/// Int conversion flags
 	enum
 	{
-		AllowString = 1,
-		AllowInt = 2,
+		AllowNonCanon = 1,
 		ThrowOnFail = 4,
 		FailIfTooBig = 8,
-		Strict = AllowString | AllowInt | ThrowOnFail | FailIfTooBig,
-		StrictlyString = AllowString | ThrowOnFail | FailIfTooBig,
-		StrictlyInt = AllowInt | ThrowOnFail | FailIfTooBig,
-		LaisezFaire = AllowString | AllowInt
+		Strict = ThrowOnFail | FailIfTooBig,
+		LaisezFaire = AllowNonCanon
 	};
 
 	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
 	template <class _T = uint> _T toInt(int _flags = Strict) const
 	{
-		if ((isString() && !(_flags & AllowString)) || (isInt() && !(_flags & AllowInt)) || isList() || isNull())
+		if ((!isInt() && !(_flags & AllowNonCanon)) || isList() || isNull())
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else
 				return 0;
 		else {}
 
-		if (isDirectValueInt())
-			return m_data[0];
-
-		auto s = isInt() ? intSize() - lengthSize() : isString() ? items() : 0;
-		if (s > intTraits<_T>::maxSize && (_flags & FailIfTooBig))
+		auto p = payload();
+		if (p.size() > intTraits<_T>::maxSize && (_flags & FailIfTooBig))
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else
 				return 0;
 		else {}
 
-		_T ret = 0;
-		uint o = lengthSize() + 1;
-		for (uint i = 0; i < s; ++i)
-			ret = (ret << 8) | m_data[i + o];
-		return ret;
+		return fromBigEndian<_T>(p);
 	}
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
-		if (!isString() || (items() > _N::size && (_flags & FailIfTooBig)))
+		if (!isData() || (items() > _N::size && (_flags & FailIfTooBig)))
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else
@@ -234,46 +223,22 @@ public:
 		return ret;
 	}
 
-	/// Converts to eth::uint. @see toInt()
-	uint toSlimInt(int _flags = Strict) const { return toInt<uint>(_flags); }
-
-	/// Converts to eth::u256. @see toInt()
-	u256 toFatInt(int _flags = Strict) const { return toInt<u256>(_flags); }
-
-	/// Converts to eth::bigint. @see toInt()
-	bigint toBigInt(int _flags = Strict) const { return toInt<bigint>(_flags); }
-
 	/// Converts to RLPs collection object. Useful if you need random access to sub items or will iterate over multiple times.
 	RLPs toList() const;
 
 	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { auto n = (m_data[0] & 0x3f); return m_data.cropped(1 + (n < 0x38 ? 0 : (n - 0x37))); }
+	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize(), items()); }
 
 private:
-	/// Direct value integer.
-	bool isDirectValueInt() const { assert(!isNull()); return m_data[0] < 0x18; }
-
-	/// Indirect-value integer.
-	bool isIndirectValueInt() const { assert(!isNull()); return m_data[0] >= 0x18 && m_data[0] < 0x38; }
-
-	/// Indirect addressed integer.
-	bool isIndirectAddressedInt() const { assert(!isNull()); return m_data[0] < 0x40 && m_data[0] >= 0x38; }
-
-	/// Direct-length string.
-	bool isSmallString() const { assert(!isNull()); return m_data[0] >= 0x40 && m_data[0] < 0x78; }
-
-	/// Direct-length list.
-	bool isSmallList() const { assert(!isNull()); return m_data[0] >= 0x80 && m_data[0] < 0xb8; }
+	/// Single-byte data payload.
+	bool isSingleByte() const { assert(!isNull()); return m_data[0] < c_rlpDataImmLenStart; }
 
 	/// @returns the theoretical size of this item; if it's a list, will require a deep traversal which could take a while.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
 	uint actualSize() const;
 
-	/// @returns the total additional bytes used to encode the integer. Includes the data-size and potentially the length-size. Returns 0 if not isInt().
-	uint intSize() const { return (!isInt() || isDirectValueInt()) ? 0 : isIndirectAddressedInt() ? lengthSize() + items() : (m_data[0] - 0x17); }
-
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
-	uint lengthSize() const { auto n = (m_data[0] & 0x3f); return n > 0x37 ? n - 0x37 : 0; }
+	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
 
 	/// @returns the number of data items (bytes in the case of strings & ints, items in the case of lists). Valid for all types.
 	uint items() const;
@@ -299,45 +264,48 @@ public:
 	/// Initializes the RLPStream as a list of @a _listItems items.
 	explicit RLPStream(uint _listItems) { appendList(_listItems); }
 
-	/// Append given data to the byte stream.
-	RLPStream& append(uint _s);
-	RLPStream& append(u160 _s);
-	RLPStream& append(u256 _s);
-	RLPStream& append(h160 _s, bool _compact = true) { return appendFixed(_s, _compact); }
-	RLPStream& append(h256 _s, bool _compact = true) { return appendFixed(_s, _compact); }
+	/// Append given datum to the byte stream.
+	RLPStream& append(uint _s) { return append(bigint(_s)); }
+	RLPStream& append(u160 _s) { return append(bigint(_s)); }
+	RLPStream& append(u256 _s) { return append(bigint(_s)); }
 	RLPStream& append(bigint _s);
+	RLPStream& append(bytesConstRef _s, bool _compact = false);
+	RLPStream& append(bytes const& _s) { return append(bytesConstRef(&_s)); }
+	RLPStream& append(std::string const& _s) { return append(bytesConstRef(_s)); }
+	RLPStream& append(char const* _s) { return append(std::string(_s)); }
+	RLPStream& append(h160 _s, bool _compact = false) { return append(_s.ref(), _compact); }
+	RLPStream& append(h256 _s, bool _compact = false) { return append(_s.ref(), _compact); }
+
+	/// Appends an arbitrary RLP fragment.
+	RLPStream& append(RLP const& _rlp) { return appendRaw(_rlp.data()); }
+
+	/// Appends a sequence of data to the stream as a list.
+	template <class _T> RLPStream& append(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+
+	/// Appends a list.
 	RLPStream& appendList(uint _count);
-	RLPStream& appendString(bytesConstRef _s);
-	RLPStream& appendString(bytes const& _s) { return appendString(bytesConstRef(&_s)); }
-	RLPStream& appendString(std::string const& _s);
+
+	/// Appends raw (pre-serialised) RLP data. Use with caution.
 	RLPStream& appendRaw(bytesConstRef _rlp);
 	RLPStream& appendRaw(bytes const& _rlp) { return appendRaw(&_rlp); }
-	RLPStream& appendRaw(RLP const& _rlp) { return appendRaw(_rlp.data()); }
 
 	/// Shift operators for appending data items.
-	RLPStream& operator<<(uint _i) { return append(_i); }
-	RLPStream& operator<<(u160 _i) { return append(_i); }
-	RLPStream& operator<<(u256 _i) { return append(_i); }
-	RLPStream& operator<<(h160 _i) { return append(_i); }
-	RLPStream& operator<<(h256 _i) { return append(_i); }
-	RLPStream& operator<<(bigint _i) { return append(_i); }
-	RLPStream& operator<<(char const* _s) { return appendString(std::string(_s)); }
-	RLPStream& operator<<(std::string const& _s) { return appendString(_s); }
-	RLPStream& operator<<(RLP const& _i) { return appendRaw(_i); }
-	template <class _T> RLPStream& operator<<(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
-	template <class _T, size_t S> RLPStream& operator<<(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class T> RLPStream& operator<<(T _data) { return append(_data); }
 
+	/// Clear the output stream so far.
 	void clear() { m_out.clear(); }
 
 	/// Read the byte stream.
 	bytes const& out() const { return m_out; }
 
+	/// Swap the contents of the output stream out for some other byte array.
 	void swapOut(bytes& _dest) { swap(m_out, _dest); }
 
 private:
 	/// Push the node-type byte (using @a _base) along with the item count @a _count.
 	/// @arg _count is number of characters for strings, data-bytes for ints, or items for lists.
-	void pushCount(uint _count, byte _base);
+	void pushCount(uint _count, byte _offset);
 
 	/// Push an integer as a raw big-endian byte-stream.
 	template <class _T> void pushInt(_T _i, uint _br)
@@ -348,29 +316,10 @@ private:
 			*(b--) = (byte)_i;
 	}
 
-	template <unsigned _N>
-	RLPStream& appendFixed(FixedHash<_N> const& _s, bool _compact)
-	{
-		uint s = _N;
-		byte const* d = _s.data();
-		if (_compact)
-			for (unsigned i = 0; i < _N && !*d; ++i, --s, ++d) {}
-
-		if (s < 0x38)
-			m_out.push_back((byte)(s | 0x40));
-		else
-			pushCount(s, 0x40);
-		uint os = m_out.size();
-		m_out.resize(os + s);
-		memcpy(m_out.data() + os, d, s);
-		return *this;
-	}
-
 	/// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
 	template <class _T> static uint bytesRequired(_T _i)
 	{
-		_i >>= 8;
-		uint i = 1;
+		uint i = 0;
 		for (; _i != 0; ++i, _i >>= 8) {}
 		return i;
 	}

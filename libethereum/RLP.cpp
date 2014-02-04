@@ -96,9 +96,9 @@ eth::uint RLP::actualSize() const
 {
 	if (isNull())
 		return 0;
-	if (isInt())
-		return 1 + intSize();
-	if (isString())
+	if (isSingleByte())
+		return 1;
+	if (isData())
 		return payload().data() - m_data.data() + items();
 	if (isList())
 	{
@@ -110,39 +110,37 @@ eth::uint RLP::actualSize() const
 	return 0;
 }
 
+bool RLP::isInt() const
+{
+	byte n = m_data[0];
+	if (n < c_rlpDataImmLenStart)
+		return !!n;
+	else if (n <= c_rlpDataImmLenStart + c_rlpDataImmLenCount)
+		return m_data[1];
+	else if (n < c_rlpListStart)
+		return m_data[1 + n - c_rlpDataIndLenZero];
+	else
+		return false;
+	return false;
+}
+
 eth::uint RLP::items() const
 {
-	auto n = (m_data[0] & 0x3f);
-	if (n < 0x38)
-		return n;
 	uint ret = 0;
-	for (int i = 0; i < n - 0x37; ++i)
-		ret = (ret << 8) | m_data[i + 1];
+	byte n = m_data[0];
+	if (n < c_rlpDataImmLenStart)
+		return 1;
+	else if (n <= c_rlpDataImmLenStart + c_rlpDataImmLenCount)
+		return n - c_rlpDataImmLenStart;
+	else if (n < c_rlpListStart)
+		for (int i = 0; i < n - c_rlpDataIndLenZero; ++i)
+			ret = (ret << 8) | m_data[i + 1];
+	else if (n <= c_rlpListStart + c_rlpDataImmLenCount)
+		return n - c_rlpListStart;
+	else
+		for (int i = 0; i < n - c_rlpListIndLenZero; ++i)
+			ret = (ret << 8) | m_data[i + 1];
 	return ret;
-}
-
-RLPStream& RLPStream::appendString(bytesConstRef _s)
-{
-	if (_s.size() < 0x38)
-		m_out.push_back((byte)(_s.size() | 0x40));
-	else
-		pushCount(_s.size(), 0x40);
-	uint os = m_out.size();
-	m_out.resize(os + _s.size());
-	memcpy(m_out.data() + os, _s.data(), _s.size());
-	return *this;
-}
-
-RLPStream& RLPStream::appendString(string const& _s)
-{
-	if (_s.size() < 0x38)
-		m_out.push_back((byte)(_s.size() | 0x40));
-	else
-		pushCount(_s.size(), 0x40);
-	uint os = m_out.size();
-	m_out.resize(os + _s.size());
-	memcpy(m_out.data() + os, _s.data(), _s.size());
-	return *this;
 }
 
 RLPStream& RLPStream::appendRaw(bytesConstRef _s)
@@ -155,65 +153,48 @@ RLPStream& RLPStream::appendRaw(bytesConstRef _s)
 
 RLPStream& RLPStream::appendList(uint _count)
 {
-	if (_count < 0x38)
-		m_out.push_back((byte)(_count | 0x80));
+	if (_count < c_rlpListImmLenCount)
+		m_out.push_back((byte)(_count + c_rlpListStart));
 	else
-		pushCount(_count, 0x80);
+		pushCount(_count, c_rlpListIndLenZero);
 	return *this;
 }
 
-RLPStream& RLPStream::append(uint _i)
+RLPStream& RLPStream::append(bytesConstRef _s, bool _compact)
 {
-	if (_i < 0x18)
-		m_out.push_back((byte)_i);
-	else
-	{
-		auto br = bytesRequired(_i);
-		m_out.push_back((byte)(br + 0x17));	// max 8 bytes.
-		pushInt(_i, br);
-	}
-	return *this;
-}
+	uint s = _s.size();
+	byte const* d = _s.data();
+	if (_compact)
+		for (unsigned i = 0; i < _s.size() && !*d; ++i, --s, ++d) {}
 
-RLPStream& RLPStream::append(u160 _i)
-{
-	if (_i < 0x18)
-		m_out.push_back((byte)_i);
+	if (s == 1 && *d < c_rlpDataImmLenStart)
+		m_out.push_back(*d);
 	else
 	{
-		auto br = bytesRequired(_i);
-		m_out.push_back((byte)(br + 0x17));	// max 8 bytes.
-		pushInt(_i, br);
-	}
-	return *this;
-}
-
-RLPStream& RLPStream::append(u256 _i)
-{
-	if (_i < 0x18)
-		m_out.push_back((byte)_i);
-	else
-	{
-		auto br = bytesRequired(_i);
-		m_out.push_back((byte)(br + 0x17));	// max 8 bytes.
-		pushInt(_i, br);
+		if (s < c_rlpDataImmLenCount)
+			m_out.push_back((byte)(s + c_rlpDataImmLenStart));
+		else
+			pushCount(s, c_rlpDataIndLenZero);
+		appendRaw(bytesConstRef(d, s));
 	}
 	return *this;
 }
 
 RLPStream& RLPStream::append(bigint _i)
 {
-	if (_i < 0x18)
+	if (!_i)
+		m_out.push_back(c_rlpDataImmLenStart);
+	else if (_i < c_rlpDataImmLenStart)
 		m_out.push_back((byte)_i);
 	else
 	{
 		uint br = bytesRequired(_i);
-		if (br <= 32)
-			m_out.push_back((byte)(bytesRequired(_i) + 0x17));	// max 32 bytes.
+		if (br < c_rlpDataImmLenCount)
+			m_out.push_back((byte)(br + c_rlpDataImmLenStart));
 		else
 		{
 			auto brbr = bytesRequired(br);
-			m_out.push_back((byte)(0x37 + brbr));
+			m_out.push_back((byte)(c_rlpDataIndLenZero + brbr));
 			pushInt(br, brbr);
 		}
 		pushInt(_i, br);
@@ -224,7 +205,7 @@ RLPStream& RLPStream::append(bigint _i)
 void RLPStream::pushCount(uint _count, byte _base)
 {
 	auto br = bytesRequired(_count);
-	m_out.push_back((byte)(br + 0x37 + _base));	// max 8 bytes.
+	m_out.push_back((byte)(br + _base));	// max 8 bytes.
 	pushInt(_count, br);
 }
 
@@ -233,8 +214,8 @@ std::ostream& eth::operator<<(std::ostream& _out, eth::RLP const& _d)
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
-		_out << std::showbase << std::hex << std::nouppercase << _d.toBigInt(RLP::LaisezFaire) << dec;
-	else if (_d.isString())
+		_out << std::showbase << std::hex << std::nouppercase << _d.toInt<bigint>(RLP::LaisezFaire) << dec;
+	else if (_d.isData())
 		_out << eth::escaped(_d.toString(), false);
 	else if (_d.isList())
 	{

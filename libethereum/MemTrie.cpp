@@ -31,7 +31,7 @@ namespace eth
 #define ENABLE_DEBUG_PRINT 0
 
 /*/
-#define APPEND_CHILD appendString
+#define APPEND_CHILD appendData
 /*/
 #define APPEND_CHILD appendRaw
 /**/
