@@ -28,10 +28,12 @@ set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
 set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
 
 # Look for availabe Crypto++ version and if it is >= 5.6.2
-if(CRYPTOPP_INCLUDE_DIR AND CRYPTOPP_LIBRARIES)
+if(EXISTS CRYPTOPP_INCLUDE_DIR AND EXISTS CRYPTOPP_LIBRARIES)
 	   set(CRYPTOPP_FOUND TRUE)
 	   message(STATUS "Found Crypto++: ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}")
 else()
+       unset(CRYPTOPP_INCLUDE_DIR CACHE)
+       unset(CRYPTOPP_LIBRARIES CACHE)
        find_path(CRYPTOPP_INCLUDE_DIR cryptlib.h
                /usr/include/crypto++
                /usr/include/cryptopp
