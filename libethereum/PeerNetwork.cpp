@@ -781,11 +781,11 @@ void PeerServer::populateAddresses()
 			bi::tcp::endpoint ep = it->endpoint();
 			bi::address ad = ep.address();
 			m_addresses.push_back(ad.to_v4());
-			bool isLocal = std::find( c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-			if ( !isLocal )
+			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+			if (!isLocal)
 				m_peerAddresses.push_back(ad.to_v4());
 			if (m_verbosity >= 1)
-				cout << "Address: " << host << " = " << m_addresses.back() << ( isLocal ? " [LOCAL]" : " [PEER]" ) << endl;
+				cout << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]") << endl;
 		}
 	}
 
