@@ -203,7 +203,7 @@ public:
 #else
 #define cbug(X) eth::DebugOutputStream<X>()
 #define csbug(X) eth::DebugOutputStream<X, false>()
-#define cdebug eth::DebugOutputStream<lb::DebugChannel, true>()
+#define cdebug eth::DebugOutputStream<eth::DebugChannel, true>()
 #endif
 
 #define clog eth::SysLogOutputStream<true>()
