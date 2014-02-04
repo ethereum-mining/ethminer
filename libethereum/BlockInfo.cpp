@@ -23,6 +23,7 @@
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "RLP.h"
+#include "State.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace eth;
@@ -42,7 +43,20 @@ bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
 	auto sha3EmptyList = sha3(RLPEmptyList);
-	block.appendList(9) << h256() << sha3EmptyList << h160() << h256() << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)0;
+
+	h256 stateRoot;
+	{
+		BasicMap db;
+		TrieDB<Address, BasicMap> state(&db);
+		state.init();
+		eth::commit(genesisState(), db, state);
+		stateRoot = state.root();
+		cout << "--- Genesis state_root=" << stateRoot << endl;
+		clog << state;
+		clog << db;
+	}
+
+	block.appendList(9) << h256() << sha3EmptyList << h160() << stateRoot << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)0;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();

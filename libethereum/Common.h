@@ -61,8 +61,6 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
-extern const u256 c_genesisDifficulty;
-
 template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
 template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
@@ -138,6 +136,84 @@ using HexMap = std::map<bytes, std::string>;
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
+
+
+/// Logging
+class NullOutputStream
+{
+public:
+	template <class T> NullOutputStream& operator<<(T const&) { return *this; }
+};
+
+extern bool g_debugEnabled[256];
+static const uint8_t WarnChannel = 255;
+static const uint8_t NoteChannel = 254;
+static const uint8_t DebugChannel = 253;
+static const uint8_t LogChannel = 252;
+static const uint8_t LeftChannel = 251;
+static const uint8_t RightChannel = 250;
+// Unused for now.
+/*template <uint8_t _Channel> struct LogName { static const char constexpr* name = "   "; };
+template <> struct LogName<LeftChannel> { static const char constexpr* name = "<<<"; };
+template <> struct LogName<RightChannel> { static const char constexpr* name = ">>>"; };
+template <> struct LogName<WarnChannel> { static const char constexpr* name = "!!!"; };
+template <> struct LogName<NoteChannel> { static const char constexpr* name = "***"; };
+template <> struct LogName<DebugChannel> { static const char constexpr*  name = "---"; };
+template <> struct LogName<LogChannel> { static const char constexpr* name = "LOG"; };*/
+
+extern std::function<void(std::string const&, unsigned char)> g_debugPost;
+extern std::function<void(char, std::string const&)> g_syslogPost;
+
+void simpleDebugOut(std::string const&, unsigned char);
+
+template <unsigned char _Id = 0, bool _AutoSpacing = true>
+class DebugOutputStream
+{
+public:
+	DebugOutputStream(char const* _start = "    ") { sstr << _start; }
+	~DebugOutputStream() { g_debugPost(sstr.str(), _Id); }
+	template <class T> DebugOutputStream& operator<<(T const& _t) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; return *this; }
+	std::stringstream sstr;
+};
+
+template <bool _AutoSpacing = true>
+class SysLogOutputStream
+{
+public:
+	SysLogOutputStream() {}
+	~SysLogOutputStream() { if (sstr.str().size()) g_syslogPost('C', sstr.str()); }
+	template <class T> SysLogOutputStream& operator<<(T const& _t) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; return *this; }
+	static void write(char _type, std::string const& _s) { g_syslogPost(_type, _s); }
+	template <class _T> static void writePod(char _type, _T const& _s) { char const* begin = (char const*)&_s; char const* end = (char const*)&_s + sizeof(_T); g_syslogPost(_type, std::string(begin, end)); }
+	std::stringstream sstr;
+};
+
+// Dirties the global namespace, but oh so convenient...
+#define cnote eth::DebugOutputStream<eth::NoteChannel, true>()
+#define cwarn eth::DebugOutputStream<eth::WarnChannel, true>()
+
+#define nbug(X) if (true) {} else eth::NullOutputStream()
+#define nsbug(X) if (true) {} else eth::NullOutputStream()
+#define ndebug if (true) {} else eth::NullOutputStream()
+
+#if NDEBUG
+#define cbug(X) nbug(X)
+#define csbug(X) nsbug(X)
+#define cdebug ndebug
+#else
+#define cbug(X) eth::DebugOutputStream<X>()
+#define csbug(X) eth::DebugOutputStream<X, false>()
+#define cdebug eth::DebugOutputStream<lb::DebugChannel, true>()
+#endif
+
+#define clog eth::SysLogOutputStream<true>()
+
+
+
+
+
+
+
 
 /// Converts arbitrary value to string representation using std::stringstream.
 template <class _T>

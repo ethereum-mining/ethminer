@@ -53,6 +53,24 @@ u256 const State::c_newContractFee = 60000;
 u256 const State::c_txFee = 0;
 u256 const State::c_blockReward = 1000000000;
 
+#if NDEBUG
+u256 const eth::c_genesisDifficulty = (u256)1 << 22;
+#else
+u256 const eth::c_genesisDifficulty = (u256)1 << 22;
+#endif
+
+std::map<Address, AddressState> const& eth::genesisState()
+{
+	static std::map<Address, AddressState> s_ret;
+	if (s_ret.empty())
+	{
+		// Initialise.
+		s_ret[Address(fromUserHex("812413ae7e515a3bcaf7b3444116527bce958c02"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
+	}
+	return s_ret;
+}
+
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -71,9 +89,16 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&m_db), m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
+
+	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
+	eth::commit(genesisState(), m_db, m_state);
+	cout << "State::State: state root initialised to " << m_state.root() << endl;
+
 	m_previousBlock = BlockInfo::genesis();
 	resetCurrent();
+
+	assert(m_state.root() == m_previousBlock.stateRoot);
 }
 
 void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
@@ -112,29 +137,7 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 
 void State::commit()
 {
-	for (auto const& i: m_cache)
-		if (i.second.type() == AddressType::Dead)
-			m_state.remove(i.first);
-		else
-		{
-			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
-			s << i.second.balance() << i.second.nonce();
-			if (i.second.type() == AddressType::Contract)
-			{
-				if (i.second.haveMemory())
-				{
-					TrieDB<u256, Overlay> memdb(&m_db);
-					memdb.init();
-					for (auto const& j: i.second.memory())
-						if (j.second)
-							memdb.insert(j.first, rlp(j.second));
-					s << memdb.root();
-				}
-				else
-					s << i.second.oldRoot();
-			}
-			m_state.insert(i.first, &s.out());
-		}
+	eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 

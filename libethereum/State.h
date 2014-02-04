@@ -39,6 +39,9 @@ namespace eth
 
 class BlockChain;
 
+extern const u256 c_genesisDifficulty;
+std::map<Address, AddressState> const& genesisState();
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -158,7 +161,7 @@ private:
 	/// exist in the DB.
 	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
 
-	/// Commit all changes waiting in the address cache.
+	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
 
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
@@ -233,6 +236,34 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		else
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
 	return _out;
+}
+
+template <class DB>
+void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
+{
+	for (auto const& i: _cache)
+		if (i.second.type() == AddressType::Dead)
+			_state.remove(i.first);
+		else
+		{
+			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
+			s << i.second.balance() << i.second.nonce();
+			if (i.second.type() == AddressType::Contract)
+			{
+				if (i.second.haveMemory())
+				{
+					TrieDB<u256, DB> memdb(&_db);
+					memdb.init();
+					for (auto const& j: i.second.memory())
+						if (j.second)
+							memdb.insert(j.first, rlp(j.second));
+					s << memdb.root();
+				}
+				else
+					s << i.second.oldRoot();
+			}
+			_state.insert(i.first, &s.out());
+		}
 }
 
 }
