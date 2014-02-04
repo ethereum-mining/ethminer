@@ -23,6 +23,10 @@ General:
 - Better logging.
   - Colours.
   - Time/thread/channel stamp.
+- Move over to new system.
+
+AlephZero:
+- Allow units to be selected for transactions.
 
 ### GAV
 
