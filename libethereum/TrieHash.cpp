@@ -29,7 +29,7 @@ namespace eth
 {
 
 /*/
-#define APPEND_CHILD appendString
+#define APPEND_CHILD appendData
 /*/
 #define APPEND_CHILD appendRaw
 /**/

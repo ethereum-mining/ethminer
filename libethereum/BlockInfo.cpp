@@ -71,8 +71,7 @@ h256 BlockInfo::headerHashWithoutNonce() const
 
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 9 : 8) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp;
-	_s.appendString(extraData);
+	_s.appendList(_nonce ? 9 : 8) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
 }

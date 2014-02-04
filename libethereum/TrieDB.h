@@ -477,7 +477,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		{
 			killNode(sha3(_orig.data()));
 			RLPStream s(2);
-			s.appendRaw(_orig[0]);
+			s.append(_orig[0]);
 			mergeAtAux(s, _orig[1], _k.mid(k.size()), _v);
 			return s.out();
 		}
@@ -509,7 +509,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 			if (i == n)
 				mergeAtAux(r, _orig[i], _k.mid(1), _v);
 			else
-				r.appendRaw(_orig[i]);
+				r.append(_orig[i]);
 		return r.out();
 	}
 
@@ -547,7 +547,7 @@ template <class DB> void GenericTrieDB<DB>::remove(bytesConstRef _key)
 
 template <class DB> bool GenericTrieDB<DB>::isTwoItemNode(RLP const& _n) const
 {
-	return (_n.isString() && RLP(node(_n.toHash<h256>())).itemCount() == 2)
+	return (_n.isData() && RLP(node(_n.toHash<h256>())).itemCount() == 2)
 			|| (_n.isList() && _n.itemCount() == 2);
 }
 
@@ -669,16 +669,16 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 
 	killNode(_orig);
 	if (_orig.isEmpty())
-		return RLPStream(2).appendString(hexPrefixEncode(_k, true)).appendString(_s).out();
+		return (RLPStream(2) << hexPrefixEncode(_k, true) << _s).out();
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
 	if (_orig.itemCount() == 2)
-		return RLPStream(2).appendRaw(_orig[0]).appendString(_s).out();
+		return (RLPStream(2) << _orig[0] << _s).out();
 
 	auto s = RLPStream(17);
 	for (uint i = 0; i < 16; ++i)
-		s.appendRaw(_orig[i]);
-	s.appendString(_s);
+		s << _orig[i];
+	s << _s;
 	return s.out();
 }
 
@@ -695,8 +695,8 @@ template <class DB> bytes GenericTrieDB<DB>::remove(RLP const& _orig)
 		return RLPNull;
 	RLPStream r(17);
 	for (uint i = 0; i < 16; ++i)
-		r.appendRaw(_orig[i]);
-	r.appendString("");
+		r << _orig[i];
+	r << "";
 	return r.out();
 }
 
@@ -719,11 +719,10 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 	assert(_s && _s <= k.size());
 
 	RLPStream bottom(2);
-	bottom.appendString(hexPrefixEncode(k, isLeaf(_orig), _s));
-	bottom.appendRaw(_orig[1]);
+	bottom << hexPrefixEncode(k, isLeaf(_orig), _s) << _orig[1];
 
 	RLPStream top(2);
-	top.appendString(hexPrefixEncode(k, false, 0, _s));
+	top << hexPrefixEncode(k, false, 0, _s);
 	streamNode(top, bottom.out());
 
 	return top.out();
@@ -790,8 +789,7 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 				if (isLeaf(_orig) || k.size() > 1)
 				{
 					RLPStream bottom(2);
-					bottom.appendString(hexPrefixEncode(k.mid(1), isLeaf(_orig)));
-					bottom.appendRaw(_orig[1]);
+					bottom << hexPrefixEncode(k.mid(1), isLeaf(_orig)) << _orig[1];
 					streamNode(r, bottom.out());
 				}
 				else

@@ -96,6 +96,9 @@ public:
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
 
+	bytesRef ref() { return bytesRef(m_data.data(), N); }
+	bytesConstRef ref() const { return bytesConstRef(m_data.data(), N); }
+
 	byte* data() { return m_data.data(); }
 	byte const* data() const { return m_data.data(); }
 
