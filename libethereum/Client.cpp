@@ -50,11 +50,11 @@ Client::~Client()
 		usleep(10000);
 }
 
-void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, unsigned _verbosity, NodeMode _mode, unsigned _peers, string const& _publicIP)
+void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, unsigned _verbosity, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
 	if (m_net)
 		return;
-	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP);
+	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp);
 	m_net->setIdealPeerCount(_peers);
 	m_net->setVerbosity(_verbosity);
 	if (_seedHost.size())
