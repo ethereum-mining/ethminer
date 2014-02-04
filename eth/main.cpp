@@ -60,6 +60,7 @@ int main(int argc, char** argv)
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	string publicIP;
+	bool upnp = true;
 
 	// Our address.
 	KeyPair us = KeyPair::create();
@@ -91,6 +92,19 @@ int main(int argc, char** argv)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
 			remotePort = atoi(argv[++i]);
+		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (m == "on")
+				upnp = true;
+			else if (m == "off")
+				upnp = false;
+			else
+			{
+				cerr << "Invalid UPnP option: " << argv[i] << endl;
+				return -1;
+			}
+		}
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			coinbase = h160(fromUserHex(argv[++i]));
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
@@ -188,7 +202,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers, publicIP);
+		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{

@@ -125,7 +125,7 @@ class PeerServer
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string());
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
 	PeerServer(std::string const& _clientVersion, uint _networkId);
 	~PeerServer();
@@ -161,7 +161,7 @@ public:
 private:
 	void seal(bytes& _b);
 	void populateAddresses();
-	void determinePublic(std::string const& _publicAddress);
+	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	void ensureAccepting();
 	std::vector<bi::tcp::endpoint> potentialPeers();
 
