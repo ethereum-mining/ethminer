@@ -103,8 +103,8 @@ public:
 	uint itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
 
 	/// @returns the number of bytes in the data, or zero if it isn't data.
-	uint size() const { return isData() ? items() : 0; }
-	uint sizeStrict() const { if (!isData()) throw BadCast(); return items(); }
+	uint size() const { return isData() ? length() : 0; }
+	uint sizeStrict() const { if (!isData()) throw BadCast(); return length(); }
 
 	/// Equality operators; does best-effort conversion and checks for equality.
 	bool operator==(char const* _s) const { return isData() && toString() == _s; }
@@ -166,13 +166,13 @@ public:
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytes toBytes() const { if (!isData()) return bytes(); return bytes(payload().data(), payload().data() + items()); }
+	bytes toBytes() const { if (!isData()) return bytes(); return bytes(payload().data(), payload().data() + length()); }
 	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytesConstRef toBytesConstRef() const { if (!isData()) return bytesConstRef(); return payload().cropped(0, items()); }
+	bytesConstRef toBytesConstRef() const { if (!isData()) return bytesConstRef(); return payload().cropped(0, length()); }
 	/// Converts to string. @returns the empty string if not a string.
-	std::string toString() const { if (!isData()) return std::string(); return payload().cropped(0, items()).toString(); }
+	std::string toString() const { if (!isData()) return std::string(); return payload().cropped(0, length()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
-	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, items()).toString(); }
+	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
 	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
@@ -210,7 +210,7 @@ public:
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
-		if (!isData() || (items() > _N::size && (_flags & FailIfTooBig)))
+		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)))
 			if (_flags & ThrowOnFail)
 				throw BadCast();
 			else
@@ -218,7 +218,7 @@ public:
 		else{}
 
 		_N ret;
-		size_t s = std::min((size_t)_N::size, (size_t)items());
+		size_t s = std::min((size_t)_N::size, (size_t)length());
 		memcpy(ret.data() + _N::size - s, payload().data(), s);
 		return ret;
 	}
@@ -227,11 +227,11 @@ public:
 	RLPs toList() const;
 
 	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize(), items()); }
+	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize()); }
 
 private:
 	/// Single-byte data payload.
-	bool isSingleByte() const { assert(!isNull()); return m_data[0] < c_rlpDataImmLenStart; }
+	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
 	/// @returns the theoretical size of this item; if it's a list, will require a deep traversal which could take a while.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
@@ -240,7 +240,10 @@ private:
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
 	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
 
-	/// @returns the number of data items (bytes in the case of strings & ints, items in the case of lists). Valid for all types.
+	/// @returns the size in bytes of the payload, as given by the RLP as opposed to as inferred from m_data.
+	uint length() const;
+
+	/// @returns the number of data items.
 	uint items() const;
 
 	/// Our byte data.
@@ -264,6 +267,8 @@ public:
 	/// Initializes the RLPStream as a list of @a _listItems items.
 	explicit RLPStream(uint _listItems) { appendList(_listItems); }
 
+	~RLPStream() {}
+
 	/// Append given datum to the byte stream.
 	RLPStream& append(uint _s) { return append(bigint(_s)); }
 	RLPStream& append(u160 _s) { return append(bigint(_s)); }
@@ -276,33 +281,38 @@ public:
 	RLPStream& append(h160 _s, bool _compact = false) { return append(_s.ref(), _compact); }
 	RLPStream& append(h256 _s, bool _compact = false) { return append(_s.ref(), _compact); }
 
-	/// Appends an arbitrary RLP fragment.
-	RLPStream& append(RLP const& _rlp) { return appendRaw(_rlp.data()); }
+	/// Appends an arbitrary RLP fragment - this *must* be a single item.
+	RLPStream& append(RLP const& _rlp, uint _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.
 	template <class _T> RLPStream& append(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Appends a list.
-	RLPStream& appendList(uint _count);
+	RLPStream& appendList(unsigned _items);
+	RLPStream& appendList(bytesConstRef _rlp);
+	RLPStream& appendList(bytes const& _rlp) { return appendList(&_rlp); }
+	RLPStream& appendList(RLPStream const& _s) { return appendList(&_s.out()); }
 
 	/// Appends raw (pre-serialised) RLP data. Use with caution.
-	RLPStream& appendRaw(bytesConstRef _rlp);
-	RLPStream& appendRaw(bytes const& _rlp) { return appendRaw(&_rlp); }
+	RLPStream& appendRaw(bytesConstRef _rlp, uint _itemCount = 1);
+	RLPStream& appendRaw(bytes const& _rlp, uint _itemCount = 1) { return appendRaw(&_rlp, _itemCount); }
 
 	/// Shift operators for appending data items.
 	template <class T> RLPStream& operator<<(T _data) { return append(_data); }
 
 	/// Clear the output stream so far.
-	void clear() { m_out.clear(); }
+	void clear() { m_out.clear(); m_listStack.clear(); }
 
 	/// Read the byte stream.
-	bytes const& out() const { return m_out; }
+	bytes const& out() const { assert(m_listStack.empty()); return m_out; }
 
 	/// Swap the contents of the output stream out for some other byte array.
-	void swapOut(bytes& _dest) { swap(m_out, _dest); }
+	void swapOut(bytes& _dest) { assert(m_listStack.empty()); swap(m_out, _dest); }
 
 private:
+	void noteAppended(uint _itemCount = 1);
+
 	/// Push the node-type byte (using @a _base) along with the item count @a _count.
 	/// @arg _count is number of characters for strings, data-bytes for ints, or items for lists.
 	void pushCount(uint _count, byte _offset);
@@ -326,6 +336,8 @@ private:
 
 	/// Our output byte stream.
 	bytes m_out;
+
+	std::vector<std::pair<uint, uint>> m_listStack;
 };
 
 template <class _T> void rlpListAux(RLPStream& _out, _T _t) { _out << _t; }

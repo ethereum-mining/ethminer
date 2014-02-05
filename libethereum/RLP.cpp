@@ -45,14 +45,6 @@ RLP::iterator::iterator(RLP const& _parent, bool _begin)
 	{
 		auto pl = _parent.payload();
 		m_lastItem = pl.cropped(0, RLP(pl).actualSize());
-
-		uint t = 0;
-		for (uint i = 0; i < _parent.itemCount(); ++i)
-			t += _parent[i].actualSize();
-		if (pl.size() != t)
-			cout << _parent.itemCount() << " " << asHex(pl);
-		assert(pl.size() == t);
-
 		m_remaining = pl.size() - m_lastItem.size();
 	}
 	else
@@ -64,15 +56,13 @@ RLP::iterator::iterator(RLP const& _parent, bool _begin)
 
 RLP RLP::operator[](uint _i) const
 {
-	if (!isList() || itemCount() <= _i)
-		return RLP();
 	if (_i < m_lastIndex)
 	{
 		m_lastEnd = RLP(payload()).actualSize();
 		m_lastItem = payload().cropped(0, m_lastEnd);
 		m_lastIndex = 0;
 	}
-	for (; m_lastIndex < _i; ++m_lastIndex)
+	for (; m_lastIndex < _i && m_lastItem.size(); ++m_lastIndex)
 	{
 		m_lastItem = payload().cropped(m_lastEnd);
 		m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem).actualSize());
@@ -86,9 +76,8 @@ RLPs RLP::toList() const
 	RLPs ret;
 	if (!isList())
 		return ret;
-	uint64_t c = items();
-	for (uint64_t i = 0; i < c; ++i)
-		ret.push_back(operator[](i));
+	for (auto const& i: *this)
+		ret.push_back(i);
 	return ret;
 }
 
@@ -98,15 +87,8 @@ eth::uint RLP::actualSize() const
 		return 0;
 	if (isSingleByte())
 		return 1;
-	if (isData())
-		return payload().data() - m_data.data() + items();
-	if (isList())
-	{
-		bytesConstRef d = payload();
-		uint64_t c = items();
-		for (uint64_t i = 0; i < c; ++i, d = d.cropped(RLP(d).actualSize())) {}
-		return d.data() - m_data.data();
-	}
+	if (isData() || isList())
+		return payload().data() - m_data.data() + length();
 	return 0;
 }
 
@@ -115,7 +97,9 @@ bool RLP::isInt() const
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return !!n;
-	else if (n <= c_rlpDataImmLenStart + c_rlpDataImmLenCount)
+	else if (n == c_rlpDataImmLenStart)
+		return true;
+	else if (n <= c_rlpDataIndLenZero)
 		return m_data[1];
 	else if (n < c_rlpListStart)
 		return m_data[1 + n - c_rlpDataIndLenZero];
@@ -124,18 +108,18 @@ bool RLP::isInt() const
 	return false;
 }
 
-eth::uint RLP::items() const
+eth::uint RLP::length() const
 {
 	uint ret = 0;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return 1;
-	else if (n <= c_rlpDataImmLenStart + c_rlpDataImmLenCount)
+	else if (n <= c_rlpDataIndLenZero)
 		return n - c_rlpDataImmLenStart;
 	else if (n < c_rlpListStart)
 		for (int i = 0; i < n - c_rlpDataIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
-	else if (n <= c_rlpListStart + c_rlpDataImmLenCount)
+	else if (n <= c_rlpListIndLenZero)
 		return n - c_rlpListStart;
 	else
 		for (int i = 0; i < n - c_rlpListIndLenZero; ++i)
@@ -143,20 +127,81 @@ eth::uint RLP::items() const
 	return ret;
 }
 
-RLPStream& RLPStream::appendRaw(bytesConstRef _s)
+eth::uint RLP::items() const
+{
+	if (isList())
+	{
+		bytesConstRef d = payload().cropped(0, length());
+		eth::uint i = 0;
+		for (; d.size(); ++i)
+			d = d.cropped(RLP(d).actualSize());
+		return i;
+	}
+	return 0;
+}
+
+RLPStream& RLPStream::appendRaw(bytesConstRef _s, uint _itemCount)
 {
 	uint os = m_out.size();
 	m_out.resize(os + _s.size());
 	memcpy(m_out.data() + os, _s.data(), _s.size());
+	noteAppended(_itemCount);
 	return *this;
 }
 
-RLPStream& RLPStream::appendList(uint _count)
+void RLPStream::noteAppended(uint _itemCount)
 {
-	if (_count < c_rlpListImmLenCount)
-		m_out.push_back((byte)(_count + c_rlpListStart));
+	if (!_itemCount)
+		return;
+//	cdebug << "noteAppended(" << _itemCount << ")";
+	while (m_listStack.size())
+	{
+		assert(m_listStack.back().first >= _itemCount);
+		m_listStack.back().first -= _itemCount;
+		if (m_listStack.back().first)
+			break;
+		else
+		{
+			auto p = m_listStack.back().second;
+			m_listStack.pop_back();
+			uint s = m_out.size() - p;		// list size
+			auto brs = bytesRequired(s);
+			uint encodeSize = s < c_rlpListImmLenCount ? 1 : (1 + brs);
+//			cdebug << "s: " << s << ", p: " << p << ", m_out.size(): " << m_out.size() << ", encodeSize: " << encodeSize << " (br: " << brs << ")";
+			auto os = m_out.size();
+			m_out.resize(os + encodeSize);
+			memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
+			if (s < c_rlpListImmLenCount)
+				m_out[p] = c_rlpListStart + s;
+			else
+			{
+				m_out[p] = c_rlpListIndLenZero + brs;
+				byte* b = &(m_out[p + brs]);
+				for (; s; s >>= 8)
+					*(b--) = (byte)s;
+			}
+		}
+		_itemCount = 1;	// for all following iterations, we've effectively appended a single item only since we completed a list.
+	}
+}
+
+RLPStream& RLPStream::appendList(unsigned _items)
+{
+//	cdebug << "appendList(" << _items << ")";
+	if (_items)
+		m_listStack.push_back(std::make_pair(_items, m_out.size()));
 	else
-		pushCount(_count, c_rlpListIndLenZero);
+		appendList(bytes());
+	return *this;
+}
+
+RLPStream& RLPStream::appendList(bytesConstRef _rlp)
+{
+	if (_rlp.size() < c_rlpListImmLenCount)
+		m_out.push_back((byte)(_rlp.size() + c_rlpListStart));
+	else
+		pushCount(_rlp.size(), c_rlpListIndLenZero);
+	appendRaw(_rlp, 1);
 	return *this;
 }
 
@@ -175,8 +220,9 @@ RLPStream& RLPStream::append(bytesConstRef _s, bool _compact)
 			m_out.push_back((byte)(s + c_rlpDataImmLenStart));
 		else
 			pushCount(s, c_rlpDataIndLenZero);
-		appendRaw(bytesConstRef(d, s));
+		appendRaw(bytesConstRef(d, s), 0);
 	}
+	noteAppended();
 	return *this;
 }
 
@@ -199,6 +245,7 @@ RLPStream& RLPStream::append(bigint _i)
 		}
 		pushInt(_i, br);
 	}
+	noteAppended();
 	return *this;
 }
 
