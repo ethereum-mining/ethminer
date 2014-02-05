@@ -6,6 +6,8 @@ file(GLOB HEADERS "*.h")
 
 find_package(Threads REQUIRED)
 
+include_directories(../secp256k1)
+
 target_link_libraries(ethereum secp256k1)
 target_link_libraries(ethereum miniupnpc)
 target_link_libraries(ethereum leveldb)

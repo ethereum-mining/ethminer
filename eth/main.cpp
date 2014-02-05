@@ -48,6 +48,16 @@ void writeFile(std::string const& _file, bytes const& _data)
 	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
 }
 
+bool isTrue(std::string const& _m)
+{
+	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
+}
+
+bool isFalse(std::string const& _m)
+{
+	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
+}
+
 int main(int argc, char** argv)
 {
 	short listenPort = 30303;
@@ -95,13 +105,13 @@ int main(int argc, char** argv)
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
-			if (m == "on")
+			if (isTrue(m))
 				upnp = true;
-			else if (m == "off")
+			else if (isFalse(m))
 				upnp = false;
 			else
 			{
-				cerr << "Invalid UPnP option: " << argv[i] << endl;
+				cerr << "Invalid UPnP option: " << m << endl;
 				return -1;
 			}
 		}
@@ -114,12 +124,20 @@ int main(int argc, char** argv)
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
-			if (string(argv[++i]) == "on")
+		{
+			string m = argv[++i];
+			if (isTrue(m))
 				mining = ~(eth::uint)0;
-			else if (string(argv[i]) == "off")
+			else if (isFalse(m))
 				mining = 0;
+			else if (int i = stoi(m))
+				mining = i;
 			else
-				mining = atoi(argv[i]);
+			{
+				cerr << "Unknown mining option: " << m << endl;
+				return -1;
+			}
+		}
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			verbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)

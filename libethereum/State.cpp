@@ -96,6 +96,13 @@ State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&
 	cout << "State::State: state root initialised to " << m_state.root() << endl;
 
 	m_previousBlock = BlockInfo::genesis();
+	cnote << "Genesis headerhash-nononce:" << m_previousBlock.headerHashWithoutNonce();
+	{
+		RLPStream s;
+		m_previousBlock.fillStream(s, false);
+		cnote << RLP(s.out());
+		cnote << asHex(s.out());
+	}
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
