@@ -36,6 +36,17 @@ static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChai
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
 static const eth::uint c_maxBlocksAsk = 2048;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
+// Addresses we will skip during network interface discovery
+// Use a vector as the list is small
+// Why this and not names?
+// Under MacOSX loopback (127.0.0.1) can be named lo0 and br0 are bridges (0.0.0.0)
+static const vector<bi::address> c_rejectAddresses = {
+	{bi::address_v4::from_string("127.0.0.1")},
+	{bi::address_v6::from_string("::1")},
+	{bi::address_v4::from_string("0.0.0.0")},
+	{bi::address_v6::from_string("::")}
+};
+
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
 	m_server(_s),
 	m_socket(std::move(_socket)),
@@ -781,11 +792,13 @@ void PeerServer::populateAddresses()
 				continue;
 			auto it = r.resolve({host, "30303"});
 			bi::tcp::endpoint ep = it->endpoint();
-			m_addresses.push_back(ep.address().to_v4());
-			if (ifa->ifa_name != string("lo"))
-				m_peerAddresses.push_back(ep.address().to_v4());
+			bi::address ad = ep.address();
+			m_addresses.push_back(ad.to_v4());
+			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+			if (!isLocal)
+				m_peerAddresses.push_back(ad.to_v4());
 			if (m_verbosity >= 1)
-				cout << "Address: " << host << " = " << m_addresses.back() << (ifa->ifa_name != string("lo") ? " [PEER]" : " [LOCAL]") << endl;
+				cout << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]") << endl;
 		}
 	}
 
