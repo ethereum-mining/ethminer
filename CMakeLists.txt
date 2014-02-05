@@ -27,29 +27,33 @@ endif ()
 #set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
 #set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
 
+set(CRYPTOPP_INCLUDE_DIR CACHE FILEPATH "" FORCE)
+set(CRYPTOPP_LIBRARIES CACHE FILEPATH "" FORCE)
+
 # Look for availabe Crypto++ version and if it is >= 5.6.2
 #if(CRYPTOPP_INCLUDE_DIR AND CRYPTOPP_LIBRARIES)
 #	   set(CRYPTOPP_FOUND TRUE)
 #	   message(STATUS "Found Crypto++: ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}")
 #else()
-       find_path(CRYPTOPP_INCLUDE_DIR cryptlib.h
-               /usr/include/cryptopp
-               /usr/include/crypto++
-               /usr/local/include/cryptopp
-               /usr/local/include/crypto++
-               /opt/local/include/cryptopp
-               /opt/local/include/crypto++
-               )
-       find_library(CRYPTOPP_LIBRARIES NAMES cryptoppeth cryptopp
-               PATHS
-               /usr/lib
-               /usr/local/lib
-               /opt/local/lib
-               )
-       if(CRYPTOPP_INCLUDE_DIR AND CRYPTOPP_LIBRARIES)
+	   find_path(ID cryptlib.h
+			   /usr/include/cryptopp
+			   /usr/include/crypto++
+			   /usr/local/include/cryptopp
+			   /usr/local/include/crypto++
+			   /opt/local/include/cryptopp
+			   /opt/local/include/crypto++
+			   )
+	   find_library(LS NAMES cryptoppeth cryptopp
+			   PATHS
+			   /usr/lib
+			   /usr/local/lib
+			   /opt/local/lib
+			   )
+
+	   if(ID AND LS)
                set(CRYPTOPP_FOUND TRUE)
-               message(STATUS "Found Crypto++: ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}")
-               set(_CRYPTOPP_VERSION_HEADER ${CRYPTOPP_INCLUDE_DIR}/config.h)
+			   message(STATUS "Found Crypto++: ${ID}, ${LS}")
+			   set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
                if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
                        file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
                        string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
@@ -58,7 +62,9 @@ endif ()
                                set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
                                set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
                        else()
-                               message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
+								set(CRYPTOPP_INCLUDE_DIR ${ID}  CACHE FILEPATH "" FORCE)
+							   set(CRYPTOPP_LIBRARIES ${LS}  CACHE FILEPATH "" FORCE)
+							   message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
                        endif()
                endif()
        else()
@@ -75,6 +81,7 @@ if(CRYPTOPP_FOUND)
 	link_directories(${CRYPTOPP_LIBRARIES})
 endif()
 
+add_subdirectory(secp256k1)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
