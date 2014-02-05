@@ -159,7 +159,7 @@ h256 hash256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha3(RLPNull);
+		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(i->first)] = i->second;
@@ -172,7 +172,7 @@ bytes rlp256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return RLPNull;
+		return bytes();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(i->first)] = i->second;
@@ -185,7 +185,7 @@ h256 hash256(u256Map const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha3(RLPNull);
+		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(toBigEndianString(i->first))] = asString(rlp(i->second));

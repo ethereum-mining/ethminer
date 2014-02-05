@@ -182,7 +182,14 @@ public:
 						m_trail.pop_back();
 						continue;
 					}
-					assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
+					{
+						cdebug << b.rlp.size() << asHex(b.rlp);
+						cdebug << rlp;
+						auto c = rlp.itemCount();
+						cdebug << c;
+						assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+					}
 					if (rlp.itemCount() == 2)
 					{
 						// Just turn it into a valid Branch
