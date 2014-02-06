@@ -606,8 +606,10 @@ struct UPnP
 	string externalIP()
 	{
 		char addr[16];
-		UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr);
-		return addr;
+		if (!UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr))
+			return addr;
+		else
+			return "0.0.0.0";
 	}
 
 	int addRedirect(char const* addr, int port)
@@ -695,7 +697,7 @@ struct UPnP
 
 class NoNetworking: public std::exception {};
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -705,7 +707,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	m_requiredNetworkId(_networkId)
 {
 	populateAddresses();
-	determinePublic(_publicAddress);
+	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
 	if (m_verbosity)
 		cout << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full") << endl;
@@ -732,12 +734,14 @@ PeerServer::~PeerServer()
 	delete m_upnp;
 }
 
-void PeerServer::determinePublic(string const& _publicAddress)
+void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 {
-	m_upnp = new UPnP;
-	if (m_upnp->isValid() && m_peerAddresses.size())
+	if (_upnp)
+		m_upnp = new UPnP;
+
+	bi::tcp::resolver r(m_ioService);
+	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
-		bi::tcp::resolver r(m_ioService);
 		cout << "external addr: " << m_upnp->externalIP() << endl;
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
 		if (!p)
@@ -747,14 +751,26 @@ void PeerServer::determinePublic(string const& _publicAddress)
 			p = m_listenPort;
 		}
 
-		if (m_upnp->externalIP() == string("0.0.0.0") && _publicAddress.empty())
+		auto eip = m_upnp->externalIP();
+		if (eip == string("0.0.0.0") && _publicAddress.empty())
 			m_public = bi::tcp::endpoint(bi::address(), p);
 		else
 		{
-			auto it = r.resolve({_publicAddress.empty() ? m_upnp->externalIP() : _publicAddress, toString(p)});
+			auto it = r.resolve({_publicAddress.empty() ? eip : _publicAddress, toString(p)});
 			m_public = it->endpoint();
 			m_addresses.push_back(m_public.address().to_v4());
 		}
+	}
+	else
+	{
+		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
+		if (_publicAddress.size())
+			m_public = r.resolve({_publicAddress, toString(m_listenPort)})->endpoint();
+		else if (m_peerAddresses.size())
+			m_public = r.resolve({m_peerAddresses[0].to_string(), toString(m_listenPort)})->endpoint();
+		else
+			m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
+		m_addresses.push_back(m_public.address().to_v4());
 	}
 /*	int er;
 	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);

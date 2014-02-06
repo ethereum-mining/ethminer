@@ -14,3 +14,4 @@ qt5_wrap_ui(ui_Main.h Main.ui)
 qt5_use_modules(alethzero Widgets Network )
 target_link_libraries(alethzero ethereum)
 
+install( TARGETS alethzero RUNTIME DESTINATION bin )
