@@ -1,8 +1,22 @@
 #!/bin/bash
 
+dist="saucy"
+version=$1
+
 if [[ ! "$3" == "" ]]; then
-	debchange -v $1-$2 "$3"
-	git commit -a -m "$3"
+	if [[ ! "$4" == "" ]]; then
+		dist=$4
+	fi
+	if [[ "$2" == "-i" ]]; then
+		# increment current debian release only
+		# new version ./release VERSION -i MESSAGE DIST
+		debchange -i -p "$3" -D "$dist"
+		git commit -a -m "$3"
+	else
+		# new version ./release VERSION DEB-VERSION MESSAGE DIST
+		debchange -v $version-$2 -p "$3" -D "$dist"
+		git commit -a -m "$3"
+	fi
 fi
 
 opwd=`pwd`
@@ -15,7 +29,7 @@ cd cpp-ethereum
 if [ "$1" == "" ]; then
 	archdir="cpp-ethereum-$(date +%Y%m%d)"
 else
-	archdir="cpp-ethereum-$1"
+	archdir="cpp-ethereum-$version"
 fi
 archfile="$archdir.tar.bz2"
 
@@ -36,7 +50,7 @@ mv cpp-ethereum $archdir
 echo Creating archive...
 tar c $archdir | bzip2 -- > $archfile
 
-[[ ! "$1" == "" ]] && ln -sf $archfile "cpp-ethereum_$1.orig.tar.bz2"
+[[ ! "$version" == "" ]] && ln -sf $archfile "cpp-ethereum_$version.orig.tar.bz2"
 
 echo Packaging...
 cd "$archdir"
