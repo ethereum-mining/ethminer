@@ -38,8 +38,6 @@ tar c $archdir | bzip2 -- > $archfile
 
 [[ ! "$1" == "" ]] && ln -sf $archfile "cpp-ethereum_$1.orig.tar.bz2"
 
-exit
-
 echo Packaging...
 cd "$archdir"
 ./package.sh
