@@ -43,31 +43,62 @@ struct MineProgress
 class Client
 {
 public:
-	Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string());
+	/// Constructor.
+	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string());
+
+	/// Destructor.
 	~Client();
 
+	/// Executes the given transaction.
 	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
 
+	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
+	void onPending(Address _dest, function<void(Transaction)> const& _f);
+
+	/// Calls @a _f when a transaction is mined that involves @a _dest and once per change.
+	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
+
+	// Informational stuff:
+
+	/// Locks/unlocks the state/blockChain/transactionQueue for access.
 	void lock();
 	void unlock();
 
+	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
 
+	/// Get the object representing the current state of Ethereum.
 	State const& state() const { return m_s; }
+	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
+	/// Get the object representing the transaction queue.
 	TransactionQueue const& transactionQueue() const { return m_tq; }
 
+	// Network stuff:
+
+	/// Get information on the current peer set.
 	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
+	/// Same as peers().size(), but more efficient.
 	unsigned peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
+	/// Start the network subsystem.
 	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303, unsigned _verbosity = 4, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
+	/// Connect to a particular peer.
 	void connect(std::string const& _seedHost, short _port = 30303);
+	/// Stop the network subsystem.
 	void stopNetwork();
 
+	// Mining stuff:
+
+	/// Set the coinbase address.
 	void setAddress(Address _us) { m_s.setAddress(_us); }
+	/// Get the coinbase address.
 	Address address() const { return m_s.address(); }
+	/// Start mining.
 	void startMining();
+	/// Stop mining.
 	void stopMining();
+	/// Check the progress of the mining.
 	MineProgress miningProgress() const { return m_mineProgress; }
 
 private:
