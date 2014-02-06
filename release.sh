@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [[ ! "$2" = "" ]]; then
-	debchange -v $1 "$2"
-	git commit -a -m "$2"
+if [[ ! "$3" = "" ]]; then
+	debchange -v $1-$2 "$3"
+	git commit -a -m "$3"
 fi
 
 opwd=`pwd`
@@ -34,6 +34,12 @@ mv cpp-ethereum $archdir
 
 echo Creating archive...
 tar c $archdir | bzip2 -- > $archfile
+
+if [[! "$1" = "" ]]; then
+	ln -s $archfile "cpp-ethereum_$1.orig.tar.bz2"
+fi
+
+exit
 
 echo Packaging...
 cd "$archdir"
