@@ -1,7 +1,7 @@
 Source: cpp-ethereum
 Section: science
 Priority: extra
-Maintainer: Ethereum <ethereum@gavwood.com>
+Maintainer: Ethereum (Ethereum Project) <ethereum@gavwood.com>
 Build-Depends: debhelper (>= 8.0.0), cmake, libgmp-dev, libcryptoppeth-dev, libboost-filesystem1.53-dev, libboost-mpi1.53-dev, libboost1.53-dev, libleveldb-dev, libminiupnpc-dev, qtbase5-dev, qt5-default
 Standards-Version: 3.9.4
 Homepage: http://ethereum.org
