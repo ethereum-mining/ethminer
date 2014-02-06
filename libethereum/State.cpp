@@ -67,6 +67,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 		// Initialise.
 		s_ret[Address(fromUserHex("812413ae7e515a3bcaf7b3444116527bce958c02"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
 	}
 	return s_ret;
 }
@@ -96,12 +97,13 @@ State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&
 	cout << "State::State: state root initialised to " << m_state.root() << endl;
 
 	m_previousBlock = BlockInfo::genesis();
-	cnote << "Genesis headerhash-nononce:" << m_previousBlock.headerHashWithoutNonce();
+	cnote << "Genesis hash:" << m_previousBlock.hash;
 	{
 		RLPStream s;
-		m_previousBlock.fillStream(s, false);
+		m_previousBlock.fillStream(s, true);
 		cnote << RLP(s.out());
 		cnote << asHex(s.out());
+		cnote << sha3(s.out());
 	}
 	resetCurrent();
 
