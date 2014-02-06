@@ -15,7 +15,9 @@
         along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file FileSystem.h
- * @author Eric Lombrozo <elombrozo@gmail.com>
+ * @authors
+ *	 Eric Lombrozo <elombrozo@gmail.com>
+ *	 Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
@@ -23,4 +25,10 @@
 
 #include <string>
 
+namespace eth
+{
+
+/// @returns the path for user data.
 std::string getDataDir();
+
+}
