@@ -15,39 +15,42 @@
         along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file FileSystem.cpp
- * @author Eric Lombrozo <elombrozo@gmail.com>
+ * @authors
+ *	 Eric Lombrozo <elombrozo@gmail.com>
+ *	 Gav Wood <i@gavwood.com>
  * @date 2014
  */
-
-#include "FileSystem.h"
-#include <boost/filesystem.hpp>
 
 #ifdef _WIN32
 #include <shlobj.h>
 #endif
+#include <boost/filesystem.hpp>
+#include "FileSystem.h"
+using namespace std;
+using namespace eth;
 
-std::string getDataDir()
+std::string eth::getDataDir()
 {
 #ifdef _WIN32
 	char path[1024] = "";
 	if (SHGetSpecialFolderPathA(NULL, path, CSIDL_APPDATA, true))
 		return (boost::filesystem::path(path) / "Ethereum").string();
 	else
-        {
-		std::cerr << "getDataDir() - SHGetSpecialFolderPathA() failed." << std::endl;
+	{
+		cwarn << "getDataDir(): SHGetSpecialFolderPathA() failed.";
 		throw std::runtime_error("getDataDir() - SHGetSpecialFolderPathA() failed.");
 	}
 #else
 	boost::filesystem::path dataDirPath;
-	char* homeDir = getenv("HOME");
-	if (homeDir == NULL || strlen(homeDir) == 0)
+	char const* homeDir = getenv("HOME");
+	if (!homeDir || strlen(homeDir) == 0)
 		dataDirPath = boost::filesystem::path("/");
 	else
 		dataDirPath = boost::filesystem::path(homeDir);
 #if defined(__APPLE__) && defined(__MACH__)
-	dataDirPath /= "Library/Application Support";
+	dataDirPath /= "Library" / "Application Support";
 	boost::filesystem::create_directory(dataDirPath);
-        return (dataDirPath / "Ethereum").string();
+	return (dataDirPath / "Ethereum").string();
 #else
 	return (dataDirPath / ".ethereum").string();
 #endif
