@@ -1,3 +1,9 @@
+cpp-ethereum (0.1-2) saucy; urgency=low
+
+  * Fix Qt dep.
+
+ -- Gav Wood <i@gavwood.com>  Mon, 06 Feb 2014 11:35:20 +0000
+
 cpp-ethereum (0.1-1) saucy; urgency=low
 
   * Initial release.
