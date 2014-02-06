@@ -27,10 +27,11 @@
 #include "BlockInfo.h"
 #include "State.h"
 #include "BlockChain.h"
+#include "FileSystem.h"
 using namespace std;
 using namespace eth;
 
-std::string Defaults::s_dbPath = string(getenv("HOME")) + "/.ethereum";
+std::string Defaults::s_dbPath = getDataDir(); 
 
 namespace eth
 {
