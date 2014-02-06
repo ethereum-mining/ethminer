@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ ! "$3" = "" ]]; then
+if [[ ! "$3" == "" ]]; then
 	debchange -v $1-$2 "$3"
 	git commit -a -m "$3"
 fi
@@ -12,7 +12,7 @@ echo Checking out...
 git clone $opwd
 cd cpp-ethereum
 
-if [ "$1" = "" ]; then
+if [ "$1" == "" ]; then
 	archdir="cpp-ethereum-$(date +%Y%m%d)"
 else
 	archdir="cpp-ethereum-$1"
@@ -30,14 +30,13 @@ rm -rf .git .gitignore
 
 echo Renaming directory...
 cd ..
+rm -rf $archdir
 mv cpp-ethereum $archdir
 
 echo Creating archive...
 tar c $archdir | bzip2 -- > $archfile
 
-if [[ ! "$1" = "" ]]; then
-	ln -s $archfile "cpp-ethereum_$1.orig.tar.bz2"
-fi
+[[ ! "$1" == "" ]] && ln -sf $archfile "cpp-ethereum_$1.orig.tar.bz2"
 
 exit
 
