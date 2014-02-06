@@ -9,8 +9,8 @@ namespace eth
 class Exception: public std::exception
 {
 public:
-	virtual std::string description() const { return "Exception"; }
-	virtual char const* what() const noexcept { return description().c_str(); }
+	virtual std::string description() const { return "Unknown exception"; }
+	virtual char const* what() const noexcept { return typeid(*this).name(); }
 };
 
 class BadHexCharacter: public Exception {};
@@ -35,5 +35,7 @@ class InvalidTimestamp: public Exception {};
 class InvalidNonce: public Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; };
 class InvalidParentHash: public Exception {};
 class InvalidContractAddress: public Exception {};
+class NoNetworking: public Exception {};
+class NoUPnPDevice: public Exception {};
 
 }

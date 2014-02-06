@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Common.h"
+#include "Transaction.h"
 
 namespace eth
 {
@@ -35,15 +36,18 @@ class TransactionQueue
 {
 public:
 	bool attemptImport(bytes const& _block) { try { import(_block); return true; } catch (...) { return false; } }
-
 	bool import(bytes const& _block);
-
 	void drop(h256 _txHash) { m_data.erase(_txHash); }
-
 	std::map<h256, bytes> const& transactions() const { return m_data; }
+
+	Transactions interestQueue() { Transactions ret; swap(ret, m_interestQueue); return ret; }
+	void pushInterest(Address _a) { m_interest[_a]++; }
+	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
 
 private:
 	std::map<h256, bytes> m_data;	///< the queue.
+	Transactions m_interestQueue;
+	std::map<Address, int> m_interest;
 };
 
 }

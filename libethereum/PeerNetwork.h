@@ -39,17 +39,17 @@ class TransactionQueue;
 
 enum PacketType
 {
-	Hello = 0,
-	Disconnect,
-	Ping,
-	Pong,
-	GetPeers = 0x10,
-	Peers,
-	Transactions,
-	Blocks,
-	GetChain,
-	NotInChain,
-	GetTransactions
+	HelloPacket = 0,
+	DisconnectPacket,
+	PingPacket,
+	PongPacket,
+	GetPeersPacket = 0x10,
+	PeersPacket,
+	TransactionsPacket,
+	BlocksPacket,
+	GetChainPacket,
+	NotInChainPacket,
+	GetTransactionsPacket
 };
 
 class PeerServer;

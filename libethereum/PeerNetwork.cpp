@@ -30,11 +30,12 @@
 #endif
 
 #include <chrono>
-#include <miniupnpc/miniupnpc.h>
+#include "Exceptions.h"
 #include "Common.h"
 #include "BlockChain.h"
 #include "BlockInfo.h"
 #include "TransactionQueue.h"
+#include "UPnP.h"
 #include "PeerNetwork.h"
 using namespace std;
 using namespace eth;
@@ -87,7 +88,7 @@ bool PeerSession::interpret(RLP const& _r)
 		cout << ">>> " << _r << endl;
 	switch (_r[0].toInt<unsigned>())
 	{
-	case Hello:
+	case HelloPacket:
 	{
 		m_protocolVersion = _r[1].toInt<uint>();
 		m_networkId = _r[2].toInt<uint>();
@@ -116,7 +117,7 @@ bool PeerSession::interpret(RLP const& _r)
 			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
-			s << (uint)GetChain;
+			s << GetChainPacket;
 			auto h = m_server->m_latestBlockSent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
@@ -124,12 +125,12 @@ bool PeerSession::interpret(RLP const& _r)
 			sealAndSend(s);
 			s.clear();
 			prep(s).appendList(1);
-			s << GetTransactions;
+			s << GetTransactionsPacket;
 			sealAndSend(s);
 		}
 		break;
 	}
-	case Disconnect:
+	case DisconnectPacket:
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | Disconnect" << endl;
 		if (m_server->m_verbosity >= 1)
@@ -141,25 +142,25 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		m_socket.close();
 		return false;
-	case Ping:
+	case PingPacket:
 	{
 //		cout << std::setw(2) << m_socket.native_handle() << " | Ping" << endl;
 		RLPStream s;
-		sealAndSend(prep(s).appendList(1) << (uint)Pong);
+		sealAndSend(prep(s).appendList(1) << PongPacket);
 		break;
 	}
-	case Pong:
+	case PongPacket:
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
 //		cout << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms" << endl;
 		break;
-	case GetPeers:
+	case GetPeersPacket:
 	{
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | GetPeers" << endl;
 		std::vector<bi::tcp::endpoint> peers = m_server->potentialPeers();
 		RLPStream s;
 		prep(s).appendList(peers.size() + 1);
-		s << (uint)Peers;
+		s << PeersPacket;
 		for (auto i: peers)
 		{
 			if (m_server->m_verbosity >= 3)
@@ -169,7 +170,7 @@ bool PeerSession::interpret(RLP const& _r)
 		sealAndSend(s);
 		break;
 	}
-	case Peers:
+	case PeersPacket:
 		if (m_server->m_verbosity >= 2)
 			cout << std::setw(2) << m_socket.native_handle() << " | Peers (" << dec << (_r.itemCount() - 1) << " entries)" << endl;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -200,7 +201,7 @@ bool PeerSession::interpret(RLP const& _r)
 			CONTINUE:;
 		}
 		break;
-	case Transactions:
+	case TransactionsPacket:
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
 		if (m_server->m_verbosity >= 2)
@@ -212,7 +213,7 @@ bool PeerSession::interpret(RLP const& _r)
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
-	case Blocks:
+	case BlocksPacket:
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
 		if (m_server->m_verbosity >= 2)
@@ -237,13 +238,13 @@ bool PeerSession::interpret(RLP const& _r)
 		{
 			RLPStream s;
 			prep(s).appendList(3);
-			s << (uint)GetChain;
+			s << GetChainPacket;
 			s << sha3(_r[1].data());
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
 		}
 		break;
-	case GetChain:
+	case GetChainPacket:
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
@@ -279,7 +280,7 @@ bool PeerSession::interpret(RLP const& _r)
 					<< latest << " - " << parent << endl;
 
 				prep(s);
-				s.appendList(1 + count) << (uint)Blocks;
+				s.appendList(1 + count) << BlocksPacket;
 				uint endNumber = m_server->m_chain->details(parent).number;
 				uint startNumber = endNumber + count;
 				if (m_server->m_verbosity >= 6)
@@ -309,7 +310,7 @@ bool PeerSession::interpret(RLP const& _r)
 						cout << std::setw(2) << m_socket.native_handle() << " | GetChain failed; not in chain" << endl;
 					// No good - must have been on a different branch.
 					s.clear();
-					prep(s).appendList(2) << (uint)NotInChain << parents.back();
+					prep(s).appendList(2) << NotInChainPacket << parents.back();
 				}
 				else
 					// still some parents left - try them.
@@ -322,7 +323,7 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	}
-	case NotInChain:
+	case NotInChainPacket:
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
@@ -340,7 +341,7 @@ bool PeerSession::interpret(RLP const& _r)
 			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(noGood).number);
 			RLPStream s;
 			prep(s).appendList(2 + count);
-			s << (uint)GetChain;
+			s << GetChainPacket;
 			auto h = m_server->m_chain->details(noGood).parent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
@@ -349,7 +350,7 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	}
-	case GetTransactions:
+	case GetTransactionsPacket:
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
@@ -365,7 +366,7 @@ bool PeerSession::interpret(RLP const& _r)
 void PeerSession::ping()
 {
 	RLPStream s;
-	sealAndSend(prep(s).appendList(1) << Ping);
+	sealAndSend(prep(s).appendList(1) << PingPacket);
 	m_ping = std::chrono::steady_clock::now();
 }
 
@@ -377,7 +378,7 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 void PeerServer::seal(bytes& _b)
 {
 	if (m_verbosity >= 9)
-		cout << "<<< " << RLP(bytesConstRef(&_b).cropped(8)) << endl;
+		cbug(LeftChannel) << RLP(bytesConstRef(&_b).cropped(8));
 	_b[0] = 0x22;
 	_b[1] = 0x40;
 	_b[2] = 0x08;
@@ -451,7 +452,7 @@ void PeerSession::disconnect()
 		{
 			RLPStream s;
 			prep(s);
-			s.appendList(1) << (uint)Disconnect;
+			s.appendList(1) << DisconnectPacket;
 			sealAndSend(s);
 			m_disconnect = chrono::steady_clock::now();
 		}
@@ -475,7 +476,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(m_server->m_public.port() ? 6 : 5) << (uint)Hello << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0);
+	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0);
 	if (m_server->m_public.port())
 		s << m_server->m_public.port();
 	sealAndSend(s);
@@ -535,168 +536,6 @@ void PeerSession::doRead()
 	});
 }
 
-#include <stdio.h>
-#include <string.h>
-
-#include <miniupnpc/miniwget.h>
-#include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
-
-namespace eth {
-struct UPnP
-{
-	UPnP()
-	{
-		ok = false;
-
-		struct UPNPDev * devlist;
-		struct UPNPDev * dev;
-		char * descXML;
-		int descXMLsize = 0;
-		int upnperror = 0;
-		printf("TB : init_upnp()\n");
-		memset(&urls, 0, sizeof(struct UPNPUrls));
-		memset(&data, 0, sizeof(struct IGDdatas));
-		devlist = upnpDiscover(2000, NULL/*multicast interface*/, NULL/*minissdpd socket path*/, 0/*sameport*/, 0/*ipv6*/, &upnperror);
-		if (devlist)
-		{
-			dev = devlist;
-			while (dev)
-			{
-				if (strstr (dev->st, "InternetGatewayDevice"))
-					break;
-				dev = dev->pNext;
-			}
-			if (!dev)
-				dev = devlist; /* defaulting to first device */
-
-			printf("UPnP device :\n"
-				   " desc: %s\n st: %s\n",
-				   dev->descURL, dev->st);
-#if MINIUPNPC_API_VERSION >= 9
-			descXML = (char*)miniwget(dev->descURL, &descXMLsize, 0);
-#else
-			descXML = (char*)miniwget(dev->descURL, &descXMLsize);
-#endif
-			if (descXML)
-			{
-				parserootdesc (descXML, descXMLsize, &data);
-				free (descXML); descXML = 0;
-#if MINIUPNPC_API_VERSION >= 9
-				GetUPNPUrls (&urls, &data, dev->descURL, 0);
-#else
-				GetUPNPUrls (&urls, &data, dev->descURL);
-#endif
-				ok = true;
-			}
-			freeUPNPDevlist(devlist);
-		}
-		else
-		{
-			/* error ! */
-		}
-	}
-	~UPnP()
-	{
-		auto r = m_reg;
-		for (auto i: r)
-			removeRedirect(i);
-	}
-
-	string externalIP()
-	{
-		char addr[16];
-		if (!UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr))
-			return addr;
-		else
-			return "0.0.0.0";
-	}
-
-	int addRedirect(char const* addr, int port)
-	{
-		char port_str[16];
-		int r;
-		printf("TB : upnp_add_redir (%d)\n", port);
-		if (urls.controlURL[0] == '\0')
-		{
-			printf("TB : the init was not done !\n");
-			return -1;
-		}
-		sprintf(port_str, "%d", port);
-		r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, port_str, port_str, addr, "ethereum", "TCP", NULL, NULL);
-		if (r)
-		{
-			printf("AddPortMapping(%s, %s, %s) failed with %d. Trying non-specific external port...\n", port_str, port_str, addr, r);
-			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, port_str, NULL, addr, "ethereum", "TCP", NULL, NULL);
-		}
-		if (r)
-		{
-			printf("AddPortMapping(%s, NULL, %s) failed with %d. Trying non-specific internal port...\n", port_str, addr, r);
-			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, NULL, port_str, addr, "ethereum", "TCP", NULL, NULL);
-		}
-		if (r)
-		{
-			printf("AddPortMapping(NULL, %s, %s) failed with %d. Trying non-specific both ports...\n", port_str, addr, r);
-			r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype, NULL, NULL, addr, "ethereum", "TCP", NULL, NULL);
-		}
-		if (r)
-			printf("AddPortMapping(NULL, NULL, %s) failed with %d\n", addr, r);
-		else
-		{
-			unsigned num = 0;
-			UPNP_GetPortMappingNumberOfEntries(urls.controlURL, data.first.servicetype, &num);
-			for (unsigned i = 0; i < num; ++i)
-			{
-				char extPort[16];
-				char intClient[16];
-				char intPort[6];
-				char protocol[4];
-				char desc[80];
-				char enabled[4];
-				char rHost[64];
-				char duration[16];
-				UPNP_GetGenericPortMappingEntry(urls.controlURL, data.first.servicetype, toString(i).c_str(), extPort, intClient, intPort, protocol, desc, enabled, rHost, duration);
-				if (string("ethereum") == desc)
-				{
-					m_reg.insert(atoi(extPort));
-					return atoi(extPort);
-				}
-			}
-			cerr << "ERROR: Mapped port not found." << endl;
-		}
-		return 0;
-	}
-
-	void removeRedirect(int port)
-	{
-		char port_str[16];
-//		int t;
-		printf("TB : upnp_rem_redir (%d)\n", port);
-		if (urls.controlURL[0] == '\0')
-		{
-			printf("TB : the init was not done !\n");
-			return;
-		}
-		sprintf(port_str, "%d", port);
-		UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port_str, "TCP", NULL);
-		m_reg.erase(port);
-	}
-
-	bool isValid() const
-	{
-		return ok;
-	}
-
-	set<int> m_reg;
-
-	bool ok;
-	struct UPNPUrls urls;
-	struct IGDdatas data;
-};
-}
-
-class NoNetworking: public std::exception {};
-
 PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
@@ -737,17 +576,23 @@ PeerServer::~PeerServer()
 void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 {
 	if (_upnp)
-		m_upnp = new UPnP;
+		try
+		{
+			m_upnp = new UPnP;
+		}
+		catch (NoUPnPDevice) {}	// let m_upnp continue as null - we handle it properly.
 
 	bi::tcp::resolver r(m_ioService);
 	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
-		cout << "external addr: " << m_upnp->externalIP() << endl;
+		cnote << "External addr: " << m_upnp->externalIP();
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
-		if (!p)
+		if (p)
+			cnote << "Punched through NAT and mapped local port" << m_listenPort << "onto external port" << p << ".";
+		else
 		{
 			// couldn't map
-			cerr << "*** WARNING: Couldn't punch through NAT (or no NAT in place). Using " << m_listenPort << endl;
+			cwarn << "Couldn't punch through NAT (or no NAT in place). Assuming " << m_listenPort << " is local & external port.";
 			p = m_listenPort;
 		}
 
@@ -756,31 +601,18 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 			m_public = bi::tcp::endpoint(bi::address(), p);
 		else
 		{
-			auto it = r.resolve({_publicAddress.empty() ? eip : _publicAddress, toString(p)});
-			m_public = it->endpoint();
+			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), p);
 			m_addresses.push_back(m_public.address().to_v4());
 		}
 	}
 	else
 	{
 		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
-		if (_publicAddress.size())
-			m_public = r.resolve({_publicAddress, toString(m_listenPort)})->endpoint();
-		else if (m_peerAddresses.size())
-			m_public = r.resolve({m_peerAddresses[0].to_string(), toString(m_listenPort)})->endpoint();
-		else
-			m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
+		m_public = bi::tcp::endpoint(_publicAddress.size() ? bi::address::from_string(_publicAddress)
+									: m_peerAddresses.size() ? m_peerAddresses[0]
+									: bi::address(), m_listenPort);
 		m_addresses.push_back(m_public.address().to_v4());
 	}
-/*	int er;
-	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
-	for (UPNPDev* d = dlist; d; d = dlist->pNext)
-	{
-		IGDdatas data;
-		parserootdesc(d->descURL, 0, &data);
-		data.presentationurl()
-	}
-	freeUPNPDevlist(dlist);*/
 }
 
 void PeerServer::populateAddresses()
@@ -1003,7 +835,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					{
 						RLPStream ts;
 						PeerSession::prep(ts);
-						ts.appendList(n + 1) << Transactions;
+						ts.appendList(n + 1) << TransactionsPacket;
 						ts.appendRaw(b).swapOut(b);
 						seal(b);
 						p->send(&b);
@@ -1019,7 +851,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				// TODO: find where they diverge and send complete new branch.
 				RLPStream ts;
 				PeerSession::prep(ts);
-				ts.appendList(2) << Blocks;
+				ts.appendList(2) << BlocksPacket;
 				bytes b;
 				ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
 				seal(b);
@@ -1070,7 +902,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					{
 						RLPStream s;
 						bytes b;
-						(PeerSession::prep(s).appendList(1) << GetPeers).swapOut(b);
+						(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
 						seal(b);
 						for (auto const& i: m_peers)
 							if (auto p = i.lock())
