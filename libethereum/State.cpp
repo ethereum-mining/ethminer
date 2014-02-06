@@ -68,6 +68,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 		s_ret[Address(fromUserHex("812413ae7e515a3bcaf7b3444116527bce958c02"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("80c01a26338f0d905e295fccb71fa9ea849ffa12"))] = AddressState(u256(1) << 200, 0);
 	}
 	return s_ret;
 }

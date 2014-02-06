@@ -2,16 +2,16 @@ cpp-ethereum (0.1-3) saucy; urgency=low
 
   * Packaging stuff.
 
- -- Gav Wood <i@gavwood.com>  Thu, 06 Feb 2014 14:13:00 +0000
+ -- Ethereum <ethereum@gavwood.com>  Thu, 06 Feb 2014 14:13:00 +0000
 
 cpp-ethereum (0.1-2) saucy; urgency=low
 
   * Fix Qt dep.
 
- -- Gav Wood <i@gavwood.com>  Mon, 06 Feb 2014 11:35:20 +0000
+ -- Gav Wood <ethereum@gavwood.com>  Mon, 06 Feb 2014 11:35:20 +0000
 
 cpp-ethereum (0.1-1) saucy; urgency=low
 
   * Initial release.
 
- -- Gav Wood <i@gavwood.com>  Mon, 03 Feb 2014 14:50:20 +0000
+ -- Gav Wood <ethereum@gavwood.com>  Mon, 03 Feb 2014 14:50:20 +0000
