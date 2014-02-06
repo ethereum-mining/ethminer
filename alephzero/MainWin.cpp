@@ -166,7 +166,7 @@ void Main::refresh()
 void Main::on_net_toggled()
 {
 	if (ui->net->isChecked())
-		m_client.startNetwork(ui->port->value(), string(), 30303, 6);
+		m_client.startNetwork(ui->port->value(), string(), 30303, 6, NodeMode::Full, 5, std::string(), ui->upnp->isChecked());
 	else
 		m_client.stopNetwork();
 }
