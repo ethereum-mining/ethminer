@@ -22,8 +22,8 @@ Depends: libethereum (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, 
 Description: The future of computational social contracts. Dev Files.
  A long description of libethereum. Dev Files.
 
-Package: alephzero
+Package: alethzero
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libethereum (= ${binary:Version}), qtbase5
 Description: The Qt-based Ethereum GUI.
- A long description of alephzero.
+ A long description of alethzero.

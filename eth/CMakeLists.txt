@@ -17,3 +17,6 @@ target_link_libraries(eth gmp)
 target_link_libraries(eth boost_system)
 target_link_libraries(eth boost_filesystem)
 target_link_libraries(eth ${CMAKE_THREAD_LIBS_INIT})
+
+install( TARGETS eth RUNTIME DESTINATION bin )
+
