@@ -15,12 +15,19 @@
 	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file PeerNetwork.cpp
- * @author Gav Wood <i@gavwood.com>
+ * @authors:
+ *   Gav Wood <i@gavwood.com>
+ *   Eric Lombrozo <elombrozo@gmail.com>
  * @date 2014
  */
 
 #include <sys/types.h>
+#ifdef _WIN32
+// winsock is already included
+// #include <winsock.h>
+#else
 #include <ifaddrs.h>
+#endif
 
 #include <chrono>
 #include <miniupnpc/miniupnpc.h>
@@ -599,10 +606,8 @@ struct UPnP
 	string externalIP()
 	{
 		char addr[16];
-		if (!UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr))
-			return addr;
-		else
-			return "0.0.0.0";
+		UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr);
+		return addr;
 	}
 
 	int addRedirect(char const* addr, int port)
@@ -690,7 +695,7 @@ struct UPnP
 
 class NoNetworking: public std::exception {};
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -700,7 +705,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	m_requiredNetworkId(_networkId)
 {
 	populateAddresses();
-	determinePublic(_publicAddress, _upnp);
+	determinePublic(_publicAddress);
 	ensureAccepting();
 	if (m_verbosity)
 		cout << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full") << endl;
@@ -727,14 +732,12 @@ PeerServer::~PeerServer()
 	delete m_upnp;
 }
 
-void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
+void PeerServer::determinePublic(string const& _publicAddress)
 {
-	if (_upnp)
-		m_upnp = new UPnP;
-
-	bi::tcp::resolver r(m_ioService);
-	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
+	m_upnp = new UPnP;
+	if (m_upnp->isValid() && m_peerAddresses.size())
 	{
+		bi::tcp::resolver r(m_ioService);
 		cout << "external addr: " << m_upnp->externalIP() << endl;
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
 		if (!p)
@@ -744,8 +747,7 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 			p = m_listenPort;
 		}
 
-		auto eip = m_upnp->externalIP();
-		if (eip == string("0.0.0.0") && _publicAddress.empty())
+		if (m_upnp->externalIP() == string("0.0.0.0") && _publicAddress.empty())
 			m_public = bi::tcp::endpoint(bi::address(), p);
 		else
 		{
@@ -754,21 +756,56 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 			m_addresses.push_back(m_public.address().to_v4());
 		}
 	}
-	else
+/*	int er;
+	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
+	for (UPNPDev* d = dlist; d; d = dlist->pNext)
 	{
-		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
-		if (_publicAddress.size())
-			m_public = r.resolve({_publicAddress, toString(m_listenPort)})->endpoint();
-		else if (m_peerAddresses.size())
-			m_public = r.resolve({m_peerAddresses[0].to_string(), toString(m_listenPort)})->endpoint();
-		else
-			m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
-		m_addresses.push_back(m_public.address().to_v4());
+		IGDdatas data;
+		parserootdesc(d->descURL, 0, &data);
+		data.presentationurl()
 	}
+	freeUPNPDevlist(dlist);*/
 }
 
 void PeerServer::populateAddresses()
 {
+#ifdef _WIN32
+	WSAData wsaData;
+	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
+		throw NoNetworking();
+
+	char ac[80];
+	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
+	{
+		cerr << "Error " << WSAGetLastError() << " when getting local host name." << endl;
+		WSACleanup();
+		throw NoNetworking();
+	}
+
+	struct hostent* phe = gethostbyname(ac);
+	if (phe == 0)
+	{
+		cerr << "Bad host lookup." << endl;
+		WSACleanup();
+		throw NoNetworking();
+	}
+
+	for (int i = 0; phe->h_addr_list[i] != 0; ++i)
+	{
+		struct in_addr addr;
+		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
+		char *addrStr = inet_ntoa(addr);
+		bi::address ad(bi::address::from_string(addrStr));
+		m_addresses.push_back(ad.to_v4());
+		bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+		if (isLocal)
+			m_peerAddresses.push_back(ad.to_v4());
+		if (m_verbosity >= 1)
+			cout << "Address: " << ac << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]") << endl;
+	}
+
+	WSACleanup();
+#else
 	ifaddrs* ifaddr;
 	if (getifaddrs(&ifaddr) == -1)
 		throw NoNetworking();
@@ -797,6 +834,7 @@ void PeerServer::populateAddresses()
 	}
 
 	freeifaddrs(ifaddr);
+#endif
 }
 
 std::vector<bi::tcp::endpoint> PeerServer::potentialPeers()
