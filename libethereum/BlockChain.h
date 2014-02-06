@@ -31,11 +31,17 @@ struct Defaults
 {
 	friend class BlockChain;
 	friend class State;
+
 public:
-	static void setDBPath(std::string _dbPath) { s_dbPath = _dbPath; }
+	Defaults();
+
+	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
+	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
 
 private:
-	static std::string s_dbPath;
+	std::string m_dbPath;
+
+	static Defaults* s_this;
 };
 
 class RLP;

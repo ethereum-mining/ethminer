@@ -21,11 +21,12 @@
  * @date 2014
  */
 
+#include "FileSystem.h"
+
 #ifdef _WIN32
 #include <shlobj.h>
 #endif
 #include <boost/filesystem.hpp>
-#include "FileSystem.h"
 using namespace std;
 using namespace eth;
 

@@ -31,8 +31,6 @@
 using namespace std;
 using namespace eth;
 
-std::string Defaults::s_dbPath = getDataDir(); 
-
 namespace eth
 {
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
@@ -48,6 +46,13 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 	delete it;
 	return _out;
 }
+}
+
+Defaults* Defaults::s_this = nullptr;
+
+Defaults::Defaults()
+{
+	m_dbPath = getDataDir();
 }
 
 BlockDetails::BlockDetails(RLP const& _r)
@@ -66,7 +71,7 @@ bytes BlockDetails::rlp() const
 BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
-		_path = Defaults::s_dbPath;
+		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
 	if (_killExisting)
 	{
