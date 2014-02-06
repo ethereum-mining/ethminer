@@ -60,6 +60,8 @@ struct Transaction
 	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
 };
 
+using Transactions = std::vector<Transaction>;
+
 }
 
 

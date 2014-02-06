@@ -36,7 +36,9 @@ bool TransactionQueue::import(bytes const& _block)
 		// Check validity of _block as a transaction. To do this we just deserialise and attempt to determine the sender. If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 		Transaction t(_block);
-		t.sender();
+		auto s = t.sender();
+		if (m_interest.count(s))
+			m_interestQueue.push_back(t);
 
 		// If valid, append to blocks.
 		m_data[h] = _block;

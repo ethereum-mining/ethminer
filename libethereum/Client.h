@@ -52,11 +52,21 @@ public:
 	/// Executes the given transaction.
 	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
 
+	/// Requires transactions involving this address be queued for inspection.
+	void setInterest(Address _dest);
+
+	/// @returns incoming minable transactions that we wanted to be notified of. Clears the queue.
+	Transactions pendingQueue();
+
+	/// @returns alterations in state of a mined block that we wanted to be notified of. Clears the queue.
+	std::vector<std::pair<Address, AddressState>> minedQueue();
+
+	// Not yet - probably best as using some sort of signals implementation.
 	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
-	void onPending(Address _dest, function<void(Transaction)> const& _f);
+//	void onPending(Address _dest, function<void(Transaction)> const& _f);
 
 	/// Calls @a _f when a transaction is mined that involves @a _dest and once per change.
-	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
+//	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
 
 	// Informational stuff:
 
