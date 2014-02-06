@@ -10,7 +10,7 @@ using namespace eth;
 Main::Main(QWidget *parent) :
 	QDialog(parent),
 	ui(new Ui::Main),
-	m_client("AlephZero/v0.1")
+	m_client("AlethZero/v0.1")
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
@@ -44,16 +44,22 @@ Main::~Main()
 
 void Main::writeSettings()
 {
-	QSettings s("ethereum", "alephzero");
+	QSettings s("ethereum", "alethzero");
 	QByteArray b;
 	b.resize(32);
 	memcpy(b.data(), &m_myKey, 32);
 	s.setValue("address", b);
+
+	// TODO: save peers - implement it in PeerNetwork though returning RLP bytes
+	/*for (uint i = 0; !s.value(QString("peer%1").arg(i)).isNull(); ++i)
+	{
+		s.value(QString("peer%1").arg(i)).toString();
+	}*/
 }
 
 void Main::readSettings()
 {
-	QSettings s("ethereum", "alephzero");
+	QSettings s("ethereum", "alethzero");
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
 		m_myKey = KeyPair::create();
@@ -67,50 +73,11 @@ void Main::readSettings()
 
 	writeSettings();
 
+	// TODO: restore peers - implement it in PeerNetwork though giving RLP bytes
 	/*for (uint i = 0; !s.value(QString("peer%1").arg(i)).isNull(); ++i)
 	{
 		s.value(QString("peer%1").arg(i)).toString();
 	}*/
-}
-
-std::string formatBalance(u256 _b)
-{
-	static const vector<pair<u256, string>> c_units =
-	{
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
-		{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
-		{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
-		{(u256(1000000000) * 1000000000) * 1000, "Kether"},
-		{u256(1000000000) * 1000000000, "ether"},
-		{u256(1000000000) * 1000000, "finney"},
-		{u256(1000000000) * 1000, "szabo"},
-		{u256(1000000000), "Gwei"},
-		{u256(1000000), "Mwei"},
-		{u256(1000), "Kwei"}
-	};
-	ostringstream ret;
-	if (_b > c_units[0].first * 10000)
-	{
-		ret << (_b / c_units[0].first) << " " << c_units[0].second;
-		return ret.str();
-	}
-	ret << setprecision(5);
-	for (auto const& i: c_units)
-		if (_b >= i.first * 100)
-		{
-			ret << (double(_b / (i.first / 1000)) / 1000.0) << " " << i.second;
-			return ret.str();
-		}
-	ret << _b << " wei";
-	return ret.str();
 }
 
 void Main::refresh()
