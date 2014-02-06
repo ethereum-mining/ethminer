@@ -73,6 +73,9 @@ int main(int argc, char** argv)
 	string publicIP;
 	bool upnp = true;
 
+	// Init defaults
+	Defaults::get();
+
 	// Our address.
 	KeyPair us = KeyPair::create();
 	Address coinbase = us.address();
@@ -216,6 +219,10 @@ int main(int argc, char** argv)
 				cin >> rechex >> amount >> fee;
 				Address dest = h160(fromUserHex(rechex));
 				c.transact(us.secret(), dest, amount, fee);
+			}
+			else if (cmd == "exit")
+			{
+				break;
 			}
 		}
 	}

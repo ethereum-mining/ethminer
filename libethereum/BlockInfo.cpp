@@ -51,9 +51,6 @@ bytes BlockInfo::createGenesisBlock()
 		state.init();
 		eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
-		cout << "--- Genesis state_root=" << stateRoot << endl;
-		clog << state;
-		clog << db;
 	}
 
 	block.appendList(9) << h256() << sha3EmptyList << h160() << stateRoot << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)42;
