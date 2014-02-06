@@ -1,6 +1,8 @@
 project(ethereum)
 cmake_minimum_required(VERSION 2.8)
 
+set(CMAKE_AUTOMOC ON)
+
 cmake_policy(SET CMP0015 NEW)
 
 # Initialize CXXFLAGS.
@@ -74,3 +76,4 @@ add_subdirectory(secp256k1)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
+add_subdirectory(alethzero)

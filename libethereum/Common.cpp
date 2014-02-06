@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -200,4 +200,44 @@ KeyPair KeyPair::create()
 		ret.m_secret[i] = d(s_eng);
 	ret.m_address = toAddress(ret.m_secret);
 	return ret;
+}
+
+std::string eth::formatBalance(u256 _b)
+{
+	static const vector<pair<u256, string>> c_units =
+	{
+		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
+		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
+		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
+		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
+		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
+		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
+		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
+		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
+		{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
+		{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
+		{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
+		{(u256(1000000000) * 1000000000) * 1000, "Kether"},
+		{u256(1000000000) * 1000000000, "ether"},
+		{u256(1000000000) * 1000000, "finney"},
+		{u256(1000000000) * 1000, "szabo"},
+		{u256(1000000000), "Gwei"},
+		{u256(1000000), "Mwei"},
+		{u256(1000), "Kwei"}
+	};
+	ostringstream ret;
+	if (_b > c_units[0].first * 10000)
+	{
+		ret << (_b / c_units[0].first) << " " << c_units[0].second;
+		return ret.str();
+	}
+	ret << setprecision(5);
+	for (auto const& i: c_units)
+		if (_b >= i.first * 100)
+		{
+			ret << (double(_b / (i.first / 1000)) / 1000.0) << " " << i.second;
+			return ret.str();
+		}
+	ret << _b << " wei";
+	return ret.str();
 }

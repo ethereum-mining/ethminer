@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>978</width>
+    <width>991</width>
     <height>556</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AlephZero Ethereum Client</string>
+   <string>AlethZero Ethereum Client</string>
   </property>
   <property name="sizeGripEnabled">
    <bool>true</bool>
