@@ -42,7 +42,6 @@ find_library(LS NAMES cryptoppeth cryptopp
 	)
 
 if(ID AND LS)
-	set(CRYPTOPP_FOUND TRUE)
 	message(STATUS "Found Crypto++: ${ID}, ${LS}")
 	set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
 	if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
@@ -60,9 +59,13 @@ if(ID AND LS)
 endif()
 
 if(NOT CRYPTOPP_FOUND)
-	message(STATUS "System Crypto++ not found, broken or too old. We use ../cryptopp562")
 	set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-	set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
+	find_library(LSLOC NAMES cryptoppeth cryptopp
+	    PATHS ../cryptopp562
+            NO_DEFAULT_PATH
+	)
+	set(CRYPTOPP_LIBRARIES ${LSLOC} CACHE FILEPATH "" FORCE)
+	message(STATUS "System Crypto++ not found, broken or too old. We use ${LSLOC}")
 endif()
 
 # Not really worth caching. We want to reevaluate anyway.
