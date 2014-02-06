@@ -599,8 +599,10 @@ struct UPnP
 	string externalIP()
 	{
 		char addr[16];
-		UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr);
-		return addr;
+		if (!UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, addr))
+			return addr;
+		else
+			return "0.0.0.0";
 	}
 
 	int addRedirect(char const* addr, int port)
@@ -742,7 +744,8 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 			p = m_listenPort;
 		}
 
-		if (m_upnp->externalIP() == string("0.0.0.0") && _publicAddress.empty())
+		auto eip = m_upnp->externalIP();
+		if (eip == string("0.0.0.0") && _publicAddress.empty())
 			m_public = bi::tcp::endpoint(bi::address(), p);
 		else
 		{
@@ -762,15 +765,6 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 			m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
 		m_addresses.push_back(m_public.address().to_v4());
 	}
-/*	int er;
-	UPNPDev* dlist = upnpDiscover(250, 0, 0, 0, 0, &er);
-	for (UPNPDev* d = dlist; d; d = dlist->pNext)
-	{
-		IGDdatas data;
-		parserootdesc(d->descURL, 0, &data);
-		data.presentationurl()
-	}
-	freeUPNPDevlist(dlist);*/
 }
 
 void PeerServer::populateAddresses()
