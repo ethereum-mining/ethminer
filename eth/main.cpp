@@ -25,6 +25,7 @@
 #include "PeerNetwork.h"
 #include "BlockChain.h"
 #include "State.h"
+#include "FileSystem.h"
 using namespace std;
 using namespace eth;
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv)
 	KeyPair us = KeyPair::create();
 	Address coinbase = us.address();
 
-	string configFile = string(getenv("HOME")) + "/.ethereum/config.rlp";
+	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
 	{
