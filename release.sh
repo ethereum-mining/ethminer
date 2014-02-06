@@ -35,7 +35,7 @@ mv cpp-ethereum $archdir
 echo Creating archive...
 tar c $archdir | bzip2 -- > $archfile
 
-if [[! "$1" = "" ]]; then
+if [[ ! "$1" = "" ]]; then
 	ln -s $archfile "cpp-ethereum_$1.orig.tar.bz2"
 fi
 
