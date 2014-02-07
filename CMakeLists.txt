@@ -5,8 +5,10 @@ set(CMAKE_AUTOMOC ON)
 
 cmake_policy(SET CMP0015 NEW)
 
+set(ETH_VERSION 0.1.1)
+
 # Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
+set(CMAKE_CXX_FLAGS                "-Wall -std=c++11 -DETH_VERSION=${ETH_VERSION}")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
