@@ -37,6 +37,14 @@ namespace eth
 class BlockChain;
 class TransactionQueue;
 
+struct NetWarn: public LogChannel { static const char constexpr* name = "!N!"; static const int verbosity = 0; };
+struct NetNote: public LogChannel { static const char constexpr* name = "*N*"; static const int verbosity = 1; };
+struct NetMessageSummary: public LogChannel { static const char constexpr* name = "-N-"; static const int verbosity = 2; };
+struct NetMessageDetail: public LogChannel { static const char constexpr* name = "=N="; static const int verbosity = 3; };
+struct NetAllDetail: public LogChannel { static const char constexpr* name = "=N="; static const int verbosity = 6; };
+struct NetRight: public LogChannel { static const char constexpr* name = ">N>"; static const int verbosity = 8; };
+struct NetLeft: public LogChannel { static const char constexpr* name = "<N<"; static const int verbosity = 9; };
+
 enum PacketType
 {
 	HelloPacket = 0,
@@ -144,7 +152,6 @@ public:
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
 	void setMode(NodeMode _m) { m_mode = _m; }
-	void setVerbosity(unsigned _i) { m_verbosity = _i; }
 
 	/// Get peer information.
 	std::vector<PeerInfo> peers() const;
@@ -167,17 +174,6 @@ private:
 
 	std::string m_clientVersion;
 	NodeMode m_mode = NodeMode::Full;
-
-	/**
-	 * 0: Quiet - just errors on stderr.
-	 * 1: Accepting/connecting/connected & one-off info.
-	 * 2: Messages summary.
-	 * 3: Messages detail.
-	 * 6: Debug details.
-	 * 8: Received raw.
-	 * 9: Sent raw.
-	 */
-	unsigned m_verbosity = 4;
 
 	short m_listenPort;
 
