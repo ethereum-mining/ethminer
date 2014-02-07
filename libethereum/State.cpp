@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include "State.h"
+
 #include <secp256k1.h>
 #include <boost/filesystem.hpp>
 #if WIN32
@@ -40,7 +42,7 @@
 #include "Instruction.h"
 #include "Exceptions.h"
 #include "Dagger.h"
-#include "State.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 

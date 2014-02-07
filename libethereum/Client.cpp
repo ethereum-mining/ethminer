@@ -19,8 +19,10 @@
  * @date 2014
  */
 
-#include "Common.h"
 #include "Client.h"
+
+#include "Common.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 

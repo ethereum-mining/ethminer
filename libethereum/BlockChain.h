@@ -27,23 +27,6 @@ namespace ldb = leveldb;
 namespace eth
 {
 
-struct Defaults
-{
-	friend class BlockChain;
-	friend class State;
-
-public:
-	Defaults();
-
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-
-private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
-};
-
 class RLP;
 class RLPStream;
 
