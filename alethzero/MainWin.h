@@ -5,10 +5,14 @@
 #include <QAbstractListModel>
 #include <QMainWindow>
 #include <QMutex>
-#include <libethereum/Client.h>
+#include <libethereum/Common.h>
 
 namespace Ui {
 class Main;
+}
+
+namespace eth {
+class Client;
 }
 
 class Main : public QMainWindow
@@ -37,7 +41,7 @@ private:
 
 	Ui::Main *ui;
 
-	eth::Client m_client;
+	eth::Client* m_client;
 
 	QMutex m_guiLock;
 	QTimer* m_refresh;

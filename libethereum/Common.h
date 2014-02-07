@@ -29,7 +29,6 @@
 #endif
 
 #include <ctime>
-#include <iomanip>
 #include <chrono>
 #include <array>
 #include <map>
@@ -179,7 +178,9 @@ public:
 		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
 		{
 			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			sstr << Id::name << " [ " << rawTime /*put_time("%T", std::localtime(&rawTime)) */<< " | " << t_logThreadName << (_term ? " ] " : "");
+			char buf[9];
+			strftime(buf, 9, "%X", localtime(&rawTime));
+			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
 		}
 	}
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
