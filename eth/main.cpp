@@ -21,6 +21,7 @@
  */
 
 #include <fstream>
+#include "Defaults.h"
 #include "Client.h"
 #include "PeerNetwork.h"
 #include "BlockChain.h"

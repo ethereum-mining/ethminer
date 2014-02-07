@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include "BlockChain.h"
+
 #include <boost/filesystem.hpp>
 #include "Common.h"
 #include "RLP.h"
@@ -26,8 +28,8 @@
 #include "Dagger.h"
 #include "BlockInfo.h"
 #include "State.h"
-#include "BlockChain.h"
 #include "FileSystem.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 
@@ -46,13 +48,6 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 	delete it;
 	return _out;
 }
-}
-
-Defaults* Defaults::s_this = nullptr;
-
-Defaults::Defaults()
-{
-	m_dbPath = getDataDir();
 }
 
 BlockDetails::BlockDetails(RLP const& _r)
