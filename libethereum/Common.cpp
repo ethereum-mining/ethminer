@@ -18,6 +18,10 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
+
+#include "Common.h"
+
+#include <random>
 #if WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -30,32 +34,22 @@
 #pragma warning(pop)
 #else
 #endif
-#include <random>
-#include "Common.h"
 #include "Exceptions.h"
 using namespace std;
 using namespace eth;
 
 // Logging
-bool eth::g_debugEnabled[256] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true, true, true, true, true, true};
-char const* g_debugName[256] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ">>>", "<<<", "LOG", "---", "***", "!!!"};
+int eth::g_logVerbosity = 6;
+map<type_info const*, bool> eth::g_logOverride;
+thread_local std::string eth::t_logThreadName = "???";
+static std::string g_mainThreadName = (eth::t_logThreadName = "main");
 
-void eth::simpleDebugOut(std::string const& _s, unsigned char _id)
+void eth::simpleDebugOut(std::string const& _s, char const*)
 {
-	// TODO: Time & thread.
-	if (g_debugEnabled[_id])
-		std::cout << (g_debugName[_id] ? g_debugName[_id] : "   ") << " " << _s << std::endl << std::flush;
+	cout << _s << endl << flush;
 }
 
-std::function<void(std::string const&, unsigned char)> eth::g_debugPost = simpleDebugOut;
-std::function<void(char, std::string const&)> eth::g_syslogPost =
-	[](char _c, string const& _s)
-	{
-		if (_c == 'C')
-			simpleDebugOut(_s, LogChannel);
-		else
-			simpleDebugOut("<binary>", LogChannel);
-	};
+std::function<void(std::string const&, char const*)> eth::g_logPost = simpleDebugOut;
 
 std::string eth::escaped(std::string const& _s, bool _all)
 {
@@ -202,38 +196,45 @@ KeyPair KeyPair::create()
 	return ret;
 }
 
+static const vector<pair<u256, string>> g_units =
+{
+	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
+	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
+	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
+	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
+	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
+	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
+	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
+	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
+	{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
+	{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
+	{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
+	{(u256(1000000000) * 1000000000) * 1000, "Kether"},
+	{u256(1000000000) * 1000000000, "ether"},
+	{u256(1000000000) * 1000000, "finney"},
+	{u256(1000000000) * 1000, "szabo"},
+	{u256(1000000000), "Gwei"},
+	{u256(1000000), "Mwei"},
+	{u256(1000), "Kwei"},
+	{u256(1), "wei"}
+};
+
+vector<pair<u256, string>> const& eth::units()
+{
+	return g_units;
+}
+
 std::string eth::formatBalance(u256 _b)
 {
-	static const vector<pair<u256, string>> c_units =
-	{
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
-		{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
-		{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
-		{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
-		{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
-		{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
-		{(u256(1000000000) * 1000000000) * 1000, "Kether"},
-		{u256(1000000000) * 1000000000, "ether"},
-		{u256(1000000000) * 1000000, "finney"},
-		{u256(1000000000) * 1000, "szabo"},
-		{u256(1000000000), "Gwei"},
-		{u256(1000000), "Mwei"},
-		{u256(1000), "Kwei"}
-	};
 	ostringstream ret;
-	if (_b > c_units[0].first * 10000)
+	if (_b > g_units[0].first * 10000)
 	{
-		ret << (_b / c_units[0].first) << " " << c_units[0].second;
+		ret << (_b / g_units[0].first) << " " << g_units[0].second;
 		return ret.str();
 	}
 	ret << setprecision(5);
-	for (auto const& i: c_units)
-		if (_b >= i.first * 100)
+	for (auto const& i: g_units)
+		if (i.first != 1 && _b >= i.first * 100)
 		{
 			ret << (double(_b / (i.first / 1000)) / 1000.0) << " " << i.second;
 			return ret.str();

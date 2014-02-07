@@ -68,7 +68,6 @@ int main(int argc, char** argv)
 	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;
-	unsigned verbosity = 1;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	string publicIP;
@@ -144,7 +143,7 @@ int main(int argc, char** argv)
 			}
 		}
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-			verbosity = atoi(argv[++i]);
+			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
@@ -229,7 +228,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers, publicIP, upnp);
+		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{

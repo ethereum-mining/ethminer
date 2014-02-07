@@ -28,6 +28,9 @@
 #pragma warning(disable:4244)
 #endif
 
+#include <ctime>
+#include <iomanip>
+#include <chrono>
 #include <array>
 #include <map>
 #include <set>
@@ -148,68 +151,63 @@ public:
 	template <class T> NullOutputStream& operator<<(T const&) { return *this; }
 };
 
-extern bool g_debugEnabled[256];
-static const uint8_t WarnChannel = 255;
-static const uint8_t NoteChannel = 254;
-static const uint8_t DebugChannel = 253;
-static const uint8_t LogChannel = 252;
-static const uint8_t LeftChannel = 251;
-static const uint8_t RightChannel = 250;
-// Unused for now.
-/*template <uint8_t _Channel> struct LogName { static const char constexpr* name = "   "; };
-template <> struct LogName<LeftChannel> { static const char constexpr* name = "<<<"; };
-template <> struct LogName<RightChannel> { static const char constexpr* name = ">>>"; };
-template <> struct LogName<WarnChannel> { static const char constexpr* name = "!!!"; };
-template <> struct LogName<NoteChannel> { static const char constexpr* name = "***"; };
-template <> struct LogName<DebugChannel> { static const char constexpr*  name = "---"; };
-template <> struct LogName<LogChannel> { static const char constexpr* name = "LOG"; };*/
+extern std::map<std::type_info const*, bool> g_logOverride;
+extern thread_local std::string t_logThreadName;
 
-extern std::function<void(std::string const&, unsigned char)> g_debugPost;
-extern std::function<void(char, std::string const&)> g_syslogPost;
+inline void setThreadName(std::string const& _n) { t_logThreadName = _n; }
 
-void simpleDebugOut(std::string const&, unsigned char);
+struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
+struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
+struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
+struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
+struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
+struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 0; };
 
-template <unsigned char _Id = 0, bool _AutoSpacing = true>
-class DebugOutputStream
+extern int g_logVerbosity;
+extern std::function<void(std::string const&, char const*)> g_logPost;
+
+void simpleDebugOut(std::string const&, char const* );
+
+template <class Id, bool _AutoSpacing = true>
+class LogOutputStream
 {
 public:
-	DebugOutputStream(char const* _start = "    ") { sstr << _start; }
-	~DebugOutputStream() { g_debugPost(sstr.str(), _Id); }
-	template <class T> DebugOutputStream& operator<<(T const& _t) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; return *this; }
-	std::stringstream sstr;
-};
-
-template <bool _AutoSpacing = true>
-class SysLogOutputStream
-{
-public:
-	SysLogOutputStream() {}
-	~SysLogOutputStream() { if (sstr.str().size()) g_syslogPost('C', sstr.str()); }
-	template <class T> SysLogOutputStream& operator<<(T const& _t) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; return *this; }
-	static void write(char _type, std::string const& _s) { g_syslogPost(_type, _s); }
-	template <class _T> static void writePod(char _type, _T const& _s) { char const* begin = (char const*)&_s; char const* end = (char const*)&_s + sizeof(_T); g_syslogPost(_type, std::string(begin, end)); }
+	LogOutputStream(bool _term = true)
+	{
+		std::type_info const* i = &typeid(Id);
+		auto it = g_logOverride.find(i);
+		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
+		{
+			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			sstr << Id::name << " [ " << rawTime /*put_time("%T", std::localtime(&rawTime)) */<< " | " << t_logThreadName << (_term ? " ] " : "");
+		}
+	}
+	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
+	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; } return *this; }
 	std::stringstream sstr;
 };
 
 // Dirties the global namespace, but oh so convenient...
-#define cnote eth::DebugOutputStream<eth::NoteChannel, true>()
-#define cwarn eth::DebugOutputStream<eth::WarnChannel, true>()
+#define cnote eth::LogOutputStream<eth::NoteChannel, true>()
+#define cwarn eth::LogOutputStream<eth::WarnChannel, true>()
 
-#define nbug(X) if (true) {} else eth::NullOutputStream()
-#define nsbug(X) if (true) {} else eth::NullOutputStream()
 #define ndebug if (true) {} else eth::NullOutputStream()
+#define nlog(X) if (true) {} else eth::NullOutputStream()
+#define nslog(X) if (true) {} else eth::NullOutputStream()
 
 #if NDEBUG
-#define cbug(X) nbug(X)
-#define csbug(X) nsbug(X)
 #define cdebug ndebug
 #else
-#define cbug(X) eth::DebugOutputStream<X>()
-#define csbug(X) eth::DebugOutputStream<X, false>()
-#define cdebug eth::DebugOutputStream<eth::DebugChannel, true>()
+#define cdebug eth::LogOutputStream<eth::DebugChannel, true>()
 #endif
 
-#define clog eth::SysLogOutputStream<true>()
+#if NLOG
+#define clog(X) nlog(X)
+#define cslog(X) nslog(X)
+#else
+#define clog(X) eth::LogOutputStream<X, true>()
+#define cslog(X) eth::LogOutputStream<X, false>()
+#endif
 
 
 
@@ -412,6 +410,9 @@ h256 sha3(bytesConstRef _input);
 inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
 
+/// Get information concerning the currency denominations.
+std::vector<std::pair<u256, std::string>> const& units();
+
 /// Convert a private key into the public key equivalent.
 /// @returns 0 if it's not a valid private key.
 Address toAddress(h256 _private);
@@ -424,8 +425,8 @@ public:
 
 	static KeyPair create();
 
-	Secret secret() const { return m_secret; }
-	Address address() const { return m_address; }
+	Secret const& secret() const { return m_secret; }
+	Address const& address() const { return m_address; }
 
 private:
 	Secret m_secret;

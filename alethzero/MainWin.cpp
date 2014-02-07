@@ -7,13 +7,22 @@
 using namespace std;
 using namespace eth;
 
+static void initUnits(QComboBox* _b)
+{
+	for (int n = units().size() - 1; n >= 0; --n)
+		_b->addItem(QString::fromStdString(units()[n].second), n);
+	_b->setCurrentIndex(6);
+}
+
 Main::Main(QWidget *parent) :
-	QDialog(parent),
+	QMainWindow(parent),
 	ui(new Ui::Main),
-	m_client("AlethZero/v0.1")
+	m_client("AlethZero/v0.1.1")
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
+	initUnits(ui->valueUnits);
+	initUnits(ui->feeUnits);
 
 	readSettings();
 	refresh();
@@ -34,10 +43,13 @@ Main::Main(QWidget *parent) :
 	m_webCtrl.get(r);
 	srand(time(0));
 #endif
+
+	g_logPost = [=](std::string const& s, char const*) { ui->log->addItem(QString::fromStdString(s)); };
 }
 
 Main::~Main()
 {
+	g_logPost = simpleDebugOut;
 	writeSettings();
 	delete ui;
 }
@@ -46,8 +58,13 @@ void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
 	QByteArray b;
-	b.resize(32);
-	memcpy(b.data(), &m_myKey, 32);
+	b.resize(sizeof(Secret) * m_myKeys.size());
+	auto p = b.data();
+	for (auto i: m_myKeys)
+	{
+		memcpy(p, &(i.secret()), sizeof(Secret));
+		p += sizeof(Secret);
+	}
 	s.setValue("address", b);
 
 	// TODO: save peers - implement it in PeerNetwork though returning RLP bytes
@@ -62,14 +79,17 @@ void Main::readSettings()
 	QSettings s("ethereum", "alethzero");
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
-		m_myKey = KeyPair::create();
+		m_myKeys.append(KeyPair::create());
 	else
 	{
 		h256 k;
-		memcpy(&k, b.data(), 32);
-		m_myKey = KeyPair(k);
+		for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+		{
+			memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+			m_myKeys.append(KeyPair(k));
+		}
 	}
-	m_client.setAddress(m_myKey.address());
+	m_client.setAddress(m_myKeys.back().address());
 
 	writeSettings();
 
@@ -83,68 +103,89 @@ void Main::readSettings()
 void Main::refresh()
 {
 	m_client.lock();
-	ui->balance->setText(QString::fromStdString(formatBalance(m_client.state().balance(m_myKey.address()))));
-	ui->peerCount->setText(QString::fromStdString(toString(m_client.peerCount())) + " peer(s)");
-	ui->address->setText(QString::fromStdString(asHex(m_client.state().address().asArray())));
-	ui->peers->clear();
-	for (PeerInfo const& i: m_client.peers())
-		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
-
-	auto d = m_client.blockChain().details();
-	auto diff = BlockInfo(m_client.blockChain().block()).difficulty;
-	ui->blockChain->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
-
-	auto acs = m_client.state().addresses();
-	ui->accounts->clear();
-	for (auto i: acs)
-		ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(asHex(i.first.asArray()).c_str()));
-
-	ui->transactionQueue->clear();
-	for (pair<h256, bytes> const& i: m_client.transactionQueue().transactions())
+	if (m_client.changed())
 	{
-		Transaction t(i.second);
-		ui->transactionQueue->addItem(QString("%1 (%2 fee) @ %3 <- %4")
-							  .arg(formatBalance(t.value).c_str())
-							  .arg(formatBalance(t.fee).c_str())
-							  .arg(asHex(t.receiveAddress.asArray()).c_str())
-							  .arg(asHex(t.sender().asArray()).c_str()) );
-	}
+		ui->peerCount->setText(QString::fromStdString(toString(m_client.peerCount())) + " peer(s)");
+		ui->peers->clear();
+		for (PeerInfo const& i: m_client.peers())
+			ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
 
-	ui->transactions->clear();
-	auto const& bc = m_client.blockChain();
-	for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
-	{
-		auto d = bc.details(h);
-		ui->transactions->addItem(QString("# %1 ==== %2").arg(d.number).arg(asHex(h.asArray()).c_str()));
-		for (auto const& i: RLP(bc.block(h))[1])
+		auto d = m_client.blockChain().details();
+		auto diff = BlockInfo(m_client.blockChain().block()).difficulty;
+		ui->blockChain->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+
+		auto acs = m_client.state().addresses();
+		ui->accounts->clear();
+		for (auto i: acs)
+			ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(asHex(i.first.asArray()).c_str()));
+
+		ui->transactionQueue->clear();
+		for (pair<h256, bytes> const& i: m_client.transactionQueue().transactions())
 		{
-			Transaction t(i.data());
-			ui->transactions->addItem(QString("%1 wei (%2 fee) @ %3 <- %4")
-							  .arg(toString(t.value).c_str())
-							  .arg(toString(t.fee).c_str())
-							  .arg(asHex(t.receiveAddress.asArray()).c_str())
-							  .arg(asHex(t.sender().asArray()).c_str()) );
+			Transaction t(i.second);
+			ui->transactionQueue->addItem(QString("%1 (%2 fee) @ %3 <- %4")
+								  .arg(formatBalance(t.value).c_str())
+								  .arg(formatBalance(t.fee).c_str())
+								  .arg(asHex(t.receiveAddress.asArray()).c_str())
+								  .arg(asHex(t.sender().asArray()).c_str()) );
+		}
+
+		ui->transactions->clear();
+		auto const& bc = m_client.blockChain();
+		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
+		{
+			auto d = bc.details(h);
+			ui->transactions->addItem(QString("# %1 ==== %2").arg(d.number).arg(asHex(h.asArray()).c_str()));
+			for (auto const& i: RLP(bc.block(h))[1])
+			{
+				Transaction t(i.data());
+				ui->transactions->addItem(QString("%1 (%2) @ %3 <- %4")
+								  .arg(formatBalance(t.value).c_str())
+								  .arg(formatBalance(t.fee).c_str())
+								  .arg(asHex(t.receiveAddress.asArray()).c_str())
+								  .arg(asHex(t.sender().asArray()).c_str()) );
+			}
 		}
 	}
 
+	ui->ourAccounts->clear();
+	u256 totalBalance = 0;
+	for (auto i: m_myKeys)
+	{
+		u256 b = m_client.state().balance(i.address());
+		ui->ourAccounts->addItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(asHex(i.address().asArray()).c_str()));
+		totalBalance += b;
+	}
+	ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 	m_client.unlock();
 }
 
-void Main::on_net_toggled()
+void Main::on_ourAccounts_doubleClicked()
 {
+	qApp->clipboard()->setText(ui->ourAccounts->currentItem()->text().section(" @ ", 1));
+}
+
+void Main::on_accounts_doubleClicked()
+{
+	qApp->clipboard()->setText(ui->accounts->currentItem()->text().section(" @ ", 1));
+}
+
+void Main::on_net_triggered()
+{
+	ui->port->setEnabled(!ui->net->isChecked());
 	if (ui->net->isChecked())
-		m_client.startNetwork(ui->port->value(), string(), 30303, 6, NodeMode::Full, 5, std::string(), ui->upnp->isChecked());
+		m_client.startNetwork(ui->port->value(), string(), 0, NodeMode::Full, 5, std::string(), ui->upnp->isChecked());
 	else
 		m_client.stopNetwork();
 }
 
-void Main::on_connect_clicked()
+void Main::on_connect_triggered()
 {
 	if (!ui->net->isChecked())
 		ui->net->setChecked(true);
 	bool ok = false;
 	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, m_servers.count() ? rand() % m_servers.count() : 0, true, &ok);
-	if (ok)
+	if (ok && s.contains(":"))
 	{
 		string host = s.section(":", 0, 0).toStdString();
 		short port = s.section(":", 1).toInt();
@@ -152,25 +193,43 @@ void Main::on_connect_clicked()
 	}
 }
 
-void Main::on_mine_toggled()
+void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
+	{
+		m_client.setAddress(m_myKeys.last().address());
 		m_client.startMining();
+	}
 	else
 		m_client.stopMining();
 }
 
 void Main::on_send_clicked()
 {
-	Secret s = m_myKey.secret();
-	Address r = Address(fromUserHex(ui->destination->text().toStdString()));
-	m_client.transact(s, r, ui->value->value(), ui->fee->value());
-	refresh();
+	u256 value = ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
+	u256 fee = ui->fee->value() * units()[units().size() - 1 - ui->feeUnits->currentIndex()].first;
+	u256 totalReq = value + fee;
+	m_client.lock();
+	for (auto i: m_myKeys)
+		if (m_client.state().balance(i.address()) >= totalReq)
+		{
+			m_client.unlock();
+			Secret s = m_myKeys.front().secret();
+			Address r = Address(fromUserHex(ui->destination->text().toStdString()));
+			auto ds = ui->data->toPlainText().split(QRegExp("[^0-9a-fA-Fx]+"));
+			u256s data;
+			data.reserve(ds.size());
+			for (QString const& i: ds)
+				data.push_back(u256(i.toStdString()));
+			m_client.transact(s, r, value, fee, data);
+			refresh();
+			return;
+		}
+	m_client.unlock();
+	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 }
 
-void Main::on_create_clicked()
+void Main::on_create_triggered()
 {
-	KeyPair p = KeyPair::create();
-	QString s = QString::fromStdString("The new secret key is:\n" + asHex(p.secret().asArray()) + "\n\nAddress:\n" + asHex(p.address().asArray()));
-	QMessageBox::information(this, "Create Key", s, QMessageBox::Ok);
+	m_myKeys.append(KeyPair::create());
 }
