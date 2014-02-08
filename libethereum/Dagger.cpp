@@ -22,11 +22,11 @@ namespace eth
 
 #if FAKE_DAGGER
 
-MineInfo Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
+MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
 {
 	MineInfo ret{0, 0, false};
 	static std::mt19937_64 s_eng((time(0)));
-	o_solution = std::uniform_int_distribution<uint>(0, ~(uint)0)(s_eng);
+	u256 s = std::uniform_int_distribution<uint>(0, ~(uint)0)(s_eng);
 
 	bigint d = (bigint(1) << 256) / _difficulty;
 	ret.requirement = toLog2((u256)d);
@@ -35,8 +35,9 @@ MineInfo Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficul
 	//   [--------*-------------------------]
 	//
 	// evaluate until we run out of time
-	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; o_solution += 1)
+	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; s++)
 	{
+		o_solution = (h256)s;
 		auto e = (bigint)(u256)eval(_root, o_solution);
 		ret.best = max(ret.best, toLog2((u256)e));
 		if (e <= d)

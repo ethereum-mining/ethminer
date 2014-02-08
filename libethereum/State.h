@@ -150,7 +150,7 @@ private:
 	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
 	{
-		~MinerFeeAdder() { state->addBalance(state->m_currentBlock.coinbaseAddress, fee); }
+		~MinerFeeAdder() { /*state->addBalance(state->m_currentBlock.coinbaseAddress, fee);*/ }	// No fees paid now.
 		State* state;
 		u256 fee;
 	};

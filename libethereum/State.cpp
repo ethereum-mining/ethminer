@@ -53,7 +53,7 @@ u256 const State::c_extroFee = 40000;
 u256 const State::c_cryptoFee = 50000;
 u256 const State::c_newContractFee = 60000;
 u256 const State::c_txFee = 0;
-u256 const State::c_blockReward = 1000000000;
+u256 const State::c_blockReward = 1000000000000;
 
 #if NDEBUG
 u256 const eth::c_genesisDifficulty = (u256)1 << 22;
@@ -319,8 +319,11 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != rootHash())
 	{
-		cout << "*** BAD STATE ROOT!" << endl;
-		cout << m_state << endl << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
+		cwarn << "Bad state root!";
+		cnote << "Given to be:" << m_currentBlock.stateRoot;
+		cnote << "Calculated to be:" << rootHash();
+		cnote << m_state;
+		cnote << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
 		// Rollback the trie.
 		m_db.rollback();
 		throw InvalidStateRoot();

@@ -131,13 +131,13 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 		throw AlreadyHaveBlock();
 	}
 
-	cout << "Attempting import of " << newHash << "..." << endl;
+	cnote << "Attempting import of " << newHash << "...";
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		cout << "   Unknown parent " << bi.parentHash << endl;
+		cwarn << "   Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
 	}
@@ -170,19 +170,19 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 	checkConsistency();
 
-//	cout << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
+//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children." << endl;
 
 	// This might be the new last block...
 	if (td > m_details[m_lastBlockHash].totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		cout << "   Imported and best." << endl;
+		cnote << "   Imported and best.";
 	}
 	else
 	{
-		cout << "   Imported." << endl;
-//		cerr << "*** WARNING: Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")" << endl;
+		cnote << "   Imported.";
+//		cwarn << "Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")";
 	}
 }
 

@@ -39,7 +39,7 @@ public:
 	u256 difficulty;
 	u256 timestamp;
 	bytes extraData;
-	u256 nonce;
+	h256 nonce;
 
 	BlockInfo();
 	explicit BlockInfo(bytesConstRef _block);
