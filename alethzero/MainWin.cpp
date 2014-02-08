@@ -48,6 +48,8 @@ Main::Main(QWidget *parent) :
 	srand(time(0));
 #endif
 
+	on_verbosity_sliderMoved();
+
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockChain);
@@ -109,7 +111,7 @@ void Main::readSettings()
 void Main::refresh()
 {
 	m_client->lock();
-	if (m_client->changed())
+	//if (m_client->changed())
 	{
 		ui->peerCount->setText(QString::fromStdString(toString(m_client->peerCount())) + " peer(s)");
 		ui->peers->clear();
@@ -169,6 +171,11 @@ void Main::refresh()
 void Main::on_ourAccounts_doubleClicked()
 {
 	qApp->clipboard()->setText(ui->ourAccounts->currentItem()->text().section(" @ ", 1));
+}
+
+void Main::on_log_doubleClicked()
+{
+	qApp->clipboard()->setText(ui->log->currentItem()->text());
 }
 
 void Main::on_accounts_doubleClicked()

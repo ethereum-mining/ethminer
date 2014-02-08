@@ -9,7 +9,7 @@ namespace eth
 class Exception: public std::exception
 {
 public:
-	virtual std::string description() const { return "Unknown exception"; }
+	virtual std::string description() const { return typeid(*this).name(); }
 	virtual char const* what() const noexcept { return typeid(*this).name(); }
 };
 
@@ -33,10 +33,12 @@ class InvalidTransactionsHash: public Exception {};
 class InvalidTransaction: public Exception {};
 class InvalidDifficulty: public Exception {};
 class InvalidTimestamp: public Exception {};
-class InvalidNonce: public Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; };
+class InvalidNonce: public Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; virtual std::string description() const { return "Invalid nonce (r: " + toString(required) + " c:" + toString(candidate) + ")"; } };
+class InvalidBlockNonce: public Exception { public: InvalidBlockNonce(h256 _h = h256(), h256 _n = h256(), u256 _d = 0): h(_h), n(_n), d(_d) {} h256 h; h256 n; u256 d; virtual std::string description() const { return "Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")"; } };
 class InvalidParentHash: public Exception {};
 class InvalidContractAddress: public Exception {};
 class NoNetworking: public Exception {};
 class NoUPnPDevice: public Exception {};
+class RootNotFound: public Exception {};
 
 }

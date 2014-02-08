@@ -53,7 +53,7 @@ bytes BlockInfo::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(9) << h256() << sha3EmptyList << h160() << stateRoot << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << (uint)42;
+	block.appendList(9) << h256() << sha3EmptyList << h160() << stateRoot << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -97,7 +97,7 @@ void BlockInfo::populate(bytesConstRef _block)
 		difficulty = header[field = 5].toInt<u256>();
 		timestamp = header[field = 6].toInt<u256>();
 		extraData = header[field = 7].toBytes();
-		nonce = header[field = 8].toInt<u256>();
+		nonce = header[field = 8].toHash<h256>();
 	}
 	catch (RLP::BadCast)
 	{
@@ -110,7 +110,7 @@ void BlockInfo::populate(bytesConstRef _block)
 		throw InvalidBlockFormat(2, root[2].data());
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
-		throw InvalidNonce();
+		throw InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty);
 }
 
 void BlockInfo::verifyInternals(bytesConstRef _block) const

@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <leveldb/db.h>
+#include "Exceptions.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
@@ -108,10 +109,10 @@ public:
 	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
-	void open(DB* _db, h256 _root) { setRoot(_root); m_db = _db; assert(node(m_root).size()); }
+	void open(DB* _db, h256 _root) { m_db = _db; setRoot(_root); }
 
 	void init();
-	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ assert(node(m_root).size()); }
+	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ if (!node(m_root).size()) throw RootNotFound(); }
 
 	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
