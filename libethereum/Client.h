@@ -120,7 +120,13 @@ private:
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_s;							///< The present state of the client.
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	
+#if defined(__APPLE__)
+	dispatch_queue_t m_work;
+#else
 	std::thread* m_work;				///< The work thread.
+#endif
+	
 	std::mutex m_lock;
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?

@@ -41,7 +41,22 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_s.sync(m_tq);
 	m_changed = true;
 
-	m_work = new thread([&](){ setThreadName("eth"); while (m_workState != Deleting) work(); m_workState = Deleted; });
+	static std::string thread_name = "eth";
+	
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		m_work = dispatch_queue_create(thread_name.c_str(), DISPATCH_QUEUE_SERIAL);
+	});
+
+#if defined(__APPLE__)
+	dispatch_async(m_work, ^{
+#else
+	m_work = new thread([&](){
+		setThreadName(thread_name);
+#endif
+
+		while (m_workState != Deleting) work(); m_workState = Deleted;
+	});
 }
 
 Client::~Client()
