@@ -48,10 +48,10 @@ std::string eth::getDataDir()
 		dataDirPath = boost::filesystem::path("/");
 	else
 		dataDirPath = boost::filesystem::path(homeDir);
+	
 #if defined(__APPLE__) && defined(__MACH__)
-	dataDirPath /= "Library" / "Application Support";
-	boost::filesystem::create_directory(dataDirPath);
-	return (dataDirPath / "Ethereum").string();
+	// This eventually needs to be put in proper wrapper (to support sandboxing)
+	return (dataDirPath / "Library/Application Support/Ethereum").string();
 #else
 	return (dataDirPath / ".ethereum").string();
 #endif
