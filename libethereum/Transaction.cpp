@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -29,14 +29,14 @@ using namespace eth;
 Transaction::Transaction(bytesConstRef _rlpData)
 {
 	RLP rlp(_rlpData);
-	nonce = rlp[0].toInt<u256>(RLP::StrictlyInt);
+	nonce = rlp[0].toInt<u256>();
 	receiveAddress = rlp[1].toHash<Address>();
-	value = rlp[2].toInt<u256>(RLP::StrictlyInt);
-	fee = rlp[3].toInt<u256>(RLP::StrictlyInt);
+	value = rlp[2].toInt<u256>();
+	fee = rlp[3].toInt<u256>();
 	data.reserve(rlp[4].itemCountStrict());
 	for (auto const& i: rlp[4])
-		data.push_back(i.toInt<u256>(RLP::StrictlyInt));
-	vrs = Signature{ rlp[5].toInt<byte>(RLP::StrictlyInt), rlp[6].toInt<u256>(RLP::StrictlyInt), rlp[7].toInt<u256>(RLP::StrictlyInt) };
+		data.push_back(i.toInt<u256>());
+	vrs = Signature{ rlp[5].toInt<byte>(), rlp[6].toInt<u256>(), rlp[7].toInt<u256>() };
 }
 
 Address Transaction::sender() const

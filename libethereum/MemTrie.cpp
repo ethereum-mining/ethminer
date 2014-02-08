@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -31,7 +31,7 @@ namespace eth
 #define ENABLE_DEBUG_PRINT 0
 
 /*/
-#define APPEND_CHILD appendString
+#define APPEND_CHILD appendData
 /*/
 #define APPEND_CHILD appendRaw
 /**/
@@ -434,12 +434,12 @@ MemTrie::~MemTrie()
 
 h256 MemTrie::hash256() const
 {
-	return m_root ? m_root->hash256() : eth::sha3(RLPNull);
+	return m_root ? m_root->hash256() : h256();
 }
 
 bytes MemTrie::rlp() const
 {
-	return m_root ? m_root->rlp() : RLPNull;
+	return m_root ? m_root->rlp() : bytes();
 }
 
 void MemTrie::debugPrint()

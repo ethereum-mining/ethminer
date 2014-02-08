@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -21,10 +21,12 @@
  */
 
 #include <fstream>
+#include "Defaults.h"
 #include "Client.h"
 #include "PeerNetwork.h"
 #include "BlockChain.h"
 #include "State.h"
+#include "FileSystem.h"
 using namespace std;
 using namespace eth;
 
@@ -48,6 +50,16 @@ void writeFile(std::string const& _file, bytes const& _data)
 	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
 }
 
+bool isTrue(std::string const& _m)
+{
+	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
+}
+
+bool isFalse(std::string const& _m)
+{
+	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
+}
+
 int main(int argc, char** argv)
 {
 	short listenPort = 30303;
@@ -56,16 +68,19 @@ int main(int argc, char** argv)
 	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;
-	unsigned verbosity = 1;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	string publicIP;
+	bool upnp = true;
+
+	// Init defaults
+	Defaults::get();
 
 	// Our address.
 	KeyPair us = KeyPair::create();
 	Address coinbase = us.address();
 
-	string configFile = string(getenv("HOME")) + "/.ethereum/config.rlp";
+	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
 	{
@@ -91,6 +106,19 @@ int main(int argc, char** argv)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
 			remotePort = atoi(argv[++i]);
+		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (isTrue(m))
+				upnp = true;
+			else if (isFalse(m))
+				upnp = false;
+			else
+			{
+				cerr << "Invalid UPnP option: " << m << endl;
+				return -1;
+			}
+		}
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			coinbase = h160(fromUserHex(argv[++i]));
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
@@ -100,14 +128,22 @@ int main(int argc, char** argv)
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
-			if (string(argv[++i]) == "on")
+		{
+			string m = argv[++i];
+			if (isTrue(m))
 				mining = ~(eth::uint)0;
-			else if (string(argv[i]) == "off")
+			else if (isFalse(m))
 				mining = 0;
+			else if (int i = stoi(m))
+				mining = i;
 			else
-				mining = atoi(argv[i]);
+			{
+				cerr << "Unknown mining option: " << m << endl;
+				return -1;
+			}
+		}
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-			verbosity = atoi(argv[++i]);
+			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
@@ -184,11 +220,15 @@ int main(int argc, char** argv)
 				Address dest = h160(fromUserHex(rechex));
 				c.transact(us.secret(), dest, amount, fee);
 			}
+			else if (cmd == "exit")
+			{
+				break;
+			}
 		}
 	}
 	else
 	{
-		c.startNetwork(listenPort, remoteHost, remotePort, verbosity, mode, peers, publicIP);
+		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
 		{

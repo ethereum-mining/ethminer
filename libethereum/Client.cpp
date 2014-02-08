@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -19,8 +19,10 @@
  * @date 2014
  */
 
-#include "Common.h"
 #include "Client.h"
+
+#include "Common.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 
@@ -39,7 +41,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_s.sync(m_tq);
 	m_changed = true;
 
-	m_work = new thread([&](){ while (m_workState != Deleting) work(); m_workState = Deleted; });
+	m_work = new thread([&](){ setThreadName("eth"); while (m_workState != Deleting) work(); m_workState = Deleted; });
 }
 
 Client::~Client()
@@ -50,13 +52,12 @@ Client::~Client()
 		usleep(10000);
 }
 
-void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, unsigned _verbosity, NodeMode _mode, unsigned _peers, string const& _publicIP)
+void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
 	if (m_net)
 		return;
-	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP);
+	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp);
 	m_net->setIdealPeerCount(_peers);
-	m_net->setVerbosity(_verbosity);
 	if (_seedHost.size())
 		m_net->connect(_seedHost, _port);
 }

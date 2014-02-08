@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -28,6 +28,8 @@
 #pragma warning(disable:4244)
 #endif
 
+#include <ctime>
+#include <chrono>
 #include <array>
 #include <map>
 #include <set>
@@ -60,8 +62,6 @@ using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
-
-extern const u256 c_genesisDifficulty;
 
 template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
 template <class T, class In> inline T fromBigEndian(In const& _bytes);
@@ -97,6 +97,9 @@ public:
 
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
+
+	bytesRef ref() { return bytesRef(m_data.data(), N); }
+	bytesConstRef ref() const { return bytesConstRef(m_data.data(), N); }
 
 	byte* data() { return m_data.data(); }
 	byte const* data() const { return m_data.data(); }
@@ -138,6 +141,83 @@ using HexMap = std::map<bytes, std::string>;
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
+
+
+/// Logging
+class NullOutputStream
+{
+public:
+	template <class T> NullOutputStream& operator<<(T const&) { return *this; }
+};
+
+extern std::map<std::type_info const*, bool> g_logOverride;
+extern thread_local std::string t_logThreadName;
+
+inline void setThreadName(std::string const& _n) { t_logThreadName = _n; }
+
+struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
+struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
+struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
+struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
+struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
+struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 0; };
+
+extern int g_logVerbosity;
+extern std::function<void(std::string const&, char const*)> g_logPost;
+
+void simpleDebugOut(std::string const&, char const* );
+
+template <class Id, bool _AutoSpacing = true>
+class LogOutputStream
+{
+public:
+	LogOutputStream(bool _term = true)
+	{
+		std::type_info const* i = &typeid(Id);
+		auto it = g_logOverride.find(i);
+		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
+		{
+			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			char buf[9];
+			strftime(buf, 9, "%X", localtime(&rawTime));
+			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
+		}
+	}
+	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
+	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; } return *this; }
+	std::stringstream sstr;
+};
+
+// Dirties the global namespace, but oh so convenient...
+#define cnote eth::LogOutputStream<eth::NoteChannel, true>()
+#define cwarn eth::LogOutputStream<eth::WarnChannel, true>()
+
+#define ndebug if (true) {} else eth::NullOutputStream()
+#define nlog(X) if (true) {} else eth::NullOutputStream()
+#define nslog(X) if (true) {} else eth::NullOutputStream()
+
+#if NDEBUG
+#define cdebug ndebug
+#else
+#define cdebug eth::LogOutputStream<eth::DebugChannel, true>()
+#endif
+
+#if NLOG
+#define clog(X) nlog(X)
+#define cslog(X) nslog(X)
+#else
+#define clog(X) eth::LogOutputStream<X, true>()
+#define cslog(X) eth::LogOutputStream<X, false>()
+#endif
+
+
+
+
+
+
+
+/// User-friendly string representation of the amount _b in wei.
+std::string formatBalance(u256 _b);
 
 /// Converts arbitrary value to string representation using std::stringstream.
 template <class _T>
@@ -331,6 +411,9 @@ h256 sha3(bytesConstRef _input);
 inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
 
+/// Get information concerning the currency denominations.
+std::vector<std::pair<u256, std::string>> const& units();
+
 /// Convert a private key into the public key equivalent.
 /// @returns 0 if it's not a valid private key.
 Address toAddress(h256 _private);
@@ -343,8 +426,8 @@ public:
 
 	static KeyPair create();
 
-	Secret secret() const { return m_secret; }
-	Address address() const { return m_address; }
+	Secret const& secret() const { return m_secret; }
+	Address const& address() const { return m_address; }
 
 private:
 	Secret m_secret;

@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -105,15 +105,15 @@ class GenericTrieDB
 {
 public:
 	GenericTrieDB(DB* _db): m_db(_db) {}
-	GenericTrieDB(DB* _db, h256 _root): m_root(_root), m_db(_db) {}
+	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
-	void open(DB* _db, h256 _root) { m_root = _root; m_db = _db; }
+	void open(DB* _db, h256 _root) { setRoot(_root); m_db = _db; assert(node(m_root).size()); }
 
 	void init();
-	void setRoot(h256 _root) { m_root = _root; }
+	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ assert(node(m_root).size()); }
 
-	h256 root() const { return m_root == c_shaNull ? h256() : m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -182,7 +182,14 @@ public:
 						m_trail.pop_back();
 						continue;
 					}
-					assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
+					{
+						cdebug << b.rlp.size() << asHex(b.rlp);
+						cdebug << rlp;
+						auto c = rlp.itemCount();
+						cdebug << c;
+						assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+					}
 					if (rlp.itemCount() == 2)
 					{
 						// Just turn it into a valid Branch
@@ -396,11 +403,14 @@ namespace eth
 template <class DB> void GenericTrieDB<DB>::init()
 {
 	m_root = insertNode(&RLPNull);
+//	std::cout << "Initialised root to " << m_root << std::endl;
+	assert(node(m_root).size());
 }
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
 	std::string rv = node(m_root);
+	assert(rv.size());
 	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
 
 	// mergeAt won't attempt to delete the node is it's less than 32 bytes
@@ -456,7 +466,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 	// We will take care to ensure that (our reference to) _orig is killed.
 
 	// Empty - just insert here
-	if (_orig.isEmpty() || _orig.isNull())
+	if (_orig.isEmpty())
 		return place(_orig, _k, _v);
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
@@ -474,7 +484,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		{
 			killNode(sha3(_orig.data()));
 			RLPStream s(2);
-			s.appendRaw(_orig[0]);
+			s.append(_orig[0]);
 			mergeAtAux(s, _orig[1], _k.mid(k.size()), _v);
 			return s.out();
 		}
@@ -506,7 +516,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 			if (i == n)
 				mergeAtAux(r, _orig[i], _k.mid(1), _v);
 			else
-				r.appendRaw(_orig[i]);
+				r.append(_orig[i]);
 		return r.out();
 	}
 
@@ -544,7 +554,7 @@ template <class DB> void GenericTrieDB<DB>::remove(bytesConstRef _key)
 
 template <class DB> bool GenericTrieDB<DB>::isTwoItemNode(RLP const& _n) const
 {
-	return (_n.isString() && RLP(node(_n.toHash<h256>())).itemCount() == 2)
+	return (_n.isData() && RLP(node(_n.toHash<h256>())).itemCount() == 2)
 			|| (_n.isList() && _n.itemCount() == 2);
 }
 
@@ -665,17 +675,17 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 //	::operator<<(std::cout << "place ", _orig) << ", " << _k << ", " << _s.toString() << std::endl;
 
 	killNode(_orig);
-	if (_orig.isEmpty() || _orig.isNull())
-		return RLPStream(2).appendString(hexPrefixEncode(_k, true)).appendString(_s).out();
+	if (_orig.isEmpty())
+		return (RLPStream(2) << hexPrefixEncode(_k, true) << _s).out();
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
 	if (_orig.itemCount() == 2)
-		return RLPStream(2).appendRaw(_orig[0]).appendString(_s).out();
+		return (RLPStream(2) << _orig[0] << _s).out();
 
 	auto s = RLPStream(17);
 	for (uint i = 0; i < 16; ++i)
-		s.appendRaw(_orig[i]);
-	s.appendString(_s);
+		s << _orig[i];
+	s << _s;
 	return s.out();
 }
 
@@ -692,8 +702,8 @@ template <class DB> bytes GenericTrieDB<DB>::remove(RLP const& _orig)
 		return RLPNull;
 	RLPStream r(17);
 	for (uint i = 0; i < 16; ++i)
-		r.appendRaw(_orig[i]);
-	r.appendString("");
+		r << _orig[i];
+	r << "";
 	return r.out();
 }
 
@@ -716,11 +726,10 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 	assert(_s && _s <= k.size());
 
 	RLPStream bottom(2);
-	bottom.appendString(hexPrefixEncode(k, isLeaf(_orig), _s));
-	bottom.appendRaw(_orig[1]);
+	bottom << hexPrefixEncode(k, isLeaf(_orig), _s) << _orig[1];
 
 	RLPStream top(2);
-	top.appendString(hexPrefixEncode(k, false, 0, _s));
+	top << hexPrefixEncode(k, false, 0, _s);
 	streamNode(top, bottom.out());
 
 	return top.out();
@@ -787,8 +796,7 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 				if (isLeaf(_orig) || k.size() > 1)
 				{
 					RLPStream bottom(2);
-					bottom.appendString(hexPrefixEncode(k.mid(1), isLeaf(_orig)));
-					bottom.appendRaw(_orig[1]);
+					bottom << hexPrefixEncode(k.mid(1), isLeaf(_orig)) << _orig[1];
 					streamNode(r, bottom.out());
 				}
 				else

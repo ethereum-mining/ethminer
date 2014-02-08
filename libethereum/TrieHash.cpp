@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -29,7 +29,7 @@ namespace eth
 {
 
 /*/
-#define APPEND_CHILD appendString
+#define APPEND_CHILD appendData
 /*/
 #define APPEND_CHILD appendRaw
 /**/
@@ -159,7 +159,7 @@ h256 hash256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha3(RLPNull);
+		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(i->first)] = i->second;
@@ -172,7 +172,7 @@ bytes rlp256(StringMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return RLPNull;
+		return bytes();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(i->first)] = i->second;
@@ -185,7 +185,7 @@ h256 hash256(u256Map const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
-		return sha3(RLPNull);
+		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
 		hexMap[toHex(toBigEndianString(i->first))] = asString(rlp(i->second));

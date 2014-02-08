@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include "BlockChain.h"
+
 #include <boost/filesystem.hpp>
 #include "Common.h"
 #include "RLP.h"
@@ -26,11 +28,10 @@
 #include "Dagger.h"
 #include "BlockInfo.h"
 #include "State.h"
-#include "BlockChain.h"
+#include "FileSystem.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
-
-std::string Defaults::s_dbPath = string(getenv("HOME")) + "/.ethereum";
 
 namespace eth
 {
@@ -65,7 +66,7 @@ bytes BlockDetails::rlp() const
 BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
-		_path = Defaults::s_dbPath;
+		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
 	if (_killExisting)
 	{
@@ -76,7 +77,9 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	ldb::Options o;
 	o.create_if_missing = true;
 	auto s = ldb::DB::Open(o, _path + "/blocks", &m_db);
+	assert(m_db);
 	s = ldb::DB::Open(o, _path + "/details", &m_detailsDB);
+	assert(m_detailsDB);
 
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisHash = BlockInfo::genesis().hash;
