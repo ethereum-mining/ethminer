@@ -29,6 +29,7 @@ private slots:
 	void on_send_clicked();
 	void on_create_triggered();
 	void on_net_triggered();
+	void on_verbosity_sliderMoved();
 	void on_ourAccounts_doubleClicked();
 	void on_accounts_doubleClicked();
 	void on_quit_triggered() { close(); }
