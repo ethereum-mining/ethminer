@@ -17,6 +17,10 @@ target_link_libraries(ethereum boost_system)
 target_link_libraries(ethereum boost_filesystem)
 target_link_libraries(ethereum ${CMAKE_THREAD_LIBS_INIT})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	include_directories(/usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
 message("Installation path: ${CMAKE_INSTALL_PREFIX}")
 
 install( TARGETS ethereum ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
