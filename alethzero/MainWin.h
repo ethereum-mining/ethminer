@@ -3,15 +3,19 @@
 
 #include <QtNetwork/QNetworkAccessManager>
 #include <QAbstractListModel>
-#include <QDialog>
+#include <QMainWindow>
 #include <QMutex>
-#include <libethereum/Client.h>
+#include <libethereum/Common.h>
 
 namespace Ui {
 class Main;
 }
 
-class Main : public QDialog
+namespace eth {
+class Client;
+}
+
+class Main : public QMainWindow
 {
 	Q_OBJECT
 	
@@ -20,11 +24,14 @@ public:
 	~Main();
 	
 private slots:
-	void on_connect_clicked();
-	void on_mine_toggled();
+	void on_connect_triggered();
+	void on_mine_triggered();
 	void on_send_clicked();
-	void on_create_clicked();
-	void on_net_toggled();
+	void on_create_triggered();
+	void on_net_triggered();
+	void on_ourAccounts_doubleClicked();
+	void on_accounts_doubleClicked();
+	void on_quit_triggered() { close(); }
 
 	void refresh();
 
@@ -34,14 +41,12 @@ private:
 
 	Ui::Main *ui;
 
-	eth::Client m_client;
-
-	eth::KeyPair m_myKey;
-	std::vector<bi::tcp::endpoint> m_peers;
+	eth::Client* m_client;
 
 	QMutex m_guiLock;
 	QTimer* m_refresh;
 	QStringList m_servers;
+	QVector<eth::KeyPair> m_myKeys;
 
 	QNetworkAccessManager m_webCtrl;
 };

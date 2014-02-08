@@ -1,10 +1,14 @@
 project(ethereum)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.9)
+
+set(CMAKE_AUTOMOC ON)
 
 cmake_policy(SET CMP0015 NEW)
 
+set(ETH_VERSION 0.1.1)
+
 # Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
+set(CMAKE_CXX_FLAGS                "-Wall -std=c++11 -DETH_VERSION=${ETH_VERSION}")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
@@ -23,58 +27,58 @@ else ()
 	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
 
-# Override the cryptopp search until we can get the qmake stuff sorted.
-set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
+# Look for available Crypto++ version and if it is >= 5.6.2
+find_path(ID cryptlib.h
+	/usr/include/cryptopp
+	/usr/include/crypto++
+	/usr/local/include/cryptopp
+	/usr/local/include/crypto++
+	/opt/local/include/cryptopp
+	/opt/local/include/crypto++
+	)
+find_library(LS NAMES cryptoppeth cryptopp
+	PATHS
+	/usr/lib
+	/usr/local/lib
+	/opt/local/lib
+	)
 
-# Look for availabe Crypto++ version and if it is >= 5.6.2
-if(CRYPTOPP_INCLUDE_DIR AND CRYPTOPP_LIBRARIES)
-	   set(CRYPTOPP_FOUND TRUE)
-	   message(STATUS "Found Crypto++: ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}")
-else()
-       find_path(CRYPTOPP_INCLUDE_DIR cryptlib.h
-               /usr/include/crypto++
-               /usr/include/cryptopp
-               /usr/local/include/crypto++
-               /usr/local/include/cryptopp
-               /opt/local/include/crypto++
-               /opt/local/include/cryptopp
-               )
-       find_library(CRYPTOPP_LIBRARIES NAMES cryptopp
-               PATHS
-               /usr/lib
-               /usr/local/lib
-               /opt/local/lib
-               )
-       if(CRYPTOPP_INCLUDE_DIR AND CRYPTOPP_LIBRARIES)
-               set(CRYPTOPP_FOUND TRUE)
-               message(STATUS "Found Crypto++: ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}")
-               set(_CRYPTOPP_VERSION_HEADER ${CRYPTOPP_INCLUDE_DIR}/config.h)
-               if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
-                       file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
-                       string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
-                       if(${_CRYPTOPP_VERSION} LESS 562)
-                               message(STATUS "Crypto++ version found is smaller than 5.6.2. We use ../cryptopp562")
-                               set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-                               set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
-                       else()
-                               message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
-                       endif()
-               endif()
-       else()
-               set(CRYPTOPP_FOUND TRUE) # Ugly
-               message(STATUS "Crypto++ not found. We use ../cryptopp562")
-			   set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-			   set(CRYPTOPP_LIBRARIES "../cryptopp562" CACHE FILEPATH "" FORCE)
-        endif()
-        mark_as_advanced(CRYPTOPP_INCLUDE_DIR CRYPTOPP_LIBRARIES)
+if(ID AND LS)
+	message(STATUS "Found Crypto++: ${ID}, ${LS}")
+	set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
+	if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
+		file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
+		string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
+		if(${_CRYPTOPP_VERSION} LESS 562)
+			message(STATUS "System Crypto++ version found is smaller than 5.6.2.")
+		else()
+			set(CRYPTOPP_INCLUDE_DIR ${ID} CACHE FILEPATH "" FORCE)
+			set(CRYPTOPP_LIBRARIES ${LS} CACHE FILEPATH "" FORCE)
+			set(CRYPTOPP_FOUND TRUE)
+			message(STATUS "System Crypto++ found and version greater or equal to 5.6.2")
+		endif()
+	endif()
 endif()
 
-if(CRYPTOPP_FOUND)
-	include_directories(${CRYPTOPP_INCLUDE_DIR})
-	link_directories(${CRYPTOPP_LIBRARIES})
+if(NOT CRYPTOPP_FOUND)
+	set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
+	find_library(LSLOC NAMES cryptoppeth cryptopp
+	    PATHS ../cryptopp562
+            NO_DEFAULT_PATH
+	)
+	set(CRYPTOPP_LIBRARIES ${LSLOC} CACHE FILEPATH "" FORCE)
+	message(STATUS "System Crypto++ not found, broken or too old. We use ${LSLOC}")
 endif()
 
+# Not really worth caching. We want to reevaluate anyway.
+mark_as_advanced(CRYPTOPP_INCLUDE_DIR CRYPTOPP_LIBRARIES)
+
+# Always "found", given last block.
+include_directories(${CRYPTOPP_INCLUDE_DIR})
+link_directories(${CRYPTOPP_LIBRARIES})
+
+add_subdirectory(secp256k1)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
+add_subdirectory(alethzero)

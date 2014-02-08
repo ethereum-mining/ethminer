@@ -3,7 +3,7 @@
 
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 2 of the License, or
+	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	Foobar is distributed in the hope that it will be useful,
@@ -18,6 +18,8 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
+
+#include "State.h"
 
 #include <secp256k1.h>
 #include <boost/filesystem.hpp>
@@ -40,7 +42,7 @@
 #include "Instruction.h"
 #include "Exceptions.h"
 #include "Dagger.h"
-#include "State.h"
+#include "Defaults.h"
 using namespace std;
 using namespace eth;
 
@@ -53,10 +55,30 @@ u256 const State::c_newContractFee = 60000;
 u256 const State::c_txFee = 0;
 u256 const State::c_blockReward = 1000000000;
 
+#if NDEBUG
+u256 const eth::c_genesisDifficulty = (u256)1 << 22;
+#else
+u256 const eth::c_genesisDifficulty = (u256)1 << 22;
+#endif
+
+std::map<Address, AddressState> const& eth::genesisState()
+{
+	static std::map<Address, AddressState> s_ret;
+	if (s_ret.empty())
+	{
+		// Initialise.
+		s_ret[Address(fromUserHex("07598a40bfaa73256b60764c1bf40675a99083ef"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("80c01a26338f0d905e295fccb71fa9ea849ffa12"))] = AddressState(u256(1) << 200, 0);
+	}
+	return s_ret;
+}
+
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
-		_path = Defaults::s_dbPath;
+		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
 	if (_killExisting)
 		boost::filesystem::remove_all(_path + "/state");
@@ -71,9 +93,17 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&m_db), m_ourAddress(_coinbaseAddress)
 {
 	secp256k1_start();
+
+	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
+	eth::commit(genesisState(), m_db, m_state);
+	cnote << "State root: " << m_state.root();
+
 	m_previousBlock = BlockInfo::genesis();
+	cnote << "Genesis hash:" << m_previousBlock.hash;
 	resetCurrent();
+
+	assert(m_state.root() == m_previousBlock.stateRoot);
 }
 
 void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
@@ -112,29 +142,7 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 
 void State::commit()
 {
-	for (auto const& i: m_cache)
-		if (i.second.type() == AddressType::Dead)
-			m_state.remove(i.first);
-		else
-		{
-			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
-			s << i.second.balance() << i.second.nonce();
-			if (i.second.type() == AddressType::Contract)
-			{
-				if (i.second.haveMemory())
-				{
-					TrieDB<u256, Overlay> memdb(&m_db);
-					memdb.init();
-					for (auto const& j: i.second.memory())
-						if (j.second)
-							memdb.insert(j.first, rlp(j.second));
-					s << memdb.root();
-				}
-				else
-					s << i.second.oldRoot();
-			}
-			m_state.insert(i.first, &s.out());
-		}
+	eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
