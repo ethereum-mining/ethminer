@@ -39,7 +39,7 @@ using namespace std;
 using namespace eth;
 
 // Logging
-int eth::g_logVerbosity = 6;
+int eth::g_logVerbosity = 8;
 map<type_info const*, bool> eth::g_logOverride;
 thread_local std::string eth::t_logThreadName = "???";
 static std::string g_mainThreadName = (eth::t_logThreadName = "main");
