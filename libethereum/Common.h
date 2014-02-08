@@ -189,7 +189,6 @@ public:
 			strftime(buf, 9, "%X", localtime(&rawTime));
 
 #if defined(__APPLE__)
-			const char *threadName = dispatch_queue_get_label(dispatch_get_current_queue());
 			sstr << Id::name << " [ " << buf << " | " << dispatch_queue_get_label(dispatch_get_current_queue()) << (_term ? " ] " : "");
 #else
 			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
