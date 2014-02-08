@@ -77,6 +77,10 @@ mark_as_advanced(CRYPTOPP_INCLUDE_DIR CRYPTOPP_LIBRARIES)
 include_directories(${CRYPTOPP_INCLUDE_DIR})
 link_directories(${CRYPTOPP_LIBRARIES})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	link_directories(/usr/local/lib)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
 add_subdirectory(secp256k1)
 add_subdirectory(libethereum)
 add_subdirectory(test)

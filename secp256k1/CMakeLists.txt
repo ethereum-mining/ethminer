@@ -10,4 +10,6 @@ add_library(secp256k1 secp256k1.c field_5x52_asm.asm)
 set(CMAKE_C_FLAGS "-std=c99 -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
 target_link_libraries(secp256k1 gmp)
 
-
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	include_directories(/usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
