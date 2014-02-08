@@ -67,7 +67,7 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
-	boost::filesystem::create_directory(_path);
+	boost::filesystem::create_directories(_path);
 	if (_killExisting)
 	{
 		boost::filesystem::remove_all(_path + "/blocks");
