@@ -42,13 +42,13 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_changed = true;
 
 	static std::string thread_name = "eth";
-	
+
+#if defined(__APPLE__)
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
 		m_work = dispatch_queue_create(thread_name.c_str(), DISPATCH_QUEUE_SERIAL);
 	});
 
-#if defined(__APPLE__)
 	dispatch_async(m_work, ^{
 #else
 	m_work = new thread([&](){
