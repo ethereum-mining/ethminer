@@ -188,7 +188,10 @@ void Main::on_net_triggered()
 void Main::on_connect_triggered()
 {
 	if (!ui->net->isChecked())
+	{
 		ui->net->setChecked(true);
+		on_net_triggered();
+	}
 	bool ok = false;
 	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, m_servers.count() ? rand() % m_servers.count() : 0, true, &ok);
 	if (ok && s.contains(":"))
@@ -197,6 +200,11 @@ void Main::on_connect_triggered()
 		short port = s.section(":", 1).toInt();
 		m_client->connect(host, port);
 	}
+}
+
+void Main::on_verbosity_sliderMoved()
+{
+	g_logVerbosity = ui->verbosity->value();
 }
 
 void Main::on_mine_triggered()

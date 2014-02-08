@@ -39,7 +39,7 @@ using namespace std;
 using namespace eth;
 
 // Logging
-int eth::g_logVerbosity = 6;
+int eth::g_logVerbosity = 8;
 map<type_info const*, bool> eth::g_logOverride;
 
 #if !defined(__APPLE__)

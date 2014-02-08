@@ -190,8 +190,30 @@
      </property>
      <item>
       <widget class="QListWidget" name="log">
+       <property name="font">
+        <font>
+         <family>Monospace</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="verbosity">
+       <property name="maximum">
+        <number>10</number>
+       </property>
+       <property name="value">
+        <number>4</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="tickPosition">
+        <enum>QSlider::TicksBothSides</enum>
        </property>
       </widget>
      </item>
@@ -249,7 +271,7 @@
    <property name="minimumSize">
     <size>
      <width>349</width>
-     <height>225</height>
+     <height>251</height>
     </size>
    </property>
    <property name="features">
@@ -279,7 +301,7 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="4">
+     <item row="5" column="4">
       <widget class="QPushButton" name="send">
        <property name="text">
         <string>Send</string>
@@ -322,9 +344,6 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="3" colspan="2">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
      <item row="2" column="2">
       <widget class="QSpinBox" name="fee">
        <property name="suffix">
@@ -341,15 +360,15 @@
        </property>
       </widget>
      </item>
+     <item row="1" column="3" colspan="2">
+      <widget class="QComboBox" name="valueUnits"/>
+     </item>
      <item row="2" column="0" colspan="2">
       <widget class="QLabel" name="label5_3">
        <property name="text">
         <string>Fee</string>
        </property>
       </widget>
-     </item>
-     <item row="3" column="2" colspan="3">
-      <widget class="QPlainTextEdit" name="data"/>
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_2">
@@ -360,6 +379,9 @@
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
        </property>
       </widget>
+     </item>
+     <item row="4" column="0" colspan="5">
+      <widget class="QPlainTextEdit" name="data"/>
      </item>
     </layout>
    </widget>
