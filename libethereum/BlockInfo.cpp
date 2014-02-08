@@ -82,25 +82,32 @@ void BlockInfo::populateGenesis()
 void BlockInfo::populate(bytesConstRef _block)
 {
 	RLP root(_block);
+	int field = 0;
+	RLP header = root[0];
+	if (!header.isList())
+		throw InvalidBlockFormat(0, header.data());
 	try
 	{
-		RLP header = root[0];
 		hash = eth::sha3(_block);
-		parentHash = header[0].toHash<h256>();
-		sha3Uncles = header[1].toHash<h256>();
-		coinbaseAddress = header[2].toHash<Address>();
-		stateRoot = header[3].toHash<h256>();
-		sha3Transactions = header[4].toHash<h256>();
-		difficulty = header[5].toInt<u256>();
-		timestamp = header[6].toInt<u256>();
-		extraData = header[7].toBytes();
-		nonce = header[8].toInt<u256>();
+		parentHash = header[field = 0].toHash<h256>();
+		sha3Uncles = header[field = 1].toHash<h256>();
+		coinbaseAddress = header[field = 2].toHash<Address>();
+		stateRoot = header[field = 3].toHash<h256>();
+		sha3Transactions = header[field = 4].toHash<h256>();
+		difficulty = header[field = 5].toInt<u256>();
+		timestamp = header[field = 6].toInt<u256>();
+		extraData = header[field = 7].toBytes();
+		nonce = header[field = 8].toInt<u256>();
 	}
 	catch (RLP::BadCast)
 	{
-		throw InvalidBlockFormat();
+		throw InvalidBlockHeaderFormat(field, header[field].data());
 	}
 
+	if (!root[1].isList())
+		throw InvalidBlockFormat(1, root[1].data());
+	if (!root[2].isList())
+		throw InvalidBlockFormat(2, root[2].data());
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
 		throw InvalidNonce();

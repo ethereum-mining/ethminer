@@ -40,7 +40,7 @@
 using namespace std;
 using namespace eth;
 
-#define clogS(X) eth::LogOutputStream<X, true>(false) << " | " << std::setw(2) << m_socket.native_handle() << " ] "
+#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
 static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -97,7 +97,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_caps = _r.itemCount() > 4 ? _r[4].toInt<uint>() : 0x07;
 		m_listenPort = _r.itemCount() > 5 ? _r[5].toInt<short>() : 0;
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << " " << showbase << hex << m_caps << dec << " " << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << showbase << hex << m_caps << dec << m_listenPort;
 
 		if (m_protocolVersion != 1 || m_networkId != m_reqNetworkId)
 		{
@@ -356,7 +356,6 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 
 void PeerServer::seal(bytes& _b)
 {
-	clogS(NetLeft) << RLP(bytesConstRef(&_b).cropped(8));
 	_b[0] = 0x22;
 	_b[1] = 0x40;
 	_b[2] = 0x08;
@@ -378,6 +377,7 @@ void PeerSession::sealAndSend(RLPStream& _s)
 
 void PeerSession::sendDestroy(bytes& _msg)
 {
+	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
 	assert((*buffer)[0] == 0x22);
@@ -391,6 +391,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 
 void PeerSession::send(bytesConstRef _msg)
 {
+	clogS(NetLeft) << RLP(_msg.cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
 	assert((*buffer)[0] == 0x22);
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
@@ -445,7 +446,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)0 << (uint)0 << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0);
+	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)1 << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0);
 	if (m_server->m_public.port())
 		s << m_server->m_public.port();
 	sealAndSend(s);
@@ -479,11 +480,11 @@ void PeerSession::doRead()
 					else
 					{
 						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-	//					cdebug << "Received packet of " << len << " bytes";
 						if (m_incoming.size() - 8 < len)
 							break;
 
 						// enough has come in.
+//						cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
 						RLP r(bytesConstRef(m_incoming.data() + 8, len));
 						if (!interpret(r))
 							// error
@@ -493,6 +494,11 @@ void PeerSession::doRead()
 					}
 				}
 				doRead();
+			}
+			catch (Exception const& _e)
+			{
+				clogS(NetWarn) << "ERROR: " << _e.description();
+				dropped();
 			}
 			catch (std::exception const& _e)
 			{
@@ -862,7 +868,8 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						seal(b);
 						for (auto const& i: m_peers)
 							if (auto p = i.lock())
-								p->send(&b);
+								if (p->isOpen())
+									p->send(&b);
 						m_lastPeersRequest = chrono::steady_clock::now();
 					}
 

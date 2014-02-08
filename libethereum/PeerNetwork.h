@@ -83,6 +83,8 @@ public:
 
 	void ping();
 
+	bool isOpen() const { return m_socket.is_open(); }
+
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 private:
