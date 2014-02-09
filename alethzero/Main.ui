@@ -247,7 +247,7 @@
         <number>10</number>
        </property>
        <property name="value">
-        <number>4</number>
+        <number>1</number>
        </property>
        <property name="orientation">
         <enum>Qt::Vertical</enum>
