@@ -1,7 +1,13 @@
 cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
-add_library(ethereum ${SRC_LIST})
+
+if(NOT APPLE)
+	add_library(ethereum ${SRC_LIST})
+else()
+	add_library(ethereum SHARED ${SRC_LIST})
+endif()
+
 file(GLOB HEADERS "*.h") 
 
 find_package(Threads REQUIRED)
