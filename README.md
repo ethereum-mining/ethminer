@@ -6,7 +6,7 @@ Gav Wood, 2014.
 
 ## Building
 
-See [[https://github.com/ethereum/cpp-ethereum/wiki/Building]] and [[https://github.com/ethereum/cpp-ethereum/wiki/Compatibility-Info-and-Build-Tips]].
+See https://github.com/ethereum/cpp-ethereum/wiki/Building and https://github.com/ethereum/cpp-ethereum/wiki/Compatibility-Info-and-Build-Tips .
 
 ## Yet To Do
 
