@@ -169,7 +169,7 @@ struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<
 struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
 struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
 struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
-struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 0; };
+struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 7; };
 
 extern int g_logVerbosity;
 extern std::function<void(std::string const&, char const*)> g_logPost;
