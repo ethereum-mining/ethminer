@@ -96,6 +96,8 @@ public:
 	/// Get the object representing the transaction queue.
 	TransactionQueue const& transactionQueue() const { return m_tq; }
 
+	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
+
 	// Network stuff:
 
 	/// Get information on the current peer set.
@@ -109,6 +111,8 @@ public:
 	void connect(std::string const& _seedHost, short _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
+	/// Get access to the peer server object. This will be null if the network isn't online.
+	PeerServer* peerServer() const { return m_net; }
 
 	// Mining stuff:
 
