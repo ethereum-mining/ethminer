@@ -139,43 +139,76 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <property name="spacing">
-      <number>4</number>
-     </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <property name="margin">
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="peers">
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
+       <widget class="QListWidget" name="peers">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QWidget" name="">
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Listen on</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="idealPeers">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="value">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Ideal Peers</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="port">
+           <property name="minimum">
+            <number>1024</number>
+           </property>
+           <property name="maximum">
+            <number>32767</number>
+           </property>
+           <property name="value">
+            <number>30303</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Client Name</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="clientName">
+           <property name="placeholderText">
+            <string>Anonymous</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_8">
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Listen on</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="port">
-         <property name="minimum">
-          <number>1024</number>
-         </property>
-         <property name="maximum">
-          <number>32767</number>
-         </property>
-         <property name="value">
-          <number>30303</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </item>
     </layout>
    </widget>

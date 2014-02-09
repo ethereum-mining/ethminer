@@ -32,6 +32,9 @@
 using namespace std;
 using namespace eth;
 
+#define ADD_QUOTES_HELPER(s) #s
+#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
+
 bytes contents(std::string const& _file)
 {
 	std::ifstream is(_file, std::ifstream::binary);
@@ -165,7 +168,7 @@ int main(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	Client c("Ethereum(++)/v0.1", coinbase, dbPath);
+	Client c("Ethereum(++)/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;

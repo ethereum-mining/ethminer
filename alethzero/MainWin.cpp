@@ -25,7 +25,7 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const*) { ui->log->addItem(QString::fromStdString(s)); };
-	m_client = new Client("AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM));
+	m_client = new Client("AlethZero");
 
 	readSettings();
 	refresh();
@@ -171,6 +171,12 @@ void Main::refresh()
 	m_client->unlock();
 }
 
+void Main::on_idealPeers_valueChanged()
+{
+	if (m_client->peerServer())
+		m_client->peerServer()->setIdealPeerCount(ui->idealPeers->value());
+}
+
 void Main::on_ourAccounts_doubleClicked()
 {
 	qApp->clipboard()->setText(ui->ourAccounts->currentItem()->text().section(" @ ", 1));
@@ -234,8 +240,14 @@ void Main::updateFee()
 void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
+	ui->clientName->setEnabled(!ui->net->isChecked());
+	string n = "AlethZero/v" ADD_QUOTES(ETH_VERSION);
+	if (ui->clientName->text().size())
+		n += "/" + ui->clientName->text().toStdString();
+	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
+	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, 5, std::string(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
 	else
 		m_client->stopNetwork();
 }

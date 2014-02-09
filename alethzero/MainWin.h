@@ -34,6 +34,7 @@ private slots:
 	void on_accounts_doubleClicked();
 	void on_destination_textChanged();
 	void on_data_textChanged();
+	void on_idealPeers_valueChanged();
 	void on_value_valueChanged() { updateFee(); }
 	void on_valueUnits_currentIndexChanged() { updateFee(); }
 	void on_log_doubleClicked();
