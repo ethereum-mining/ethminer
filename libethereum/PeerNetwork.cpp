@@ -366,6 +366,7 @@ void PeerServer::seal(bytes& _b)
 	_b[5] = (len >> 16) & 0xff;
 	_b[6] = (len >> 8) & 0xff;
 	_b[7] = len & 0xff;
+	cerr << "Sealed " << _b.size() << ": " << asHex(_b) << endl;
 }
 
 void PeerSession::sealAndSend(RLPStream& _s)
@@ -920,7 +921,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 std::vector<PeerInfo> PeerServer::peers() const
 {
 	const_cast<PeerServer*>(this)->pingAll();
-	this_thread::sleep_for(chrono::milliseconds(200000));
+	this_thread::sleep_for(chrono::milliseconds(200));
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
 		if (auto j = i.lock())
