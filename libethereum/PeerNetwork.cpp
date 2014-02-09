@@ -43,6 +43,8 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
+static const int c_protocolVersion = 2;
+
 static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
 static const eth::uint c_maxBlocksAsk = 2048;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
@@ -108,7 +110,7 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		m_server->m_peers[m_id] = shared_from_this();
 
-		if (m_protocolVersion != 2 || m_networkId != m_reqNetworkId)
+		if (m_protocolVersion != c_protocolVersion || m_networkId != m_reqNetworkId)
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
@@ -481,7 +483,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)1 << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
+	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)c_protocolVersion << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
 	sealAndSend(s);
 
 	ping();
