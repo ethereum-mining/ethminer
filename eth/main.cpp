@@ -236,7 +236,7 @@ int main(int argc, char** argv)
 				c.stopMining();
 			else
 				c.startMining();
-			usleep(100000);
+			std::this_thread::sleep_for(std::chrono::microseconds(100000));
 		}
 	}
 

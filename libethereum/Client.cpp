@@ -64,7 +64,7 @@ Client::~Client()
 	if (m_workState == Active)
 		m_workState = Deleting;
 	while (m_workState != Deleted)
-		usleep(10000);
+		std::this_thread::sleep_for(std::chrono::microseconds(10000));
 }
 
 void Client::startNetwork(short _listenPort, std::string const& _seedHost, short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
@@ -158,7 +158,7 @@ void Client::work()
 		}
 	}
 	else
-		usleep(100000);
+		std::this_thread::sleep_for(std::chrono::microseconds(100000));
 }
 
 void Client::lock()

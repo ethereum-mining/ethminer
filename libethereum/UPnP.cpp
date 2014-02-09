@@ -117,7 +117,7 @@ int UPnP::addRedirect(char const* addr, int port)
 	// Failed - now try (random external, port internal) and cycle up to 10 times.
 	for (uint i = 0; i < 10; ++i)
 	{
-		port = random() % 65535 - 1024 + 1024;
+		port = rand() % 65535 - 1024 + 1024;
 		sprintf(port_str, "%d", port);
 		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, NULL, port_str, addr, "ethereum", "TCP", NULL, NULL))
 			return port;
