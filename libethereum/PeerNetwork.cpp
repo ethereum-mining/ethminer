@@ -834,7 +834,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						RLPStream ts;
 						PeerSession::prep(ts);
 						ts.appendList(n + 1) << TransactionsPacket;
-						ts.appendRaw(b).swapOut(b);
+						ts.appendRaw(b, n).swapOut(b);
 						seal(b);
 						p->send(&b);
 					}
