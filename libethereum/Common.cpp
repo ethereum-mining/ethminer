@@ -190,13 +190,50 @@ Address eth::toAddress(Secret _private)
 
 KeyPair KeyPair::create()
 {
+	secp256k1_start();
 	static std::mt19937_64 s_eng(time(0));
 	std::uniform_int_distribution<byte> d(0, 255);
-	KeyPair ret;
-	for (uint i = 0; i < 32; ++i)
-		ret.m_secret[i] = d(s_eng);
-	ret.m_address = toAddress(ret.m_secret);
-	return ret;
+
+	for (int i = 0; i < 100; ++i)
+	{
+		h256 sec;
+		for (uint i = 0; i < 32; ++i)
+			sec[i] = d(s_eng);
+
+		KeyPair ret(sec);
+		if (ret.address())
+			return ret;
+	}
+	return KeyPair();
+}
+
+KeyPair::KeyPair(h256 _sec):
+	m_secret(_sec)
+{
+	int ok = secp256k1_ecdsa_seckey_verify(m_secret.data());
+	if (!ok)
+		return;
+
+	byte pubkey[65];
+	int pubkeylen = 65;
+	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, m_secret.data(), 0);
+	if (!ok || pubkeylen != 65)
+		return;
+
+	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
+	if (!ok)
+		return;
+
+	m_secret = m_secret;
+	memcpy(m_public.data(), &(pubkey[1]), 64);
+	m_address = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+
+#if ETH_ADDRESS_DEBUG
+	cout << "---- ADDRESS -------------------------------" << endl;
+	cout << "SEC: " << m_secret << endl;
+	cout << "PUB: " << m_public << endl;
+	cout << "ADR: " << m_address << endl;
+#endif
 }
 
 static const vector<pair<u256, string>> g_units =

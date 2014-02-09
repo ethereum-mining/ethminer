@@ -277,7 +277,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>349</width>
+     <width>408</width>
      <height>251</height>
     </size>
    </property>
@@ -298,32 +298,15 @@
      <property name="spacing">
       <number>4</number>
      </property>
-     <item row="0" column="2" colspan="3">
-      <widget class="QLineEdit" name="destination">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="4">
-      <widget class="QPushButton" name="send">
-       <property name="text">
-        <string>Send</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="3" colspan="2">
-      <widget class="QComboBox" name="feeUnits"/>
-     </item>
      <item row="1" column="0" colspan="2">
       <widget class="QLabel" name="label5_2">
        <property name="text">
         <string>Amount</string>
        </property>
       </widget>
+     </item>
+     <item row="1" column="3" colspan="2">
+      <widget class="QComboBox" name="valueUnits"/>
      </item>
      <item row="1" column="2">
       <widget class="QSpinBox" name="value">
@@ -335,6 +318,16 @@
        </property>
        <property name="value">
         <number>1000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Data</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
@@ -351,44 +344,45 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
-      <widget class="QSpinBox" name="fee">
-       <property name="suffix">
-        <string/>
-       </property>
-       <property name="prefix">
-        <string/>
-       </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-       <property name="value">
-        <number>100</number>
+     <item row="3" column="0" colspan="5">
+      <widget class="QPlainTextEdit" name="data"/>
+     </item>
+     <item row="4" column="4">
+      <widget class="QPushButton" name="send">
+       <property name="text">
+        <string>Send</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="3" colspan="2">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
-     <item row="2" column="0" colspan="2">
-      <widget class="QLabel" name="label5_3">
-       <property name="text">
-        <string>Fee</string>
+     <item row="0" column="2" colspan="3">
+      <widget class="QLineEdit" name="destination">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="placeholderText">
+        <string>(Create Contract)</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_2">
+     <item row="2" column="2" colspan="3">
+      <widget class="QLabel" name="fee">
        <property name="text">
-        <string>Data</string>
+        <string/>
        </property>
        <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
-     <item row="4" column="0" colspan="5">
-      <widget class="QPlainTextEdit" name="data"/>
+     <item row="4" column="0" colspan="4">
+      <widget class="QLabel" name="total">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>

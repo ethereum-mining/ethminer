@@ -42,6 +42,21 @@ class BlockChain;
 extern const u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
+#define ETH_SENDER_PAYS_SETUP 1
+
+struct FeeStructure
+{
+	/// The fee structure. Values yet to be agreed on...
+	void setMultiplier(u256 _x);				///< The current block multiplier.
+	u256 m_stepFee;
+	u256 m_dataFee;
+	u256 m_memoryFee;
+	u256 m_extroFee;
+	u256 m_cryptoFee;
+	u256 m_newContractFee;
+	u256 m_txFee;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -52,6 +67,12 @@ class State
 public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
+
+	/// Copy state object.
+	State(State const& _s);
+
+	/// Copy state object.
+	State& operator=(State const& _s);
 
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
@@ -146,6 +167,12 @@ public:
 	/// This might throw.
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
+	/// Get the fee associated for a contract created with the given data.
+	u256 fee(uint _dataCount) const { return m_fees.m_memoryFee * _dataCount + m_fees.m_newContractFee; }
+
+	/// Get the fee associated for a normal transaction.
+	u256 fee() const { return m_fees.m_txFee; }
+
 private:
 	/// Fee-adder on destruction RAII class.
 	struct MinerFeeAdder
@@ -177,7 +204,7 @@ private:
 	void executeBare(Transaction const& _t, Address _sender);
 
 	/// Execute a contract transaction.
-	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* o_totalFee);
+	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* o_totalFee);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -199,16 +226,9 @@ private:
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
 	Dagger m_dagger;
-	
-	/// The fee structure. Values yet to be agreed on...
-	static const u256 c_stepFee;
-	static const u256 c_dataFee;
-	static const u256 c_memoryFee;
-	static const u256 c_extroFee;
-	static const u256 c_cryptoFee;
-	static const u256 c_newContractFee;
-	static const u256 c_txFee;
-	static const u256 c_blockReward;
+
+	FeeStructure m_fees;
+	u256 m_blockReward;
 
 	static std::string c_defaultPath;
 

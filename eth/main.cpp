@@ -207,20 +207,18 @@ int main(int argc, char** argv)
 				string sechex;
 				string rechex;
 				u256 amount;
-				u256 fee;
-				cin >> sechex >> rechex >> amount >> fee;
+				cin >> sechex >> rechex >> amount;
 				Secret secret = h256(fromUserHex(sechex));
 				Address dest = h160(fromUserHex(rechex));
-				c.transact(secret, dest, amount, fee);
+				c.transact(secret, dest, amount);
 			}
 			else if (cmd == "send")
 			{
 				string rechex;
 				u256 amount;
-				u256 fee;
-				cin >> rechex >> amount >> fee;
+				cin >> rechex >> amount;
 				Address dest = h160(fromUserHex(rechex));
-				c.transact(us.secret(), dest, amount, fee);
+				c.transact(us.secret(), dest, amount);
 			}
 			else if (cmd == "exit")
 			{

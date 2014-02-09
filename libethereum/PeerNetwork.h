@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <utility>
 #include <boost/asio.hpp>
@@ -60,6 +61,19 @@ enum PacketType
 	GetTransactionsPacket
 };
 
+enum DisconnectReason
+{
+	DisconnectRequested = 0,
+	TCPError,
+	BadProtocol,
+	UselessPeer,
+	TooManyPeers,
+	DuplicatePeer,
+	WrongGenesis,
+	IncompatibleProtocol,
+	ClientQuit
+};
+
 class PeerServer;
 
 struct PeerInfo
@@ -79,7 +93,7 @@ public:
 	~PeerSession();
 
 	void start();
-	void disconnect();
+	void disconnect(int _reason);
 
 	void ping();
 
@@ -102,6 +116,7 @@ private:
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
 	PeerInfo m_info;
+	Public m_id;
 
 	bytes m_incoming;
 	uint m_protocolVersion;
@@ -137,7 +152,7 @@ public:
 	/// Start server, listening for connections on the given port.
 	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
-	PeerServer(std::string const& _clientVersion, uint _networkId);
+	PeerServer(std::string const& _clientVersion, uint _networkId, NodeMode _m = NodeMode::Full);
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
@@ -172,7 +187,7 @@ private:
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	void ensureAccepting();
-	std::vector<bi::tcp::endpoint> potentialPeers();
+	std::map<Public, bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
 	NodeMode m_mode = NodeMode::Full;
@@ -186,13 +201,14 @@ private:
 
 	UPnP* m_upnp = nullptr;
 	bi::tcp::endpoint m_public;
+	KeyPair m_key;
 
 	uint m_requiredNetworkId;
-	std::vector<std::weak_ptr<PeerSession>> m_peers;
+	std::map<Public, std::weak_ptr<PeerSession>> m_peers;
 
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
-	std::vector<bi::tcp::endpoint> m_incomingPeers;
+	std::multimap<Public, bi::tcp::endpoint> m_incomingPeers;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;

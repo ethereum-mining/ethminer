@@ -32,7 +32,8 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_clientVersion(_clientVersion),
 	m_bc(_dbPath),
 	m_stateDB(State::openDB(_dbPath)),
-	m_s(_us, m_stateDB)
+	m_s(_us, m_stateDB),
+	m_mined(_us, m_stateDB)
 {
 	Defaults::setDBPath(_dbPath);
 
@@ -95,6 +96,7 @@ void Client::stopNetwork()
 void Client::startMining()
 {
 	m_doMine = true;
+	m_miningStarted = true;
 }
 
 void Client::stopMining()
@@ -102,14 +104,13 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data)
+void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 {
 	m_lock.lock();
 	Transaction t;
 	t.nonce = m_s.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _amount;
-	t.fee = _fee;
 	t.data = _data;
 	t.sign(_secret);
 	m_tq.attemptImport(t.rlp());
@@ -120,12 +121,14 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u2
 void Client::work()
 {
 	m_lock.lock();
+	bool changed = false;
+
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
 		if (m_net->process(m_bc, m_tq, m_stateDB))
-			m_changed = true;
+			changed = true;
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -135,16 +138,23 @@ void Client::work()
 	//   all blocks.
 	 // Resynchronise state with block chain & trans
 	if (m_s.sync(m_bc))
-		m_changed = true;
+		changed = true;
 	if (m_s.sync(m_tq))
-		m_changed = true;
+		changed = true;
 
 	m_lock.unlock();
 	if (m_doMine)
 	{
+		if (changed || m_miningStarted)
+		{
+			m_mined = m_s;
+			m_mined.commitToMine(m_bc);
+		}
+
+		m_miningStarted = false;
+
 		// Mine for a while.
-		m_s.commitToMine(m_bc);
-		MineInfo mineInfo = m_s.mine(100);
+		MineInfo mineInfo = m_mined.mine(100);
 		m_mineProgress.best = max(m_mineProgress.best, mineInfo.best);
 		m_mineProgress.current = mineInfo.best;
 		m_mineProgress.requirement = mineInfo.requirement;
@@ -153,7 +163,7 @@ void Client::work()
 		{
 			// Import block.
 			m_lock.lock();
-			m_bc.attemptImport(m_s.blockData(), m_stateDB);
+			m_bc.attemptImport(m_mined.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
 			m_lock.unlock();
 			m_changed = true;
@@ -161,6 +171,8 @@ void Client::work()
 	}
 	else
 		this_thread::sleep_for(chrono::milliseconds(100));
+
+	m_changed = m_changed || changed;
 }
 
 void Client::lock()
