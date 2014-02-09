@@ -238,7 +238,7 @@ int main(int argc, char** argv)
 				c.stopMining();
 			else
 				c.startMining();
-			this_thread::sleep_for(chrono::milliseconds(100000));
+			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
 

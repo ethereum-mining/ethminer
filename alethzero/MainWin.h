@@ -33,6 +33,7 @@ private slots:
 	void on_ourAccounts_doubleClicked();
 	void on_accounts_doubleClicked();
 	void on_log_doubleClicked();
+	void on_about_triggered();
 	void on_quit_triggered() { close(); }
 
 	void refresh();

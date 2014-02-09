@@ -15,7 +15,8 @@ static void initUnits(QComboBox* _b)
 	_b->setCurrentIndex(6);
 }
 
-#define ETH_QUOTED(A) #A
+#define ADD_QUOTES_HELPER(s) #s
+#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -26,7 +27,7 @@ Main::Main(QWidget *parent) :
 	initUnits(ui->valueUnits);
 	initUnits(ui->feeUnits);
 	g_logPost = [=](std::string const& s, char const*) { ui->log->addItem(QString::fromStdString(s)); };
-	m_client = new Client("AlethZero/v" ETH_QUOTED(ETH_VERSION));
+	m_client = new Client("AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM));
 
 	readSettings();
 	refresh();
@@ -42,7 +43,7 @@ Main::Main(QWidget *parent) :
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc2.txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -60,6 +61,11 @@ Main::~Main()
 	g_logPost = simpleDebugOut;
 	writeSettings();
 	delete ui;
+}
+
+void Main::on_about_triggered()
+{
+	QMessageBox::about(this, "About AlethZero", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Subtly and several others.");
 }
 
 void Main::writeSettings()
