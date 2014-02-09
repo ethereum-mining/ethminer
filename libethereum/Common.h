@@ -127,6 +127,7 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 	return _out;
 }
 
+using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
 using h256s = std::vector<h256>;
@@ -135,6 +136,7 @@ using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
 
 using Secret = h256;
+using Public = h512;
 using Address = h160;
 using Addresses = h160s;
 
@@ -434,15 +436,19 @@ class KeyPair
 {
 public:
 	KeyPair() {}
-	KeyPair(Secret _k): m_secret(_k), m_address(toAddress(_k)) {}
+	KeyPair(Secret _k);
 
 	static KeyPair create();
 
 	Secret const& secret() const { return m_secret; }
+	Secret const& sec() const { return m_secret; }
+	Public const& pub() const { return m_public; }
+
 	Address const& address() const { return m_address; }
 
 private:
 	Secret m_secret;
+	Public m_public;
 	Address m_address;
 };
 

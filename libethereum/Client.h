@@ -62,7 +62,7 @@ public:
 	~Client();
 
 	/// Executes the given transaction.
-	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
+	void transact(Secret _secret, Address _dest, u256 _amount, u256s _data = u256s());
 
 	/// Requires transactions involving this address be queued for inspection.
 	void setInterest(Address _dest);
@@ -131,6 +131,7 @@ private:
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_s;							///< The present state of the client.
+	State m_mined;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
 #if defined(__APPLE__)
@@ -143,6 +144,7 @@ private:
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
+	mutable bool m_miningStarted = false;
 
 	mutable bool m_changed;
 };

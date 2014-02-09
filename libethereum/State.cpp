@@ -46,20 +46,15 @@
 using namespace std;
 using namespace eth;
 
-u256 const State::c_stepFee = 10000;
-u256 const State::c_dataFee = 20000;
-u256 const State::c_memoryFee = 30000;
-u256 const State::c_extroFee = 40000;
-u256 const State::c_cryptoFee = 50000;
-u256 const State::c_newContractFee = 60000;
-u256 const State::c_txFee = 0;
-u256 const State::c_blockReward = 1000000000000;
+u256 const c_stepFee = 1;
+u256 const c_dataFee = 20;
+u256 const c_memoryFee = 5;
+u256 const c_extroFee = 40;
+u256 const c_cryptoFee = 20;
+u256 const c_newContractFee = 100;
+u256 const c_txFee = 100;
 
-#if NDEBUG
 u256 const eth::c_genesisDifficulty = (u256)1 << 22;
-#else
-u256 const eth::c_genesisDifficulty = (u256)1 << 22;
-#endif
 
 std::map<Address, AddressState> const& eth::genesisState()
 {
@@ -90,8 +85,14 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	return Overlay(db);
 }
 
-State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&m_db), m_ourAddress(_coinbaseAddress)
+State::State(Address _coinbaseAddress, Overlay const& _db):
+	m_db(_db),
+	m_state(&m_db),
+	m_ourAddress(_coinbaseAddress)
 {
+	m_blockReward = u256(15000000000) * 100000000;
+	m_fees.setMultiplier(u256(100000) * 1000000000);
+
 	secp256k1_start();
 
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
@@ -104,6 +105,46 @@ State::State(Address _coinbaseAddress, Overlay const& _db): m_db(_db), m_state(&
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
+}
+
+State::State(State const& _s):
+	m_db(_s.m_db),
+	m_state(&m_db, _s.m_state.root()),
+	m_transactions(_s.m_transactions),
+	m_cache(_s.m_cache),
+	m_previousBlock(_s.m_previousBlock),
+	m_currentBlock(_s.m_currentBlock),
+	m_currentNumber(_s.m_currentNumber),
+	m_ourAddress(_s.m_ourAddress),
+	m_fees(_s.m_fees),
+	m_blockReward(_s.m_blockReward)
+{
+}
+
+State& State::operator=(State const& _s)
+{
+	m_db = _s.m_db;
+	m_state.open(&m_db, _s.m_state.root());
+	m_transactions = _s.m_transactions;
+	m_cache = _s.m_cache;
+	m_previousBlock = _s.m_previousBlock;
+	m_currentBlock = _s.m_currentBlock;
+	m_currentNumber = _s.m_currentNumber;
+	m_ourAddress = _s.m_ourAddress;
+	m_fees = _s.m_fees;
+	m_blockReward = _s.m_blockReward;
+	return *this;
+}
+
+void FeeStructure::setMultiplier(u256 _x)
+{
+	m_stepFee = c_stepFee * _x;
+	m_dataFee = c_dataFee * _x;
+	m_memoryFee = c_memoryFee * _x;
+	m_extroFee = c_extroFee * _x;
+	m_cryptoFee = c_cryptoFee * _x;
+	m_newContractFee = c_newContractFee * _x;
+	m_txFee = c_txFee * _x;
 }
 
 void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
@@ -525,11 +566,11 @@ void State::execute(bytesConstRef _rlp)
 
 void State::applyRewards(Addresses const& _uncleAddresses)
 {
-	u256 r = c_blockReward;
+	u256 r = m_blockReward;
 	for (auto const& i: _uncleAddresses)
 	{
-		addBalance(i, c_blockReward * 4 / 3);
-		r += c_blockReward / 8;
+		addBalance(i, m_blockReward * 4 / 3);
+		r += m_blockReward / 8;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }
@@ -544,31 +585,32 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		throw InvalidNonce(nonceReq, _t.nonce);
 
 	// Not considered invalid - just pointless.
-	if (balance(_sender) < _t.value + _t.fee)
+	u256 fee = _t.receiveAddress ? m_fees.m_txFee : (_t.data.size() * m_fees.m_memoryFee + m_fees.m_newContractFee);
+	if (balance(_sender) < _t.value + fee)
 		throw NotEnoughCash();
-
-	// TODO: check fee is sufficient?
 
 	// Increment associated nonce for sender.
 	noteSending(_sender);
 
 	if (_t.receiveAddress)
 	{
-		subBalance(_sender, _t.value + _t.fee);
+		subBalance(_sender, _t.value + fee);
 		addBalance(_t.receiveAddress, _t.value);
-		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
 
 		if (isContractAddress(_t.receiveAddress))
 		{
 			MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
-			execute(_t.receiveAddress, _sender, _t.value, _t.fee, _t.data, &feeAdder.fee);
+			execute(_t.receiveAddress, _sender, _t.value, _t.data, &feeAdder.fee);
 		}
 	}
 	else
 	{
-		// Try to make a new contract
-		if (_t.fee < _t.data.size() * c_memoryFee + c_newContractFee)
-			throw FeeTooSmall();
+#if ETH_SENDER_PAYS_SETUP
+		if (balance(_sender) < _t.value + fee)
+#else
+		if (_t.value < fee)
+#endif
+			throw NotEnoughCash();
 
 		Address newAddress = low160(_t.sha3());
 
@@ -584,9 +626,13 @@ void State::executeBare(Transaction const& _t, Address _sender)
 			else
 				mem.at(i) = _t.data[i];
         
-		subBalance(_sender, _t.value + _t.fee);
+#if ETH_SENDER_PAYS_SETUP
+		subBalance(_sender, _t.value + fee);
 		addBalance(newAddress, _t.value);
-		addBalance(m_currentBlock.coinbaseAddress, _t.fee);
+#else
+		subBalance(_sender, _t.value);
+		addBalance(newAddress, _t.value - fee);
+#endif
 	}
 }
 
@@ -598,7 +644,7 @@ inline Address asAddress(u256 _item)
 	return left160(h256(_item));
 }
 
-void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _txFee, u256s const& _txData, u256* _totalFee)
+void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* _totalFee)
 {
 	std::vector<u256> stack;
 
@@ -637,7 +683,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 	{
 		stepCount++;
 
-		bigint minerFee = stepCount > 16 ? c_stepFee : 0;
+		bigint minerFee = stepCount > 16 ? m_fees.m_stepFee : 0;
 		bigint voidFee = 0;
 
 		auto rawInst = mem(curPC);
@@ -650,21 +696,21 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		case Instruction::STORE:
 			require(2);
 			if (!mem(stack.back()) && stack[stack.size() - 2])
-				voidFee += c_memoryFee;
+				voidFee += m_fees.m_memoryFee;
 			if (mem(stack.back()) && !stack[stack.size() - 2])
-				voidFee -= c_memoryFee;
+				voidFee -= m_fees.m_memoryFee;
 			// continue on to...
 		case Instruction::LOAD:
-			minerFee += c_dataFee;
+			minerFee += m_fees.m_dataFee;
 			break;
 
 		case Instruction::EXTRO:
 		case Instruction::BALANCE:
-			minerFee += c_extroFee;
+			minerFee += m_fees.m_extroFee;
 			break;
 
 		case Instruction::MKTX:
-			minerFee += c_txFee;
+			minerFee += m_fees.m_txFee;
 			break;
 
 		case Instruction::SHA256:
@@ -674,7 +720,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		case Instruction::ECSIGN:
 		case Instruction::ECRECOVER:
 		case Instruction::ECVALID:
-			minerFee += c_cryptoFee;
+			minerFee += m_fees.m_cryptoFee;
 			break;
 		default:
 			break;
@@ -778,9 +824,6 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			break;
 		case Instruction::TXVALUE:
 			stack.push_back(_txValue);
-			break;
-		case Instruction::TXFEE:
-			stack.push_back(_txFee);
 			break;
 		case Instruction::TXDATAN:
 			stack.push_back(_txData.size());
@@ -1069,8 +1112,6 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 			stack.pop_back();
 			t.value = stack.back();
 			stack.pop_back();
-			t.fee = stack.back();
-			stack.pop_back();
 
 			auto itemCount = stack.back();
 			stack.pop_back();
@@ -1092,7 +1133,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256 _
 		{
 			require(1);
 			Address dest = asAddress(stack.back());
-			u256 minusVoidFee = myMemory.size() * c_memoryFee;
+			u256 minusVoidFee = myMemory.size() * m_fees.m_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
 			m_cache[_myAddress].kill();
 			// ...follow through to...

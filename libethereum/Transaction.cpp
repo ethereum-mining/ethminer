@@ -32,8 +32,7 @@ Transaction::Transaction(bytesConstRef _rlpData)
 	nonce = rlp[0].toInt<u256>();
 	receiveAddress = rlp[1].toHash<Address>();
 	value = rlp[2].toInt<u256>();
-	fee = rlp[3].toInt<u256>();
-	data.reserve(rlp[4].itemCountStrict());
+	data.reserve(rlp[3].itemCountStrict());
 	for (auto const& i: rlp[4])
 		data.push_back(i.toInt<u256>());
 	vrs = Signature{ rlp[5].toInt<byte>(), rlp[6].toInt<u256>(), rlp[7].toInt<u256>() };
@@ -92,7 +91,7 @@ void Transaction::sign(Secret _priv)
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
 	_s.appendList(_sig ? 8 : 5);
-	_s << nonce << receiveAddress << value << fee << data;
+	_s << nonce << receiveAddress << value << data;
 	if (_sig)
 		_s << vrs.v << vrs.r << vrs.s;
 }

@@ -32,6 +32,10 @@ private slots:
 	void on_verbosity_sliderMoved();
 	void on_ourAccounts_doubleClicked();
 	void on_accounts_doubleClicked();
+	void on_destination_textChanged();
+	void on_data_textChanged();
+	void on_value_valueChanged() { updateFee(); }
+	void on_valueUnits_currentIndexChanged() { updateFee(); }
 	void on_log_doubleClicked();
 	void on_about_triggered();
 	void on_quit_triggered() { close(); }
@@ -39,8 +43,13 @@ private slots:
 	void refresh();
 
 private:
+	void updateFee();
 	void readSettings();
 	void writeSettings();
+
+	eth::u256 fee() const;
+	eth::u256 total() const;
+	eth::u256 value() const;
 
 	Ui::Main *ui;
 
@@ -50,6 +59,7 @@ private:
 	QTimer* m_refresh;
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
+	QStringList m_data;
 
 	QNetworkAccessManager m_webCtrl;
 };
