@@ -46,7 +46,7 @@ a. File comment is always at top, and includes:
 - Original author, date.
 - Later maintainers (not contributors - they can be seen through VCS log).
 - Copyright.
-- Licence (e.g. see COPYING).
+- License (e.g. see COPYING).
 b. Never use #ifdef/#define/#endif file guards. Prefer #pragma once as first line below file comment.
 c. Prefer static const variable to value macros.
 d. Prefer inline constexpr functions to function macros.
