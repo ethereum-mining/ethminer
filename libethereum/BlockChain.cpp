@@ -131,13 +131,13 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 		throw AlreadyHaveBlock();
 	}
 
-	cnote << "Attempting import of " << newHash << "...";
+	cdebug << "Attempting import of " << newHash << "...";
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		cwarn << "   Unknown parent " << bi.parentHash;
+		cdebug << "   Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
 	}
