@@ -30,6 +30,7 @@
 #endif
 
 #include <chrono>
+#include <thread>
 #include "Exceptions.h"
 #include "Common.h"
 #include "BlockChain.h"
@@ -919,7 +920,7 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 std::vector<PeerInfo> PeerServer::peers() const
 {
 	const_cast<PeerServer*>(this)->pingAll();
-	usleep(200000);
+	this_thread::sleep_for(chrono::milliseconds(200000));
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
 		if (auto j = i.lock())

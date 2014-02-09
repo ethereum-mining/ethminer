@@ -20,6 +20,8 @@
  * Ethereum client.
  */
 
+#include <thread>
+#include <chrono>
 #include <fstream>
 #include "Defaults.h"
 #include "Client.h"
@@ -236,7 +238,7 @@ int main(int argc, char** argv)
 				c.stopMining();
 			else
 				c.startMining();
-			usleep(100000);
+			this_thread::sleep_for(chrono::milliseconds(100000));
 		}
 	}
 

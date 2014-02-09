@@ -40,6 +40,18 @@ struct MineProgress
 	uint current;
 };
 
+class Client;
+
+class ClientGuard
+{
+public:
+	inline ClientGuard(Client* _c);
+	inline ~ClientGuard();
+
+private:
+	Client* m_client;
+};
+
 class Client
 {
 public:
@@ -56,10 +68,10 @@ public:
 	void setInterest(Address _dest);
 
 	/// @returns incoming minable transactions that we wanted to be notified of. Clears the queue.
-	Transactions pendingQueue();
+	Transactions pendingQueue() { ClientGuard g(this); return m_tq.interestQueue(); }
 
 	/// @returns alterations in state of a mined block that we wanted to be notified of. Clears the queue.
-	std::vector<std::pair<Address, AddressState>> minedQueue();
+	std::vector<std::pair<Address, AddressState>> minedQueue() { ClientGuard g(this); return m_bc.interestQueue(); }
 
 	// Not yet - probably best as using some sort of signals implementation.
 	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
@@ -134,5 +146,15 @@ private:
 
 	mutable bool m_changed;
 };
+
+inline ClientGuard::ClientGuard(Client* _c): m_client(_c)
+{
+	m_client->lock();
+}
+
+inline ClientGuard::~ClientGuard()
+{
+	m_client->unlock();
+}
 
 }

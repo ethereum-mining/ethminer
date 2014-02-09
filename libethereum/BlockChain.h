@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Common.h"
+#include "AddressState.h"
 namespace ldb = leveldb;
 
 namespace eth
@@ -91,12 +92,20 @@ public:
 
 	h256 genesisHash() const { return m_genesisHash; }
 
+	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
+	void pushInterest(Address _a) { m_interest[_a]++; }
+	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
+
 private:
 	void checkConsistency();
 
 	/// Get fully populated from disk DB.
 	mutable std::map<h256, BlockDetails> m_details;
 	mutable std::map<h256, std::string> m_cache;
+
+	/// The queue of transactions that have happened that we're interested in.
+	std::map<Address, int> m_interest;
+	std::vector<std::pair<Address, AddressState>> m_interestQueue;
 
 	ldb::DB* m_db;
 	ldb::DB* m_detailsDB;

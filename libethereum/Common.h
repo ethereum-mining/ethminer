@@ -158,8 +158,8 @@ public:
 extern std::map<std::type_info const*, bool> g_logOverride;
 
 #if !defined(__APPLE__)
-extern thread_local std::string t_logThreadName;
-inline void setThreadName(std::string const& _n) { t_logThreadName = _n; }
+extern thread_local char const* t_logThreadName;
+inline void setThreadName(char const* _n) { t_logThreadName = _n; }
 #endif
 
 struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
