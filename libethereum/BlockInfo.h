@@ -44,6 +44,8 @@ public:
 	BlockInfo();
 	explicit BlockInfo(bytesConstRef _block);
 
+	static BlockInfo fromHeader(bytesConstRef _block);
+
 	explicit operator bool() const { return timestamp != Invalid256; }
 
 	bool operator==(BlockInfo const& _cmp) const
@@ -61,6 +63,7 @@ public:
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
+	void populateFromHeader(RLP const& _header);
 	void populate(bytesConstRef _block);
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;

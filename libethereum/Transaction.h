@@ -34,7 +34,7 @@ struct Signature
 	u256 s;
 };
 
-// [ nonce, receiving_address, value, fee, [ data item 0, data item 1 ... data item n ], v, r, s ]
+// [ nonce, receiving_address, value, [ data item 0, data item 1 ... data item n ], v, r, s ]
 struct Transaction
 {
 	Transaction() {}
@@ -44,7 +44,6 @@ struct Transaction
 	u256 nonce;
 	Address receiveAddress;
 	u256 value;
-	u256 fee;
 	u256s data;
 	Signature vrs;
 

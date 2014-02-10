@@ -91,9 +91,16 @@
     <addaction name="mine"/>
     <addaction name="create"/>
    </widget>
+   <widget class="QMenu" name="menu_Help">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="about"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menu_Help"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget_2">
@@ -132,43 +139,76 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <property name="spacing">
-      <number>4</number>
-     </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <property name="margin">
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="peers">
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
+       <widget class="QListWidget" name="peers">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QWidget" name="">
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Listen on</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="idealPeers">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="value">
+            <number>5</number>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Ideal Peers</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="port">
+           <property name="minimum">
+            <number>1024</number>
+           </property>
+           <property name="maximum">
+            <number>32767</number>
+           </property>
+           <property name="value">
+            <number>30303</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Client Name</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="clientName">
+           <property name="placeholderText">
+            <string>Anonymous</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_8">
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Listen on</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="port">
-         <property name="minimum">
-          <number>1024</number>
-         </property>
-         <property name="maximum">
-          <number>32767</number>
-         </property>
-         <property name="value">
-          <number>30303</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </item>
     </layout>
    </widget>
@@ -207,7 +247,7 @@
         <number>10</number>
        </property>
        <property name="value">
-        <number>4</number>
+        <number>1</number>
        </property>
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -270,7 +310,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>349</width>
+     <width>408</width>
      <height>251</height>
     </size>
    </property>
@@ -291,32 +331,15 @@
      <property name="spacing">
       <number>4</number>
      </property>
-     <item row="0" column="2" colspan="3">
-      <widget class="QLineEdit" name="destination">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="4">
-      <widget class="QPushButton" name="send">
-       <property name="text">
-        <string>Send</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="3" colspan="2">
-      <widget class="QComboBox" name="feeUnits"/>
-     </item>
      <item row="1" column="0" colspan="2">
       <widget class="QLabel" name="label5_2">
        <property name="text">
         <string>Amount</string>
        </property>
       </widget>
+     </item>
+     <item row="1" column="3" colspan="2">
+      <widget class="QComboBox" name="valueUnits"/>
      </item>
      <item row="1" column="2">
       <widget class="QSpinBox" name="value">
@@ -328,6 +351,16 @@
        </property>
        <property name="value">
         <number>1000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Data</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
@@ -344,44 +377,45 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
-      <widget class="QSpinBox" name="fee">
-       <property name="suffix">
-        <string/>
-       </property>
-       <property name="prefix">
-        <string/>
-       </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-       <property name="value">
-        <number>100</number>
+     <item row="3" column="0" colspan="5">
+      <widget class="QPlainTextEdit" name="data"/>
+     </item>
+     <item row="4" column="4">
+      <widget class="QPushButton" name="send">
+       <property name="text">
+        <string>Send</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="3" colspan="2">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
-     <item row="2" column="0" colspan="2">
-      <widget class="QLabel" name="label5_3">
-       <property name="text">
-        <string>Fee</string>
+     <item row="0" column="2" colspan="3">
+      <widget class="QLineEdit" name="destination">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="placeholderText">
+        <string>(Create Contract)</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_2">
+     <item row="2" column="2" colspan="3">
+      <widget class="QLabel" name="fee">
        <property name="text">
-        <string>Data</string>
+        <string/>
        </property>
        <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
-     <item row="4" column="0" colspan="5">
-      <widget class="QPlainTextEdit" name="data"/>
+     <item row="4" column="0" colspan="4">
+      <widget class="QLabel" name="total">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -457,6 +491,11 @@
   <action name="create">
    <property name="text">
     <string>&amp;New Address</string>
+   </property>
+  </action>
+  <action name="about">
+   <property name="text">
+    <string>&amp;About...</string>
    </property>
   </action>
  </widget>

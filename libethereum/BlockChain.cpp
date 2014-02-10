@@ -124,20 +124,20 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 	auto newHash = eth::sha3(_block);
 
+	clog(BlockChainChat) << "Attempting import of " << newHash << "...";
+
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-//		cout << "   Not new." << endl;
+		clog(BlockChainChat) << "   Not new.";
 		throw AlreadyHaveBlock();
 	}
-
-	cnote << "Attempting import of " << newHash << "...";
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		cwarn << "   Unknown parent " << bi.parentHash;
+		clog(BlockChainNote) << "   Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
 	}
@@ -177,12 +177,11 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		cnote << "   Imported and best.";
+		clog(BlockChainNote) << "   Imported and best.";
 	}
 	else
 	{
-		cnote << "   Imported.";
-//		cwarn << "Imported block not newest (otd=" << m_details[m_lastBlockHash].totalDifficulty << ", td=" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << m_details[m_lastBlockHash].totalDifficulty << ", TD:" << td << ")";
 	}
 }
 

@@ -39,6 +39,13 @@ BlockInfo::BlockInfo(bytesConstRef _block)
 	populate(_block);
 }
 
+BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
+{
+	BlockInfo ret;
+	ret.populateFromHeader(RLP(_block));
+	return ret;
+}
+
 bytes BlockInfo::createGenesisBlock()
 {
 	RLPStream block(3);
@@ -79,30 +86,36 @@ void BlockInfo::populateGenesis()
 	populate(&genesisBlock);
 }
 
-void BlockInfo::populate(bytesConstRef _block)
+void BlockInfo::populateFromHeader(RLP const& _header)
 {
-	RLP root(_block);
 	int field = 0;
-	RLP header = root[0];
-	if (!header.isList())
-		throw InvalidBlockFormat(0, header.data());
 	try
 	{
-		hash = eth::sha3(_block);
-		parentHash = header[field = 0].toHash<h256>();
-		sha3Uncles = header[field = 1].toHash<h256>();
-		coinbaseAddress = header[field = 2].toHash<Address>();
-		stateRoot = header[field = 3].toHash<h256>();
-		sha3Transactions = header[field = 4].toHash<h256>();
-		difficulty = header[field = 5].toInt<u256>();
-		timestamp = header[field = 6].toInt<u256>();
-		extraData = header[field = 7].toBytes();
-		nonce = header[field = 8].toHash<h256>();
+		parentHash = _header[field = 0].toHash<h256>();
+		sha3Uncles = _header[field = 1].toHash<h256>();
+		coinbaseAddress = _header[field = 2].toHash<Address>();
+		stateRoot = _header[field = 3].toHash<h256>();
+		sha3Transactions = _header[field = 4].toHash<h256>();
+		difficulty = _header[field = 5].toInt<u256>();
+		timestamp = _header[field = 6].toInt<u256>();
+		extraData = _header[field = 7].toBytes();
+		nonce = _header[field = 8].toHash<h256>();
 	}
 	catch (RLP::BadCast)
 	{
-		throw InvalidBlockHeaderFormat(field, header[field].data());
+		throw InvalidBlockHeaderFormat(field, _header[field].data());
 	}
+}
+
+void BlockInfo::populate(bytesConstRef _block)
+{
+	hash = eth::sha3(_block);
+
+	RLP root(_block);
+	RLP header = root[0];
+	if (!header.isList())
+		throw InvalidBlockFormat(0, header.data());
+	populateFromHeader(header);
 
 	if (!root[1].isList())
 		throw InvalidBlockFormat(1, root[1].data());

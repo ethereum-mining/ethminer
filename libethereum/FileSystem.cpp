@@ -22,6 +22,7 @@
  */
 
 #include "FileSystem.h"
+#include "Common.h"
 
 #ifdef _WIN32
 #include <shlobj.h>

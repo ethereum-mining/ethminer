@@ -20,6 +20,8 @@
  * Ethereum client.
  */
 
+#include <thread>
+#include <chrono>
 #include <fstream>
 #include "Defaults.h"
 #include "Client.h"
@@ -29,6 +31,9 @@
 #include "FileSystem.h"
 using namespace std;
 using namespace eth;
+
+#define ADD_QUOTES_HELPER(s) #s
+#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 bytes contents(std::string const& _file)
 {
@@ -163,7 +168,7 @@ int main(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	Client c("Ethereum(++)/v0.1", coinbase, dbPath);
+	Client c("Ethereum(++)/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;
@@ -205,20 +210,18 @@ int main(int argc, char** argv)
 				string sechex;
 				string rechex;
 				u256 amount;
-				u256 fee;
-				cin >> sechex >> rechex >> amount >> fee;
+				cin >> sechex >> rechex >> amount;
 				Secret secret = h256(fromUserHex(sechex));
 				Address dest = h160(fromUserHex(rechex));
-				c.transact(secret, dest, amount, fee);
+				c.transact(secret, dest, amount);
 			}
 			else if (cmd == "send")
 			{
 				string rechex;
 				u256 amount;
-				u256 fee;
-				cin >> rechex >> amount >> fee;
+				cin >> rechex >> amount;
 				Address dest = h160(fromUserHex(rechex));
-				c.transact(us.secret(), dest, amount, fee);
+				c.transact(us.secret(), dest, amount);
 			}
 			else if (cmd == "exit")
 			{
@@ -236,7 +239,7 @@ int main(int argc, char** argv)
 				c.stopMining();
 			else
 				c.startMining();
-			usleep(100000);
+			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
 
