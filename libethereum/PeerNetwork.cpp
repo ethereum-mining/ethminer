@@ -60,14 +60,36 @@ static const vector<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
+// Helper function to determine if an address falls within one of the reserved ranges
+// For V4:
+// Class A "10.*", Class B "172.[16->31].*", Class C "192.168.*"
+// Not implemented yet for V6
+bool eth::isPrivateAddress(bi::address _addressToCheck)
+{
+	if (_addressToCheck.is_v4())
+	{
+		bi::address_v4 v4Address = _addressToCheck.to_v4();
+		bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
+		if (bytesToCheck[0] == 10)
+			return true;
+		if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <=31))
+			return true;
+		if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
+			return true;
+	}
+	return false;
+}
+
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
+	m_listenPort(_peerPort),
 	m_rating(0)
 {
 	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
+	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0)});
 }
 
 PeerSession::~PeerSession()
@@ -98,7 +120,8 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
-		m_listenPort = _r[5].toInt<short>();
+		if (_r.itemCount() > 5)
+			m_listenPort = _r[5].toInt<short>();
 		m_id = _r[6].toHash<h512>();
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << asHex(m_id.ref().cropped(0, 4)) << showbase << hex << m_caps << dec << m_listenPort;
@@ -116,7 +139,7 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), (short)m_socket.remote_endpoint().port(), std::chrono::steady_clock::duration()}); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration()}); }
 		catch (...)
 		{
 			disconnect(BadProtocol);
@@ -196,8 +219,11 @@ bool PeerSession::interpret(RLP const& _r)
 		clogS(NetMessageSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			auto ep = bi::tcp::endpoint(bi::address_v4(_r[i][0].toArray<byte, 4>()), _r[i][1].toInt<short>());
+			bi::address_v4 peerAddress(_r[i][0].toArray<byte, 4>());
+			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			Public id = _r[i][2].toHash<Public>();
+			if (isPrivateAddress(peerAddress))
+				goto CONTINUE;
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << asHex(id.ref().cropped(0, 4)) << ")";
 
@@ -707,7 +733,9 @@ std::map<Public, bi::tcp::endpoint> PeerServer::potentialPeers()
 		if (auto j = i.second.lock())
 		{
 			auto ep = j->endpoint();
-			if (ep.port() && j->m_id)
+			// Skip peers with a listen port of zero or are on a private network
+			bool peerOnNet = (j->m_listenPort != 0 && !isPrivateAddress(ep.address()));
+			if (peerOnNet && ep.port() && j->m_id)
 				ret.insert(make_pair(i.first, ep));
 		}
 	return ret;
@@ -727,7 +755,9 @@ void PeerServer::ensureAccepting()
 					try {
 						clog(NetNote) << "Accepted connection from " << m_socket.remote_endpoint();
 					} catch (...){}
-					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId);
+					bi::address remoteAddress = m_socket.remote_endpoint().address();
+					// Port defaults to 0 - we let the hello tell us which port the peer listens to
+					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId, remoteAddress);
 					p->start();
 				}
 				catch (std::exception const& _e)
@@ -754,7 +784,7 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		}
 		else
 		{
-			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId);
+			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId, _ep.address(), _ep.port());
 			clog(NetNote) << "Connected to " << p->endpoint();
 			p->start();
 		}
