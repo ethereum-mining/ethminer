@@ -55,6 +55,9 @@ class Overlay;
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
 
+struct BlockChainNote: public LogChannel { static const char constexpr* name = "-B-"; };
+struct BlockChainWarn: public LogChannel { static const char constexpr* name = "!B!"; };
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  */

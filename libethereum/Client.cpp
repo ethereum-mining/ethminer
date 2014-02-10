@@ -138,16 +138,18 @@ void Client::work()
 	//   all blocks.
 	 // Resynchronise state with block chain & trans
 	if (m_s.sync(m_bc))
+	{
 		changed = true;
-	if (m_s.sync(m_tq))
-		changed = true;
+		m_mined = m_s;
+	}
 
 	m_lock.unlock();
 	if (m_doMine)
 	{
-		if (changed || m_miningStarted)
+		if (m_miningStarted)
 		{
 			m_mined = m_s;
+			m_mined.sync(m_tq);
 			m_mined.commitToMine(m_bc);
 		}
 
