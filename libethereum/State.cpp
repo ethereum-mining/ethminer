@@ -344,7 +344,7 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	Addresses rewarded;
 	for (auto const& i: RLP(_block)[2])
 	{
-		BlockInfo uncle(i.data());
+		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (m_previousBlock.parentHash != uncle.parentHash)
 			throw InvalidUncle();
 		if (_grandParent)
@@ -391,6 +391,8 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
+	cnote << "Commiting to mine on" << m_previousBlock.hash;
+
 	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
 		return;
 
@@ -458,7 +460,7 @@ MineInfo State::mine(uint _msTimeout)
 		ret.appendRaw(m_currentUncles);
 		ret.swapOut(m_currentBytes);
 		m_currentBlock.hash = sha3(m_currentBytes);
-		cout << "*** SUCCESS: Mined " << m_currentBlock.hash << " (parent: " << m_currentBlock.parentHash << ")" << endl;
+		cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
 	}
 	else
 		m_currentBytes.clear();
