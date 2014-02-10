@@ -94,6 +94,8 @@ eth::uint RLP::actualSize() const
 
 bool RLP::isInt() const
 {
+	if (isNull())
+		return false;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return !!n;
@@ -110,6 +112,8 @@ bool RLP::isInt() const
 
 eth::uint RLP::length() const
 {
+	if (isNull())
+		return 0;
 	uint ret = 0;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
