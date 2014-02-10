@@ -169,6 +169,7 @@ void Client::work()
 			m_mineProgress.best = 0;
 			m_lock.unlock();
 			m_changed = true;
+			m_miningStarted = false;	// need to re-commit to mine.
 		}
 	}
 	else

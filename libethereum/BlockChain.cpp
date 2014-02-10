@@ -124,14 +124,14 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 	auto newHash = eth::sha3(_block);
 
+	clog(BlockChainChat) << "Attempting import of " << newHash << "...";
+
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-		clog(BlockChainNote) << "   Not new.";
+		clog(BlockChainChat) << "   Not new.";
 		throw AlreadyHaveBlock();
 	}
-
-	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
 
 	// Work out its number as the parent's number + 1
 	auto pd = details(bi.parentHash);
