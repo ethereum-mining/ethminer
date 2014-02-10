@@ -303,6 +303,26 @@ int main(int argc, char** argv)
 			{
 				c.stopMining();
 			}
+			else if (cmd == "address")
+			{
+				cout << endl;
+				cout << "Current address: " + asHex(us.address().asArray()) << endl;
+				cout << "===" << endl;
+			}
+			else if (cmd == "secret")
+			{
+				cout << endl;
+				cout << "Current secret: " + asHex(us.secret().asArray()) << endl;
+				cout << "===" << endl;
+			}
+			else if (cmd == "balance")
+			{
+				u256 balance = c.state().balance(us.address());
+				cout << endl;
+				cout << "Current balance: ";
+				cout << balance << endl;
+				cout << "===" << endl;
+			}	
 			else if (cmd == "transact")
 			{
 				string sechex;
@@ -329,6 +349,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
+		cout << "Address: " << endl << asHex(us.address().asArray()) << endl;
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
 		while (true)
