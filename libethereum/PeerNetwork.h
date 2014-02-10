@@ -111,8 +111,8 @@ private:
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
-
 	PeerServer* m_server;
+
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
 	PeerInfo m_info;
@@ -182,6 +182,9 @@ public:
 	/// Get the port we're listening on currently.
 	short listenPort() const { return m_public.port(); }
 
+	bytes savePeers() const;
+	void restorePeers(bytesConstRef _b);
+
 private:
 	void seal(bytes& _b);
 	void populateAddresses();
@@ -208,7 +211,7 @@ private:
 
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
-	std::multimap<Public, bi::tcp::endpoint> m_incomingPeers;
+	std::map<Public, bi::tcp::endpoint> m_incomingPeers;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;

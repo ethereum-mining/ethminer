@@ -56,6 +56,7 @@ private:
 
 	eth::Client* m_client;
 
+	QByteArray m_peers;
 	QMutex m_guiLock;
 	QTimer* m_refresh;
 	QStringList m_servers;

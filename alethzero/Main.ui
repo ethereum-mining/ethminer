@@ -153,8 +153,11 @@
          <enum>QFrame::NoFrame</enum>
         </property>
        </widget>
-       <widget class="QWidget" name="">
+       <widget class="QWidget" name="layoutWidget">
         <layout class="QGridLayout" name="gridLayout_2">
+         <property name="sizeConstraint">
+          <enum>QLayout::SetFixedSize</enum>
+         </property>
          <item row="1" column="0">
           <widget class="QLabel" name="label">
            <property name="text">

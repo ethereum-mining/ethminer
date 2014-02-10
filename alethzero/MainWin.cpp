@@ -80,16 +80,28 @@ void Main::writeSettings()
 	}
 	s.setValue("address", b);
 
-	// TODO: save peers - implement it in PeerNetwork though returning RLP bytes
-	/*for (uint i = 0; !s.value(QString("peer%1").arg(i)).isNull(); ++i)
+	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("clientName", ui->clientName->text());
+	s.setValue("idealPeers", ui->idealPeers->value());
+	s.setValue("port", ui->port->value());
+
+	if (m_client->peerServer())
 	{
-		s.value(QString("peer%1").arg(i)).toString();
-	}*/
+		bytes d = m_client->peerServer()->savePeers();
+		m_peers = QByteArray((char*)d.data(), d.size());
+
+	}
+	s.setValue("peers", m_peers);
+
+	s.setValue("geometry", saveGeometry());
 }
 
 void Main::readSettings()
 {
 	QSettings s("ethereum", "alethzero");
+
+	restoreGeometry(s.value("geometry").toByteArray());
+
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
 		m_myKeys.append(KeyPair::create());
@@ -103,14 +115,11 @@ void Main::readSettings()
 		}
 	}
 	m_client->setAddress(m_myKeys.back().address());
-
-	writeSettings();
-
-	// TODO: restore peers - implement it in PeerNetwork though giving RLP bytes
-	/*for (uint i = 0; !s.value(QString("peer%1").arg(i)).isNull(); ++i)
-	{
-		s.value(QString("peer%1").arg(i)).toString();
-	}*/
+	m_peers = s.value("peers").toByteArray();
+	ui->upnp->setChecked(s.value("upnp", true).toBool());
+	ui->clientName->setText(s.value("clientName", "").toString());
+	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
+	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 }
 
 void Main::refresh()
@@ -247,7 +256,11 @@ void Main::on_net_triggered()
 	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
+	{
 		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
+		if (m_peers.size())
+			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+	}
 	else
 		m_client->stopNetwork();
 }
