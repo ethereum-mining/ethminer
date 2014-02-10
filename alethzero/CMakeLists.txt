@@ -1,5 +1,8 @@
 cmake_policy(SET CMP0015 NEW)
-#cmake_policy(SET CMP0020 NEW)
+
+if ("${TARGET_PLATFORM}" STREQUAL "w64")
+	cmake_policy(SET CMP0020 NEW)
+endif ()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
