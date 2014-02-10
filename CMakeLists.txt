@@ -21,7 +21,12 @@ else ()
 endif ()
 
 set(TARGET_PLATFORM CACHE STRING "linux")
-if (${TARGET_PLATFORM} STREQUAL "w64")
+
+if ("x${TARGET_PLATFORM}" STREQUAL "x")
+	set(TARGET_PLATFORM "linux")
+endif ()
+
+if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
 	set(CMAKE_CXX_LIBRARY_ARCHITECTURE	x86_64-w64-mingw32)
