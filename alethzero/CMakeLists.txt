@@ -13,11 +13,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		COMMAND brew info qt5 | grep Cellar | awk -F ' ' '{print $1}'
 		OUTPUT_VARIABLE osx_qt5
 		OUTPUT_STRIP_TRAILING_WHITESPACE)
-	set(CMAKE_PREFIX_PATH /usr/local/Cellar/qt5/5.2.0)
-	include_directories(/usr/local/Cellar/qt5/5.2.0/include /usr/local/include)
+	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
+	include_directories(/usr/local/opt/qt5 /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Core)
+find_package(Qt5Widgets)
 
 
 if(!APPLE)
@@ -54,8 +55,6 @@ else()
 	qt5_use_modules(AlethZero Widgets Network)
 	target_link_libraries(AlethZero ethereum)
 
-	# target_link_libraries(ethereum secp256k1 cryptopp)
-
 	SET_SOURCE_FILES_PROPERTIES(
 		AlethZero
 		PROPERTIES
@@ -68,28 +67,23 @@ else()
 		MACOSX_PACKAGE_LOCATION PlugIns
 	)
 
-	# SET_SOURCE_FILES_PROPERTIES(BUNDLELIBS
-	# 	ethereum
-	# 	secp256k1
-	# 	cryptopp
-	# 	${CRYPTOPP_LIBRARIES}
-	# 	# /usr/local/lib/libethereum.a
-	# 	# /usr/local/lib/libsecp256k1.0.dylib
-	# 	# /usr/local/lib/libminiupnpc.dylib
-	# 	# /usr/local/lib/libgmp.dylib
-	# 	# /usr/local/lib/libboost_system.dylib
-	# 	# /usr/local/lib/libboost_filesystem.dylib
-	# 	PROPERTIES
-	# 	MACOSX_PACKAGE_LOCATION MacOS
-	# )
+	if(NOT CMAKE_BUILD_TYPE)
+		set(CMAKE_BUILD_TYPE Debug)
+	endif()
 
 	set(BUILD_TYPE ${CMAKE_BUILD_TYPE})
 	get_filename_component(APP_INSTALL_PATH ${CMAKE_INSTALL_PREFIX} REALPATH)
-	set(APPS "\${CMAKE_CURRENT_BINARY_DIR}/alethzero/Debug/AlethZero.app")
+	set(APPS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/AlethZero.app) # CMAKE_CURRENT_BINARY_DIR, CMAKE_RUNTIME_OUTPUT_DIRECTORY
 	install(CODE "
 		include(BundleUtilities)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
 		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"\")
 		" COMPONENT RUNTIME )
+	
+	add_custom_target(addframeworks ALL 	
+		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/AlethZero.app
+		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+		DEPENDS ${PROJECT_NAME}
+	)
 endif()
 
