@@ -169,7 +169,13 @@ int main(int argc, char** argv)
 	}
 
 	Client c("Ethereum(++)/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
-	cout << "\nYour secret key is:\n" + asHex(us.secret().asArray()) + "\nAddress:\n" + asHex(us.address().asArray()) + " <-- \n" << endl;
+
+	cout << endl
+	cout << "Address: " << endl;
+	cout << asHex(us.address().asArray()) << endl;
+	cout << "Secret: " << endl;
+	cout << asHex(us.secret().asArray()) << endl;
+
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;
@@ -208,20 +214,23 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "address")
 			{
-				cout << "\nCurrent address: " + asHex(us.address().asArray()) << endl;
-				cout << "===\n" << endl;
+				cout << endl;
+				cout << "Current address: " + asHex(us.address().asArray()) << endl;
+				cout << "===" << endl;
 			}
 			else if (cmd == "secret")
 			{
-				cout << "\nCurrent secret: " + asHex(us.secret().asArray()) << endl;
-				cout << "===\n" << endl;
+				cout << endl;
+				cout << "Current secret: " + asHex(us.secret().asArray()) << endl;
+				cout << "===" << endl;
 			}
 			else if (cmd == "balance")
 			{
 				u256 balance = c.state().balance(us.address());
-				cout << "\nCurrent balance: ";
+				cout << endl;
+				cout << "Current balance: ";
 				cout << balance << endl;
-				cout << "===\n" << endl;
+				cout << "===" << endl;
 			}	
 			else if (cmd == "transact")
 			{
