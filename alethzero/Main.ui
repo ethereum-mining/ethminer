@@ -81,7 +81,6 @@
      <string>&amp;Network</string>
     </property>
     <addaction name="upnp"/>
-    <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
    <widget class="QMenu" name="menu_Tools">
@@ -298,6 +297,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="net"/>
    <addaction name="connect"/>
    <addaction name="mine"/>
   </widget>
@@ -469,7 +469,7 @@
   </action>
   <action name="connect">
    <property name="text">
-    <string>&amp;Connect</string>
+    <string>&amp;Connect to Peer...</string>
    </property>
   </action>
   <action name="net">
@@ -477,7 +477,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Listen</string>
+    <string>Enable &amp;Network</string>
    </property>
   </action>
   <action name="mine">
