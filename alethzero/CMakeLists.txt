@@ -85,5 +85,9 @@ else()
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		DEPENDS ${PROJECT_NAME}
 	)
+
+	# set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.ethereum.\${PRODUCT_NAME:identifier}")
+	# set(APP_TYPE MACOSX_BUNDLE)
+	# set_target_properties(AlethZero PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: _")
 endif()
 
