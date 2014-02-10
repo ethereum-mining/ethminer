@@ -197,9 +197,7 @@ bool PeerSession::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto ep = bi::tcp::endpoint(bi::address_v4(_r[i][0].toArray<byte, 4>()), _r[i][1].toInt<short>());
-			Public id;
-			if (_r[i].itemCount() > 2)
-				id = _r[i][2].toHash<Public>();
+			Public id = _r[i][2].toHash<Public>();
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << asHex(id.ref().cropped(0, 4)) << ")";
 
@@ -223,8 +221,8 @@ bool PeerSession::interpret(RLP const& _r)
 			for (auto i: m_server->m_incomingPeers)
 				if (i.second == ep)
 					goto CONTINUE;
-			m_server->m_incomingPeers.insert(make_pair(id, ep));
-			clogS(NetMessageDetail) << "New peer: " << ep;
+			m_server->m_incomingPeers[id] = ep;
+			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
 		break;
@@ -969,4 +967,26 @@ void PeerServer::pingAll()
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
+}
+
+bytes PeerServer::savePeers() const
+{
+	RLPStream ret;
+	int n = 0;
+	for (auto& i: m_peers)
+		if (auto p = i.second.lock())
+			if (p->m_socket.is_open() && p->endpoint().port())
+			{
+				ret.appendList(3) << p->endpoint().address().to_v4().to_bytes() << p->endpoint().port() << p->m_id;
+				n++;
+			}
+	return RLPStream(n).appendRaw(ret.out(), n).out();
+}
+
+void PeerServer::restorePeers(bytesConstRef _b)
+{
+	for (auto i: RLP(_b))
+	{
+		m_incomingPeers.insert(make_pair((Public)i[2], bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>())));
+	}
 }
