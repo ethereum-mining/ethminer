@@ -14,11 +14,10 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		OUTPUT_VARIABLE osx_qt5
 		OUTPUT_STRIP_TRAILING_WHITESPACE)
 	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
-	include_directories(/usr/local/opt/qt5 /usr/local/include)
+	include_directories(/usr/local/opt/qt5/include /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-find_package(Qt5Core)
-find_package(Qt5Widgets)
+find_package(Qt5Widgets REQUIRED)
 
 
 if(!APPLE)
@@ -61,12 +60,6 @@ else()
 		MACOSX_PACKAGE_LOCATION MacOS
 	)
 
-	SET_SOURCE_FILES_PROPERTIES(
-		/usr/local/opt/qt5/plugins/platforms/libqcocoa.dylib
-		PROPERTIES
-		MACOSX_PACKAGE_LOCATION PlugIns
-	)
-
 	if(NOT CMAKE_BUILD_TYPE)
 		set(CMAKE_BUILD_TYPE Debug)
 	endif()
@@ -85,9 +78,5 @@ else()
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		DEPENDS ${PROJECT_NAME}
 	)
-
-	# set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.ethereum.\${PRODUCT_NAME:identifier}")
-	# set(APP_TYPE MACOSX_BUNDLE)
-	# set_target_properties(AlethZero PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: _")
 endif()
 
