@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 2;
+static const int c_protocolVersion = 3;
 
 static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
