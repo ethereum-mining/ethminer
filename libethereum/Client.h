@@ -40,6 +40,18 @@ struct MineProgress
 	uint current;
 };
 
+class Client;
+
+class ClientGuard
+{
+public:
+	inline ClientGuard(Client* _c);
+	inline ~ClientGuard();
+
+private:
+	Client* m_client;
+};
+
 class Client
 {
 public:
@@ -50,16 +62,16 @@ public:
 	~Client();
 
 	/// Executes the given transaction.
-	void transact(Secret _secret, Address _dest, u256 _amount, u256 _fee, u256s _data = u256s());
+	void transact(Secret _secret, Address _dest, u256 _amount, u256s _data = u256s());
 
 	/// Requires transactions involving this address be queued for inspection.
 	void setInterest(Address _dest);
 
 	/// @returns incoming minable transactions that we wanted to be notified of. Clears the queue.
-	Transactions pendingQueue();
+	Transactions pendingQueue() { ClientGuard g(this); return m_tq.interestQueue(); }
 
 	/// @returns alterations in state of a mined block that we wanted to be notified of. Clears the queue.
-	std::vector<std::pair<Address, AddressState>> minedQueue();
+	std::vector<std::pair<Address, AddressState>> minedQueue() { ClientGuard g(this); return m_bc.interestQueue(); }
 
 	// Not yet - probably best as using some sort of signals implementation.
 	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
@@ -84,6 +96,8 @@ public:
 	/// Get the object representing the transaction queue.
 	TransactionQueue const& transactionQueue() const { return m_tq; }
 
+	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
+
 	// Network stuff:
 
 	/// Get information on the current peer set.
@@ -97,6 +111,8 @@ public:
 	void connect(std::string const& _seedHost, short _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
+	/// Get access to the peer server object. This will be null if the network isn't online.
+	PeerServer* peerServer() const { return m_net; }
 
 	// Mining stuff:
 
@@ -119,6 +135,7 @@ private:
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_s;							///< The present state of the client.
+	State m_mined;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
 #if defined(__APPLE__)
@@ -131,8 +148,19 @@ private:
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
+	mutable bool m_miningStarted = false;
 
 	mutable bool m_changed;
 };
+
+inline ClientGuard::ClientGuard(Client* _c): m_client(_c)
+{
+	m_client->lock();
+}
+
+inline ClientGuard::~ClientGuard()
+{
+	m_client->unlock();
+}
 
 }

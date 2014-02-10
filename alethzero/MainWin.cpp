@@ -15,7 +15,8 @@ static void initUnits(QComboBox* _b)
 	_b->setCurrentIndex(6);
 }
 
-#define ETH_QUOTED(A) #A
+#define ADD_QUOTES_HELPER(s) #s
+#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -23,10 +24,8 @@ Main::Main(QWidget *parent) :
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	initUnits(ui->valueUnits);
-	initUnits(ui->feeUnits);
 	g_logPost = [=](std::string const& s, char const*) { ui->log->addItem(QString::fromStdString(s)); };
-	m_client = new Client("AlethZero/v" ETH_QUOTED(ETH_VERSION));
+	m_client = new Client("AlethZero");
 
 	readSettings();
 	refresh();
@@ -42,7 +41,7 @@ Main::Main(QWidget *parent) :
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc2.txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -50,6 +49,7 @@ Main::Main(QWidget *parent) :
 
 	on_verbosity_sliderMoved();
 
+	initUnits(ui->valueUnits);
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockChain);
@@ -60,6 +60,11 @@ Main::~Main()
 	g_logPost = simpleDebugOut;
 	writeSettings();
 	delete ui;
+}
+
+void Main::on_about_triggered()
+{
+	QMessageBox::about(this, "About AlethZero PoC-2", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Subtly and several others.");
 }
 
 void Main::writeSettings()
@@ -131,9 +136,8 @@ void Main::refresh()
 		for (pair<h256, bytes> const& i: m_client->transactionQueue().transactions())
 		{
 			Transaction t(i.second);
-			ui->transactionQueue->addItem(QString("%1 (%2 fee) @ %3 <- %4")
+			ui->transactionQueue->addItem(QString("%1 @ %2 <- %3")
 								  .arg(formatBalance(t.value).c_str())
-								  .arg(formatBalance(t.fee).c_str())
 								  .arg(asHex(t.receiveAddress.asArray()).c_str())
 								  .arg(asHex(t.sender().asArray()).c_str()) );
 		}
@@ -147,9 +151,8 @@ void Main::refresh()
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
 				Transaction t(i.data());
-				ui->transactions->addItem(QString("%1 (%2) @ %3 <- %4")
+				ui->transactions->addItem(QString("%1 @ %2 <- %3")
 								  .arg(formatBalance(t.value).c_str())
-								  .arg(formatBalance(t.fee).c_str())
 								  .arg(asHex(t.receiveAddress.asArray()).c_str())
 								  .arg(asHex(t.sender().asArray()).c_str()) );
 			}
@@ -168,6 +171,12 @@ void Main::refresh()
 	m_client->unlock();
 }
 
+void Main::on_idealPeers_valueChanged()
+{
+	if (m_client->peerServer())
+		m_client->peerServer()->setIdealPeerCount(ui->idealPeers->value());
+}
+
 void Main::on_ourAccounts_doubleClicked()
 {
 	qApp->clipboard()->setText(ui->ourAccounts->currentItem()->text().section(" @ ", 1));
@@ -183,11 +192,62 @@ void Main::on_accounts_doubleClicked()
 	qApp->clipboard()->setText(ui->accounts->currentItem()->text().section(" @ ", 1));
 }
 
+void Main::on_destination_textChanged()
+{
+	updateFee();
+}
+
+void Main::on_data_textChanged()
+{
+	m_data = ui->data->toPlainText().split(QRegExp("[^0-9a-fA-Fx]+"), QString::SkipEmptyParts);
+	updateFee();
+}
+
+u256 Main::fee() const
+{
+	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt()) ? m_client->state().fee(m_data.size()) : m_client->state().fee();
+}
+
+u256 Main::value() const
+{
+	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
+}
+
+u256 Main::total() const
+{
+	return value() + fee();
+}
+
+void Main::updateFee()
+{
+	ui->fee->setText(QString("(fee: %1)").arg(formatBalance(fee()).c_str()));
+	auto totalReq = total();
+	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
+
+	bool ok = false;
+	for (auto i: m_myKeys)
+		if (m_client->state().balance(i.address()) >= totalReq)
+		{
+			ok = true;
+			break;
+		}
+	ui->send->setEnabled(ok);
+	QPalette p = ui->total->palette();
+	p.setColor(QPalette::WindowText, QColor(ok ? 0x00 : 0x80, 0x00, 0x00));
+	ui->total->setPalette(p);
+}
+
 void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
+	ui->clientName->setEnabled(!ui->net->isChecked());
+	string n = "AlethZero/v" ADD_QUOTES(ETH_VERSION);
+	if (ui->clientName->text().size())
+		n += "/" + ui->clientName->text().toStdString();
+	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
+	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, 5, std::string(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
 	else
 		m_client->stopNetwork();
 }
@@ -227,9 +287,7 @@ void Main::on_mine_triggered()
 
 void Main::on_send_clicked()
 {
-	u256 value = ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
-	u256 fee = ui->fee->value() * units()[units().size() - 1 - ui->feeUnits->currentIndex()].first;
-	u256 totalReq = value + fee;
+	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
 		if (m_client->state().balance(i.address()) >= totalReq)
@@ -237,12 +295,11 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = m_myKeys.front().secret();
 			Address r = Address(fromUserHex(ui->destination->text().toStdString()));
-			auto ds = ui->data->toPlainText().split(QRegExp("[^0-9a-fA-Fx]+"));
 			u256s data;
-			data.reserve(ds.size());
-			for (QString const& i: ds)
+			data.reserve(m_data.size());
+			for (QString const& i: m_data)
 				data.push_back(u256(i.toStdString()));
-			m_client->transact(s, r, value, fee, data);
+			m_client->transact(s, r, value(), data);
 			refresh();
 			return;
 		}

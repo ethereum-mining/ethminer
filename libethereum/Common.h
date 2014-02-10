@@ -127,6 +127,7 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 	return _out;
 }
 
+using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
 using h256s = std::vector<h256>;
@@ -135,6 +136,7 @@ using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
 
 using Secret = h256;
+using Public = h512;
 using Address = h160;
 using Addresses = h160s;
 
@@ -158,8 +160,8 @@ public:
 extern std::map<std::type_info const*, bool> g_logOverride;
 
 #if !defined(__APPLE__)
-extern thread_local std::string t_logThreadName;
-inline void setThreadName(std::string const& _n) { t_logThreadName = _n; }
+extern thread_local char const* t_logThreadName;
+inline void setThreadName(char const* _n) { t_logThreadName = _n; }
 #endif
 
 struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
@@ -167,7 +169,7 @@ struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<
 struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
 struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
 struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
-struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 0; };
+struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 7; };
 
 extern int g_logVerbosity;
 extern std::function<void(std::string const&, char const*)> g_logPost;
@@ -434,15 +436,19 @@ class KeyPair
 {
 public:
 	KeyPair() {}
-	KeyPair(Secret _k): m_secret(_k), m_address(toAddress(_k)) {}
+	KeyPair(Secret _k);
 
 	static KeyPair create();
 
 	Secret const& secret() const { return m_secret; }
+	Secret const& sec() const { return m_secret; }
+	Public const& pub() const { return m_public; }
+
 	Address const& address() const { return m_address; }
 
 private:
 	Secret m_secret;
+	Public m_public;
 	Address m_address;
 };
 

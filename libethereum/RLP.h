@@ -278,8 +278,7 @@ public:
 	RLPStream& append(bytes const& _s) { return append(bytesConstRef(&_s)); }
 	RLPStream& append(std::string const& _s) { return append(bytesConstRef(_s)); }
 	RLPStream& append(char const* _s) { return append(std::string(_s)); }
-	RLPStream& append(h160 _s, bool _compact = false) { return append(_s.ref(), _compact); }
-	RLPStream& append(h256 _s, bool _compact = false) { return append(_s.ref(), _compact); }
+	template <unsigned N> RLPStream& append(FixedHash<N> _s, bool _compact = false) { return append(_s.ref(), _compact); }
 
 	/// Appends an arbitrary RLP fragment - this *must* be a single item.
 	RLPStream& append(RLP const& _rlp, uint _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
