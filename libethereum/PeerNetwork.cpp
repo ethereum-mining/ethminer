@@ -238,15 +238,22 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	case BlocksPacket:
+	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
 		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_rating += _r.itemCount() - 1;
+		unsigned used = 0;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
-			m_knownBlocks.insert(sha3(_r[i].data()));
+			auto h = sha3(_r[i].data());
+			if (!m_server->m_chain->details(h))
+			{
+				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
+				m_knownBlocks.insert(h);
+				used++;
+			}
 		}
+		m_rating += used;
 		if (g_logVerbosity >= 3)
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
@@ -257,7 +264,7 @@ bool PeerSession::interpret(RLP const& _r)
 				else
 					clogS(NetMessageDetail) << "Known parent " << bi.parentHash << " of block " << h;
 			}
-		if (_r.itemCount() > 1)	// we received some - check if there's any more
+		if (used)	// we received some - check if there's any more
 		{
 			RLPStream s;
 			prep(s).appendList(3);
@@ -267,6 +274,7 @@ bool PeerSession::interpret(RLP const& _r)
 			sealAndSend(s);
 		}
 		break;
+	}
 	case GetChainPacket:
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
@@ -861,9 +869,10 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 			m_latestBlockSent = h;
 
-			for (int accepted = 1; accepted;)
+			for (int accepted = 1, n = 0; accepted; ++n)
 			{
 				accepted = 0;
+
 				if (m_incomingBlocks.size())
 					for (auto it = prev(m_incomingBlocks.end());; --it)
 					{
@@ -877,6 +886,8 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						catch (UnknownParent)
 						{
 							// Don't (yet) know its parent. Leave it for later.
+							m_unknownParentBlocks.push_back(*it);
+							it = m_incomingBlocks.erase(it);
 						}
 						catch (...)
 						{
@@ -887,6 +898,12 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						if (it == m_incomingBlocks.begin())
 							break;
 					}
+				if (!n && accepted)
+				{
+					for (auto i: m_unknownParentBlocks)
+						m_incomingBlocks.push_back(i);
+					m_unknownParentBlocks.clear();
+				}
 			}
 
 			// Connect to additional peers

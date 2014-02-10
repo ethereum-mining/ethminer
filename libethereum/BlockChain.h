@@ -56,8 +56,7 @@ class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
 
 struct BlockChainChat: public LogChannel { static const char constexpr* name = "-B-"; static const int verbosity = 7; };
-struct BlockChainNote: public LogChannel { static const char constexpr* name = "=B="; static const int verbosity = 1; };
-struct BlockChainWarn: public LogChannel { static const char constexpr* name = "!B!"; static const int verbosity = 0; };
+struct BlockChainNote: public LogChannel { static const char constexpr* name = "=B="; static const int verbosity = 4; };
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
