@@ -475,8 +475,8 @@ void PeerSession::dropped()
 	if (m_socket.is_open())
 		try {
 			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
+			m_socket.close();
 		}catch (...){}
-	m_socket.close();
 	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
 		if (i->second.lock().get() == this)
 		{
