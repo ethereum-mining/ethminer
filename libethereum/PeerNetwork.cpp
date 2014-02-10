@@ -120,8 +120,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
-		if (_r.itemCount() > 5)
-			m_listenPort = _r[5].toInt<short>();
+		m_listenPort = _r[5].toInt<short>();
 		m_id = _r[6].toHash<h512>();
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << asHex(m_id.ref().cropped(0, 4)) << showbase << hex << m_caps << dec << m_listenPort;
