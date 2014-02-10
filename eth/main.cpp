@@ -65,6 +65,94 @@ bool isFalse(std::string const& _m)
 	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
 }
 
+void help()
+{
+	cout
+			<< "Usage eth [OPTIONS] <remote-host>" << endl
+			<< "Options:" << endl
+			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
+			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
+			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
+	;
+/*
+	if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
+		listenPort = atoi(argv[++i]);
+	else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
+		publicIP = argv[++i];
+	else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
+		remoteHost = argv[++i];
+	else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
+		remotePort = atoi(argv[++i]);
+	else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+	{
+		string m = argv[++i];
+		if (isTrue(m))
+			upnp = true;
+		else if (isFalse(m))
+			upnp = false;
+		else
+		{
+			cerr << "Invalid UPnP option: " << m << endl;
+			return -1;
+		}
+	}
+	else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
+		clientName = argv[++i];
+	else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
+		coinbase = h160(fromUserHex(argv[++i]));
+	else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
+		us = KeyPair(h256(fromUserHex(argv[++i])));
+	else if (arg == "-i" || arg == "--interactive")
+		interactive = true;
+	else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
+		dbPath = argv[++i];
+	else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
+	{
+		string m = argv[++i];
+		if (isTrue(m))
+			mining = ~(eth::uint)0;
+		else if (isFalse(m))
+			mining = 0;
+		else if (int i = stoi(m))
+			mining = i;
+		else
+		{
+			cerr << "Unknown mining option: " << m << endl;
+			return -1;
+		}
+	}
+	else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
+		g_logVerbosity = atoi(argv[++i]);
+	else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
+		peers = atoi(argv[++i]);
+	else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
+	{
+		string m = argv[++i];
+		if (m == "full")
+			mode = NodeMode::Full;
+		else if (m == "peer")
+			mode = NodeMode::PeerServer;
+		else
+		{
+			cerr << "Unknown mode: " << m << endl;
+			return -1;
+		}
+	}
+	else if (arg == "-h" || arg == "--help")
+		help();
+	else if (arg == "-V" || arg == "--version")
+		version();
+*/
+	exit(0);
+}
+
+void version()
+{
+	cout << "eth version " << ADD_QUOTES(ETH_VERSION) << endl;
+	cout << "Build: " << ADD_QUOTES(ETH_BUILD_PLATFORM) << "/" << ADD_QUOTES(ETH_BUILD_TYPE) << endl;
+	exit(0);
+}
+
 int main(int argc, char** argv)
 {
 	short listenPort = 30303;
@@ -77,6 +165,7 @@ int main(int argc, char** argv)
 	unsigned peers = 5;
 	string publicIP;
 	bool upnp = true;
+	string clientName;
 
 	// Init defaults
 	Defaults::get();
@@ -124,6 +213,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
+			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			coinbase = h160(fromUserHex(argv[++i]));
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
@@ -164,11 +255,18 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-h" || arg == "--help")
+			help();
+		else if (arg == "-V" || arg == "--version")
+			version();
 		else
 			remoteHost = argv[i];
 	}
 
-	Client c("Ethereum(++)/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	if (!clientName.empty())
+		clientName += "/";
+	Client c("Ethereum(++)/" + clientName + "v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
 	if (interactive)
 	{
 		cout << "Ethereum (++)" << endl;
