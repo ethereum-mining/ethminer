@@ -211,6 +211,7 @@ private:
 
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
+	std::vector<bytes> m_unknownParentBlocks;
 	std::map<Public, bi::tcp::endpoint> m_incomingPeers;
 
 	h256 m_latestBlockSent;

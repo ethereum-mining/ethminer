@@ -98,10 +98,10 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
-	cnote << "State root: " << m_state.root();
+//	cnote << "State root: " << m_state.root();
 
 	m_previousBlock = BlockInfo::genesis();
-	cnote << "Genesis hash:" << m_previousBlock.hash;
+//	cnote << "Genesis hash:" << m_previousBlock.hash;
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
