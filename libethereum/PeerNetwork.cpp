@@ -144,13 +144,13 @@ bool PeerSession::interpret(RLP const& _r)
 	case DisconnectPacket:
 	{
 		string reason = "Unspecified";
-		if (_r.itemCount() > 1 && _r[1].isInt())
+		if (_r[1].isInt())
 			switch (_r[1].toInt<int>())
 			{
 			case DisconnectRequested: reason = "Disconnect was requested."; break;
 			case TCPError: reason = "Low-level TCP communication error."; break;
 			case BadProtocol: reason = "Data format error."; break;
-			case UselessPeer: reason = "We had no use to peer."; break;
+			case UselessPeer: reason = "Peer had no use for this node."; break;
 			case TooManyPeers: reason = "Peer had too many connections."; break;
 			case DuplicatePeer: reason = "Peer was already connected."; break;
 			case WrongGenesis: reason = "Disagreement over genesis block."; break;
