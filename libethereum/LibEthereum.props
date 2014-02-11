@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(IncludePath);../../boost_1_55_0;../../leveldb-1.15.0/include;../../cryptopp562;../../secp256k1/include</IncludePath>
+    <IncludePath>$(IncludePath);../../boost_1_55_0;../../leveldb/include;../../cryptopp562;../secp256k1</IncludePath>
     <OutDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</OutDir>
     <IntDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -13,6 +13,9 @@
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MinimalRebuild>false</MinimalRebuild>
+      <AdditionalIncludeDirectories>../..</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

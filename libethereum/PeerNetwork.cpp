@@ -170,12 +170,12 @@ bool PeerSession::interpret(RLP const& _r)
 		// Grab their block chain off them.
 		{
 			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
-			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
+			uint count = std::min(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_latestBlockSent;
-			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 			{
 				clogS(NetAllDetail) << "   " << i << ":" << h;
 				s << h;
@@ -407,12 +407,12 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		else
 		{
-			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(noGood).number);
+			uint count = std::min(c_maxHashes, m_server->m_chain->details(noGood).number);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_chain->details(noGood).parent;
-			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
@@ -450,7 +450,7 @@ void PeerServer::seal(bytes& _b)
 	_b[1] = 0x40;
 	_b[2] = 0x08;
 	_b[3] = 0x91;
-	uint32_t len = _b.size() - 8;
+	uint32_t len = (uint32_t)_b.size() - 8;
 	_b[4] = (len >> 24) & 0xff;
 	_b[5] = (len >> 16) & 0xff;
 	_b[6] = (len >> 8) & 0xff;
@@ -698,10 +698,10 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 
 		auto eip = m_upnp->externalIP();
 		if (eip == string("0.0.0.0") && _publicAddress.empty())
-			m_public = bi::tcp::endpoint(bi::address(), p);
+			m_public = bi::tcp::endpoint(bi::address(), (unsigned short)p);
 		else
 		{
-			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), p);
+			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), (unsigned short)p);
 			m_addresses.push_back(m_public.address().to_v4());
 		}
 	}

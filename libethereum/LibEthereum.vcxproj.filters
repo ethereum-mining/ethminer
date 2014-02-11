@@ -1,32 +1,46 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Transaction.cpp" />
+    <ClCompile Include="TransactionQueue.cpp" />
+    <ClCompile Include="TrieCommon.cpp" />
+    <ClCompile Include="TrieDB.cpp" />
+    <ClCompile Include="TrieHash.cpp" />
+    <ClCompile Include="UPnP.cpp" />
+    <ClCompile Include="AddressState.cpp" />
+    <ClCompile Include="BlockChain.cpp" />
+    <ClCompile Include="BlockInfo.cpp" />
+    <ClCompile Include="Client.cpp" />
+    <ClCompile Include="Common.cpp" />
+    <ClCompile Include="Dagger.cpp" />
+    <ClCompile Include="Defaults.cpp" />
+    <ClCompile Include="FileSystem.cpp" />
+    <ClCompile Include="MemTrie.cpp" />
+    <ClCompile Include="PeerNetwork.cpp" />
+    <ClCompile Include="RLP.cpp" />
+    <ClCompile Include="State.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Transaction.h" />
     <ClInclude Include="TransactionQueue.h" />
-    <ClInclude Include="Trie.h" />
+    <ClInclude Include="TrieCommon.h" />
+    <ClInclude Include="TrieDB.h" />
+    <ClInclude Include="TrieHash.h" />
+    <ClInclude Include="UPnP.h" />
     <ClInclude Include="vector_ref.h" />
     <ClInclude Include="AddressState.h" />
     <ClInclude Include="BlockChain.h" />
     <ClInclude Include="BlockInfo.h" />
+    <ClInclude Include="Client.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Dagger.h" />
+    <ClInclude Include="Defaults.h" />
     <ClInclude Include="Exceptions.h" />
+    <ClInclude Include="FileSystem.h" />
     <ClInclude Include="Instruction.h" />
+    <ClInclude Include="MemTrie.h" />
     <ClInclude Include="PeerNetwork.h" />
     <ClInclude Include="RLP.h" />
     <ClInclude Include="State.h" />
-    <ClInclude Include="Transaction.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Trie.cpp" />
-    <ClCompile Include="AddressState.cpp" />
-    <ClCompile Include="BlockChain.cpp" />
-    <ClCompile Include="BlockInfo.cpp" />
-    <ClCompile Include="Common.cpp" />
-    <ClCompile Include="Dagger.cpp" />
-    <ClCompile Include="PeerNetwork.cpp" />
-    <ClCompile Include="RLP.cpp" />
-    <ClCompile Include="State.cpp" />
-    <ClCompile Include="Transaction.cpp" />
-    <ClCompile Include="TransactionQueue.cpp" />
   </ItemGroup>
 </Project>

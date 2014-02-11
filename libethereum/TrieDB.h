@@ -131,7 +131,7 @@ public:
 		iterator(GenericTrieDB const* _db)
 		{
 			m_that = _db;
-			m_trail.push_back(Node{_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
+			m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
 			next();
 		}
 
@@ -727,10 +727,10 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 	assert(_s && _s <= k.size());
 
 	RLPStream bottom(2);
-	bottom << hexPrefixEncode(k, isLeaf(_orig), _s) << _orig[1];
+	bottom << hexPrefixEncode(k, isLeaf(_orig), /*ugh*/(int)_s) << _orig[1];
 
 	RLPStream top(2);
-	top << hexPrefixEncode(k, false, 0, _s);
+	top << hexPrefixEncode(k, false, 0, /*ugh*/(int)_s);
 	streamNode(top, bottom.out());
 
 	return top.out();

@@ -110,14 +110,14 @@ std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint
 	return ret;
 }
 
-byte uniqueInUse(RLP const& _orig, byte _except)
+byte uniqueInUse(RLP const& _orig, byte except)
 {
 	byte used = 255;
 	for (unsigned i = 0; i < 17; ++i)
-		if (i != _except && !_orig[i].isEmpty())
+		if (i != except && !_orig[i].isEmpty())
 		{
 			if (used == 255)
-				used = i;
+				used = (byte)i;
 			else
 				return 255;
 		}
