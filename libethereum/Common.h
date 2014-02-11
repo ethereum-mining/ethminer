@@ -187,9 +187,9 @@ public:
 		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
 		{
 			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			char buf[9];
-			strftime(buf, 9, "%X", localtime(&rawTime));
-
+			char buf[24];
+			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0) 
+				buf[0] = '\0'; // empty if case strftime fails  
 #if defined(__APPLE__)
 			sstr << Id::name << " [ " << buf << " | " << dispatch_queue_get_label(dispatch_get_current_queue()) << (_term ? " ] " : "");
 #else
