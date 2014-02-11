@@ -42,7 +42,7 @@ bytes contents(std::string const& _file)
 		return bytes();
 	// get length of file:
 	is.seekg (0, is.end);
-	int length = is.tellg();
+	streamoff length = is.tellg();
 	is.seekg (0, is.beg);
 	bytes ret(length);
 	is.read((char*)ret.data(), length);
@@ -137,13 +137,13 @@ int main(int argc, char** argv)
 	{
 		string arg = argv[i];
 		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
-			listenPort = atoi(argv[++i]);
+			listenPort = (short)atoi(argv[++i]);
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
 			publicIP = argv[++i];
 		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
-			remotePort = atoi(argv[++i]);
+			remotePort = (short)atoi(argv[++i]);
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -226,14 +226,14 @@ int main(int argc, char** argv)
 			{
 				eth::uint port;
 				cin >> port;
-				c.startNetwork(port);
+				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				eth::uint port;
 				cin >> addr >> port;
-				c.connect(addr, port);
+				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{

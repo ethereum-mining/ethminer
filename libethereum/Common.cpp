@@ -36,7 +36,9 @@
 #endif
 #include "Exceptions.h"
 using namespace std;
-using namespace eth;
+
+namespace eth
+{
 
 //#define ETH_ADDRESS_DEBUG 1
 
@@ -191,13 +193,13 @@ KeyPair KeyPair::create()
 {
 	secp256k1_start();
 	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<byte> d(0, 255);
+	std::uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
 		h256 sec;
-		for (uint i = 0; i < 32; ++i)
-			sec[i] = d(s_eng);
+		for (unsigned i = 0; i < 32; ++i)
+			sec[i] = (byte)d(s_eng);
 
 		KeyPair ret(sec);
 		if (ret.address())
@@ -280,4 +282,6 @@ std::string eth::formatBalance(u256 _b)
 		}
 	ret << _b << " wei";
 	return ret.str();
+}
+
 }

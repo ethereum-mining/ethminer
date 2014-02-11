@@ -40,13 +40,13 @@ bool isPrivateAddress(bi::address _addressToCheck);
 class BlockChain;
 class TransactionQueue;
 
-struct NetWarn: public LogChannel { static const char constexpr* name = "!N!"; static const int verbosity = 0; };
-struct NetNote: public LogChannel { static const char constexpr* name = "*N*"; static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char constexpr* name = "-N-"; static const int verbosity = 2; };
-struct NetMessageDetail: public LogChannel { static const char constexpr* name = "=N="; static const int verbosity = 3; };
-struct NetAllDetail: public LogChannel { static const char constexpr* name = "=N="; static const int verbosity = 6; };
-struct NetRight: public LogChannel { static const char constexpr* name = ">N>"; static const int verbosity = 8; };
-struct NetLeft: public LogChannel { static const char constexpr* name = "<N<"; static const int verbosity = 9; };
+struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
+struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
+struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
+struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 3; };
+struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 6; };
+struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 8; };
+struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 9; };
 
 enum PacketType
 {
@@ -134,7 +134,7 @@ private:
 	std::chrono::steady_clock::time_point m_connect;
 	std::chrono::steady_clock::time_point m_disconnect;
 
-	unsigned m_rating;
+	uint m_rating;
 	bool m_requireTransactions;
 
 	std::set<h256> m_knownBlocks;
@@ -182,7 +182,7 @@ public:
 	std::vector<PeerInfo> peers() const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	unsigned peerCount() const { return m_peers.size(); }
+	size_t peerCount() const { return m_peers.size(); }
 
 	/// Ping the peers, to update the latency information.
 	void pingAll();

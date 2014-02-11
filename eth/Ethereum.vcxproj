@@ -92,8 +92,6 @@
       <AdditionalIncludeDirectories>../libethereum</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4351</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -111,8 +109,6 @@
       <AdditionalIncludeDirectories>../libethereum</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4351</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -132,8 +128,6 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4351</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -156,8 +150,6 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4351</DisableSpecificWarnings>
     </ClCompile>
     <Link>
