@@ -366,7 +366,7 @@ uint commonPrefix(_T const& _t, _U const& _u)
 inline h160 right160(h256 const& _t)
 {
 	h160 ret;
-	memcpy(ret.data(), _t.data() + 10, 20);
+	memcpy(ret.data(), _t.data() + 12, 20);
 	return ret;
 }
 

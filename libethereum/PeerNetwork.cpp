@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 3;
+static const int c_protocolVersion = 4;
 
 static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -304,13 +304,13 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
+		clogS(NetMessageSummary) << "GetChain (" << (_r.itemCount() - 2) << " hashes, " << (_r[_r.itemCount() - 1].toInt<bigint>()) << ")";
 		// ********************************************************************
 		// NEEDS FULL REWRITE!
 		h256s parents;
 		parents.reserve(_r.itemCount() - 2);
 		for (unsigned i = 1; i < _r.itemCount() - 1; ++i)
 			parents.push_back(_r[i].toHash<h256>());
-		clogS(NetMessageSummary) << "GetChain (" << (_r.itemCount() - 2) << " hashes, " << (_r[_r.itemCount() - 1].toInt<bigint>()) << ")";
 		if (_r.itemCount() == 2)
 			break;
 		// return 2048 block max.

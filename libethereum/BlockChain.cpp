@@ -120,7 +120,15 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi(&_block);
-	bi.verifyInternals(&_block);
+	try
+	{
+		bi.verifyInternals(&_block);
+	}
+	catch (Exception const& _e)
+	{
+		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
+		throw;
+	}
 
 	auto newHash = eth::sha3(_block);
 
