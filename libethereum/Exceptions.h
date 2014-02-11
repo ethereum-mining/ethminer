@@ -29,7 +29,7 @@ class InvalidBlockHeaderFormat: public Exception { public: InvalidBlockHeaderFor
 class InvalidUnclesHash: public Exception {};
 class InvalidUncle: public Exception {};
 class InvalidStateRoot: public Exception {};
-class InvalidTransactionsHash: public Exception {};
+class InvalidTransactionsHash: public Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual std::string description() const { return "Invalid transactions hash:  header says: " + asHex(m_head.ref()) + " block is:" + asHex(m_real.ref()); } };
 class InvalidTransaction: public Exception {};
 class InvalidDifficulty: public Exception {};
 class InvalidTimestamp: public Exception {};
