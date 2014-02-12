@@ -131,7 +131,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	RLP root(_block);
 
 	if (sha3Transactions != sha3(root[1].data()))
-		throw InvalidTransactionsHash();
+		throw InvalidTransactionsHash(sha3Transactions, sha3(root[1].data()));
 
 	if (sha3Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();

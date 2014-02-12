@@ -12,47 +12,39 @@ Better handling of corrupt blocks.
 Network:
 - Crypto on network. TLS?
 - Make work with IPv6
-- Consider node addresses
 
 CLI client
 - Implement CLI option "--help".
-- UPnP should be disablable.
-  - Should also attempt random port usage.
 
 General:
 - Better logging.
   - Colours.
-  - Time/thread/channel stamp.
 - Move over to new system.
 
-AlephZero:
-- Allow units to be selected for transactions.
-
-### GAV
+### Gav
 
 For PoC2:
+
+Network:
+- NotInChain will be very bad for new peers - it'll run through until the genesis.
+  - Check how many it has first.
+
+BUG: need to discard transactions if nonce too old.
+
+### Marko
 
 Ubuntu builds
 - Raring (branch, local, x64 only :-( )
 - Quantal (branch) (Launchpad)
 - Saucy (master) (Launchpad)
 
-Server
-- Get PoC-2 running on dev server ready for switchover on release.
-- Or just run on release @30300?
+### Alex
 
-Network:
-- NotInChain will be very bad for new peers - it'll run through until the genesis.
-  - Check how many it has first.
+Mac build
 
-UI:
-- State panel shouldn't show pending (i.e. post-mined) transactions.
+### Eric
 
-
-### ERIC
-
-Build:
-- Windows build.
+Windows build.
 
 
 LATER:

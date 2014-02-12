@@ -81,7 +81,6 @@
      <string>&amp;Network</string>
     </property>
     <addaction name="upnp"/>
-    <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
    <widget class="QMenu" name="menu_Tools">
@@ -153,12 +152,18 @@
          <enum>QFrame::NoFrame</enum>
         </property>
        </widget>
-       <widget class="QWidget" name="">
+       <widget class="QWidget" name="layoutWidget">
         <layout class="QGridLayout" name="gridLayout_2">
-         <item row="1" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Listen on</string>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="port">
+           <property name="minimum">
+            <number>1024</number>
+           </property>
+           <property name="maximum">
+            <number>32767</number>
+           </property>
+           <property name="value">
+            <number>30303</number>
            </property>
           </widget>
          </item>
@@ -179,23 +184,17 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QSpinBox" name="port">
-           <property name="minimum">
-            <number>1024</number>
-           </property>
-           <property name="maximum">
-            <number>32767</number>
-           </property>
-           <property name="value">
-            <number>30303</number>
-           </property>
-          </widget>
-         </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
             <string>Client Name</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Listen on</string>
            </property>
           </widget>
          </item>
@@ -298,6 +297,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="net"/>
    <addaction name="connect"/>
    <addaction name="mine"/>
   </widget>
@@ -469,7 +469,7 @@
   </action>
   <action name="connect">
    <property name="text">
-    <string>&amp;Connect</string>
+    <string>&amp;Connect to Peer...</string>
    </property>
   </action>
   <action name="net">
@@ -477,7 +477,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Listen</string>
+    <string>Enable &amp;Network</string>
    </property>
   </action>
   <action name="mine">
