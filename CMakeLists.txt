@@ -127,7 +127,10 @@ else ()
 
     # Always "found", given last block.
     include_directories(${CRYPTOPP_INCLUDE_DIR})
-    link_directories(${CRYPTOPP_LIBRARIES})
+
+	if (NOT APPLE)
+		link_directories(${CRYPTOPP_LIBRARIES})
+	endif ()
 endif ()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
