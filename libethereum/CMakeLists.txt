@@ -4,10 +4,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-if(NOT APPLE)
-	add_library(ethereum ${SRC_LIST})
-else()
+if(APPLE)
+	set(CMAKE_INSTALL_PREFIX ../lib)
 	add_library(ethereum SHARED ${SRC_LIST})
+else()
+	add_library(ethereum ${SRC_LIST})
 endif()
 
 file(GLOB HEADERS "*.h") 
@@ -37,6 +38,7 @@ else ()
 	target_link_libraries(ethereum ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
+target_link_libraries(ethereum cryptopp)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	include_directories(/usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

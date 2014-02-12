@@ -50,34 +50,40 @@ else ()
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
-target_link_libraries(${EXECUTEABLE} ethereum)
-
+target_link_libraries(${EXECUTEABLE} ethereum secp256k1 cryptopp)
 
 if (APPLE)
+	target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
 
-	set_source_files_properties(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
+	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
 
-	# This is a workaround for when the build-type defaults to Debug, but isn't
-	# populated for macros.
-	if (NOT CMAKE_BUILD_TYPE)
-		set(CMAKE_BUILD_TYPE Debug)
+	# This is a workaround for when the build-type defaults to Debug, and when a multi-config generator like xcode is used, where the type
+	# will not be set but defaults to release.
+	set(generator_lowercase "${CMAKE_GENERATOR}")
+	string(TOLOWER "${CMAKE_GENERATOR}" generator_lowercase)
+	if (generator_lowercase STREQUAL "xcode")
+		# TODO: Not sure how to resolve this. Possibly \${TARGET_BUILD_DIR}
+		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+	else ()
+		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}")
 	endif ()
 
-	set(BUILD_TYPE ${CMAKE_BUILD_TYPE})
 	get_filename_component(APP_INSTALL_PATH ${CMAKE_INSTALL_PREFIX} REALPATH)
-	set(APPS ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${EXECUTEABLE}.app) # CMAKE_CURRENT_BINARY_DIR, CMAKE_RUNTIME_OUTPUT_DIRECTORY
+	set(APPS ${binary_build_dir}/${EXECUTEABLE}.app)
+
 	install(CODE "
 		include(BundleUtilities)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"\")
+		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
 		" COMPONENT RUNTIME )
 	
 	add_custom_target(addframeworks ALL
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${EXECUTEABLE}.app
+		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTEABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		DEPENDS ${PROJECT_NAME}
 	)
+
 elseif (${TARGET_PLATFORM} STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s -Wl,-subsystem,windows -mthreads -L/usr/x86_64-w64-mingw32/plugins/platforms")
