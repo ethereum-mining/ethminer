@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 3;
+static const int c_protocolVersion = 4;
 
 static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -60,14 +60,36 @@ static const vector<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId):
+// Helper function to determine if an address falls within one of the reserved ranges
+// For V4:
+// Class A "10.*", Class B "172.[16->31].*", Class C "192.168.*"
+// Not implemented yet for V6
+bool eth::isPrivateAddress(bi::address _addressToCheck)
+{
+	if (_addressToCheck.is_v4())
+	{
+		bi::address_v4 v4Address = _addressToCheck.to_v4();
+		bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
+		if (bytesToCheck[0] == 10)
+			return true;
+		if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <=31))
+			return true;
+		if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
+			return true;
+	}
+	return false;
+}
+
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
+	m_listenPort(_peerPort),
 	m_rating(0)
 {
 	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
+	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0)});
 }
 
 PeerSession::~PeerSession()
@@ -116,7 +138,7 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), (short)m_socket.remote_endpoint().port(), std::chrono::steady_clock::duration()}); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration()}); }
 		catch (...)
 		{
 			disconnect(BadProtocol);
@@ -144,13 +166,13 @@ bool PeerSession::interpret(RLP const& _r)
 	case DisconnectPacket:
 	{
 		string reason = "Unspecified";
-		if (_r.itemCount() > 1 && _r[1].isInt())
+		if (_r[1].isInt())
 			switch (_r[1].toInt<int>())
 			{
 			case DisconnectRequested: reason = "Disconnect was requested."; break;
 			case TCPError: reason = "Low-level TCP communication error."; break;
 			case BadProtocol: reason = "Data format error."; break;
-			case UselessPeer: reason = "We had no use to peer."; break;
+			case UselessPeer: reason = "Peer had no use for this node."; break;
 			case TooManyPeers: reason = "Peer had too many connections."; break;
 			case DuplicatePeer: reason = "Peer was already connected."; break;
 			case WrongGenesis: reason = "Disagreement over genesis block."; break;
@@ -196,10 +218,11 @@ bool PeerSession::interpret(RLP const& _r)
 		clogS(NetMessageSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			auto ep = bi::tcp::endpoint(bi::address_v4(_r[i][0].toArray<byte, 4>()), _r[i][1].toInt<short>());
-			Public id;
-			if (_r[i].itemCount() > 2)
-				id = _r[i][2].toHash<Public>();
+			bi::address_v4 peerAddress(_r[i][0].toArray<byte, 4>());
+			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
+			Public id = _r[i][2].toHash<Public>();
+			if (isPrivateAddress(peerAddress))
+				goto CONTINUE;
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << asHex(id.ref().cropped(0, 4)) << ")";
 
@@ -223,8 +246,8 @@ bool PeerSession::interpret(RLP const& _r)
 			for (auto i: m_server->m_incomingPeers)
 				if (i.second == ep)
 					goto CONTINUE;
-			m_server->m_incomingPeers.insert(make_pair(id, ep));
-			clogS(NetMessageDetail) << "New peer: " << ep;
+			m_server->m_incomingPeers[id] = ep;
+			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
 		break;
@@ -240,15 +263,22 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		break;
 	case BlocksPacket:
+	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
 		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_rating += _r.itemCount() - 1;
+		unsigned used = 0;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
-			m_knownBlocks.insert(sha3(_r[i].data()));
+			auto h = sha3(_r[i].data());
+			if (!m_server->m_chain->details(h))
+			{
+				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
+				m_knownBlocks.insert(h);
+				used++;
+			}
 		}
+		m_rating += used;
 		if (g_logVerbosity >= 3)
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
@@ -259,7 +289,7 @@ bool PeerSession::interpret(RLP const& _r)
 				else
 					clogS(NetMessageDetail) << "Known parent " << bi.parentHash << " of block " << h;
 			}
-		if (_r.itemCount() > 1)	// we received some - check if there's any more
+		if (used)	// we received some - check if there's any more
 		{
 			RLPStream s;
 			prep(s).appendList(3);
@@ -269,17 +299,18 @@ bool PeerSession::interpret(RLP const& _r)
 			sealAndSend(s);
 		}
 		break;
+	}
 	case GetChainPacket:
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
+		clogS(NetMessageSummary) << "GetChain (" << (_r.itemCount() - 2) << " hashes, " << (_r[_r.itemCount() - 1].toInt<bigint>()) << ")";
 		// ********************************************************************
 		// NEEDS FULL REWRITE!
 		h256s parents;
 		parents.reserve(_r.itemCount() - 2);
 		for (unsigned i = 1; i < _r.itemCount() - 1; ++i)
 			parents.push_back(_r[i].toHash<h256>());
-		clogS(NetMessageSummary) << "GetChain (" << (_r.itemCount() - 2) << " hashes, " << (_r[_r.itemCount() - 1].toInt<bigint>()) << ")";
 		if (_r.itemCount() == 2)
 			break;
 		// return 2048 block max.
@@ -444,8 +475,8 @@ void PeerSession::dropped()
 	if (m_socket.is_open())
 		try {
 			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
+			m_socket.close();
 		}catch (...){}
-	m_socket.close();
 	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
 		if (i->second.lock().get() == this)
 		{
@@ -701,7 +732,9 @@ std::map<Public, bi::tcp::endpoint> PeerServer::potentialPeers()
 		if (auto j = i.second.lock())
 		{
 			auto ep = j->endpoint();
-			if (ep.port() && j->m_id)
+			// Skip peers with a listen port of zero or are on a private network
+			bool peerOnNet = (j->m_listenPort != 0 && !isPrivateAddress(ep.address()));
+			if (peerOnNet && ep.port() && j->m_id)
 				ret.insert(make_pair(i.first, ep));
 		}
 	return ret;
@@ -721,7 +754,9 @@ void PeerServer::ensureAccepting()
 					try {
 						clog(NetNote) << "Accepted connection from " << m_socket.remote_endpoint();
 					} catch (...){}
-					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId);
+					bi::address remoteAddress = m_socket.remote_endpoint().address();
+					// Port defaults to 0 - we let the hello tell us which port the peer listens to
+					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_requiredNetworkId, remoteAddress);
 					p->start();
 				}
 				catch (std::exception const& _e)
@@ -748,7 +783,7 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		}
 		else
 		{
-			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId);
+			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId, _ep.address(), _ep.port());
 			clog(NetNote) << "Connected to " << p->endpoint();
 			p->start();
 		}
@@ -863,9 +898,10 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 			m_latestBlockSent = h;
 
-			for (int accepted = 1; accepted;)
+			for (int accepted = 1, n = 0; accepted; ++n)
 			{
 				accepted = 0;
+
 				if (m_incomingBlocks.size())
 					for (auto it = prev(m_incomingBlocks.end());; --it)
 					{
@@ -879,6 +915,8 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						catch (UnknownParent)
 						{
 							// Don't (yet) know its parent. Leave it for later.
+							m_unknownParentBlocks.push_back(*it);
+							it = m_incomingBlocks.erase(it);
 						}
 						catch (...)
 						{
@@ -889,6 +927,12 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 						if (it == m_incomingBlocks.begin())
 							break;
 					}
+				if (!n && accepted)
+				{
+					for (auto i: m_unknownParentBlocks)
+						m_incomingBlocks.push_back(i);
+					m_unknownParentBlocks.clear();
+				}
 			}
 
 			// Connect to additional peers
@@ -969,4 +1013,26 @@ void PeerServer::pingAll()
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
+}
+
+bytes PeerServer::savePeers() const
+{
+	RLPStream ret;
+	int n = 0;
+	for (auto& i: m_peers)
+		if (auto p = i.second.lock())
+			if (p->m_socket.is_open() && p->endpoint().port())
+			{
+				ret.appendList(3) << p->endpoint().address().to_v4().to_bytes() << p->endpoint().port() << p->m_id;
+				n++;
+			}
+	return RLPStream(n).appendRaw(ret.out(), n).out();
+}
+
+void PeerServer::restorePeers(bytesConstRef _b)
+{
+	for (auto i: RLP(_b))
+	{
+		m_incomingPeers.insert(make_pair((Public)i[2], bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>())));
+	}
 }

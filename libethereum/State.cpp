@@ -62,7 +62,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromUserHex("07598a40bfaa73256b60764c1bf40675a99083ef"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
 		s_ret[Address(fromUserHex("80c01a26338f0d905e295fccb71fa9ea849ffa12"))] = AddressState(u256(1) << 200, 0);
@@ -98,10 +98,10 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
-	cnote << "State root: " << m_state.root();
+//	cnote << "State root: " << m_state.root();
 
 	m_previousBlock = BlockInfo::genesis();
-	cnote << "Genesis hash:" << m_previousBlock.hash;
+//	cnote << "Genesis hash:" << m_previousBlock.hash;
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
