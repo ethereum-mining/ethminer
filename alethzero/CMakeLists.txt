@@ -24,12 +24,12 @@ endif ()
 
 
 find_package(Qt5Widgets REQUIRED)
-qt5_wrap_ui(Main.ui)
+qt5_wrap_ui(ui_Main.h Main.ui)
 
 # Set name of binary and add_executable()
 if (APPLE)
 	set(EXECUTEABLE AlethZero)
-	set(CMAKE_INSTALL_PREFIX ./)
+	# set(CMAKE_INSTALL_PREFIX ./)
 	set(BIN_INSTALL_DIR ".")
 	set(DOC_INSTALL_DIR ".")
 
@@ -53,7 +53,7 @@ qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
 target_link_libraries(${EXECUTEABLE} ethereum secp256k1 cryptopp)
 
 if (APPLE)
-	target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
+	# target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
 
 	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
@@ -69,7 +69,6 @@ if (APPLE)
 		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}")
 	endif ()
 
-	get_filename_component(APP_INSTALL_PATH ${CMAKE_INSTALL_PREFIX} REALPATH)
 	set(APPS ${binary_build_dir}/${EXECUTEABLE}.app)
 
 	install(CODE "
