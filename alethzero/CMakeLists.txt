@@ -50,7 +50,7 @@ else ()
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
-target_link_libraries(${EXECUTEABLE} ethereum secp256k1 cryptopp)
+target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
 
 if (APPLE)
 	# target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
