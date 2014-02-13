@@ -38,7 +38,7 @@
 using namespace std;
 using namespace eth;
 
-#define ETH_ADDRESS_DEBUG 1
+//#define ETH_ADDRESS_DEBUG 1
 
 // Logging
 int eth::g_logVerbosity = 8;
