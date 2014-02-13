@@ -212,7 +212,7 @@ void BlockChain::checkConsistency()
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
 		{
-			h256 h((byte const*)it->key().data());
+			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
 			if (p != h256())
