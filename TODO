@@ -8,6 +8,7 @@ Crypto stuff:
 - Check all the tweak instructions.
 
 Better handling of corrupt blocks.
+- Kill DB & restart.
 
 Network:
 - Crypto on network. TLS?
@@ -20,16 +21,23 @@ General:
 - Better logging.
   - Colours.
 - Move over to new system.
+- Remove block chain on protocol change (i.e. store protocol with block chain).
+
+
+Robustness
+- Remove aborts
+- Recover from all exceptions.
 
 ### Gav
 
 For PoC2:
+- Use mining state for nonce.
 
 Network:
 - NotInChain will be very bad for new peers - it'll run through until the genesis.
   - Check how many it has first.
 
-BUG: need to discard transactions if nonce too old.
+BUG: need to discard transactions if nonce too old, even when not mining.
 
 ### Marko
 
@@ -40,12 +48,18 @@ Ubuntu builds
 
 ### Alex
 
-Mac build
+Mac build.
+Mac build instructions.
 
 ### Eric
 
-Windows build.
+Windows XC build.
+Windows XC build instructions.
 
+### Tim/Harv
+
+Windows MSVC build.
+Windows MSVC build instructions.
 
 LATER:
 
