@@ -4,50 +4,100 @@ if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	cmake_policy(SET CMP0020 NEW)
 endif ()
 
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 link_directories(../libethereum)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	execute_process(
-		COMMAND brew info qt5 | grep Cellar | awk -F ' ' '{print $1}'
-		OUTPUT_VARIABLE osx_qt5
-		OUTPUT_STRIP_TRAILING_WHITESPACE)
-	set(CMAKE_PREFIX_PATH /usr/local/Cellar/qt5/5.2.0)
-	include_directories(/usr/local/Cellar/qt5/5.2.0/include /usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+# Find Qt5 for Apple and update src_list for windows
+if (APPLE)
+	# homebrew defaults to qt4 and installs qt5 as 'keg-only'
+	# which places it into /usr/local/opt insteadof /usr/local.
 
-if (${TARGET_PLATFORM} STREQUAL "w64")
+	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
+	include_directories(/usr/local/opt/qt5/include /usr/local/include)
+elseif (${TARGET_PLATFORM} STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
-else ()
 endif ()
+
 
 find_package(Qt5Widgets REQUIRED)
-
-add_executable(alethzero Main.ui ${SRC_LIST})
 qt5_wrap_ui(ui_Main.h Main.ui)
 
-target_link_libraries(alethzero ethereum)
+# Set name of binary and add_executable()
+if (APPLE)
+	set(EXECUTEABLE AlethZero)
+	# set(CMAKE_INSTALL_PREFIX ./)
+	set(BIN_INSTALL_DIR ".")
+	set(DOC_INSTALL_DIR ".")
 
-if (${TARGET_PLATFORM} STREQUAL "w64")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s -Wl,-subsystem,windows -mthreads -L/usr/x86_64-w64-mingw32/plugins/platforms")
-	target_link_libraries(alethzero gcc)
-	target_link_libraries(alethzero mingw32 qtmain mswsock iphlpapi qwindows shlwapi Qt5PlatformSupport gdi32 comdlg32 oleaut32 imm32 winmm ole32 uuid ws2_32)
-	target_link_libraries(alethzero boost_system-mt-s)
-	target_link_libraries(alethzero boost_filesystem-mt-s)
-	target_link_libraries(alethzero boost_thread_win32-mt-s)
-	target_link_libraries(alethzero Qt5PlatformSupport)
-	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+	set(PROJECT_VERSION "${ETH_VERSION}")
+	set(MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
+	set(MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_NAME} ${PROJECT_VERSION}")
+	set(MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
+	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}")
+	set(MACOSX_BUNDLE_COPYRIGHT "${PROJECT_COPYRIGHT_YEAR} ${PROJECT_VENDOR}")
+	set(MACOSX_BUNDLE_GUI_IDENTIFIER "${PROJECT_DOMAIN_SECOND}.${PROJECT_DOMAIN_FIRST}")
+	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTEABLE})
+	include(BundleUtilities)
+
+	add_executable(${EXECUTEABLE} MACOSX_BUNDLE Main.ui ${SRC_LIST})
 else ()
-	target_link_libraries(alethzero boost_system)
-	target_link_libraries(alethzero boost_filesystem)
-	find_package(Threads REQUIRED)
-	target_link_libraries(alethzero ${CMAKE_THREAD_LIBS_INIT})
+	set(EXECUTABLE alethzero)
+	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST})
 endif ()
 
-qt5_use_modules(alethzero Core Gui Widgets Network)
+qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
+target_link_libraries(${EXECUTEABLE} ethereum secp256k1 cryptopp)
 
-install( TARGETS alethzero RUNTIME DESTINATION bin )
+if (APPLE)
+	# target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
+	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
+
+	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
+
+	# This is a workaround for when the build-type defaults to Debug, and when a multi-config generator like xcode is used, where the type
+	# will not be set but defaults to release.
+	set(generator_lowercase "${CMAKE_GENERATOR}")
+	string(TOLOWER "${CMAKE_GENERATOR}" generator_lowercase)
+	if (generator_lowercase STREQUAL "xcode")
+		# TODO: Not sure how to resolve this. Possibly \${TARGET_BUILD_DIR}
+		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+	else ()
+		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}")
+	endif ()
+
+	set(APPS ${binary_build_dir}/${EXECUTEABLE}.app)
+
+	install(CODE "
+		include(BundleUtilities)
+		set(BU_CHMOD_BUNDLE_ITEMS 1)
+		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
+		" COMPONENT RUNTIME )
+	
+	add_custom_target(addframeworks ALL
+		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTEABLE}.app
+		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+		DEPENDS ${PROJECT_NAME}
+	)
+
+elseif (${TARGET_PLATFORM} STREQUAL "w64")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s -Wl,-subsystem,windows -mthreads -L/usr/x86_64-w64-mingw32/plugins/platforms")
+	target_link_libraries(${EXECUTEABLE} gcc)
+	target_link_libraries(${EXECUTEABLE} mingw32 qtmain mswsock iphlpapi qwindows shlwapi Qt5PlatformSupport gdi32 comdlg32 oleaut32 imm32 winmm ole32 uuid ws2_32)
+	target_link_libraries(${EXECUTEABLE} boost_system-mt-s)
+	target_link_libraries(${EXECUTEABLE} boost_filesystem-mt-s)
+	target_link_libraries(${EXECUTEABLE} boost_thread_win32-mt-s)
+	target_link_libraries(${EXECUTEABLE} Qt5PlatformSupport)
+	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+else ()
+	target_link_libraries(${EXECUTEABLE} boost_system)
+	target_link_libraries(${EXECUTEABLE} boost_filesystem)
+	find_package(Threads REQUIRED)
+	target_link_libraries(${EXECUTEABLE} ${CMAKE_THREAD_LIBS_INIT})
+	install( TARGETS ${EXECUTEABLE} RUNTIME DESTINATION bin )
+endif ()
+
