@@ -45,7 +45,7 @@ if (APPLE)
 
 	add_executable(${EXECUTEABLE} MACOSX_BUNDLE Main.ui ${SRC_LIST})
 else ()
-	set(EXECUTABLE alethzero)
+	set(EXECUTEABLE alethzero)
 	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST})
 endif ()
 
