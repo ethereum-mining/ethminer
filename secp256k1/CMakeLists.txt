@@ -4,7 +4,7 @@ set(CMAKE_ASM_COMPILER "yasm")
 
 #aux_source_directory(. SRC_LIST)
 if(APPLE)
-	set(CMAKE_INSTALL_PREFIX ../lib)
+	# set(CMAKE_INSTALL_PREFIX ../lib)
 	add_library(secp256k1 SHARED secp256k1.c field_5x52_asm.asm)
 else()
 	add_library(secp256k1 secp256k1.c field_5x52_asm.asm)

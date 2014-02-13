@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 aux_source_directory(. SRC_LIST)
 
 if(APPLE)
-	set(CMAKE_INSTALL_PREFIX ../lib)
+	# set(CMAKE_INSTALL_PREFIX ../lib)
 	add_library(ethereum SHARED ${SRC_LIST})
 else()
 	add_library(ethereum ${SRC_LIST})
@@ -19,6 +19,7 @@ target_link_libraries(ethereum secp256k1)
 target_link_libraries(ethereum miniupnpc)
 target_link_libraries(ethereum leveldb)
 target_link_libraries(ethereum gmp)
+
 
 if(${TARGET_PLATFORM} STREQUAL "w64")
 	include_directories(/usr/x86_64-w64-mingw32/include/cryptopp)
@@ -38,8 +39,8 @@ else ()
 	target_link_libraries(ethereum ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-target_link_libraries(ethereum cryptopp)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
