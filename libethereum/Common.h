@@ -158,12 +158,12 @@ extern std::map<std::type_info const*, bool> g_logOverride;
 
 struct ThreadLocalLogName
 {
-	ThreadLocalLogName( std::string _name ) { m_name.reset( new std::string(_name) ); };
+	ThreadLocalLogName(std::string _name) { m_name.reset(new std::string(_name)); };
 	boost::thread_specific_ptr<std::string> m_name;
 };
 
 extern ThreadLocalLogName t_logThreadName;
-inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset( new std::string(_n) ); }
+inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
 
 struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
 struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
