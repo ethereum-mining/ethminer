@@ -138,11 +138,7 @@ private:
 	State m_mined;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
-#if defined(__APPLE__)
-	dispatch_queue_t m_work;
-#else
 	std::thread* m_work;				///< The work thread.
-#endif
 	
 	std::mutex m_lock;
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
