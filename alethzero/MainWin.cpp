@@ -306,7 +306,7 @@ void Main::on_send_clicked()
 		if (m_client->state().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
-			Secret s = m_myKeys.front().secret();
+			Secret s = i.secret();
 			Address r = Address(fromUserHex(ui->destination->text().toStdString()));
 			u256s data;
 			data.reserve(m_data.size());
