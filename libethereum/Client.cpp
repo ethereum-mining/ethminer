@@ -46,17 +46,8 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 
 	static const char* c_threadName = "eth";
 
-#if defined(__APPLE__)
-	static dispatch_once_t onceToken;
-	dispatch_once(&onceToken, ^{
-		m_work = dispatch_queue_create(c_threadName, DISPATCH_QUEUE_SERIAL);
-	});
-
-	dispatch_async(m_work, ^{
-#else
 	m_work = new thread([&](){
 		setThreadName(c_threadName);
-#endif
 
 		while (m_workState != Deleting) work(); m_workState = Deleted;
 	});

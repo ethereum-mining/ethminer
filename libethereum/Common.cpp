@@ -44,10 +44,7 @@ using namespace eth;
 int eth::g_logVerbosity = 8;
 map<type_info const*, bool> eth::g_logOverride;
 
-#if !defined(__APPLE__)
-thread_local char const* eth::t_logThreadName = "???";
-static char const* g_mainThreadName = (eth::t_logThreadName = "main");
-#endif
+ThreadLocalLogName eth::t_logThreadName("main");
 
 void eth::simpleDebugOut(std::string const& _s, char const*)
 {

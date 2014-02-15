@@ -39,12 +39,8 @@
 #include <cstdint>
 #include <type_traits>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/thread.hpp>
 #include "vector_ref.h"
-
-// OSX likes GCD whichs runs threads within queues
-#if defined(__APPLE__)
-#include <dispatch/dispatch.h>
-#endif
 
 namespace eth
 {
@@ -160,10 +156,14 @@ public:
 
 extern std::map<std::type_info const*, bool> g_logOverride;
 
-#if !defined(__APPLE__)
-extern thread_local char const* t_logThreadName;
-inline void setThreadName(char const* _n) { t_logThreadName = _n; }
-#endif
+struct ThreadLocalLogName
+{
+	ThreadLocalLogName(std::string _name) { m_name.reset(new std::string(_name)); };
+	boost::thread_specific_ptr<std::string> m_name;
+};
+
+extern ThreadLocalLogName t_logThreadName;
+inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
 
 struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
 struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
@@ -191,11 +191,7 @@ public:
 			char buf[24];
 			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0) 
 				buf[0] = '\0'; // empty if case strftime fails  
-#if defined(__APPLE__)
-			sstr << Id::name << " [ " << buf << " | " << dispatch_queue_get_label(dispatch_get_current_queue()) << (_term ? " ] " : "");
-#else
-			sstr << Id::name << " [ " << buf << " | " << t_logThreadName << (_term ? " ] " : "");
-#endif
+			sstr << Id::name << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
 		}
 	}
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
