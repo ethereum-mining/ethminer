@@ -29,7 +29,7 @@ qt5_wrap_ui(ui_Main.h Main.ui)
 # Set name of binary and add_executable()
 if (APPLE)
 	set(EXECUTEABLE AlethZero)
-	# set(CMAKE_INSTALL_PREFIX ./)
+	set(CMAKE_INSTALL_PREFIX ./)
 	set(BIN_INSTALL_DIR ".")
 	set(DOC_INSTALL_DIR ".")
 
