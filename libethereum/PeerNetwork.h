@@ -217,7 +217,8 @@ private:
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
 	std::vector<bytes> m_unknownParentBlocks;
-	std::map<Public, bi::tcp::endpoint> m_incomingPeers;
+	std::vector<Public> m_freePeers;
+	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;

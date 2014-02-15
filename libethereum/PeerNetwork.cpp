@@ -244,9 +244,9 @@ bool PeerSession::interpret(RLP const& _r)
 						goto CONTINUE;
 				}
 			for (auto i: m_server->m_incomingPeers)
-				if (i.second == ep)
+				if (i.second.first == ep)
 					goto CONTINUE;
-			m_server->m_incomingPeers[id] = ep;
+			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
@@ -780,6 +780,15 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		if (ec)
 		{
 			clog(NetNote) << "Connection refused to " << _ep << " (" << ec.message() << ")";
+			for (auto i = m_incomingPeers.begin(); i != m_incomingPeers.end(); ++i)
+				if (i->second.first == _ep && i->second.second < 3)
+				{
+					m_freePeers.push_back(i->first);
+					goto OK;
+				}
+			// for-else
+			clog(NetNote) << "Giving up.";
+			OK:;
 		}
 		else
 		{
@@ -924,7 +933,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		// Connect to additional peers
 		while (m_peers.size() < m_idealPeerCount)
 		{
-			if (m_incomingPeers.empty())
+			if (m_freePeers.empty())
 			{
 				if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
 				{
@@ -945,8 +954,11 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 
 				break;
 			}
-			connect(m_incomingPeers.begin()->second);
-			m_incomingPeers.erase(m_incomingPeers.begin());
+
+			auto x = time(0) % m_freePeers.size();
+			m_incomingPeers[m_freePeers[x]].second++;
+			connect(m_incomingPeers[m_freePeers[time(0) % m_freePeers.size()]].first);
+			m_freePeers.erase(m_freePeers.begin() + x);
 		}
 	}
 
@@ -1015,6 +1027,11 @@ void PeerServer::restorePeers(bytesConstRef _b)
 {
 	for (auto i: RLP(_b))
 	{
-		m_incomingPeers.insert(make_pair((Public)i[2], bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>())));
+		auto k = (Public)i[2];
+		if (!m_incomingPeers.count(k))
+		{
+			m_incomingPeers.insert(make_pair(k, make_pair(bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>()), 0)));
+			m_freePeers.push_back(k);
+		}
 	}
 }
