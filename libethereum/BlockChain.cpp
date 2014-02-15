@@ -168,19 +168,21 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 		auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
 		td = pd.totalDifficulty + tdIncrease;
 
-#if !NDEBUG
+#if PARANOIA
 		checkConsistency();
 #endif
 		// All ok - insert into DB
-		m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
+		{
+			lock_guard<mutex> l(m_lock);
+			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
+			m_details[bi.parentHash].children.push_back(newHash);
+		}
+
 		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
-
-		m_details[bi.parentHash].children.push_back(newHash);
 		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
-
 		m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
 
-#if !NDEBUG
+#if PARANOIA
 		checkConsistency();
 #endif
 	}
@@ -193,7 +195,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
 	// This might be the new last block...
-	if (td > m_details[m_lastBlockHash].totalDifficulty)
+	if (td > details(m_lastBlockHash).totalDifficulty)
 	{
 		m_lastBlockHash = newHash;
 		m_detailsDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
@@ -201,7 +203,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << m_details[m_lastBlockHash].totalDifficulty << ", TD:" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(m_lastBlockHash).totalDifficulty << ", TD:" << td << ")";
 	}
 }
 
@@ -230,14 +232,26 @@ bytesConstRef BlockChain::block(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return &m_genesisBlock;
 
-	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &m_cache[_hash]);
-	return bytesConstRef(&m_cache[_hash]);
+	string d;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+
+	{
+		lock_guard<mutex> l(m_lock);
+		swap(m_cache[_hash], d);
+		return bytesConstRef(&m_cache[_hash]);
+	}
 }
 
 BlockDetails const& BlockChain::details(h256 _h) const
 {
-	auto it = m_details.find(_h);
-	if (it == m_details.end())
+	std::map<h256, BlockDetails>::const_iterator it;
+	bool fetchRequired;
+	{
+		lock_guard<mutex> l(m_lock);
+		it = m_details.find(_h);
+		fetchRequired = (it == m_details.end());
+	}
+	if (fetchRequired)
 	{
 		std::string s;
 		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
@@ -246,8 +260,11 @@ BlockDetails const& BlockChain::details(h256 _h) const
 //			cout << "Not found in DB: " << _h << endl;
 			return NullBlockDetails;
 		}
-		bool ok;
-		tie(it, ok) = m_details.insert(make_pair(_h, BlockDetails(RLP(s))));
+		{
+			lock_guard<mutex> l(m_lock);
+			bool ok;
+			tie(it, ok) = m_details.insert(make_pair(_h, BlockDetails(RLP(s))));
+		}
 	}
 	return it->second;
 }

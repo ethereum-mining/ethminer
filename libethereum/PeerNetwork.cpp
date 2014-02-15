@@ -791,33 +791,25 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerServer::process(BlockChain& _bc)
+bool PeerServer::sync()
 {
 	bool ret = false;
-	m_ioService.poll();
-
-	auto n = chrono::steady_clock::now();
-	bool fullProcess = (n > m_lastFullProcess + chrono::seconds(1));
-	if (fullProcess)
-		m_lastFullProcess = n;
-
-	if (fullProcess)
-		for (auto i = m_peers.begin(); i != m_peers.end();)
+	for (auto i = m_peers.begin(); i != m_peers.end();)
+	{
+		auto p = i->second.lock();
+		if (p && p->m_socket.is_open() &&
+				(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
+			++i;
+		else
 		{
-			auto p = i->second.lock();
-			if (p && p->m_socket.is_open() &&
-					(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
-				++i;
-			else
-			{
-				i = m_peers.erase(i);
-				ret = true;
-			}
+			i = m_peers.erase(i);
+			ret = true;
 		}
+	}
 	return ret;
 }
 
-bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 {
 	bool ret = false;
 
@@ -830,14 +822,10 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
 		m_lastPeersRequest = chrono::steady_clock::time_point::min();
-		m_lastFullProcess = chrono::steady_clock::time_point::min();
 		ret = true;
 	}
 
-	auto n = chrono::steady_clock::now();
-	bool fullProcess = (n > m_lastFullProcess + chrono::seconds(1));
-
-	if (process(_bc))
+	if (sync())
 		ret = true;
 
 	if (m_mode == NodeMode::Full)
@@ -850,118 +838,115 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		m_incomingTransactions.clear();
 
 		// Send any new transactions.
-		if (fullProcess)
+		for (auto j: m_peers)
+			if (auto p = j.second.lock())
+			{
+				bytes b;
+				uint n = 0;
+				for (auto const& i: _tq.transactions())
+					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+					{
+						b += i.second;
+						++n;
+						m_transactionsSent.insert(i.first);
+					}
+				if (n)
+				{
+					RLPStream ts;
+					PeerSession::prep(ts);
+					ts.appendList(n + 1) << TransactionsPacket;
+					ts.appendRaw(b, n).swapOut(b);
+					seal(b);
+					p->send(&b);
+				}
+				p->m_knownTransactions.clear();
+				p->m_requireTransactions = false;
+			}
+
+		// Send any new blocks.
+		auto h = _bc.currentHash();
+		if (h != m_latestBlockSent)
 		{
+			// TODO: find where they diverge and send complete new branch.
+			RLPStream ts;
+			PeerSession::prep(ts);
+			ts.appendList(2) << BlocksPacket;
+			bytes b;
+			ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
+			seal(b);
 			for (auto j: m_peers)
 				if (auto p = j.second.lock())
 				{
-					bytes b;
-					uint n = 0;
-					for (auto const& i: _tq.transactions())
-						if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
-						{
-							b += i.second;
-							++n;
-							m_transactionsSent.insert(i.first);
-						}
-					if (n)
-					{
-						RLPStream ts;
-						PeerSession::prep(ts);
-						ts.appendList(n + 1) << TransactionsPacket;
-						ts.appendRaw(b, n).swapOut(b);
-						seal(b);
+					if (!p->m_knownBlocks.count(_bc.currentHash()))
 						p->send(&b);
-					}
-					p->m_knownTransactions.clear();
-					p->m_requireTransactions = false;
+					p->m_knownBlocks.clear();
 				}
+		}
+		m_latestBlockSent = h;
 
-			// Send any new blocks.
-			auto h = _bc.currentHash();
-			if (h != m_latestBlockSent)
-			{
-				// TODO: find where they diverge and send complete new branch.
-				RLPStream ts;
-				PeerSession::prep(ts);
-				ts.appendList(2) << BlocksPacket;
-				bytes b;
-				ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
-				seal(b);
-				for (auto j: m_peers)
-					if (auto p = j.second.lock())
-					{
-						if (!p->m_knownBlocks.count(_bc.currentHash()))
-							p->send(&b);
-						p->m_knownBlocks.clear();
-					}
-			}
-			m_latestBlockSent = h;
+		for (int accepted = 1, n = 0; accepted; ++n)
+		{
+			accepted = 0;
 
-			for (int accepted = 1, n = 0; accepted; ++n)
-			{
-				accepted = 0;
-
-				if (m_incomingBlocks.size())
-					for (auto it = prev(m_incomingBlocks.end());; --it)
-					{
-						try
-						{
-							_bc.import(*it, _o);
-							it = m_incomingBlocks.erase(it);
-							++accepted;
-							ret = true;
-						}
-						catch (UnknownParent)
-						{
-							// Don't (yet) know its parent. Leave it for later.
-							m_unknownParentBlocks.push_back(*it);
-							it = m_incomingBlocks.erase(it);
-						}
-						catch (...)
-						{
-							// Some other error - erase it.
-							it = m_incomingBlocks.erase(it);
-						}
-
-						if (it == m_incomingBlocks.begin())
-							break;
-					}
-				if (!n && accepted)
+			if (m_incomingBlocks.size())
+				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
-					for (auto i: m_unknownParentBlocks)
-						m_incomingBlocks.push_back(i);
-					m_unknownParentBlocks.clear();
-				}
-			}
-
-			// Connect to additional peers
-			while (m_peers.size() < m_idealPeerCount)
-			{
-				if (m_incomingPeers.empty())
-				{
-					if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+					try
 					{
-						RLPStream s;
-						bytes b;
-						(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
-						seal(b);
-						for (auto const& i: m_peers)
-							if (auto p = i.second.lock())
-								if (p->isOpen())
-									p->send(&b);
-						m_lastPeersRequest = chrono::steady_clock::now();
+						_bc.import(*it, _o);
+						it = m_incomingBlocks.erase(it);
+						++accepted;
+						ret = true;
+					}
+					catch (UnknownParent)
+					{
+						// Don't (yet) know its parent. Leave it for later.
+						m_unknownParentBlocks.push_back(*it);
+						it = m_incomingBlocks.erase(it);
+					}
+					catch (...)
+					{
+						// Some other error - erase it.
+						it = m_incomingBlocks.erase(it);
 					}
 
-
-					if (!m_accepting)
-						ensureAccepting();
-
-					break;
+					if (it == m_incomingBlocks.begin())
+						break;
 				}
-				connect(m_incomingPeers.begin()->second);
-				m_incomingPeers.erase(m_incomingPeers.begin());
+			if (!n && accepted)
+			{
+				for (auto i: m_unknownParentBlocks)
+					m_incomingBlocks.push_back(i);
+				m_unknownParentBlocks.clear();
 			}
+		}
+
+		// Connect to additional peers
+		while (m_peers.size() < m_idealPeerCount)
+		{
+			if (m_incomingPeers.empty())
+			{
+				if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+				{
+					RLPStream s;
+					bytes b;
+					(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
+					seal(b);
+					for (auto const& i: m_peers)
+						if (auto p = i.second.lock())
+							if (p->isOpen())
+								p->send(&b);
+					m_lastPeersRequest = chrono::steady_clock::now();
+				}
+
+
+				if (!m_accepting)
+					ensureAccepting();
+
+				break;
+			}
+			connect(m_incomingPeers.begin()->second);
+			m_incomingPeers.erase(m_incomingPeers.begin());
 		}
 	}
 
@@ -969,29 +954,26 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	// restricts your freedom but does so fairly. and that's the value proposition.
 	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
-	if (fullProcess)
-	{
-		// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-		for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-			while (m_peers.size() > m_idealPeerCount)
-			{
-				// look for worst peer to kick off
-				// first work out how many are old enough to kick off.
-				shared_ptr<PeerSession> worst;
-				unsigned agedPeers = 0;
-				for (auto i: m_peers)
-					if (auto p = i.second.lock())
-						if ((m_mode != NodeMode::PeerServer || p->m_caps != 0x01) && chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
-						{
-							++agedPeers;
-							if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
-								worst = p;
-						}
-				if (!worst || agedPeers <= m_idealPeerCount)
-					break;
-				worst->disconnect(TooManyPeers);
-			}
-	}
+	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
+	for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+		while (m_peers.size() > m_idealPeerCount)
+		{
+			// look for worst peer to kick off
+			// first work out how many are old enough to kick off.
+			shared_ptr<PeerSession> worst;
+			unsigned agedPeers = 0;
+			for (auto i: m_peers)
+				if (auto p = i.second.lock())
+					if ((m_mode != NodeMode::PeerServer || p->m_caps != 0x01) && chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+					{
+						++agedPeers;
+						if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
+							worst = p;
+					}
+			if (!worst || agedPeers <= m_idealPeerCount)
+				break;
+			worst->disconnect(TooManyPeers);
+		}
 
 	return ret;
 }

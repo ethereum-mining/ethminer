@@ -162,10 +162,13 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
+	bool sync(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	bool sync();
+
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
-	bool process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
-	bool process(BlockChain& _bc);
+	/// This won't touch alter the blockchain.
+	void process() { m_ioService.poll(); }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -221,8 +224,6 @@ private:
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;
-
-	std::chrono::steady_clock::time_point m_lastFullProcess;
 
 	std::vector<bi::address_v4> m_addresses;
 	std::vector<bi::address_v4> m_peerAddresses;
