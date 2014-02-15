@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "Common.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
@@ -82,17 +83,14 @@ public:
 	BlockDetails const& details(h256 _hash) const;
 	BlockDetails const& details() const { return details(currentHash()); }
 
-	/// Get a given block (RLP format).
+	/// Get a given block (RLP format). Thread-safe.
 	bytesConstRef block(h256 _hash) const;
 	bytesConstRef block() const { return block(currentHash()); }
 
-	/// Get a given block (RLP format).
+	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { return m_lastBlockHash; }
 
-	/// Get the coinbase address of a given block.
-	Address coinbaseAddress(h256 _hash) const;
-	Address coinbaseAddress() const { return coinbaseAddress(currentHash()); }
-
+	/// Get the hash of the genesis block.
 	h256 genesisHash() const { return m_genesisHash; }
 
 	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
@@ -105,6 +103,7 @@ private:
 	/// Get fully populated from disk DB.
 	mutable std::map<h256, BlockDetails> m_details;
 	mutable std::map<h256, std::string> m_cache;
+	mutable std::mutex m_lock;
 
 	/// The queue of transactions that have happened that we're interested in.
 	std::map<Address, int> m_interest;

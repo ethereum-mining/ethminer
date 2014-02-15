@@ -7,12 +7,20 @@ Crypto stuff:
 - kFromMessage
 - Check all the tweak instructions.
 
-Better handling of corrupt blocks.
-- Kill DB & restart.
-
 Network:
-- Crypto on network. TLS?
+- *** Exponential backoff on bad connection.
+- *** Randomly select peers from incoming peers.
+- NotInChain will be very bad for new peers - it'll run through until the genesis.
+  - Check how many it has first.
+- Crypto on network - use id as public key?
 - Make work with IPv6
+- Peers rated.
+  - Useful/useless - new blocks/transactions or useful peers?
+  - Solid communications?
+- Strategy for peer suggestion?
+
+
+
 
 CLI client
 - Implement CLI option "--help".
@@ -23,21 +31,23 @@ General:
 - Move over to new system.
 - Remove block chain on protocol change (i.e. store protocol with block chain).
 
-
 Robustness
 - Remove aborts
 - Recover from all exceptions.
+- Store version alongside BC DB.
+- Better handling of corrupt blocks.
+  - Kill DB & restart.
 
-### Gav
+GUI
+- Make address/block chain list model-based, JIT populated.
+- Make everything else model-based
+- Qt/QML class.
 
-For PoC2:
+For PoC3:
+- Shared contract acceptence tests.
 - Use mining state for nonce.
-
-Network:
-- NotInChain will be very bad for new peers - it'll run through until the genesis.
-  - Check how many it has first.
-
 BUG: need to discard transactions if nonce too old, even when not mining.
+
 
 ### Marko
 
