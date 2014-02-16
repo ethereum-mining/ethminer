@@ -158,7 +158,7 @@ public:
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
-	void connect(std::string const& _addr, uint _port = 30303) { connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port)); }
+	void connect(std::string const& _addr, uint _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.

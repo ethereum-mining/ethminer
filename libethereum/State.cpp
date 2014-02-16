@@ -274,6 +274,29 @@ void State::resetCurrent()
 	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
+bool State::cull(TransactionQueue& _tq) const
+{
+	bool ret = false;
+	auto ts = _tq.transactions();
+	for (auto const& i: ts)
+		if (!m_transactions.count(i.first))
+			try
+			{
+				Transaction t(i.second);
+				if (t.nonce <= transactionsFrom(t.sender()))
+				{
+					_tq.drop(i.first);
+					ret = true;
+				}
+			}
+			catch (...)
+			{
+				_tq.drop(i.first);
+				ret = true;
+			}
+	return ret;
+}
+
 bool State::sync(TransactionQueue& _tq)
 {
 	// TRANSACTIONS
