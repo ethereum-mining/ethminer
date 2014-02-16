@@ -98,15 +98,15 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 {
-	m_lock.lock();
+	lock_guard<mutex> l(m_lock);
 	Transaction t;
-	t.nonce = m_s.transactionsFrom(toAddress(_secret));
+	cnote << "New transaction " << t;
+	t.nonce = m_mined.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _amount;
 	t.data = _data;
 	t.sign(_secret);
 	m_tq.attemptImport(t.rlp());
-	m_lock.unlock();
 	m_changed = true;
 }
 
