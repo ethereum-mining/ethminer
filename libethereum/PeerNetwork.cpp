@@ -45,8 +45,8 @@ using namespace eth;
 
 static const int c_protocolVersion = 4;
 
-static const eth::uint c_maxHashes = 512;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 256;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
+static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
 static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 // Addresses we will skip during network interface discovery
