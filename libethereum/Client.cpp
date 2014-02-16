@@ -142,8 +142,11 @@ void Client::work()
 			if (!m_doMine)
 				m_mined = m_s;
 		}
-		if (!m_doMine)
-			m_mined.sync(m_tq);
+		if (m_mined.sync(m_tq))
+		{
+			changed = true;
+			m_miningStarted = true;
+		}
 	}
 
 	if (m_doMine)
