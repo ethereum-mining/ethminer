@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Client.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -42,6 +42,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	m_s.sync(m_bc);
 	m_s.sync(m_tq);
+	m_mined = m_s;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -68,7 +69,7 @@ void Client::startNetwork(short _listenPort, std::string const& _seedHost, short
 	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp);
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
-		m_net->connect(_seedHost, _port);
+		connect(_seedHost, _port);
 }
 
 void Client::connect(std::string const& _seedHost, short _port)
@@ -111,15 +112,19 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 
 void Client::work()
 {
-	m_lock.lock();
 	bool changed = false;
 
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
-		if (m_net->process(m_bc, m_tq, m_stateDB))
+	{
+		m_net->process();
+
+		lock_guard<mutex> l(m_lock);
+		if (m_net->sync(m_bc, m_tq, m_stateDB))
 			changed = true;
+	}
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -127,18 +132,28 @@ void Client::work()
 	//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
-	 // Resynchronise state with block chain & trans
-	if (m_s.sync(m_bc))
+	// Resynchronise state with block chain & trans
 	{
-		changed = true;
-		m_mined = m_s;
+		lock_guard<mutex> l(m_lock);
+		if (m_s.sync(m_bc))
+		{
+			changed = true;
+			m_miningStarted = true;	// need to re-commit to mine.
+			if (!m_doMine)
+				m_mined = m_s;
+		}
+		if (m_mined.sync(m_tq))
+		{
+			changed = true;
+			m_miningStarted = true;
+		}
 	}
 
-	m_lock.unlock();
 	if (m_doMine)
 	{
 		if (m_miningStarted)
 		{
+			lock_guard<mutex> l(m_lock);
 			m_mined = m_s;
 			m_mined.sync(m_tq);
 			m_mined.commitToMine(m_bc);
@@ -155,10 +170,9 @@ void Client::work()
 		if (mineInfo.completed)
 		{
 			// Import block.
-			m_lock.lock();
+			lock_guard<mutex> l(m_lock);
 			m_bc.attemptImport(m_mined.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
-			m_lock.unlock();
 			m_changed = true;
 			m_miningStarted = true;	// need to re-commit to mine.
 		}

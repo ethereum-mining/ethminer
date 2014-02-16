@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file RLP.h
  * @author Gav Wood <i@gavwood.com>
@@ -229,13 +229,13 @@ public:
 	/// @returns the data payload. Valid for all types.
 	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize()); }
 
+	/// @returns the theoretical size of this item.
+	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
+	uint actualSize() const;
+
 private:
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
-
-	/// @returns the theoretical size of this item; if it's a list, will require a deep traversal which could take a while.
-	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
-	uint actualSize() const;
 
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
 	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }

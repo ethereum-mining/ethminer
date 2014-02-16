@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Client.h
  * @author Gav Wood <i@gavwood.com>
@@ -93,8 +93,8 @@ public:
 	State const& state() const { return m_s; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
-	/// Get the object representing the transaction queue.
-	TransactionQueue const& transactionQueue() const { return m_tq; }
+	/// Get a map containing each of the pending transactions.
+	std::map<h256, Transaction> const& pending() const { return m_mined.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
