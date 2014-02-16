@@ -168,7 +168,7 @@ public:
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
 	/// This won't touch alter the blockchain.
-	void process() { m_ioService.poll(); }
+	void process() { if (isInitialised()) m_ioService.poll(); }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -195,6 +195,12 @@ private:
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	void ensureAccepting();
+
+	///	Check to see if the network peer-state initialisation has happened.
+	bool isInitialised() const { return m_latestBlockSent; }
+	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
+	bool ensureInitialised(BlockChain& _bc, TransactionQueue& _tq);
+
 	std::map<Public, bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
