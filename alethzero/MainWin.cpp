@@ -304,7 +304,7 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
+		if (m_client->state().balance(i.address()) >= totalReq && i.address() != Address(fromUserHex(ui->destination->text().toStdString())))
 		{
 			m_client->unlock();
 			Secret s = i.secret();
