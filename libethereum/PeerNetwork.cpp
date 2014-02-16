@@ -787,6 +787,19 @@ void PeerServer::ensureAccepting()
 	}
 }
 
+void PeerServer::connect(std::string const& _addr, uint _port) noexcept
+{
+	try
+	{
+		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+	}
+	catch (exception const& e)
+	{
+		// Couldn't connect
+		clog(NetNote) << "Bad host " << _addr << " (" << e.what() << ")";
+	}
+}
+
 void PeerServer::connect(bi::tcp::endpoint const& _ep)
 {
 	clog(NetNote) << "Attempting connection to " << _ep;

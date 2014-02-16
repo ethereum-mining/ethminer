@@ -119,6 +119,8 @@ public:
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
 	bool sync(TransactionQueue& _tq);
+	/// Like sync but only operate on _tq, killing the invalid/old ones.
+	bool cull(TransactionQueue& _tq) const;
 
 	/// Execute a given transaction.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
@@ -157,6 +159,9 @@ public:
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
+
+	/// Get the list of pending transactions.
+	std::map<h256, Transaction> const& pending() const { return m_transactions; }
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);

@@ -352,12 +352,12 @@ int main(int argc, char** argv)
 		cout << "Address: " << endl << asHex(us.address().asArray()) << endl;
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
+		if (mining)
+			c.startMining();
 		while (true)
 		{
-			if (c.blockChain().details().number - n >= mining)
+			if (c.blockChain().details().number - n == mining)
 				c.stopMining();
-			else
-				c.startMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}

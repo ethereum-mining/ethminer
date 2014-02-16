@@ -42,6 +42,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	m_s.sync(m_bc);
 	m_s.sync(m_tq);
+	m_mined = m_s;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -68,7 +69,7 @@ void Client::startNetwork(short _listenPort, std::string const& _seedHost, short
 	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp);
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
-		m_net->connect(_seedHost, _port);
+		connect(_seedHost, _port);
 }
 
 void Client::connect(std::string const& _seedHost, short _port)
@@ -139,6 +140,7 @@ void Client::work()
 			changed = true;
 			m_mined = m_s;
 		}
+		m_mined.sync(m_tq);
 	}
 
 	if (m_doMine)
@@ -146,8 +148,8 @@ void Client::work()
 		if (m_miningStarted)
 		{
 			lock_guard<mutex> l(m_lock);
-			m_mined = m_s;
-			m_mined.sync(m_tq);
+//			m_mined = m_s;
+//			m_mined.sync(m_tq);
 			m_mined.commitToMine(m_bc);
 		}
 

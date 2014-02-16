@@ -93,8 +93,8 @@ public:
 	State const& state() const { return m_s; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
-	/// Get the object representing the transaction queue.
-	TransactionQueue const& transactionQueue() const { return m_tq; }
+	/// Get a map containing each of the pending transactions.
+	std::map<h256, Transaction> const& pending() const { return m_mined.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
