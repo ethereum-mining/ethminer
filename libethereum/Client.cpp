@@ -138,9 +138,11 @@ void Client::work()
 		if (m_s.sync(m_bc))
 		{
 			changed = true;
-			m_mined = m_s;
+			if (!m_doMine)
+				m_mined = m_s;
 		}
-		m_mined.sync(m_tq);
+		if (!m_doMine)
+			m_mined.sync(m_tq);
 	}
 
 	if (m_doMine)
@@ -148,8 +150,8 @@ void Client::work()
 		if (m_miningStarted)
 		{
 			lock_guard<mutex> l(m_lock);
-//			m_mined = m_s;
-//			m_mined.sync(m_tq);
+			m_mined = m_s;
+			m_mined.sync(m_tq);
 			m_mined.commitToMine(m_bc);
 		}
 
