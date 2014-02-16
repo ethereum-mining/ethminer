@@ -263,6 +263,7 @@ bool PeerSession::interpret(RLP const& _r)
 				if (i.second.first == ep)
 					goto CONTINUE;
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
+			m_server->m_freePeers.push_back(id);
 			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
@@ -1034,7 +1035,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 
 			auto x = time(0) % m_freePeers.size();
 			m_incomingPeers[m_freePeers[x]].second++;
-			connect(m_incomingPeers[m_freePeers[time(0) % m_freePeers.size()]].first);
+			connect(m_incomingPeers[m_freePeers[x]].first);
 			m_freePeers.erase(m_freePeers.begin() + x);
 		}
 	}
