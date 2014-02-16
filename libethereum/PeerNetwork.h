@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file PeerNetwork.h
  * @author Gav Wood <i@gavwood.com>
@@ -109,6 +109,9 @@ private:
 	void doWrite(std::size_t length);
 	bool interpret(RLP const& _r);
 
+	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
+	static bool checkPacket(bytesConstRef _msg);
+
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
@@ -158,14 +161,17 @@ public:
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
-	void connect(std::string const& _addr, uint _port = 30303) { connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port)); }
+	void connect(std::string const& _addr, uint _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
+	bool sync(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	bool sync();
+
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
-	bool process(BlockChain& _bc, TransactionQueue&, Overlay& _o);
-	bool process(BlockChain& _bc);
+	/// This won't touch alter the blockchain.
+	void process() { if (isInitialised()) m_ioService.poll(); }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -192,6 +198,12 @@ private:
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	void ensureAccepting();
+
+	///	Check to see if the network peer-state initialisation has happened.
+	bool isInitialised() const { return m_latestBlockSent; }
+	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
+	bool ensureInitialised(BlockChain& _bc, TransactionQueue& _tq);
+
 	std::map<Public, bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
@@ -214,15 +226,14 @@ private:
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
 	std::vector<bytes> m_unknownParentBlocks;
-	std::map<Public, bi::tcp::endpoint> m_incomingPeers;
+	std::vector<Public> m_freePeers;
+	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;
-
-	std::chrono::steady_clock::time_point m_lastFullProcess;
 
 	std::vector<bi::address_v4> m_addresses;
 	std::vector<bi::address_v4> m_peerAddresses;

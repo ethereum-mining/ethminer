@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file State.h
  * @author Gav Wood <i@gavwood.com>
@@ -119,6 +119,8 @@ public:
 
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
 	bool sync(TransactionQueue& _tq);
+	/// Like sync but only operate on _tq, killing the invalid/old ones.
+	bool cull(TransactionQueue& _tq) const;
 
 	/// Execute a given transaction.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
@@ -157,6 +159,9 @@ public:
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
+
+	/// Get the list of pending transactions.
+	std::map<h256, Transaction> const& pending() const { return m_transactions; }
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);

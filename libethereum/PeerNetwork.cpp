@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file PeerNetwork.cpp
  * @authors:
@@ -45,9 +45,9 @@ using namespace eth;
 
 static const int c_protocolVersion = 4;
 
-static const eth::uint c_maxHashes = 256;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
-static const eth::uint c_maxBlocksAsk = 2048;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
+static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 // Addresses we will skip during network interface discovery
 // Use a vector as the list is small
@@ -107,6 +107,23 @@ bi::tcp::endpoint PeerSession::endpoint() const
 	return bi::tcp::endpoint();
 }
 
+static std::string reasonOf(int _r)
+{
+	switch (_r)
+	{
+	case DisconnectRequested: return "Disconnect was requested.";
+	case TCPError: return "Low-level TCP communication error.";
+	case BadProtocol: return "Data format error.";
+	case UselessPeer: return "Peer had no use for this node.";
+	case TooManyPeers: return "Peer had too many connections.";
+	case DuplicatePeer: return "Peer was already connected.";
+	case WrongGenesis: return "Disagreement over genesis block.";
+	case IncompatibleProtocol: return "Peer protocol versions are incompatible.";
+	case ClientQuit: return "Peer is exiting.";
+	default: return "Unknown reason.";
+	}
+}
+
 // TODO: BUG! 256 -> work out why things start to break with big packet sizes -> g.t. ~370 blocks.
 
 bool PeerSession::interpret(RLP const& _r)
@@ -123,16 +140,19 @@ bool PeerSession::interpret(RLP const& _r)
 		m_listenPort = _r[5].toInt<short>();
 		m_id = _r[6].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << asHex(m_id.ref().cropped(0, 4)) << showbase << hex << m_caps << dec << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
-		if (m_server->m_peers.count(m_id) || !m_id)
-		{
-			// Already connected.
-			disconnect(DuplicatePeer);
-		}
-		m_server->m_peers[m_id] = shared_from_this();
+		if (m_server->m_peers.count(m_id))
+			if (auto l = m_server->m_peers[m_id].lock())
+				if (l.get() != this && l->isOpen())
+				{
+					// Already connected.
+					cwarn << "Already have peer id" << m_id.abridged() << "at" << l->endpoint() << "rather than" << endpoint();
+					disconnect(DuplicatePeer);
+					return false;
+				}
 
-		if (m_protocolVersion != c_protocolVersion || m_networkId != m_reqNetworkId)
+		if (m_protocolVersion != c_protocolVersion || m_networkId != m_reqNetworkId || !m_id)
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
@@ -145,15 +165,22 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 
+		m_server->m_peers[m_id] = shared_from_this();
+
 		// Grab their block chain off them.
 		{
+			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
 			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_latestBlockSent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			{
+				clogS(NetAllDetail) << "   " << i << ":" << h;
 				s << h;
+			}
+
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
 			s.clear();
@@ -167,18 +194,7 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		string reason = "Unspecified";
 		if (_r[1].isInt())
-			switch (_r[1].toInt<int>())
-			{
-			case DisconnectRequested: reason = "Disconnect was requested."; break;
-			case TCPError: reason = "Low-level TCP communication error."; break;
-			case BadProtocol: reason = "Data format error."; break;
-			case UselessPeer: reason = "Peer had no use for this node."; break;
-			case TooManyPeers: reason = "Peer had too many connections."; break;
-			case DuplicatePeer: reason = "Peer was already connected."; break;
-			case WrongGenesis: reason = "Disagreement over genesis block."; break;
-			case IncompatibleProtocol: reason = "Peer protocol versions are incompatible."; break;
-			case ClientQuit: reason = "Peer is exiting."; break;
-			}
+			reason = reasonOf(_r[1].toInt<int>());
 
 		clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
 		if (m_socket.is_open())
@@ -244,9 +260,10 @@ bool PeerSession::interpret(RLP const& _r)
 						goto CONTINUE;
 				}
 			for (auto i: m_server->m_incomingPeers)
-				if (i.second == ep)
+				if (i.second.first == ep)
 					goto CONTINUE;
-			m_server->m_incomingPeers[id] = ep;
+			m_server->m_incomingPeers[id] = make_pair(ep, 0);
+			m_server->m_freePeers.push_back(id);
 			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
@@ -340,8 +357,13 @@ bool PeerSession::interpret(RLP const& _r)
 
 				uint n = latestNumber;
 				for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
-				for (uint i = 0; h != parent && n > endNumber && i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
+				for (uint i = 0; i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
 				{
+					if (h == parent || n == endNumber)
+					{
+						cwarn << "BUG! Couldn't create the reply for GetChain!";
+						return true;
+					}
 					clogS(NetAllDetail) << "   " << dec << i << " " << h;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
@@ -443,16 +465,38 @@ void PeerSession::sealAndSend(RLPStream& _s)
 	sendDestroy(b);
 }
 
+bool PeerSession::checkPacket(bytesConstRef _msg)
+{
+	if (_msg.size() < 8)
+		return false;
+	if (!(_msg[0] == 0x22 && _msg[1] == 0x40 && _msg[2] == 0x08 && _msg[3] == 0x91))
+		return false;
+	uint32_t len = ((_msg[4] * 256 + _msg[5]) * 256 + _msg[6]) * 256 + _msg[7];
+	if (_msg.size() != len + 8)
+		return false;
+	RLP r(_msg.cropped(8));
+	if (r.actualSize() != len)
+		return false;
+	return true;
+}
+
 void PeerSession::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
-	assert((*buffer)[0] == 0x22);
+	if (!checkPacket(bytesConstRef(&*buffer)))
+	{
+		cwarn << "INVALID PACKET CONSTRUCTED!";
+
+	}
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
+		{
+			cwarn << "Error sending: " << ec.message();
 			dropped();
+		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
 }
@@ -461,11 +505,17 @@ void PeerSession::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
-	assert((*buffer)[0] == 0x22);
+	if (!checkPacket(_msg))
+	{
+		cwarn << "INVALID PACKET CONSTRUCTED!";
+	}
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
+		{
+			cwarn << "Error sending: " << ec.message();
 			dropped();
+		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
 }
@@ -487,26 +537,19 @@ void PeerSession::dropped()
 
 void PeerSession::disconnect(int _reason)
 {
+	clogS(NetNote) << "Disconnecting (reason:" << reasonOf(_reason) << ")";
 	if (m_socket.is_open())
 	{
 		if (m_disconnect == chrono::steady_clock::time_point::max())
 		{
 			RLPStream s;
 			prep(s);
-			s.appendList(1) << DisconnectPacket << _reason;
+			s.appendList(2) << DisconnectPacket << _reason;
 			sealAndSend(s);
 			m_disconnect = chrono::steady_clock::now();
 		}
 		else
-		{
-			if (m_socket.is_open())
-				try {
-				clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
-				} catch (...){}
-			else
-				clogS(NetNote) << "Remote closed on" << m_socket.native_handle();
-			m_socket.close();
-		}
+			dropped();
 	}
 }
 
@@ -514,7 +557,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)c_protocolVersion << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
+	s.appendList(7) << HelloPacket << (uint)c_protocolVersion << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
 	sealAndSend(s);
 
 	ping();
@@ -528,7 +571,10 @@ void PeerSession::doRead()
 	m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
+		{
+			cwarn << "Error reading: " << ec.message();
 			dropped();
+		}
 		else
 		{
 			try
@@ -546,17 +592,31 @@ void PeerSession::doRead()
 					else
 					{
 						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-						if (m_incoming.size() - 8 < len)
+						uint32_t tlen = len + 8;
+						if (m_incoming.size() < tlen)
 							break;
 
 						// enough has come in.
 //						cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-						RLP r(bytesConstRef(m_incoming.data() + 8, len));
-						if (!interpret(r))
-							// error
-							break;
-						memmove(m_incoming.data(), m_incoming.data() + len + 8, m_incoming.size() - (len + 8));
-						m_incoming.resize(m_incoming.size() - (len + 8));
+						auto data = bytesConstRef(m_incoming.data(), tlen);
+						if (!checkPacket(data))
+						{
+							cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
+							cwarn << "INVALID MESSAGE RECEIVED";
+							disconnect(BadProtocol);
+						}
+						else
+						{
+							RLP r(data.cropped(8));
+							if (!interpret(r))
+							{
+								// error
+								dropped();
+								return;
+							}
+						}
+						memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
+						m_incoming.resize(m_incoming.size() - tlen);
 					}
 				}
 				doRead();
@@ -765,9 +825,22 @@ void PeerServer::ensureAccepting()
 				}
 
 			m_accepting = false;
-			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount)
+			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
 				ensureAccepting();
 		});
+	}
+}
+
+void PeerServer::connect(std::string const& _addr, uint _port) noexcept
+{
+	try
+	{
+		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+	}
+	catch (exception const& e)
+	{
+		// Couldn't connect
+		clog(NetNote) << "Bad host " << _addr << " (" << e.what() << ")";
 	}
 }
 
@@ -780,6 +853,15 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		if (ec)
 		{
 			clog(NetNote) << "Connection refused to " << _ep << " (" << ec.message() << ")";
+			for (auto i = m_incomingPeers.begin(); i != m_incomingPeers.end(); ++i)
+				if (i->second.first == _ep && i->second.second < 3)
+				{
+					m_freePeers.push_back(i->first);
+					goto OK;
+				}
+			// for-else
+			clog(NetNote) << "Giving up.";
+			OK:;
 		}
 		else
 		{
@@ -791,17 +873,10 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerServer::process(BlockChain& _bc)
+bool PeerServer::sync()
 {
 	bool ret = false;
-	m_ioService.poll();
-
-	auto n = chrono::steady_clock::now();
-	bool fullProcess = (n > m_lastFullProcess + chrono::seconds(1));
-	if (fullProcess)
-		m_lastFullProcess = n;
-
-	if (fullProcess)
+	if (isInitialised())
 		for (auto i = m_peers.begin(); i != m_peers.end();)
 		{
 			auto p = i->second.lock();
@@ -817,10 +892,8 @@ bool PeerServer::process(BlockChain& _bc)
 	return ret;
 }
 
-bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 {
-	bool ret = false;
-
 	if (m_latestBlockSent == h256())
 	{
 		// First time - just initialise.
@@ -830,14 +903,16 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
 		m_lastPeersRequest = chrono::steady_clock::time_point::min();
-		m_lastFullProcess = chrono::steady_clock::time_point::min();
-		ret = true;
+		return true;
 	}
+	return false;
+}
 
-	auto n = chrono::steady_clock::now();
-	bool fullProcess = (n > m_lastFullProcess + chrono::seconds(1));
+bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+{
+	bool ret = ensureInitialised(_bc, _tq);
 
-	if (process(_bc))
+	if (sync())
 		ret = true;
 
 	if (m_mode == NodeMode::Full)
@@ -850,118 +925,118 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		m_incomingTransactions.clear();
 
 		// Send any new transactions.
-		if (fullProcess)
+		for (auto j: m_peers)
+			if (auto p = j.second.lock())
+			{
+				bytes b;
+				uint n = 0;
+				for (auto const& i: _tq.transactions())
+					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+					{
+						b += i.second;
+						++n;
+						m_transactionsSent.insert(i.first);
+					}
+				if (n)
+				{
+					RLPStream ts;
+					PeerSession::prep(ts);
+					ts.appendList(n + 1) << TransactionsPacket;
+					ts.appendRaw(b, n).swapOut(b);
+					seal(b);
+					p->send(&b);
+				}
+				p->m_knownTransactions.clear();
+				p->m_requireTransactions = false;
+			}
+
+		// Send any new blocks.
+		auto h = _bc.currentHash();
+		if (h != m_latestBlockSent)
 		{
+			// TODO: find where they diverge and send complete new branch.
+			RLPStream ts;
+			PeerSession::prep(ts);
+			ts.appendList(2) << BlocksPacket;
+			bytes b;
+			ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
+			seal(b);
 			for (auto j: m_peers)
 				if (auto p = j.second.lock())
 				{
-					bytes b;
-					uint n = 0;
-					for (auto const& i: _tq.transactions())
-						if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
-						{
-							b += i.second;
-							++n;
-							m_transactionsSent.insert(i.first);
-						}
-					if (n)
-					{
-						RLPStream ts;
-						PeerSession::prep(ts);
-						ts.appendList(n + 1) << TransactionsPacket;
-						ts.appendRaw(b, n).swapOut(b);
-						seal(b);
+					if (!p->m_knownBlocks.count(_bc.currentHash()))
 						p->send(&b);
-					}
-					p->m_knownTransactions.clear();
-					p->m_requireTransactions = false;
+					p->m_knownBlocks.clear();
 				}
+		}
+		m_latestBlockSent = h;
 
-			// Send any new blocks.
-			auto h = _bc.currentHash();
-			if (h != m_latestBlockSent)
-			{
-				// TODO: find where they diverge and send complete new branch.
-				RLPStream ts;
-				PeerSession::prep(ts);
-				ts.appendList(2) << BlocksPacket;
-				bytes b;
-				ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
-				seal(b);
-				for (auto j: m_peers)
-					if (auto p = j.second.lock())
-					{
-						if (!p->m_knownBlocks.count(_bc.currentHash()))
-							p->send(&b);
-						p->m_knownBlocks.clear();
-					}
-			}
-			m_latestBlockSent = h;
+		for (int accepted = 1, n = 0; accepted; ++n)
+		{
+			accepted = 0;
 
-			for (int accepted = 1, n = 0; accepted; ++n)
-			{
-				accepted = 0;
-
-				if (m_incomingBlocks.size())
-					for (auto it = prev(m_incomingBlocks.end());; --it)
-					{
-						try
-						{
-							_bc.import(*it, _o);
-							it = m_incomingBlocks.erase(it);
-							++accepted;
-							ret = true;
-						}
-						catch (UnknownParent)
-						{
-							// Don't (yet) know its parent. Leave it for later.
-							m_unknownParentBlocks.push_back(*it);
-							it = m_incomingBlocks.erase(it);
-						}
-						catch (...)
-						{
-							// Some other error - erase it.
-							it = m_incomingBlocks.erase(it);
-						}
-
-						if (it == m_incomingBlocks.begin())
-							break;
-					}
-				if (!n && accepted)
+			if (m_incomingBlocks.size())
+				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
-					for (auto i: m_unknownParentBlocks)
-						m_incomingBlocks.push_back(i);
-					m_unknownParentBlocks.clear();
-				}
-			}
-
-			// Connect to additional peers
-			while (m_peers.size() < m_idealPeerCount)
-			{
-				if (m_incomingPeers.empty())
-				{
-					if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+					try
 					{
-						RLPStream s;
-						bytes b;
-						(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
-						seal(b);
-						for (auto const& i: m_peers)
-							if (auto p = i.second.lock())
-								if (p->isOpen())
-									p->send(&b);
-						m_lastPeersRequest = chrono::steady_clock::now();
+						_bc.import(*it, _o);
+						it = m_incomingBlocks.erase(it);
+						++accepted;
+						ret = true;
+					}
+					catch (UnknownParent)
+					{
+						// Don't (yet) know its parent. Leave it for later.
+						m_unknownParentBlocks.push_back(*it);
+						it = m_incomingBlocks.erase(it);
+					}
+					catch (...)
+					{
+						// Some other error - erase it.
+						it = m_incomingBlocks.erase(it);
 					}
 
-
-					if (!m_accepting)
-						ensureAccepting();
-
-					break;
+					if (it == m_incomingBlocks.begin())
+						break;
 				}
-				connect(m_incomingPeers.begin()->second);
-				m_incomingPeers.erase(m_incomingPeers.begin());
+			if (!n && accepted)
+			{
+				for (auto i: m_unknownParentBlocks)
+					m_incomingBlocks.push_back(i);
+				m_unknownParentBlocks.clear();
 			}
+		}
+
+		// Connect to additional peers
+		while (m_peers.size() < m_idealPeerCount)
+		{
+			if (m_freePeers.empty())
+			{
+				if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+				{
+					RLPStream s;
+					bytes b;
+					(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
+					seal(b);
+					for (auto const& i: m_peers)
+						if (auto p = i.second.lock())
+							if (p->isOpen())
+								p->send(&b);
+					m_lastPeersRequest = chrono::steady_clock::now();
+				}
+
+
+				if (!m_accepting)
+					ensureAccepting();
+
+				break;
+			}
+
+			auto x = time(0) % m_freePeers.size();
+			m_incomingPeers[m_freePeers[x]].second++;
+			connect(m_incomingPeers[m_freePeers[x]].first);
+			m_freePeers.erase(m_freePeers.begin() + x);
 		}
 	}
 
@@ -969,29 +1044,26 @@ bool PeerServer::process(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	// restricts your freedom but does so fairly. and that's the value proposition.
 	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
-	if (fullProcess)
-	{
-		// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-		for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-			while (m_peers.size() > m_idealPeerCount)
-			{
-				// look for worst peer to kick off
-				// first work out how many are old enough to kick off.
-				shared_ptr<PeerSession> worst;
-				unsigned agedPeers = 0;
-				for (auto i: m_peers)
-					if (auto p = i.second.lock())
-						if ((m_mode != NodeMode::PeerServer || p->m_caps != 0x01) && chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
-						{
-							++agedPeers;
-							if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
-								worst = p;
-						}
-				if (!worst || agedPeers <= m_idealPeerCount)
-					break;
-				worst->disconnect(TooManyPeers);
-			}
-	}
+	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
+	for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+		while (m_peers.size() > m_idealPeerCount)
+		{
+			// look for worst peer to kick off
+			// first work out how many are old enough to kick off.
+			shared_ptr<PeerSession> worst;
+			unsigned agedPeers = 0;
+			for (auto i: m_peers)
+				if (auto p = i.second.lock())
+					if ((m_mode != NodeMode::PeerServer || p->m_caps != 0x01) && chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+					{
+						++agedPeers;
+						if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
+							worst = p;
+					}
+			if (!worst || agedPeers <= m_idealPeerCount)
+				break;
+			worst->disconnect(TooManyPeers);
+		}
 
 	return ret;
 }
@@ -1033,6 +1105,11 @@ void PeerServer::restorePeers(bytesConstRef _b)
 {
 	for (auto i: RLP(_b))
 	{
-		m_incomingPeers.insert(make_pair((Public)i[2], bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>())));
+		auto k = (Public)i[2];
+		if (!m_incomingPeers.count(k))
+		{
+			m_incomingPeers.insert(make_pair(k, make_pair(bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>()), 0)));
+			m_freePeers.push_back(k);
+		}
 	}
 }

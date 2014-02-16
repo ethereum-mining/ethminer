@@ -24,7 +24,7 @@ Main::Main(QWidget *parent) :
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	g_logPost = [=](std::string const& s, char const*) { ui->log->addItem(QString::fromStdString(s)); };
+	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client = new Client("AlethZero");
 
 	readSettings();
@@ -142,13 +142,12 @@ void Main::refresh()
 			ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(asHex(i.first.asArray()).c_str()));
 
 		ui->transactionQueue->clear();
-		for (pair<h256, bytes> const& i: m_client->transactionQueue().transactions())
+		for (pair<h256, Transaction> const& i: m_client->pending())
 		{
-			Transaction t(i.second);
 			ui->transactionQueue->addItem(QString("%1 @ %2 <- %3")
-								  .arg(formatBalance(t.value).c_str())
-								  .arg(asHex(t.receiveAddress.asArray()).c_str())
-								  .arg(asHex(t.sender().asArray()).c_str()) );
+								  .arg(formatBalance(i.second.value).c_str())
+								  .arg(asHex(i.second.receiveAddress.asArray()).c_str())
+								  .arg(asHex(i.second.sender().asArray()).c_str()) );
 		}
 
 		ui->transactions->clear();

@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file peer.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -56,7 +56,7 @@ int peerTest(int argc, char** argv)
 	for (int i = 0; ; ++i)
 	{
 		this_thread::sleep_for(chrono::milliseconds(100));
-		pn.process(ch);
+		pn.sync();
 		if (!(i % 10))
 			pn.pingAll();
 	}

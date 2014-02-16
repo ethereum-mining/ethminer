@@ -6,13 +6,13 @@
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	Foobar is distributed in the hope that it will be useful,
+	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file State.cpp
  * @author Gav Wood <i@gavwood.com>
@@ -272,6 +272,29 @@ void State::resetCurrent()
 	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
 	m_currentBlock.parentHash = m_previousBlock.hash;
 	m_state.setRoot(m_currentBlock.stateRoot);
+}
+
+bool State::cull(TransactionQueue& _tq) const
+{
+	bool ret = false;
+	auto ts = _tq.transactions();
+	for (auto const& i: ts)
+		if (!m_transactions.count(i.first))
+			try
+			{
+				Transaction t(i.second);
+				if (t.nonce <= transactionsFrom(t.sender()))
+				{
+					_tq.drop(i.first);
+					ret = true;
+				}
+			}
+			catch (...)
+			{
+				_tq.drop(i.first);
+				ret = true;
+			}
+	return ret;
 }
 
 bool State::sync(TransactionQueue& _tq)
