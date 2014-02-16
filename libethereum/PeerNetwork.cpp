@@ -70,7 +70,7 @@ bool eth::isPrivateAddress(bi::address _addressToCheck)
 	{
 		bi::address_v4 v4Address = _addressToCheck.to_v4();
 		bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
-		if (bytesToCheck[0] == 10)
+		if (bytesToCheck[0] == 10 || bytesToCheck[0] == 127)
 			return true;
 		if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <=31))
 			return true;
