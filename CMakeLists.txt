@@ -8,8 +8,14 @@ cmake_policy(SET CMP0015 NEW)
 set(ETH_VERSION 0.2.5)
 set(ETH_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 
-set(TARGET_PLATFORM CACHE STRING "linux")
+# Default HEADLESS to 0.
+set(HEADLESS CACHE BOOL 0)
+if ("x${HEADLESS}" STREQUAL "x")
+	set(HEADLESS 0)
+endif ()
 
+# Default TARGET_PLATFORM to "linux".
+set(TARGET_PLATFORM CACHE STRING "linux")
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
 	set(TARGET_PLATFORM "linux")
 endif ()
@@ -141,4 +147,10 @@ add_subdirectory(secp256k1)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
-add_subdirectory(alethzero)
+if (NOT HEADLESS)
+	add_subdirectory(alethzero)
+endif ()
+
+unset(HEADLESS CACHE)
+#unset(TARGET_PLATFORM CACHE)
+
