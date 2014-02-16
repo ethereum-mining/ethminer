@@ -53,7 +53,6 @@ qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
 target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
 
 if (APPLE)
-	# target_link_libraries(${EXECUTEABLE} boost_system boost_filesystem gmp leveldb miniupnpc snappy)
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
 
 	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
@@ -71,6 +70,7 @@ if (APPLE)
 
 	set(APPS ${binary_build_dir}/${EXECUTEABLE}.app)
 
+	# This tool and the next will automatically looked at the linked libraries in order to determine what dependencies are required. Thus, target_link_libaries only needs to add ethereum and secp256k1 (above)
 	install(CODE "
 		include(BundleUtilities)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
