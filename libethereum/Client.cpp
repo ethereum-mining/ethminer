@@ -138,6 +138,7 @@ void Client::work()
 		if (m_s.sync(m_bc))
 		{
 			changed = true;
+			m_miningStarted = true;	// need to re-commit to mine.
 			if (!m_doMine)
 				m_mined = m_s;
 		}
