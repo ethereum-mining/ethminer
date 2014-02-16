@@ -109,6 +109,9 @@ private:
 	void doWrite(std::size_t length);
 	bool interpret(RLP const& _r);
 
+	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
+	static bool checkPacket(bytesConstRef _msg);
+
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);

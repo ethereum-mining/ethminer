@@ -45,8 +45,8 @@ using namespace eth;
 
 static const int c_protocolVersion = 4;
 
-static const eth::uint c_maxHashes = 64;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
+static const eth::uint c_maxHashes = 512;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 256;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
 static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 // Addresses we will skip during network interface discovery
@@ -140,14 +140,14 @@ bool PeerSession::interpret(RLP const& _r)
 		m_listenPort = _r[5].toInt<short>();
 		m_id = _r[6].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << asHex(m_id.ref().cropped(0, 4)) << showbase << hex << m_caps << dec << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
 		if (m_server->m_peers.count(m_id))
 			if (auto l = m_server->m_peers[m_id].lock())
 				if (l.get() != this && l->isOpen())
 				{
 					// Already connected.
-					cwarn << "Already have peer id" << m_id << "at" << l->endpoint() << "rather than" << endpoint();
+					cwarn << "Already have peer id" << m_id.abridged() << "at" << l->endpoint() << "rather than" << endpoint();
 					disconnect(DuplicatePeer);
 					return false;
 				}
@@ -356,8 +356,13 @@ bool PeerSession::interpret(RLP const& _r)
 
 				uint n = latestNumber;
 				for (; n > startNumber; n--, h = m_server->m_chain->details(h).parent) {}
-				for (uint i = 0; h != parent && n > endNumber && i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
+				for (uint i = 0; i < count; ++i, --n, h = m_server->m_chain->details(h).parent)
 				{
+					if (h == parent || n == endNumber)
+					{
+						cwarn << "BUG! Couldn't create the reply for GetChain!";
+						return true;
+					}
 					clogS(NetAllDetail) << "   " << dec << i << " " << h;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
@@ -459,12 +464,31 @@ void PeerSession::sealAndSend(RLPStream& _s)
 	sendDestroy(b);
 }
 
+bool PeerSession::checkPacket(bytesConstRef _msg)
+{
+	if (_msg.size() < 8)
+		return false;
+	if (!(_msg[0] == 0x22 && _msg[1] == 0x40 && _msg[2] == 0x08 && _msg[3] == 0x91))
+		return false;
+	uint32_t len = ((_msg[4] * 256 + _msg[5]) * 256 + _msg[6]) * 256 + _msg[7];
+	if (_msg.size() != len + 8)
+		return false;
+	RLP r(_msg.cropped(8));
+	if (r.actualSize() != len)
+		return false;
+	return true;
+}
+
 void PeerSession::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
 	swap(*buffer, _msg);
-	assert((*buffer)[0] == 0x22);
+	if (!checkPacket(bytesConstRef(&*buffer)))
+	{
+		cwarn << "INVALID PACKET CONSTRUCTED!";
+
+	}
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
@@ -480,7 +504,10 @@ void PeerSession::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
 	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
-	assert((*buffer)[0] == 0x22);
+	if (!checkPacket(_msg))
+	{
+		cwarn << "INVALID PACKET CONSTRUCTED!";
+	}
 	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
@@ -516,7 +543,7 @@ void PeerSession::disconnect(int _reason)
 		{
 			RLPStream s;
 			prep(s);
-			s.appendList(1) << DisconnectPacket << _reason;
+			s.appendList(2) << DisconnectPacket << _reason;
 			sealAndSend(s);
 			m_disconnect = chrono::steady_clock::now();
 		}
@@ -529,7 +556,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(m_server->m_public.port() ? 6 : 5) << HelloPacket << (uint)c_protocolVersion << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
+	s.appendList(7) << HelloPacket << (uint)c_protocolVersion << (uint)m_server->m_requiredNetworkId << m_server->m_clientVersion << (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0) << m_server->m_public.port() << m_server->m_key.pub();
 	sealAndSend(s);
 
 	ping();
@@ -564,20 +591,31 @@ void PeerSession::doRead()
 					else
 					{
 						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-						if (m_incoming.size() - 8 < len)
+						uint32_t tlen = len + 8;
+						if (m_incoming.size() < tlen)
 							break;
 
 						// enough has come in.
 //						cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-						RLP r(bytesConstRef(m_incoming.data() + 8, len));
-						if (!interpret(r))
+						auto data = bytesConstRef(m_incoming.data(), tlen);
+						if (!checkPacket(data))
 						{
-							// error
-							dropped();
-							return;
+							cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
+							cwarn << "INVALID MESSAGE RECEIVED";
+							disconnect(BadProtocol);
 						}
-						memmove(m_incoming.data(), m_incoming.data() + len + 8, m_incoming.size() - (len + 8));
-						m_incoming.resize(m_incoming.size() - (len + 8));
+						else
+						{
+							RLP r(data.cropped(8));
+							if (!interpret(r))
+							{
+								// error
+								dropped();
+								return;
+							}
+						}
+						memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
+						m_incoming.resize(m_incoming.size() - tlen);
 					}
 				}
 				doRead();

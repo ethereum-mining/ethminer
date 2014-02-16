@@ -67,6 +67,18 @@ using u160Set = std::set<u160>;
 template <class T, class Out> inline void toBigEndian(T _val, Out& o_out);
 template <class T, class In> inline T fromBigEndian(In const& _bytes);
 
+/// Convert a series of bytes to the corresponding string of hex duplets.
+/// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
+/// @example asHex("A\x69") == "4169"
+template <class _T>
+std::string asHex(_T const& _data, int _w = 2)
+{
+	std::ostringstream ret;
+	for (auto i: _data)
+		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
+	return ret.str();
+}
+
 template <unsigned N>
 class FixedHash
 {
@@ -96,6 +108,8 @@ public:
 	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
+	std::string abridged() const { return asHex(ref().cropped(0, 4)); }
 
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }
@@ -250,18 +264,6 @@ inline std::string asString(bytes const& _b)
 inline bytes asBytes(std::string const& _b)
 {
 	return bytes((byte const*)_b.data(), (byte const*)(_b.data() + _b.size()));
-}
-
-/// Convert a series of bytes to the corresponding string of hex duplets.
-/// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
-/// @example asHex("A\x69") == "4169"
-template <class _T>
-std::string asHex(_T const& _data, int _w = 2)
-{
-	std::ostringstream ret;
-	for (auto i: _data)
-		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
-	return ret.str();
 }
 
 /// Trims a given number of elements from the front of a collection.
