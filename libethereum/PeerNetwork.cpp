@@ -169,7 +169,7 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
-			clogS(NetNote) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
+			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
 			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
@@ -177,7 +177,7 @@ bool PeerSession::interpret(RLP const& _r)
 			auto h = m_server->m_latestBlockSent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 			{
-				clogS(NetNote) << "   " << i << ":" << h;
+				clogS(NetAllDetail) << "   " << i << ":" << h;
 				s << h;
 			}
 
