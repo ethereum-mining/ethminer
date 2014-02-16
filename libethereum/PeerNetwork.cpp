@@ -169,13 +169,18 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
+			clogS(NetNote) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
 			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_latestBlockSent;
 			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			{
+				clogS(NetNote) << "   " << i << ":" << h;
 				s << h;
+			}
+
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
 			s.clear();
@@ -781,7 +786,7 @@ void PeerServer::ensureAccepting()
 				}
 
 			m_accepting = false;
-			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount)
+			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
 				ensureAccepting();
 		});
 	}
@@ -832,25 +837,24 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 bool PeerServer::sync()
 {
 	bool ret = false;
-	for (auto i = m_peers.begin(); i != m_peers.end();)
-	{
-		auto p = i->second.lock();
-		if (p && p->m_socket.is_open() &&
-				(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
-			++i;
-		else
+	if (isInitialised())
+		for (auto i = m_peers.begin(); i != m_peers.end();)
 		{
-			i = m_peers.erase(i);
-			ret = true;
+			auto p = i->second.lock();
+			if (p && p->m_socket.is_open() &&
+					(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
+				++i;
+			else
+			{
+				i = m_peers.erase(i);
+				ret = true;
+			}
 		}
-	}
 	return ret;
 }
 
-bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 {
-	bool ret = false;
-
 	if (m_latestBlockSent == h256())
 	{
 		// First time - just initialise.
@@ -860,8 +864,14 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
 		m_lastPeersRequest = chrono::steady_clock::time_point::min();
-		ret = true;
+		return true;
 	}
+	return false;
+}
+
+bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+{
+	bool ret = ensureInitialised(_bc, _tq);
 
 	if (sync())
 		ret = true;
