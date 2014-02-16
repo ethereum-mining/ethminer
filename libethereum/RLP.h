@@ -229,13 +229,13 @@ public:
 	/// @returns the data payload. Valid for all types.
 	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize()); }
 
+	/// @returns the theoretical size of this item.
+	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
+	uint actualSize() const;
+
 private:
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
-
-	/// @returns the theoretical size of this item; if it's a list, will require a deep traversal which could take a while.
-	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
-	uint actualSize() const;
 
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
 	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
