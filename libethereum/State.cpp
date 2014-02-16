@@ -414,7 +414,12 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
-	cnote << "Commiting to mine on" << m_previousBlock.hash;
+	static h256 previously_mined_hash;
+	if (!previously_mined_hash || previously_mined_hash != m_previousBlock.hash)
+	{
+		previously_mined_hash = m_previousBlock.hash;
+		cnote << "Commiting to mine on" << m_previousBlock.hash;
+	}
 
 	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
 		return;
