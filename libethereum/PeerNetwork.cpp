@@ -80,7 +80,7 @@ bool eth::isPrivateAddress(bi::address _addressToCheck)
 	return false;
 }
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, short _peerPort):
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, ushort _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
@@ -137,7 +137,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
-		m_listenPort = _r[5].toInt<short>();
+		m_listenPort = _r[5].toInt<ushort>();
 		m_id = _r[6].toHash<h512>();
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
@@ -635,7 +635,7 @@ void PeerSession::doRead()
 	});
 }
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, ushort _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -654,7 +654,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId, NodeMode _m):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
-	m_listenPort(-1),
+	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
 	m_key(KeyPair::create()),
@@ -746,7 +746,7 @@ void PeerServer::populateAddresses()
 		bi::address ad(bi::address::from_string(addrStr));
 		m_addresses.push_back(ad.to_v4());
 		bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-		if (isLocal)
+		if (!isLocal)
 			m_peerAddresses.push_back(ad.to_v4());
 		clog(NetNote) << "Address: " << ac << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
 	}
@@ -831,7 +831,7 @@ void PeerServer::ensureAccepting()
 	}
 }
 
-void PeerServer::connect(std::string const& _addr, uint _port) noexcept
+void PeerServer::connect(std::string const& _addr, ushort _port) noexcept
 {
 	try
 	{
@@ -866,7 +866,7 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		else
 		{
 			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId, _ep.address(), _ep.port());
-			clog(NetNote) << "Connected to " << p->endpoint();
+			clog(NetNote) << "Connected to " << _ep;
 			p->start();
 		}
 		delete s;

@@ -82,7 +82,7 @@ struct PeerInfo
 {
 	std::string clientVersion;
 	std::string host;
-	short port;
+	ushort port;
 	std::chrono::steady_clock::duration lastPing;
 };
 
@@ -91,7 +91,7 @@ class PeerSession: public std::enable_shared_from_this<PeerSession>
 	friend class PeerServer;
 
 public:
-	PeerSession(PeerServer* _server, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, short _peerPort = 0);
+	PeerSession(PeerServer* _server, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, ushort _peerPort = 0);
 	~PeerSession();
 
 	void start();
@@ -127,7 +127,7 @@ private:
 	uint m_protocolVersion;
 	uint m_networkId;
 	uint m_reqNetworkId;
-	short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
+	ushort m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
 	uint m_caps;
 
 	std::chrono::steady_clock::time_point m_ping;
@@ -147,7 +147,7 @@ enum class NodeMode
 	PeerServer
 };
 
-struct UPnP;
+class UPnP;
 
 class PeerServer
 {
@@ -155,13 +155,13 @@ class PeerServer
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, ushort _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
 	PeerServer(std::string const& _clientVersion, uint _networkId, NodeMode _m = NodeMode::Full);
 	~PeerServer();
 
 	/// Connect to a peer explicitly.
-	void connect(std::string const& _addr, uint _port = 30303) noexcept;
+	void connect(std::string const& _addr, ushort _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
@@ -188,7 +188,7 @@ public:
 	void pingAll();
 
 	/// Get the port we're listening on currently.
-	short listenPort() const { return m_public.port(); }
+	ushort listenPort() const { return m_public.port(); }
 
 	bytes savePeers() const;
 	void restorePeers(bytesConstRef _b);
@@ -209,7 +209,7 @@ private:
 	std::string m_clientVersion;
 	NodeMode m_mode = NodeMode::Full;
 
-	short m_listenPort;
+	ushort m_listenPort;
 
 	BlockChain const* m_chain = nullptr;
 	ba::io_service m_ioService;
