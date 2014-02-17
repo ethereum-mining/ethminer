@@ -189,7 +189,7 @@ void State::commit()
 
 bool State::sync(BlockChain const& _bc)
 {
-	return sync(_bc, _bc.currentHash());
+return sync(_bc, _bc.currentHash());
 }
 
 bool State::sync(BlockChain const& _bc, h256 _block)
@@ -414,8 +414,6 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
-	cnote << "Commiting to mine on" << m_previousBlock.hash;
-
 	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
 		return;
 
@@ -454,12 +452,19 @@ void State::commitToMine(BlockChain const& _bc)
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
+
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
 MineInfo State::mine(uint _msTimeout)
 {
+	if (m_previousBlock.hash != m_committedPreviousHash)
+	{
+		m_committedPreviousHash = m_committedPreviousHash;
+		cnote << "Commiting to mine on" << m_previousBlock.hash;
+	}
+
 	// Update timestamp according to clock.
 	m_currentBlock.timestamp = time(0);
 

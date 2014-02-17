@@ -61,6 +61,12 @@ struct Transaction
 
 using Transactions = std::vector<Transaction>;
 
+inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
+{
+	_out << "{" << _t.receiveAddress << "/" << _t.nonce << "*" << _t.value << "}";
+	return _out;
+}
+
 }
 
 
