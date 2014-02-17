@@ -224,6 +224,7 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
+	h256 m_committedPreviousHash;						///< Hash of previous block that we are committing to mine.
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;

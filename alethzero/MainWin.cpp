@@ -144,10 +144,11 @@ void Main::refresh()
 		ui->transactionQueue->clear();
 		for (pair<h256, Transaction> const& i: m_client->pending())
 		{
-			ui->transactionQueue->addItem(QString("%1 @ %2 <- %3")
-								  .arg(formatBalance(i.second.value).c_str())
-								  .arg(asHex(i.second.receiveAddress.asArray()).c_str())
-								  .arg(asHex(i.second.sender().asArray()).c_str()) );
+			ui->transactionQueue->addItem(QString("%1 [%4] @ %2 <- %3")
+								.arg(formatBalance(i.second.value).c_str())
+								.arg(asHex(i.second.receiveAddress.asArray()).c_str())
+								.arg(asHex(i.second.sender().asArray()).c_str())
+								.arg((unsigned)i.second.nonce));
 		}
 
 		ui->transactions->clear();
@@ -159,10 +160,11 @@ void Main::refresh()
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
 				Transaction t(i.data());
-				ui->transactions->addItem(QString("%1 @ %2 <- %3")
-								  .arg(formatBalance(t.value).c_str())
-								  .arg(asHex(t.receiveAddress.asArray()).c_str())
-								  .arg(asHex(t.sender().asArray()).c_str()) );
+				ui->transactions->addItem(QString("%1 [%4] @ %2 <- %3")
+								.arg(formatBalance(t.value).c_str())
+								.arg(asHex(t.receiveAddress.asArray()).c_str())
+								.arg(asHex(t.sender().asArray()).c_str())
+								.arg((unsigned)t.nonce));
 			}
 		}
 	}
@@ -302,7 +304,7 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
+		if (m_client->state().balance(i.address()) >= totalReq && i.address() != Address(fromUserHex(ui->destination->text().toStdString())))
 		{
 			m_client->unlock();
 			Secret s = i.secret();
@@ -310,7 +312,15 @@ void Main::on_send_clicked()
 			u256s data;
 			data.reserve(m_data.size());
 			for (QString const& i: m_data)
-				data.push_back(u256(i.toStdString()));
+			{
+				u256 d = 0;
+				try
+				{
+					d = u256(i.toStdString());
+				}
+				catch (...) {}
+				data.push_back(d);
+			}
 			m_client->transact(s, r, value(), data);
 			refresh();
 			return;
