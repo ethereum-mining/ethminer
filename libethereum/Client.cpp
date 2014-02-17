@@ -100,12 +100,12 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 {
 	lock_guard<mutex> l(m_lock);
 	Transaction t;
-	cnote << "New transaction " << t;
 	t.nonce = m_mined.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _amount;
 	t.data = _data;
 	t.sign(_secret);
+	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 	m_changed = true;
 }
@@ -140,8 +140,7 @@ void Client::work()
 			cnote << "Externally mined block: Restarting mining operation.";
 			changed = true;
 			m_miningStarted = true;	// need to re-commit to mine.
-			if (!m_doMine)
-				m_mined = m_s;
+			m_mined = m_s;
 		}
 		if (m_mined.sync(m_tq))
 		{
@@ -156,8 +155,6 @@ void Client::work()
 		if (m_miningStarted)
 		{
 			lock_guard<mutex> l(m_lock);
-			m_mined = m_s;
-			m_mined.sync(m_tq);
 			m_mined.commitToMine(m_bc);
 		}
 
