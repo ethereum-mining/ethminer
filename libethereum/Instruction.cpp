@@ -14,42 +14,45 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file Instruction.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Main test functions.
  */
 
-// TODO: utilise the shared testdata.
+#include "Instruction.h"
 
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int vmTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
-
-#include <BlockInfo.h>
+#include <boost/algorithm/string.hpp>
+using namespace std;
 using namespace eth;
 
-int main(int argc, char** argv)
+u256s eth::assemble(std::string const& _code)
 {
-/*	RLPStream s;
-	BlockInfo::genesis().fillStream(s, false);
-	std::cout << RLP(s.out()) << std::endl;
-	std::cout << asHex(s.out()) << std::endl;
-	std::cout << sha3(s.out()) << std::endl;*/
+	u256s ret;
+	char const* d = _code.data();
+	char const* e = _code.data() + _code.size();
+	while (d != e)
+	{
+		// skip to next token
+		for (; d != e && !isalnum(*d); ++d) {}
+		if (d == e)
+			break;
 
-	hexPrefixTest();
-	rlpTest();
-	trieTest();
-	daggerTest();
-	cryptoTest();
-	vmTest();
-//	stateTest();
-//	peerTest(argc, argv);
-	return 0;
+		char const* s = d;
+		for (; d != e && isalnum(*d); ++d) {}
+
+		string t = string(s, d - s);
+		if (isdigit(t[0]))
+			ret.push_back(u256(t));
+		else
+		{
+			boost::algorithm::to_upper(t);
+			auto it = c_instructions.find(t);
+			if (it != c_instructions.end())
+				ret.push_back((u256)it->second);
+			else
+				cwarn << "Unknown assembler token" << t;
+		}
+
+	}
+	return ret;
 }
-

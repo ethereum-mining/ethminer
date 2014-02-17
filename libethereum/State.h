@@ -57,6 +57,8 @@ struct FeeStructure
 	u256 m_txFee;
 };
 
+template <unsigned T> class UnitTest {};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -64,6 +66,7 @@ struct FeeStructure
  */
 class State
 {
+	template <unsigned T> friend class UnitTest;
 public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
@@ -224,7 +227,7 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
-	h256 m_committedPreviousHash;						///< Hash of previous block that we are committing to mine.
+	h256 m_committedPreviousHash;				///< Hash of previous block that we are committing to mine.
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;
@@ -245,13 +248,16 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
-	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.m_currentBlock.stateRoot))
+	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash()))
 	{
 		auto it = _s.m_cache.find(i.first);
 		if (it == _s.m_cache.end())
 		{
 			RLP r(i.second);
-			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>() << std::endl;
+			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
+			if (r.itemCount() == 3)
+				_out << " &" << r[2].toHash<h256>();
+			_out << std::endl;
 		}
 		else
 			d.insert(i.first);
@@ -260,7 +266,20 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		if (i.second.type() == AddressType::Dead)
 			_out << "[XXX " << i.first << std::endl;
 		else
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
+		{
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
+			if (i.second.type() == AddressType::Contract)
+			{
+				if (i.second.haveMemory())
+				{
+					_out << std::endl;
+					_out << i.second.memory();
+				}
+				else
+					_out << " &" << i.second.oldRoot();
+			}
+			_out << std::endl;
+		}
 	return _out;
 }
 
