@@ -414,6 +414,12 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
+	if (m_previousBlock.hash != m_committedPreviousHash)
+	{
+		m_committedPreviousHash = m_previousBlock.hash;
+		cnote << "Commiting to mine on" << m_previousBlock.hash;
+	}
+
 	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
 		return;
 
@@ -459,12 +465,6 @@ void State::commitToMine(BlockChain const& _bc)
 
 MineInfo State::mine(uint _msTimeout)
 {
-	if (m_previousBlock.hash != m_committedPreviousHash)
-	{
-		m_committedPreviousHash = m_committedPreviousHash;
-		cnote << "Commiting to mine on" << m_previousBlock.hash;
-	}
-
 	// Update timestamp according to clock.
 	m_currentBlock.timestamp = time(0);
 

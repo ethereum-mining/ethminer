@@ -63,7 +63,14 @@ using Transactions = std::vector<Transaction>;
 
 inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 {
-	_out << "{" << _t.receiveAddress << "/" << _t.nonce << "*" << _t.value << "}";
+	_out << "{" << _t.receiveAddress << "/" << _t.nonce << "*" << _t.value;
+	Address s;
+	try
+	{
+		_out << "<-" << _t.sender();
+	}
+	catch (...) {}
+	_out << "}";
 	return _out;
 }
 
