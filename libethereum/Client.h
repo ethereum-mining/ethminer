@@ -106,9 +106,9 @@ public:
 	unsigned peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
 	/// Start the network subsystem.
-	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
+	void startNetwork(ushort _listenPort = 30303, std::string const& _seedHost = std::string(), ushort _port = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
 	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, short _port = 30303);
+	void connect(std::string const& _seedHost, ushort _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Get access to the peer server object. This will be null if the network isn't online.
