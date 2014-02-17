@@ -99,9 +99,9 @@ void version()
 
 int main(int argc, char** argv)
 {
-	ushort listenPort = 30303;
+	unsigned short listenPort = 30303;
 	string remoteHost;
-	ushort remotePort = 30303;
+	unsigned short remotePort = 30303;
 	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;

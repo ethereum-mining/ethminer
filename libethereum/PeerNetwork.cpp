@@ -80,7 +80,7 @@ bool eth::isPrivateAddress(bi::address _addressToCheck)
 	return false;
 }
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, ushort _peerPort):
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
@@ -137,7 +137,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
-		m_listenPort = _r[5].toInt<ushort>();
+		m_listenPort = _r[5].toInt<unsigned short>();
 		m_id = _r[6].toHash<h512>();
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
@@ -635,7 +635,7 @@ void PeerSession::doRead()
 	});
 }
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, ushort _port, NodeMode _m, string const& _publicAddress, bool _upnp):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, unsigned short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -831,7 +831,7 @@ void PeerServer::ensureAccepting()
 	}
 }
 
-void PeerServer::connect(std::string const& _addr, ushort _port) noexcept
+void PeerServer::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	try
 	{
