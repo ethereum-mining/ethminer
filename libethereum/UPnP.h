@@ -45,8 +45,8 @@ public:
 
 	std::set<int> m_reg;
 	bool m_ok;
-	struct UPNPUrls* m_urls;
-	struct IGDdatas* m_data;
+	std::unique_ptr<struct UPNPUrls> m_urls;
+	std::unique_ptr<struct IGDdatas> m_data;
 };
 
 }

@@ -25,13 +25,13 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
-	m_client = new Client("AlethZero");
+	m_client.reset(new Client("AlethZero"));
 
 	readSettings();
 	refresh();
 
-	m_refresh = new QTimer(this);
-	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
+	m_refresh.reset(new QTimer(this));
+	connect(m_refresh.get(), SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(1000);
 
 #if ETH_DEBUG
@@ -59,7 +59,6 @@ Main::~Main()
 {
 	g_logPost = simpleDebugOut;
 	writeSettings();
-	delete ui;
 }
 
 void Main::on_about_triggered()
