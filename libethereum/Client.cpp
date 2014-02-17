@@ -137,6 +137,7 @@ void Client::work()
 		lock_guard<mutex> l(m_lock);
 		if (m_s.sync(m_bc))
 		{
+			cnote << "Externally mined block: Restarting mining operation.";
 			changed = true;
 			m_miningStarted = true;	// need to re-commit to mine.
 			if (!m_doMine)
@@ -144,6 +145,7 @@ void Client::work()
 		}
 		if (m_mined.sync(m_tq))
 		{
+			cnote << "Additional transaction ready: Restarting mining operation.";
 			changed = true;
 			m_miningStarted = true;
 		}
