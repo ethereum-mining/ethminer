@@ -32,6 +32,10 @@
 #include <chrono>
 #include <array>
 #include <map>
+#include <unordered_map>
+#include <set>
+#include <array>
+#include <list>
 #include <set>
 #include <string>
 #include <cassert>
@@ -450,5 +454,181 @@ private:
 	Public m_public;
 	Address m_address;
 };
+
+
+static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Vether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Dether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Nether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Yether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Zether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Eether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000000;
+static const u256 Pether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000;
+static const u256 Tether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000;
+static const u256 Gether = (u256(1000000000) * 1000000000) * 1000000000;
+static const u256 Mether = (u256(1000000000) * 1000000000) * 1000000;
+static const u256 Kether = (u256(1000000000) * 1000000000) * 1000;
+static const u256 ether = u256(1000000000) * 1000000000;
+static const u256 finney = u256(1000000000) * 1000000;
+static const u256 szabo = u256(1000000000) * 1000;
+static const u256 Gwei = u256(1000000000);
+static const u256 Mwei = u256(1000000);
+static const u256 Kwei = u256(1000);
+static const u256 wei = u256(1);
+
+
+// Stream IO
+
+
+
+template <class S, class T> struct StreamOut { static S& bypass(S& _out, T const& _t) { _out << _t; return _out; } };
+template <class S> struct StreamOut<S, uint8_t> { static S& bypass(S& _out, uint8_t const& _t) { _out << (int)_t; return _out; } };
+
+template <class S, class T>
+inline S& streamout(S& _out, std::vector<T> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		for (auto i = ++_e.begin(); i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::vector<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, unsigned Z>
+inline S& streamout(S& _out, std::array<T, Z> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		auto i = _e.begin();
+		for (++i; i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+template <class T, unsigned Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, unsigned long Z>
+inline S& streamout(S& _out, std::array<T, Z> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		StreamOut<S, T>::bypass(_out, _e.front());
+		auto i = _e.begin();
+		for (++i; i != _e.end(); ++i)
+			StreamOut<S, T>::bypass(_out << ",", *i);
+	}
+	_out << "]";
+	return _out;
+}
+template <class T, unsigned long Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+inline S& streamout(S& _out, std::list<T> const& _e)
+{
+	_out << "[";
+	if (!_e.empty())
+	{
+		_out << _e.front();
+		for (auto i = ++_e.begin(); i != _e.end(); ++i)
+			_out << "," << *i;
+	}
+	_out << "]";
+	return _out;
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::list<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+inline S& streamout(S& _out, std::pair<T, U> const& _e)
+{
+	_out << "(" << _e.first << "," << _e.second << ")";
+	return _out;
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::pair<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T1, class T2, class T3>
+inline S& streamout(S& _out, std::tuple<T1, T2, T3> const& _t)
+{
+	_out << "(" << std::get<0>(_t) << "," << std::get<1>(_t) << "," << std::get<2>(_t) << ")";
+	return _out;
+}
+template <class T1, class T2, class T3> inline std::ostream& operator<<(std::ostream& _out, std::tuple<T1, T2, T3> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::map<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : "; ") << p.first << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::map<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::unordered_map<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : "; ") << p.first << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::unordered_map<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+S& streamout(S& _out, std::set<T> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : ", ") << p;
+	return _out << " }";
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::set<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T>
+S& streamout(S& _out, std::multiset<T> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	int i = 0;
+	for (auto p: _v)
+		_out << (!(i++) ? "{ " : ", ") << p;
+	return _out << " }";
+}
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::multiset<T> const& _e) { streamout(_out, _e); return _out; }
+
+template <class S, class T, class U>
+S& streamout(S& _out, std::multimap<T, U> const& _v)
+{
+	if (_v.empty())
+		return _out << "{}";
+	T l;
+	int i = 0;
+	for (auto p: _v)
+		if (!(i++))
+			_out << "{ " << (l = p.first) << " => " << p.second;
+		else if (l == p.first)
+			_out << ", " << p.second;
+		else
+			_out << "; " << (l = p.first) << " => " << p.second;
+	return _out << " }";
+}
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e) { streamout(_out, _e); return _out; }
+
+template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p) { if (_p) _out << "@" << (*_p); else _out << "nullptr"; return _out; }
 
 }

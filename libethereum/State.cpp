@@ -62,10 +62,10 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromUserHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0);
-		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0);
-		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0);
-		s_ret[Address(fromUserHex("80c01a26338f0d905e295fccb71fa9ea849ffa12"))] = AddressState(u256(1) << 200, 0);
+		s_ret[Address(fromUserHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromUserHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
 	}
 	return s_ret;
 }
@@ -172,7 +172,7 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 		// Populate memory.
 		assert(it->second.type() == AddressType::Contract);
 		TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-		map<u256, u256>& mem = it->second.takeMemory();
+		map<u256, u256>& mem = it->second.setHaveMemory();
 		for (auto const& i: memdb)
 			if (mem.find(i.first) == mem.end())
 				mem.insert(make_pair(i.first, RLP(i.second).toInt<u256>()));
@@ -599,7 +599,7 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleAddresses)
 	{
-		addBalance(i, m_blockReward * 4 / 3);
+		addBalance(i, m_blockReward * 3 / 4);
 		r += m_blockReward / 8;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
@@ -614,8 +614,13 @@ void State::executeBare(Transaction const& _t, Address _sender)
 	if (_t.nonce != nonceReq)
 		throw InvalidNonce(nonceReq, _t.nonce);
 
+	unsigned nonZeroData = 0;
+	for (auto i: _t.data)
+		if (i)
+			nonZeroData++;
+	u256 fee = _t.receiveAddress ? m_fees.m_txFee : (nonZeroData * m_fees.m_memoryFee + m_fees.m_newContractFee);
+
 	// Not considered invalid - just pointless.
-	u256 fee = _t.receiveAddress ? m_fees.m_txFee : (_t.data.size() * m_fees.m_memoryFee + m_fees.m_newContractFee);
 	if (balance(_sender) < _t.value + fee)
 		throw NotEnoughCash();
 
@@ -642,20 +647,20 @@ void State::executeBare(Transaction const& _t, Address _sender)
 #endif
 			throw NotEnoughCash();
 
-		Address newAddress = low160(_t.sha3());
+		Address newAddress = right160(_t.sha3());
 
 		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
 			throw ContractAddressCollision();
 
 		// All OK - set it up.
-		m_cache[newAddress] = AddressState(0, 0, sha3(RLPNull));
-		auto& mem = m_cache[newAddress].takeMemory();
+		m_cache[newAddress] = AddressState(0, 0, AddressType::Contract);
+		auto& mem = m_cache[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
 			if (mem.find(i) == mem.end())
 				mem.insert(make_pair(i, _t.data[i]));
 			else
 				mem.at(i) = _t.data[i];
-        
+
 #if ETH_SENDER_PAYS_SETUP
 		subBalance(_sender, _t.value + fee);
 		addBalance(newAddress, _t.value);
@@ -671,7 +676,7 @@ void State::executeBare(Transaction const& _t, Address _sender)
 // TODO: CHECK: check that this is correct.
 inline Address asAddress(u256 _item)
 {
-	return left160(h256(_item));
+	return right160(h256(_item));
 }
 
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* _totalFee)
@@ -685,7 +690,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			throw StackTooSmall(_n, stack.size());
 	};
 	ensureCached(_myAddress, true, true);
-	auto& myMemory = m_cache[_myAddress].takeMemory();
+	auto& myMemory = m_cache[_myAddress].memory();
 
 	auto mem = [&](u256 _n) -> u256
 	{

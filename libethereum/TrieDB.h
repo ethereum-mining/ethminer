@@ -76,10 +76,10 @@ public:
 	ldb::DB* db() const { return m_db.get(); }
 	void setDB(ldb::DB* _db, bool _clearOverlay = true) { m_db = std::shared_ptr<ldb::DB>(_db); if (_clearOverlay) m_over.clear(); }
 
-	void commit() { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); m_refCount.clear(); }
+	void commit() { if (m_db) { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); m_refCount.clear(); } }
 	void rollback() { m_over.clear(); m_refCount.clear(); }
 
-	std::string lookup(h256 _h) const { std::string ret = BasicMap::lookup(_h); if (ret.empty()) m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret); return ret; }
+	std::string lookup(h256 _h) const { std::string ret = BasicMap::lookup(_h); if (ret.empty() && m_db) m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret); return ret; }
 
 private:
 	using BasicMap::clear;

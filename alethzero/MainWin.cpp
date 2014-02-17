@@ -3,6 +3,7 @@
 #include <QtCore>
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
+#include <libethereum/Instruction.h>
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
@@ -41,7 +42,7 @@ Main::Main(QWidget *parent) :
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc2.txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc3.txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -209,7 +210,7 @@ void Main::on_destination_textChanged()
 
 void Main::on_data_textChanged()
 {
-	m_data = ui->data->toPlainText().split(QRegExp("[^0-9a-fA-Fx]+"), QString::SkipEmptyParts);
+	m_data = ui->data->toPlainText().split(QRegExp("[^0-9a-zA-Z]+"), QString::SkipEmptyParts);
 	updateFee();
 }
 
@@ -309,19 +310,7 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			Address r = Address(fromUserHex(ui->destination->text().toStdString()));
-			u256s data;
-			data.reserve(m_data.size());
-			for (QString const& i: m_data)
-			{
-				u256 d = 0;
-				try
-				{
-					d = u256(i.toStdString());
-				}
-				catch (...) {}
-				data.push_back(d);
-			}
-			m_client->transact(s, r, value(), data);
+			m_client->transact(s, r, value(), assemble(ui->data->toPlainText().toStdString()));
 			refresh();
 			return;
 		}
