@@ -147,20 +147,33 @@ void Main::refresh()
 
 		auto acs = m_client->state().addresses();
 		ui->accounts->clear();
+		ui->contracts->clear();
 		for (auto i: acs)
 		{
 			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+			if (m_client->state().isContractAddress(i.first))
+				(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
+					->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 		}
 
 		ui->transactionQueue->clear();
 		for (pair<h256, Transaction> const& i: m_client->pending())
 		{
-			ui->transactionQueue->addItem(QString("%1 [%4] @ %2 <- %3")
-								.arg(formatBalance(i.second.value).c_str())
-								.arg(i.second.receiveAddress.abridged().c_str())
-								.arg(i.second.safeSender().abridged().c_str())
-								.arg((unsigned)i.second.nonce));
+			Transaction t = i.second;
+			QString s = t.receiveAddress ?
+				QString("%1 [%4] %2 %5> %3")
+					.arg(formatBalance(t.value).c_str())
+					.arg(t.safeSender().abridged().c_str())
+					.arg(t.receiveAddress.abridged().c_str())
+					.arg((unsigned)t.nonce)
+					.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
+				QString("%1 [%4] %2 +> %3")
+					.arg(formatBalance(t.value).c_str())
+					.arg(t.safeSender().abridged().c_str())
+					.arg(right160(t.sha3()).abridged().c_str())
+					.arg((unsigned)t.nonce);
+			ui->transactionQueue->addItem(s);
 		}
 
 		ui->blocks->clear();
@@ -174,11 +187,19 @@ void Main::refresh()
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
 				Transaction t(i.data());
-				QListWidgetItem* txItem = new QListWidgetItem(QString("%1 [%4] @ %2 <- %3")
-													 .arg(formatBalance(t.value).c_str())
-													 .arg(t.receiveAddress.abridged().c_str())
-													 .arg(t.safeSender().abridged().c_str())
-													 .arg((unsigned)t.nonce), ui->blocks);
+				QString s = t.receiveAddress ?
+					QString("    %1 [%4] %2 %5> %3")
+						.arg(formatBalance(t.value).c_str())
+						.arg(t.safeSender().abridged().c_str())
+						.arg(t.receiveAddress.abridged().c_str())
+						.arg((unsigned)t.nonce)
+						.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
+					QString("    %1 [%4] %2 +> %3")
+						.arg(formatBalance(t.value).c_str())
+						.arg(t.safeSender().abridged().c_str())
+						.arg(right160(t.sha3()).abridged().c_str())
+						.arg((unsigned)t.nonce);
+				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
 				txItem->setData(Qt::UserRole + 1, n);
 				n++;
@@ -260,6 +281,54 @@ void Main::on_blocks_currentItemChanged()
 
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
+	}
+	m_client->unlock();
+}
+
+void Main::on_contracts_currentItemChanged()
+{
+	ui->contractInfo->clear();
+	m_client->lock();
+	if (auto item = ui->contracts->currentItem())
+	{
+		auto hba = item->data(Qt::UserRole).toByteArray();
+		assert(hba.size() == 20);
+		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
+
+		stringstream s;
+		auto mem = m_client->state().contractMemory(h);
+		u256 next = 0;
+		unsigned numerics = 0;
+		for (auto i: mem)
+		{
+			if (next < i.first)
+			{
+				unsigned j;
+				for (j = 0; j <= numerics && next + j < i.first; ++j)
+					s << (j < numerics ? " 0" : " STOP");
+				numerics -= (j - 1);
+				s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
+			}
+			else if (!next)
+			{
+				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
+			}
+			auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
+			if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
+			{
+				if (numerics)
+					numerics--;
+				s << " 0x" << hex << i.second;
+			}
+			else
+			{
+				auto const& ii = iit->second;
+				s << " " << ii.name;
+				numerics = ii.additional;
+			}
+			next = i.first + 1;
+		}
+		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
 	m_client->unlock();
 }
