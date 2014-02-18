@@ -142,7 +142,7 @@ void Main::refresh()
 		ui->accounts->clear();
 		for (auto i: acs)
 		{
-			(new QListWidgetItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()), ui->accounts))
+			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 		}
 
@@ -161,7 +161,7 @@ void Main::refresh()
 		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
 		{
 			auto d = bc.details(h);
-			QListWidgetItem* blockItem = new QListWidgetItem(QString("# %1 ==== %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
+			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
 			blockItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
 			int n = 0;
 			for (auto const& i: RLP(bc.block(h))[1])
@@ -187,7 +187,7 @@ void Main::refresh()
 		for (auto i: m_myKeys)
 		{
 			u256 b = m_client->state().balance(i.address());
-			(new QListWidgetItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()), ui->ourAccounts))
+			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 		}
