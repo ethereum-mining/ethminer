@@ -36,9 +36,8 @@
 #endif
 #include "Exceptions.h"
 using namespace std;
-
-namespace eth
-{
+using namespace eth;
+using eth::byte;
 
 //#define ETH_ADDRESS_DEBUG 1
 
@@ -282,6 +281,4 @@ std::string eth::formatBalance(u256 _b)
 		}
 	ret << _b << " wei";
 	return ret.str();
-}
-
 }
