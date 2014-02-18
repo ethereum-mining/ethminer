@@ -60,7 +60,7 @@ Client::~Client()
 		this_thread::sleep_for(chrono::milliseconds(10));
 }
 
-void Client::startNetwork(ushort _listenPort, std::string const& _seedHost, ushort _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
+void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
 	if (m_net)
 		return;
@@ -70,7 +70,7 @@ void Client::startNetwork(ushort _listenPort, std::string const& _seedHost, usho
 		connect(_seedHost, _port);
 }
 
-void Client::connect(std::string const& _seedHost, ushort _port)
+void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
 	if (!m_net)
 		return;

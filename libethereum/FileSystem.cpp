@@ -39,7 +39,9 @@ std::string eth::getDataDir()
 		return (boost::filesystem::path(path) / "Ethereum").string();
 	else
 	{
+	#ifndef _MSC_VER // todo?
 		cwarn << "getDataDir(): SHGetSpecialFolderPathA() failed.";
+	#endif
 		throw std::runtime_error("getDataDir() - SHGetSpecialFolderPathA() failed.");
 	}
 #else

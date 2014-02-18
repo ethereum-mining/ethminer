@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\leveldb\db\builder.h" />
+    <ClInclude Include="..\..\leveldb\db\dbformat.h" />
+    <ClInclude Include="..\..\leveldb\db\db_impl.h" />
+    <ClInclude Include="..\..\leveldb\db\db_iter.h" />
+    <ClInclude Include="..\..\leveldb\db\filename.h" />
+    <ClInclude Include="..\..\leveldb\db\log_format.h" />
+    <ClInclude Include="..\..\leveldb\db\log_reader.h" />
+    <ClInclude Include="..\..\leveldb\db\log_writer.h" />
+    <ClInclude Include="..\..\leveldb\db\memtable.h" />
+    <ClInclude Include="..\..\leveldb\db\skiplist.h" />
+    <ClInclude Include="..\..\leveldb\db\snapshot.h" />
+    <ClInclude Include="..\..\leveldb\db\table_cache.h" />
+    <ClInclude Include="..\..\leveldb\db\version_edit.h" />
+    <ClInclude Include="..\..\leveldb\db\version_set.h" />
+    <ClInclude Include="..\..\leveldb\db\write_batch_internal.h" />
+    <ClInclude Include="..\..\leveldb\port\atomic_pointer.h" />
+    <ClInclude Include="..\..\leveldb\port\port.h" />
+    <ClInclude Include="..\..\leveldb\port\port_win.h" />
+    <ClInclude Include="..\..\leveldb\table\block.h" />
+    <ClInclude Include="..\..\leveldb\table\block_builder.h" />
+    <ClInclude Include="..\..\leveldb\table\format.h" />
+    <ClInclude Include="..\..\leveldb\table\iterator_wrapper.h" />
+    <ClInclude Include="..\..\leveldb\table\merger.h" />
+    <ClInclude Include="..\..\leveldb\table\two_level_iterator.h" />
+    <ClInclude Include="..\..\leveldb\util\arena.h" />
+    <ClInclude Include="..\..\leveldb\util\coding.h" />
+    <ClInclude Include="..\..\leveldb\util\crc32c.h" />
+    <ClInclude Include="..\..\leveldb\util\hash.h" />
+    <ClInclude Include="..\..\leveldb\util\histogram.h" />
+    <ClInclude Include="..\..\leveldb\util\logging.h" />
+    <ClInclude Include="..\..\leveldb\util\mutexlock.h" />
+    <ClInclude Include="..\..\leveldb\util\posix_logger.h" />
+    <ClInclude Include="..\..\leveldb\util\random.h" />
+    <ClInclude Include="..\..\leveldb\util\testharness.h" />
+    <ClInclude Include="..\..\leveldb\util\testutil.h" />
+    <ClInclude Include="..\..\leveldb\util\win_logger.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\leveldb\db\builder.cc" />
+    <ClCompile Include="..\..\leveldb\db\c.cc" />
+    <ClCompile Include="..\..\leveldb\db\dbformat.cc" />
+    <ClCompile Include="..\..\leveldb\db\db_bench.cc" />
+    <ClCompile Include="..\..\leveldb\db\db_impl.cc" />
+    <ClCompile Include="..\..\leveldb\db\db_iter.cc" />
+    <ClCompile Include="..\..\leveldb\db\filename.cc" />
+    <ClCompile Include="..\..\leveldb\db\log_reader.cc" />
+    <ClCompile Include="..\..\leveldb\db\log_writer.cc" />
+    <ClCompile Include="..\..\leveldb\db\memtable.cc" />
+    <ClCompile Include="..\..\leveldb\db\repair.cc" />
+    <ClCompile Include="..\..\leveldb\db\table_cache.cc" />
+    <ClCompile Include="..\..\leveldb\db\version_edit.cc" />
+    <ClCompile Include="..\..\leveldb\db\version_set.cc" />
+    <ClCompile Include="..\..\leveldb\db\write_batch.cc" />
+    <ClCompile Include="..\..\leveldb\port\port_win.cc" />
+    <ClCompile Include="..\..\leveldb\table\block.cc" />
+    <ClCompile Include="..\..\leveldb\table\block_builder.cc" />
+    <ClCompile Include="..\..\leveldb\table\format.cc" />
+    <ClCompile Include="..\..\leveldb\table\iterator.cc" />
+    <ClCompile Include="..\..\leveldb\table\merger.cc" />
+    <ClCompile Include="..\..\leveldb\table\table.cc" />
+    <ClCompile Include="..\..\leveldb\table\table_builder.cc" />
+    <ClCompile Include="..\..\leveldb\table\two_level_iterator.cc" />
+    <ClCompile Include="..\..\leveldb\util\arena.cc" />
+    <ClCompile Include="..\..\leveldb\util\cache.cc" />
+    <ClCompile Include="..\..\leveldb\util\coding.cc" />
+    <ClCompile Include="..\..\leveldb\util\comparator.cc" />
+    <ClCompile Include="..\..\leveldb\util\crc32c.cc" />
+    <ClCompile Include="..\..\leveldb\util\env.cc" />
+    <ClCompile Include="..\..\leveldb\util\env_boost.cc" />
+    <ClCompile Include="..\..\leveldb\util\hash.cc" />
+    <ClCompile Include="..\..\leveldb\util\histogram.cc" />
+    <ClCompile Include="..\..\leveldb\util\logging.cc" />
+    <ClCompile Include="..\..\leveldb\util\options.cc" />
+    <ClCompile Include="..\..\leveldb\util\status.cc" />
+    <ClCompile Include="..\..\leveldb\util\testharness.cc" />
+    <ClCompile Include="..\..\leveldb\util\testutil.cc" />
+    <ClCompile Include="..\..\leveldb\util\win_logger.cc" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{27014763-955D-486B-9BA7-69872192E6F4}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>LibLevelDB</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="LibEthereum.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="LibEthereum.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="LibEthereum.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="LibEthereum.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);../../leveldb</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4018;4244;4267;4389;4702;4722;4800;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);../../leveldb</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4018;4244;4267;4389;4702;4722;4800;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);../../leveldb</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4018;4244;4267;4389;4702;4722;4800;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);../../leveldb</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4018;4244;4267;4389;4702;4722;4800;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
