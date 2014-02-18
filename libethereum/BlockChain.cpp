@@ -33,6 +33,8 @@
 using namespace std;
 using namespace eth;
 
+#define ETH_CATCH 1
+
 namespace eth
 {
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
