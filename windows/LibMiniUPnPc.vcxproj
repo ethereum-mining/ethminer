@@ -19,65 +19,64 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AddressState.h" />
-    <ClInclude Include="BlockChain.h" />
-    <ClInclude Include="BlockInfo.h" />
-    <ClInclude Include="Common.h" />
-    <ClInclude Include="Dagger.h" />
-    <ClInclude Include="Exceptions.h" />
-    <ClInclude Include="Instruction.h" />
-    <ClInclude Include="PeerNetwork.h" />
-    <ClInclude Include="RLP.h" />
-    <ClInclude Include="State.h" />
-    <ClInclude Include="Transaction.h" />
-    <ClInclude Include="TransactionQueue.h" />
-    <ClInclude Include="Trie.h" />
-    <ClInclude Include="vector_ref.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\bsdqueue.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\codelength.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\connecthostport.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\declspec.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\igd_desc_parse.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\minisoap.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\minissdpc.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\miniupnpc.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\miniupnpctypes.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\miniwget.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\minixml.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\portlistingparse.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\receivedata.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\upnpcommands.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\upnperrors.h" />
+    <ClInclude Include="..\..\miniupnp\miniupnpc\upnpreplyparse.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AddressState.cpp" />
-    <ClCompile Include="BlockChain.cpp" />
-    <ClCompile Include="BlockInfo.cpp" />
-    <ClCompile Include="Common.cpp" />
-    <ClCompile Include="Dagger.cpp" />
-    <ClCompile Include="PeerNetwork.cpp" />
-    <ClCompile Include="RLP.cpp" />
-    <ClCompile Include="State.cpp" />
-    <ClCompile Include="Transaction.cpp" />
-    <ClCompile Include="TransactionQueue.cpp" />
-    <ClCompile Include="Trie.cpp" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\connecthostport.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\igd_desc_parse.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\minisoap.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\miniupnpc.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\miniwget.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\minixml.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\portlistingparse.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\receivedata.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\upnpcommands.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\upnperrors.c" />
+    <ClCompile Include="..\..\miniupnp\miniupnpc\upnpreplyparse.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{7050C7CF-7551-48BE-8E57-92235906C13A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>LibEthereum</RootNamespace>
+    <RootNamespace>LibMiniUPnPc</RootNamespace>
+    <ProjectGuid>{1B1CA20E-39C3-4D9B-AC37-3783048E6672}</ProjectGuid>
+    <ProjectName>LibMiniUPnPc</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -99,52 +98,54 @@
     <Import Project="LibEthereum.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</IntDir>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>..\build\$(ProjectName)\$(Platform)_$(Configuration)\</IntDir>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4244;4245;4267;4389;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>Iphlpapi.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4244;4245;4267;4389;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>Iphlpapi.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TreatWarningAsError>true</TreatWarningAsError>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4244;4245;4267;4389;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -152,15 +153,20 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <AdditionalDependencies>Iphlpapi.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TreatWarningAsError>true</TreatWarningAsError>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4244;4245;4267;4389;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -168,6 +174,9 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <Lib>
+      <AdditionalDependencies>Iphlpapi.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

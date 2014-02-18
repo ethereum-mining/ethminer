@@ -131,7 +131,7 @@ public:
 		iterator(GenericTrieDB const* _db)
 		{
 			m_that = _db;
-			m_trail.push_back(Node{_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
+			m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
 			next();
 		}
 
@@ -242,10 +242,13 @@ public:
 						else
 						{
 							// lead-on to another node - enter child.
-							m_trail.push_back(m_trail.back());
-							m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), NibbleSlice(bytesConstRef(&m_trail.back().child, 1), 1), false);
-							m_trail.back().rlp = m_that->deref(rlp[m_trail.back().child]);
-							m_trail.back().child = 255;
+							// fixed so that Node passed into push_back is constructed *before* m_trail is potentially resized (which invalidates back and rlp)
+							Node const& back = m_trail.back();
+							m_trail.push_back(Node{
+								m_that->deref(rlp[back.child]),
+								 hexPrefixEncode(keyOf(back.key), NibbleSlice(bytesConstRef(&back.child, 1), 1), false),
+								 255
+								});
 							break;
 						}
 					}
@@ -727,10 +730,10 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 	assert(_s && _s <= k.size());
 
 	RLPStream bottom(2);
-	bottom << hexPrefixEncode(k, isLeaf(_orig), _s) << _orig[1];
+	bottom << hexPrefixEncode(k, isLeaf(_orig), /*ugh*/(int)_s) << _orig[1];
 
 	RLPStream top(2);
-	top << hexPrefixEncode(k, false, 0, _s);
+	top << hexPrefixEncode(k, false, 0, /*ugh*/(int)_s);
 	streamNode(top, bottom.out());
 
 	return top.out();

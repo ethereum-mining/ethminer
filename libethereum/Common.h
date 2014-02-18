@@ -28,6 +28,11 @@
 #pragma warning(disable:4244)
 #endif
 
+#ifdef _MSC_VER
+#define _ALLOW_KEYWORD_MACROS
+#define noexcept throw()
+#endif
+
 #include <ctime>
 #include <chrono>
 #include <array>
@@ -183,12 +188,12 @@ struct ThreadLocalLogName
 extern ThreadLocalLogName t_logThreadName;
 inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
 
-struct LogChannel { static const char constexpr* name = "   "; static const int verbosity = 1; };
-struct LeftChannel: public LogChannel { static const char constexpr* name = "<<<"; };
-struct RightChannel: public LogChannel { static const char constexpr* name = ">>>"; };
-struct WarnChannel: public LogChannel { static const char constexpr* name = "!!!"; static const int verbosity = 0; };
-struct NoteChannel: public LogChannel { static const char constexpr* name = "***"; };
-struct DebugChannel: public LogChannel { static const char constexpr*  name = "---"; static const int verbosity = 7; };
+struct LogChannel { static const char* name() { return "   "; } static const int verbosity = 1; };
+struct LeftChannel: public LogChannel  { static const char* name() { return "<<<"; } };
+struct RightChannel: public LogChannel { static const char* name() { return ">>>"; } };
+struct WarnChannel: public LogChannel  { static const char* name() { return "!!!"; } static const int verbosity = 0; };
+struct NoteChannel: public LogChannel  { static const char* name() { return "***"; } };
+struct DebugChannel: public LogChannel { static const char* name() { return "---"; } static const int verbosity = 0; };
 
 extern int g_logVerbosity;
 extern std::function<void(std::string const&, char const*)> g_logPost;
@@ -212,7 +217,7 @@ public:
 			sstr << Id::name << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
 		}
 	}
-	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name); }
+	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name()); }
 	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && sstr.str().size() && sstr.str().back() != ' ') sstr << " "; sstr << _t; } return *this; }
 	std::stringstream sstr;
 };

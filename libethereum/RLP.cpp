@@ -102,9 +102,9 @@ bool RLP::isInt() const
 	else if (n == c_rlpDataImmLenStart)
 		return true;
 	else if (n <= c_rlpDataIndLenZero)
-		return m_data[1];
+		return m_data[1] != 0;
 	else if (n < c_rlpListStart)
-		return m_data[1 + n - c_rlpDataIndLenZero];
+		return m_data[1 + n - c_rlpDataIndLenZero] != 0;
 	else
 		return false;
 	return false;
@@ -176,10 +176,10 @@ void RLPStream::noteAppended(uint _itemCount)
 			m_out.resize(os + encodeSize);
 			memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
 			if (s < c_rlpListImmLenCount)
-				m_out[p] = c_rlpListStart + s;
+				m_out[p] = (byte)(c_rlpListStart + s);
 			else
 			{
-				m_out[p] = c_rlpListIndLenZero + brs;
+				m_out[p] = (byte)(c_rlpListIndLenZero + brs);
 				byte* b = &(m_out[p + brs]);
 				for (; s; s >>= 8)
 					*(b--) = (byte)s;
@@ -189,7 +189,7 @@ void RLPStream::noteAppended(uint _itemCount)
 	}
 }
 
-RLPStream& RLPStream::appendList(unsigned _items)
+RLPStream& RLPStream::appendList(uint _items)
 {
 //	cdebug << "appendList(" << _items << ")";
 	if (_items)
