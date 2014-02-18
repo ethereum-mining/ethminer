@@ -116,20 +116,41 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
+bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
+{
+#if ETH_CATCH
+	try
+#endif
+	{
+		import(_block, _stateDB);
+		return true;
+	}
+#if ETH_CATCH
+	catch (...)
+	{
+		return false;
+	}
+#endif
+}
+
+
 void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi(&_block);
+#if ETH_CATCH
 	try
+#endif
 	{
 		bi.verifyInternals(&_block);
 	}
+#if ETH_CATCH
 	catch (Exception const& _e)
 	{
 		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
 		throw;
 	}
-
+#endif
 	auto newHash = eth::sha3(_block);
 
 	// Check block doesn't already exist first!
@@ -151,7 +172,9 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
 
 	u256 td;
+#if ETH_CATCH
 	try
+#endif
 	{
 		// Check family:
 		BlockInfo biParent(block(bi.parentHash));
@@ -168,7 +191,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 		auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
 		td = pd.totalDifficulty + tdIncrease;
 
-#if PARANOIA
+#if ETH_PARANOIA
 		checkConsistency();
 #endif
 		// All ok - insert into DB
@@ -182,15 +205,17 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 		m_detailsDB->Put(m_writeOptions, ldb::Slice((char const*)&bi.parentHash, 32), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
 		m_db->Put(m_writeOptions, ldb::Slice((char const*)&newHash, 32), (ldb::Slice)ref(_block));
 
-#if PARANOIA
+#if ETH_PARANOIA
 		checkConsistency();
 #endif
 	}
-	catch (...)
+#if ETH_CATCH
+	catch (Exception const& _e)
 	{
-		clog(BlockChainNote) << "   Malformed block.";
+		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
 		throw;
 	}
+#endif
 
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 

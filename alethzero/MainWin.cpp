@@ -65,7 +65,7 @@ Main::~Main()
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About AlethZero PoC-2", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
+	QMessageBox::about(this, "About AlethZero PoC-3", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
 }
 
 void Main::writeSettings()
@@ -305,11 +305,11 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq && i.address() != Address(fromUserHex(ui->destination->text().toStdString())))
+		if (m_client->state().balance(i.address()) >= totalReq/* && i.address() != Address(fromUserHex(ui->destination->text().toStdString()))*/)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			Address r = Address(fromUserHex(ui->destination->text().toStdString()));
+			Address r = ui->destination->text().size() ? Address(fromUserHex(ui->destination->text().toStdString())) : Address();
 			m_client->transact(s, r, value(), assemble(ui->data->toPlainText().toStdString()));
 			refresh();
 			return;

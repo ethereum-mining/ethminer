@@ -74,7 +74,7 @@ public:
 	void process();
 	
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block, Overlay const& _stateDB) { try { import(_block, _stateDB); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _block, Overlay const& _stateDB);
 
 	/// Import block into disk-backed DB
 	void import(bytes const& _block, Overlay const& _stateDB);
