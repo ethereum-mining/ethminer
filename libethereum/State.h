@@ -60,6 +60,8 @@ struct FeeStructure
 
 template <unsigned T> class UnitTest {};
 
+static const std::map<u256, u256> EmptyMapU256U256;
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -153,6 +155,10 @@ public:
 	/// Get the value of a memory position of a contract.
 	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
+
+	/// Get the memory of a contract.
+	/// @returns std::map<u256, u256> if no contract exists at that address.
+	std::map<u256, u256> const& contractMemory(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);

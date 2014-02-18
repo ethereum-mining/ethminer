@@ -605,6 +605,14 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	return RLP(memdb.at(_memory)).toInt<u256>();	// TODO: CHECK: check if this is actually an RLP decode
 }
 
+map<u256, u256> const& State::contractMemory(Address _contract) const
+{
+	if (!isContractAddress(_contract))
+		return EmptyMapU256U256;
+	ensureCached(_contract, true, true);
+	return m_cache[_contract].memory();
+}
+
 void State::execute(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
