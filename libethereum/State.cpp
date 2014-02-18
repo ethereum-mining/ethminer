@@ -45,7 +45,6 @@
 #include "Defaults.h"
 using namespace std;
 using namespace eth;
-using eth::byte;
 
 u256 const c_stepFee = 1;
 u256 const c_dataFee = 20;

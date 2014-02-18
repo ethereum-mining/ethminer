@@ -51,11 +51,13 @@
 #include <boost/thread.hpp>
 #include "vector_ref.h"
 
+// CryptoPP defines byte in the global namespace, so so must we.
+using byte = uint8_t;
+
 namespace eth
 {
 
 // Binary data types.
-using byte = uint8_t;
 using bytes = std::vector<byte>;
 using bytesRef = vector_ref<byte>;
 using bytesConstRef = vector_ref<byte const>;
