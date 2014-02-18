@@ -20,6 +20,9 @@
     <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
     <ClCompile Include="..\libethereum\Instruction.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libethereum\BlockInfo.h" />
@@ -43,5 +46,13 @@
     <ClInclude Include="..\libethereum\vector_ref.h" />
     <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
+    <ClInclude Include="stdafx.h">
+      <Filter>Windows</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Windows">
+      <UniqueIdentifier>{2d571d8f-bacf-4c49-a0d0-c9036f5c0cc9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
