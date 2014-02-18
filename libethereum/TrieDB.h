@@ -242,10 +242,13 @@ public:
 						else
 						{
 							// lead-on to another node - enter child.
-							m_trail.push_back(m_trail.back());
-							m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), NibbleSlice(bytesConstRef(&m_trail.back().child, 1), 1), false);
-							m_trail.back().rlp = m_that->deref(rlp[m_trail.back().child]);
-							m_trail.back().child = 255;
+							// fixed so that Node passed into push_back is constructed *before* m_trail is potentially resized (which invalidates back and rlp)
+							Node const& back = m_trail.back();
+							m_trail.push_back(Node{
+								m_that->deref(rlp[back.child]),
+								 hexPrefixEncode(keyOf(back.key), NibbleSlice(bytesConstRef(&back.child, 1), 1), false),
+								 255
+								});
 							break;
 						}
 					}
