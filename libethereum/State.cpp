@@ -44,7 +44,8 @@
 #include "Dagger.h"
 #include "Defaults.h"
 using namespace std;
-using namespace eth;
+
+namespace eth {
 
 u256 const c_stepFee = 1;
 u256 const c_dataFee = 20;
@@ -286,7 +287,9 @@ bool State::cull(TransactionQueue& _tq) const
 	bool ret = false;
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
+	{
 		if (!m_transactions.count(i.first))
+		{
 			try
 			{
 				Transaction t(i.second);
@@ -301,6 +304,8 @@ bool State::cull(TransactionQueue& _tq) const
 				_tq.drop(i.first);
 				ret = true;
 			}
+		}
+	}
 	return ret;
 }
 
@@ -310,7 +315,9 @@ bool State::sync(TransactionQueue& _tq)
 	bool ret = false;
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
+	{
 		if (!m_transactions.count(i.first))
+		{
 			// don't have it yet! Execute it now.
 			try
 			{
@@ -332,6 +339,8 @@ bool State::sync(TransactionQueue& _tq)
 				_tq.drop(i.first);
 				ret = true;
 			}
+		}
+	}
 	return ret;
 }
 
@@ -1232,4 +1241,6 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			throw BadInstruction();
 		}
 	}
+}
+
 }

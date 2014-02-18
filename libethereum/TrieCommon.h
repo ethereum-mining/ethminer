@@ -66,7 +66,7 @@ inline bool isLeaf(RLP const& _twoItem)
 {
 	assert(_twoItem.isList() && _twoItem.itemCount() == 2);
 	auto pl = _twoItem[0].payload();
-	return (pl[0] & 0x20);
+	return (pl[0] & 0x20) != 0;
 }
 
 inline NibbleSlice keyOf(bytesConstRef _hpe)
@@ -84,7 +84,7 @@ inline NibbleSlice keyOf(RLP const& _twoItem)
 	return keyOf(_twoItem[0].payload());
 }
 
-byte uniqueInUse(RLP const& _orig, byte _except);
+byte uniqueInUse(RLP const& _orig, byte except);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf = false, int _begin = 0, int _end = -1);
 std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, uint _offset);
 std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _leaf);

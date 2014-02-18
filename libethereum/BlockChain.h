@@ -56,8 +56,8 @@ class Overlay;
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
 
-struct BlockChainChat: public LogChannel { static const char constexpr* name = "-B-"; static const int verbosity = 7; };
-struct BlockChainNote: public LogChannel { static const char constexpr* name = "=B="; static const int verbosity = 4; };
+struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
+struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
