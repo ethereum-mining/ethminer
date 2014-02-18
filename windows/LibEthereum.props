@@ -15,6 +15,7 @@
       <AdditionalIncludeDirectories>include/$(ProjectName);../libethereum;../../boost;../../leveldb/include;../../cryptopp;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>STATICLIB;LEVELDB_PLATFORM_WINDOWS;USE_NUM_BOOST;USE_FIELD_10X26;USE_FIELD_INV_BUILTIN;_WIN32_WINNT=0x0501;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>../../boost/stage/$(Platform)</AdditionalLibraryDirectories>
