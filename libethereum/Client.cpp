@@ -33,7 +33,8 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_bc(_dbPath),
 	m_stateDB(State::openDB(_dbPath)),
 	m_preMine(_us, m_stateDB),
-	m_postMine(_us, m_stateDB)
+	m_postMine(_us, m_stateDB),
+	m_workState(Active)
 {
 	Defaults::setDBPath(_dbPath);
 
@@ -45,26 +46,28 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 
 	static const char* c_threadName = "eth";
 
-	m_work = new thread([&](){
+	m_work.reset(new thread([&](){
 		setThreadName(c_threadName);
-
-		while (m_workState != Deleting) work(); m_workState = Deleted;
-	});
+		while (m_workState.load(std::memory_order_acquire) != Deleting)
+			work();
+		m_workState.store(Deleted, std::memory_order_release);
+	}));
 }
 
 Client::~Client()
 {
-	if (m_workState == Active)
-		m_workState = Deleting;
-	while (m_workState != Deleted)
+	if (m_workState.load(std::memory_order_acquire) == Active)
+		m_workState.store(Deleting, std::memory_order_release);
+	while (m_workState.load(std::memory_order_acquire) != Deleted)
 		this_thread::sleep_for(chrono::milliseconds(10));
+	m_work->join();
 }
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
-	if (m_net)
+	if (m_net.get())
 		return;
-	m_net = new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp);
+	m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
@@ -72,15 +75,14 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
-	if (!m_net)
+	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
 }
 
 void Client::stopNetwork()
 {
-	delete m_net;
-	m_net = nullptr;
+	m_net.reset(nullptr);
 }
 
 void Client::startMining()

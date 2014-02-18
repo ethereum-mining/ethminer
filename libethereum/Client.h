@@ -23,6 +23,7 @@
 
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include "Common.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
@@ -50,6 +51,13 @@ public:
 
 private:
 	Client* m_client;
+};
+
+enum ClientWorkState
+{
+	Active = 0,
+	Deleting,
+	Deleted
 };
 
 class Client
@@ -112,7 +120,7 @@ public:
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Get access to the peer server object. This will be null if the network isn't online.
-	PeerServer* peerServer() const { return m_net; }
+	PeerServer* peerServer() const { return m_net.get(); }
 
 	// Mining stuff:
 
@@ -134,14 +142,14 @@ private:
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	State m_preMine;							///< The present state of the client.
-	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
-	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	State m_preMine;					///< The present state of the client.
+	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
-	std::thread* m_work;				///< The work thread.
+	std::unique_ptr<std::thread> m_work;///< The work thread.
 	
 	std::recursive_mutex m_lock;
-	enum { Active = 0, Deleting, Deleted } m_workState = Active;
+	std::atomic<ClientWorkState> m_workState;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
 	mutable bool m_restartMining = false;

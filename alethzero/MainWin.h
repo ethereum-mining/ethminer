@@ -54,9 +54,9 @@ private:
 	eth::u256 total() const;
 	eth::u256 value() const;
 
-	Ui::Main *ui;
+	std::unique_ptr<Ui::Main> ui;
 
-	eth::Client* m_client;
+	std::unique_ptr<eth::Client> m_client;
 
 	QByteArray m_peers;
 	QMutex m_guiLock;

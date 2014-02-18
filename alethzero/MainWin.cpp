@@ -26,7 +26,7 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
-	m_client = new Client("AlethZero");
+	m_client.reset(new Client("AlethZero"));
 
 	readSettings();
 	refresh();
@@ -63,7 +63,6 @@ Main::~Main()
 {
 	g_logPost = simpleDebugOut;
 	writeSettings();
-	delete ui;
 }
 
 void Main::on_about_triggered()
