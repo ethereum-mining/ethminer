@@ -33,7 +33,7 @@ Main::Main(QWidget *parent) :
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
-	m_refresh->start(1000);
+	m_refresh->start(100);
 
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
@@ -126,7 +126,8 @@ void Main::readSettings()
 void Main::refresh()
 {
 	m_client->lock();
-	if (m_client->changed())
+	bool c = m_client->changed();
+	if (c)
 	{
 		ui->peerCount->setText(QString::fromStdString(toString(m_client->peerCount())) + " peer(s)");
 		ui->peers->clear();
@@ -140,7 +141,10 @@ void Main::refresh()
 		auto acs = m_client->state().addresses();
 		ui->accounts->clear();
 		for (auto i: acs)
-			ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()));
+		{
+			(new QListWidgetItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()), ui->accounts))
+				->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+		}
 
 		ui->transactionQueue->clear();
 		for (pair<h256, Transaction> const& i: m_client->pending())
@@ -175,15 +179,20 @@ void Main::refresh()
 		}
 	}
 
-	ui->ourAccounts->clear();
-	u256 totalBalance = 0;
-	for (auto i: m_myKeys)
+	if (c || m_keysChanged)
 	{
-		u256 b = m_client->state().balance(i.address());
-		ui->ourAccounts->addItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()));
-		totalBalance += b;
+		m_keysChanged = false;
+		ui->ourAccounts->clear();
+		u256 totalBalance = 0;
+		for (auto i: m_myKeys)
+		{
+			u256 b = m_client->state().balance(i.address());
+			(new QListWidgetItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()), ui->ourAccounts))
+				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
+			totalBalance += b;
+		}
+		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 	}
-	ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 	m_client->unlock();
 }
 
@@ -208,14 +217,14 @@ void Main::on_blocks_currentItemChanged()
 			char timestamp[64];
 			time_t rawTime = (time_t)(uint64_t)info.timestamp;
 			strftime(timestamp, 64, "%c", localtime(&rawTime));
-			s << "<b>" << timestamp << "</b>: " << h;
-			s << "&nbsp;&emsp;&nbsp;#<b>" << details.number << "</b>";
-			s << "&nbsp;&emsp;&nbsp;D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b><br/>";
+			s << "<h3>" << h << "</h3>";
+			s << "<h4>#" << details.number;
+			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
+			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
+			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Coinbase: <b>" << info.coinbaseAddress << "</b>";
-			s << "&nbsp;&emsp;&nbsp;TXs: <b>" << block[1].itemCount() << "</b>";
-			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b>";
 			s << "<br/>State: <b>" << info.stateRoot << "</b>";
-			s << "<br/>nonce: <b>" << info.nonce << "</b>";
+			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.sha3Transactions << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 		}
@@ -224,13 +233,13 @@ void Main::on_blocks_currentItemChanged()
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			Transaction tx(block[1][txi].data());
 			h256 th = tx.sha3();
-			s << "<b>" << th << "</b><br/>";
-			s << h << "[<b>" << txi << "</b>]";
+			s << "<h3>" << th << "</h3>";
+			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << tx.safeSender() << "</b>";
 			if (tx.receiveAddress)
-				s << "&nbsp;&emsp;&nbsp;To: <b>" << tx.receiveAddress << "</b>";
+				s << "<br/>To: <b>" << tx.receiveAddress << "</b>";
 			else
-				s << "&nbsp;&emsp;&nbsp;Creates: <b>" << right160(th) << "</b>";
+				s << "<br/>Creates: <b>" << right160(th) << "</b>";
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			if (tx.data.size())
@@ -256,7 +265,9 @@ void Main::on_idealPeers_valueChanged()
 
 void Main::on_ourAccounts_doubleClicked()
 {
-	qApp->clipboard()->setText(ui->ourAccounts->currentItem()->text().section(" @ ", 1));
+	auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
+	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
 }
 
 void Main::on_log_doubleClicked()
@@ -266,7 +277,9 @@ void Main::on_log_doubleClicked()
 
 void Main::on_accounts_doubleClicked()
 {
-	qApp->clipboard()->setText(ui->accounts->currentItem()->text().section(" @ ", 1));
+	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
 }
 
 void Main::on_destination_textChanged()
@@ -387,4 +400,5 @@ void Main::on_send_clicked()
 void Main::on_create_triggered()
 {
 	m_myKeys.append(KeyPair::create());
+	m_keysChanged = true;
 }
