@@ -279,7 +279,7 @@ void Main::on_connect_triggered()
 	if (ok && s.contains(":"))
 	{
 		string host = s.section(":", 0, 0).toStdString();
-		ushort port = s.section(":", 1).toInt();
+		unsigned short port = s.section(":", 1).toInt();
 		m_client->connect(host, port);
 	}
 }
