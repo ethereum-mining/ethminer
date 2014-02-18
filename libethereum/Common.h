@@ -118,7 +118,7 @@ public:
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
 
-	std::string abridged() const { return asHex(ref().cropped(0, 4)); }
+	std::string abridged() const { return asHex(ref().cropped(0, 4)) + ".."; }
 
 	byte& operator[](unsigned _i) { return m_data[_i]; }
 	byte operator[](unsigned _i) const { return m_data[_i]; }

@@ -20,18 +20,25 @@
    <bool>true</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
-    <property name="spacing">
-     <number>4</number>
-    </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
     <property name="margin">
      <number>0</number>
     </property>
     <item>
-     <widget class="QListWidget" name="transactions">
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
+     <widget class="QSplitter" name="splitter_2">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
+      <widget class="QListWidget" name="blocks">
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+      </widget>
+      <widget class="QPlainTextEdit" name="info">
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+      </widget>
      </widget>
     </item>
     <item>
@@ -51,7 +58,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="blockChain">
+       <widget class="QLabel" name="blockCount">
         <property name="text">
          <string>1 block</string>
         </property>

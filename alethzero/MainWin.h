@@ -38,6 +38,7 @@ private slots:
 	void on_value_valueChanged() { updateFee(); }
 	void on_valueUnits_currentIndexChanged() { updateFee(); }
 	void on_log_doubleClicked();
+	void on_blocks_currentItemChanged();
 	void on_about_triggered();
 	void on_quit_triggered() { close(); }
 

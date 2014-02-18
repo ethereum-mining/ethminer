@@ -53,7 +53,7 @@ Main::Main(QWidget *parent) :
 	initUnits(ui->valueUnits);
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
-	statusBar()->addPermanentWidget(ui->blockChain);
+	statusBar()->addPermanentWidget(ui->blockCount);
 }
 
 Main::~Main()
@@ -126,7 +126,7 @@ void Main::readSettings()
 void Main::refresh()
 {
 	m_client->lock();
-	//if (m_client->changed())
+	if (m_client->changed())
 	{
 		ui->peerCount->setText(QString::fromStdString(toString(m_client->peerCount())) + " peer(s)");
 		ui->peers->clear();
@@ -135,37 +135,42 @@ void Main::refresh()
 
 		auto d = m_client->blockChain().details();
 		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-		ui->blockChain->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
 
 		auto acs = m_client->state().addresses();
 		ui->accounts->clear();
 		for (auto i: acs)
-			ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(asHex(i.first.asArray()).c_str()));
+			ui->accounts->addItem(QString("%1 @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()));
 
 		ui->transactionQueue->clear();
 		for (pair<h256, Transaction> const& i: m_client->pending())
 		{
 			ui->transactionQueue->addItem(QString("%1 [%4] @ %2 <- %3")
 								.arg(formatBalance(i.second.value).c_str())
-								.arg(asHex(i.second.receiveAddress.asArray()).c_str())
-								.arg(asHex(i.second.sender().asArray()).c_str())
+								.arg(i.second.receiveAddress.abridged().c_str())
+								.arg(i.second.safeSender().abridged().c_str())
 								.arg((unsigned)i.second.nonce));
 		}
 
-		ui->transactions->clear();
+		ui->blocks->clear();
 		auto const& bc = m_client->blockChain();
 		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
 		{
 			auto d = bc.details(h);
-			ui->transactions->addItem(QString("# %1 ==== %2").arg(d.number).arg(asHex(h.asArray()).c_str()));
+			QListWidgetItem* blockItem = new QListWidgetItem(QString("# %1 ==== %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
+			blockItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
+			int n = 0;
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
 				Transaction t(i.data());
-				ui->transactions->addItem(QString("%1 [%4] @ %2 <- %3")
-								.arg(formatBalance(t.value).c_str())
-								.arg(asHex(t.receiveAddress.asArray()).c_str())
-								.arg(asHex(t.sender().asArray()).c_str())
-								.arg((unsigned)t.nonce));
+				QListWidgetItem* txItem = new QListWidgetItem(QString("%1 [%4] @ %2 <- %3")
+													 .arg(formatBalance(t.value).c_str())
+													 .arg(t.receiveAddress.abridged().c_str())
+													 .arg(t.safeSender().abridged().c_str())
+													 .arg((unsigned)t.nonce), ui->blocks);
+				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
+				txItem->setData(Qt::UserRole + 1, n);
+				n++;
 			}
 		}
 	}
@@ -175,10 +180,71 @@ void Main::refresh()
 	for (auto i: m_myKeys)
 	{
 		u256 b = m_client->state().balance(i.address());
-		ui->ourAccounts->addItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(asHex(i.address().asArray()).c_str()));
+		ui->ourAccounts->addItem(QString("%1 @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()));
 		totalBalance += b;
 	}
 	ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
+	m_client->unlock();
+}
+
+void Main::on_blocks_currentItemChanged()
+{
+	ui->info->clear();
+	m_client->lock();
+	if (auto item = ui->blocks->currentItem())
+	{
+		auto hba = item->data(Qt::UserRole).toByteArray();
+		assert(hba.size() == 32);
+		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
+		auto details = m_client->blockChain().details(h);
+		auto blockData = m_client->blockChain().block(h);
+		auto block = RLP(blockData);
+		BlockInfo info(blockData);
+
+		stringstream s;
+
+		if (item->data(Qt::UserRole + 1).isNull())
+		{
+			char timestamp[64];
+			time_t rawTime = (time_t)(uint64_t)info.timestamp;
+			strftime(timestamp, 64, "%c", localtime(&rawTime));
+			s << "<b>" << timestamp << "</b>: " << h;
+			s << "&nbsp;&emsp;&nbsp;#<b>" << details.number << "</b>";
+			s << "&nbsp;&emsp;&nbsp;D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b><br/>";
+			s << "<br/>Coinbase: <b>" << info.coinbaseAddress << "</b>";
+			s << "&nbsp;&emsp;&nbsp;TXs: <b>" << block[1].itemCount() << "</b>";
+			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b>";
+			s << "<br/>State: <b>" << info.stateRoot << "</b>";
+			s << "<br/>nonce: <b>" << info.nonce << "</b>";
+			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.sha3Transactions << "</b>";
+			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
+		}
+		else
+		{
+			unsigned txi = item->data(Qt::UserRole + 1).toInt();
+			Transaction tx(block[1][txi].data());
+			h256 th = tx.sha3();
+			s << "<b>" << th << "</b><br/>";
+			s << h << "[<b>" << txi << "</b>]";
+			s << "<br/>From: <b>" << tx.safeSender() << "</b>";
+			if (tx.receiveAddress)
+				s << "&nbsp;&emsp;&nbsp;To: <b>" << tx.receiveAddress << "</b>";
+			else
+				s << "&nbsp;&emsp;&nbsp;Creates: <b>" << right160(th) << "</b>";
+			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
+			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
+			if (tx.data.size())
+			{
+				s << "<br/>Data:&nbsp;&emsp;&nbsp;";
+//				for (auto i: tx.data)
+//					s << "0x<b>" << hex << i << "</b>&emsp;";
+				s << "</br>" << disassemble(tx.data);
+			}
+		}
+
+
+		ui->info->appendHtml(QString::fromStdString(s.str()));
+	}
 	m_client->unlock();
 }
 

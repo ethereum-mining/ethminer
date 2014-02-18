@@ -140,7 +140,7 @@ private:
 	
 	std::thread* m_work;				///< The work thread.
 	
-	std::mutex m_lock;
+	std::recursive_mutex m_lock;
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;

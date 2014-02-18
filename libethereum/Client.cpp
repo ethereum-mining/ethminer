@@ -96,7 +96,7 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 {
-	lock_guard<mutex> l(m_lock);
+	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
@@ -119,7 +119,7 @@ void Client::work()
 	{
 		m_net->process();
 
-		lock_guard<mutex> l(m_lock);
+		lock_guard<recursive_mutex> l(m_lock);
 		if (m_net->sync(m_bc, m_tq, m_stateDB))
 			changed = true;
 	}
@@ -132,7 +132,7 @@ void Client::work()
 	//   all blocks.
 	// Resynchronise state with block chain & trans
 	{
-		lock_guard<mutex> l(m_lock);
+		lock_guard<recursive_mutex> l(m_lock);
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
@@ -154,7 +154,7 @@ void Client::work()
 	{
 		if (m_restartMining)
 		{
-			lock_guard<mutex> l(m_lock);
+			lock_guard<recursive_mutex> l(m_lock);
 			m_postMine.commitToMine(m_bc);
 		}
 
@@ -169,7 +169,7 @@ void Client::work()
 		if (mineInfo.completed)
 		{
 			// Import block.
-			lock_guard<mutex> l(m_lock);
+			lock_guard<recursive_mutex> l(m_lock);
 			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
 			m_changed = true;

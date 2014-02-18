@@ -52,7 +52,30 @@ u256s eth::assemble(std::string const& _code)
 			else
 				cwarn << "Unknown assembler token" << t;
 		}
-
 	}
 	return ret;
+}
+
+string eth::disassemble(u256s const& _mem)
+{
+	stringstream ret;
+	uint numerics = 0;
+	for (auto it = _mem.begin(); it != _mem.end(); ++it)
+	{
+		u256 n = *it;
+		auto iit = c_instructionInfo.find((Instruction)(uint)n);
+		if (numerics || iit == c_instructionInfo.end() || (u256)(uint)iit->first != n)	// not an instruction or expecting an argument...
+		{
+			if (numerics)
+				numerics--;
+			ret << " 0x" << hex << n;
+		}
+		else
+		{
+			auto const& ii = iit->second;
+			ret << " " << ii.name;
+			numerics = ii.additional;
+		}
+	}
+	return ret.str();
 }
