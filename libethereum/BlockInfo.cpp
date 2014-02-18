@@ -152,6 +152,6 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		throw InvalidDifficulty();
 
 	// Check timestamp is after previous timestamp.
-	if (parentHash && _parent.timestamp >= timestamp)
+	if (parentHash && _parent.timestamp > timestamp)
 		throw InvalidTimestamp();
 }

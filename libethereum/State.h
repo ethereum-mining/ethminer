@@ -39,7 +39,7 @@ namespace eth
 
 class BlockChain;
 
-extern const u256 c_genesisDifficulty;
+extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
 #define ETH_SENDER_PAYS_SETUP 1
@@ -48,6 +48,7 @@ struct FeeStructure
 {
 	/// The fee structure. Values yet to be agreed on...
 	void setMultiplier(u256 _x);				///< The current block multiplier.
+	u256 multiplier() const;
 	u256 m_stepFee;
 	u256 m_dataFee;
 	u256 m_memoryFee;
@@ -166,9 +167,6 @@ public:
 	/// Get the list of pending transactions.
 	std::map<h256, Transaction> const& pending() const { return m_transactions; }
 
-	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
-
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
 	/// If the _grandParent is passed, it will check the validity of each of the uncles.
@@ -217,6 +215,12 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
+	/// Finalise the block, applying the earned rewards.
+	void applyRewards(Addresses const& _uncleAddresses);
+
+	/// Unfinalise the block, unapplying the earned rewards.
+	void unapplyRewards(Addresses const& _uncleAddresses);
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
@@ -227,7 +231,6 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
-	h256 m_committedPreviousHash;				///< Hash of previous block that we are committing to mine.
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;
@@ -256,7 +259,17 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			RLP r(i.second);
 			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
 			if (r.itemCount() == 3)
-				_out << " &" << r[2].toHash<h256>();
+			{
+				_out << " *" << r[2].toHash<h256>();
+				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+				std::map<u256, u256> mem;
+				for (auto const& j: memdb)
+				{
+					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+					mem[j.first] = RLP(j.second).toInt<u256>();
+				}
+				_out << std::endl << mem;
+			}
 			_out << std::endl;
 		}
 		else
@@ -272,11 +285,20 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			{
 				if (i.second.haveMemory())
 				{
-					_out << std::endl;
-					_out << i.second.memory();
+					_out << std::endl << i.second.memory();
 				}
 				else
-					_out << " &" << i.second.oldRoot();
+				{
+					_out << " *" << i.second.oldRoot();
+					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
+					std::map<u256, u256> mem;
+					for (auto const& j: memdb)
+					{
+						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+						mem[j.first] = RLP(j.second).toInt<u256>();
+					}
+					_out << std::endl << mem;
+				}
 			}
 			_out << std::endl;
 		}
@@ -297,7 +319,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				if (i.second.haveMemory())
 				{
-					TrieDB<u256, DB> memdb(&_db);
+					TrieDB<h256, DB> memdb(&_db);
 					memdb.init();
 					for (auto const& j: i.second.memory())
 						if (j.second)

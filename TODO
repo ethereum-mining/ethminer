@@ -18,6 +18,10 @@ Network:
   - Solid communications?
 - Strategy for peer suggestion?
 
+Cleanups & caching
+- All caches should flush unused data (I'm looking at you, BlockChain) to avoid memory overload.
+- State DB should keep only last few N blocks worth of nodes (except for restore points - configurable, defaults to every 30000th block - all blocks that are restore points should be stored so their stateRoots are known good).
+
 THREAD-SAFETY
 - BlockChain
 - TransactionQueue
@@ -43,6 +47,7 @@ GUI
 - Make address/block chain list model-based, JIT populated.
 - Make everything else model-based
 - Qt/QML class.
+- Turn on/off debug channels.
 
 For PoC3:
 - Shared contract acceptence tests.

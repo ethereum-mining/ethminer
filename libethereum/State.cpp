@@ -48,13 +48,13 @@ using namespace eth;
 
 u256 const c_stepFee = 1;
 u256 const c_dataFee = 20;
-u256 const c_memoryFee = 5;
+u256 const c_memoryFee = 0;//5;		memoryFee is 0 for PoC-3
 u256 const c_extroFee = 40;
 u256 const c_cryptoFee = 20;
 u256 const c_newContractFee = 100;
 u256 const c_txFee = 100;
 
-u256 const eth::c_genesisDifficulty = (u256)1 << 22;
+u256 eth::c_genesisDifficulty = (u256)1 << 22;
 
 std::map<Address, AddressState> const& eth::genesisState()
 {
@@ -63,7 +63,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 	{
 		// Initialise.
 		s_ret[Address(fromUserHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromUserHex("93658b04240e4bd4046fd2d6d417d20f146f4b43"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromUserHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
 		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
 		s_ret[Address(fromUserHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
 	}
@@ -90,8 +90,8 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_state(&m_db),
 	m_ourAddress(_coinbaseAddress)
 {
-	m_blockReward = u256(15000000000) * 100000000;
-	m_fees.setMultiplier(u256(100000) * 1000000000);
+	m_blockReward = 1500 * finney;
+	m_fees.setMultiplier(100 * szabo);
 
 	secp256k1_start();
 
@@ -147,6 +147,11 @@ void FeeStructure::setMultiplier(u256 _x)
 	m_txFee = c_txFee * _x;
 }
 
+u256 FeeStructure::multiplier() const
+{
+	return m_stepFee / c_stepFee;
+}
+
 void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
 {
 	auto it = m_cache.find(_a);
@@ -171,7 +176,7 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 	{
 		// Populate memory.
 		assert(it->second.type() == AddressType::Contract);
-		TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 		map<u256, u256>& mem = it->second.setHaveMemory();
 		for (auto const& i: memdb)
 			if (mem.find(i.first) == mem.end())
@@ -271,6 +276,8 @@ void State::resetCurrent()
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
 	m_currentBlock.parentHash = m_previousBlock.hash;
+	m_currentBlock.sha3Transactions = h256();
+	m_currentBlock.sha3Uncles = h256();
 	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
@@ -356,6 +363,9 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
 
+//	cnote << "playback begins:" << m_state.root();
+//	cnote << m_state;
+
 	// All ok with the block generally. Play back the transactions now...
 	for (auto const& i: RLP(_block)[1])
 		execute(i.data());
@@ -385,9 +395,10 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	{
 		cwarn << "Bad state root!";
 		cnote << "Given to be:" << m_currentBlock.stateRoot;
+		cnote << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
 		cnote << "Calculated to be:" << rootHash();
 		cnote << m_state;
-		cnote << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
+		cnote << *this;
 		// Rollback the trie.
 		m_db.rollback();
 		throw InvalidStateRoot();
@@ -414,14 +425,15 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
-	if (m_previousBlock.hash != m_committedPreviousHash)
+	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
 	{
-		m_committedPreviousHash = m_previousBlock.hash;
-		cnote << "Commiting to mine on" << m_previousBlock.hash;
+		Addresses uncleAddresses;
+		for (auto i: RLP(m_currentUncles))
+			uncleAddresses.push_back(i[2].toHash<Address>());
+		unapplyRewards(uncleAddresses);
 	}
 
-	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
-		return;
+	cnote << "Commiting to mine on" << m_previousBlock.hash;
 
 	RLPStream uncles;
 	Addresses uncleAddresses;
@@ -458,6 +470,10 @@ void State::commitToMine(BlockChain const& _bc)
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
+
+	cnote << "stateRoot:" << m_state.root();
+//	cnote << m_state;
+//	cnote << *this;
 
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash;
@@ -577,7 +593,7 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 		return mit->second;
 	}
 	// Memory not cached - just grab one item from the DB rather than cache the lot.
-	TrieDB<u256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
+	TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
 	return RLP(memdb.at(_memory)).toInt<u256>();	// TODO: CHECK: check if this is actually an RLP decode
 }
 
@@ -603,6 +619,17 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 		r += m_blockReward / 8;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
+}
+
+void State::unapplyRewards(Addresses const& _uncleAddresses)
+{
+	u256 r = m_blockReward;
+	for (auto const& i: _uncleAddresses)
+	{
+		subBalance(i, m_blockReward * 3 / 4);
+		r += m_blockReward / 8;
+	}
+	subBalance(m_currentBlock.coinbaseAddress, r);
 }
 
 void State::executeBare(Transaction const& _t, Address _sender)
@@ -634,8 +661,16 @@ void State::executeBare(Transaction const& _t, Address _sender)
 
 		if (isContractAddress(_t.receiveAddress))
 		{
-			MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
-			execute(_t.receiveAddress, _sender, _t.value, _t.data, &feeAdder.fee);
+			try
+			{
+				MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
+				execute(_t.receiveAddress, _sender, _t.value, _t.data, &feeAdder.fee);
+			}
+			catch (VMException const& _e)
+			{
+				cnote << "VM Exception: " << _e.description();
+				throw;
+			}
 		}
 	}
 	else
@@ -690,26 +725,28 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			throw StackTooSmall(_n, stack.size());
 	};
 	ensureCached(_myAddress, true, true);
-	auto& myMemory = m_cache[_myAddress].memory();
+	auto& myStore = m_cache[_myAddress].memory();
 
-	auto mem = [&](u256 _n) -> u256
+	auto store = [&](u256 _n) -> u256
 	{
-		auto i = myMemory.find(_n);
-		return i == myMemory.end() ? 0 : i->second;
+		auto i = myStore.find(_n);
+		return i == myStore.end() ? 0 : i->second;
 	};
-	auto setMem = [&](u256 _n, u256 _v)
+	auto setStore = [&](u256 _n, u256 _v)
 	{
 		if (_v)
 		{
-			auto it = myMemory.find(_n);
-			if (it == myMemory.end())
-				myMemory.insert(make_pair(_n, _v));
+			auto it = myStore.find(_n);
+			if (it == myStore.end())
+				myStore.insert(make_pair(_n, _v));
 			else
-				myMemory.at(_n) = _v;
+				myStore.at(_n) = _v;
 		}
 		else
-			myMemory.erase(_n);
+			myStore.erase(_n);
 	};
+
+	map<u256, u256> tempMem;
 
 	u256 curPC = 0;
 	u256 nextPC = 1;
@@ -721,21 +758,21 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 		bigint minerFee = stepCount > 16 ? m_fees.m_stepFee : 0;
 		bigint voidFee = 0;
 
-		auto rawInst = mem(curPC);
+		auto rawInst = store(curPC);
 		if (rawInst > 0xff)
 			throw BadInstruction();
 		Instruction inst = (Instruction)(uint8_t)rawInst;
 
 		switch (inst)
 		{
-		case Instruction::STORE:
+		case Instruction::SSTORE:
 			require(2);
-			if (!mem(stack.back()) && stack[stack.size() - 2])
+			if (!store(stack.back()) && stack[stack.size() - 2])
 				voidFee += m_fees.m_memoryFee;
-			if (mem(stack.back()) && !stack[stack.size() - 2])
+			if (store(stack.back()) && !stack[stack.size() - 2])
 				voidFee -= m_fees.m_memoryFee;
 			// continue on to...
-		case Instruction::LOAD:
+		case Instruction::SLOAD:
 			minerFee += m_fees.m_dataFee;
 			break;
 
@@ -851,9 +888,9 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			stack.back() = stack.back() ? 0 : 1;
 			stack.pop_back();
 			break;
-		case Instruction::MYADDRESS:
+		/*case Instruction::MYADDRESS:
 			stack.push_back((u160)_myAddress);
-			break;
+			break;*/
 		case Instruction::TXSENDER:
 			stack.push_back((u160)_txSender);
 			break;
@@ -881,6 +918,12 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			break;
 		case Instruction::BLK_DIFFICULTY:
 			stack.push_back(m_currentBlock.difficulty);
+			break;
+		case Instruction::BLK_NONCE:
+			stack.push_back(m_currentBlock.nonce);
+			break;
+		case Instruction::BASEFEE:
+			stack.push_back(m_fees.multiplier());
 			break;
 		case Instruction::SHA256:
 		{
@@ -1057,7 +1100,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 		}
 		case Instruction::PUSH:
 		{
-			stack.push_back(mem(curPC + 1));
+			stack.push_back(store(curPC + 1));
 			nextPC = curPC + 2;
 			break;
 		}
@@ -1069,15 +1112,15 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			require(1);
 			stack.push_back(stack.back());
 			break;
-		case Instruction::DUPN:
+		/*case Instruction::DUPN:
 		{
-			auto s = mem(curPC + 1);
+			auto s = store(curPC + 1);
 			if (s == 0 || s > stack.size())
 				throw OperandOutOfRange(1, stack.size(), s);
 			stack.push_back(stack[stack.size() - (uint)s]);
 			nextPC = curPC + 2;
 			break;
-		}
+		}*/
 		case Instruction::SWAP:
 		{
 			require(2);
@@ -1086,25 +1129,35 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			stack[stack.size() - 2] = d;
 			break;
 		}
-		case Instruction::SWAPN:
+		/*case Instruction::SWAPN:
 		{
 			require(1);
 			auto d = stack.back();
-			auto s = mem(curPC + 1);
+			auto s = store(curPC + 1);
 			if (s == 0 || s > stack.size())
 				throw OperandOutOfRange(1, stack.size(), s);
 			stack.back() = stack[stack.size() - (uint)s];
 			stack[stack.size() - (uint)s] = d;
 			nextPC = curPC + 2;
 			break;
-		}
-		case Instruction::LOAD:
+		}*/
+		case Instruction::MLOAD:
 			require(1);
-			stack.back() = mem(stack.back());
+			stack.back() = tempMem[stack.back()];
 			break;
-		case Instruction::STORE:
+		case Instruction::MSTORE:
 			require(2);
-			setMem(stack.back(), stack[stack.size() - 2]);
+			tempMem[stack.back()] = stack[stack.size() - 2];
+			stack.pop_back();
+			stack.pop_back();
+			break;
+		case Instruction::SLOAD:
+			require(1);
+			stack.back() = store(stack.back());
+			break;
+		case Instruction::SSTORE:
+			require(2);
+			setStore(stack.back(), stack[stack.size() - 2]);
 			stack.pop_back();
 			stack.pop_back();
 			break;
@@ -1168,7 +1221,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 		{
 			require(1);
 			Address dest = asAddress(stack.back());
-			u256 minusVoidFee = myMemory.size() * m_fees.m_memoryFee;
+			u256 minusVoidFee = myStore.size() * m_fees.m_memoryFee;
 			addBalance(dest, balance(_myAddress) + minusVoidFee);
 			m_cache[_myAddress].kill();
 			// ...follow through to...

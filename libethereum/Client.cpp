@@ -32,17 +32,15 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_clientVersion(_clientVersion),
 	m_bc(_dbPath),
 	m_stateDB(State::openDB(_dbPath)),
-	m_s(_us, m_stateDB),
-	m_mined(_us, m_stateDB)
+	m_preMine(_us, m_stateDB),
+	m_postMine(_us, m_stateDB)
 {
 	Defaults::setDBPath(_dbPath);
 
-	// Synchronise the state according to the block chain - i.e. replay all transactions in block chain, in order.
-	// In practise this won't need to be done since the State DB will contain the keys for the tries for most recent (and many old) blocks.
+	// Synchronise the state according to the head of the block chain.
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	m_s.sync(m_bc);
-	m_s.sync(m_tq);
-	m_mined = m_s;
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -88,7 +86,7 @@ void Client::stopNetwork()
 void Client::startMining()
 {
 	m_doMine = true;
-	m_miningStarted = true;
+	m_restartMining = true;
 }
 
 void Client::stopMining()
@@ -100,7 +98,7 @@ void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
 {
 	lock_guard<mutex> l(m_lock);
 	Transaction t;
-	t.nonce = m_mined.transactionsFrom(toAddress(_secret));
+	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _amount;
 	t.data = _data;
@@ -135,35 +133,35 @@ void Client::work()
 	// Resynchronise state with block chain & trans
 	{
 		lock_guard<mutex> l(m_lock);
-		if (m_s.sync(m_bc))
+		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
-				cnote << "Externally mined block: Restarting mining operation.";
+				cnote << "New block on chain: Restarting mining operation.";
 			changed = true;
-			m_miningStarted = true;	// need to re-commit to mine.
-			m_mined = m_s;
+			m_restartMining = true;	// need to re-commit to mine.
+			m_postMine = m_preMine;
 		}
-		if (m_mined.sync(m_tq))
+		if (m_postMine.sync(m_tq))
 		{
 			if (m_doMine)
 				cnote << "Additional transaction ready: Restarting mining operation.";
 			changed = true;
-			m_miningStarted = true;
+			m_restartMining = true;
 		}
 	}
 
 	if (m_doMine)
 	{
-		if (m_miningStarted)
+		if (m_restartMining)
 		{
 			lock_guard<mutex> l(m_lock);
-			m_mined.commitToMine(m_bc);
+			m_postMine.commitToMine(m_bc);
 		}
 
-		m_miningStarted = false;
+		m_restartMining = false;
 
 		// Mine for a while.
-		MineInfo mineInfo = m_mined.mine(100);
+		MineInfo mineInfo = m_postMine.mine(100);
 		m_mineProgress.best = max(m_mineProgress.best, mineInfo.best);
 		m_mineProgress.current = mineInfo.best;
 		m_mineProgress.requirement = mineInfo.requirement;
@@ -172,10 +170,9 @@ void Client::work()
 		{
 			// Import block.
 			lock_guard<mutex> l(m_lock);
-			m_bc.attemptImport(m_mined.blockData(), m_stateDB);
+			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 			m_mineProgress.best = 0;
 			m_changed = true;
-			m_miningStarted = true;	// need to re-commit to mine.
 		}
 	}
 	else

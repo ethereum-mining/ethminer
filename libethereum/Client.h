@@ -90,11 +90,11 @@ public:
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
 
 	/// Get the object representing the current state of Ethereum.
-	State const& state() const { return m_s; }
+	State const& state() const { return m_preMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
 	/// Get a map containing each of the pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_mined.pending(); }
+	std::map<h256, Transaction> const& pending() const { return m_postMine.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
@@ -117,9 +117,9 @@ public:
 	// Mining stuff:
 
 	/// Set the coinbase address.
-	void setAddress(Address _us) { m_s.setAddress(_us); }
+	void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
-	Address address() const { return m_s.address(); }
+	Address address() const { return m_preMine.address(); }
 	/// Start mining.
 	void startMining();
 	/// Stop mining.
@@ -134,8 +134,8 @@ private:
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	State m_s;							///< The present state of the client.
-	State m_mined;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	State m_preMine;							///< The present state of the client.
+	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
 	std::thread* m_work;				///< The work thread.
@@ -144,7 +144,7 @@ private:
 	enum { Active = 0, Deleting, Deleted } m_workState = Active;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
-	mutable bool m_miningStarted = false;
+	mutable bool m_restartMining = false;
 
 	mutable bool m_changed;
 };
