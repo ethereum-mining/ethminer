@@ -44,8 +44,8 @@
 #include "Dagger.h"
 #include "Defaults.h"
 using namespace std;
-
-namespace eth {
+using namespace eth;
+using eth::byte;
 
 u256 const c_stepFee = 1;
 u256 const c_dataFee = 20;
@@ -1241,6 +1241,4 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			throw BadInstruction();
 		}
 	}
-}
-
 }
