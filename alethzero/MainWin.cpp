@@ -30,8 +30,8 @@ Main::Main(QWidget *parent) :
 	readSettings();
 	refresh();
 
-	m_refresh.reset(new QTimer(this));
-	connect(m_refresh.get(), SIGNAL(timeout()), SLOT(refresh()));
+	m_refresh = new QTimer(this);
+	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(1000);
 
 #if ETH_DEBUG

@@ -58,7 +58,7 @@ private:
 
 	QByteArray m_peers;
 	QMutex m_guiLock;
-	std::unique_ptr<QTimer> m_refresh;
+	QTimer* m_refresh;
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
 	QStringList m_data;
