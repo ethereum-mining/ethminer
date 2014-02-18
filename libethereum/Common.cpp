@@ -37,7 +37,6 @@
 #include "Exceptions.h"
 using namespace std;
 using namespace eth;
-using eth::byte;
 
 //#define ETH_ADDRESS_DEBUG 1
 
