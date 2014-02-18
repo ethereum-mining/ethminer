@@ -897,9 +897,9 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			stack.back() = stack.back() ? 0 : 1;
 			stack.pop_back();
 			break;
-		/*case Instruction::MYADDRESS:
+		case Instruction::MYADDRESS:
 			stack.push_back((u160)_myAddress);
-			break;*/
+			break;
 		case Instruction::TXSENDER:
 			stack.push_back((u160)_txSender);
 			break;

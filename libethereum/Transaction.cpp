@@ -40,6 +40,18 @@ Transaction::Transaction(bytesConstRef _rlpData)
 	vrs = Signature{ rlp[4].toInt<byte>(), rlp[5].toInt<u256>(), rlp[6].toInt<u256>() };
 }
 
+Address Transaction::safeSender() const noexcept
+{
+	try
+	{
+		return sender();
+	}
+	catch (...)
+	{
+		return Address();
+	}
+}
+
 Address Transaction::sender() const
 {
 	secp256k1_start();

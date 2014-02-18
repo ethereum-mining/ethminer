@@ -33,8 +33,8 @@ enum class Instruction: uint8_t
 {
 	STOP = 0x00,		///< halts execution
 	ADD,
-	SUB,
 	MUL,
+	SUB,
 	DIV,
 	SDIV,
 	MOD,
@@ -47,6 +47,7 @@ enum class Instruction: uint8_t
 	GE,
 	EQ,
 	NOT,
+	MYADDRESS,			///< pushes the transaction sender
 	TXSENDER,			///< pushes the transaction sender
 	TXVALUE	,			///< pushes the transaction value
 	TXDATAN,			///< pushes the number of data items
@@ -83,6 +84,69 @@ enum class Instruction: uint8_t
 	SUICIDE = 0x3f
 };
 
+struct InstructionInfo
+{
+	std::string name;
+	int additional;
+	int args;
+	int ret;
+};
+
+static const std::map<Instruction, InstructionInfo> c_instructionInfo =
+{
+	{ Instruction::STOP, { "STOP", 0, 0, 0 } },
+	{ Instruction::ADD, { "ADD", 0, 2, 1 } },
+	{ Instruction::SUB, { "SUB", 0, 2, 1 } },
+	{ Instruction::MUL, { "MUL", 0, 2, 1 } },
+	{ Instruction::DIV, { "DIV", 0, 2, 1 } },
+	{ Instruction::SDIV, { "SDIV", 0, 2, 1 } },
+	{ Instruction::MOD, { "MOD", 0, 2, 1 } },
+	{ Instruction::SMOD, { "SMOD", 0, 2, 1 } },
+	{ Instruction::EXP, { "EXP", 0, 2, 1 } },
+	{ Instruction::NEG, { "NEG", 0, 1, 1 } },
+	{ Instruction::LT, { "LT", 0, 2, 1 } },
+	{ Instruction::LE, { "LE", 0, 2, 1 } },
+	{ Instruction::GT, { "GT", 0, 2, 1 } },
+	{ Instruction::GE, { "GE", 0, 2, 1 } },
+	{ Instruction::EQ, { "EQ", 0, 2, 1 } },
+	{ Instruction::NOT, { "NOT", 0, 1, 1 } },
+	{ Instruction::MYADDRESS, { "MYADDRESS", 0, 0, 1 } },
+	{ Instruction::TXSENDER, { "TXSENDER", 0, 0, 1 } },
+	{ Instruction::TXVALUE, { "TXVALUE", 0, 0, 1 } },
+	{ Instruction::TXDATAN, { "TXDATAN", 0, 0, 1 } },
+	{ Instruction::TXDATA, { "TXDATA", 0, 1, 1 } },
+	{ Instruction::BLK_PREVHASH, { "BLK_PREVHASH", 0, 0, 1 } },
+	{ Instruction::BLK_COINBASE, { "BLK_COINBASE", 0, 0, 1 } },
+	{ Instruction::BLK_TIMESTAMP, { "BLK_TIMESTAMP", 0, 0, 1 } },
+	{ Instruction::BLK_NUMBER, { "BLK_NUMBER", 0, 0, 1 } },
+	{ Instruction::BLK_DIFFICULTY, { "BLK_DIFFICULTY", 0, 0, 1 } },
+	{ Instruction::BLK_NONCE, { "BLK_NONCE", 0, 0, 1 } },
+	{ Instruction::BASEFEE, { "BASEFEE", 0, 0, 1 } },
+	{ Instruction::SHA256, { "SHA256", 0, -1, 1 } },
+	{ Instruction::RIPEMD160, { "RIPEMD160", 0, -1, 1 } },
+	{ Instruction::ECMUL, { "ECMUL", 0, 3, 1 } },
+	{ Instruction::ECADD, { "ECADD", 0, 4, 1 } },
+	{ Instruction::ECSIGN, { "ECSIGN", 0, 2, 1 } },
+	{ Instruction::ECRECOVER, { "ECRECOVER", 0, 4, 1 } },
+	{ Instruction::ECVALID, { "ECVALID", 0, 2, 1 } },
+	{ Instruction::SHA3, { "SHA3", 0, -1, 1 } },
+	{ Instruction::PUSH, { "PUSH", 1, 0, 1 } },
+	{ Instruction::POP, { "POP", 0, 1, 0 } },
+	{ Instruction::DUP, { "DUP", 0, 1, 2 } },
+	{ Instruction::SWAP, { "SWAP", 0, 2, 2 } },
+	{ Instruction::MLOAD, { "MLOAD", 0, 1, 1 } },
+	{ Instruction::MSTORE, { "MSTORE", 0, 2, 0 } },
+	{ Instruction::SLOAD, { "SLOAD", 0, 1, 1 } },
+	{ Instruction::SSTORE, { "SSTORE", 0, 2, 0 } },
+	{ Instruction::JMP, { "JMP", 0, 1, 0 } },
+	{ Instruction::JMPI, { "JMPI", 0, 2, 0 } },
+	{ Instruction::IND, { "IND", 0, 0, 1 } },
+	{ Instruction::EXTRO, { "EXTRO", 0, 2, 1 } },
+	{ Instruction::BALANCE, { "BALANCE", 0, 1, 1 } },
+	{ Instruction::MKTX, { "MKTX", 0, 4, 0 } },
+	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
+};
+
 static const std::map<std::string, Instruction> c_instructions =
 {
 	{ "STOP", Instruction::STOP },
@@ -101,6 +165,7 @@ static const std::map<std::string, Instruction> c_instructions =
 	{ "GE", Instruction::GE },
 	{ "EQ", Instruction::EQ },
 	{ "NOT", Instruction::NOT },
+	{ "MYADDRESS", Instruction::MYADDRESS },
 	{ "TXSENDER", Instruction::TXSENDER },
 	{ "TXVALUE", Instruction::TXVALUE },
 	{ "TXDATAN", Instruction::TXDATAN },
@@ -138,5 +203,6 @@ static const std::map<std::string, Instruction> c_instructions =
 };
 
 u256s assemble(std::string const& _code);
+std::string disassemble(u256s const& _mem);
 
 }
