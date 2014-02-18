@@ -34,6 +34,9 @@ Main::Main(QWidget *parent) :
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(100);
+	m_refreshNetwork = new QTimer(this);
+	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
+	m_refreshNetwork->start(1000);
 
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
@@ -123,17 +126,22 @@ void Main::readSettings()
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 }
 
+void Main::refreshNetwork()
+{
+	auto ps = m_client->peers();
+
+	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
+	ui->peers->clear();
+	for (PeerInfo const& i: ps)
+		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
+}
+
 void Main::refresh()
 {
 	m_client->lock();
 	bool c = m_client->changed();
 	if (c)
 	{
-		ui->peerCount->setText(QString::fromStdString(toString(m_client->peerCount())) + " peer(s)");
-		ui->peers->clear();
-		for (PeerInfo const& i: m_client->peers())
-			ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
-
 		auto d = m_client->blockChain().details();
 		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
