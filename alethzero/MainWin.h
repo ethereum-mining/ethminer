@@ -43,6 +43,7 @@ private slots:
 	void on_quit_triggered() { close(); }
 
 	void refresh();
+	void refreshNetwork();
 
 private:
 	void updateFee();
@@ -60,6 +61,7 @@ private:
 	QByteArray m_peers;
 	QMutex m_guiLock;
 	QTimer* m_refresh;
+	QTimer* m_refreshNetwork;
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
