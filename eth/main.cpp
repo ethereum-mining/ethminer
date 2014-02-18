@@ -77,7 +77,7 @@ void help()
         << "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
-        << "    -m,--mining <on/off/number>  Enable mining, optionally until a specified block number (Default: off)" << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
         << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
         << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
