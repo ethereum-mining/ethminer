@@ -365,7 +365,9 @@ void Main::on_destination_textChanged()
 
 void Main::on_data_textChanged()
 {
-	m_data = ui->data->toPlainText().split(QRegExp("[^0-9a-zA-Z]+"), QString::SkipEmptyParts);
+	string code = ui->data->toPlainText().toStdString();
+	m_data = code[0] == '(' ? compileLisp(code) : assemble(code);
+	ui->code->setPlainText(QString::fromStdString(disassemble(m_data)));
 	updateFee();
 }
 
@@ -465,7 +467,7 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			Address r = ui->destination->text().size() ? Address(fromUserHex(ui->destination->text().toStdString())) : Address();
-			m_client->transact(s, r, value(), assemble(ui->data->toPlainText().toStdString()));
+			m_client->transact(s, r, value(), m_data);
 			refresh();
 			return;
 		}
