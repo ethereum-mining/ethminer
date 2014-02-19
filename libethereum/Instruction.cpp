@@ -75,7 +75,20 @@ u256s eth::assemble(std::string const& _code, bool _quiet)
 	return ret;
 }
 
-static bool compileLispFragment(char const*& d, char const* e, bool _quiet, unsigned _off, u256s& o_code, vector<unsigned>& o_locs)
+static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vector<unsigned>& _locs)
+{
+	o_locs.reserve(o_locs.size() + _locs.size());
+	for (auto i: _locs)
+	{
+		_code[i] += (u256)o_code.size();
+		o_locs.push_back(i + o_code.size());
+	}
+	o_code.reserve(o_code.size() + _code.size());
+	for (auto i: _code)
+		o_code.push_back(i);
+}
+
+static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256s& o_code, vector<unsigned>& o_locs)
 {
 	bool exec = false;
 
@@ -109,29 +122,123 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, unsi
 			string t(s, d - s);
 			if (isdigit(t[0]))
 			{
+				bool bareLoad = true;
 				if (exec)
 				{
-					cwarn << "Cannot execute numeric" << t;
+					u256s codes;
+					vector<unsigned> locs;
+					if (compileLispFragment(d, e, _quiet, codes, locs))
+					{
+						appendCode(o_code, o_locs, codes, locs);
+						while (compileLispFragment(d, e, _quiet, codes, locs))
+							cwarn << "Additional items in bare store. Ignoring.";
+						bareLoad = false;
+					}
 				}
-				else
+				o_code.push_back(Instruction::PUSH);
+				try
 				{
-					o_code.push_back(Instruction::PUSH);
-					try
-					{
-						o_code.push_back(u256(t));
-					}
-					catch (...)
-					{
-						cwarn << "Invalid numeric" << t;
-					}
+					o_code.push_back(u256(t));
 				}
+				catch (...)
+				{
+					cwarn << "Invalid numeric" << t;
+				}
+				if (exec)
+					o_code.push_back(bareLoad ? Instruction::SLOAD : Instruction::SSTORE);
 			}
 			else
 			{
 				boost::algorithm::to_upper(t);
 				if (t == "IF")
 				{
+					// Compile all the code...
+					u256s codes[4];
+					vector<unsigned> locs[4];
+					for (int i = 0; i < 3; ++i)
+						if (!compileLispFragment(d, e, _quiet, codes[i], locs[i]))
+							return false;
+					if (compileLispFragment(d, e, _quiet, codes[3], locs[3]))
+						return false;
 
+					// Push the positive location.
+					o_code.push_back(Instruction::PUSH);
+					unsigned posLocation = o_code.size();
+					o_locs.push_back(posLocation);
+					o_code.push_back(0);
+
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
+					// Jump to positive if true.
+					o_code.push_back(Instruction::JMPI);
+
+					// Second fragment - negative.
+					appendCode(o_code, o_locs, codes[2], locs[2]);
+
+					// Jump to end after negative.
+					o_code.push_back(Instruction::PUSH);
+					unsigned endLocation = o_code.size();
+					o_locs.push_back(endLocation);
+					o_code.push_back(0);
+					o_code.push_back(Instruction::JMP);
+
+					// Third fragment - positive.
+					o_code[posLocation] = o_code.size();
+					appendCode(o_code, o_locs, codes[1], locs[1]);
+
+					// At end now.
+					o_code[endLocation] = o_code.size();
+				}
+				if (t == "FOR")
+				{
+					// Compile all the code...
+					u256s codes[3];
+					vector<unsigned> locs[3];
+					for (int i = 0; i < 2; ++i)
+						if (!compileLispFragment(d, e, _quiet, codes[i], locs[i]))
+							return false;
+					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]))
+						return false;
+
+					unsigned startLocation = o_code.size();
+
+					// Push the positive location.
+					o_code.push_back(Instruction::PUSH);
+					unsigned endInsertion = o_code.size();
+					o_locs.push_back(endInsertion);
+					o_code.push_back(0);
+
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
+					// Jump to positive if true.
+					o_code.push_back(Instruction::NOT);
+					o_code.push_back(Instruction::JMPI);
+
+					// Second fragment - negative.
+					appendCode(o_code, o_locs, codes[1], locs[1]);
+
+					// Jump to end after negative.
+					o_code.push_back(Instruction::PUSH);
+					o_locs.push_back(o_code.size());
+					o_code.push_back(startLocation);
+					o_code.push_back(Instruction::JMP);
+
+					// At end now.
+					o_code[endInsertion] = o_code.size();
+				}
+				else if (t == "SEQ")
+				{
+					while (d != e)
+					{
+						u256s codes;
+						vector<unsigned> locs;
+						if (compileLispFragment(d, e, _quiet, codes, locs))
+							appendCode(o_code, o_locs, codes, locs);
+						else
+							break;
+					}
 				}
 				else
 				{
@@ -141,16 +248,10 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, unsi
 						if (exec)
 						{
 							vector<pair<u256s, vector<unsigned>>> codes(1);
-							while (d != e && compileLispFragment(d, e, _quiet, o_code.size(), codes.back().first, codes.back().second))
+							while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
 								codes.push_back(pair<u256s, vector<unsigned>>());
 							for (auto it = codes.rbegin(); it != codes.rend(); ++it)
-							{
-								for (auto i: it->second)
-									it->first[i] += o_code.size();
-								o_code.reserve(o_code.size() + it->first.size());
-								for (auto i: it->first)
-									o_code.push_back(i);
-							}
+								appendCode(o_code, o_locs, it->first, it->second);
 							o_code.push_back((u256)it->second);
 						}
 						else
@@ -163,7 +264,6 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, unsi
 							catch (...)
 							{
 								cwarn << "Invalid numeric" << t;
-								o_code.push_back(u256(t));
 							}
 						}
 					}
@@ -186,7 +286,7 @@ u256s eth::compileLisp(std::string const& _code, bool _quiet)
 	char const* e = _code.data() + _code.size();
 	u256s ret;
 	vector<unsigned> locs;
-	compileLispFragment(d, e, _quiet, 0, ret, locs);
+	compileLispFragment(d, e, _quiet, ret, locs);
 	return ret;
 }
 
