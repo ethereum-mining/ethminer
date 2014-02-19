@@ -143,7 +143,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::IND, { "IND", 0, 0, 1 } },
 	{ Instruction::EXTRO, { "EXTRO", 0, 2, 1 } },
 	{ Instruction::BALANCE, { "BALANCE", 0, 1, 1 } },
-	{ Instruction::MKTX, { "MKTX", 0, 4, 0 } },
+	{ Instruction::MKTX, { "MKTX", 0, -3, 0 } },
 	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
 };
 
@@ -202,7 +202,7 @@ static const std::map<std::string, Instruction> c_instructions =
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
-u256s assemble(std::string const& _code);
+u256s assemble(std::string const& _code, bool _quiet = false);
 std::string disassemble(u256s const& _mem);
 u256s compileLisp(std::string const& _code, bool _quiet = false);
 

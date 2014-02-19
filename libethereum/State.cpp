@@ -278,6 +278,10 @@ void State::resetCurrent()
 	m_currentBlock.parentHash = m_previousBlock.hash;
 	m_currentBlock.sha3Transactions = h256();
 	m_currentBlock.sha3Uncles = h256();
+
+	// Update timestamp according to clock.
+	m_currentBlock.timestamp = time(0);
+
 	m_state.setRoot(m_currentBlock.stateRoot);
 }
 
@@ -489,9 +493,6 @@ void State::commitToMine(BlockChain const& _bc)
 
 MineInfo State::mine(uint _msTimeout)
 {
-	// Update timestamp according to clock.
-	m_currentBlock.timestamp = time(0);
-
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
@@ -927,7 +928,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			stack.push_back((u160)m_currentBlock.coinbaseAddress);
 			break;
 		case Instruction::BLK_TIMESTAMP:
-			stack.push_back(m_currentBlock.timestamp);
+			stack.push_back(m_previousBlock.timestamp);
 			break;
 		case Instruction::BLK_NUMBER:
 			stack.push_back(m_currentNumber);
@@ -936,7 +937,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			stack.push_back(m_currentBlock.difficulty);
 			break;
 		case Instruction::BLK_NONCE:
-			stack.push_back(m_currentBlock.nonce);
+			stack.push_back(m_previousBlock.nonce);
 			break;
 		case Instruction::BASEFEE:
 			stack.push_back(m_fees.multiplier());
