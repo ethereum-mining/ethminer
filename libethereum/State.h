@@ -171,7 +171,7 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_transactions; }
+	Transactions const& pending() const { return m_transactions; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -229,7 +229,8 @@ private:
 
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
-	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 

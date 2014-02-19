@@ -190,20 +190,19 @@ void Main::refresh()
 		}
 
 		ui->transactionQueue->clear();
-		for (pair<h256, Transaction> const& i: m_client->pending())
+		for (Transaction const& t: m_client->pending())
 		{
-			Transaction t = i.second;
 			QString s = t.receiveAddress ?
 				QString("%1 [%4] %2 %5> %3")
 					.arg(formatBalance(t.value).c_str())
-					.arg(t.safeSender().abridged().c_str())
-					.arg(t.receiveAddress.abridged().c_str())
+					.arg(render(t.safeSender()))
+					.arg(render(t.receiveAddress))
 					.arg((unsigned)t.nonce)
 					.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
 				QString("%1 [%4] %2 +> %3")
 					.arg(formatBalance(t.value).c_str())
-					.arg(t.safeSender().abridged().c_str())
-					.arg(right160(t.sha3()).abridged().c_str())
+					.arg(render(t.safeSender()))
+					.arg(render(right160(t.sha3())))
 					.arg((unsigned)t.nonce);
 			ui->transactionQueue->addItem(s);
 		}
@@ -222,14 +221,14 @@ void Main::refresh()
 				QString s = t.receiveAddress ?
 					QString("    %1 [%4] %2 %5> %3")
 						.arg(formatBalance(t.value).c_str())
-						.arg(t.safeSender().abridged().c_str())
-						.arg(t.receiveAddress.abridged().c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
 						.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
 					QString("    %1 [%4] %2 +> %3")
 						.arg(formatBalance(t.value).c_str())
-						.arg(t.safeSender().abridged().c_str())
-						.arg(right160(t.sha3()).abridged().c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(right160(t.sha3())))
 						.arg((unsigned)t.nonce);
 				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
@@ -247,7 +246,7 @@ void Main::refresh()
 		for (auto i: m_myKeys)
 		{
 			u256 b = m_client->state().balance(i.address());
-			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(b).c_str()).arg(i.address().abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
+			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 		}

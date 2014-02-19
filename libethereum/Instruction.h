@@ -176,7 +176,7 @@ static const std::map<std::string, Instruction> c_instructions =
 	{ "BLK_NUMBER", Instruction::BLK_NUMBER },
 	{ "BLK_DIFFICULTY", Instruction::BLK_DIFFICULTY },
 	{ "BLK_NONCE", Instruction::BLK_NONCE },
-	{ "BASFEEE", Instruction::BASEFEE },
+	{ "BASEFEE", Instruction::BASEFEE },
 	{ "SHA256", Instruction::SHA256 },
 	{ "RIPEMD160", Instruction::RIPEMD160 },
 	{ "ECMUL", Instruction::ECMUL },

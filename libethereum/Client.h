@@ -102,7 +102,7 @@ public:
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
 	/// Get a map containing each of the pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_postMine.pending(); }
+	Transactions const& pending() const { return m_postMine.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
