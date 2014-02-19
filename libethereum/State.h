@@ -274,7 +274,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
 					auto mFinder = mem.find(j.first);
 					if (mFinder == mem.end())
-						mem.emplace(j.first, RLP(j.second).toInt<u256>());
+						mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
 					else
 						mFinder->second = RLP(j.second).toInt<u256>();
 				}
@@ -307,7 +307,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
 						auto mFinder = mem.find(j.first);
 						if (mFinder == mem.end())
-							mem.emplace(j.first, RLP(j.second).toInt<u256>());
+							mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
 						else
 							mFinder->second = RLP(j.second).toInt<u256>();
 					}

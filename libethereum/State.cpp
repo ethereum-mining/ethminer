@@ -1172,7 +1172,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			require(2);
 			auto mFinder = tempMem.find(stack.back());
 			if (mFinder == tempMem.end())
-				tempMem.emplace(stack.back(), stack[stack.size() - 2]);
+				tempMem.insert(std::pair<u256,u256>(stack.back(), stack[stack.size() - 2]));
 			else
 				mFinder->second = stack[stack.size() - 2];
 			stack.pop_back();
