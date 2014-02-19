@@ -88,7 +88,7 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (h256 a = m_client->state().contractMemory(c_nameContract, n))
 		return right160(a);
-	if (_a.size() == 32)
+	if (_a.size() == 40)
 		return Address(fromUserHex(_a.toStdString()));
 	else
 		return Address();
