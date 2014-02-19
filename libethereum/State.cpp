@@ -1158,15 +1158,27 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 			break;
 		}*/
 		case Instruction::MLOAD:
+		{
 			require(1);
-			stack.back() = tempMem[stack.back()];
+			auto mFinder = tempMem.find(stack.back());
+			if (mFinder != tempMem.end())
+				stack.back() = mFinder->second;
+			else
+				throw BadInstruction();
 			break;
+		}
 		case Instruction::MSTORE:
+		{
 			require(2);
-			tempMem[stack.back()] = stack[stack.size() - 2];
+			auto mFinder = tempMem.find(stack.back());
+			if (mFinder == tempMem.end())
+				tempMem.emplace(stack.back(), stack[stack.size() - 2]);
+			else
+				mFinder->second = stack[stack.size() - 2];
 			stack.pop_back();
 			stack.pop_back();
 			break;
+		}
 		case Instruction::SLOAD:
 			require(1);
 			stack.back() = store(stack.back());
