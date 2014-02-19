@@ -65,6 +65,23 @@ Main::~Main()
 	writeSettings();
 }
 
+QString Main::render(eth::Address _a) const
+{
+	static const Address c_nameContract(fromUserHex("f28e4d396cfc7bae483e464221b0d2bd3c27f21f"));
+	if (h256 n = m_client->state().contractMemory(c_nameContract, (h256)(u256)(u160)_a))
+	{
+		std::string s((char const*)n.data(), 32);
+		s.resize(s.find_first_of('\0'));
+		return QString::fromStdString(s + " (" + _a.abridged() + ")");
+	}
+	return QString::fromStdString(_a.abridged());
+}
+
+Address Main::fromString(QString const& _a) const
+{
+	return _a.size() ? Address(fromUserHex(_a.toStdString())) : Address();
+}
+
 void Main::on_about_triggered()
 {
 	QMessageBox::about(this, "About AlethZero PoC-3", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
@@ -153,10 +170,10 @@ void Main::refresh()
 		ui->contracts->clear();
 		for (auto i: acs)
 		{
-			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
+			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(render(i.first)).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 			if (m_client->state().isContractAddress(i.first))
-				(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(i.first.abridged().c_str()).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
+				(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(render(i.first)).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
 					->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 		}
 
@@ -472,7 +489,7 @@ void Main::on_send_clicked()
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			Address r = ui->destination->text().size() ? Address(fromUserHex(ui->destination->text().toStdString())) : Address();
+			Address r = fromString(ui->destination->text());
 			m_client->transact(s, r, value(), m_data);
 			refresh();
 			return;

@@ -22,8 +22,45 @@
 #include "Instruction.h"
 
 #include <boost/algorithm/string.hpp>
+#include "Common.h"
 using namespace std;
 using namespace eth;
+
+static string readQuoted(char const*& o_d, char const* _e)
+{
+	string ret;
+	bool escaped = 0;
+	for (++o_d; o_d != _e && (escaped || *o_d != '"'); ++o_d)
+		if (!escaped && *o_d == '\\')
+			escaped = true;
+		else
+			ret.push_back(*o_d);
+	if (o_d != _e)
+		++o_d;	// skip last "
+	return ret;
+}
+
+static u256 readNumeric(string _v, bool _quiet)
+{
+	u256 x = 1;
+	for (auto const& i: units())
+		if (boost::algorithm::ends_with(_v, i.second))
+		{
+			_v = _v.substr(0, _v.size() - i.second.size());
+			x = i.first;
+			break;
+		}
+	try
+	{
+		return x * u256(_v);
+	}
+	catch (...)
+	{
+		if (!_quiet)
+			cwarn << "Invalid numeric" << _v;
+	}
+	return 0;
+}
 
 u256s eth::assemble(std::string const& _code, bool _quiet)
 {
@@ -35,34 +72,44 @@ u256s eth::assemble(std::string const& _code, bool _quiet)
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '_' && *d != ':'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '_' && *d != ':' && *d != '"'; ++d) {}
 		if (d == e)
 			break;
 
-		char const* s = d;
-		for (; d != e && (isalnum(*d) || *d == '_' || *d == ':'); ++d) {}
-
-		string t = string(s, d - s);
-		if (isdigit(t[0]))
-			try
+		if (*d == '"')
+		{
+			string s = readQuoted(d, e);
+			if (s.size() > 32)
 			{
-				ret.push_back(u256(t));
+				if (!_quiet)
+					cwarn << "String literal > 32 characters. Cropping.";
+				s.resize(32);
 			}
-			catch (...)
-			{
-				cwarn << "Invalid numeric" << t;
-			}
-		else if (t.back() == ':')
-			known[t.substr(0, t.size() - 1)] = ret.size();
+			h256 valHash;
+			memcpy(valHash.data(), s.data(), s.size());
+			memset(valHash.data() + s.size(), 0, 32 - s.size());
+			ret.push_back((u256)valHash);
+		}
 		else
 		{
-			auto it = c_instructions.find(boost::algorithm::to_upper_copy(t));
-			if (it != c_instructions.end())
-				ret.push_back((u256)it->second);
+			char const* s = d;
+			for (; d != e && (isalnum(*d) || *d == '_' || *d == ':' || *d == '"'); ++d) {}
+
+			string t = string(s, d - s);
+			if (isdigit(t[0]))
+				ret.push_back(readNumeric(t, _quiet));
+			else if (t.back() == ':')
+				known[t.substr(0, t.size() - 1)] = ret.size();
 			else
 			{
-				req[ret.size()] = t;
-				ret.push_back(0);
+				auto it = c_instructions.find(boost::algorithm::to_upper_copy(t));
+				if (it != c_instructions.end())
+					ret.push_back((u256)it->second);
+				else
+				{
+					req[ret.size()] = t;
+					ret.push_back(0);
+				}
 			}
 		}
 	}
@@ -70,7 +117,8 @@ u256s eth::assemble(std::string const& _code, bool _quiet)
 		if (known.count(i.second))
 			ret[i.first] = known[i.second];
 		else
-			cwarn << "Unknown assembler token" << i.second << "at address" << i.first;
+			if (!_quiet)
+				cwarn << "Unknown assembler token" << i.second << "at address" << i.first;
 
 	return ret;
 }
@@ -95,7 +143,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"'; ++d) {}
 		if (d == e)
 			break;
 
@@ -116,11 +164,38 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 				return false;
 		default:
 		{
-			char const* s = d;
-			for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
+			bool haveLiteral = false;
+			u256 literalValue = 0;
+			string t;
 
-			string t(s, d - s);
-			if (isdigit(t[0]))
+			if (*d == '"')
+			{
+				string s = readQuoted(d, e);
+				if (s.size() > 32)
+				{
+					if (!_quiet)
+						cwarn << "String literal > 32 characters. Cropping.";
+					s.resize(32);
+				}
+				h256 valHash;
+				memcpy(valHash.data(), s.data(), s.size());
+				memset(valHash.data() + s.size(), 0, 32 - s.size());
+				literalValue = (u256)valHash;
+				haveLiteral = true;
+			}
+			else
+			{
+				char const* s = d;
+				for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
+				t = string(s, d - s);
+				if (isdigit(t[0]))
+				{
+					literalValue = readNumeric(t, _quiet);
+					haveLiteral = true;
+				}
+			}
+
+			if (haveLiteral)
 			{
 				bool bareLoad = true;
 				if (exec)
@@ -131,19 +206,13 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 					{
 						appendCode(o_code, o_locs, codes, locs);
 						while (compileLispFragment(d, e, _quiet, codes, locs))
-							cwarn << "Additional items in bare store. Ignoring.";
+							if (!_quiet)
+								cwarn << "Additional items in bare store. Ignoring.";
 						bareLoad = false;
 					}
 				}
 				o_code.push_back(Instruction::PUSH);
-				try
-				{
-					o_code.push_back(u256(t));
-				}
-				catch (...)
-				{
-					cwarn << "Invalid numeric" << t;
-				}
+				o_code.push_back(literalValue);
 				if (exec)
 					o_code.push_back(bareLoad ? Instruction::SLOAD : Instruction::SSTORE);
 			}
@@ -190,7 +259,38 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 					// At end now.
 					o_code[endLocation] = o_code.size();
 				}
-				if (t == "FOR")
+				else if (t == "WHEN" || t == "UNLESS")
+				{
+					// Compile all the code...
+					u256s codes[3];
+					vector<unsigned> locs[3];
+					for (int i = 0; i < 2; ++i)
+						if (!compileLispFragment(d, e, _quiet, codes[i], locs[i]))
+							return false;
+					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]))
+						return false;
+
+					// Push the positive location.
+					o_code.push_back(Instruction::PUSH);
+					unsigned endLocation = o_code.size();
+					o_locs.push_back(endLocation);
+					o_code.push_back(0);
+
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+
+					// Jump to end...
+					if (t == "WHEN")
+						o_code.push_back(Instruction::NOT);
+					o_code.push_back(Instruction::JMPI);
+
+					// Second fragment - negative.
+					appendCode(o_code, o_locs, codes[1], locs[1]);
+
+					// At end now.
+					o_code[endLocation] = o_code.size();
+				}
+				else if (t == "FOR")
 				{
 					// Compile all the code...
 					u256s codes[3];
@@ -257,14 +357,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 						else
 						{
 							o_code.push_back(Instruction::PUSH);
-							try
-							{
-								o_code.push_back((u256)it->second);
-							}
-							catch (...)
-							{
-								cwarn << "Invalid numeric" << t;
-							}
+							o_code.push_back(it->second);
 						}
 					}
 					else if (!_quiet)
