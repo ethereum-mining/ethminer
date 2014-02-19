@@ -272,11 +272,15 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 				for (auto const& j: memdb)
 				{
 					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
 					auto mFinder = mem.find(j.first);
 					if (mFinder == mem.end())
 						mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
 					else
 						mFinder->second = RLP(j.second).toInt<u256>();
+#else
+					mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
 				}
 				_out << std::endl << mem;
 			}
@@ -305,11 +309,15 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 					for (auto const& j: memdb)
 					{
 						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
 						auto mFinder = mem.find(j.first);
 						if (mFinder == mem.end())
 							mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
 						else
 							mFinder->second = RLP(j.second).toInt<u256>();
+#else
+						mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
 					}
 					_out << std::endl << mem;
 				}

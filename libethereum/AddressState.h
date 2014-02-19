@@ -43,6 +43,7 @@ public:
 	AddressState(u256 _balance, u256 _nonce, u256s _memory): m_type(AddressType::Contract), m_balance(_balance), m_nonce(_nonce), m_haveMemory(true)
 	{
 		for (unsigned i = 0; i < _memory.size(); ++i)
+#ifdef __clang__
 		{
 			auto mFinder = m_memory.find((u256)i);
 			if (mFinder == m_memory.end())
@@ -50,6 +51,9 @@ public:
 			else
 				mFinder->second = _memory[i];
 		}
+#else
+			m_memory[(u256)i] = _memory[i];
+#endif
 	}
 
 	void incNonce() { m_nonce++; }
