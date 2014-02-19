@@ -275,7 +275,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 #ifdef __clang__
 					auto mFinder = mem.find(j.first);
 					if (mFinder == mem.end())
-						mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
+						mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
 					else
 						mFinder->second = RLP(j.second).toInt<u256>();
 #else
@@ -312,7 +312,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 #ifdef __clang__
 						auto mFinder = mem.find(j.first);
 						if (mFinder == mem.end())
-							mem.insert(std::pair<u256,u256>(j.first, RLP(j.second).toInt<u256>()));
+							mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
 						else
 							mFinder->second = RLP(j.second).toInt<u256>();
 #else
