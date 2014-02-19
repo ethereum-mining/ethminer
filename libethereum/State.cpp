@@ -1189,7 +1189,7 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 #ifdef __clang__
 			auto mFinder = tempMem.find(stack.back());
 			if (mFinder == tempMem.end())
-				tempMem.insert(std::pair<u256,u256>(stack.back(), stack[stack.size() - 2]));
+				tempMem.insert(make_pair(stack.back(), stack[stack.size() - 2]));
 			else
 				mFinder->second = stack[stack.size() - 2];
 #else
