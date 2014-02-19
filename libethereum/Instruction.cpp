@@ -33,12 +33,12 @@ u256s eth::assemble(std::string const& _code)
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d); ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '_'; ++d) {}
 		if (d == e)
 			break;
 
 		char const* s = d;
-		for (; d != e && isalnum(*d); ++d) {}
+		for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
 
 		string t = string(s, d - s);
 		if (isdigit(t[0]))
@@ -54,6 +54,77 @@ u256s eth::assemble(std::string const& _code)
 		}
 	}
 	return ret;
+}
+
+u256s eth::compileLisp(std::string const& _code)
+{
+	u256s ret;
+	vector<pair<Instruction, int>> inStack;
+
+
+	char const* d = _code.data();
+	char const* e = _code.data() + _code.size();
+	while (d != e)
+	{
+		// skip to next token
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_'; ++d) {}
+		if (d == e)
+			break;
+
+		switch (*d)
+		{
+		case '(':
+			inStack.push_back(make_pair(Instruction::STOP, 0));
+			++d;
+			break;
+		case ')':
+			++d;
+			if (inStack.size())
+				ret.push_back(inStack.back().first);
+			inStack.pop_back();
+			if (inStack.size())
+				inStack.back().second++;
+			break;
+		default:
+		{
+			char const* s = d;
+			for (; d != e && isalnum(*d); ++d) {}
+
+			string t = string(s, d - s);
+			if (isdigit(t[0]))
+			{
+				ret.push_back(u256(t));
+				if (inStack.size() && !inStack.back().second)
+					cwarn << "Cannot execute numeric" << t;
+				else
+				{
+					ret.push_back(Instruction::PUSH);
+					ret.push_back(u256(t));
+				}
+			}
+			else
+			{
+				boost::algorithm::to_upper(t);
+				auto it = c_instructions.find(t);
+				if (it != c_instructions.end())
+					if (inStack.size())
+					{
+						if (!inStack.back().second)
+							inStack.back().first = it->second;
+						else
+							ret.push_back((u256)it->second);
+						inStack.back().second++;
+					}
+					else
+						cwarn << "Instruction outside parens" << t;
+				else
+					cwarn << "Unknown assembler token" << t;
+			}
+		}
+		}
+	}
+	return ret;
+
 }
 
 string eth::disassemble(u256s const& _mem)

@@ -66,7 +66,7 @@ private:
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
-	QStringList m_data;
+	eth::u256s m_data;
 
 	QNetworkAccessManager m_webCtrl;
 };

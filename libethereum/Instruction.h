@@ -204,5 +204,6 @@ static const std::map<std::string, Instruction> c_instructions =
 
 u256s assemble(std::string const& _code);
 std::string disassemble(u256s const& _mem);
+u256s compileLisp(std::string const& _code);
 
 }
