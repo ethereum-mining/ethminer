@@ -382,21 +382,21 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="4" column="3">
+     <item row="5" column="3">
       <widget class="QPushButton" name="send">
        <property name="text">
         <string>Send</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
+     <item row="2" column="0">
       <widget class="QLabel" name="label5_2">
        <property name="text">
         <string>Amount</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="2" column="1">
       <widget class="QSpinBox" name="value">
        <property name="suffix">
         <string/>
@@ -409,10 +409,10 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="2" colspan="2">
+     <item row="2" column="2" colspan="2">
       <widget class="QComboBox" name="valueUnits"/>
      </item>
-     <item row="3" column="0" colspan="4">
+     <item row="4" column="0" colspan="4">
       <widget class="QSplitter" name="splitter_5">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -425,23 +425,10 @@
        </widget>
       </widget>
      </item>
-     <item row="4" column="0">
+     <item row="5" column="0">
       <widget class="QLabel" name="total">
        <property name="text">
         <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label5">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>To</string>
        </property>
       </widget>
      </item>
@@ -458,7 +445,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1" colspan="3">
+     <item row="3" column="1" colspan="3">
       <widget class="QLabel" name="fee">
        <property name="text">
         <string/>
@@ -468,7 +455,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="3" column="0">
       <widget class="QLabel" name="label_2">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -481,6 +468,32 @@
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="3">
+      <widget class="QLineEdit" name="calculatedName">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0" rowspan="2">
+      <widget class="QLabel" name="label5">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>To</string>
        </property>
       </widget>
      </item>

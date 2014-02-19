@@ -79,7 +79,19 @@ QString Main::render(eth::Address _a) const
 
 Address Main::fromString(QString const& _a) const
 {
-	return _a.size() ? Address(fromUserHex(_a.toStdString())) : Address();
+	static const Address c_nameContract(fromUserHex("f28e4d396cfc7bae483e464221b0d2bd3c27f21f"));
+	string sn = _a.toStdString();
+	if (sn.size() > 32)
+		sn.resize(32);
+	h256 n;
+	memcpy(n.data(), sn.data(), sn.size());
+	memset(n.data() + sn.size(), 0, 32 - sn.size());
+	if (h256 a = m_client->state().contractMemory(c_nameContract, n))
+		return right160(a);
+	if (_a.size() == 32)
+		return Address(fromUserHex(_a.toStdString()));
+	else
+		return Address();
 }
 
 void Main::on_about_triggered()
@@ -383,6 +395,13 @@ void Main::on_accounts_doubleClicked()
 
 void Main::on_destination_textChanged()
 {
+	if (ui->destination->text().size())
+		if (Address a = fromString(ui->destination->text()))
+			ui->calculatedName->setText(render(a));
+		else
+			ui->calculatedName->setText("Unknown Address");
+	else
+		ui->calculatedName->setText("Create Contract");
 	updateFee();
 }
 
