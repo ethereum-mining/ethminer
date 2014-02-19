@@ -25,45 +25,60 @@
 using namespace std;
 using namespace eth;
 
-u256s eth::assemble(std::string const& _code)
+u256s eth::assemble(std::string const& _code, bool _quiet)
 {
 	u256s ret;
+	map<string, unsigned> known;
+	map<unsigned, string> req;
 	char const* d = _code.data();
 	char const* e = _code.data() + _code.size();
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '_'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '_' && *d != ':'; ++d) {}
 		if (d == e)
 			break;
 
 		char const* s = d;
-		for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
+		for (; d != e && (isalnum(*d) || *d == '_' || *d == ':'); ++d) {}
 
 		string t = string(s, d - s);
 		if (isdigit(t[0]))
-			ret.push_back(u256(t));
+			try
+			{
+				ret.push_back(u256(t));
+			}
+			catch (...)
+			{
+				cwarn << "Invalid numeric" << t;
+			}
+		else if (t.back() == ':')
+			known[t.substr(0, t.size() - 1)] = ret.size();
 		else
 		{
-			boost::algorithm::to_upper(t);
-			auto it = c_instructions.find(t);
+			auto it = c_instructions.find(boost::algorithm::to_upper_copy(t));
 			if (it != c_instructions.end())
 				ret.push_back((u256)it->second);
 			else
-				cwarn << "Unknown assembler token" << t;
+			{
+				req[ret.size()] = t;
+				ret.push_back(0);
+			}
 		}
 	}
+	for (auto i: req)
+		if (known.count(i.second))
+			ret[i.first] = known[i.second];
+		else
+			cwarn << "Unknown assembler token" << i.second << "at address" << i.first;
+
 	return ret;
 }
 
-u256s eth::compileLisp(std::string const& _code, bool _quiet)
+static bool compileLispFragment(char const*& d, char const* e, bool _quiet, unsigned _off, u256s& o_code, vector<unsigned>& o_locs)
 {
-	u256s ret;
-	vector<pair<Instruction, int>> inStack;
+	bool exec = false;
 
-
-	char const* d = _code.data();
-	char const* e = _code.data() + _code.size();
 	while (d != e)
 	{
 		// skip to next token
@@ -74,59 +89,105 @@ u256s eth::compileLisp(std::string const& _code, bool _quiet)
 		switch (*d)
 		{
 		case '(':
-			inStack.push_back(make_pair(Instruction::STOP, 0));
+			exec = true;
 			++d;
 			break;
 		case ')':
-			++d;
-			if (inStack.size())
-				ret.push_back(inStack.back().first);
-			inStack.pop_back();
-			if (inStack.size())
-				inStack.back().second++;
-			break;
+			if (exec)
+			{
+				++d;
+				return true;
+			}
+			else
+				// unexpected - return false as we don't know what to do with it.
+				return false;
 		default:
 		{
 			char const* s = d;
-			for (; d != e && isalnum(*d); ++d) {}
+			for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
 
-			string t = string(s, d - s);
+			string t(s, d - s);
 			if (isdigit(t[0]))
-				if (inStack.size() && !inStack.back().second)
+			{
+				if (exec)
 				{
-					if (!_quiet)
-						cwarn << "Cannot execute numeric" << t;
+					cwarn << "Cannot execute numeric" << t;
 				}
 				else
 				{
-					ret.push_back(Instruction::PUSH);
-					ret.push_back(u256(t));
+					o_code.push_back(Instruction::PUSH);
+					try
+					{
+						o_code.push_back(u256(t));
+					}
+					catch (...)
+					{
+						cwarn << "Invalid numeric" << t;
+					}
 				}
+			}
 			else
 			{
 				boost::algorithm::to_upper(t);
-				auto it = c_instructions.find(t);
-				if (it != c_instructions.end())
+				if (t == "IF")
 				{
-					if (inStack.size())
+
+				}
+				else
+				{
+					auto it = c_instructions.find(t);
+					if (it != c_instructions.end())
 					{
-						if (!inStack.back().second)
-							inStack.back().first = it->second;
+						if (exec)
+						{
+							vector<pair<u256s, vector<unsigned>>> codes(1);
+							while (d != e && compileLispFragment(d, e, _quiet, o_code.size(), codes.back().first, codes.back().second))
+								codes.push_back(pair<u256s, vector<unsigned>>());
+							for (auto it = codes.rbegin(); it != codes.rend(); ++it)
+							{
+								for (auto i: it->second)
+									it->first[i] += o_code.size();
+								o_code.reserve(o_code.size() + it->first.size());
+								for (auto i: it->first)
+									o_code.push_back(i);
+							}
+							o_code.push_back((u256)it->second);
+						}
 						else
-							ret.push_back((u256)it->second);
-						inStack.back().second++;
+						{
+							o_code.push_back(Instruction::PUSH);
+							try
+							{
+								o_code.push_back((u256)it->second);
+							}
+							catch (...)
+							{
+								cwarn << "Invalid numeric" << t;
+								o_code.push_back(u256(t));
+							}
+						}
 					}
 					else if (!_quiet)
-						cwarn << "Instruction outside parens" << t;
+						cwarn << "Unknown assembler token" << t;
 				}
-				else if (!_quiet)
-					cwarn << "Unknown assembler token" << t;
 			}
+
+			if (!exec)
+				return true;
 		}
 		}
 	}
-	return ret;
+	return false;
+}
 
+u256s eth::compileLisp(std::string const& _code, bool _quiet)
+{
+	char const* d = _code.data();
+	char const* e = _code.data() + _code.size();
+	u256s ret;
+	vector<unsigned> locs;
+	compileLispFragment(d, e, _quiet, 0, ret, locs);
+	return ret;
 }
 
 string eth::disassemble(u256s const& _mem)

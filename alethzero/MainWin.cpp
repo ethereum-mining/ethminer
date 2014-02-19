@@ -372,7 +372,7 @@ void Main::on_destination_textChanged()
 void Main::on_data_textChanged()
 {
 	string code = ui->data->toPlainText().toStdString();
-	m_data = code[0] == '(' ? compileLisp(code, true) : assemble(code);
+	m_data = code[0] == '(' ? compileLisp(code, true) : assemble(code, true);
 	ui->code->setPlainText(QString::fromStdString(disassemble(m_data)));
 	updateFee();
 }
