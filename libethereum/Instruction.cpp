@@ -99,7 +99,7 @@ u256s eth::assemble(std::string const& _code, bool _quiet)
 			if (isdigit(t[0]))
 				ret.push_back(readNumeric(t, _quiet));
 			else if (t.back() == ':')
-				known[t.substr(0, t.size() - 1)] = ret.size();
+				known[t.substr(0, t.size() - 1)] = (unsigned)ret.size();
 			else
 			{
 				auto it = c_instructions.find(boost::algorithm::to_upper_copy(t));
@@ -107,7 +107,7 @@ u256s eth::assemble(std::string const& _code, bool _quiet)
 					ret.push_back((u256)it->second);
 				else
 				{
-					req[ret.size()] = t;
+					req[(unsigned)ret.size()] = t;
 					ret.push_back(0);
 				}
 			}
@@ -129,7 +129,7 @@ static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vec
 	for (auto i: _locs)
 	{
 		_code[i] += (u256)o_code.size();
-		o_locs.push_back(i + o_code.size());
+		o_locs.push_back(i + (unsigned)o_code.size());
 	}
 	o_code.reserve(o_code.size() + _code.size());
 	for (auto i: _code)
@@ -232,7 +232,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
-					unsigned posLocation = o_code.size();
+					unsigned posLocation = (unsigned)o_code.size();
 					o_locs.push_back(posLocation);
 					o_code.push_back(0);
 
@@ -247,7 +247,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 
 					// Jump to end after negative.
 					o_code.push_back(Instruction::PUSH);
-					unsigned endLocation = o_code.size();
+					unsigned endLocation = (unsigned)o_code.size();
 					o_locs.push_back(endLocation);
 					o_code.push_back(0);
 					o_code.push_back(Instruction::JMP);
@@ -272,7 +272,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
-					unsigned endLocation = o_code.size();
+					unsigned endLocation = (unsigned)o_code.size();
 					o_locs.push_back(endLocation);
 					o_code.push_back(0);
 
@@ -301,11 +301,11 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]))
 						return false;
 
-					unsigned startLocation = o_code.size();
+					unsigned startLocation = (unsigned)o_code.size();
 
 					// Push the positive location.
 					o_code.push_back(Instruction::PUSH);
-					unsigned endInsertion = o_code.size();
+					unsigned endInsertion = (unsigned)o_code.size();
 					o_locs.push_back(endInsertion);
 					o_code.push_back(0);
 
@@ -321,7 +321,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 
 					// Jump to end after negative.
 					o_code.push_back(Instruction::PUSH);
-					o_locs.push_back(o_code.size());
+					o_locs.push_back((unsigned)o_code.size());
 					o_code.push_back(startLocation);
 					o_code.push_back(Instruction::JMP);
 
