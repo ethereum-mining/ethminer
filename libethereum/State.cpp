@@ -111,6 +111,7 @@ State::State(State const& _s):
 	m_db(_s.m_db),
 	m_state(&m_db, _s.m_state.root()),
 	m_transactions(_s.m_transactions),
+	m_transactionSet(_s.m_transactionSet),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
@@ -126,6 +127,7 @@ State& State::operator=(State const& _s)
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
+	m_transactionSet = _s.m_transactionSet;
 	m_cache = _s.m_cache;
 	m_previousBlock = _s.m_previousBlock;
 	m_currentBlock = _s.m_currentBlock;
@@ -271,6 +273,7 @@ map<Address, u256> State::addresses() const
 void State::resetCurrent()
 {
 	m_transactions.clear();
+	m_transactionSet.clear();
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
@@ -291,7 +294,7 @@ bool State::cull(TransactionQueue& _tq) const
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
 	{
-		if (!m_transactions.count(i.first))
+		if (!m_transactionSet.count(i.first))
 		{
 			try
 			{
@@ -319,7 +322,7 @@ bool State::sync(TransactionQueue& _tq)
 	auto ts = _tq.transactions();
 	for (auto const& i: ts)
 	{
-		if (!m_transactions.count(i.first))
+		if (!m_transactionSet.count(i.first))
 		{
 			// don't have it yet! Execute it now.
 			try
@@ -472,7 +475,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream txs(m_transactions.size());
 	for (auto const& i: m_transactions)
-		i.second.fillStream(txs);
+		i.fillStream(txs);
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
@@ -625,7 +628,8 @@ void State::execute(bytesConstRef _rlp)
 	// NOTE: Here, contract-originated transactions will not get added to the transaction list.
 	// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
 	// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
-	m_transactions.insert(make_pair(t.sha3(), t));
+	m_transactions.push_back(t);
+	m_transactionSet.insert(t.sha3());
 }
 
 void State::applyRewards(Addresses const& _uncleAddresses)
