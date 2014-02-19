@@ -280,6 +280,8 @@ void Main::on_blocks_currentItemChanged()
 //					s << "0x<b>" << hex << i << "</b>&emsp;";
 				s << "</br>" << disassemble(tx.data);
 			}
+			cnote << block;
+			cnote << asHex(blockData);
 		}
 
 
@@ -308,9 +310,10 @@ void Main::on_contracts_currentItemChanged()
 			{
 				unsigned j;
 				for (j = 0; j <= numerics && next + j < i.first; ++j)
-					s << (j < numerics ? " 0" : " STOP");
-				numerics -= (j - 1);
-				s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
+					s << (j < numerics ? " 0" : " <b>STOP</b>");
+				numerics -= min(numerics, j);
+				if (next + j < i.first)
+					s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
 			}
 			else if (!next)
 			{
@@ -321,12 +324,12 @@ void Main::on_contracts_currentItemChanged()
 			{
 				if (numerics)
 					numerics--;
-				s << " 0x" << hex << i.second;
+				s << " " << showbase << hex << i.second;
 			}
 			else
 			{
 				auto const& ii = iit->second;
-				s << " " << ii.name;
+				s << " <b>" << ii.name << "</b>";
 				numerics = ii.additional;
 			}
 			next = i.first + 1;

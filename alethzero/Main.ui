@@ -54,6 +54,9 @@
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
        </widget>
       </widget>
       <widget class="QSplitter" name="splitter_3">
@@ -80,6 +83,9 @@
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
         </property>
        </widget>
       </widget>
@@ -412,7 +418,11 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <widget class="QPlainTextEdit" name="data"/>
-       <widget class="QPlainTextEdit" name="code"/>
+       <widget class="QPlainTextEdit" name="code">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
       </widget>
      </item>
      <item row="4" column="0">
