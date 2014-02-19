@@ -179,10 +179,14 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 		map<u256, u256>& mem = it->second.setHaveMemory();
 		for (auto const& i: memdb)
+#ifdef __clang__
 			if (mem.find(i.first) == mem.end())
 				mem.insert(make_pair(i.first, RLP(i.second).toInt<u256>()));
 			else
 				mem.at(i.first) = RLP(i.second).toInt<u256>();
+#else
+			mem[i.first] = RLP(i.second).toInt<u256>();
+#endif
 	}
 }
 
@@ -707,10 +711,14 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		m_cache[newAddress] = AddressState(0, 0, AddressType::Contract);
 		auto& mem = m_cache[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
+#ifdef __clang__
 			if (mem.find(i) == mem.end())
 				mem.insert(make_pair(i, _t.data[i]));
 			else
 				mem.at(i) = _t.data[i];
+#else
+			mem[i] = _t.data[i];
+#endif
 
 #if ETH_SENDER_PAYS_SETUP
 		subBalance(_sender, _t.value + fee);
@@ -752,11 +760,15 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 	{
 		if (_v)
 		{
+#ifdef __clang__
 			auto it = myStore.find(_n);
 			if (it == myStore.end())
 				myStore.insert(make_pair(_n, _v));
 			else
 				myStore.at(_n) = _v;
+#else
+			myStore[_n] = _v;
+#endif
 		}
 		else
 			myStore.erase(_n);
@@ -1160,21 +1172,29 @@ void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s 
 		case Instruction::MLOAD:
 		{
 			require(1);
+#ifdef __clang__
 			auto mFinder = tempMem.find(stack.back());
 			if (mFinder != tempMem.end())
 				stack.back() = mFinder->second;
 			else
-				throw BadInstruction();
+				stack.back() = 0;
+#else
+			stack.back() = tempMem[stack.back()];
+#endif
 			break;
 		}
 		case Instruction::MSTORE:
 		{
 			require(2);
+#ifdef __clang__
 			auto mFinder = tempMem.find(stack.back());
 			if (mFinder == tempMem.end())
 				tempMem.insert(std::pair<u256,u256>(stack.back(), stack[stack.size() - 2]));
 			else
 				mFinder->second = stack[stack.size() - 2];
+#else
+			tempMem[stack.back()] = stack[stack.size() - 2];
+#endif
 			stack.pop_back();
 			stack.pop_back();
 			break;
