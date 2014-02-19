@@ -56,7 +56,7 @@ u256s eth::assemble(std::string const& _code)
 	return ret;
 }
 
-u256s eth::compileLisp(std::string const& _code)
+u256s eth::compileLisp(std::string const& _code, bool _quiet)
 {
 	u256s ret;
 	vector<pair<Instruction, int>> inStack;
@@ -92,21 +92,22 @@ u256s eth::compileLisp(std::string const& _code)
 
 			string t = string(s, d - s);
 			if (isdigit(t[0]))
-			{
-				ret.push_back(u256(t));
 				if (inStack.size() && !inStack.back().second)
-					cwarn << "Cannot execute numeric" << t;
+				{
+					if (!_quiet)
+						cwarn << "Cannot execute numeric" << t;
+				}
 				else
 				{
 					ret.push_back(Instruction::PUSH);
 					ret.push_back(u256(t));
 				}
-			}
 			else
 			{
 				boost::algorithm::to_upper(t);
 				auto it = c_instructions.find(t);
 				if (it != c_instructions.end())
+				{
 					if (inStack.size())
 					{
 						if (!inStack.back().second)
@@ -115,9 +116,10 @@ u256s eth::compileLisp(std::string const& _code)
 							ret.push_back((u256)it->second);
 						inStack.back().second++;
 					}
-					else
+					else if (!_quiet)
 						cwarn << "Instruction outside parens" << t;
-				else
+				}
+				else if (!_quiet)
 					cwarn << "Unknown assembler token" << t;
 			}
 		}
@@ -139,12 +141,12 @@ string eth::disassemble(u256s const& _mem)
 		{
 			if (numerics)
 				numerics--;
-			ret << " 0x" << hex << n;
+			ret << "0x" << hex << n << " ";
 		}
 		else
 		{
 			auto const& ii = iit->second;
-			ret << " " << ii.name;
+			ret << ii.name << " ";
 			numerics = ii.additional;
 		}
 	}

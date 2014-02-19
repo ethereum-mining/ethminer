@@ -97,6 +97,7 @@ void Main::writeSettings()
 	s.setValue("peers", m_peers);
 
 	s.setValue("geometry", saveGeometry());
+	s.setValue("windowState", saveState());
 }
 
 void Main::readSettings()
@@ -104,6 +105,8 @@ void Main::readSettings()
 	QSettings s("ethereum", "alethzero");
 
 	restoreGeometry(s.value("geometry").toByteArray());
+	restoreState(s.value("windowState").toByteArray());
+
 
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
@@ -366,7 +369,7 @@ void Main::on_destination_textChanged()
 void Main::on_data_textChanged()
 {
 	string code = ui->data->toPlainText().toStdString();
-	m_data = code[0] == '(' ? compileLisp(code) : assemble(code);
+	m_data = code[0] == '(' ? compileLisp(code, true) : assemble(code);
 	ui->code->setPlainText(QString::fromStdString(disassemble(m_data)));
 	updateFee();
 }
