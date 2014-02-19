@@ -216,7 +216,7 @@ public:
 			char buf[24];
 			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0) 
 				buf[0] = '\0'; // empty if case strftime fails  
-			sstr << Id::name << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
+			sstr << Id::name() << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
 		}
 	}
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(sstr.str(), Id::name()); }
