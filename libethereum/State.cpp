@@ -603,7 +603,8 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	}
 	// Memory not cached - just grab one item from the DB rather than cache the lot.
 	TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
-	return RLP(memdb.at(_memory)).toInt<u256>();	// TODO: CHECK: check if this is actually an RLP decode
+	string ret = memdb.at(_memory);
+	return ret.size() ? RLP(ret).toInt<u256>() : 0;
 }
 
 map<u256, u256> const& State::contractMemory(Address _contract) const
