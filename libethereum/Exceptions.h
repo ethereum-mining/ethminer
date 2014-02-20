@@ -17,6 +17,8 @@ class BadHexCharacter: public Exception {};
 class NotEnoughCash: public Exception {};
 
 class VMException: public Exception {};
+class StepsDone: public VMException {};
+class BreakPointHit: public VMException {};
 class BadInstruction: public VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
 class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
