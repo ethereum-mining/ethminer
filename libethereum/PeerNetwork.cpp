@@ -924,6 +924,9 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 		m_incomingTransactions.clear();
 
+		auto h = _bc.currentHash();
+		bool resendAll = (h != m_latestBlockSent);
+
 		// Send any new transactions.
 		for (auto j: m_peers)
 			if (auto p = j.second.lock())
@@ -931,7 +934,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				bytes b;
 				uint n = 0;
 				for (auto const& i: _tq.transactions())
-					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
 					{
 						b += i.second;
 						++n;
@@ -951,7 +954,6 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 
 		// Send any new blocks.
-		auto h = _bc.currentHash();
 		if (h != m_latestBlockSent)
 		{
 			// TODO: find where they diverge and send complete new branch.
