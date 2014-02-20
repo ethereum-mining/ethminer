@@ -47,7 +47,7 @@ public:
 		{
 			auto mFinder = m_memory.find((u256)i);
 			if (mFinder == m_memory.end())
-				m_memory.insert(std::pair<u256,u256>((u256)i,_memory[i]));
+				m_memory.insert(std::make_pair((u256)i,_memory[i]));
 			else
 				mFinder->second = _memory[i];
 		}
