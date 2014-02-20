@@ -1,17 +1,54 @@
 #include <QtNetwork/QNetworkReply>
-#include <QtWidgets>
-#include <QtCore>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QInputDialog>
+#include <QtGui/QClipboard>
+#include <QtCore/QtCore>
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
-using namespace eth;
+
+// types
+using eth::bytes;
+using eth::bytesConstRef;
+using eth::h160;
+using eth::h256;
+using eth::u160;
+using eth::u256;
+using eth::Address;
+using eth::BlockInfo;
+using eth::Client;
+using eth::Instruction;
+using eth::KeyPair;
+using eth::NodeMode;
+using eth::PeerInfo;
+using eth::RLP;
+using eth::Secret;
+using eth::Transaction;
+
+// functions
+using eth::asHex;
+using eth::assemble;
+using eth::compileLisp;
+using eth::disassemble;
+using eth::formatBalance;
+using eth::fromUserHex;
+using eth::right160;
+using eth::simpleDebugOut;
+using eth::toLog2;
+using eth::toString;
+using eth::units;
+
+// vars
+using eth::g_logPost;
+using eth::g_logVerbosity;
+using eth::c_instructionInfo;
 
 static void initUnits(QComboBox* _b)
 {
-	for (int n = units().size() - 1; n >= 0; --n)
+	for (auto n = (::uint)units().size(); n-- != 0; )
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 	_b->setCurrentIndex(6);
 }
@@ -130,7 +167,7 @@ void Main::writeSettings()
 	if (m_client->peerServer())
 	{
 		bytes d = m_client->peerServer()->savePeers();
-		m_peers = QByteArray((char*)d.data(), d.size());
+		m_peers = QByteArray((char*)d.data(), (int)d.size());
 
 	}
 	s.setValue("peers", m_peers);
@@ -546,3 +583,9 @@ void Main::on_create_triggered()
 	m_myKeys.append(KeyPair::create());
 	m_keysChanged = true;
 }
+
+// include moc file on VS, ofuscated to hide from automoc
+#ifdef _MSC_VER
+#include\
+"moc_MainWin.cpp"
+#endif
