@@ -82,7 +82,7 @@ QString Main::render(eth::Address _a) const
 {
 	QString p = pretty(_a);
 	if (!p.isNull())
-		return p + "(" + QString::fromStdString(_a.abridged()) + ")";
+		return p + " (" + QString::fromStdString(_a.abridged()) + ")";
 	return QString::fromStdString(_a.abridged());
 }
 
@@ -190,26 +190,31 @@ void Main::refresh()
 		auto acs = m_client->state().addresses();
 		ui->accounts->clear();
 		ui->contracts->clear();
-		for (auto i: acs)
-		{
-			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(render(i.first)).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
-				->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-			if (m_client->state().isContractAddress(i.first))
-				(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(i.second).c_str()).arg(render(i.first)).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
-					->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-		}
+		for (auto n = 0; n < 2; ++n)
+			for (auto i: acs)
+			{
+				auto r = render(i.first);
+				if (r.contains('(') == !n)
+				{
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
+						->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+					if (m_client->state().isContractAddress(i.first))
+						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
+							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+				}
+			}
 
 		ui->transactionQueue->clear();
 		for (Transaction const& t: m_client->pending())
 		{
 			QString s = t.receiveAddress ?
-				QString("%1 [%4] %2 %5> %3")
+				QString("%2 %5> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
 					.arg(render(t.receiveAddress))
 					.arg((unsigned)t.nonce)
 					.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
-				QString("%1 [%4] %2 +> %3")
+				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
 					.arg(render(right160(t.sha3())))
@@ -229,13 +234,13 @@ void Main::refresh()
 			{
 				Transaction t(i.data());
 				QString s = t.receiveAddress ?
-					QString("    %1 [%4] %2 %5> %3")
+					QString("    %2 %5> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
 						.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
-					QString("    %1 [%4] %2 +> %3")
+					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
 						.arg(render(right160(t.sha3())))
@@ -256,7 +261,7 @@ void Main::refresh()
 		for (auto i: m_myKeys)
 		{
 			u256 b = m_client->state().balance(i.address());
-			(new QListWidgetItem(QString("%1 [%3] @ %2").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
+			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 		}
@@ -319,8 +324,6 @@ void Main::on_blocks_currentItemChanged()
 //					s << "0x<b>" << hex << i << "</b>&emsp;";
 				s << "</br>" << disassemble(tx.data);
 			}
-			cnote << block;
-			cnote << asHex(blockData);
 		}
 
 
@@ -343,13 +346,15 @@ void Main::on_contracts_currentItemChanged()
 		auto mem = m_client->state().contractMemory(h);
 		u256 next = 0;
 		unsigned numerics = 0;
+		bool unexpectedNumeric = false;
 		for (auto i: mem)
 		{
 			if (next < i.first)
 			{
 				unsigned j;
 				for (j = 0; j <= numerics && next + j < i.first; ++j)
-					s << (j < numerics ? " 0" : " <b>STOP</b>");
+					s << (j < numerics || unexpectedNumeric ? " 0" : " <b>STOP</b>");
+				unexpectedNumeric = false;
 				numerics -= min(numerics, j);
 				if (next + j < i.first)
 					s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
@@ -363,6 +368,8 @@ void Main::on_contracts_currentItemChanged()
 			{
 				if (numerics)
 					numerics--;
+				else
+					unexpectedNumeric = true;
 				s << " " << showbase << hex << i.second;
 			}
 			else
@@ -399,6 +406,13 @@ void Main::on_log_doubleClicked()
 void Main::on_accounts_doubleClicked()
 {
 	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+}
+
+void Main::on_contracts_doubleClicked()
+{
+	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
 }
