@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\test\crypto.cpp" />
+    <ClCompile Include="..\test\dagger.cpp" />
+    <ClCompile Include="..\test\hexPrefix.cpp" />
+    <ClCompile Include="..\test\main.cpp" />
+    <ClCompile Include="..\test\peer.cpp" />
+    <ClCompile Include="..\test\rlp.cpp" />
+    <ClCompile Include="..\test\state.cpp" />
+    <ClCompile Include="..\test\trie.cpp" />
+    <ClCompile Include="..\test\vm.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Windows">
+      <UniqueIdentifier>{0acd7e2f-2594-4c13-94cb-3247045bdbfd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Windows</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
