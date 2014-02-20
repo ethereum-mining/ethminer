@@ -52,6 +52,7 @@ Main::Main(QWidget *parent) :
 #endif
 
 	on_verbosity_sliderMoved();
+	on_destination_textChanged();
 
 	initUnits(ui->valueUnits);
 	statusBar()->addPermanentWidget(ui->balance);
@@ -65,15 +66,23 @@ Main::~Main()
 	writeSettings();
 }
 
-QString Main::render(eth::Address _a) const
+QString Main::pretty(eth::Address _a) const
 {
 	static const Address c_nameContract(fromUserHex("f28e4d396cfc7bae483e464221b0d2bd3c27f21f"));
 	if (h256 n = m_client->state().contractMemory(c_nameContract, (h256)(u256)(u160)_a))
 	{
 		std::string s((char const*)n.data(), 32);
 		s.resize(s.find_first_of('\0'));
-		return QString::fromStdString(s + " (" + _a.abridged() + ")");
+		return QString::fromStdString(s);
 	}
+	return QString();
+}
+
+QString Main::render(eth::Address _a) const
+{
+	QString p = pretty(_a);
+	if (!p.isNull())
+		return p + "(" + QString::fromStdString(_a.abridged()) + ")";
 	return QString::fromStdString(_a.abridged());
 }
 
@@ -86,8 +95,9 @@ Address Main::fromString(QString const& _a) const
 	h256 n;
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
-	if (h256 a = m_client->state().contractMemory(c_nameContract, n))
-		return right160(a);
+	if (_a.size())
+		if (h256 a = m_client->state().contractMemory(c_nameContract, n))
+			return right160(a);
 	if (_a.size() == 40)
 		return Address(fromUserHex(_a.toStdString()));
 	else
@@ -281,7 +291,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
 			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
-			s << "<br/>Coinbase: <b>" << info.coinbaseAddress << "</b>";
+			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>State: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.sha3Transactions << "</b>";
@@ -294,11 +304,12 @@ void Main::on_blocks_currentItemChanged()
 			h256 th = tx.sha3();
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
-			s << "<br/>From: <b>" << tx.safeSender() << "</b>";
+			auto ss = tx.safeSender();
+			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
 			if (tx.receiveAddress)
-				s << "<br/>To: <b>" << tx.receiveAddress << "</b>";
+				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
 			else
-				s << "<br/>Creates: <b>" << right160(th) << "</b>";
+				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			if (tx.data.size())

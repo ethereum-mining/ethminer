@@ -47,6 +47,8 @@ private slots:
 	void refreshNetwork();
 
 private:
+	QString pretty(eth::Address _a) const;
+
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
 
