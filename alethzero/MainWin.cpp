@@ -52,9 +52,9 @@ Main::Main(QWidget *parent) :
 #endif
 
 	on_verbosity_sliderMoved();
+	initUnits(ui->valueUnits);
 	on_destination_textChanged();
 
-	initUnits(ui->valueUnits);
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockCount);
