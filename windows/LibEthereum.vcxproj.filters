@@ -23,6 +23,8 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
+    <ClCompile Include="..\libethereum\VM.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libethereum\BlockInfo.h" />
@@ -49,6 +51,9 @@
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+    <ClInclude Include="..\libethereum\ExtVMFace.h" />
+    <ClInclude Include="..\libethereum\FeeStructure.h" />
+    <ClInclude Include="..\libethereum\VM.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
