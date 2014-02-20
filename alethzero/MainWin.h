@@ -2,9 +2,9 @@
 #define MAIN_H
 
 #include <QtNetwork/QNetworkAccessManager>
-#include <QAbstractListModel>
-#include <QMainWindow>
-#include <QMutex>
+#include <QtCore/QAbstractListModel>
+#include <QtCore/QMutex>
+#include <QtWidgets/QMainWindow>
 #include <libethereum/Common.h>
 
 namespace Ui {
