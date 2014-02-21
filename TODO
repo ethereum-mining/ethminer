@@ -51,8 +51,6 @@ GUI
 
 For PoC3:
 - Shared contract acceptence tests.
-- Use mining state for nonce.
-BUG: need to discard transactions if nonce too old, even when not mining.
 
 
 ### Marko

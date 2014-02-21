@@ -21,6 +21,7 @@
 
 #include "Common.h"
 
+#include <fstream>
 #include <random>
 #if WIN32
 #pragma warning(push)
@@ -281,3 +282,24 @@ std::string eth::formatBalance(u256 _b)
 	ret << _b << " wei";
 	return ret.str();
 }
+
+bytes eth::contents(std::string const& _file)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return bytes();
+	// get length of file:
+	is.seekg (0, is.end);
+	streamoff length = is.tellg();
+	is.seekg (0, is.beg);
+	bytes ret(length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
+void eth::writeFile(std::string const& _file, bytes const& _data)
+{
+	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+}
+

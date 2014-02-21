@@ -35,26 +35,6 @@ using namespace eth;
 #define ADD_QUOTES_HELPER(s) #s
 #define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
-bytes contents(std::string const& _file)
-{
-	std::ifstream is(_file, std::ifstream::binary);
-	if (!is)
-		return bytes();
-	// get length of file:
-	is.seekg (0, is.end);
-	streamoff length = is.tellg();
-	is.seekg (0, is.beg);
-	bytes ret(length);
-	is.read((char*)ret.data(), length);
-	is.close();
-	return ret;
-}
-
-void writeFile(std::string const& _file, bytes const& _data)
-{
-	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
-}
-
 bool isTrue(std::string const& _m)
 {
 	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";

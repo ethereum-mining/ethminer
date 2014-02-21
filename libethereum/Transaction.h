@@ -41,6 +41,9 @@ struct Transaction
 	Transaction(bytesConstRef _rlp);
 	Transaction(bytes const& _rlp): Transaction(&_rlp) {}
 
+	bool operator==(Transaction const& _c) const { return receiveAddress == _c.receiveAddress && value == _c.value && data == _c.data; }
+	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
+
 	u256 nonce;
 	Address receiveAddress;
 	u256 value;
