@@ -28,7 +28,7 @@
 namespace eth
 {
 
-class Transaction;
+struct Transaction;
 
 class ExtVMFace
 {

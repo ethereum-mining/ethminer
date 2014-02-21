@@ -23,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibCryptoPP", "LibCryptoPP.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibMiniUPnPc", "LibMiniUPnPc.vcxproj", "{1B1CA20E-39C3-4D9B-AC37-3783048E6672}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Alethzero", "Alethzero.vcxproj", "{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -95,6 +97,14 @@ Global
 		{1B1CA20E-39C3-4D9B-AC37-3783048E6672}.Release|Win32.Build.0 = Release|Win32
 		{1B1CA20E-39C3-4D9B-AC37-3783048E6672}.Release|x64.ActiveCfg = Release|x64
 		{1B1CA20E-39C3-4D9B-AC37-3783048E6672}.Release|x64.Build.0 = Release|x64
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Debug|Win32.Build.0 = Debug|Win32
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Debug|x64.ActiveCfg = Debug|x64
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Debug|x64.Build.0 = Debug|x64
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Release|Win32.ActiveCfg = Release|Win32
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Release|Win32.Build.0 = Release|Win32
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Release|x64.ActiveCfg = Release|x64
+		{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
