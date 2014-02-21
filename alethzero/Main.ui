@@ -40,6 +40,9 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
@@ -50,6 +53,9 @@
           <horstretch>2</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
@@ -70,6 +76,9 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
@@ -80,6 +89,9 @@
           <horstretch>2</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
@@ -142,10 +154,11 @@
    </widget>
    <widget class="QMenu" name="menu_Tools">
     <property name="title">
-     <string>&amp;Tools</string>
+     <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
     <addaction name="create"/>
+    <addaction name="preview"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -176,6 +189,9 @@
      </property>
      <item>
       <widget class="QListWidget" name="accounts">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -205,6 +221,9 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QListWidget" name="peers">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
@@ -237,21 +256,30 @@
          <item row="0" column="0">
           <widget class="QLabel" name="label_3">
            <property name="text">
-            <string>Ideal Peers</string>
+            <string>Ideal &amp;Peers</string>
+           </property>
+           <property name="buddy">
+            <cstring>idealPeers</cstring>
            </property>
           </widget>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>Client Name</string>
+            <string>&amp;Client Name</string>
+           </property>
+           <property name="buddy">
+            <cstring>clientName</cstring>
            </property>
           </widget>
          </item>
          <item row="1" column="0">
           <widget class="QLabel" name="label">
            <property name="text">
-            <string>Listen on</string>
+            <string>&amp;Listen on</string>
+           </property>
+           <property name="buddy">
+            <cstring>port</cstring>
            </property>
           </widget>
          </item>
@@ -291,6 +319,9 @@
          <family>Monospace</family>
          <pointsize>12</pointsize>
         </font>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
        </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
@@ -336,6 +367,9 @@
      </property>
      <item>
       <widget class="QListWidget" name="transactionQueue">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -356,6 +390,7 @@
    </attribute>
    <addaction name="net"/>
    <addaction name="connect"/>
+   <addaction name="preview"/>
    <addaction name="mine"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
@@ -391,14 +426,20 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>To</string>
+        <string>&amp;To</string>
+       </property>
+       <property name="buddy">
+        <cstring>destination</cstring>
        </property>
       </widget>
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label5_2">
        <property name="text">
-        <string>Amount</string>
+        <string>&amp;Amount</string>
+       </property>
+       <property name="buddy">
+        <cstring>value</cstring>
        </property>
       </widget>
      </item>
@@ -411,10 +452,13 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Data</string>
+        <string>&amp;Data</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+       <property name="buddy">
+        <cstring>data</cstring>
        </property>
       </widget>
      </item>
@@ -425,6 +469,9 @@
        </property>
        <widget class="QPlainTextEdit" name="data"/>
        <widget class="QPlainTextEdit" name="code">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="readOnly">
          <bool>true</bool>
         </property>
@@ -434,7 +481,7 @@
      <item row="5" column="3">
       <widget class="QPushButton" name="send">
        <property name="text">
-        <string>Send</string>
+        <string>&amp;Send</string>
        </property>
       </widget>
      </item>
@@ -517,6 +564,9 @@
      </property>
      <item>
       <widget class="QListWidget" name="ourAccounts">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -589,8 +639,38 @@
     <string>&amp;About...</string>
    </property>
   </action>
+  <action name="preview">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Preview</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <tabstops>
+  <tabstop>destination</tabstop>
+  <tabstop>calculatedName</tabstop>
+  <tabstop>value</tabstop>
+  <tabstop>valueUnits</tabstop>
+  <tabstop>data</tabstop>
+  <tabstop>code</tabstop>
+  <tabstop>send</tabstop>
+  <tabstop>idealPeers</tabstop>
+  <tabstop>port</tabstop>
+  <tabstop>clientName</tabstop>
+  <tabstop>verbosity</tabstop>
+  <tabstop>transactionQueue</tabstop>
+  <tabstop>accounts</tabstop>
+  <tabstop>peers</tabstop>
+  <tabstop>log</tabstop>
+  <tabstop>blocks</tabstop>
+  <tabstop>info</tabstop>
+  <tabstop>contractInfo</tabstop>
+  <tabstop>contracts</tabstop>
+  <tabstop>ourAccounts</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

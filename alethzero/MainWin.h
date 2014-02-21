@@ -13,6 +13,7 @@ class Main;
 
 namespace eth {
 class Client;
+class State;
 }
 
 class Main : public QMainWindow
@@ -31,6 +32,7 @@ private slots:
 	void on_net_triggered();
 	void on_verbosity_sliderMoved();
 	void on_ourAccounts_doubleClicked();
+	void ourAccountsRowsMoved();
 	void on_accounts_doubleClicked();
 	void on_destination_textChanged();
 	void on_data_textChanged();
@@ -42,9 +44,10 @@ private slots:
 	void on_contracts_doubleClicked();
 	void on_contracts_currentItemChanged();
 	void on_about_triggered();
+	void on_preview_triggered() { refresh(true); }
 	void on_quit_triggered() { close(); }
 
-	void refresh();
+	void refresh(bool _override = false);
 	void refreshNetwork();
 
 private:
@@ -52,6 +55,8 @@ private:
 
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
+
+	eth::State const& state() const;
 
 	void updateFee();
 	void readSettings();
