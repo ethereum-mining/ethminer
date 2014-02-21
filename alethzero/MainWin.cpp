@@ -299,7 +299,7 @@ void Main::refresh(bool _override)
 		}
 	}
 
-	if (c || m_keysChanged)
+	if (c || m_keysChanged || _override)
 	{
 		m_keysChanged = false;
 		ui->ourAccounts->clear();
