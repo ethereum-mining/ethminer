@@ -46,8 +46,6 @@ public:
 
 	u256 store(u256 _n) { return 0; }
 	void setStore(u256 _n, u256 _v) {}
-	u256 temp(u256 _n) { return 0; }
-	void setTemp(u256 _n, u256 _v) {}
 	void mktx(Transaction& _t) {}
 	u256 balance(Address _a) { return 0; }
 	void payFee(bigint _fee) {}

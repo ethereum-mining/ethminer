@@ -224,7 +224,6 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::NOT:
 			require(1);
 			m_stack.back() = m_stack.back() ? 0 : 1;
-			m_stack.pop_back();
 			break;
 		case Instruction::MYADDRESS:
 			m_stack.push_back(fromAddress(_ext.myAddress));

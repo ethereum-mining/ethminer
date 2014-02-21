@@ -90,6 +90,8 @@ std::string asHex(_T const& _data, int _w = 2)
 	return ret.str();
 }
 
+template <unsigned T> class UnitTest {};
+
 template <unsigned N>
 class FixedHash
 {
