@@ -75,6 +75,8 @@ Main::Main(QWidget *parent) :
 	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
 	m_refreshNetwork->start(1000);
 
+	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
+
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
 #else
@@ -103,10 +105,11 @@ Main::~Main()
 	writeSettings();
 }
 
+static const Address c_nameContract(fromUserHex("1f4b51662f3d7aaefa3f71df914f5d17428d6240"));
+
 QString Main::pretty(eth::Address _a) const
 {
-	static const Address c_nameContract(fromUserHex("f28e4d396cfc7bae483e464221b0d2bd3c27f21f"));
-	if (h256 n = m_client->state().contractMemory(c_nameContract, (h256)(u256)(u160)_a))
+	if (h256 n = state().contractMemory(c_nameContract, (h256)(u256)(u160)_a))
 	{
 		std::string s((char const*)n.data(), 32);
 		s.resize(s.find_first_of('\0'));
@@ -125,7 +128,6 @@ QString Main::render(eth::Address _a) const
 
 Address Main::fromString(QString const& _a) const
 {
-	static const Address c_nameContract(fromUserHex("f28e4d396cfc7bae483e464221b0d2bd3c27f21f"));
 	string sn = _a.toStdString();
 	if (sn.size() > 32)
 		sn.resize(32);
@@ -133,7 +135,7 @@ Address Main::fromString(QString const& _a) const
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
-		if (h256 a = m_client->state().contractMemory(c_nameContract, n))
+		if (h256 a = state().contractMemory(c_nameContract, n))
 			return right160(a);
 	if (_a.size() == 40)
 		return Address(fromUserHex(_a.toStdString()));
@@ -214,17 +216,24 @@ void Main::refreshNetwork()
 		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
 }
 
-void Main::refresh()
+eth::State const& Main::state() const
+{
+	return ui->preview->isChecked() ? m_client->postState() : m_client->state();
+}
+
+void Main::refresh(bool _override)
 {
 	m_client->lock();
+	auto const& st = state();
+
 	bool c = m_client->changed();
-	if (c)
+	if (c || _override)
 	{
 		auto d = m_client->blockChain().details();
 		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
 
-		auto acs = m_client->state().addresses();
+		auto acs = st.addresses();
 		ui->accounts->clear();
 		ui->contracts->clear();
 		for (auto n = 0; n < 2; ++n)
@@ -233,10 +242,10 @@ void Main::refresh()
 				auto r = render(i.first);
 				if (r.contains('(') == !n)
 				{
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->accounts))
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)state().transactionsFrom(i.first)), ui->accounts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-					if (m_client->state().isContractAddress(i.first))
-						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)m_client->state().transactionsFrom(i.first)), ui->contracts))
+					if (st.isContractAddress(i.first))
+						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
 							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 				}
 			}
@@ -250,7 +259,7 @@ void Main::refresh()
 					.arg(render(t.safeSender()))
 					.arg(render(t.receiveAddress))
 					.arg((unsigned)t.nonce)
-					.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
+					.arg(st.isContractAddress(t.receiveAddress) ? '*' : '-') :
 				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
@@ -276,7 +285,7 @@ void Main::refresh()
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
-						.arg(m_client->state().isContractAddress(t.receiveAddress) ? '*' : '-') :
+						.arg(st.isContractAddress(t.receiveAddress) ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
@@ -297,14 +306,28 @@ void Main::refresh()
 		u256 totalBalance = 0;
 		for (auto i: m_myKeys)
 		{
-			u256 b = m_client->state().balance(i.address());
-			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->state().transactionsFrom(i.address())), ui->ourAccounts))
+			u256 b = st.balance(i.address());
+			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)st.transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 		}
 		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 	}
 	m_client->unlock();
+}
+
+void Main::ourAccountsRowsMoved()
+{
+	QVector<KeyPair> myKeys;
+	for (int i = 0; i < ui->ourAccounts->count(); ++i)
+	{
+		auto hba = ui->ourAccounts->item(i)->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		for (auto i: m_myKeys)
+			if (i.address() == h)
+				myKeys.push_back(i);
+	}
+	m_myKeys = myKeys;
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -380,7 +403,7 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto mem = m_client->state().contractMemory(h);
+		auto mem = state().contractMemory(h);
 		u256 next = 0;
 		unsigned numerics = 0;
 		bool unexpectedNumeric = false;
@@ -476,7 +499,7 @@ void Main::on_data_textChanged()
 
 u256 Main::fee() const
 {
-	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt()) ? m_client->state().fee(m_data.size()) : m_client->state().fee();
+	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt()) ? state().fee(m_data.size()) : state().fee();
 }
 
 u256 Main::value() const
@@ -497,7 +520,7 @@ void Main::updateFee()
 
 	bool ok = false;
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
+		if (state().balance(i.address()) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -565,7 +588,7 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq/* && i.address() != Address(fromUserHex(ui->destination->text().toStdString()))*/)
+		if (m_client->state().balance(i.address()) >= totalReq	)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
