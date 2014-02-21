@@ -46,8 +46,6 @@ std::map<Address, AddressState> const& genesisState();
 
 #define ETH_SENDER_PAYS_SETUP 1
 
-template <unsigned T> class UnitTest {};
-
 static const std::map<u256, u256> EmptyMapU256U256;
 
 class ExtVM;
