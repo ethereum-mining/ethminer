@@ -31,6 +31,7 @@
     <ClCompile Include="..\libethereum\Common.cpp" />
     <ClCompile Include="..\libethereum\Dagger.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
+    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
     <ClCompile Include="..\libethereum\FileSystem.cpp" />
     <ClCompile Include="..\libethereum\Instruction.cpp" />
     <ClCompile Include="..\libethereum\MemTrie.cpp" />
@@ -43,6 +44,7 @@
     <ClCompile Include="..\libethereum\TrieDB.cpp" />
     <ClCompile Include="..\libethereum\TrieHash.cpp" />
     <ClCompile Include="..\libethereum\UPnP.cpp" />
+    <ClCompile Include="..\libethereum\VM.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -60,6 +62,8 @@
     <ClInclude Include="..\libethereum\Dagger.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
     <ClInclude Include="..\libethereum\Exceptions.h" />
+    <ClInclude Include="..\libethereum\ExtVMFace.h" />
+    <ClInclude Include="..\libethereum\FeeStructure.h" />
     <ClInclude Include="..\libethereum\FileSystem.h" />
     <ClInclude Include="..\libethereum\Instruction.h" />
     <ClInclude Include="..\libethereum\MemTrie.h" />
@@ -73,6 +77,7 @@
     <ClInclude Include="..\libethereum\TrieHash.h" />
     <ClInclude Include="..\libethereum\UPnP.h" />
     <ClInclude Include="..\libethereum\vector_ref.h" />
+    <ClInclude Include="..\libethereum\VM.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
