@@ -105,7 +105,7 @@ Main::~Main()
 	writeSettings();
 }
 
-static const Address c_nameContract(fromUserHex("1f4b51662f3d7aaefa3f71df914f5d17428d6240"));
+static const Address c_nameContract(fromUserHex("c848b90ecdd48aae27d4a5783a1c767c42b53ea2"));
 
 QString Main::pretty(eth::Address _a) const
 {
