@@ -49,7 +49,7 @@ else ()
 	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST})
 endif ()
 
-qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network)
+qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network Declarative)
 target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
 
 if (APPLE)
