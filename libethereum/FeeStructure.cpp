@@ -26,7 +26,7 @@ using namespace eth;
 
 u256 const c_stepFee = 1;
 u256 const c_dataFee = 20;
-u256 const c_memoryFee = 0;//5;		memoryFee is 0 for PoC-3
+u256 const c_memoryFee = 5;
 u256 const c_extroFee = 40;
 u256 const c_cryptoFee = 20;
 u256 const c_newContractFee = 100;

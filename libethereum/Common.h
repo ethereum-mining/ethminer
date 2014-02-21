@@ -90,6 +90,10 @@ std::string asHex(_T const& _data, int _w = 2)
 	return ret.str();
 }
 
+/// Converts a (printable) ASCII hex string into the corresponding byte stream.
+/// @example fromUserHex("41626261") == asBytes("Abba")
+bytes fromUserHex(std::string const& _s);
+
 template <unsigned T> class UnitTest {};
 
 template <unsigned N>
@@ -105,6 +109,7 @@ public:
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
+	explicit FixedHash(std::string const& _user): FixedHash(fromUserHex(_user)) {}
 
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
@@ -310,10 +315,6 @@ std::string escaped(std::string const& _s, bool _all = true);
 /// Converts a (printable) ASCII hex character into the correspnding integer value.
 /// @example fromHex('A') == 10 && fromHex('f') == 15 && fromHex('5') == 5
 int fromHex(char _i);
-
-/// Converts a (printable) ASCII hex string into the corresponding byte stream.
-/// @example fromUserHex("41626261") == asBytes("Abba")
-bytes fromUserHex(std::string const& _s);
 
 /// Converts a string into the big-endian base-16 stream of integers (NOT ASCII).
 /// @example toHex("A")[0] == 4 && toHex("A")[1] == 1
@@ -639,5 +640,8 @@ S& streamout(S& _out, std::multimap<T, U> const& _v)
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e) { streamout(_out, _e); return _out; }
 
 template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p) { if (_p) _out << "@" << (*_p); else _out << "nullptr"; return _out; }
+
+bytes contents(std::string const& _file);
+void writeFile(std::string const& _file, bytes const& _data);
 
 }

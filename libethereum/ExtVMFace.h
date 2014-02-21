@@ -33,6 +33,15 @@ struct Transaction;
 class ExtVMFace
 {
 public:
+	ExtVMFace() {}
+
+	ExtVMFace(FeeStructure const& _fees, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+		fees(_fees),
+		previousBlock(_previousBlock),
+		currentBlock(_currentBlock),
+		currentNumber(_currentNumber)
+	{}
+
 	ExtVMFace(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, FeeStructure const& _fees, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
 		myAddress(_myAddress),
 		txSender(_txSender),
@@ -57,7 +66,7 @@ public:
 	Address myAddress;
 	Address txSender;
 	u256 txValue;
-	u256s const& txData;
+	u256s txData;
 	FeeStructure fees;
 	BlockInfo previousBlock;					///< The current block's information.
 	BlockInfo currentBlock;					///< The current block's information.
