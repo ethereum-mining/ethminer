@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 
 cmake_policy(SET CMP0015 NEW)
 
-set(ETH_VERSION 0.3.6)
+set(ETH_VERSION 0.3.7)
 set(ETH_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 
 # Default HEADLESS to 0.
