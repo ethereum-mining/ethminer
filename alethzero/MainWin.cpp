@@ -65,6 +65,44 @@ Main::Main(QWidget *parent) :
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
 
+	/*
+	ui->librariesView->setModel(m_libraryMan);
+	ui->graphsView->setModel(m_graphMan);
+	setWindowIcon(QIcon(":/Noted.png"));
+
+	qmlRegisterSingletonType<TimeHelper>("com.llr", 1, 0, "Time", TimelineItem::constructTimeHelper);
+	qmlRegisterType<GraphItem>("com.llr", 1, 0, "Graph");
+	qmlRegisterType<CursorGraphItem>("com.llr", 1, 0, "CursorGraph");
+	qmlRegisterType<IntervalItem>("com.llr", 1, 0, "Interval");
+	qmlRegisterType<CursorItem>("com.llr", 1, 0, "Cursor");
+	qmlRegisterType<TimelinesItem>("com.llr", 1, 0, "Timelines");
+	qmlRegisterType<TimeLabelsItem>("com.llr", 1, 0, "TimeLabels");
+	qmlRegisterType<XLabelsItem>("com.llr", 1, 0, "XLabels");
+	qmlRegisterType<XScaleItem>("com.llr", 1, 0, "XScale");
+	qmlRegisterType<YLabelsItem>("com.llr", 1, 0, "YLabels");
+	qmlRegisterType<YScaleItem>("com.llr", 1, 0, "YScale");
+
+	m_view = new QQuickView();
+	QQmlContext* context = m_view->rootContext();
+	context->setContextProperty("libs", libs());
+	context->setContextProperty("compute", compute());
+	context->setContextProperty("data", data());
+	context->setContextProperty("graphs", graphs());
+	context->setContextProperty("audio", audio());
+	context->setContextProperty("view", view());
+	m_view->setSource(QUrl("qrc:/Noted.qml"));
+
+	QWidget* w = QWidget::createWindowContainer(m_view);
+	w->setAcceptDrops(true);
+	m_view->setResizeMode(QQuickView::SizeRootObjectToView);
+	ui->fullDisplay->insertWidget(0, w);
+	m_view->create();
+
+	m_timelinesItem = m_view->rootObject()->findChild<TimelinesItem*>("timelines");
+	qDebug() << m_view->rootObject();
+	*/
+
+
 	readSettings();
 	refresh();
 
@@ -105,11 +143,9 @@ Main::~Main()
 	writeSettings();
 }
 
-static const Address c_nameContract(fromUserHex("8c81ec1f8039e9dd3d21e02af91f7a3629bce784"));
-
 QString Main::pretty(eth::Address _a) const
 {
-	if (h256 n = state().contractMemory(c_nameContract, (h256)(u256)(u160)_a))
+	if (h256 n = state().contractMemory(m_nameReg, (h256)(u256)(u160)_a))
 	{
 		std::string s((char const*)n.data(), 32);
 		s.resize(s.find_first_of('\0'));
@@ -135,7 +171,7 @@ Address Main::fromString(QString const& _a) const
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
-		if (h256 a = state().contractMemory(c_nameContract, n))
+		if (h256 a = state().contractMemory(m_nameReg, n))
 			return right160(a);
 	if (_a.size() == 40)
 		return Address(fromUserHex(_a.toStdString()));
@@ -173,6 +209,7 @@ void Main::writeSettings()
 
 	}
 	s.setValue("peers", m_peers);
+	s.setValue("nameReg", ui->nameReg->text());
 
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
@@ -204,6 +241,17 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
+	ui->nameReg->setText(s.value("nameReg", "57a3dcfd7c57ceba67bd7e057a1581d6c3e64f83").toString());
+}
+
+void Main::on_nameReg_textChanged()
+{
+	string s = ui->nameReg->text().toStdString();
+	if (s.size() == 40)
+	{
+		m_nameReg = Address(fromUserHex(s));
+		refresh(true);
+	}
 }
 
 void Main::refreshNetwork()

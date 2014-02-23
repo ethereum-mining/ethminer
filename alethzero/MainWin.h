@@ -44,6 +44,7 @@ private slots:
 	void on_contracts_doubleClicked();
 	void on_contracts_currentItemChanged();
 	void on_about_triggered();
+	void on_nameReg_textChanged();
 	void on_preview_triggered() { refresh(true); }
 	void on_quit_triggered() { close(); }
 
@@ -78,6 +79,7 @@ private:
 	QVector<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
 	eth::u256s m_data;
+	eth::Address m_nameReg;
 
 	QNetworkAccessManager m_webCtrl;
 };

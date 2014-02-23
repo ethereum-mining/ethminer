@@ -107,7 +107,7 @@ public:
 
 	FixedHash() { m_data.fill(0); }
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
-	explicit FixedHash(bytes const& _b) { memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
+	explicit FixedHash(bytes const& _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 	explicit FixedHash(std::string const& _user): FixedHash(fromUserHex(_user)) {}
 
