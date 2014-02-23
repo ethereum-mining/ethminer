@@ -655,8 +655,29 @@ void Main::on_create_triggered()
 	m_keysChanged = true;
 }
 
-// include moc file on VS, ofuscated to hide from automoc
+// extra bits needed to link on VS
 #ifdef _MSC_VER
+
+// include moc file, ofuscated to hide from automoc
 #include\
 "moc_MainWin.cpp"
+
+// specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
+#ifdef _DEBUG
+#define QTLIB(x) x"d.lib"
+#else 
+#define QTLIB(x) x".lib"
+#endif
+
+#pragma comment(lib, QTLIB("Qt5PlatformSupport"))
+#pragma comment(lib, QTLIB("Qt5Core"))
+#pragma comment(lib, QTLIB("Qt5GUI"))
+#pragma comment(lib, QTLIB("Qt5Widgets"))
+#pragma comment(lib, QTLIB("Qt5Network"))
+#pragma comment(lib, QTLIB("qwindows"))
+#pragma comment(lib, "Imm32.lib")
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "winmm.lib")
+
+
 #endif
