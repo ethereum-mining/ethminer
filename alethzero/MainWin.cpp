@@ -241,7 +241,7 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("nameReg", "57a3dcfd7c57ceba67bd7e057a1581d6c3e64f83").toString());
+	ui->nameReg->setText(s.value("nameReg", "11f62328e131dbb05ce4c73a3de3c7ab1c84a163").toString());
 }
 
 void Main::on_nameReg_textChanged()
