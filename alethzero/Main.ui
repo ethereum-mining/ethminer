@@ -28,7 +28,7 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QDeclarativeView" name="mainView"/>
+     <widget class="QWidget" name="widget" native="true"/>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -689,13 +689,6 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <customwidgets>
-  <customwidget>
-   <class>QDeclarativeView</class>
-   <extends>QGraphicsView</extends>
-   <header>QtDeclarative/QDeclarativeView</header>
-  </customwidget>
- </customwidgets>
  <tabstops>
   <tabstop>destination</tabstop>
   <tabstop>calculatedName</tabstop>
