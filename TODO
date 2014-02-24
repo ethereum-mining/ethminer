@@ -1,5 +1,7 @@
 ### UP FOR GRABS
 
+BUG: Nonce sometimes jumps one.
+
 Tests
 - Use standard tests.
 
@@ -10,6 +12,8 @@ Crypto stuff:
 Network:
 - *** Exponential backoff on bad connection.
 - *** Handle exception when no network.
+- *** Only download blocks from one peer at once.
+  - Download in parallel, but stripe.
 - NotInChain will be very bad for new peers - it'll run through until the genesis.
   - Check how many it has first.
 - Crypto on network - use id as public key?
