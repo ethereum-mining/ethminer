@@ -624,12 +624,19 @@ void State::unapplyRewards(Addresses const& _uncleAddresses)
 
 void State::executeBare(Transaction const& _t, Address _sender)
 {
+	commit();
+	clog(StateChat) << "State:" << rootHash();
+	clog(StateChat) << "Executing TX:" << _t;
+
 	// Entry point for a contract-originated transaction.
 
 	// Ignore invalid transactions.
 	auto nonceReq = transactionsFrom(_sender);
 	if (_t.nonce != nonceReq)
+	{
+		clog(StateChat) << "Invalid Nonce.";
 		throw InvalidNonce(nonceReq, _t.nonce);
+	}
 
 	unsigned nonZeroData = 0;
 	for (auto i: _t.data)
@@ -639,13 +646,16 @@ void State::executeBare(Transaction const& _t, Address _sender)
 
 	// Not considered invalid - just pointless.
 	if (balance(_sender) < _t.value + fee)
+	{
+		clog(StateChat) << "Not enough cash.";
 		throw NotEnoughCash();
-
-	// Increment associated nonce for sender.
-	noteSending(_sender);
+	}
 
 	if (_t.receiveAddress)
 	{
+		// Increment associated nonce for sender.
+		noteSending(_sender);
+
 		subBalance(_sender, _t.value + fee);
 		addBalance(_t.receiveAddress, _t.value);
 
@@ -658,8 +668,7 @@ void State::executeBare(Transaction const& _t, Address _sender)
 			}
 			catch (VMException const& _e)
 			{
-				cnote << "VM Exception: " << _e.description();
-				throw;
+				clog(StateChat) << "VM Exception: " << _e.description();
 			}
 		}
 	}
@@ -670,12 +679,21 @@ void State::executeBare(Transaction const& _t, Address _sender)
 #else
 		if (_t.value < fee)
 #endif
+		{
+			clog(StateChat) << "Not enough cash.";
 			throw NotEnoughCash();
+		}
 
 		Address newAddress = right160(_t.sha3());
 
 		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
+		{
+			clog(StateChat) << "Contract address collision.";
 			throw ContractAddressCollision();
+		}
+
+		// Increment associated nonce for sender.
+		noteSending(_sender);
 
 		// All OK - set it up.
 		m_cache[newAddress] = AddressState(0, 0, AddressType::Contract);
@@ -698,6 +716,8 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		addBalance(newAddress, _t.value - fee);
 #endif
 	}
+	commit();
+	clog(StateChat) << "New state:" << rootHash();
 }
 
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* _totalFee)

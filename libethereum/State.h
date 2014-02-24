@@ -48,6 +48,8 @@ std::map<Address, AddressState> const& genesisState();
 
 static const std::map<u256, u256> EmptyMapU256U256;
 
+struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
+
 class ExtVM;
 
 /**

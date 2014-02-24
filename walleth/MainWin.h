@@ -18,6 +18,11 @@ class State;
 
 class QQuickView;
 
+class QEthereum
+{
+
+};
+
 class Main : public QMainWindow
 {
 	Q_OBJECT
@@ -71,6 +76,8 @@ private:
 	QQuickView* m_view;
 
 	QNetworkAccessManager m_webCtrl;
+
+	QEthereum m_eth;
 };
 
 #endif // MAIN_H
