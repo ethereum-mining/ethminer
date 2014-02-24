@@ -1,5 +1,6 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtQuick/QQuickView>
+#include <QtQml/QQmlContext>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
@@ -77,8 +78,8 @@ Main::Main(QWidget *parent) :
 */
 	m_view = new QQuickView();
 	QQmlContext* context = m_view->rootContext();
-/*	context->setContextProperty("libs", libs());
-	context->setContextProperty("compute", compute());
+//	context->setContextProperty("eth", m_eth);
+/*	context->setContextProperty("compute", compute());
 	context->setContextProperty("data", data());
 	context->setContextProperty("graphs", graphs());
 	context->setContextProperty("audio", audio());
@@ -87,7 +88,6 @@ Main::Main(QWidget *parent) :
 
 
 	QWidget* w = QWidget::createWindowContainer(m_view);
-	w->setAcceptDrops(true);
 	m_view->setResizeMode(QQuickView::SizeRootObjectToView);
 	ui->fullDisplay->insertWidget(0, w);
 	m_view->create();

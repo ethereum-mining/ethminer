@@ -44,6 +44,7 @@ Robustness
 - Store version alongside BC DB.
 - Better handling of corrupt blocks.
   - Kill DB & restart.
+- Avoid transactions with future invalid nonces until additional transactions are processed.
 
 GUI
 - Make address/block chain list model-based, JIT populated.
