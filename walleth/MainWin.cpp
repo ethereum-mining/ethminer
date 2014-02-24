@@ -83,8 +83,8 @@ Main::Main(QWidget *parent) :
 	context->setContextProperty("graphs", graphs());
 	context->setContextProperty("audio", audio());
 	context->setContextProperty("view", view());
-	m_view->setSource(QUrl("qrc:/Noted.qml"));
-*/
+*/	m_view->setSource(QUrl("qrc:/Simple.qml"));
+
 
 	QWidget* w = QWidget::createWindowContainer(m_view);
 	w->setAcceptDrops(true);
