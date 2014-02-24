@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Alethzero</RootNamespace>
-    <ProjectName>Alethzero</ProjectName>
+    <RootNamespace>AlethZero</RootNamespace>
+    <ProjectName>AlethZero</ProjectName>
     <ProjectGuid>{BFCFFC46-78A3-4350-9938-0EA3A2B1CCCD}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
