@@ -9,6 +9,7 @@ Crypto stuff:
 
 Network:
 - *** Exponential backoff on bad connection.
+- *** Handle exception when no network.
 - NotInChain will be very bad for new peers - it'll run through until the genesis.
   - Check how many it has first.
 - Crypto on network - use id as public key?
@@ -26,9 +27,6 @@ THREAD-SAFETY
 - BlockChain
 - TransactionQueue
 - State
-
-CLI client
-- Implement CLI option "--help".
 
 General:
 - Better logging.
