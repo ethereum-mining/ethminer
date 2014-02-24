@@ -116,7 +116,7 @@ public:
 	size_t peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
 	/// Start the network subsystem.
-	void startNetwork(unsigned short _listenPort = 30303, std::string const& _seedHost = std::string(), unsigned short _port = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
+	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
 	/// Connect to a particular peer.
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 	/// Stop the network subsystem.
