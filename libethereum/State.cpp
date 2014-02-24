@@ -641,11 +641,11 @@ void State::executeBare(Transaction const& _t, Address _sender)
 	if (balance(_sender) < _t.value + fee)
 		throw NotEnoughCash();
 
-	// Increment associated nonce for sender.
-	noteSending(_sender);
-
 	if (_t.receiveAddress)
 	{
+		// Increment associated nonce for sender.
+		noteSending(_sender);
+
 		subBalance(_sender, _t.value + fee);
 		addBalance(_t.receiveAddress, _t.value);
 
@@ -659,7 +659,6 @@ void State::executeBare(Transaction const& _t, Address _sender)
 			catch (VMException const& _e)
 			{
 				cnote << "VM Exception: " << _e.description();
-				throw;
 			}
 		}
 	}
@@ -676,6 +675,9 @@ void State::executeBare(Transaction const& _t, Address _sender)
 
 		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
 			throw ContractAddressCollision();
+
+		// Increment associated nonce for sender.
+		noteSending(_sender);
 
 		// All OK - set it up.
 		m_cache[newAddress] = AddressState(0, 0, AddressType::Contract);
