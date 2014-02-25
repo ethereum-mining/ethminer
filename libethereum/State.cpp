@@ -661,6 +661,7 @@ void State::executeBare(Transaction const& _t, Address _sender)
 
 		if (isContractAddress(_t.receiveAddress))
 		{
+			// Once we get here, there's no going back.
 			try
 			{
 				MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
@@ -669,6 +670,14 @@ void State::executeBare(Transaction const& _t, Address _sender)
 			catch (VMException const& _e)
 			{
 				clog(StateChat) << "VM Exception: " << _e.description();
+			}
+			catch (Exception const& _e)
+			{
+				clog(StateChat) << "Exception in VM: " << _e.description();
+			}
+			catch (std::exception const& _e)
+			{
+				clog(StateChat) << "std::exception in VM: " << _e.what();
 			}
 		}
 	}
@@ -691,6 +700,9 @@ void State::executeBare(Transaction const& _t, Address _sender)
 			clog(StateChat) << "Contract address collision.";
 			throw ContractAddressCollision();
 		}
+
+		// Increment associated nonce for sender.
+		noteSending(_sender);
 
 		// Increment associated nonce for sender.
 		noteSending(_sender);
