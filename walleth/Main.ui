@@ -163,24 +163,6 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <tabstops>
-  <tabstop>destination</tabstop>
-  <tabstop>calculatedName</tabstop>
-  <tabstop>value</tabstop>
-  <tabstop>valueUnits</tabstop>
-  <tabstop>data</tabstop>
-  <tabstop>code</tabstop>
-  <tabstop>send</tabstop>
-  <tabstop>idealPeers</tabstop>
-  <tabstop>port</tabstop>
-  <tabstop>clientName</tabstop>
-  <tabstop>verbosity</tabstop>
-  <tabstop>transactionQueue</tabstop>
-  <tabstop>accounts</tabstop>
-  <tabstop>peers</tabstop>
-  <tabstop>log</tabstop>
-  <tabstop>ourAccounts</tabstop>
- </tabstops>
  <resources/>
  <connections/>
 </ui>
