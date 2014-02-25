@@ -2,7 +2,7 @@
 #include <QtQuick/QQuickView>
 //#include <QtQml/QQmlContext>
 //#include <QtQml/QQmlEngine>
-#include <QtQml>
+#include <QtQml/QtQml>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
@@ -430,6 +430,9 @@ void Main::on_create_triggered()
 #pragma comment(lib, QTLIB("Qt5GUI"))
 #pragma comment(lib, QTLIB("Qt5Widgets"))
 #pragma comment(lib, QTLIB("Qt5Network"))
+#pragma comment(lib, QTLIB("Qt5Quick"))
+#pragma comment(lib, QTLIB("Qt5Declarative"))
+#pragma comment(lib, QTLIB("Qt5Qml"))
 #pragma comment(lib, QTLIB("qwindows"))
 #pragma comment(lib, "Imm32.lib")
 #pragma comment(lib, "opengl32.lib")
