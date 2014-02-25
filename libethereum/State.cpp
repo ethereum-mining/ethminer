@@ -624,9 +624,11 @@ void State::unapplyRewards(Addresses const& _uncleAddresses)
 
 void State::executeBare(Transaction const& _t, Address _sender)
 {
+#if ETH_DEBUG
 	commit();
 	clog(StateChat) << "State:" << rootHash();
 	clog(StateChat) << "Executing TX:" << _t;
+#endif
 
 	// Entry point for a contract-originated transaction.
 
@@ -656,6 +658,7 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		// Increment associated nonce for sender.
 		noteSending(_sender);
 
+		// Pay...
 		subBalance(_sender, _t.value + fee);
 		addBalance(_t.receiveAddress, _t.value);
 
@@ -683,16 +686,6 @@ void State::executeBare(Transaction const& _t, Address _sender)
 	}
 	else
 	{
-#if ETH_SENDER_PAYS_SETUP
-		if (balance(_sender) < _t.value + fee)
-#else
-		if (_t.value < fee)
-#endif
-		{
-			clog(StateChat) << "Not enough cash.";
-			throw NotEnoughCash();
-		}
-
 		Address newAddress = right160(_t.sha3());
 
 		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
@@ -704,11 +697,11 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		// Increment associated nonce for sender.
 		noteSending(_sender);
 
-		// Increment associated nonce for sender.
-		noteSending(_sender);
+		// Pay out of sender...
+		subBalance(_sender, _t.value + fee);
 
-		// All OK - set it up.
-		m_cache[newAddress] = AddressState(0, 0, AddressType::Contract);
+		// Set up new account...
+		m_cache[newAddress] = AddressState(_t.value, 0, AddressType::Contract);
 		auto& mem = m_cache[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
 #ifdef __clang__
@@ -719,17 +712,12 @@ void State::executeBare(Transaction const& _t, Address _sender)
 #else
 			mem[i] = _t.data[i];
 #endif
-
-#if ETH_SENDER_PAYS_SETUP
-		subBalance(_sender, _t.value + fee);
-		addBalance(newAddress, _t.value);
-#else
-		subBalance(_sender, _t.value);
-		addBalance(newAddress, _t.value - fee);
-#endif
 	}
+
+#if ETH_DEBUG
 	commit();
 	clog(StateChat) << "New state:" << rootHash();
+#endif
 }
 
 void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* _totalFee)
