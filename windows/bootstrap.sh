@@ -12,7 +12,7 @@ if [[ ! $@ ]] || [ $1 == "fetch" ]; then
 	if [ ! -d cpp-ethereum ]; then
 		(set -x; git clone https://github.com/ethereum/cpp-ethereum.git)
 		cd cpp-ethereum
-		(set -x; git checkout origin/develop)
+		(set -x; git checkout -b develop origin/develop)
 		cd ..
 		echo
 	fi
