@@ -40,6 +40,7 @@
 #include <chrono>
 #include <array>
 #include <map>
+#include <hash_map>
 #include <unordered_map>
 #include <set>
 #include <array>
@@ -181,6 +182,43 @@ using HexMap = std::map<bytes, std::string>;
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
 
+// This is the helper class for the std::hash_map lookup; it converts the input 256bit hash into a size_t sized hash value
+// and does an exact comparison of two hash entries.
+class H256Hash
+{
+public:
+	static const size_t bucket_size = 4;
+	static const size_t min_buckets = 8;
+
+	// Compute the size_t hash of this hash
+	size_t operator()(const h256 &index) const
+	{
+		const uint64_t *data = (const uint64_t *)index.data();
+		uint64_t hash = data[0];
+		hash ^= data[1];
+		hash ^= data[2];
+		hash ^= data[3];
+		return (size_t)hash;
+	}
+
+	// Return true if hash s1 is less than hash s2
+	bool operator()(const h256 &s1, const h256 &s2) const
+	{
+		const uint64_t *hash1 = (const uint64_t *)s1.data();
+		const uint64_t *hash2 = (const uint64_t *)s2.data();
+
+		if (hash1[0] < hash2[0]) return true;
+		if (hash1[0] > hash2[0]) return false;
+
+		if (hash1[1] < hash2[1]) return true;
+		if (hash1[1] > hash2[1]) return false;
+
+		if (hash1[2] < hash2[2]) return true;
+		if (hash1[2] > hash2[2]) return false;
+
+		return hash1[3] < hash2[3];
+	}
+};
 
 /// Logging
 class NullOutputStream

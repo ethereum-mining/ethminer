@@ -48,6 +48,8 @@ struct BlockDetails
 	h256s children;
 };
 
+typedef std::hash_map<h256, BlockDetails, H256Hash> BlockDetailsHash;
+
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
 
@@ -101,7 +103,7 @@ private:
 	void checkConsistency();
 
 	/// Get fully populated from disk DB.
-	mutable std::map<h256, BlockDetails> m_details;
+	mutable BlockDetailsHash m_details;
 	mutable std::map<h256, std::string> m_cache;
 	mutable std::mutex m_lock;
 
