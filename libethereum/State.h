@@ -44,9 +44,9 @@ class BlockChain;
 extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
-#define ETH_SENDER_PAYS_SETUP 1
-
 static const std::map<u256, u256> EmptyMapU256U256;
+
+struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
 class ExtVM;
 
