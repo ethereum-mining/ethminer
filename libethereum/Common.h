@@ -199,24 +199,6 @@ public:
 		hash ^= data[3];
 		return (size_t)hash;
 	}
-
-	// Return true if hash s1 is less than hash s2
-	bool operator()(const h256 &s1, const h256 &s2) const
-	{
-		const uint64_t *hash1 = (const uint64_t *)s1.data();
-		const uint64_t *hash2 = (const uint64_t *)s2.data();
-
-		if (hash1[0] < hash2[0]) return true;
-		if (hash1[0] > hash2[0]) return false;
-
-		if (hash1[1] < hash2[1]) return true;
-		if (hash1[1] > hash2[1]) return false;
-
-		if (hash1[2] < hash2[2]) return true;
-		if (hash1[2] > hash2[2]) return false;
-
-		return hash1[3] < hash2[3];
-	}
 };
 
 /// Logging

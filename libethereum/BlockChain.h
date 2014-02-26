@@ -48,7 +48,7 @@ struct BlockDetails
 	h256s children;
 };
 
-typedef std::unordered_map<h256, BlockDetails, H256Hash> BlockDetailsHash;
+typedef std::map<h256, BlockDetails> BlockDetailsHash;
 
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
