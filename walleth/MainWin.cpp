@@ -69,6 +69,15 @@ Address QEthereum::address() const
 	return m_client->address();
 }
 
+void QEthereum::setAddress(Address _a)
+{
+	if (m_client->address() != _a)
+	{
+		m_client->setAddress(_a);
+		changed();
+	}
+}
+
 u256 QEthereum::balance() const
 {
 	return m_client->postState().balance(address());
@@ -155,12 +164,10 @@ Main::Main(QWidget *parent) :
 	readSettings();
 	refresh();
 
-	m_refresh = new QTimer(this);
-	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
-	m_refresh->start(100);
 	m_refreshNetwork = new QTimer(this);
 	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
 	m_refreshNetwork->start(1000);
+	connect(this, SIGNAL(changed()), SLOT(refresh()));
 
 	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
 	{
@@ -241,7 +248,7 @@ void Main::readSettings()
 			m_myKeys.append(KeyPair(k));
 		}
 	}
-	m_eth->client()->setAddress(m_myKeys.back().address());
+	m_eth->setAddress(m_myKeys.last().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	m_clientName = s.value("clientName", "").toString();
@@ -260,31 +267,23 @@ eth::State const& Main::state() const
 	return ui->preview->isChecked() ? m_eth->client()->postState() : m_eth->client()->state();
 }
 
-void Main::refresh(bool _override)
+void Main::refresh()
 {
-	m_eth->client()->lock();
+	eth::ClientGuard l(m_eth->client());
 	auto const& st = state();
 
-	bool c = m_eth->client()->changed();
-	if (c || _override)
-	{
-		auto d = m_eth->client()->blockChain().details();
-		auto diff = BlockInfo(m_eth->client()->blockChain().block()).difficulty;
-		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
-	}
+	auto d = m_eth->client()->blockChain().details();
+	auto diff = BlockInfo(m_eth->client()->blockChain().block()).difficulty;
+	ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
 
-	if (c || m_keysChanged || _override)
+	m_keysChanged = false;
+	u256 totalBalance = 0;
+	for (auto i: m_myKeys)
 	{
-		m_keysChanged = false;
-		u256 totalBalance = 0;
-		for (auto i: m_myKeys)
-		{
-			u256 b = st.balance(i.address());
-			totalBalance += b;
-		}
-		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
+		u256 b = st.balance(i.address());
+		totalBalance += b;
 	}
-	m_eth->client()->unlock();
+	ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 }
 
 void Main::on_net_triggered(bool _auto)
