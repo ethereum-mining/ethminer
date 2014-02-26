@@ -151,7 +151,8 @@ public:
 		size_t operator()(FixedHash const& value) const
 		{
 			size_t h = 0;
-			for (i: in m_data) h = (h<<5 - h) + i;
+			for (auto i: m_data)
+				h = (h << 5 - h) + i;
 			return h;
 		}
 	};
@@ -162,7 +163,7 @@ private:
 
 
 // fast equality for h256
-template<> bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
+template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
 {
 	const uint64_t* hash1 = (const uint64_t*)this->data();
 	const uint64_t* hash2 = (const uint64_t*)_other.data();
@@ -170,7 +171,7 @@ template<> bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
 }
 
 // fast std::hash compatible hash function object for h256
-template<> size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
+template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
 {
 	const uint64_t*data = (const uint64_t*)value.data();
 	uint64_t hash = data[0];
@@ -679,5 +680,8 @@ void writeFile(std::string const& _file, bytes const& _data);
 
 }
 
-// forward std::hash<eth::h256> to eth::h256::hash
-template<> struct std::hash<eth::h256> : eth::h256::hash {};
+namespace std
+{
+	// forward std::hash<eth::h256> to eth::h256::hash
+	template<> struct hash<eth::h256>: eth::h256::hash {};
+}
