@@ -483,19 +483,21 @@ bool PeerSession::checkPacket(bytesConstRef _msg)
 void PeerSession::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
-	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
-	swap(*buffer, _msg);
-	if (!checkPacket(bytesConstRef(&*buffer)))
+
+	if (!checkPacket(bytesConstRef(&_msg)))
 	{
 		cwarn << "INVALID PACKET CONSTRUCTED!";
-
 	}
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+
+	auto self(shared_from_this());
+	bytes* buffer = new bytes(std::move(_msg));
+	ba::async_write(m_socket, ba::buffer(*buffer), [self,buffer](boost::system::error_code ec, std::size_t length)
 	{
+		delete buffer;
 		if (ec)
 		{
 			cwarn << "Error sending: " << ec.message();
-			dropped();
+			self->dropped();
 		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
@@ -504,17 +506,21 @@ void PeerSession::sendDestroy(bytes& _msg)
 void PeerSession::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
-	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
+	
 	if (!checkPacket(_msg))
 	{
 		cwarn << "INVALID PACKET CONSTRUCTED!";
 	}
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+
+	auto self(shared_from_this());
+	bytes* buffer = new bytes(_msg.toBytes());
+	ba::async_write(m_socket, ba::buffer(*buffer), [self,buffer](boost::system::error_code ec, std::size_t length)
 	{
+		delete buffer;
 		if (ec)
 		{
 			cwarn << "Error sending: " << ec.message();
-			dropped();
+			self->dropped();
 		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
@@ -568,7 +574,7 @@ void PeerSession::start()
 void PeerSession::doRead()
 {
 	auto self(shared_from_this());
-	m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
+	m_socket.async_read_some(boost::asio::buffer(m_data), [this,self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
 		{
