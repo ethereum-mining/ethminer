@@ -6,7 +6,6 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libethereum/Common.h>
-using eth::u256;	// workaround for Q_PROPERTY which can't handle scoped types.
 
 namespace Ui {
 class Main;
@@ -23,6 +22,9 @@ class QQmlEngine;
 class QJSEngine;
 
 Q_DECLARE_METATYPE(eth::u256)
+Q_DECLARE_METATYPE(eth::Address)
+Q_DECLARE_METATYPE(eth::Secret)
+Q_DECLARE_METATYPE(eth::KeyPair)
 
 class U256Helper: public QObject
 {
@@ -50,9 +52,7 @@ public:
 	Q_INVOKABLE double toFinney(eth::u256 _t) const { return toWei(_t) / (double)eth::finney; }
 	Q_INVOKABLE double toEther(eth::u256 _t) const { return toWei(_t) / (double)eth::ether; }
 
-	Q_INVOKABLE QString toString(eth::u256 _t) const { return QString::fromStdString(eth::formatBalance(_t)); }
-
-	Q_INVOKABLE QString test() const { return "Hello"; }
+	Q_INVOKABLE QString stringOf(eth::u256 _t) const { return QString::fromStdString(eth::formatBalance(_t)); }
 };
 
 class KeyHelper: public QObject
@@ -67,8 +67,10 @@ public:
 	Q_INVOKABLE eth::Secret secret(eth::KeyPair _p) const { return _p.secret(); }
 	Q_INVOKABLE eth::KeyPair keypair(eth::Secret _k) const { return eth::KeyPair(_k); }
 
-	Q_INVOKABLE eth::Address fromString(QString _s) const { return eth::Address(_s.toStdString()); }
-	Q_INVOKABLE QString toString(eth::Address _a) const { return QString::fromStdString(eth::asHex(_a.asArray())); }
+	Q_INVOKABLE bool isNull(eth::Address _a) const { return !_a; }
+
+	Q_INVOKABLE eth::Address addressOf(QString _s) const { return eth::Address(_s.toStdString()); }
+	Q_INVOKABLE QString stringOf(eth::Address _a) const { return QString::fromStdString(eth::asHex(_a.asArray())); }
 	Q_INVOKABLE QString toAbridged(eth::Address _a) const { return QString::fromStdString(_a.abridged()); }
 };
 
@@ -94,6 +96,7 @@ public:
 
 public slots:
 	void transact(eth::Secret _secret, eth::Address _dest, eth::u256 _amount);
+	void setAddress(eth::Address);
 
 signals:
 	void changed();
@@ -103,6 +106,7 @@ protected:
 
 private:
 	Q_PROPERTY(eth::u256 balance READ balance NOTIFY changed)
+	Q_PROPERTY(eth::Address address READ address WRITE setAddress NOTIFY changed)
 
 	std::unique_ptr<eth::Client> m_client;
 };
@@ -121,10 +125,10 @@ private slots:
 	void on_create_triggered();
 	void on_net_triggered(bool _auto = false);
 	void on_about_triggered();
-	void on_preview_triggered() { refresh(true); }
+	void on_preview_triggered() { refresh(); }
 	void on_quit_triggered() { close(); }
 
-	void refresh(bool _override = false);
+	void refresh();
 	void refreshNetwork();
 
 private:
