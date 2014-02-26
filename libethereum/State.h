@@ -266,7 +266,7 @@ public:
 #ifdef __clang__
 			auto it = m_store->find(_n);
 			if (it == m_store->end())
-				m_store->insert(make_pair(_n, _v));
+				m_store->insert(std::make_pair(_n, _v));
 			else
 				m_store->at(_n) = _v;
 #else
