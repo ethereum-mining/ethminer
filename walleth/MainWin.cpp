@@ -1,6 +1,8 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtQuick/QQuickView>
-#include <QtQml/QQmlContext>
+//#include <QtQml/QQmlContext>
+//#include <QtQml/QQmlEngine>
+#include <QtQml>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
@@ -8,6 +10,7 @@
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
+#include <libethereum/FileSystem.h>
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
@@ -51,21 +54,68 @@ using eth::c_instructionInfo;
 #define ADD_QUOTES_HELPER(s) #s
 #define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
+QEthereum::QEthereum(QObject* _p): QObject(_p)
+{
+	m_client.reset(new Client("Walleth", Address(), eth::getDataDir() + "/Walleth"));
+	startTimer(200);
+}
+
+QEthereum::~QEthereum()
+{
+}
+
+Address QEthereum::address() const
+{
+	return m_client->address();
+}
+
+u256 QEthereum::balance() const
+{
+	return m_client->postState().balance(address());
+}
+
+u256 QEthereum::balanceAt(Address _a) const
+{
+	return m_client->postState().balance(_a);
+}
+
+unsigned QEthereum::peerCount() const
+{
+	return m_client->peerCount();
+}
+
+void QEthereum::transact(Secret _secret, Address _dest, u256 _amount)
+{
+	m_client->transact(_secret, _dest, _amount);
+}
+
+void QEthereum::timerEvent(QTimerEvent *)
+{
+	if (m_client->changed())
+		changed();
+}
+
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	m_client.reset(new Client("Walleth"));
+
+	qRegisterMetaType<eth::u256>("eth::u256");
+	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
+	qRegisterMetaType<eth::Secret>("eth::Secret");
+	qRegisterMetaType<eth::Address>("eth::Address");
 
 	/*
 	ui->librariesView->setModel(m_libraryMan);
 	ui->graphsView->setModel(m_graphMan);
 	setWindowIcon(QIcon(":/Noted.png"));
-
-	qmlRegisterSingletonType<TimeHelper>("com.llr", 1, 0, "Time", TimelineItem::constructTimeHelper);
-	qmlRegisterType<GraphItem>("com.llr", 1, 0, "Graph");
+*/
+	// TODO: Figure out why not working.
+//	qmlRegisterSingletonType<U256Helper>("org.ethereum", 1, 0, "balance", QEthereum::constructU256Helper);
+//	qmlRegisterSingletonType<KeyHelper>("org.ethereum", 1, 0, "key", QEthereum::constructKeyHelper);
+/*	qmlRegisterType<GraphItem>("com.llr", 1, 0, "Graph");
 	qmlRegisterType<CursorGraphItem>("com.llr", 1, 0, "CursorGraph");
 	qmlRegisterType<IntervalItem>("com.llr", 1, 0, "Interval");
 	qmlRegisterType<CursorItem>("com.llr", 1, 0, "Cursor");
@@ -78,7 +128,13 @@ Main::Main(QWidget *parent) :
 */
 	m_view = new QQuickView();
 	QQmlContext* context = m_view->rootContext();
-//	context->setContextProperty("eth", m_eth);
+
+	m_eth = new QEthereum();
+	context->setContextProperty("eth", m_eth);
+	// TODO: should be singletons.
+	context->setContextProperty("u256", new U256Helper(this));
+	context->setContextProperty("key", new KeyHelper(this));
+
 /*	context->setContextProperty("compute", compute());
 	context->setContextProperty("data", data());
 	context->setContextProperty("graphs", graphs());
@@ -153,9 +209,9 @@ void Main::writeSettings()
 	s.setValue("idealPeers", m_idealPeers);
 	s.setValue("port", m_port);
 
-	if (m_client->peerServer())
+	if (m_eth->client()->peerServer())
 	{
-		bytes d = m_client->peerServer()->savePeers();
+		bytes d = m_eth->client()->peerServer()->savePeers();
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 
 	}
@@ -185,7 +241,7 @@ void Main::readSettings()
 			m_myKeys.append(KeyPair(k));
 		}
 	}
-	m_client->setAddress(m_myKeys.back().address());
+	m_eth->client()->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	m_clientName = s.value("clientName", "").toString();
@@ -195,25 +251,25 @@ void Main::readSettings()
 
 void Main::refreshNetwork()
 {
-	auto ps = m_client->peers();
+	auto ps = m_eth->client()->peers();
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 }
 
 eth::State const& Main::state() const
 {
-	return ui->preview->isChecked() ? m_client->postState() : m_client->state();
+	return ui->preview->isChecked() ? m_eth->client()->postState() : m_eth->client()->state();
 }
 
 void Main::refresh(bool _override)
 {
-	m_client->lock();
+	m_eth->client()->lock();
 	auto const& st = state();
 
-	bool c = m_client->changed();
+	bool c = m_eth->client()->changed();
 	if (c || _override)
 	{
-		auto d = m_client->blockChain().details();
-		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
+		auto d = m_eth->client()->blockChain().details();
+		auto diff = BlockInfo(m_eth->client()->blockChain().block()).difficulty;
 		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
 	}
 
@@ -228,7 +284,7 @@ void Main::refresh(bool _override)
 		}
 		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
 	}
-	m_client->unlock();
+	m_eth->client()->unlock();
 }
 
 void Main::on_net_triggered(bool _auto)
@@ -237,21 +293,21 @@ void Main::on_net_triggered(bool _auto)
 	if (m_clientName.size())
 		n += "/" + m_clientName.toStdString();
 	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
-	m_client->setClientVersion(n);
+	m_eth->client()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
 		if (_auto)
 		{
 			QString s = m_servers[rand() % m_servers.size()];
-			m_client->startNetwork(m_port, s.section(':', 0, 0).toStdString(), s.section(':', 1).toInt(), NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
+			m_eth->client()->startNetwork(m_port, s.section(':', 0, 0).toStdString(), s.section(':', 1).toInt(), NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
 		}
 		else
-			m_client->startNetwork(m_port, string(), 0, NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
+			m_eth->client()->startNetwork(m_port, string(), 0, NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
 		if (m_peers.size())
-			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			m_eth->client()->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
-		m_client->stopNetwork();
+		m_eth->client()->stopNetwork();
 }
 
 void Main::on_connect_triggered()
@@ -267,7 +323,7 @@ void Main::on_connect_triggered()
 	{
 		string host = s.section(":", 0, 0).toStdString();
 		unsigned short port = s.section(":", 1).toInt();
-		m_client->connect(host, port);
+		m_eth->client()->connect(host, port);
 	}
 }
 
@@ -275,11 +331,11 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		m_client->setAddress(m_myKeys.last().address());
-		m_client->startMining();
+		m_eth->client()->setAddress(m_myKeys.last().address());
+		m_eth->client()->startMining();
 	}
 	else
-		m_client->stopMining();
+		m_eth->client()->stopMining();
 }
 
 void Main::on_create_triggered()

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AlethZero Ethereum Client</string>
+   <string>Walleth</string>
   </property>
   <property name="dockNestingEnabled">
    <bool>true</bool>
