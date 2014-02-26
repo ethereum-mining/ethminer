@@ -40,7 +40,6 @@
 #include <chrono>
 #include <array>
 #include <map>
-#include <hash_map>
 #include <unordered_map>
 #include <set>
 #include <array>
@@ -182,7 +181,7 @@ using HexMap = std::map<bytes, std::string>;
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
 
-// This is the helper class for the std::hash_map lookup; it converts the input 256bit hash into a size_t sized hash value
+// This is the helper class for the std::unordered_map lookup; it converts the input 256bit hash into a size_t sized hash value
 // and does an exact comparison of two hash entries.
 class H256Hash
 {
@@ -262,8 +261,8 @@ public:
 		{
 			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			char buf[24];
-			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0) 
-				buf[0] = '\0'; // empty if case strftime fails  
+			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
+				buf[0] = '\0'; // empty if case strftime fails
 			sstr << Id::name() << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
 		}
 	}

@@ -48,7 +48,7 @@ struct BlockDetails
 	h256s children;
 };
 
-typedef std::hash_map<h256, BlockDetails, H256Hash> BlockDetailsHash;
+typedef std::unordered_map<h256, BlockDetails, H256Hash> BlockDetailsHash;
 
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
@@ -74,7 +74,7 @@ public:
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
-	
+
 	/// Attempt to import the given block.
 	bool attemptImport(bytes const& _block, Overlay const& _stateDB);
 
