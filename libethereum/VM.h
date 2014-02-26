@@ -264,6 +264,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SHA256:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
@@ -282,6 +283,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		}
 		case Instruction::RIPEMD160:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
@@ -419,6 +421,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		}
 		case Instruction::SHA3:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
