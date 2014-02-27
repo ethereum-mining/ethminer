@@ -140,6 +140,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
 	std::map<std::string, Instruction> const c_binary = { { "<", Instruction::LT }, { "<=", Instruction::LE }, { ">", Instruction::GT }, { ">=", Instruction::GE }, { "=", Instruction::EQ }, { "!=", Instruction::NOT } };
+	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
 
 	bool exec = false;
@@ -500,7 +501,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 								codes.pop_back();
 								int i = codes.size();
 								if (i > 2)
-									cwarn << "Greater than two arguments given to binary operator" << t << "; using first two";
+									cwarn << "Greater than two arguments given to binary operator" << t << "; using first two only.";
 								for (auto it = codes.rbegin(); it != codes.rend(); ++it)
 									if (--i < 2)
 										appendCode(o_code, o_locs, it->first, it->second);
@@ -508,8 +509,26 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 									o_code.push_back(Instruction::EQ);
 								o_code.push_back((u256)it->second);
 							}
-							else if (!_quiet)
-								cwarn << "Unknown assembler token" << t;
+							else
+							{
+								auto it = c_unary.find(t);
+								if (it != c_unary.end())
+								{
+									vector<pair<u256s, vector<unsigned>>> codes(1);
+									while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
+										codes.push_back(pair<u256s, vector<unsigned>>());
+									codes.pop_back();
+									int i = codes.size();
+									if (i > 1)
+										cwarn << "Greater than one argument given to unary operator" << t << "; using first only.";
+									for (auto it = codes.rbegin(); it != codes.rend(); ++it)
+										if (--i < 1)
+											appendCode(o_code, o_locs, it->first, it->second);
+									o_code.push_back(it->second);
+								}
+								else if (!_quiet)
+									cwarn << "Unknown assembler token" << t;
+							}
 						}
 					}
 				}
