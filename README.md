@@ -10,12 +10,12 @@ See [Build Instructions](https://github.com/ethereum/cpp-ethereum/wiki/Build-Ins
 
 ## Yet To Do
 
-See TODO
+See [TODO](TODO)
 
 ## License
 
-See LICENSE
+See [LICENSE](LICENSE)
 
 ## Contributing
 
-Please read [CodingStandards.txt](https://github.com/ethereum/cpp-ethereum/blob/master/CodingStandards.txt) thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formating guidelines as describled in [CodingStandards.txt](https://github.com/ethereum/cpp-ethereum/blob/master/CodingStandards.txt).
+Please read [CodingStandards.txt](CodingStandards.txt) thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formating guidelines as describled in [CodingStandards.txt](CodingStandards.txt).
