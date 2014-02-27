@@ -31,14 +31,6 @@ namespace ldb = leveldb;
 namespace eth
 {
 
-class DBFace
-{
-public:
-	virtual std::string node(h256 _h) const = 0;
-	virtual void insertNode(h256 _h, bytesConstRef _v) = 0;
-	virtual void killNode(h256 _h) = 0;
-};
-
 class BasicMap
 {
 public:
