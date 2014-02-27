@@ -139,7 +139,8 @@ static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vec
 static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256s& o_code, vector<unsigned>& o_locs)
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
-	std::set<char> const c_allowed = { '+', '-', '*', '/', '%' };
+	std::map<std::string, Instruction> const c_binary = { { "<", Instruction::LT }, { "<=", Instruction::LE }, { ">", Instruction::GT }, { ">=", Instruction::GE }, { "=", Instruction::EQ }, { "!=", Instruction::NOT } };
+	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
 
 	bool exec = false;
 
@@ -488,8 +489,28 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 									break;
 							}
 						}
-						else if (!_quiet)
-							cwarn << "Unknown assembler token" << t;
+						else
+						{
+							auto it = c_binary.find(t);
+							if (it != c_binary.end())
+							{
+								vector<pair<u256s, vector<unsigned>>> codes(1);
+								while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
+									codes.push_back(pair<u256s, vector<unsigned>>());
+								codes.pop_back();
+								int i = codes.size();
+								if (i > 2)
+									cwarn << "Greater than two arguments given to binary operator" << t << "; using first two";
+								for (auto it = codes.rbegin(); it != codes.rend(); ++it)
+									if (--i < 2)
+										appendCode(o_code, o_locs, it->first, it->second);
+								if (it->second == Instruction::NOT)
+									o_code.push_back(Instruction::EQ);
+								o_code.push_back((u256)it->second);
+							}
+							else if (!_quiet)
+								cwarn << "Unknown assembler token" << t;
+						}
 					}
 				}
 			}
