@@ -151,7 +151,7 @@ public:
 		size_t operator()(FixedHash const& value) const
 		{
 			size_t h = 0;
-			for (auto i: m_data)
+			for (auto i: value.m_data)
 				h = (h << 5 - h) + i;
 			return h;
 		}
