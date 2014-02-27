@@ -138,12 +138,15 @@ static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vec
 
 static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256s& o_code, vector<unsigned>& o_locs)
 {
+	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
+	std::set<char> const c_allowed = { '+', '-', '*', '/', '%' };
+
 	bool exec = false;
 
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"' && !c_allowed.count(*d); ++d) {}
 		if (d == e)
 			break;
 
@@ -186,7 +189,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 			else
 			{
 				char const* s = d;
-				for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
+				for (; d != e && (isalnum(*d) || *d == '_' || c_allowed.count(*d)); ++d) {}
 				t = string(s, d - s);
 				if (isdigit(t[0]))
 				{
@@ -360,8 +363,30 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 							o_code.push_back(it->second);
 						}
 					}
-					else if (!_quiet)
-						cwarn << "Unknown assembler token" << t;
+					else
+					{
+						auto it = c_arith.find(t);
+						if (it != c_arith.end())
+						{
+							int i = 0;
+							while (d != e)
+							{
+								u256s codes;
+								vector<unsigned> locs;
+								if (compileLispFragment(d, e, _quiet, codes, locs))
+								{
+									appendCode(o_code, o_locs, codes, locs);
+									if (i)
+										o_code.push_back((u256)it->second);
+									++i;
+								}
+								else
+									break;
+							}
+						}
+						else if (!_quiet)
+							cwarn << "Unknown assembler token" << t;
+					}
 				}
 			}
 
