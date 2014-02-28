@@ -2,6 +2,7 @@
 
 dist="saucy"
 version=$1
+branch="$(git branch | grep \* | cut -c 3-)"
 
 if [[ ! "$3" == "" ]]; then
 	if [[ ! "$4" == "" ]]; then
@@ -25,6 +26,7 @@ cd /tmp
 echo Checking out...
 git clone $opwd
 cd cpp-ethereum
+git checkout "$branch"
 
 if [ "$1" == "" ]; then
 	archdir="cpp-ethereum-$(date +%Y%m%d)"
