@@ -271,7 +271,7 @@ bytesConstRef BlockChain::block(h256 _hash) const
 
 BlockDetails const& BlockChain::details(h256 _h) const
 {
-	std::map<h256, BlockDetails>::const_iterator it;
+	BlockDetailsHash::const_iterator it;
 	bool fetchRequired;
 	{
 		lock_guard<mutex> l(m_lock);
@@ -290,7 +290,7 @@ BlockDetails const& BlockChain::details(h256 _h) const
 		{
 			lock_guard<mutex> l(m_lock);
 			bool ok;
-			tie(it, ok) = m_details.insert(make_pair(_h, BlockDetails(RLP(s))));
+			tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
 		}
 	}
 	return it->second;

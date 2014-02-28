@@ -7,12 +7,25 @@
 #  - Visual Studio Express 2013 for Desktop
 #  - On PATH: bash, git, git-svn, curl, sed, 7z
 
+error_exit() {
+    echo $1 1>&2
+    exit 1
+}
+
+for i in python perl curl git sed 7z; do
+	which $i &>/dev/null || error_exit "Could not find $i on PATH"
+done
+
+if [ ! -d "$VS120COMNTOOLS" ]; then
+	error_exit "Couldn't find Visual Studio 2013"
+fi
+
 if [[ ! $@ ]] || [ $1 == "fetch" ]; then
 	# fetch ethereum (develop branch)
 	if [ ! -d cpp-ethereum ]; then
 		(set -x; git clone https://github.com/ethereum/cpp-ethereum.git)
 		cd cpp-ethereum
-		(set -x; git checkout origin/develop)
+		(set -x; git checkout -b develop origin/develop)
 		cd ..
 		echo
 	fi

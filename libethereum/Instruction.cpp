@@ -138,17 +138,25 @@ static void appendCode(u256s& o_code, vector<unsigned>& o_locs, u256s _code, vec
 
 static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256s& o_code, vector<unsigned>& o_locs)
 {
+	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
+	std::map<std::string, Instruction> const c_binary = { { "<", Instruction::LT }, { "<=", Instruction::LE }, { ">", Instruction::GT }, { ">=", Instruction::GE }, { "=", Instruction::EQ }, { "!=", Instruction::NOT } };
+	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
+	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
+
 	bool exec = false;
 
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
 		switch (*d)
 		{
+		case ';':
+			for (; d != e && *d != '\n'; ++d) {}
+			break;
 		case '(':
 			exec = true;
 			++d;
@@ -186,7 +194,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 			else
 			{
 				char const* s = d;
-				for (; d != e && (isalnum(*d) || *d == '_'); ++d) {}
+				for (; d != e && (isalnum(*d) || *d == '_' || c_allowed.count(*d)); ++d) {}
 				t = string(s, d - s);
 				if (isdigit(t[0]))
 				{
@@ -340,6 +348,107 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 							break;
 					}
 				}
+				else if (t == "AND")
+				{
+					vector<u256s> codes;
+					vector<vector<unsigned>> locs;
+					while (d != e)
+					{
+						codes.resize(codes.size() + 1);
+						locs.resize(locs.size() + 1);
+						if (!compileLispFragment(d, e, _quiet, codes.back(), locs.back()))
+							break;
+					}
+
+					// last one is empty.
+					if (codes.size() < 2)
+						return false;
+
+					codes.pop_back();
+					locs.pop_back();
+
+					vector<unsigned> ends;
+
+					if (codes.size() > 1)
+					{
+						o_code.push_back(Instruction::PUSH);
+						o_code.push_back(0);
+
+						for (unsigned i = 1; i < codes.size(); ++i)
+						{
+							// Push the false location.
+							o_code.push_back(Instruction::PUSH);
+							ends.push_back((unsigned)o_code.size());
+							o_locs.push_back(ends.back());
+							o_code.push_back(0);
+
+							// Check if true - predicate
+							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+
+							// Jump to end...
+							o_code.push_back(Instruction::NOT);
+							o_code.push_back(Instruction::JMPI);
+						}
+						o_code.push_back(Instruction::POP);
+					}
+
+					// Check if true - predicate
+					appendCode(o_code, o_locs, codes.back(), locs.back());
+
+					// At end now.
+					for (auto i: ends)
+						o_code[i] = o_code.size();
+				}
+				else if (t == "OR")
+				{
+					vector<u256s> codes;
+					vector<vector<unsigned>> locs;
+					while (d != e)
+					{
+						codes.resize(codes.size() + 1);
+						locs.resize(locs.size() + 1);
+						if (!compileLispFragment(d, e, _quiet, codes.back(), locs.back()))
+							break;
+					}
+
+					// last one is empty.
+					if (codes.size() < 2)
+						return false;
+
+					codes.pop_back();
+					locs.pop_back();
+
+					vector<unsigned> ends;
+
+					if (codes.size() > 1)
+					{
+						o_code.push_back(Instruction::PUSH);
+						o_code.push_back(1);
+
+						for (unsigned i = 1; i < codes.size(); ++i)
+						{
+							// Push the false location.
+							o_code.push_back(Instruction::PUSH);
+							ends.push_back((unsigned)o_code.size());
+							o_locs.push_back(ends.back());
+							o_code.push_back(0);
+
+							// Check if true - predicate
+							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+
+							// Jump to end...
+							o_code.push_back(Instruction::JMPI);
+						}
+						o_code.push_back(Instruction::POP);
+					}
+
+					// Check if true - predicate
+					appendCode(o_code, o_locs, codes.back(), locs.back());
+
+					// At end now.
+					for (auto i: ends)
+						o_code[i] = o_code.size();
+				}
 				else
 				{
 					auto it = c_instructions.find(t);
@@ -360,8 +469,68 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 							o_code.push_back(it->second);
 						}
 					}
-					else if (!_quiet)
-						cwarn << "Unknown assembler token" << t;
+					else
+					{
+						auto it = c_arith.find(t);
+						if (it != c_arith.end())
+						{
+							int i = 0;
+							while (d != e)
+							{
+								u256s codes;
+								vector<unsigned> locs;
+								if (compileLispFragment(d, e, _quiet, codes, locs))
+								{
+									appendCode(o_code, o_locs, codes, locs);
+									if (i)
+										o_code.push_back((u256)it->second);
+									++i;
+								}
+								else
+									break;
+							}
+						}
+						else
+						{
+							auto it = c_binary.find(t);
+							if (it != c_binary.end())
+							{
+								vector<pair<u256s, vector<unsigned>>> codes(1);
+								while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
+									codes.push_back(pair<u256s, vector<unsigned>>());
+								codes.pop_back();
+								int i = codes.size();
+								if (i > 2)
+									cwarn << "Greater than two arguments given to binary operator" << t << "; using first two only.";
+								for (auto it = codes.rbegin(); it != codes.rend(); ++it)
+									if (--i < 2)
+										appendCode(o_code, o_locs, it->first, it->second);
+								if (it->second == Instruction::NOT)
+									o_code.push_back(Instruction::EQ);
+								o_code.push_back((u256)it->second);
+							}
+							else
+							{
+								auto it = c_unary.find(t);
+								if (it != c_unary.end())
+								{
+									vector<pair<u256s, vector<unsigned>>> codes(1);
+									while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
+										codes.push_back(pair<u256s, vector<unsigned>>());
+									codes.pop_back();
+									int i = codes.size();
+									if (i > 1)
+										cwarn << "Greater than one argument given to unary operator" << t << "; using first only.";
+									for (auto it = codes.rbegin(); it != codes.rend(); ++it)
+										if (--i < 1)
+											appendCode(o_code, o_locs, it->first, it->second);
+									o_code.push_back(it->second);
+								}
+								else if (!_quiet)
+									cwarn << "Unknown assembler token" << t;
+							}
+						}
+					}
 				}
 			}
 
