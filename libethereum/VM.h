@@ -264,6 +264,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SHA256:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
@@ -282,6 +283,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		}
 		case Instruction::RIPEMD160:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
@@ -419,6 +421,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		}
 		case Instruction::SHA3:
 		{
+			require(1);
 			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
 			m_stack.pop_back();
 
@@ -482,11 +485,11 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		{
 			require(1);
 #ifdef __clang__
-			auto mFinder = tempMem.find(stack.back());
-			if (mFinder != tempMem.end())
-				stack.back() = mFinder->second;
+			auto mFinder = m_temp.find(m_stack.back());
+			if (mFinder != m_temp.end())
+				m_stack.back() = mFinder->second;
 			else
-				stack.back() = 0;
+				m_stack.back() = 0;
 #else
 			m_stack.back() = m_temp[m_stack.back()];
 #endif
@@ -496,11 +499,11 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		{
 			require(2);
 #ifdef __clang__
-			auto mFinder = tempMem.find(stack.back());
-			if (mFinder == tempMem.end())
-				tempMem.insert(make_pair(stack.back(), stack[stack.size() - 2]));
+			auto mFinder = m_temp.find(m_stack.back());
+			if (mFinder == m_temp.end())
+				m_temp.insert(std::make_pair(m_stack.back(), m_stack[m_stack.size() - 2]));
 			else
-				mFinder->second = stack[stack.size() - 2];
+				mFinder->second = m_stack[m_stack.size() - 2];
 #else
 			m_temp[m_stack.back()] = m_stack[m_stack.size() - 2];
 #endif
