@@ -112,7 +112,7 @@ u256 QAccount::balance() const
 	return 0;
 }
 
-uint64_t QAccount::txCount() const
+double QAccount::txCount() const
 {
 	if (m_eth)
 		return m_eth->txCountAt(m_address);
@@ -162,9 +162,9 @@ void QEthereum::setListening(bool _l)
 		client()->stopNetwork();
 }
 
-uint64_t QEthereum::txCountAt(Address _a) const
+double QEthereum::txCountAt(Address _a) const
 {
-	return (uint64_t)client()->postState().transactionsFrom(_a);
+	return (double)client()->postState().transactionsFrom(_a);
 }
 
 unsigned QEthereum::peerCount() const
@@ -263,7 +263,7 @@ void Main::timerEvent(QTimerEvent *)
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Walleth PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), "Walleth/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
+	QMessageBox::about(this, "About Walleth PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), "Walleth/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) " - " ETH_QUOTED(ETH_COMMIT_HASH) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
 }
 
 void Main::writeSettings()

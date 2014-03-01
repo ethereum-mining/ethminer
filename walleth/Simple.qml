@@ -10,9 +10,9 @@ Item {
 	anchors.fill: parent
 	anchors.margins: 9
 
-	Qt.application.name: "Walleth"
-	Qt.application.organization: "Ethereum"
-	Qt.application.domain: "org.ethereum"
+//	Qt.application.name: "Walleth"
+//	Qt.application.organization: "Ethereum"
+//	Qt.application.domain: "org.ethereum"
 
 	Ethereum {
 		id: eth
@@ -30,7 +30,7 @@ Item {
 	// KeyPair provides makeTransaction(recvAddress, value, data (array))
 
 	Text {
-		text: "Balance: " + Balance.stringOf(myAccount.balance) + "[" + myAccount.txCount + "]" + "\nAccount: " + Key.stringOf(myAccount.address)
+		text: "Balance: " + Balance.stringOf(myAccount.balance) + " [" + myAccount.txCount + "]" + "\nAccount: " + Key.stringOf(myAccount.address)
 		Layout.minimumHeight: 30
 		Layout.fillHeight: true
 		Layout.fillWidth: true
