@@ -63,44 +63,6 @@ Main::Main(QWidget *parent) :
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
 
-	/*
-	ui->librariesView->setModel(m_libraryMan);
-	ui->graphsView->setModel(m_graphMan);
-	setWindowIcon(QIcon(":/Noted.png"));
-
-	qmlRegisterSingletonType<TimeHelper>("com.llr", 1, 0, "Time", TimelineItem::constructTimeHelper);
-	qmlRegisterType<GraphItem>("com.llr", 1, 0, "Graph");
-	qmlRegisterType<CursorGraphItem>("com.llr", 1, 0, "CursorGraph");
-	qmlRegisterType<IntervalItem>("com.llr", 1, 0, "Interval");
-	qmlRegisterType<CursorItem>("com.llr", 1, 0, "Cursor");
-	qmlRegisterType<TimelinesItem>("com.llr", 1, 0, "Timelines");
-	qmlRegisterType<TimeLabelsItem>("com.llr", 1, 0, "TimeLabels");
-	qmlRegisterType<XLabelsItem>("com.llr", 1, 0, "XLabels");
-	qmlRegisterType<XScaleItem>("com.llr", 1, 0, "XScale");
-	qmlRegisterType<YLabelsItem>("com.llr", 1, 0, "YLabels");
-	qmlRegisterType<YScaleItem>("com.llr", 1, 0, "YScale");
-
-	m_view = new QQuickView();
-	QQmlContext* context = m_view->rootContext();
-	context->setContextProperty("libs", libs());
-	context->setContextProperty("compute", compute());
-	context->setContextProperty("data", data());
-	context->setContextProperty("graphs", graphs());
-	context->setContextProperty("audio", audio());
-	context->setContextProperty("view", view());
-	m_view->setSource(QUrl("qrc:/Noted.qml"));
-
-	QWidget* w = QWidget::createWindowContainer(m_view);
-	w->setAcceptDrops(true);
-	m_view->setResizeMode(QQuickView::SizeRootObjectToView);
-	ui->fullDisplay->insertWidget(0, w);
-	m_view->create();
-
-	m_timelinesItem = m_view->rootObject()->findChild<TimelinesItem*>("timelines");
-	qDebug() << m_view->rootObject();
-	*/
-
-
 	readSettings();
 	refresh();
 

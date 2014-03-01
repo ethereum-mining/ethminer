@@ -238,7 +238,7 @@ Main::Main(QWidget *parent) :
 			on_net_triggered(true);
 		}
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc3.txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1) + ".txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
