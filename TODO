@@ -44,12 +44,17 @@ Robustness
 - Better handling of corrupt blocks.
   - Kill DB & restart.
 
+GUI:
+- Turn on/off debug channels.
+
+For PoC-4:
+
 GUI
 - Make address/block chain list model-based, JIT populated.
 - Make everything else model-based
 - Qt/QML class.
-- Turn on/off debug channels.
 
+Kill old DBs when protocol different.
 
 ### Marko
 
