@@ -37,6 +37,8 @@ General:
 Robustness
 - Remove aborts
 - Recover from all exceptions.
+  - Especially RLP & other I/O.
+- RLP should never assert; only throw.
 - Store version alongside BC DB.
 - Better handling of corrupt blocks.
   - Kill DB & restart.
@@ -46,9 +48,6 @@ GUI
 - Make everything else model-based
 - Qt/QML class.
 - Turn on/off debug channels.
-
-For PoC3:
-- Shared contract acceptence tests.
 
 
 ### Marko
