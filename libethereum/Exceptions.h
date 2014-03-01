@@ -16,6 +16,10 @@ public:
 class BadHexCharacter: public Exception {};
 class NotEnoughCash: public Exception {};
 
+class RLPException: public Exception {};
+class BadCast: public RLPException {};
+class BadRLP: public RLPException {};
+
 class VMException: public Exception {};
 class StepsDone: public VMException {};
 class BreakPointHit: public VMException {};
