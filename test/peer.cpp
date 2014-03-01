@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <thread>
+#include <boost/filesystem/operations.hpp>
 #include <BlockChain.h>
 #include <PeerNetwork.h>
 using namespace std;
@@ -38,16 +39,16 @@ int peerTest(int argc, char** argv)
 	{
 		string arg = argv[i];
 		if (arg == "-l" && i + 1 < argc)
-			listenPort = atoi(argv[++i]);
+			listenPort = (short)atoi(argv[++i]);
 		else if (arg == "-r" && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if (arg == "-p" && i + 1 < argc)
-			remotePort = atoi(argv[++i]);
+			remotePort = (short)atoi(argv[++i]);
 		else
 			remoteHost = argv[i];
 	}
 
-	BlockChain ch("/tmp");
+	BlockChain ch(boost::filesystem::temp_directory_path().string());
 	PeerServer pn("Test", ch, 0, listenPort);
 
 	if (!remoteHost.empty())

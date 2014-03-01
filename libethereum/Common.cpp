@@ -21,6 +21,7 @@
 
 #include "Common.h"
 
+#include <fstream>
 #include <random>
 #if WIN32
 #pragma warning(push)
@@ -191,13 +192,13 @@ KeyPair KeyPair::create()
 {
 	secp256k1_start();
 	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<byte> d(0, 255);
+	std::uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
 		h256 sec;
-		for (uint i = 0; i < 32; ++i)
-			sec[i] = d(s_eng);
+		for (unsigned i = 0; i < 32; ++i)
+			sec[i] = (byte)d(s_eng);
 
 		KeyPair ret(sec);
 		if (ret.address())
@@ -281,3 +282,24 @@ std::string eth::formatBalance(u256 _b)
 	ret << _b << " wei";
 	return ret.str();
 }
+
+bytes eth::contents(std::string const& _file)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return bytes();
+	// get length of file:
+	is.seekg (0, is.end);
+	streamoff length = is.tellg();
+	is.seekg (0, is.beg);
+	bytes ret(length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
+void eth::writeFile(std::string const& _file, bytes const& _data)
+{
+	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+}
+

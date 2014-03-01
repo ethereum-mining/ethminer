@@ -8,6 +8,10 @@
 #include "impl/ecmult.h"
 #include "impl/ecdsa.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void secp256k1_start(void) {
     secp256k1_fe_start();
     secp256k1_ge_start();
@@ -267,3 +271,7 @@ int secp256k1_ecdsa_privkey_import(unsigned char *seckey, const unsigned char *p
     secp256k1_num_free(&key);
     return ret;
 }
+
+#ifdef __cplusplus
+}
+#endif

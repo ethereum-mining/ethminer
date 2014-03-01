@@ -102,9 +102,17 @@ bool RLP::isInt() const
 	else if (n == c_rlpDataImmLenStart)
 		return true;
 	else if (n <= c_rlpDataIndLenZero)
-		return m_data[1];
+	{
+		if (m_data.size() <= 1)
+			throw BadRLP();
+		return m_data[1] != 0;
+	}
 	else if (n < c_rlpListStart)
-		return m_data[1 + n - c_rlpDataIndLenZero];
+	{
+		if ((int)m_data.size() <= 1 + n - c_rlpDataIndLenZero)
+			throw BadRLP();
+		return m_data[1 + n - c_rlpDataIndLenZero] != 0;
+	}
 	else
 		return false;
 	return false;
@@ -121,13 +129,21 @@ eth::uint RLP::length() const
 	else if (n <= c_rlpDataIndLenZero)
 		return n - c_rlpDataImmLenStart;
 	else if (n < c_rlpListStart)
+	{
+		if ((int)m_data.size() <= n - c_rlpDataIndLenZero)
+			throw BadRLP();
 		for (int i = 0; i < n - c_rlpDataIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+	}
 	else if (n <= c_rlpListIndLenZero)
 		return n - c_rlpListStart;
 	else
+	{
+		if ((int)m_data.size() <= n - c_rlpListIndLenZero)
+			throw BadRLP();
 		for (int i = 0; i < n - c_rlpListIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+	}
 	return ret;
 }
 
@@ -176,10 +192,10 @@ void RLPStream::noteAppended(uint _itemCount)
 			m_out.resize(os + encodeSize);
 			memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
 			if (s < c_rlpListImmLenCount)
-				m_out[p] = c_rlpListStart + s;
+				m_out[p] = (byte)(c_rlpListStart + s);
 			else
 			{
-				m_out[p] = c_rlpListIndLenZero + brs;
+				m_out[p] = (byte)(c_rlpListIndLenZero + brs);
 				byte* b = &(m_out[p + brs]);
 				for (; s; s >>= 8)
 					*(b--) = (byte)s;
@@ -189,7 +205,7 @@ void RLPStream::noteAppended(uint _itemCount)
 	}
 }
 
-RLPStream& RLPStream::appendList(unsigned _items)
+RLPStream& RLPStream::appendList(uint _items)
 {
 //	cdebug << "appendList(" << _items << ")";
 	if (_items)

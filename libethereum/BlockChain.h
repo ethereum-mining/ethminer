@@ -48,6 +48,8 @@ struct BlockDetails
 	h256s children;
 };
 
+typedef std::map<h256, BlockDetails> BlockDetailsHash;
+
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
 
@@ -56,8 +58,8 @@ class Overlay;
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
 
-struct BlockChainChat: public LogChannel { static const char constexpr* name = "-B-"; static const int verbosity = 7; };
-struct BlockChainNote: public LogChannel { static const char constexpr* name = "=B="; static const int verbosity = 4; };
+struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
+struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -72,9 +74,9 @@ public:
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
-	
+
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block, Overlay const& _stateDB) { try { import(_block, _stateDB); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _block, Overlay const& _stateDB);
 
 	/// Import block into disk-backed DB
 	void import(bytes const& _block, Overlay const& _stateDB);
@@ -101,7 +103,7 @@ private:
 	void checkConsistency();
 
 	/// Get fully populated from disk DB.
-	mutable std::map<h256, BlockDetails> m_details;
+	mutable BlockDetailsHash m_details;
 	mutable std::map<h256, std::string> m_cache;
 	mutable std::mutex m_lock;
 

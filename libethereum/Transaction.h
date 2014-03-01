@@ -41,12 +41,16 @@ struct Transaction
 	Transaction(bytesConstRef _rlp);
 	Transaction(bytes const& _rlp): Transaction(&_rlp) {}
 
+	bool operator==(Transaction const& _c) const { return receiveAddress == _c.receiveAddress && value == _c.value && data == _c.data; }
+	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
+
 	u256 nonce;
 	Address receiveAddress;
 	u256 value;
 	u256s data;
 	Signature vrs;
 
+	Address safeSender() const noexcept;
 	Address sender() const;
 	void sign(Secret _priv);
 
@@ -63,11 +67,17 @@ using Transactions = std::vector<Transaction>;
 
 inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 {
-	_out << "{" << _t.receiveAddress << "/" << _t.nonce << "*" << _t.value;
+	_out << "{";
+	if (_t.receiveAddress)
+		_out << _t.receiveAddress.abridged();
+	else
+		_out << "[CREATE]";
+
+	_out << "/" << _t.nonce << "*" << _t.value;
 	Address s;
 	try
 	{
-		_out << "<-" << _t.sender();
+		_out << "<-" << _t.sender().abridged();
 	}
 	catch (...) {}
 	_out << "}";

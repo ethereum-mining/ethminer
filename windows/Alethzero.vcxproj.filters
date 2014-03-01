@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\alethzero\main.cpp" />
+    <ClCompile Include="..\alethzero\MainWin.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="WinMain.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="qt_plugin_import.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Windows</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Windows">
+      <UniqueIdentifier>{049fb46c-1677-45cb-95ae-3a2d9e3090be}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\alethzero\MainWin.h" />
+    <CustomBuild Include="..\alethzero\Main.ui" />
+  </ItemGroup>
+</Project>

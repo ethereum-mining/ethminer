@@ -35,26 +35,6 @@ using namespace eth;
 #define ADD_QUOTES_HELPER(s) #s
 #define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
-bytes contents(std::string const& _file)
-{
-	std::ifstream is(_file, std::ifstream::binary);
-	if (!is)
-		return bytes();
-	// get length of file:
-	is.seekg (0, is.end);
-	int length = is.tellg();
-	is.seekg (0, is.beg);
-	bytes ret(length);
-	is.read((char*)ret.data(), length);
-	is.close();
-	return ret;
-}
-
-void writeFile(std::string const& _file, bytes const& _data)
-{
-	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
-}
-
 bool isTrue(std::string const& _m)
 {
 	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
@@ -68,82 +48,26 @@ bool isFalse(std::string const& _m)
 void help()
 {
 	cout
-			<< "Usage eth [OPTIONS] <remote-host>" << endl
-			<< "Options:" << endl
-			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
-			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
-			<< "  -l,--listen <port>   Listen on the given port for incoming connected (default: 30303)." << endl
-	;
-/*
-	if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
-		listenPort = atoi(argv[++i]);
-	else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
-		publicIP = argv[++i];
-	else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
-		remoteHost = argv[++i];
-	else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
-		remotePort = atoi(argv[++i]);
-	else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
-	{
-		string m = argv[++i];
-		if (isTrue(m))
-			upnp = true;
-		else if (isFalse(m))
-			upnp = false;
-		else
-		{
-			cerr << "Invalid UPnP option: " << m << endl;
-			return -1;
-		}
-	}
-	else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
-		clientName = argv[++i];
-	else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-		coinbase = h160(fromUserHex(argv[++i]));
-	else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-		us = KeyPair(h256(fromUserHex(argv[++i])));
-	else if (arg == "-i" || arg == "--interactive")
-		interactive = true;
-	else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
-		dbPath = argv[++i];
-	else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
-	{
-		string m = argv[++i];
-		if (isTrue(m))
-			mining = ~(eth::uint)0;
-		else if (isFalse(m))
-			mining = 0;
-		else if (int i = stoi(m))
-			mining = i;
-		else
-		{
-			cerr << "Unknown mining option: " << m << endl;
-			return -1;
-		}
-	}
-	else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-		g_logVerbosity = atoi(argv[++i]);
-	else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
-		peers = atoi(argv[++i]);
-	else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
-	{
-		string m = argv[++i];
-		if (m == "full")
-			mode = NodeMode::Full;
-		else if (m == "peer")
-			mode = NodeMode::PeerServer;
-		else
-		{
-			cerr << "Unknown mode: " << m << endl;
-			return -1;
-		}
-	}
-	else if (arg == "-h" || arg == "--help")
-		help();
-	else if (arg == "-V" || arg == "--version")
-		version();
-*/
-	exit(0);
+        << "Usage eth [OPTIONS] <remote-host>" << endl
+        << "Options:" << endl
+        << "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
+        << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+        << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
+        << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+        << "    -h,--help  Show this help message and exit." << endl
+        << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+        << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
+        << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+        << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+        << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
+        << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
+        << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+        << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
+        << "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
+        << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
+        << "    -V,--version  Show the version and exit." << endl;
+        exit(0);
 }
 
 void version()
@@ -155,9 +79,9 @@ void version()
 
 int main(int argc, char** argv)
 {
-	short listenPort = 30303;
+	unsigned short listenPort = 30303;
 	string remoteHost;
-	short remotePort = 30303;
+	unsigned short remotePort = 30303;
 	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;
@@ -193,13 +117,13 @@ int main(int argc, char** argv)
 	{
 		string arg = argv[i];
 		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
-			listenPort = atoi(argv[++i]);
+			listenPort = (short)atoi(argv[++i]);
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
 			publicIP = argv[++i];
 		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
-			remotePort = atoi(argv[++i]);
+			remotePort = (short)atoi(argv[++i]);
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -282,14 +206,14 @@ int main(int argc, char** argv)
 			{
 				eth::uint port;
 				cin >> port;
-				c.startNetwork(port);
+				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				eth::uint port;
 				cin >> addr >> port;
-				c.connect(addr, port);
+				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{

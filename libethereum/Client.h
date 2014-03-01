@@ -23,6 +23,7 @@
 
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include "Common.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
@@ -50,6 +51,13 @@ public:
 
 private:
 	Client* m_client;
+};
+
+enum ClientWorkState
+{
+	Active = 0,
+	Deleting,
+	Deleted
 };
 
 class Client
@@ -90,11 +98,13 @@ public:
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
 
 	/// Get the object representing the current state of Ethereum.
-	State const& state() const { return m_s; }
+	State const& state() const { return m_preMine; }
+	/// Get the object representing the current state of Ethereum.
+	State const& postState() const { return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
 	/// Get a map containing each of the pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_mined.pending(); }
+	Transactions const& pending() const { return m_postMine.pending(); }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
@@ -103,23 +113,23 @@ public:
 	/// Get information on the current peer set.
 	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
 	/// Same as peers().size(), but more efficient.
-	unsigned peerCount() const { return m_net ? m_net->peerCount() : 0; }
+	size_t peerCount() const { return m_net ? m_net->peerCount() : 0; }
 
 	/// Start the network subsystem.
-	void startNetwork(short _listenPort = 30303, std::string const& _seedHost = std::string(), short _port = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
+	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
 	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, short _port = 30303);
+	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Get access to the peer server object. This will be null if the network isn't online.
-	PeerServer* peerServer() const { return m_net; }
+	PeerServer* peerServer() const { return m_net.get(); }
 
 	// Mining stuff:
 
 	/// Set the coinbase address.
-	void setAddress(Address _us) { m_s.setAddress(_us); }
+	void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
-	Address address() const { return m_s.address(); }
+	Address address() const { return m_preMine.address(); }
 	/// Start mining.
 	void startMining();
 	/// Stop mining.
@@ -134,17 +144,17 @@ private:
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	State m_s;							///< The present state of the client.
-	State m_mined;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
-	PeerServer* m_net = nullptr;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	State m_preMine;					///< The present state of the client.
+	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
-	std::thread* m_work;				///< The work thread.
+	std::unique_ptr<std::thread> m_work;///< The work thread.
 	
-	std::mutex m_lock;
-	enum { Active = 0, Deleting, Deleted } m_workState = Active;
+	std::recursive_mutex m_lock;
+	std::atomic<ClientWorkState> m_workState;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
-	mutable bool m_miningStarted = false;
+	mutable bool m_restartMining = false;
 
 	mutable bool m_changed;
 };

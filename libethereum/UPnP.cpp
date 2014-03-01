@@ -33,8 +33,8 @@ using namespace eth;
 
 UPnP::UPnP()
 {
-	m_urls = new UPNPUrls;
-	m_data = new IGDdatas;
+	m_urls.reset(new UPNPUrls);
+	m_data.reset(new IGDdatas);
 
 	m_ok = false;
 
@@ -43,8 +43,8 @@ UPnP::UPnP()
 	char* descXML;
 	int descXMLsize = 0;
 	int upnperror = 0;
-	memset(m_urls, 0, sizeof(struct UPNPUrls));
-	memset(m_data, 0, sizeof(struct IGDdatas));
+	memset(m_urls.get(), 0, sizeof(struct UPNPUrls));
+	memset(m_data.get(), 0, sizeof(struct IGDdatas));
 	devlist = upnpDiscover(2000, NULL/*multicast interface*/, NULL/*minissdpd socket path*/, 0/*sameport*/, 0/*ipv6*/, &upnperror);
 	if (devlist)
 	{
@@ -66,12 +66,12 @@ UPnP::UPnP()
 #endif
 		if (descXML)
 		{
-			parserootdesc (descXML, descXMLsize, m_data);
+			parserootdesc (descXML, descXMLsize, m_data.get());
 			free (descXML); descXML = 0;
 #if MINIUPNPC_API_VERSION >= 9
-			GetUPNPUrls (m_urls, m_data, dev->descURL, 0);
+			GetUPNPUrls (m_urls.get(), m_data.get(), dev->descURL, 0);
 #else
-			GetUPNPUrls (m_urls, m_data, dev->descURL);
+			GetUPNPUrls (m_urls.get(), m_data.get(), dev->descURL);
 #endif
 			m_ok = true;
 		}
