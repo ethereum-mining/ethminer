@@ -11,6 +11,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
 #include <libethereum/FileSystem.h>
+#include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
@@ -54,9 +55,6 @@ using eth::c_instructionInfo;
 // Horrible global for the mainwindow. Needed for the QEthereums to find the Main window which acts as multiplexer for now.
 // Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
 Main* g_main = nullptr;
-
-#define ADD_QUOTES_HELPER(s) #s
-#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 QEthereum::QEthereum(QObject* _p): QObject(_p)
 {
@@ -265,7 +263,7 @@ void Main::timerEvent(QTimerEvent *)
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Walleth PoC-" + QString(ADD_QUOTES(ETH_VERSION)).section('.', 1, 1), "Walleth/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
+	QMessageBox::about(this, "About Walleth PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), "Walleth/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
 }
 
 void Main::writeSettings()
@@ -358,10 +356,10 @@ void Main::refresh()
 
 void Main::on_net_triggered(bool _auto)
 {
-	string n = "Walleth/v" ADD_QUOTES(ETH_VERSION);
+	string n = "Walleth/v" ETH_QUOTED(ETH_VERSION);
 	if (m_clientName.size())
 		n += "/" + m_clientName.toStdString();
-	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
+	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
 	client()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
