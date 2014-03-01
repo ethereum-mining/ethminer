@@ -121,6 +121,8 @@ public:
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
+	/// Is the network subsystem up?
+	bool haveNetwork() { return !!m_net; }
 	/// Get access to the peer server object. This will be null if the network isn't online.
 	PeerServer* peerServer() const { return m_net.get(); }
 
@@ -134,6 +136,8 @@ public:
 	void startMining();
 	/// Stop mining.
 	void stopMining();
+	/// Are we mining now?
+	bool isMining() { return m_doMine; }
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { return m_mineProgress; }
 

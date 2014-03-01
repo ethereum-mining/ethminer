@@ -17,14 +17,18 @@ class State;
 }
 
 class QQuickView;
-class QEthereum;
 class QQmlEngine;
 class QJSEngine;
+
+class QEthereum;
+class QAccount;
 
 Q_DECLARE_METATYPE(eth::u256)
 Q_DECLARE_METATYPE(eth::Address)
 Q_DECLARE_METATYPE(eth::Secret)
 Q_DECLARE_METATYPE(eth::KeyPair)
+Q_DECLARE_METATYPE(QEthereum*)
+Q_DECLARE_METATYPE(QAccount*)
 
 class U256Helper: public QObject
 {
@@ -74,6 +78,39 @@ public:
 	Q_INVOKABLE QString toAbridged(eth::Address _a) const { return QString::fromStdString(_a.abridged()); }
 };
 
+class QAccount: public QObject
+{
+	Q_OBJECT
+
+public:
+	QAccount(QObject* _p = nullptr);
+	virtual ~QAccount();
+
+	Q_INVOKABLE QEthereum* ethereum() const { return m_eth; }
+	Q_INVOKABLE eth::u256 balance() const;
+	Q_INVOKABLE uint64_t txCount() const;
+	Q_INVOKABLE bool isContract() const;
+
+	// TODO: past transactions models.
+
+public slots:
+	void setEthereum(QEthereum* _eth);
+
+signals:
+	void changed();
+	void ethChanged();
+
+private:
+	QEthereum* m_eth = nullptr;
+	eth::Address m_address;
+
+	Q_PROPERTY(eth::u256 balance READ balance NOTIFY changed STORED false)
+	Q_PROPERTY(uint64_t txCount READ txCount NOTIFY changed STORED false)
+	Q_PROPERTY(bool isContract READ isContract NOTIFY changed STORED false)
+	Q_PROPERTY(eth::Address address MEMBER m_address NOTIFY changed)
+	Q_PROPERTY(QEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
+};
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -82,33 +119,41 @@ public:
 	QEthereum(QObject* _p = nullptr);
 	virtual ~QEthereum();
 
-	eth::Client* client() const { return m_client.get(); }
+	eth::Client* client() const;
 
 	static QObject* constructU256Helper(QQmlEngine*, QJSEngine*) { return new U256Helper; }
 	static QObject* constructKeyHelper(QQmlEngine*, QJSEngine*) { return new KeyHelper; }
 
-	eth::u256 balance() const;
+	Q_INVOKABLE eth::Address coinbase() const;
 
-	Q_INVOKABLE eth::Address address() const;
+	Q_INVOKABLE bool isListening() const;
+	Q_INVOKABLE bool isMining() const;
+
 	Q_INVOKABLE eth::u256 balanceAt(eth::Address _a) const;
+	Q_INVOKABLE uint64_t txCountAt(eth::Address _a) const;
+	Q_INVOKABLE bool isContractAt(eth::Address _a) const;
 
 	Q_INVOKABLE unsigned peerCount() const;
 
+	Q_INVOKABLE QEthereum* self() { return this; }
+
 public slots:
 	void transact(eth::Secret _secret, eth::Address _dest, eth::u256 _amount);
-	void setAddress(eth::Address);
+
+	void setCoinbase(eth::Address);
+	void setMining(bool _l);
+
+	void setListening(bool _l);
 
 signals:
 	void changed();
-
-protected:
-	virtual void timerEvent(QTimerEvent *);
+//	void netChanged();
+//	void miningChanged();
 
 private:
-	Q_PROPERTY(eth::u256 balance READ balance NOTIFY changed)
-	Q_PROPERTY(eth::Address address READ address WRITE setAddress NOTIFY changed)
-
-	std::unique_ptr<eth::Client> m_client;
+	Q_PROPERTY(eth::Address coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
+	Q_PROPERTY(bool listening READ isListening WRITE setListening)
+	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
 
 class Main : public QMainWindow
@@ -118,6 +163,8 @@ class Main : public QMainWindow
 public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
+
+	eth::Client* client() const { return m_client.get(); }
 	
 private slots:
 	void on_connect_triggered();
@@ -130,6 +177,12 @@ private slots:
 
 	void refresh();
 	void refreshNetwork();
+
+signals:
+	void changed();
+
+protected:
+	virtual void timerEvent(QTimerEvent *);
 
 private:
 /*	QString pretty(eth::Address _a) const;
@@ -163,7 +216,7 @@ private:
 
 	QNetworkAccessManager m_webCtrl;
 
-	QEthereum* m_eth;
+	std::unique_ptr<eth::Client> m_client;
 };
 
 #endif // MAIN_H
