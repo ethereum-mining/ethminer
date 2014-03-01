@@ -101,7 +101,7 @@ void BlockInfo::populateFromHeader(RLP const& _header)
 		extraData = _header[field = 7].toBytes();
 		nonce = _header[field = 8].toHash<h256>();
 	}
-	catch (RLP::BadCast)
+	catch (RLPException const&)
 	{
 		throw InvalidBlockHeaderFormat(field, _header[field].data());
 	}

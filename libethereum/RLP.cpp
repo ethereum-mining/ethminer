@@ -102,9 +102,17 @@ bool RLP::isInt() const
 	else if (n == c_rlpDataImmLenStart)
 		return true;
 	else if (n <= c_rlpDataIndLenZero)
+	{
+		if (m_data.size() <= 1)
+			throw BadRLP();
 		return m_data[1] != 0;
+	}
 	else if (n < c_rlpListStart)
+	{
+		if ((int)m_data.size() <= 1 + n - c_rlpDataIndLenZero)
+			throw BadRLP();
 		return m_data[1 + n - c_rlpDataIndLenZero] != 0;
+	}
 	else
 		return false;
 	return false;
@@ -121,13 +129,21 @@ eth::uint RLP::length() const
 	else if (n <= c_rlpDataIndLenZero)
 		return n - c_rlpDataImmLenStart;
 	else if (n < c_rlpListStart)
+	{
+		if ((int)m_data.size() <= n - c_rlpDataIndLenZero)
+			throw BadRLP();
 		for (int i = 0; i < n - c_rlpDataIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+	}
 	else if (n <= c_rlpListIndLenZero)
 		return n - c_rlpListStart;
 	else
+	{
+		if ((int)m_data.size() <= n - c_rlpListIndLenZero)
+			throw BadRLP();
 		for (int i = 0; i < n - c_rlpListIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+	}
 	return ret;
 }
 
