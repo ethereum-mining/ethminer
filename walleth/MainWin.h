@@ -56,6 +56,8 @@ public:
 	Q_INVOKABLE double toFinney(eth::u256 _t) const { return toWei(_t) / (double)eth::finney; }
 	Q_INVOKABLE double toEther(eth::u256 _t) const { return toWei(_t) / (double)eth::ether; }
 
+	Q_INVOKABLE double value(eth::u256 _t) const { return (double)_t; }
+
 	Q_INVOKABLE QString stringOf(eth::u256 _t) const { return QString::fromStdString(eth::formatBalance(_t)); }
 };
 
@@ -88,7 +90,7 @@ public:
 
 	Q_INVOKABLE QEthereum* ethereum() const { return m_eth; }
 	Q_INVOKABLE eth::u256 balance() const;
-	Q_INVOKABLE uint64_t txCount() const;
+	Q_INVOKABLE double txCount() const;
 	Q_INVOKABLE bool isContract() const;
 
 	// TODO: past transactions models.
@@ -105,7 +107,7 @@ private:
 	eth::Address m_address;
 
 	Q_PROPERTY(eth::u256 balance READ balance NOTIFY changed STORED false)
-	Q_PROPERTY(uint64_t txCount READ txCount NOTIFY changed STORED false)
+	Q_PROPERTY(double txCount READ txCount NOTIFY changed STORED false)
 	Q_PROPERTY(bool isContract READ isContract NOTIFY changed STORED false)
 	Q_PROPERTY(eth::Address address MEMBER m_address NOTIFY changed)
 	Q_PROPERTY(QEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
@@ -130,7 +132,7 @@ public:
 	Q_INVOKABLE bool isMining() const;
 
 	Q_INVOKABLE eth::u256 balanceAt(eth::Address _a) const;
-	Q_INVOKABLE uint64_t txCountAt(eth::Address _a) const;
+	Q_INVOKABLE double txCountAt(eth::Address _a) const;
 	Q_INVOKABLE bool isContractAt(eth::Address _a) const;
 
 	Q_INVOKABLE unsigned peerCount() const;
