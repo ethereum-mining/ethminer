@@ -30,6 +30,7 @@
 #include <iomanip>
 #include "vector_ref.h"
 #include "Common.h"
+#include "Exceptions.h"
 
 namespace eth
 {
@@ -60,8 +61,6 @@ static const byte c_rlpListIndLenZero = c_rlpListStart + c_rlpListImmLenCount - 
 class RLP
 {
 public:
-	class BadCast: public std::exception {};
-
 	/// Construct a null node.
 	RLP() {}
 
