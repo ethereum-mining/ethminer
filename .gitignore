@@ -20,3 +20,5 @@ ipch
 *.suo
 
 *.user
+*.user.*
+*~
