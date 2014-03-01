@@ -499,7 +499,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 								while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
 									codes.push_back(pair<u256s, vector<unsigned>>());
 								codes.pop_back();
-								int i = codes.size();
+								int i = (int)codes.size();
 								if (i > 2)
 									cwarn << "Greater than two arguments given to binary operator" << t << "; using first two only.";
 								for (auto it = codes.rbegin(); it != codes.rend(); ++it)
@@ -518,7 +518,7 @@ static bool compileLispFragment(char const*& d, char const* e, bool _quiet, u256
 									while (d != e && compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second))
 										codes.push_back(pair<u256s, vector<unsigned>>());
 									codes.pop_back();
-									int i = codes.size();
+									int i = (int)codes.size();
 									if (i > 1)
 										cwarn << "Greater than one argument given to unary operator" << t << "; using first only.";
 									for (auto it = codes.rbegin(); it != codes.rend(); ++it)
