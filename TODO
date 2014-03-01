@@ -18,6 +18,7 @@ Network:
   - Useful/useless - new blocks/transactions or useful peers?
   - Solid communications?
 - Strategy for peer suggestion?
+- Ignore transactions with future nonces until address's nonce changes.
 
 Cleanups & caching
 - All caches should flush unused data (I'm looking at you, BlockChain) to avoid memory overload.
