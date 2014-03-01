@@ -9,6 +9,8 @@
 #include "num_gmp.h"
 #elif defined(USE_NUM_OPENSSL)
 #include "num_openssl.h"
+#elif defined(USE_NUM_BOOST)
+#include "num_boost.h"
 #else
 #error "Please select num implementation"
 #endif

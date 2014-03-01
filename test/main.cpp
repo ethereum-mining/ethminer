@@ -27,13 +27,14 @@ int rlpTest();
 int daggerTest();
 int cryptoTest();
 int stateTest();
+int vmTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
 #include <BlockInfo.h>
 using namespace eth;
 
-int main(int argc, char** argv)
+int main(int, char**)
 {
 /*	RLPStream s;
 	BlockInfo::genesis().fillStream(s, false);
@@ -46,6 +47,7 @@ int main(int argc, char** argv)
 	trieTest();
 	daggerTest();
 	cryptoTest();
+	vmTest();
 //	stateTest();
 //	peerTest(argc, argv);
 	return 0;

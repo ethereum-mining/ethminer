@@ -30,6 +30,7 @@
 #include <iomanip>
 #include "vector_ref.h"
 #include "Common.h"
+#include "Exceptions.h"
 
 namespace eth
 {
@@ -60,8 +61,6 @@ static const byte c_rlpListIndLenZero = c_rlpListStart + c_rlpListImmLenCount - 
 class RLP
 {
 public:
-	class BadCast: public std::exception {};
-
 	/// Construct a null node.
 	RLP() {}
 
@@ -175,7 +174,7 @@ public:
 	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
-	template <class T, size_t N> std::array<T, N> toArray() const { std::array<T, N> ret; if (itemCount() != N) throw BadCast(); if (isList()) for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
+	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
 	enum
@@ -288,7 +287,7 @@ public:
 	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Appends a list.
-	RLPStream& appendList(unsigned _items);
+	RLPStream& appendList(uint _items);
 	RLPStream& appendList(bytesConstRef _rlp);
 	RLPStream& appendList(bytes const& _rlp) { return appendList(&_rlp); }
 	RLPStream& appendList(RLPStream const& _s) { return appendList(&_s.out()); }

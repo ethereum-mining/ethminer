@@ -32,30 +32,23 @@
 #include "AddressState.h"
 #include "Transaction.h"
 #include "TrieDB.h"
+#include "FeeStructure.h"
 #include "Dagger.h"
+#include "ExtVMFace.h"
 
 namespace eth
 {
 
 class BlockChain;
 
-extern const u256 c_genesisDifficulty;
+extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
-#define ETH_SENDER_PAYS_SETUP 1
+static const std::map<u256, u256> EmptyMapU256U256;
 
-struct FeeStructure
-{
-	/// The fee structure. Values yet to be agreed on...
-	void setMultiplier(u256 _x);				///< The current block multiplier.
-	u256 m_stepFee;
-	u256 m_dataFee;
-	u256 m_memoryFee;
-	u256 m_extroFee;
-	u256 m_cryptoFee;
-	u256 m_newContractFee;
-	u256 m_txFee;
-};
+struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
+
+class ExtVM;
 
 /**
  * @brief Model of the current state of the ledger.
@@ -64,6 +57,9 @@ struct FeeStructure
  */
 class State
 {
+	template <unsigned T> friend class UnitTest;
+	friend class ExtVM;
+
 public:
 	/// Construct state object.
 	State(Address _coinbaseAddress, Overlay const& _db);
@@ -150,6 +146,10 @@ public:
 	/// @returns 0 if no contract exists at that address.
 	u256 contractMemory(Address _contract, u256 _memory) const;
 
+	/// Get the memory of a contract.
+	/// @returns std::map<u256, u256> if no contract exists at that address.
+	std::map<u256, u256> const& contractMemory(Address _contract) const;
+
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 
@@ -161,10 +161,7 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	std::map<h256, Transaction> const& pending() const { return m_transactions; }
-
-	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
+	Transactions const& pending() const { return m_transactions; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -214,9 +211,16 @@ private:
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
+	/// Finalise the block, applying the earned rewards.
+	void applyRewards(Addresses const& _uncleAddresses);
+
+	/// Unfinalise the block, unapplying the earned rewards.
+	void unapplyRewards(Addresses const& _uncleAddresses);
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
-	std::map<h256, Transaction> m_transactions;	///< The current list of transactions that we've included in the state.
+	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
@@ -224,7 +228,6 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	uint m_currentNumber;
-	h256 m_committedPreviousHash;						///< Hash of previous block that we are committing to mine.
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;
@@ -241,17 +244,98 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
+class ExtVM: public ExtVMFace
+{
+public:
+	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData):
+		ExtVMFace(_myAddress, _txSender, _txValue, _txData, _s.m_fees, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s)
+	{
+		m_s.ensureCached(_myAddress, true, true);
+		m_store = &(m_s.m_cache[_myAddress].memory());
+	}
+
+	u256 store(u256 _n)
+	{
+		auto i = m_store->find(_n);
+		return i == m_store->end() ? 0 : i->second;
+	}
+	void setStore(u256 _n, u256 _v)
+	{
+		if (_v)
+		{
+#ifdef __clang__
+			auto it = m_store->find(_n);
+			if (it == m_store->end())
+				m_store->insert(std::make_pair(_n, _v));
+			else
+				m_store->at(_n) = _v;
+#else
+			(*m_store)[_n] = _v;
+#endif
+		}
+		else
+			m_store->erase(_n);
+	}
+
+	void payFee(bigint _f)
+	{
+		if (_f > m_s.balance(myAddress))
+			throw NotEnoughCash();
+		m_s.subBalance(myAddress, _f);
+	}
+
+	void mktx(Transaction& _t)
+	{
+		_t.nonce = m_s.transactionsFrom(myAddress);
+		m_s.executeBare(_t, myAddress);
+	}
+	u256 balance(Address _a) { return m_s.balance(_a); }
+	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
+	u256 extro(Address _a, u256 _pos) { return m_s.contractMemory(_a, _pos); }
+	u256 extroPrice(Address _a) { return 0; }
+	void suicide(Address _a)
+	{
+		m_s.addBalance(_a, m_s.balance(myAddress) + m_store->size() * fees.m_memoryFee);
+		m_s.m_cache[myAddress].kill();
+	}
+
+private:
+	State& m_s;
+	std::map<u256, u256>* m_store;
+};
+
 inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
-	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.m_currentBlock.stateRoot))
+	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash()))
 	{
 		auto it = _s.m_cache.find(i.first);
 		if (it == _s.m_cache.end())
 		{
 			RLP r(i.second);
-			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>() << std::endl;
+			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
+			if (r.itemCount() == 3)
+			{
+				_out << " *" << r[2].toHash<h256>();
+				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+				std::map<u256, u256> mem;
+				for (auto const& j: memdb)
+				{
+					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
+					auto mFinder = mem.find(j.first);
+					if (mFinder == mem.end())
+						mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
+					else
+						mFinder->second = RLP(j.second).toInt<u256>();
+#else
+					mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
+				}
+				_out << std::endl << mem;
+			}
+			_out << std::endl;
 		}
 		else
 			d.insert(i.first);
@@ -260,7 +344,37 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		if (i.second.type() == AddressType::Dead)
 			_out << "[XXX " << i.first << std::endl;
 		else
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "   NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance() << std::endl;
+		{
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
+			if (i.second.type() == AddressType::Contract)
+			{
+				if (i.second.haveMemory())
+				{
+					_out << std::endl << i.second.memory();
+				}
+				else
+				{
+					_out << " *" << i.second.oldRoot();
+					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
+					std::map<u256, u256> mem;
+					for (auto const& j: memdb)
+					{
+						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+#ifdef __clang__
+						auto mFinder = mem.find(j.first);
+						if (mFinder == mem.end())
+							mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
+						else
+							mFinder->second = RLP(j.second).toInt<u256>();
+#else
+						mem[j.first] = RLP(j.second).toInt<u256>();
+#endif
+					}
+					_out << std::endl << mem;
+				}
+			}
+			_out << std::endl;
+		}
 	return _out;
 }
 
@@ -278,7 +392,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				if (i.second.haveMemory())
 				{
-					TrieDB<u256, DB> memdb(&_db);
+					TrieDB<h256, DB> memdb(&_db);
 					memdb.init();
 					for (auto const& j: i.second.memory())
 						if (j.second)

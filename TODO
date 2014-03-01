@@ -9,6 +9,7 @@ Crypto stuff:
 
 Network:
 - *** Exponential backoff on bad connection.
+- *** Handle exception when no network.
 - NotInChain will be very bad for new peers - it'll run through until the genesis.
   - Check how many it has first.
 - Crypto on network - use id as public key?
@@ -18,13 +19,14 @@ Network:
   - Solid communications?
 - Strategy for peer suggestion?
 
+Cleanups & caching
+- All caches should flush unused data (I'm looking at you, BlockChain) to avoid memory overload.
+- State DB should keep only last few N blocks worth of nodes (except for restore points - configurable, defaults to every 30000th block - all blocks that are restore points should be stored so their stateRoots are known good).
+
 THREAD-SAFETY
 - BlockChain
 - TransactionQueue
 - State
-
-CLI client
-- Implement CLI option "--help".
 
 General:
 - Better logging.
@@ -43,11 +45,10 @@ GUI
 - Make address/block chain list model-based, JIT populated.
 - Make everything else model-based
 - Qt/QML class.
+- Turn on/off debug channels.
 
 For PoC3:
 - Shared contract acceptence tests.
-- Use mining state for nonce.
-BUG: need to discard transactions if nonce too old, even when not mining.
 
 
 ### Marko

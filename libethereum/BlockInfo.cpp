@@ -101,7 +101,7 @@ void BlockInfo::populateFromHeader(RLP const& _header)
 		extraData = _header[field = 7].toBytes();
 		nonce = _header[field = 8].toHash<h256>();
 	}
-	catch (RLP::BadCast)
+	catch (RLPException const&)
 	{
 		throw InvalidBlockHeaderFormat(field, _header[field].data());
 	}
@@ -152,6 +152,6 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		throw InvalidDifficulty();
 
 	// Check timestamp is after previous timestamp.
-	if (parentHash && _parent.timestamp >= timestamp)
+	if (parentHash && _parent.timestamp > timestamp)
 		throw InvalidTimestamp();
 }

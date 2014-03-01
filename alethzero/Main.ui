@@ -6,33 +6,38 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1112</width>
-    <height>766</height>
+    <width>1504</width>
+    <height>798</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>AlethZero Ethereum Client</string>
   </property>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
   <property name="dockOptions">
-   <set>QMainWindow::AllowTabbedDocks|QMainWindow::VerticalTabs</set>
+   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::VerticalTabs</set>
   </property>
   <property name="sizeGripEnabled" stdset="0">
    <bool>true</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
-    <property name="spacing">
-     <number>4</number>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>0</number>
     </property>
-    <property name="margin">
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
      <number>0</number>
     </property>
     <item>
-     <widget class="QListWidget" name="transactions">
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
-      </property>
-     </widget>
+     <widget class="QWidget" name="widget" native="true"/>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -51,7 +56,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="blockChain">
+       <widget class="QLabel" name="blockCount">
         <property name="text">
          <string>1 block</string>
         </property>
@@ -66,8 +71,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1112</width>
-     <height>28</height>
+     <width>1504</width>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -81,14 +86,16 @@
      <string>&amp;Network</string>
     </property>
     <addaction name="upnp"/>
+    <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
    <widget class="QMenu" name="menu_Tools">
     <property name="title">
-     <string>&amp;Tools</string>
+     <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
     <addaction name="create"/>
+    <addaction name="preview"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -114,11 +121,23 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QHBoxLayout" name="horizontalLayout_4">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
       <widget class="QListWidget" name="accounts">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -139,7 +158,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QHBoxLayout" name="horizontalLayout">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -148,6 +176,9 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QListWidget" name="peers">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
@@ -180,21 +211,30 @@
          <item row="0" column="0">
           <widget class="QLabel" name="label_3">
            <property name="text">
-            <string>Ideal Peers</string>
+            <string>Ideal &amp;Peers</string>
+           </property>
+           <property name="buddy">
+            <cstring>idealPeers</cstring>
            </property>
           </widget>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>Client Name</string>
+            <string>&amp;Client Name</string>
+           </property>
+           <property name="buddy">
+            <cstring>clientName</cstring>
            </property>
           </widget>
          </item>
          <item row="1" column="0">
           <widget class="QLabel" name="label">
            <property name="text">
-            <string>Listen on</string>
+            <string>&amp;Listen on</string>
+           </property>
+           <property name="buddy">
+            <cstring>port</cstring>
            </property>
           </widget>
          </item>
@@ -224,7 +264,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
     <layout class="QHBoxLayout" name="horizontalLayout_6">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -234,6 +283,9 @@
          <family>Monospace</family>
          <pointsize>12</pointsize>
         </font>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
        </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
@@ -274,11 +326,23 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
       <widget class="QListWidget" name="transactionQueue">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -299,6 +363,7 @@
    </attribute>
    <addaction name="net"/>
    <addaction name="connect"/>
+   <addaction name="preview"/>
    <addaction name="mine"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
@@ -310,8 +375,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>408</width>
-     <height>251</height>
+     <width>442</width>
+     <height>360</height>
     </size>
    </property>
    <property name="features">
@@ -325,46 +390,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QGridLayout" name="gridLayout">
-     <property name="margin">
-      <number>0</number>
-     </property>
-     <property name="spacing">
-      <number>4</number>
-     </property>
-     <item row="1" column="0" colspan="2">
-      <widget class="QLabel" name="label5_2">
-       <property name="text">
-        <string>Amount</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3" colspan="2">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
-     <item row="1" column="2">
-      <widget class="QSpinBox" name="value">
-       <property name="suffix">
-        <string/>
-       </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-       <property name="value">
-        <number>1000</number>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Data</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" colspan="2">
+     <item row="0" column="0">
       <widget class="QLabel" name="label5">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -373,21 +399,73 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>To</string>
+        <string>&amp;To</string>
+       </property>
+       <property name="buddy">
+        <cstring>destination</cstring>
        </property>
       </widget>
      </item>
-     <item row="3" column="0" colspan="5">
-      <widget class="QPlainTextEdit" name="data"/>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label5_2">
+       <property name="text">
+        <string>&amp;Amount</string>
+       </property>
+       <property name="buddy">
+        <cstring>value</cstring>
+       </property>
+      </widget>
      </item>
-     <item row="4" column="4">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>&amp;Data</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+       <property name="buddy">
+        <cstring>data</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0" colspan="4">
+      <widget class="QSplitter" name="splitter_5">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QPlainTextEdit" name="data"/>
+       <widget class="QPlainTextEdit" name="code">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </widget>
+     </item>
+     <item row="5" column="3">
       <widget class="QPushButton" name="send">
        <property name="text">
-        <string>Send</string>
+        <string>&amp;Send</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="2" colspan="3">
+     <item row="5" column="0" colspan="2">
+      <widget class="QLabel" name="total">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="3">
       <widget class="QLineEdit" name="destination">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -400,7 +478,23 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="2" colspan="3">
+     <item row="1" column="1" colspan="3">
+      <widget class="QLineEdit" name="calculatedName">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QComboBox" name="valueUnits"/>
+     </item>
+     <item row="3" column="1" colspan="3">
       <widget class="QLabel" name="fee">
        <property name="text">
         <string/>
@@ -410,10 +504,16 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0" colspan="4">
-      <widget class="QLabel" name="total">
-       <property name="text">
+     <item row="2" column="1" colspan="2">
+      <widget class="QSpinBox" name="value">
+       <property name="suffix">
         <string/>
+       </property>
+       <property name="maximum">
+        <number>430000000</number>
+       </property>
+       <property name="value">
+        <number>1000</number>
        </property>
       </widget>
      </item>
@@ -432,11 +532,23 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QHBoxLayout" name="horizontalLayout_5">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
       <widget class="QListWidget" name="ourAccounts">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
@@ -447,6 +559,184 @@
         <bool>true</bool>
        </property>
       </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QToolBar" name="toolBar_2">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_6">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Contracts</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_6">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QSplitter" name="splitter_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <widget class="QListWidget" name="contracts">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QPlainTextEdit" name="contractInfo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_8">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Block  Chain</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_8">
+    <layout class="QHBoxLayout" name="horizontalLayout_8">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QSplitter" name="splitter_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <widget class="QListWidget" name="blocks">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QPlainTextEdit" name="info">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_9">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Settings</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_9">
+    <layout class="QGridLayout" name="gridLayout_3">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Name Registrar</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="nameReg"/>
      </item>
     </layout>
    </widget>
@@ -498,8 +788,34 @@
     <string>&amp;About...</string>
    </property>
   </action>
+  <action name="preview">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Preview</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <tabstops>
+  <tabstop>destination</tabstop>
+  <tabstop>calculatedName</tabstop>
+  <tabstop>value</tabstop>
+  <tabstop>valueUnits</tabstop>
+  <tabstop>data</tabstop>
+  <tabstop>code</tabstop>
+  <tabstop>send</tabstop>
+  <tabstop>idealPeers</tabstop>
+  <tabstop>port</tabstop>
+  <tabstop>clientName</tabstop>
+  <tabstop>verbosity</tabstop>
+  <tabstop>transactionQueue</tabstop>
+  <tabstop>accounts</tabstop>
+  <tabstop>peers</tabstop>
+  <tabstop>log</tabstop>
+  <tabstop>ourAccounts</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 4;
+static const int c_protocolVersion = 7;
 
 static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -80,7 +80,7 @@ bool eth::isPrivateAddress(bi::address _addressToCheck)
 	return false;
 }
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, short _peerPort):
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
@@ -137,7 +137,7 @@ bool PeerSession::interpret(RLP const& _r)
 		m_networkId = _r[2].toInt<uint>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
-		m_listenPort = _r[5].toInt<short>();
+		m_listenPort = _r[5].toInt<unsigned short>();
 		m_id = _r[6].toHash<h512>();
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
@@ -170,12 +170,12 @@ bool PeerSession::interpret(RLP const& _r)
 		// Grab their block chain off them.
 		{
 			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
-			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
+			uint count = std::min(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_latestBlockSent;
-			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 			{
 				clogS(NetAllDetail) << "   " << i << ":" << h;
 				s << h;
@@ -407,12 +407,12 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		else
 		{
-			unsigned count = std::min<unsigned>(c_maxHashes, m_server->m_chain->details(noGood).number);
+			uint count = std::min(c_maxHashes, m_server->m_chain->details(noGood).number);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
 			auto h = m_server->m_chain->details(noGood).parent;
-			for (unsigned i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
 				s << h;
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
@@ -450,7 +450,7 @@ void PeerServer::seal(bytes& _b)
 	_b[1] = 0x40;
 	_b[2] = 0x08;
 	_b[3] = 0x91;
-	uint32_t len = _b.size() - 8;
+	uint32_t len = (uint32_t)_b.size() - 8;
 	_b[4] = (len >> 24) & 0xff;
 	_b[5] = (len >> 16) & 0xff;
 	_b[6] = (len >> 8) & 0xff;
@@ -483,19 +483,21 @@ bool PeerSession::checkPacket(bytesConstRef _msg)
 void PeerSession::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
-	std::shared_ptr<bytes> buffer = std::make_shared<bytes>();
-	swap(*buffer, _msg);
-	if (!checkPacket(bytesConstRef(&*buffer)))
+
+	if (!checkPacket(bytesConstRef(&_msg)))
 	{
 		cwarn << "INVALID PACKET CONSTRUCTED!";
-
 	}
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+
+	auto self(shared_from_this());
+	bytes* buffer = new bytes(std::move(_msg));
+	ba::async_write(m_socket, ba::buffer(*buffer), [self,buffer](boost::system::error_code ec, std::size_t length)
 	{
+		delete buffer;
 		if (ec)
 		{
 			cwarn << "Error sending: " << ec.message();
-			dropped();
+			self->dropped();
 		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
@@ -504,17 +506,21 @@ void PeerSession::sendDestroy(bytes& _msg)
 void PeerSession::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
-	std::shared_ptr<bytes> buffer = std::make_shared<bytes>(_msg.toBytes());
+	
 	if (!checkPacket(_msg))
 	{
 		cwarn << "INVALID PACKET CONSTRUCTED!";
 	}
-	ba::async_write(m_socket, ba::buffer(*buffer), [=](boost::system::error_code ec, std::size_t length)
+
+	auto self(shared_from_this());
+	bytes* buffer = new bytes(_msg.toBytes());
+	ba::async_write(m_socket, ba::buffer(*buffer), [self,buffer](boost::system::error_code ec, std::size_t length)
 	{
+		delete buffer;
 		if (ec)
 		{
 			cwarn << "Error sending: " << ec.message();
-			dropped();
+			self->dropped();
 		}
 //		cbug << length << " bytes written (EC: " << ec << ")";
 	});
@@ -568,7 +574,7 @@ void PeerSession::start()
 void PeerSession::doRead()
 {
 	auto self(shared_from_this());
-	m_socket.async_read_some(boost::asio::buffer(m_data), [this, self](boost::system::error_code ec, std::size_t length)
+	m_socket.async_read_some(boost::asio::buffer(m_data), [this,self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec)
 		{
@@ -635,7 +641,7 @@ void PeerSession::doRead()
 	});
 }
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, unsigned short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -654,7 +660,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId, NodeMode _m):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
-	m_listenPort(-1),
+	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
 	m_key(KeyPair::create()),
@@ -698,10 +704,10 @@ void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 
 		auto eip = m_upnp->externalIP();
 		if (eip == string("0.0.0.0") && _publicAddress.empty())
-			m_public = bi::tcp::endpoint(bi::address(), p);
+			m_public = bi::tcp::endpoint(bi::address(), (unsigned short)p);
 		else
 		{
-			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), p);
+			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), (unsigned short)p);
 			m_addresses.push_back(m_public.address().to_v4());
 		}
 	}
@@ -746,7 +752,7 @@ void PeerServer::populateAddresses()
 		bi::address ad(bi::address::from_string(addrStr));
 		m_addresses.push_back(ad.to_v4());
 		bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-		if (isLocal)
+		if (!isLocal)
 			m_peerAddresses.push_back(ad.to_v4());
 		clog(NetNote) << "Address: " << ac << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
 	}
@@ -768,6 +774,7 @@ void PeerServer::populateAddresses()
 			char host[NI_MAXHOST];
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
+			// TODO: Make exception safe when no internet.
 			auto it = r.resolve({host, "30303"});
 			bi::tcp::endpoint ep = it->endpoint();
 			bi::address ad = ep.address();
@@ -831,7 +838,7 @@ void PeerServer::ensureAccepting()
 	}
 }
 
-void PeerServer::connect(std::string const& _addr, uint _port) noexcept
+void PeerServer::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	try
 	{
@@ -866,7 +873,7 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 		else
 		{
 			auto p = make_shared<PeerSession>(this, std::move(*s), m_requiredNetworkId, _ep.address(), _ep.port());
-			clog(NetNote) << "Connected to " << p->endpoint();
+			clog(NetNote) << "Connected to " << _ep;
 			p->start();
 		}
 		delete s;
@@ -924,6 +931,9 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 		m_incomingTransactions.clear();
 
+		auto h = _bc.currentHash();
+		bool resendAll = (h != m_latestBlockSent);
+
 		// Send any new transactions.
 		for (auto j: m_peers)
 			if (auto p = j.second.lock())
@@ -931,7 +941,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 				bytes b;
 				uint n = 0;
 				for (auto const& i: _tq.transactions())
-					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions)
+					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
 					{
 						b += i.second;
 						++n;
@@ -951,7 +961,6 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			}
 
 		// Send any new blocks.
-		auto h = _bc.currentHash();
 		if (h != m_latestBlockSent)
 		{
 			// TODO: find where they diverge and send complete new branch.
