@@ -35,6 +35,14 @@ git checkout "$branch"
 archdir="cpp-ethereum-$version"
 archfile="$archdir.tar.bz2"
 
+echo Making BuildInfo...
+mkdir build
+cd build
+cmake ..
+cd ..
+cp build/BuildInfo.h .
+rm -rf build
+
 echo Cleaning backup files...
 find . | grep \~ | xargs rm -f
 
@@ -51,6 +59,7 @@ mv cpp-ethereum $archdir
 
 echo Creating archive...
 tar c $archdir | bzip2 -- > $archfile
+shasum $archfile
 
 [[ ! "$version" == "" ]] && ln -sf $archfile "cpp-ethereum_$version.orig.tar.bz2"
 
