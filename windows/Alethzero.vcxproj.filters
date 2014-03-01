@@ -24,5 +24,8 @@
   <ItemGroup>
     <CustomBuild Include="..\alethzero\MainWin.h" />
     <CustomBuild Include="..\alethzero\Main.ui" />
+    <CustomBuild Include="BuildInfo.lua">
+      <Filter>Windows</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
