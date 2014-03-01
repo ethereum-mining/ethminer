@@ -29,11 +29,9 @@
 #include "BlockChain.h"
 #include "State.h"
 #include "FileSystem.h"
+#include "BuildInfo.h"
 using namespace std;
 using namespace eth;
-
-#define ADD_QUOTES_HELPER(s) #s
-#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 bool isTrue(std::string const& _m)
 {
@@ -72,8 +70,8 @@ void help()
 
 void version()
 {
-	cout << "eth version " << ADD_QUOTES(ETH_VERSION) << endl;
-	cout << "Build: " << ADD_QUOTES(ETH_BUILD_PLATFORM) << "/" << ADD_QUOTES(ETH_BUILD_TYPE) << endl;
+	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
+	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
@@ -189,7 +187,7 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-	Client c("Ethereum(++)/" + clientName + "v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 
 	if (interactive)
 	{

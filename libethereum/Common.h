@@ -57,6 +57,9 @@
 // CryptoPP defines byte in the global namespace, so so must we.
 using byte = uint8_t;
 
+#define ETH_QUOTED_HELPER(s) #s
+#define ETH_QUOTED(s) ETH_QUOTED_HELPER(s)
+
 namespace eth
 {
 

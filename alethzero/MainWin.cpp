@@ -6,6 +6,7 @@
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
+#include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
@@ -52,9 +53,6 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 	_b->setCurrentIndex(6);
 }
-
-#define ADD_QUOTES_HELPER(s) #s
-#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -122,7 +120,7 @@ Main::Main(QWidget *parent) :
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ADD_QUOTES(ETH_VERSION)).section('.', 1, 1) + ".txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1) + ".txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -182,7 +180,7 @@ Address Main::fromString(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About AlethZero PoC-" + QString(ADD_QUOTES(ETH_VERSION)).section('.', 1, 1), "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
+	QMessageBox::about(this, "About AlethZero PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), "AlethZero/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
 }
 
 void Main::writeSettings()
@@ -584,10 +582,10 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-	string n = "AlethZero/v" ADD_QUOTES(ETH_VERSION);
+	string n = "AlethZero/v" ETH_QUOTED(ETH_VERSION);
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
+	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
