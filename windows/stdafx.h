@@ -40,3 +40,5 @@
 #include <boost/filesystem.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/thread.hpp>
+#include <boost/asio/detail/socket_types.hpp>
+
