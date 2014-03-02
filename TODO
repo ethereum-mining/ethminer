@@ -1,7 +1,20 @@
 ### UP FOR GRABS
 
-Tests
-- Use standard tests.
+For PoC-4:
+
+GUI
+- Make address/block chain list model-based, JIT populated.
+- Make everything else model-based
+- Qt/QML class.
+
+Robustness
+- Store version alongside BC DB. Kill old DBs when protocol different. Remove block chain on protocol change (i.e. store protocol with block chain).
+
+Cleanups & caching
+- All caches should flush unused data (I'm looking at you, BlockChain) to avoid memory overload.
+
+
+Generally:
 
 Crypto stuff:
 - kFromMessage
@@ -21,7 +34,6 @@ Network:
 - Ignore transactions with future nonces until address's nonce changes.
 
 Cleanups & caching
-- All caches should flush unused data (I'm looking at you, BlockChain) to avoid memory overload.
 - State DB should keep only last few N blocks worth of nodes (except for restore points - configurable, defaults to every 30000th block - all blocks that are restore points should be stored so their stateRoots are known good).
 
 THREAD-SAFETY
@@ -32,29 +44,19 @@ THREAD-SAFETY
 General:
 - Better logging.
   - Colours.
-- Move over to new system.
-- Remove block chain on protocol change (i.e. store protocol with block chain).
+  - Move over to new system.
 
 Robustness
 - Remove aborts
 - Recover from all exceptions.
   - Especially RLP & other I/O.
 - RLP should never assert; only throw.
-- Store version alongside BC DB.
 - Better handling of corrupt blocks.
   - Kill DB & restart.
 
 GUI:
 - Turn on/off debug channels.
 
-For PoC-4:
-
-GUI
-- Make address/block chain list model-based, JIT populated.
-- Make everything else model-based
-- Qt/QML class.
-
-Kill old DBs when protocol different.
 
 ### Marko
 
