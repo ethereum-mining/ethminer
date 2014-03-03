@@ -24,6 +24,6 @@ Description: The future of computational social contracts. Dev Files.
 
 Package: alethzero
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libethereum (= ${binary:Version}), qtbase5
+Depends: ${shlibs:Depends}, ${misc:Depends}, libethereum (= ${binary:Version})
 Description: The Qt-based Ethereum GUI.
  A long description of alethzero.
