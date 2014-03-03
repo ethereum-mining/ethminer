@@ -237,6 +237,13 @@ int main(int argc, char** argv)
 				cout << "Current secret: " + asHex(us.secret().asArray()) << endl;
 				cout << "===" << endl;
 			}
+			else if (cmd == "block")
+			{
+				eth::uint n = c.blockChain().details().number;
+				cout << endl;
+				cout << "Current block # " << n << endl;
+				cout << "===" << endl;
+			}
 			else if (cmd == "balance")
 			{
 				u256 balance = c.state().balance(us.address());
