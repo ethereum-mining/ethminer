@@ -5,8 +5,6 @@ set(CMAKE_AUTOMOC ON)
 
 cmake_policy(SET CMP0015 NEW)
 
-set(ETH_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-
 # Default HEADLESS to 0.
 set(HEADLESS CACHE BOOL 0)
 if ("x${HEADLESS}" STREQUAL "x")
@@ -66,9 +64,8 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 
-add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
-add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
-#set(CMAKE_CXX_FLAGS, "${CMAKE_CXX_FLAGS} -DETH_VERSION=${ETH_VERSION} -DETH_BUILD_TYPE=${ETH_BUILD_TYPE} -DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
+#add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
+#add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
 
 # Compiler-specific C++11 activation.
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -134,14 +131,18 @@ else ()
     # Always "found", given last block.
     include_directories(${CRYPTOPP_INCLUDE_DIR})
 
-	if (NOT APPLE)
+	if(NOT APPLE)
 		link_directories(${CRYPTOPP_LIBRARIES})
-	endif ()
-endif ()
+	endif()
+endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	link_directories(/usr/local/lib)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
+# Generate header file containing useful build information
+add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(secp256k1)
 add_subdirectory(libethereum)

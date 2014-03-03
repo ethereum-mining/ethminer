@@ -3,6 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <BoostDir>../../boost</BoostDir>
+    <Lua>"../../lua/lua"</Lua>
   </PropertyGroup>
   <PropertyGroup>
     <OutDir>..\..\_build\$(ProjectName)\$(Platform)_$(Configuration)\</OutDir>
@@ -14,7 +15,7 @@
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>include/$(ProjectName);../libethereum;$(BoostDir);../../leveldb/include;../../cryptopp;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include/$(ProjectName);$(IntDir);../libethereum;$(BoostDir);../../leveldb/include;../../cryptopp;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ETH_BUILD_PLATFORM=Windows/VS2013;ETH_BUILD_TYPE=$(Configuration)-$(Platform);STATICLIB;LEVELDB_PLATFORM_WINDOWS;USE_NUM_BOOST;USE_FIELD_10X26;USE_FIELD_INV_BUILTIN;_WIN32_WINNT=0x0501;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -26,6 +27,9 @@
   <ItemGroup>
     <BuildMacro Include="BoostDir">
       <Value>$(BoostDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="Lua">
+      <Value>$(Lua)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>

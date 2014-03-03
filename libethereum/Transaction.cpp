@@ -30,14 +30,22 @@ using namespace eth;
 
 Transaction::Transaction(bytesConstRef _rlpData)
 {
+	int field = 0;
 	RLP rlp(_rlpData);
-	nonce = rlp[0].toInt<u256>();
-	receiveAddress = rlp[1].toHash<Address>();
-	value = rlp[2].toInt<u256>();
-	data.reserve(rlp[3].itemCountStrict());
-	for (auto const& i: rlp[3])
-		data.push_back(i.toInt<u256>());
-	vrs = Signature{ rlp[4].toInt<byte>(), rlp[5].toInt<u256>(), rlp[6].toInt<u256>() };
+	try
+	{
+		nonce = rlp[field = 0].toInt<u256>();
+		receiveAddress = rlp[field = 1].toHash<Address>();
+		value = rlp[field = 2].toInt<u256>();
+		data.reserve(rlp[field = 3].itemCountStrict());
+		for (auto const& i: rlp[3])
+			data.push_back(i.toInt<u256>());
+		vrs = Signature{ rlp[field = 4].toInt<byte>(), rlp[field = 5].toInt<u256>(), rlp[field = 6].toInt<u256>() };
+	}
+	catch (RLPException const&)
+	{
+		throw InvalidTransactionFormat(field, rlp[field].data());
+	}
 }
 
 Address Transaction::safeSender() const noexcept

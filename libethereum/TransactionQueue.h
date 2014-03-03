@@ -40,14 +40,18 @@ public:
 	void drop(h256 _txHash) { m_data.erase(_txHash); }
 	std::map<h256, bytes> const& transactions() const { return m_data; }
 
+	void setFuture(std::pair<h256, bytes> const& _t);
+	void noteGood(std::pair<h256, bytes> const& _t);
+
 	Transactions interestQueue() { Transactions ret; swap(ret, m_interestQueue); return ret; }
 	void pushInterest(Address _a) { m_interest[_a]++; }
 	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
 
 private:
-	std::map<h256, bytes> m_data;	///< the queue.
+	std::map<h256, bytes> m_data;		///< Map of SHA3(tx) to tx.
 	Transactions m_interestQueue;
 	std::map<Address, int> m_interest;
+	std::multimap<Address, std::pair<h256, bytes>> m_future;		///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
 };
 
 }

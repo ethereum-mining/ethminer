@@ -6,6 +6,7 @@
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
+#include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
@@ -52,9 +53,6 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 	_b->setCurrentIndex(6);
 }
-
-#define ADD_QUOTES_HELPER(s) #s
-#define ADD_QUOTES(s) ADD_QUOTES_HELPER(s)
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -118,18 +116,20 @@ Main::Main(QWidget *parent) :
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
 #else
-	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+	int pocnumber = QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1).toInt();
+	if (pocnumber == 3)
+		m_servers.push_back("54.201.28.117:30303");
+	else
 	{
-		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
-	});
-#ifdef _MSC_VER
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc3.txt"));
-#else
-	QNetworkRequest r(QUrl("https://www.ethereum.org/servers.poc3.txt"));
-#endif
-	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
-	m_webCtrl.get(r);
-	srand(time(0));
+		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+		{
+			m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
+		});
+		QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString::number(pocnumber) + ".txt"));
+		r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
+		m_webCtrl.get(r);
+		srand(time(0));
+	}
 #endif
 
 	on_verbosity_sliderMoved();
@@ -186,7 +186,7 @@ Address Main::fromString(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About AlethZero PoC-3", "AlethZero/v" ADD_QUOTES(ETH_VERSION) "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
+	QMessageBox::about(this, "About AlethZero PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), QString("AlethZero/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH)) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
 }
 
 void Main::writeSettings()
@@ -246,7 +246,10 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("nameReg", "11f62328e131dbb05ce4c73a3de3c7ab1c84a163").toString());
+	if (s.value("nameReg").toString() == "11f62328e131dbb05ce4c73a3de3c7ab1c84a163")
+		s.remove("nameReg");
+	ui->nameReg->setText(s.value("nameReg", "8ff91e5b145a23ab1afef34f12587c18bd42aec0").toString());
+
 }
 
 void Main::on_nameReg_textChanged()
@@ -588,10 +591,10 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-	string n = "AlethZero/v" ADD_QUOTES(ETH_VERSION);
+	string n = "AlethZero/v" ETH_QUOTED(ETH_VERSION);
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" ADD_QUOTES(ETH_BUILD_TYPE) "/" ADD_QUOTES(ETH_BUILD_PLATFORM);
+	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
