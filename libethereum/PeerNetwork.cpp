@@ -591,6 +591,8 @@ void PeerSession::doRead()
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 					{
+						disconnect(BadProtocol);
+						return;
 						clogS(NetWarn) << "Out of alignment. Skipping: " << hex << showbase << (int)m_incoming[0] << dec;
 						memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
 						m_incoming.resize(m_incoming.size() - 1);
@@ -610,6 +612,7 @@ void PeerSession::doRead()
 							cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
 							cwarn << "INVALID MESSAGE RECEIVED";
 							disconnect(BadProtocol);
+							return;
 						}
 						else
 						{
@@ -831,7 +834,7 @@ void PeerServer::ensureAccepting()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			m_accepting = false;
-			if (ec.value() != 1 && m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
+			if (ec.value() != 1 && (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2))
 				ensureAccepting();
 		});
 	}
