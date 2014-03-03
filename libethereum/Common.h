@@ -155,7 +155,7 @@ public:
 		{
 			size_t h = 0;
 			for (auto i: value.m_data)
-				h = (h << 5 - h) + i;
+				h = (h << (5 - h)) + i;
 			return h;
 		}
 	};
