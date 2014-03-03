@@ -71,7 +71,5 @@ void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 	auto r = m_future.equal_range(Transaction(_t.second).sender());
 	for (auto it = r.first; it != r.second; ++it)
 		m_data.insert(_t);
-	cdebug << m_future;
 	m_future.erase(r.first, r.second);
-	cdebug << m_future;
 }
