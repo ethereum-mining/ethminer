@@ -101,6 +101,9 @@ public:
 
 	bool isOpen() const { return m_socket.is_open(); }
 
+	static int protocolVersion();
+	static int networkId();
+
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 private:

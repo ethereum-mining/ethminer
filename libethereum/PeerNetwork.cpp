@@ -97,6 +97,16 @@ PeerSession::~PeerSession()
 	m_socket.close();
 }
 
+int PeerSession::protocolVersion()
+{
+	return c_protocolVersion;
+}
+
+int PeerSession::networkId()
+{
+	return 0;
+}
+
 bi::tcp::endpoint PeerSession::endpoint() const
 {
 	if (m_socket.is_open())

@@ -23,20 +23,44 @@
 
 #include <chrono>
 #include <thread>
+#include <boost/filesystem.hpp>
 #include "Common.h"
 #include "Defaults.h"
 using namespace std;
 using namespace eth;
 
+VersionChecker::VersionChecker(string const& _dbPath, unsigned _protocolVersion):
+	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath()),
+	m_protocolVersion(_protocolVersion)
+{
+	m_ok = RLP(contents(m_path + "/protocol")).toInt<unsigned>(RLP::LaisezFaire) == _protocolVersion;
+}
+
+void VersionChecker::setOk()
+{
+	if (!m_ok)
+	{
+		try
+		{
+			boost::filesystem::create_directory(m_path);
+		}
+		catch (...) {}
+		writeFile(m_path + "/protocol", rlp(m_protocolVersion));
+	}
+}
+
 Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath):
 	m_clientVersion(_clientVersion),
-	m_bc(_dbPath),
-	m_stateDB(State::openDB(_dbPath)),
+	m_vc(_dbPath, PeerSession::protocolVersion()),
+	m_bc(_dbPath, !m_vc.ok()),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok())),
 	m_preMine(_us, m_stateDB),
 	m_postMine(_us, m_stateDB),
 	m_workState(Active)
 {
-	Defaults::setDBPath(_dbPath);
+	if (_dbPath.size())
+		Defaults::setDBPath(_dbPath);
+	m_vc.setOk();
 
 	// Synchronise the state according to the head of the block chain.
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
