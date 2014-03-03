@@ -51,3 +51,20 @@ bool TransactionQueue::import(bytes const& _block)
 
 	return true;
 }
+
+void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
+{
+	if (m_data.count(_t.first))
+	{
+		m_data.erase(_t.first);
+		m_future.insert(make_pair(Transaction(_t.second).sender(), _t));
+	}
+}
+
+void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
+{
+	auto r = m_future.equal_range(Transaction(_t.second).sender());
+	for (auto it = r.first; it != r.second; ++it)
+		m_data.insert(_t);
+	m_future.erase(r.first);
+}
