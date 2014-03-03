@@ -60,6 +60,20 @@ enum ClientWorkState
 	Deleted
 };
 
+class VersionChecker
+{
+public:
+	VersionChecker(std::string const& _dbPath, unsigned _protocolVersion);
+
+	void setOk();
+	bool ok() const { return m_ok; }
+
+private:
+	bool m_ok;
+	std::string m_path;
+	unsigned m_protocolVersion;
+};
+
 class Client
 {
 public:
@@ -141,6 +155,7 @@ private:
 	void work();
 
 	std::string m_clientVersion;		///< Our end-application client's name/version.
+	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
 	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.

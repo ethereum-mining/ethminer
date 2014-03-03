@@ -55,8 +55,6 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
-	if (_killExisting)
-		boost::filesystem::remove_all(_path + "/state");
 
 	ldb::Options o;
 	o.create_if_missing = true;
