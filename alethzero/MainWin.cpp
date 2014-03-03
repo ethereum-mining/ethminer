@@ -246,7 +246,10 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("nameReg", "11f62328e131dbb05ce4c73a3de3c7ab1c84a163").toString());
+	if (s.value("nameReg").toString() == "11f62328e131dbb05ce4c73a3de3c7ab1c84a163")
+		s.remove("nameReg");
+	ui->nameReg->setText(s.value("nameReg", "8ff91e5b145a23ab1afef34f12587c18bd42aec0").toString());
+
 }
 
 void Main::on_nameReg_textChanged()
