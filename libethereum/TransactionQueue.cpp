@@ -43,9 +43,14 @@ bool TransactionQueue::import(bytes const& _block)
 		// If valid, append to blocks.
 		m_data[h] = _block;
 	}
+	catch (InvalidTransactionFormat const& _e)
+	{
+		cwarn << "Ignoring invalid transaction: " << _e.description();
+		return false;
+	}
 	catch (std::exception const& _e)
 	{
-		cout << "*** Ignoring invalid transaction: " << _e.what();
+		cwarn << "Ignoring invalid transaction: " << _e.what();
 		return false;
 	}
 
