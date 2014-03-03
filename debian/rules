@@ -31,6 +31,6 @@ override_dh_auto_install:
 	# Move the libs over to the non-dev package.
 	mkdir -p $(CURDIR)/debian/libethereum/usr
 	mv $(CURDIR)/debian/libethereum-dev/usr/lib $(CURDIR)/debian/libethereum/usr/lib
-	mkdir -p $(CURDIR)/debian/alephzero/usr/bin
+	mkdir -p $(CURDIR)/debian/alethzero/usr/bin
 	mv $(CURDIR)/debian/libethereum-dev/usr/bin/alethzero $(CURDIR)/debian/alethzero/usr/lib
 
