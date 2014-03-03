@@ -7,6 +7,14 @@ GUI
 - Make everything else model-based
 - Qt/QML class.
 
+Core
+- Signalling for changes to State.
+
+THREAD-SAFETY
+- BlockChain
+- TransactionQueue
+- State
+
 Robustness
 - Store version alongside BC DB. Kill old DBs when protocol different. Remove block chain on protocol change (i.e. store protocol with block chain).
 
@@ -35,11 +43,6 @@ Network:
 
 Cleanups & caching
 - State DB should keep only last few N blocks worth of nodes (except for restore points - configurable, defaults to every 30000th block - all blocks that are restore points should be stored so their stateRoots are known good).
-
-THREAD-SAFETY
-- BlockChain
-- TransactionQueue
-- State
 
 General:
 - Better logging.
