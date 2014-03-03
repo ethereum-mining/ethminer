@@ -116,14 +116,20 @@ Main::Main(QWidget *parent) :
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
 #else
-	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+	int pocnumber = QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1).toInt();
+	if (pocnumber == 3)
+		m_servers.push_back("54.201.28.117:30303");
+	else
 	{
-		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
-	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1) + ".txt"));
-	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
-	m_webCtrl.get(r);
-	srand(time(0));
+		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+		{
+			m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
+		});
+		QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString::number(pocnumber) + ".txt"));
+		r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
+		m_webCtrl.get(r);
+		srand(time(0));
+	}
 #endif
 
 	on_verbosity_sliderMoved();
