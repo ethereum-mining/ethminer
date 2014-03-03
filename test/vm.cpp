@@ -446,6 +446,7 @@ public:
 
 int vmTest()
 {
+	cnote << "Testing VM...";
 	return UnitTest<1>()();
 }
 

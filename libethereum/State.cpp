@@ -55,8 +55,6 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
-	if (_killExisting)
-		boost::filesystem::remove_all(_path + "/state");
 
 	ldb::Options o;
 	o.create_if_missing = true;
@@ -288,30 +286,40 @@ bool State::sync(TransactionQueue& _tq)
 	// TRANSACTIONS
 	bool ret = false;
 	auto ts = _tq.transactions();
-	for (auto const& i: ts)
+	vector<pair<h256, bytes>> futures;
+
+	for (int goodTxs = 1; goodTxs;)
 	{
-		if (!m_transactionSet.count(i.first))
+		goodTxs = 0;
+		for (auto const& i: ts)
 		{
-			// don't have it yet! Execute it now.
-			try
+			if (!m_transactionSet.count(i.first))
 			{
-				execute(i.second);
-				ret = true;
-			}
-			catch (InvalidNonce const& in)
-			{
-				if (in.required > in.candidate)
+				// don't have it yet! Execute it now.
+				try
 				{
-					// too old
+					execute(i.second);
+					ret = true;
+					_tq.noteGood(i);
+					++goodTxs;
+				}
+				catch (InvalidNonce const& in)
+				{
+					if (in.required > in.candidate)
+					{
+						// too old
+						_tq.drop(i.first);
+						ret = true;
+					}
+					else
+						_tq.setFuture(i);
+				}
+				catch (std::exception const&)
+				{
+					// Something else went wrong - drop it.
 					_tq.drop(i.first);
 					ret = true;
 				}
-			}
-			catch (std::exception const&)
-			{
-				// Something else went wrong - drop it.
-				_tq.drop(i.first);
-				ret = true;
 			}
 		}
 	}

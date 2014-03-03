@@ -43,7 +43,7 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const int c_protocolVersion = 7;
+static const int c_protocolVersion = 8;
 
 static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
 static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
@@ -95,6 +95,16 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi
 PeerSession::~PeerSession()
 {
 	m_socket.close();
+}
+
+int PeerSession::protocolVersion()
+{
+	return c_protocolVersion;
+}
+
+int PeerSession::networkId()
+{
+	return 0;
 }
 
 bi::tcp::endpoint PeerSession::endpoint() const
@@ -591,6 +601,8 @@ void PeerSession::doRead()
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 					{
+						disconnect(BadProtocol);
+						return;
 						clogS(NetWarn) << "Out of alignment. Skipping: " << hex << showbase << (int)m_incoming[0] << dec;
 						memmove(m_incoming.data(), m_incoming.data() + 1, m_incoming.size() - 1);
 						m_incoming.resize(m_incoming.size() - 1);
@@ -610,6 +622,7 @@ void PeerSession::doRead()
 							cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
 							cwarn << "INVALID MESSAGE RECEIVED";
 							disconnect(BadProtocol);
+							return;
 						}
 						else
 						{
@@ -830,9 +843,8 @@ void PeerServer::ensureAccepting()
 				{
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
-
 			m_accepting = false;
-			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
+			if (ec.value() != 1 && (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2))
 				ensureAccepting();
 		});
 	}
@@ -926,7 +938,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
 			if (_tq.import(*it))
-				ret = true;
+			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
 			else
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 		m_incomingTransactions.clear();

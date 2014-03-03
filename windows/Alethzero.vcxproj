@@ -170,17 +170,17 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\alethzero\MainWin.h">
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(Lua)" moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(Lua)" moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(Lua)" moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(Lua)" moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
@@ -204,6 +204,31 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QtBin)/uic" -o "$(IntDir)ui_%(FileName).h" "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QtBin)/uic" -o "$(IntDir)ui_%(FileName).h" "%(FullPath)"</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)ui_%(FileName).h</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="BuildInfo.lua">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(FileName).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(FileName).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(FileName).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(FileName).h</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../.git/index</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
