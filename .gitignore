@@ -19,6 +19,9 @@ ipch
 *.opensdf
 *.suo
 
+# Generated headers
+*.h
+
 *.user
 *.user.*
 *~
