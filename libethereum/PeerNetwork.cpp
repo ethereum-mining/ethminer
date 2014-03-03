@@ -830,9 +830,8 @@ void PeerServer::ensureAccepting()
 				{
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
-
 			m_accepting = false;
-			if (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
+			if (ec.value() != 1 && m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2)
 				ensureAccepting();
 		});
 	}
@@ -926,7 +925,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
 			if (_tq.import(*it))
-				ret = true;
+			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
 			else
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
 		m_incomingTransactions.clear();
