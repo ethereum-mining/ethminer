@@ -322,7 +322,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 				std::map<u256, u256> mem;
 				for (auto const& j: memdb)
 				{
-					_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
 #ifdef __clang__
 					auto mFinder = mem.find(j.first);
 					if (mFinder == mem.end())
@@ -359,7 +359,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 					std::map<u256, u256> mem;
 					for (auto const& j: memdb)
 					{
-						_out << std::endl << "    [" << j.first << ":" << asHex(j.second) << "]";
+						_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
 #ifdef __clang__
 						auto mFinder = mem.find(j.first);
 						if (mFinder == mem.end())

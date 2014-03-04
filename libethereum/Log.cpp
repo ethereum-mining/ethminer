@@ -14,12 +14,28 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Log.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#include "Log.h"
 
+#include <string>
+#include <iostream>
 using namespace std;
 using namespace eth;
+
+// Logging
+int eth::g_logVerbosity = 8;
+map<type_info const*, bool> eth::g_logOverride;
+
+ThreadLocalLogName eth::t_logThreadName("main");
+
+void eth::simpleDebugOut(std::string const& _s, char const*)
+{
+	cout << _s << endl << flush;
+}
+
+std::function<void(std::string const&, char const*)> eth::g_logPost = simpleDebugOut;
+

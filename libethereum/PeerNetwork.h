@@ -28,6 +28,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
 #include "Common.h"
+#include "Log.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 

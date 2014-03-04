@@ -31,12 +31,12 @@ using eth::Secret;
 using eth::Transaction;
 
 // functions
-using eth::asHex;
+using eth::toHex;
 using eth::assemble;
 using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
-using eth::fromUserHex;
+using eth::fromHex;
 using eth::right160;
 using eth::simpleDebugOut;
 using eth::toLog2;
@@ -180,7 +180,7 @@ Address Main::fromString(QString const& _a) const
 		if (h256 a = state().contractMemory(m_nameReg, n))
 			return right160(a);
 	if (_a.size() == 40)
-		return Address(fromUserHex(_a.toStdString()));
+		return Address(fromHex(_a.toStdString()));
 	else
 		return Address();
 }
@@ -258,7 +258,7 @@ void Main::on_nameReg_textChanged()
 	string s = ui->nameReg->text().toStdString();
 	if (s.size() == 40)
 	{
-		m_nameReg = Address(fromUserHex(s));
+		m_nameReg = Address(fromHex(s));
 		refresh(true);
 	}
 }
@@ -512,7 +512,7 @@ void Main::on_ourAccounts_doubleClicked()
 {
 	auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_log_doubleClicked()
@@ -524,14 +524,14 @@ void Main::on_accounts_doubleClicked()
 {
 	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_contracts_doubleClicked()
 {
 	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_destination_textChanged()

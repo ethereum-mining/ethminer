@@ -79,7 +79,7 @@ Address Transaction::sender() const
 	cout << "---- RECOVER -------------------------------" << endl;
 	cout << "MSG: " << msg << endl;
 	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
-	cout << "PUB: " << asHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
 	cout << "ADR: " << ret << endl;
 #endif
 	return ret;

@@ -22,7 +22,8 @@
 #pragma once
 
 #include <mutex>
-#include "Common.h"
+#include "CommonEth.h"
+#include "Log.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
 

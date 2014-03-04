@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "Common.h"
+#include "FixedHash.h"
+#include "CommonEth.h"
 
 #define FAKE_DAGGER 1
 

@@ -26,6 +26,7 @@
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #include "Common.h"
+#include "Log.h"
 #include "Exceptions.h"
 #include "UPnP.h"
 using namespace std;
