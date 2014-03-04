@@ -45,6 +45,7 @@
 // CryptoPP defines byte in the global namespace, so so must we.
 using byte = uint8_t;
 
+// Quote a given token stream to turn it into a string.
 #define ETH_QUOTED_HELPER(s) #s
 #define ETH_QUOTED(s) ETH_QUOTED_HELPER(s)
 
@@ -69,8 +70,6 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
-template <unsigned T> class UnitTest {};
-
 // Map types.
 using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
@@ -79,5 +78,8 @@ using HexMap = std::map<bytes, std::string>;
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
+
+/// Trivial UnitTest type that everyone can agree on, mainly to allow befriending for test classes & their code.
+template <unsigned T> class UnitTest {};
 
 }
