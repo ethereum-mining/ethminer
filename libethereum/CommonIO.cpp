@@ -14,12 +14,35 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file CommonIO.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
 #include "Common.h"
 
+#include <fstream>
+#include "Exceptions.h"
 using namespace std;
 using namespace eth;
+
+bytes eth::contents(std::string const& _file)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return bytes();
+	// get length of file:
+	is.seekg (0, is.end);
+	streamoff length = is.tellg();
+	is.seekg (0, is.beg);
+	bytes ret(length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
+void eth::writeFile(std::string const& _file, bytes const& _data)
+{
+	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+}
+

@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 		if (it->key().ToString() != "best")
 		{
 			BlockDetails d(RLP(it->value().ToString()));
-			_out << asHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
 		}
 	delete it;
 	return _out;

@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "Common.h"
+#include "CommonEth.h"
 #include "RLP.h"
 
 namespace eth

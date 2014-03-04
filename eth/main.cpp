@@ -138,9 +138,9 @@ int main(int argc, char** argv)
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-			coinbase = h160(fromUserHex(argv[++i]));
+			coinbase = h160(fromHex(argv[++i]));
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-			us = KeyPair(h256(fromUserHex(argv[++i])));
+			us = KeyPair(h256(fromHex(argv[++i])));
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
@@ -228,13 +228,13 @@ int main(int argc, char** argv)
 			else if (cmd == "address")
 			{
 				cout << endl;
-				cout << "Current address: " + asHex(us.address().asArray()) << endl;
+				cout << "Current address: " + toHex(us.address().asArray()) << endl;
 				cout << "===" << endl;
 			}
 			else if (cmd == "secret")
 			{
 				cout << endl;
-				cout << "Current secret: " + asHex(us.secret().asArray()) << endl;
+				cout << "Current secret: " + toHex(us.secret().asArray()) << endl;
 				cout << "===" << endl;
 			}
 			else if (cmd == "balance")
@@ -251,8 +251,8 @@ int main(int argc, char** argv)
 				string rechex;
 				u256 amount;
 				cin >> sechex >> rechex >> amount;
-				Secret secret = h256(fromUserHex(sechex));
-				Address dest = h160(fromUserHex(rechex));
+				Secret secret = h256(fromHex(sechex));
+				Address dest = h160(fromHex(rechex));
 				c.transact(secret, dest, amount);
 			}
 			else if (cmd == "send")
@@ -260,7 +260,7 @@ int main(int argc, char** argv)
 				string rechex;
 				u256 amount;
 				cin >> rechex >> amount;
-				Address dest = h160(fromUserHex(rechex));
+				Address dest = h160(fromHex(rechex));
 				c.transact(us.secret(), dest, amount);
 			}
 			else if (cmd == "exit")
@@ -271,7 +271,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		cout << "Address: " << endl << asHex(us.address().asArray()) << endl;
+		cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 		eth::uint n = c.blockChain().details().number;
 		if (mining)

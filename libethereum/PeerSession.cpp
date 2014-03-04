@@ -163,7 +163,7 @@ bool PeerSession::interpret(RLP const& _r)
 		s << PeersPacket;
 		for (auto i: peers)
 		{
-			clogS(NetMessageDetail) << "Sending peer " << asHex(i.first.ref().cropped(0, 4)) << i.second;
+			clogS(NetMessageDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
 			s.appendList(3) << i.second.address().to_v4().to_bytes() << i.second.port() << i.first;
 		}
 		sealAndSend(s);
@@ -179,7 +179,7 @@ bool PeerSession::interpret(RLP const& _r)
 			if (isPrivateAddress(peerAddress))
 				goto CONTINUE;
 
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << asHex(id.ref().cropped(0, 4)) << ")";
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << toHex(id.ref().cropped(0, 4)) << ")";
 
 			// check that it's not us or one we already know:
 			if (id && (m_server->m_key.pub() == id || m_server->m_peers.count(id) || m_server->m_incomingPeers.count(id)))
@@ -545,11 +545,11 @@ void PeerSession::doRead()
 							break;
 
 						// enough has come in.
-//						cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
+//						cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
 						auto data = bytesConstRef(m_incoming.data(), tlen);
 						if (!checkPacket(data))
 						{
-							cerr << "Received " << len << ": " << asHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
+							cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
 							cwarn << "INVALID MESSAGE RECEIVED";
 							disconnect(BadProtocol);
 							return;
