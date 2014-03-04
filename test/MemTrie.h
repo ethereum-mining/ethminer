@@ -21,7 +21,8 @@
 
 #pragma once
 
-#include "Common.h"
+#include <Common.h>
+#include <FixedHash.h>
 
 namespace eth
 {

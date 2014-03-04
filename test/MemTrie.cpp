@@ -19,9 +19,10 @@
  * @date 2014
  */
 
-#include "CommonEth.h"
-#include "TrieCommon.h"
 #include "MemTrie.h"
+
+#include <CommonEth.h>
+#include <TrieCommon.h>
 using namespace std;
 using namespace eth;
 
