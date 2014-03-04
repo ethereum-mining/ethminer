@@ -26,6 +26,7 @@
 #include <boost/filesystem.hpp>
 #include "Common.h"
 #include "Defaults.h"
+#include "PeerServer.h"
 using namespace std;
 using namespace eth;
 
@@ -51,7 +52,7 @@ void VersionChecker::setOk()
 
 Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath):
 	m_clientVersion(_clientVersion),
-	m_vc(_dbPath, PeerSession::protocolVersion()),
+	m_vc(_dbPath, PeerServer::protocolVersion()),
 	m_bc(_dbPath, !m_vc.ok()),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok())),
 	m_preMine(_us, m_stateDB),
@@ -95,6 +96,16 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
+}
+
+std::vector<PeerInfo> Client::peers()
+{
+	return m_net ? m_net->peers() : std::vector<PeerInfo>();
+}
+
+size_t Client::peerCount() const
+{
+	return m_net ? m_net->peerCount() : 0;
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)

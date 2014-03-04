@@ -125,9 +125,9 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
+	std::vector<PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
-	size_t peerCount() const { return m_net ? m_net->peerCount() : 0; }
+	size_t peerCount() const;
 
 	/// Start the network subsystem.
 	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
