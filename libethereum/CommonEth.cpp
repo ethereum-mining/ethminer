@@ -22,6 +22,7 @@
 #include "CommonEth.h"
 #include "CryptoHeaders.h"
 #include "Exceptions.h"
+#include <random>
 using namespace std;
 using namespace eth;
 
