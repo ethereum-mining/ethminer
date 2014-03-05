@@ -6,13 +6,12 @@
     <QtBin>$(QtDir)/qtbase/bin</QtBin>
     <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include</QtInclude>
     <QtLib>$(QtDir)/qtbase/lib;$(QtDir)/qtbase/plugins/platforms</QtLib>
-    <Lua>../../lua/lua</Lua>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup>
     <Link />
     <ClCompile>
-      <AdditionalIncludeDirectories>..;$(IntDir);$(QtInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;$(QtInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(QtLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -30,9 +29,6 @@
     </BuildMacro>
     <BuildMacro Include="QtLib">
       <Value>$(QtLib)</Value>
-    </BuildMacro>
-    <BuildMacro Include="Lua">
-      <Value>$(Lua)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
