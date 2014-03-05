@@ -20,22 +20,29 @@ rem : assume our root Qt dir is the current dir
 set QT=%CD%
 
 rem : create the build folder and add the qtbase/bin folder to the PATH
-if not exist %QT%\%PLATFORM% mkdir %QT%\%PLATFORM%
+if not exist %QT%\%PLATFORM% (
+	set DO_CONFIGURE=1
+	mkdir %QT%\%PLATFORM%
+) else (
+	set DO_CONFIGURE=0
+)
 if %USE_PREFIX%==1 (
 	if not exist %QT%\%PLATFORM%-Build mkdir %QT%\%PLATFORM%-Build
 	if not exist %QT%\%PLATFORM%\qtbase mkdir %QT%\%PLATFORM%\qtbase
 	cd %QT%\%PLATFORM%-Build
 	set QT_PREFIX=-prefix %Qt%\%PLATFORM%\qtbase
-	set QT_TARGETS=module-qtbase-install_subtargets
+	set QT_TARGETS=module-qtbase-install_subtargets module-qtquick1-install_subtargets
 ) else (
 	cd %QT%\%PLATFORM%
 	set QT_PREFIX=
-	set QT_TARGETS=module-qtbase
+	set QT_TARGETS=module-qtbase module-qtquick1
 )
 set PATH=%CD%\qtbase\bin;%PATH%
 
 rem : run Qt configure with desired settings
-call %QT%\Src\configure.bat -opensource -confirm-license %QT_PREFIX% -mp -opengl desktop -static -debug-and-release -platform win32-msvc2013 -nomake examples -nomake tests
+if %DO_CONFIGURE%==1 (
+	call %QT%\Src\configure.bat -opensource -confirm-license %QT_PREFIX% -mp -opengl desktop -static -debug-and-release -platform win32-msvc2013 -nomake examples -nomake tests
+)
 
 rem : compile and install module-qtbase
 %QT%\jom\jom %QT_TARGETS%

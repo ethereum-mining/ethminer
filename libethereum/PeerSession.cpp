@@ -430,16 +430,17 @@ void PeerSession::sendDestroy(bytes& _msg)
 
 	auto self(shared_from_this());
 	bytes* buffer = new bytes(std::move(_msg));
-	ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
-	{
-		delete buffer;
-		if (ec)
+	if (m_socket.is_open())
+		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
 		{
-			cwarn << "Error sending: " << ec.message();
-			self->dropped();
-		}
-//		cbug << length << " bytes written (EC: " << ec << ")";
-	});
+			delete buffer;
+			if (ec)
+			{
+				cwarn << "Error sending: " << ec.message();
+				self->dropped();
+			}
+	//		cbug << length << " bytes written (EC: " << ec << ")";
+		});
 }
 
 void PeerSession::send(bytesConstRef _msg)
@@ -453,16 +454,17 @@ void PeerSession::send(bytesConstRef _msg)
 
 	auto self(shared_from_this());
 	bytes* buffer = new bytes(_msg.toBytes());
-	ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
-	{
-		delete buffer;
-		if (ec)
+	if (m_socket.is_open())
+		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
 		{
-			cwarn << "Error sending: " << ec.message();
-			self->dropped();
-		}
-//		cbug << length << " bytes written (EC: " << ec << ")";
-	});
+			delete buffer;
+			if (ec)
+			{
+				cwarn << "Error sending: " << ec.message();
+				self->dropped();
+			}
+	//		cbug << length << " bytes written (EC: " << ec << ")";
+		});
 }
 
 void PeerSession::dropped()

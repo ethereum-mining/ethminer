@@ -150,6 +150,7 @@ add_subdirectory(test)
 add_subdirectory(eth)
 if (NOT HEADLESS)
 	add_subdirectory(alethzero)
+	add_subdirectory(walleth)
 endif ()
 
 unset(HEADLESS CACHE)
