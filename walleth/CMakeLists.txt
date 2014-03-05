@@ -58,7 +58,9 @@ qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network Quick Qml)
 target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
 
 if (APPLE)
-	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
+	if (${ADDFRAMEWORKS})
+		set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
+	endif ()
 
 	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
 
@@ -81,12 +83,14 @@ if (APPLE)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
 		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
 		" COMPONENT RUNTIME )
-	
-	add_custom_target(addframeworks ALL
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTEABLE}.app
-		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-		DEPENDS ${PROJECT_NAME}
-	)
+
+	if (${ADDFRAMEWORKS})	
+		add_custom_target(addframeworks ALL
+			COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTEABLE}.app
+			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+			DEPENDS ${PROJECT_NAME}
+		)
+	endif ()
 
 elseif (${TARGET_PLATFORM} STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
