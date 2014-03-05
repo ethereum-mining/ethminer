@@ -11,6 +11,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
 #include <libethereum/FileSystem.h>
+#include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -35,12 +36,12 @@ using eth::Secret;
 using eth::Transaction;
 
 // functions
-using eth::asHex;
+using eth::toHex;
 using eth::assemble;
 using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
-using eth::fromUserHex;
+using eth::fromHex;
 using eth::right160;
 using eth::simpleDebugOut;
 using eth::toLog2;

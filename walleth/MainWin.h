@@ -5,7 +5,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethereum/Common.h>
+#include <libethereum/CommonEth.h>
 
 namespace Ui {
 class Main;
@@ -76,7 +76,7 @@ public:
 	Q_INVOKABLE bool isNull(eth::Address _a) const { return !_a; }
 
 	Q_INVOKABLE eth::Address addressOf(QString _s) const { return eth::Address(_s.toStdString()); }
-	Q_INVOKABLE QString stringOf(eth::Address _a) const { return QString::fromStdString(eth::asHex(_a.asArray())); }
+	Q_INVOKABLE QString stringOf(eth::Address _a) const { return QString::fromStdString(eth::toHex(_a.asArray())); }
 	Q_INVOKABLE QString toAbridged(eth::Address _a) const { return QString::fromStdString(_a.abridged()); }
 };
 
