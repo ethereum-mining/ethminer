@@ -26,11 +26,13 @@
 namespace eth
 {
 
+/**
+ * The collection of fee amounts that makes up the fee structure.
+ */
 struct FeeStructure
 {
-	/// The fee structure. Values yet to be agreed on...
-	void setMultiplier(u256 _x);				///< The current block multiplier.
-	u256 multiplier() const;
+	void setMultiplier(u256 _x);				///< Set the current block multiplier.
+	u256 multiplier() const;					///< @returns the current block multiplier.
 	u256 m_stepFee;
 	u256 m_dataFee;
 	u256 m_memoryFee;
