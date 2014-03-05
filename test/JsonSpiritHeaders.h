@@ -14,25 +14,19 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file VM.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file JsonSpiritHeaders.h
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
  */
+#pragma once
 
-#include "VM.h"
+#pragma warning(push)
+#pragma warning(disable: 4100)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "../json_spirit/json_spirit_reader_template.h"
+#include "../json_spirit/json_spirit_writer_template.h"
+#pragma GCC diagnostic pop
+#pragma warning(pop)
 
-using namespace std;
-using namespace eth;
-
-VM::VM()
-{
-	reset();
-}
-
-void VM::reset()
-{
-	m_curPC = 0;
-	m_nextPC = 1;
-	m_stepCount = 0;
-	m_runFee = 0;
-}

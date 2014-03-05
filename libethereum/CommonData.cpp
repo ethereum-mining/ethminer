@@ -36,7 +36,7 @@ std::string eth::escaped(std::string const& _s, bool _all)
 			ret += "\\\"";
 		else if (i == '\\' && !_all)
 			ret += "\\\\";
-		else if (i < ' ' || i > 127 || _all)
+		else if (i < ' ' || _all)
 		{
 			ret += "\\x";
 			ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);

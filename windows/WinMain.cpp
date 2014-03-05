@@ -5,7 +5,7 @@
 
 extern int main(int argc, char* argv[]);
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance, char* command_line, int show_command)
+int WINAPI WinMain(HINSTANCE /*instance*/, HINSTANCE /*prev_instance*/, char* command_line, int /*show_command*/)
 {
 	int    argc;
 	char** argv;

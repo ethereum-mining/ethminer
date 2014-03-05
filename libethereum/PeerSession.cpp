@@ -431,7 +431,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	auto self(shared_from_this());
 	bytes* buffer = new bytes(std::move(_msg));
 	if (m_socket.is_open())
-		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
+		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t /*length*/)
 		{
 			delete buffer;
 			if (ec)
@@ -455,7 +455,7 @@ void PeerSession::send(bytesConstRef _msg)
 	auto self(shared_from_this());
 	bytes* buffer = new bytes(_msg.toBytes());
 	if (m_socket.is_open())
-		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t length)
+		ba::async_write(m_socket, ba::buffer(*buffer), [self, buffer](boost::system::error_code ec, std::size_t /*length*/)
 		{
 			delete buffer;
 			if (ec)

@@ -76,7 +76,7 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static Overlay openDB(std::string _path, bool _killExisting = false);
+    static Overlay openDB(std::string _path, bool _killExisting = false);
 	static Overlay openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
@@ -292,7 +292,7 @@ public:
 	u256 balance(Address _a) { return m_s.balance(_a); }
 	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
 	u256 extro(Address _a, u256 _pos) { return m_s.contractMemory(_a, _pos); }
-	u256 extroPrice(Address _a) { return 0; }
+	u256 extroPrice(Address /*_a*/) { return 0; }
 	void suicide(Address _a)
 	{
 		m_s.addBalance(_a, m_s.balance(myAddress) + m_store->size() * fees.m_memoryFee);

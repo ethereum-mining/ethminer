@@ -55,7 +55,7 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, uint _networkId, unsigned short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, unsigned short _port, NodeMode _m, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(_port),
@@ -71,7 +71,7 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4)) << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full");
 }
 
-PeerServer::PeerServer(std::string const& _clientVersion, uint _networkId, NodeMode _m):
+PeerServer::PeerServer(std::string const& _clientVersion, unsigned int _networkId, NodeMode _m):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
 	m_listenPort(0),

@@ -14,25 +14,23 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file VM.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file CryptoHeaders.h
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
  */
+#pragma once
 
-#include "VM.h"
+// need to leave this one disabled
+#pragma GCC diagnostic ignored "-Wunused-function"
 
-using namespace std;
-using namespace eth;
-
-VM::VM()
-{
-	reset();
-}
-
-void VM::reset()
-{
-	m_curPC = 0;
-	m_nextPC = 1;
-	m_stepCount = 0;
-	m_runFee = 0;
-}
+#pragma warning(push)
+#pragma warning(disable:4100 4244)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <sha.h>
+#include <sha3.h>
+#include <ripemd.h>
+#include <secp256k1.h>
+#pragma warning(pop)
+#pragma GCC diagnostic pop
