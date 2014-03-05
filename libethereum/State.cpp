@@ -42,10 +42,10 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromUserHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromUserHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromUserHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromUserHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
 	}
 	return s_ret;
 }
@@ -55,6 +55,7 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
+
 	if (_killExisting)
 		boost::filesystem::remove_all(_path + "/state");
 
@@ -288,30 +289,40 @@ bool State::sync(TransactionQueue& _tq)
 	// TRANSACTIONS
 	bool ret = false;
 	auto ts = _tq.transactions();
-	for (auto const& i: ts)
+	vector<pair<h256, bytes>> futures;
+
+	for (int goodTxs = 1; goodTxs;)
 	{
-		if (!m_transactionSet.count(i.first))
+		goodTxs = 0;
+		for (auto const& i: ts)
 		{
-			// don't have it yet! Execute it now.
-			try
+			if (!m_transactionSet.count(i.first))
 			{
-				execute(i.second);
-				ret = true;
-			}
-			catch (InvalidNonce const& in)
-			{
-				if (in.required > in.candidate)
+				// don't have it yet! Execute it now.
+				try
 				{
-					// too old
+					execute(i.second);
+					ret = true;
+					_tq.noteGood(i);
+					++goodTxs;
+				}
+				catch (InvalidNonce const& in)
+				{
+					if (in.required > in.candidate)
+					{
+						// too old
+						_tq.drop(i.first);
+						ret = true;
+					}
+					else
+						_tq.setFuture(i);
+				}
+				catch (std::exception const&)
+				{
+					// Something else went wrong - drop it.
 					_tq.drop(i.first);
 					ret = true;
 				}
-			}
-			catch (std::exception const&)
-			{
-				// Something else went wrong - drop it.
-				_tq.drop(i.first);
-				ret = true;
 			}
 		}
 	}

@@ -24,9 +24,9 @@
 #include "../json_spirit/json_spirit_reader_template.h"
 #include "../json_spirit/json_spirit_writer_template.h"
 #include <random>
-#include <TrieHash.h>
 #include <TrieDB.h>
-#include <MemTrie.h>
+#include "TrieHash.h"
+#include "MemTrie.h"
 using namespace std;
 using namespace eth;
 
@@ -53,7 +53,7 @@ public:
 			vector<pair<string, string>> ss;
 			for (auto& i: o["in"].get_obj())
 				ss.push_back(make_pair(i.first, i.second.get_str()));
-			for (unsigned j = 0; j < fac(ss.size()); ++j)
+			for (unsigned j = 0; j < fac((unsigned)ss.size()); ++j)
 			{
 				next_permutation(ss.begin(), ss.end());
 				BasicMap m;
@@ -61,11 +61,11 @@ public:
 				t.init();
 				for (auto const& k: ss)
 					t.insert(k.first, k.second);
-				if (!o["root"].is_null() && o["root"].get_str() != asHex(t.root().asArray()))
+				if (!o["root"].is_null() && o["root"].get_str() != toHex(t.root().asArray()))
 				{
 					cwarn << "Test failed on permutation " << j;
 					cwarn << "Test says:" << o["root"].get_str();
-					cwarn << "Impl says:" << asHex(t.root().asArray());
+					cwarn << "Impl says:" << toHex(t.root().asArray());
 					passed = false;
 				}
 			}
@@ -154,7 +154,7 @@ int trieTest()
 		t.insert("doe", "reindeer");
 		cout << hex << t.hash256() << endl;
 		cout << RLP(t.rlp()) << endl;
-		cout << asHex(t.rlp()) << endl;
+		cout << toHex(t.rlp()) << endl;
 	}
 	{
 		BasicMap m;

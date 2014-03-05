@@ -25,6 +25,8 @@
 #include <memory>
 #include <leveldb/db.h>
 #include "Exceptions.h"
+#include "CommonEth.h"
+#include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
@@ -54,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
 	{
 		_out << i.first << ": ";
 		_out << RLP(i.second);
-		_out << " " << asHex(i.second);
+		_out << " " << toHex(i.second);
 		_out << std::endl;
 	}
 	return _out;
@@ -177,7 +179,7 @@ public:
 					}
 					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
 					{
-						cdebug << b.rlp.size() << asHex(b.rlp);
+						cdebug << b.rlp.size() << toHex(b.rlp);
 						cdebug << rlp;
 						auto c = rlp.itemCount();
 						cdebug << c;

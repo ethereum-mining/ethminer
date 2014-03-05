@@ -84,14 +84,16 @@ enum class Instruction: uint8_t
 	SUICIDE = 0x3f
 };
 
+/// Information structure for a particular instruction.
 struct InstructionInfo
 {
-	std::string name;
-	int additional;
-	int args;
-	int ret;
+	std::string name;	///< The name of the instruction.
+	int additional;		///< Additional items required in memory for this instructions (only for PUSH).
+	int args;			///< Number of items required on the stack for this instruction (and, for the purposes of ret, the number taken from the stack).
+	int ret;			///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
 };
 
+/// Information on all the instructions.
 static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 {
 	{ Instruction::STOP, { "STOP", 0, 0, 0 } },
@@ -147,6 +149,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
 };
 
+/// Convert from string mnemonic to Instruction type.
 static const std::map<std::string, Instruction> c_instructions =
 {
 	{ "STOP", Instruction::STOP },
@@ -202,8 +205,13 @@ static const std::map<std::string, Instruction> c_instructions =
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
+/// Convert from simple EVM assembly language to EVM code.
 u256s assemble(std::string const& _code, bool _quiet = false);
+
+/// Convert from EVM code to simple EVM assembly language.
 std::string disassemble(u256s const& _mem);
+
+/// Compile a Low-level Lisp-like Language program into EVM-code.
 u256s compileLisp(std::string const& _code, bool _quiet = false);
 
 }

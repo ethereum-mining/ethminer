@@ -5,7 +5,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethereum/Common.h>
+#include <libethereum/CommonEth.h>
 
 namespace Ui {
 class Main;

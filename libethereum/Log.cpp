@@ -14,20 +14,28 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TrieHash.h
+/** @file Log.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "Log.h"
 
-#include "Common.h"
+#include <string>
+#include <iostream>
+using namespace std;
+using namespace eth;
 
-namespace eth
+// Logging
+int eth::g_logVerbosity = 8;
+map<type_info const*, bool> eth::g_logOverride;
+
+ThreadLocalLogName eth::t_logThreadName("main");
+
+void eth::simpleDebugOut(std::string const& _s, char const*)
 {
-
-bytes rlp256(StringMap const& _s);
-h256 hash256(StringMap const& _s);
-h256 hash256(u256Map const& _s);
-
+	cout << _s << endl << flush;
 }
+
+std::function<void(std::string const&, char const*)> eth::g_logPost = simpleDebugOut;
+

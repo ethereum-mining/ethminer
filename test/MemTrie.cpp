@@ -19,9 +19,10 @@
  * @date 2014
  */
 
-#include "Common.h"
-#include "TrieCommon.h"
 #include "MemTrie.h"
+
+#include <CommonEth.h>
+#include <TrieCommon.h>
 using namespace std;
 using namespace eth;
 
@@ -147,7 +148,7 @@ public:
 		assert(m_value.size());
 		std::cerr << _indent;
 		if (m_ext.size())
-			std::cerr << asHex(m_ext, 1) << ": ";
+			std::cerr << toHex(m_ext, 1) << ": ";
 		else
 			std::cerr << "@: ";
 		std::cerr << m_value << std::endl;
@@ -174,7 +175,7 @@ public:
 #if ENABLE_DEBUG_PRINT
 	virtual void debugPrintBody(std::string const& _indent) const
 	{
-		std::cerr << _indent << asHex(m_ext, 1) << ": ";
+		std::cerr << _indent << toHex(m_ext, 1) << ": ";
 		m_next->debugPrint(_indent + "  ");
 	}
 #endif
@@ -454,7 +455,7 @@ std::string const& MemTrie::at(std::string const& _key) const
 {
 	if (!m_root)
 		return c_nullString;
-	auto h = toHex(_key);
+	auto h = asNibbles(_key);
 	return m_root->at(bytesConstRef(&h));
 }
 
@@ -462,7 +463,7 @@ void MemTrie::insert(std::string const& _key, std::string const& _value)
 {
 	if (_value.empty())
 		remove(_key);
-	auto h = toHex(_key);
+	auto h = asNibbles(_key);
 	m_root = m_root ? m_root->insert(&h, _value) : new TrieLeafNode(bytesConstRef(&h), _value);
 }
 
@@ -470,7 +471,7 @@ void MemTrie::remove(std::string const& _key)
 {
 	if (m_root)
 	{
-		auto h = toHex(_key);
+		auto h = asNibbles(_key);
 		m_root = m_root->remove(&h);
 	}
 }

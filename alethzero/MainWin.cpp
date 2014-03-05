@@ -6,6 +6,7 @@
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
+#include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -30,12 +31,12 @@ using eth::Secret;
 using eth::Transaction;
 
 // functions
-using eth::asHex;
+using eth::toHex;
 using eth::assemble;
 using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
-using eth::fromUserHex;
+using eth::fromHex;
 using eth::right160;
 using eth::simpleDebugOut;
 using eth::toLog2;
@@ -78,14 +79,20 @@ Main::Main(QWidget *parent) :
 #if ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
 #else
-	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+	int pocnumber = QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1).toInt();
+	if (pocnumber == 3)
+		m_servers.push_back("54.201.28.117:30303");
+	else
 	{
-		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
-	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1) + ".txt"));
-	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
-	m_webCtrl.get(r);
-	srand(time(0));
+		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
+		{
+			m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
+		});
+		QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString::number(pocnumber) + ".txt"));
+		r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
+		m_webCtrl.get(r);
+		srand(time(0));
+	}
 #endif
 
 	on_verbosity_sliderMoved();
@@ -135,7 +142,7 @@ Address Main::fromString(QString const& _a) const
 		if (h256 a = state().contractMemory(m_nameReg, n))
 			return right160(a);
 	if (_a.size() == 40)
-		return Address(fromUserHex(_a.toStdString()));
+		return Address(fromHex(_a.toStdString()));
 	else
 		return Address();
 }
@@ -202,7 +209,10 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("nameReg", "11f62328e131dbb05ce4c73a3de3c7ab1c84a163").toString());
+	if (s.value("nameReg").toString() == "11f62328e131dbb05ce4c73a3de3c7ab1c84a163")
+		s.remove("nameReg");
+	ui->nameReg->setText(s.value("nameReg", "8ff91e5b145a23ab1afef34f12587c18bd42aec0").toString());
+
 }
 
 void Main::on_nameReg_textChanged()
@@ -210,7 +220,7 @@ void Main::on_nameReg_textChanged()
 	string s = ui->nameReg->text().toStdString();
 	if (s.size() == 40)
 	{
-		m_nameReg = Address(fromUserHex(s));
+		m_nameReg = Address(fromHex(s));
 		refresh(true);
 	}
 }
@@ -464,7 +474,7 @@ void Main::on_ourAccounts_doubleClicked()
 {
 	auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_log_doubleClicked()
@@ -476,14 +486,14 @@ void Main::on_accounts_doubleClicked()
 {
 	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_contracts_doubleClicked()
 {
 	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_destination_textChanged()
