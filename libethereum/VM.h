@@ -22,20 +22,7 @@
 #pragma once
 
 #include <unordered_map>
-#include <secp256k1.h>
-#if WIN32
-#pragma warning(push)
-#pragma warning(disable:4244)
-#else
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#if WIN32
-#pragma warning(pop)
-#else
-#endif
+#include "CryptoHeaders.h"
 #include "Common.h"
 #include "Exceptions.h"
 #include "FeeStructure.h"
