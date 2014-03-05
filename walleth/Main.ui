@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Main</class>
+ <widget class="QMainWindow" name="Main">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>562</width>
+    <height>488</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Walleth</string>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::VerticalTabs</set>
+  </property>
+  <property name="sizeGripEnabled" stdset="0">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="fullDisplay">
+      <item>
+       <widget class="QLabel" name="balance">
+        <property name="text">
+         <string>0 wei</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="peerCount">
+        <property name="text">
+         <string>0 peers</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="blockCount">
+        <property name="text">
+         <string>1 block</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>562</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="quit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Network">
+    <property name="title">
+     <string>&amp;Network</string>
+    </property>
+    <addaction name="upnp"/>
+    <addaction name="net"/>
+    <addaction name="connect"/>
+   </widget>
+   <widget class="QMenu" name="menu_Tools">
+    <property name="title">
+     <string>T&amp;ools</string>
+    </property>
+    <addaction name="mine"/>
+    <addaction name="create"/>
+    <addaction name="preview"/>
+   </widget>
+   <widget class="QMenu" name="menu_Help">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="about"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Network"/>
+   <addaction name="menu_Tools"/>
+   <addaction name="menu_Help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="quit">
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+  </action>
+  <action name="upnp">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use &amp;UPnP</string>
+   </property>
+  </action>
+  <action name="connect">
+   <property name="text">
+    <string>&amp;Connect to Peer...</string>
+   </property>
+  </action>
+  <action name="net">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable &amp;Network</string>
+   </property>
+  </action>
+  <action name="mine">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Mine</string>
+   </property>
+  </action>
+  <action name="create">
+   <property name="text">
+    <string>&amp;New Address</string>
+   </property>
+  </action>
+  <action name="about">
+   <property name="text">
+    <string>&amp;About...</string>
+   </property>
+  </action>
+  <action name="preview">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Preview</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>
