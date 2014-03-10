@@ -368,6 +368,7 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
+	// TODO: Check for uniqueness of uncles.
 	Addresses rewarded;
 	for (auto const& i: RLP(_block)[2])
 	{
