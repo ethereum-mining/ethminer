@@ -14,6 +14,9 @@
   <ItemGroup>
     <CustomBuild Include="..\walleth\MainWin.h" />
     <CustomBuild Include="..\walleth\Main.ui" />
+    <CustomBuild Include="BuildInfo.lua">
+      <Filter>Windows</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">

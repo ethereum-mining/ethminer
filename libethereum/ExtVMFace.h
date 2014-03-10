@@ -53,15 +53,23 @@ public:
 		currentNumber(_currentNumber)
 	{}
 
-	u256 store(u256 _n) { return 0; }
-	void setStore(u256 _n, u256 _v) {}
-	void mktx(Transaction& _t) {}
-	u256 balance(Address _a) { return 0; }
-	void payFee(bigint _fee) {}
-	u256 txCount(Address _a) { return 0; }
-	u256 extro(Address _a, u256 _pos) { return 0; }
-	u256 extroPrice(Address _a) { return 0; }
-	void suicide(Address _a) {}
+
+#pragma warning(push)
+#pragma warning(disable: 4100)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
+    u256 store(u256 _n) { return 0; }
+    void setStore(u256 _n, u256 _v) {}
+    void mktx(Transaction& _t) {}
+    u256 balance(Address _a) { return 0; }
+    void payFee(bigint _fee) {}
+    u256 txCount(Address _a) { return 0; }
+    u256 extro(Address _a, u256 _pos) { return 0; }
+    u256 extroPrice(Address _a) { return 0; }
+    void suicide(Address _a) {}
+#pragma GCC diagnostic pop
+#pragma warning(pop)
 
 	Address myAddress;
 	Address txSender;

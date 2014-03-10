@@ -20,6 +20,8 @@ if (${TARGET_PLATFORM} STREQUAL "w64")
 	target_link_libraries(eth boost_filesystem-mt-s)
 	target_link_libraries(eth boost_thread_win32-mt-s)
 	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+elseif (UNIX)
+
 else ()
 	target_link_libraries(eth ${CRYPTOPP_LIBRARIES})
 	target_link_libraries(eth boost_system)
