@@ -160,10 +160,12 @@
     <ClCompile Include="..\test\dagger.cpp" />
     <ClCompile Include="..\test\hexPrefix.cpp" />
     <ClCompile Include="..\test\main.cpp" />
+    <ClCompile Include="..\test\MemTrie.cpp" />
     <ClCompile Include="..\test\peer.cpp" />
     <ClCompile Include="..\test\rlp.cpp" />
     <ClCompile Include="..\test\state.cpp" />
     <ClCompile Include="..\test\trie.cpp" />
+    <ClCompile Include="..\test\TrieHash.cpp" />
     <ClCompile Include="..\test\vm.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -173,6 +175,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\test\JsonSpiritHeaders.h" />
+    <ClInclude Include="..\test\MemTrie.h" />
+    <ClInclude Include="..\test\TrieHash.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

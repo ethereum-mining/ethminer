@@ -5,14 +5,10 @@
 #include <vector>
 #include <string>
 
-#if WIN32
 #pragma warning(push)
-#pragma warning(disable: 4267)
-#endif
+#pragma warning(disable: 4100 4267)
 #include <leveldb/db.h>
-#if WIN32
 #pragma warning(pop)
-#endif
 
 namespace eth
 {

@@ -85,7 +85,7 @@ void QEthereum::setCoinbase(Address _a)
 	}
 }
 
-QAccount::QAccount(QObject* _p)
+QAccount::QAccount(QObject*)
 {
 }
 
@@ -170,7 +170,7 @@ double QEthereum::txCountAt(Address _a) const
 
 unsigned QEthereum::peerCount() const
 {
-	return client()->peerCount();
+	return (unsigned)client()->peerCount();
 }
 
 void QEthereum::transact(Secret _secret, Address _dest, u256 _amount)
