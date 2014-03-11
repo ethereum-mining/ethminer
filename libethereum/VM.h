@@ -479,29 +479,13 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::MLOAD:
 		{
 			require(1);
-#ifdef __clang__
-			auto mFinder = m_temp.find(m_stack.back());
-			if (mFinder != m_temp.end())
-				m_stack.back() = mFinder->second;
-			else
-				m_stack.back() = 0;
-#else
 			m_stack.back() = m_temp[m_stack.back()];
-#endif
 			break;
 		}
 		case Instruction::MSTORE:
 		{
 			require(2);
-#ifdef __clang__
-			auto mFinder = m_temp.find(m_stack.back());
-			if (mFinder == m_temp.end())
-				m_temp.insert(std::make_pair(m_stack.back(), m_stack[m_stack.size() - 2]));
-			else
-				mFinder->second = m_stack[m_stack.size() - 2];
-#else
 			m_temp[m_stack.back()] = m_stack[m_stack.size() - 2];
-#endif
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
