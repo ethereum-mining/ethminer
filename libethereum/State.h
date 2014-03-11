@@ -262,17 +262,7 @@ public:
 	void setStore(u256 _n, u256 _v)
 	{
 		if (_v)
-		{
-#ifdef __clang__
-			auto it = m_store->find(_n);
-			if (it == m_store->end())
-				m_store->insert(std::make_pair(_n, _v));
-			else
-				m_store->at(_n) = _v;
-#else
 			(*m_store)[_n] = _v;
-#endif
-		}
 		else
 			m_store->erase(_n);
 	}
@@ -323,15 +313,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 				for (auto const& j: memdb)
 				{
 					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-#ifdef __clang__
-					auto mFinder = mem.find(j.first);
-					if (mFinder == mem.end())
-						mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
-					else
-						mFinder->second = RLP(j.second).toInt<u256>();
-#else
 					mem[j.first] = RLP(j.second).toInt<u256>();
-#endif
 				}
 				_out << std::endl << mem;
 			}
@@ -360,15 +342,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 					for (auto const& j: memdb)
 					{
 						_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-#ifdef __clang__
-						auto mFinder = mem.find(j.first);
-						if (mFinder == mem.end())
-							mem.insert(std::make_pair(j.first, RLP(j.second).toInt<u256>()));
-						else
-							mFinder->second = RLP(j.second).toInt<u256>();
-#else
 						mem[j.first] = RLP(j.second).toInt<u256>();
-#endif
 					}
 					_out << std::endl << mem;
 				}
