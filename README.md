@@ -24,4 +24,6 @@ See [LICENSE](LICENSE)
 
 ### Contributing
 
+All development goes in develop branch - please don't submit pull requests to master.
+
 Please read [CodingStandards.txt](CodingStandards.txt) thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formatting guidelines as described in [CodingStandards.txt](CodingStandards.txt).
