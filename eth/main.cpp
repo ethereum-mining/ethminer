@@ -68,6 +68,24 @@ void help()
         exit(0);
 }
 
+void interactiveHelp()
+{
+	cout
+        << "Commands:" << endl
+        << "    netstart <port> Starts the network sybsystem on a specific port." << endl
+        << "    netstop   Stops the network subsystem." << endl
+        << "    connect <addr> <port>  Connects to a specific peer." << endl
+        << "    minestart  Starts mining." << endl
+        << "    minestop  Stops mining." << endl
+        << "    address  Gives the current address." << endl
+        << "    secret  Gives the current secret" << endl
+        << "    block  Gives the current block height." << endl
+        << "    balance  Gives the current balance." << endl
+        << "    transact <secret> <dest> <amount>  Executes a given transaction." << endl
+        << "    send <dest> <amount>  Executes a given transaction with current secret." << endl
+        << "    exit  Exits the application." << endl;
+}
+
 void version()
 {
 	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
@@ -269,6 +287,10 @@ int main(int argc, char** argv)
 				cin >> rechex >> amount;
 				Address dest = h160(fromHex(rechex));
 				c.transact(us.secret(), dest, amount);
+			}
+			else if (cmd == "help")
+			{
+				interactiveHelp();
 			}
 			else if (cmd == "exit")
 			{
