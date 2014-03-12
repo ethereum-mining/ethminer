@@ -103,24 +103,14 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			runFee += _ext.fees.m_dataFee;
 			break;
 
-		case Instruction::EXTRO:
 		case Instruction::BALANCE:
 			runFee += _ext.fees.m_extroFee;
 			break;
 
-		case Instruction::MKTX:
+		case Instruction::CALL:
 			runFee += _ext.fees.m_txFee;
 			break;
 
-		case Instruction::SHA256:
-		case Instruction::RIPEMD160:
-		case Instruction::ECMUL:
-		case Instruction::ECADD:
-		case Instruction::ECSIGN:
-		case Instruction::ECRECOVER:
-		case Instruction::ECVALID:
-			runFee += _ext.fees.m_cryptoFee;
-			break;
 		default:
 			break;
 		}
@@ -196,19 +186,9 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack[m_stack.size() - 2] = m_stack.back() < m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
-		case Instruction::LE:
-			require(2);
-			m_stack[m_stack.size() - 2] = m_stack.back() <= m_stack[m_stack.size() - 2] ? 1 : 0;
-			m_stack.pop_back();
-			break;
 		case Instruction::GT:
 			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() > m_stack[m_stack.size() - 2] ? 1 : 0;
-			m_stack.pop_back();
-			break;
-		case Instruction::GE:
-			require(2);
-			m_stack[m_stack.size() - 2] = m_stack.back() >= m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:
@@ -220,200 +200,6 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			require(1);
 			m_stack.back() = m_stack.back() ? 0 : 1;
 			break;
-		case Instruction::MYADDRESS:
-			m_stack.push_back(fromAddress(_ext.myAddress));
-			break;
-		case Instruction::TXSENDER:
-			m_stack.push_back(fromAddress(_ext.txSender));
-			break;
-		case Instruction::TXVALUE:
-			m_stack.push_back(_ext.txValue);
-			break;
-		case Instruction::TXDATAN:
-			m_stack.push_back(_ext.txData.size());
-			break;
-		case Instruction::TXDATA:
-			require(1);
-			m_stack.back() = m_stack.back() < _ext.txData.size() ? _ext.txData[(uint)m_stack.back()] : 0;
-			break;
-		case Instruction::BLK_PREVHASH:
-			m_stack.push_back(_ext.previousBlock.hash);
-			break;
-		case Instruction::BLK_COINBASE:
-			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
-			break;
-		case Instruction::BLK_TIMESTAMP:
-			m_stack.push_back(_ext.currentBlock.timestamp);
-			break;
-		case Instruction::BLK_NUMBER:
-			m_stack.push_back(_ext.currentNumber);
-			break;
-		case Instruction::BLK_DIFFICULTY:
-			m_stack.push_back(_ext.currentBlock.difficulty);
-			break;
-		case Instruction::BLK_NONCE:
-			m_stack.push_back(_ext.previousBlock.nonce);
-			break;
-		case Instruction::BASEFEE:
-			m_stack.push_back(_ext.fees.multiplier());
-			break;
-		case Instruction::SHA256:
-		{
-			require(1);
-			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
-			m_stack.pop_back();
-
-			CryptoPP::SHA256 digest;
-			uint i = 0;
-			for (; s; s = (s >= 32 ? s - 32 : 0), i += 32)
-			{
-				bytes b = toBigEndian(m_stack.back());
-				digest.Update(b.data(), (int)std::min<u256>(32, s));			// b.size() == 32
-				m_stack.pop_back();
-			}
-			std::array<byte, 32> final;
-			digest.TruncatedFinal(final.data(), 32);
-			m_stack.push_back(fromBigEndian<u256>(final));
-			break;
-		}
-		case Instruction::RIPEMD160:
-		{
-			require(1);
-			uint s = (uint)std::min(m_stack.back(), (u256)(m_stack.size() - 1) * 32);
-			m_stack.pop_back();
-
-			CryptoPP::RIPEMD160 digest;
-			uint i = 0;
-			for (; s; s = (s >= 32 ? s - 32 : 0), i += 32)
-			{
-				bytes b = toBigEndian(m_stack.back());
-				digest.Update(b.data(), (int)std::min<u256>(32, s));			// b.size() == 32
-				m_stack.pop_back();
-			}
-			std::array<byte, 20> final;
-			digest.TruncatedFinal(final.data(), 20);
-			// NOTE: this aligns to right of 256-bit container (low-order bytes).
-			// This won't work if they're treated as byte-arrays and thus left-aligned in a 256-bit container.
-			m_stack.push_back((u256)fromBigEndian<u160>(final));
-			break;
-		}
-		case Instruction::ECMUL:
-		{
-			// ECMUL - pops three items.
-			// If (S[-2],S[-1]) are a valid point in secp256k1, including both coordinates being less than P, pushes (S[-1],S[-2]) * S[-3], using (0,0) as the point at infinity.
-			// Otherwise, pushes (0,0).
-			require(3);
-
-			bytes pub(1, 4);
-			pub += toBigEndian(m_stack[m_stack.size() - 2]);
-			pub += toBigEndian(m_stack.back());
-			m_stack.pop_back();
-			m_stack.pop_back();
-
-			bytes x = toBigEndian(m_stack.back());
-			m_stack.pop_back();
-
-			if (secp256k1_ecdsa_pubkey_verify(pub.data(), (int)pub.size()))	// TODO: Check both are less than P.
-			{
-				secp256k1_ecdsa_pubkey_tweak_mul(pub.data(), (int)pub.size(), x.data());
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
-			}
-			else
-			{
-				m_stack.push_back(0);
-				m_stack.push_back(0);
-			}
-			break;
-		}
-		case Instruction::ECADD:
-		{
-			// ECADD - pops four items and pushes (S[-4],S[-3]) + (S[-2],S[-1]) if both points are valid, otherwise (0,0).
-			require(4);
-
-			bytes pub(1, 4);
-			pub += toBigEndian(m_stack[m_stack.size() - 2]);
-			pub += toBigEndian(m_stack.back());
-			m_stack.pop_back();
-			m_stack.pop_back();
-
-			bytes tweak(1, 4);
-			tweak += toBigEndian(m_stack[m_stack.size() - 2]);
-			tweak += toBigEndian(m_stack.back());
-			m_stack.pop_back();
-			m_stack.pop_back();
-
-			if (secp256k1_ecdsa_pubkey_verify(pub.data(),(int) pub.size()) && secp256k1_ecdsa_pubkey_verify(tweak.data(),(int) tweak.size()))
-			{
-				secp256k1_ecdsa_pubkey_tweak_add(pub.data(), (int)pub.size(), tweak.data());
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(1, 32)));
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pub).cropped(33, 32)));
-			}
-			else
-			{
-				m_stack.push_back(0);
-				m_stack.push_back(0);
-			}
-			break;
-		}
-		case Instruction::ECSIGN:
-		{
-			require(2);
-			bytes sig(64);
-			int v = 0;
-
-			u256 msg = m_stack.back();
-			m_stack.pop_back();
-			u256 priv = m_stack.back();
-			m_stack.pop_back();
-			bytes nonce = toBigEndian(Transaction::kFromMessage(msg, priv));
-
-			if (!secp256k1_ecdsa_sign_compact(toBigEndian(msg).data(), 64, sig.data(), toBigEndian(priv).data(), nonce.data(), &v))
-				throw InvalidSignature();
-
-			m_stack.push_back(v + 27);
-			m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&sig).cropped(0, 32)));
-			m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&sig).cropped(32)));
-			break;
-		}
-		case Instruction::ECRECOVER:
-		{
-			require(4);
-
-			bytes sig = toBigEndian(m_stack[m_stack.size() - 2]) + toBigEndian(m_stack.back());
-			m_stack.pop_back();
-			m_stack.pop_back();
-			int v = (int)m_stack.back();
-			m_stack.pop_back();
-			bytes msg = toBigEndian(m_stack.back());
-			m_stack.pop_back();
-
-			byte pubkey[65];
-			int pubkeylen = 65;
-			if (secp256k1_ecdsa_recover_compact(msg.data(), (int)msg.size(), sig.data(), pubkey, &pubkeylen, 0, v - 27))
-			{
-				m_stack.push_back(0);
-				m_stack.push_back(0);
-			}
-			else
-			{
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pubkey[1], 32)));
-				m_stack.push_back(fromBigEndian<u256>(bytesConstRef(&pubkey[33], 32)));
-			}
-			break;
-		}
-		case Instruction::ECVALID:
-		{
-			require(2);
-			bytes pub(1, 4);
-			pub += toBigEndian(m_stack[m_stack.size() - 2]);
-			pub += toBigEndian(m_stack.back());
-			m_stack.pop_back();
-			m_stack.pop_back();
-
-			m_stack.back() = secp256k1_ecdsa_pubkey_verify(pub.data(), (int)pub.size()) ? 1 : 0;
-			break;
-		}
 		case Instruction::SHA3:
 		{
 			require(1);
@@ -433,6 +219,46 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(fromBigEndian<u256>(final));
 			break;
 		}
+		case Instruction::ADDRESS:
+			m_stack.push_back(fromAddress(_ext.myAddress));
+			break;
+		case Instruction::ORIGIN:
+			// TODO properly
+			m_stack.push_back(fromAddress(_ext.txSender));
+			break;
+		case Instruction::CALLER:
+			m_stack.push_back(fromAddress(_ext.txSender));
+			break;
+		case Instruction::CALLVALUE:
+			m_stack.push_back(_ext.txValue);
+			break;
+		case Instruction::CALLDATA:
+			m_stack.push_back(_ext.txData.size());
+			break;
+		case Instruction::CALLDATASIZE:
+			m_stack.push_back(_ext.txData.size());
+			break;
+		case Instruction::BASEFEE:
+			m_stack.push_back(_ext.fees.multiplier());
+			break;
+		case Instruction::PREVHASH:
+			m_stack.push_back(_ext.previousBlock.hash);
+			break;
+		case Instruction::PREVNONCE:
+			m_stack.push_back(_ext.previousBlock.nonce);
+			break;
+		case Instruction::COINBASE:
+			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
+			break;
+		case Instruction::TIMESTAMP:
+			m_stack.push_back(_ext.currentBlock.timestamp);
+			break;
+		case Instruction::NUMBER:
+			m_stack.push_back(_ext.currentNumber);
+			break;
+		case Instruction::DIFFICULTY:
+			m_stack.push_back(_ext.currentBlock.difficulty);
+			break;
 		case Instruction::PUSH:
 		{
 			m_stack.push_back(_ext.store(m_curPC + 1));
@@ -531,15 +357,6 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::IND:
 			m_stack.push_back(m_curPC);
 			break;
-		case Instruction::EXTRO:
-		{
-			require(2);
-			auto memoryAddress = m_stack.back();
-			m_stack.pop_back();
-			Address contractAddress = asAddress(m_stack.back());
-			m_stack.back() = _ext.extro(contractAddress, memoryAddress);
-			break;
-		}
 		case Instruction::BALANCE:
 		{
 			require(1);
