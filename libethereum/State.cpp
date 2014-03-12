@@ -146,14 +146,7 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 		map<u256, u256>& mem = it->second.setHaveMemory();
 		for (auto const& i: memdb)
-#ifdef __clang__
-			if (mem.find(i.first) == mem.end())
-				mem.insert(make_pair(i.first, RLP(i.second).toInt<u256>()));
-			else
-				mem.at(i.first) = RLP(i.second).toInt<u256>();
-#else
 			mem[i.first] = RLP(i.second).toInt<u256>();
-#endif
 	}
 }
 
@@ -716,14 +709,7 @@ void State::executeBare(Transaction const& _t, Address _sender)
 		m_cache[newAddress] = AddressState(_t.value, 0, AddressType::Contract);
 		auto& mem = m_cache[newAddress].memory();
 		for (uint i = 0; i < _t.data.size(); ++i)
-#ifdef __clang__
-			if (mem.find(i) == mem.end())
-				mem.insert(make_pair(i, _t.data[i]));
-			else
-				mem.at(i) = _t.data[i];
-#else
 			mem[i] = _t.data[i];
-#endif
 	}
 
 #if ETH_DEBUG
