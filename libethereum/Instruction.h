@@ -42,45 +42,43 @@ enum class Instruction: uint8_t
 	EXP,
 	NEG,
 	LT,
-	LE,
 	GT,
-	GE,
 	EQ,
 	NOT,
-	MYADDRESS,			///< pushes the transaction sender
-	TXSENDER,			///< pushes the transaction sender
-	TXVALUE	,			///< pushes the transaction value
-	TXDATAN,			///< pushes the number of data items
-	TXDATA,				///< pops one item and pushes data item S[-1], or zero if index out of range
-	BLK_PREVHASH,		///< pushes the hash of the previous block (NOT the current one since that's impossible!)
-	BLK_COINBASE,		///< pushes the coinbase of the current block
-	BLK_TIMESTAMP,		///< pushes the timestamp of the current block
-	BLK_NUMBER,			///< pushes the current block number
-	BLK_DIFFICULTY,		///< pushes the difficulty of the current block
-	BLK_NONCE,
-	BASEFEE,
-	SHA256 = 0x20,
-	RIPEMD160,
-	ECMUL,
-	ECADD,
-	ECSIGN,
-	ECRECOVER,
-	ECVALID,
+	ROTATE,
+	AND,
+	OR,
+	XOR,
 	SHA3,
+	ADDRESS = 0x20,		///< pushes the transaction sender
+	BALANCE,
+	ORIGIN,				///< pushes the transaction sender
+	CALLER,				///< pushes the transaction sender
+	CALLVALUE,			///< pushes the transaction value
+	CALLDATA,			///< pushes the transaction value
+	CALLDATASIZE,		///< pushes the transaction value
+	BASEFEE,
+	MEMSIZE,
+	PREVHASH,			///< pushes the hash of the previous block (NOT the current one since that's impossible!)
+	PREVNONCE,
+	COINBASE,			///< pushes the coinbase of the current block
+	TIMESTAMP,			///< pushes the timestamp of the current block
+	NUMBER,				///< pushes the current block number
+	DIFFICULTY,			///< pushes the difficulty of the current block
 	PUSH = 0x30,
 	POP,
 	DUP,
 	SWAP,
 	MLOAD,
 	MSTORE,
+	MSTORE8,
 	SLOAD,
 	SSTORE,
-	JMP,
-	JMPI,
-	IND,
-	EXTRO,
-	BALANCE,
-	MKTX,
+	JUMP,
+	JUMPI,
+	PC,
+	CALL,
+	RETURN,
 	SUICIDE = 0x3f
 };
 
