@@ -114,6 +114,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 		default:
 			break;
 		}
+		// TODO: payFee should deduct from origin.
 		_ext.payFee(runFee + storeCostDelta);
 		m_runFee += (u256)runFee;
 
@@ -223,9 +224,15 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(fromAddress(_ext.myAddress));
 			break;
 		case Instruction::ORIGIN:
-			// TODO properly
+			// TODO get originator from ext.
 			m_stack.push_back(fromAddress(_ext.txSender));
 			break;
+		case Instruction::BALANCE:
+		{
+			require(1);
+			m_stack.back() = _ext.balance(asAddress(m_stack.back()));
+			break;
+		}
 		case Instruction::CALLER:
 			m_stack.push_back(fromAddress(_ext.txSender));
 			break;
@@ -233,7 +240,7 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(_ext.txValue);
 			break;
 		case Instruction::CALLDATA:
-			m_stack.push_back(_ext.txData.size());
+			// TODO: write data from ext into memory.
 			break;
 		case Instruction::CALLDATASIZE:
 			m_stack.push_back(_ext.txData.size());
@@ -316,6 +323,14 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.pop_back();
 			break;
 		}
+		case Instruction::MSTORE8:
+		{
+			require(2);
+			m_temp[m_stack.back()] = m_stack[m_stack.size() - 2];
+			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		}
 		case Instruction::SLOAD:
 			require(1);
 			m_stack.back() = _ext.store(m_stack.back());
@@ -326,30 +341,24 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
-		case Instruction::JMP:
+		case Instruction::JUMP:
 			require(1);
 			m_nextPC = m_stack.back();
 			m_stack.pop_back();
 			break;
-		case Instruction::JMPI:
+		case Instruction::JUMPI:
 			require(2);
 			if (m_stack.back())
 				m_nextPC = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
-		case Instruction::IND:
+		case Instruction::PC:
 			m_stack.push_back(m_curPC);
 			break;
-		case Instruction::BALANCE:
+		case Instruction::CALL:
 		{
-			require(1);
-			m_stack.back() = _ext.balance(asAddress(m_stack.back()));
-			break;
-		}
-		case Instruction::MKTX:
-		{
-			require(3);
+			require(6);
 
 			Transaction t;
 			t.receiveAddress = asAddress(m_stack.back());
@@ -371,6 +380,10 @@ template <class Ext> void eth::VM::go(Ext& _ext, uint64_t _steps)
 			_ext.mktx(t);
 			break;
 		}
+		case Instruction::RETURN:
+			require(2);
+			// TODO: write data from memory into ext.
+			return;
 		case Instruction::SUICIDE:
 		{
 			require(1);
