@@ -153,6 +153,9 @@ if (NOT HEADLESS)
 	add_subdirectory(walleth)
 endif ()
 
+enable_testing()
+add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
+
 unset(HEADLESS CACHE)
 #unset(TARGET_PLATFORM CACHE)
 
