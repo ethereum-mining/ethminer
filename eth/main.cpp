@@ -29,9 +29,12 @@
 #include "BlockChain.h"
 #include "State.h"
 #include "FileSystem.h"
+#include "Instruction.h"
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
+using eth::Instruction;
+using eth::c_instructionInfo;
 
 bool isTrue(std::string const& _m)
 {
