@@ -292,7 +292,7 @@ int main(int argc, char** argv)
 			else if (cmd == "inspect")
 			{
 				string rechex;
-				iss >> rechex;
+				cin >> rechex;
 
 				c.lock();
 				auto hba = h160(fromHex(rechex));
