@@ -507,7 +507,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 							break;
 						}
 
-						unsigned datan = codes.size() - 3;
+						unsigned datan = (unsigned)codes.size() - 3;
 						unsigned i = 0;
 						for (auto it = codes.rbegin(); it != codes.rend(); ++it, ++i)
 						{
