@@ -298,8 +298,7 @@ int main(int argc, char** argv)
 				cin >> rechex;
 
 				c.lock();
-				auto hba = h160(fromHex(rechex));
-				auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
+				auto h = h160(fromHex(rechex));
 
 				stringstream s;
 				auto mem = c.state().contractMemory(h);
