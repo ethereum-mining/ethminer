@@ -217,6 +217,9 @@ int main(int argc, char** argv)
 		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
 		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
 
+		if (!remoteHost.empty())
+			c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+
 		while (true)
 		{
 			cout << "> " << flush;
