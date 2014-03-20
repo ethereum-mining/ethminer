@@ -56,7 +56,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CALLVALUE", Instruction::CALLVALUE },
 	{ "CALLDATA", Instruction::CALLDATA },
 	{ "CALLDATASIZE", Instruction::CALLDATASIZE },
-	{ "BASEFEE", Instruction::BASEFEE },
+	{ "BASEFEE", Instruction::GASPRICE },
 	{ "PREVHASH", Instruction::PREVHASH },
 	{ "PREVNONCE", Instruction::PREVNONCE },
 	{ "COINBASE", Instruction::COINBASE },
@@ -75,6 +75,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "JUMP", Instruction::JUMP },
 	{ "JUMPI", Instruction::JUMPI },
 	{ "PC", Instruction::PC },
+	{ "CREATE", Instruction::CREATE },
 	{ "CALL", Instruction::CALL },
 	{ "RETURN", Instruction::RETURN },
 	{ "SUICIDE", Instruction::SUICIDE }
@@ -108,7 +109,7 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::CALLVALUE, { "CALLVALUE", 0, 0, 1 } },
 	{ Instruction::CALLDATA, { "CALLDATA", 0, 0, 1 } },
 	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 1, 1 } },
-	{ Instruction::BASEFEE, { "BASEFEE", 0, 0, 1 } },
+	{ Instruction::GASPRICE, { "BASEFEE", 0, 0, 1 } },
 	{ Instruction::PREVHASH, { "PREVHASH", 0, 0, 1 } },
 	{ Instruction::PREVNONCE, { "PREVNONCE", 0, 0, 1 } },
 	{ Instruction::COINBASE, { "COINBASE", 0, 0, 1 } },
@@ -127,7 +128,8 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::JUMP, { "JUMP", 0, 1, 0 } },
 	{ Instruction::JUMPI, { "JUMPI", 0, 2, 0 } },
 	{ Instruction::PC, { "PC", 0, 0, 1 } },
-	{ Instruction::CALL, { "CALL", 0, 6, 1 } },
+	{ Instruction::CREATE, { "CREATE", 0, 3, 1 } },	// endowment, first word in memory, data words
+	{ Instruction::CALL, { "CALL", 0, 7, 1 } },
 	{ Instruction::RETURN, { "RETURN", 0, 2, 0 } },
 	{ Instruction::SUICIDE, { "SUICIDE", 0, 1, 0} }
 };
@@ -360,7 +362,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					appendCode(o_code, o_locs, codes[0], locs[0]);
 
 					// Jump to positive if true.
-					o_code.push_back(Instruction::JMPI);
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[2], locs[2]);
@@ -370,7 +372,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					unsigned endLocation = (unsigned)o_code.size();
 					o_locs.push_back(endLocation);
 					o_code.push_back(0);
-					o_code.push_back(Instruction::JMP);
+					o_code.push_back(Instruction::JUMP);
 
 					// Third fragment - positive.
 					o_code[posLocation] = o_code.size();
@@ -409,7 +411,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					// Jump to end...
 					if (t == "WHEN")
 						o_code.push_back(Instruction::NOT);
-					o_code.push_back(Instruction::JMPI);
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[1], locs[1]);
@@ -448,7 +450,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 
 					// Jump to positive if true.
 					o_code.push_back(Instruction::NOT);
-					o_code.push_back(Instruction::JMPI);
+					o_code.push_back(Instruction::JUMPI);
 
 					// Second fragment - negative.
 					appendCode(o_code, o_locs, codes[1], locs[1]);
@@ -457,7 +459,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 					o_code.push_back(Instruction::PUSH);
 					o_locs.push_back((unsigned)o_code.size());
 					o_code.push_back(startLocation);
-					o_code.push_back(Instruction::JMP);
+					o_code.push_back(Instruction::JUMP);
 
 					// At end now.
 					o_code[endInsertion] = o_code.size();
@@ -512,7 +514,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 								o_code.push_back(datan);
 							}
 						}
-						o_code.push_back(Instruction::MKTX);
+						o_code.push_back(Instruction::CALL);
 						outs = 0;
 					}
 				}
@@ -577,7 +579,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 
 							// Jump to end...
 							o_code.push_back(Instruction::NOT);
-							o_code.push_back(Instruction::JMPI);
+							o_code.push_back(Instruction::JUMPI);
 						}
 						o_code.push_back(Instruction::POP);
 					}
@@ -630,7 +632,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, u256s
 							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
 
 							// Jump to end...
-							o_code.push_back(Instruction::JMPI);
+							o_code.push_back(Instruction::JUMPI);
 						}
 						o_code.push_back(Instruction::POP);
 					}
