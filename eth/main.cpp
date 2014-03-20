@@ -286,6 +286,7 @@ int main(int argc, char** argv)
 				u256 amount;
 				cin >> rechex >> amount;
 				Address dest = h160(fromHex(rechex));
+
 				c.transact(us.secret(), dest, amount);
 			}
 			else if (cmd == "help")

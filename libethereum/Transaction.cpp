@@ -35,12 +35,24 @@ Transaction::Transaction(bytesConstRef _rlpData)
 	try
 	{
 		nonce = rlp[field = 0].toInt<u256>();
-		receiveAddress = rlp[field = 1].toHash<Address>();
-		value = rlp[field = 2].toInt<u256>();
-		data.reserve(rlp[field = 3].itemCountStrict());
-		for (auto const& i: rlp[3])
-			data.push_back(i.toInt<u256>());
-		vrs = Signature{ rlp[field = 4].toInt<byte>(), rlp[field = 5].toInt<u256>(), rlp[field = 6].toInt<u256>() };
+		value = rlp[field = 1].toInt<u256>();
+		gasPrice = rlp[field = 2].toInt<u256>();
+		isCreation = rlp[field = 3].isList();
+		if (isCreation)
+		{
+			storage.reserve(rlp[field = 3].itemCountStrict());
+			for (auto const& i: rlp[3])
+				storage.push_back(i.toInt<u256>());
+		}
+		else
+		{
+			receiveAddress = rlp[3].toHash<Address>();
+			gas = rlp[field = 4].toInt<u256>();
+			data.reserve(rlp[field = 5].itemCountStrict());
+			for (auto const& i: rlp[5])
+				data.push_back(i.toInt<byte>());
+		}
+		vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
 	}
 	catch (RLPException const&)
 	{
@@ -112,8 +124,12 @@ void Transaction::sign(Secret _priv)
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
-	_s.appendList(_sig ? 7 : 4);
-	_s << nonce << receiveAddress << value << data;
+	_s.appendList((_sig ? 3 : 0) + (isCreation ? 4 : 6));
+	_s << nonce << value << gasPrice;
+	if (isCreation)
+		_s << storage;
+	else
+		_s << receiveAddress << gas << data;
 	if (_sig)
 		_s << vrs.v << vrs.r << vrs.s;
 }

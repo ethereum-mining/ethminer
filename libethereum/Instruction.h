@@ -50,22 +50,7 @@ enum class Instruction: uint8_t
 	OR,
 	XOR,
 	SHA3,
-	ADDRESS = 0x20,		///< pushes the transaction sender
-	BALANCE,
-	ORIGIN,				///< pushes the transaction sender
-	CALLER,				///< pushes the transaction sender
-	CALLVALUE,			///< pushes the transaction value
-	CALLDATA,			///< pushes the transaction value
-	CALLDATASIZE,		///< pushes the transaction value
-	BASEFEE,
-	MEMSIZE,
-	PREVHASH,			///< pushes the hash of the previous block (NOT the current one since that's impossible!)
-	PREVNONCE,
-	COINBASE,			///< pushes the coinbase of the current block
-	TIMESTAMP,			///< pushes the timestamp of the current block
-	NUMBER,				///< pushes the current block number
-	DIFFICULTY,			///< pushes the difficulty of the current block
-	PUSH = 0x30,
+	PUSH,
 	POP,
 	DUP,
 	SWAP,
@@ -75,8 +60,24 @@ enum class Instruction: uint8_t
 	SLOAD,
 	SSTORE,
 	JUMP,
-	JUMPI,
+	JUMPI,	//0x1d
+	ADDRESS = 0x20,		///< pushes the transaction sender
+	BALANCE,
+	ORIGIN,				///< pushes the transaction sender
+	CALLER,				///< pushes the transaction sender
+	CALLVALUE,			///< pushes the transaction value
+	CALLDATA,			///< pushes the transaction value
+	CALLDATASIZE,		///< pushes the transaction value
+	GASPRICE,
+	MEMSIZE,
+	PREVHASH,			///< pushes the hash of the previous block (NOT the current one since that's impossible!)
+	PREVNONCE,
+	COINBASE,			///< pushes the coinbase of the current block
+	TIMESTAMP,			///< pushes the timestamp of the current block
+	NUMBER,				///< pushes the current block number
+	DIFFICULTY,			///< pushes the difficulty of the current block
 	PC,
+	CREATE = 0x30,
 	CALL,
 	RETURN,
 	SUICIDE = 0x3f
