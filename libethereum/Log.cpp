@@ -32,9 +32,22 @@ map<type_info const*, bool> eth::g_logOverride;
 
 ThreadLocalLogName eth::t_logThreadName("main");
 
+// foward declare without all of Windows.h
+#ifdef _WIN32
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
+#endif
+
 void eth::simpleDebugOut(std::string const& _s, char const*)
 {
 	cout << _s << endl << flush;
+
+	// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+	{
+		OutputDebugStringA(_s.data());
+		OutputDebugStringA("\n");
+	}
+	#endif
 }
 
 std::function<void(std::string const&, char const*)> eth::g_logPost = simpleDebugOut;
