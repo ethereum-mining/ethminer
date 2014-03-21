@@ -316,7 +316,9 @@ bool PeerSession::interpret(RLP const& _r)
 				else
 					clogS(NetMessageDetail) << "Known parent " << bi.parentHash << " of block " << h;
 			}
-		if (used)	// we received some - check if there's any more
+		// TJH: This check stops us downloading a forked chain when we already have the
+		// beginning of the fork.
+		//if (used)	// we received some - check if there's any more
 		{
 			RLPStream s;
 			prep(s).appendList(3);
@@ -1021,7 +1023,11 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 					if (it == m_incomingBlocks.begin())
 						break;
 				}
-			if (!n && accepted)
+			// TJH: If we don't keep trying we'll leave lots of usable blocks
+			// in m_unknownParents until an incoming block arrives. Should
+			// probably replace with a better algorithm.
+			// if (!n && accepted)
+			if (accepted)
 			{
 				for (auto i: m_unknownParentBlocks)
 					m_incomingBlocks.push_back(i);
