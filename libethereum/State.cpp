@@ -698,7 +698,7 @@ bool State::call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gas
 		auto out = vm.go(evm);
 		memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 	}
-	catch (OutOfGas const& _e)
+	catch (OutOfGas const& /*_e*/)
 	{
 		clog(StateChat) << "Out of Gas! Reverting.";
 		revert = true;
