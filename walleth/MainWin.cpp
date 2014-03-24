@@ -24,6 +24,7 @@ using eth::h160;
 using eth::h256;
 using eth::u160;
 using eth::u256;
+using eth::u256s;
 using eth::Address;
 using eth::BlockInfo;
 using eth::Client;
@@ -173,9 +174,14 @@ unsigned QEthereum::peerCount() const
 	return (unsigned)client()->peerCount();
 }
 
-void QEthereum::transact(Secret _secret, Address _dest, u256 _amount)
+void QEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, QVector<u256> _storage)
 {
-	client()->transact(_secret, _dest, _amount);
+	return client()->transact(_secret, _amount, _gasPrice, _storage.toStdVector());
+}
+
+void QEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
+{
+	client()->transact(_secret, _amount, _gasPrice, _dest, _gas, bytes(_data.data(), _data.data() + _data.size()));
 }
 
 Main::Main(QWidget *parent) :
@@ -303,7 +309,6 @@ void Main::readSettings()
 
 	restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
-
 
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())

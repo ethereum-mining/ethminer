@@ -282,19 +282,24 @@ int main(int argc, char** argv)
 				string sechex;
 				string rechex;
 				u256 amount;
-				cin >> sechex >> rechex >> amount;
+				u256 gasPrice;
+				u256 gas;
+				cin >> sechex >> rechex >> amount >> gasPrice >> gas;
 				Secret secret = h256(fromHex(sechex));
 				Address dest = h160(fromHex(rechex));
-				c.transact(secret, dest, amount);
+				bytes data;
+				c.transact(secret, amount, gasPrice, dest, gas, data);
 			}
 			else if (cmd == "send")
 			{
 				string rechex;
 				u256 amount;
-				cin >> rechex >> amount;
+				u256 gasPrice;
+				u256 gas;
+				cin >> rechex >> amount >> gasPrice >> gas;
 				Address dest = h160(fromHex(rechex));
 
-				c.transact(us.secret(), dest, amount);
+				c.transact(us.secret(), amount, gasPrice, dest, gas, bytes());
 			}
 			else if (cmd == "inspect")
 			{

@@ -84,13 +84,13 @@ public:
 	~Client();
 
 	/// Submits the given transaction.
-	void transact(Secret _secret, u256 _amount, u256 _baseFee, Address _dest, u256 _gas, bytes _data = bytes());
-
-	/// Makes the given call. Nothing is recorded into the state. TODO
-//	bytes call(Secret _secret, u256 _amount, u256 _baseFee, Address _dest, u256 _gas, bytes _data = bytes());
+	void transact(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
 
 	/// Submits a new contract.
-	void create(Secret _secret, u256 _endowment, u256 _baseFee, u256s _storage = u256s());
+	void transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _storage = u256s());
+
+	/// Makes the given call. Nothing is recorded into the state. TODO
+//	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
 
 	/// Requires transactions involving this address be queued for inspection.
 	void setInterest(Address _dest);

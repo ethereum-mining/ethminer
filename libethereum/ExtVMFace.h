@@ -52,7 +52,6 @@ public:
 		currentNumber(_currentNumber)
 	{}
 
-
 #pragma warning(push)
 #pragma warning(disable: 4100)
 #pragma GCC diagnostic push
@@ -64,8 +63,8 @@ public:
 	void subBalance(u256 _a) {}
 	u256 txCount(Address _a) { return 0; }
 	void suicide(Address _a) {}
-	h160 create(Address _txSender, u256 _endowment, vector_ref<h256 const> _storage) { return h160(); }
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _tx) { return false; }
+	h160 create(u256 _endowment, vector_ref<h256 const> _storage) { return h160(); }
+	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _tx) { return false; }
 
 #pragma GCC diagnostic pop
 #pragma warning(pop)
@@ -76,7 +75,7 @@ public:
 	u256 gasPrice;
 	bytesConstRef txData;
 	BlockInfo previousBlock;					///< The current block's information.
-	BlockInfo currentBlock;					///< The current block's information.
+	BlockInfo currentBlock;						///< The current block's information.
 	uint currentNumber;
 };
 
