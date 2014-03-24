@@ -45,12 +45,31 @@ enum class Instruction: uint8_t
 	GT,
 	EQ,
 	NOT,
-	ROTATE,
-	AND,
+
+	AND = 0x10,
 	OR,
 	XOR,
-	SHA3,
-	PUSH,
+	BYTE,
+
+	SHA3 = 0x20,
+
+	ADDRESS = 0x30,
+	BALANCE,
+	ORIGIN,
+	CALLER,
+	CALLVALUE,
+	CALLDATALOAD,
+	CALLDATASIZE,
+	GASPRICE,
+
+	PREVHASH = 0x40,
+	COINBASE,
+	TIMESTAMP,
+	NUMBER,
+	DIFFICULTY,
+	GASLIMIT,
+
+	PUSH = 0x50,
 	POP,
 	DUP,
 	SWAP,
@@ -60,27 +79,15 @@ enum class Instruction: uint8_t
 	SLOAD,
 	SSTORE,
 	JUMP,
-	JUMPI,	//0x1d
-	ADDRESS = 0x20,		///< pushes the transaction sender
-	BALANCE,
-	ORIGIN,				///< pushes the transaction sender
-	CALLER,				///< pushes the transaction sender
-	CALLVALUE,			///< pushes the transaction value
-	CALLDATA,			///< pushes the transaction value
-	CALLDATASIZE,		///< pushes the transaction value
-	GASPRICE,
-	MEMSIZE,
-	PREVHASH,			///< pushes the hash of the previous block (NOT the current one since that's impossible!)
-	PREVNONCE,
-	COINBASE,			///< pushes the coinbase of the current block
-	TIMESTAMP,			///< pushes the timestamp of the current block
-	NUMBER,				///< pushes the current block number
-	DIFFICULTY,			///< pushes the difficulty of the current block
+	JUMPI,
 	PC,
-	CREATE = 0x30,
+	MEMSIZE,
+	GAS,
+
+	CREATE = 0x60,
 	CALL,
 	RETURN,
-	SUICIDE = 0x3f
+	SUICIDE = 0x7f
 };
 
 /// Information structure for a particular instruction.

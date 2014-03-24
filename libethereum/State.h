@@ -266,14 +266,14 @@ public:
 			m_store->erase(_n);
 	}
 
-	h160 create(Address _txSender, u256 _endowment, vector_ref<h256 const> _storage)
+	h160 create(u256 _endowment, vector_ref<h256 const> _storage)
 	{
-		return m_s.create(_txSender, _endowment, gasPrice, _storage);
+		return m_s.create(myAddress, _endowment, gasPrice, _storage);
 	}
 
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
+	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
-		return m_s.call(_myAddress, _txSender, _txValue, gasPrice, _txData, _gas, _out);
+		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out);
 	}
 
 	u256 balance(Address _a) { return m_s.balance(_a); }

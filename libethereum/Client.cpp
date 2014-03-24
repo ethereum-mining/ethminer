@@ -131,13 +131,14 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::call(Secret _secret, u256 _amount, u256 _baseFee, Address _dest, u256 _gas, bytes _data)
+void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest, u256 _gas, bytes _data)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
-	t.value = _amount;
+	t.value = _value;
+	t.gasPrice = _gasPrice;
 	t.gas = _gas;
 	t.data = _data;
 	t.sign(_secret);
@@ -146,13 +147,13 @@ void Client::call(Secret _secret, u256 _amount, u256 _baseFee, Address _dest, u2
 	m_changed = true;
 }
 
-void Client::create(Secret _secret, u256 _endowment, u256 _baseFee, u256s _storage)
+void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _storage)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
-	t.gasPrice = _baseFee;
+	t.gasPrice = _gasPrice;
 	t.storage = _storage;
 	t.sign(_secret);
 	cnote << "New transaction " << t;

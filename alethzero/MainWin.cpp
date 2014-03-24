@@ -97,6 +97,7 @@ Main::Main(QWidget *parent) :
 
 	on_verbosity_sliderMoved();
 	initUnits(ui->valueUnits);
+	initUnits(ui->gasPriceUnits);
 	on_destination_textChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
@@ -395,13 +396,22 @@ void Main::on_blocks_currentItemChanged()
 			else
 				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
+			s << "<br/>Gas: <b>" << tx.gas << "</b>";
+			s << "<br/>Gas price: <b>" << tx.gasPrice << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
-			if (tx.data.size())
+			if (tx.storage.size() && tx.isCreation)
 			{
-				s << "<br/>Data:&nbsp;&emsp;&nbsp;";
+				s << "<br/>Storage:&nbsp;&emsp;&nbsp;";
 //				for (auto i: tx.data)
 //					s << "0x<b>" << hex << i << "</b>&emsp;";
-				s << "</br>" << disassemble(tx.data);
+				s << "</br>" << disassemble(tx.storage);
+			}
+			else if (tx.data.size() && !tx.isCreation)
+			{
+				s << "<br/>Data:&nbsp;&emsp;&nbsp; 0x..." << setw(2) << setfill('0') << hex;
+				unsigned c = 0;
+				for (auto i: tx.data)
+					s << i << (c % 8 ? "" : " ");
 			}
 		}
 
@@ -505,25 +515,54 @@ void Main::on_destination_textChanged()
 			ui->calculatedName->setText("Unknown Address");
 	else
 		ui->calculatedName->setText("Create Contract");
-	updateFee();
+	on_data_textChanged();
+//	updateFee();
 }
 
 void Main::on_data_textChanged()
 {
-	string code = ui->data->toPlainText().toStdString();
-	m_data = code[0] == '(' ? compileLisp(code, true) : assemble(code, true);
-	ui->code->setPlainText(QString::fromStdString(disassemble(m_data)));
+	if (isCreation())
+	{
+		string code = ui->data->toPlainText().toStdString();
+		m_storage = code[0] == '(' ? compileLisp(code, true) : assemble(code, true);
+		ui->code->setPlainText(QString::fromStdString(disassemble(m_storage)));
+		ui->gas->setValue((qint64)state().createGas(m_storage.size()));
+		ui->gas->setEnabled(false);
+	}
+	else
+	{
+		string code = ui->data->toPlainText().replace(" ", "").toStdString();
+		m_data = fromHex(code);
+		ui->code->setPlainText(QString::fromStdString(toHex(m_data)));
+		ui->gas->setEnabled(true);
+	}
 	updateFee();
+}
+
+bool Main::isCreation() const
+{
+	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt());
 }
 
 u256 Main::fee() const
 {
-	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt()) ? state().fee(m_data.size()) : state().fee();
+	cnote << gasPrice();
+	cnote << isCreation();
+	cnote << ui->gas->value();
+	cnote << m_data.size();
+	cnote << m_storage.size();
+
+	return (isCreation() ? state().createGas(m_storage.size()) : state().callGas(m_data.size(), ui->gas->value())) * gasPrice();
 }
 
 u256 Main::value() const
 {
 	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
+}
+
+u256 Main::gasPrice() const
+{
+	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
 }
 
 u256 Main::total() const
@@ -607,12 +646,14 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq	)
+		if (m_client->state().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			Address r = fromString(ui->destination->text());
-			m_client->transact(s, r, value(), m_data);
+			if (isCreation())
+				m_client->transact(s, value(), gasPrice(), m_storage);
+			else
+				m_client->transact(s, value(), gasPrice(), fromString(ui->destination->text()), ui->gas->value(), m_data);
 			refresh();
 			return;
 		}

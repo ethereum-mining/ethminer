@@ -63,9 +63,11 @@ private:
 	void readSettings();
 	void writeSettings();
 
+	bool isCreation() const;
 	eth::u256 fee() const;
 	eth::u256 total() const;
 	eth::u256 value() const;
+	eth::u256 gasPrice() const;
 
 	std::unique_ptr<Ui::Main> ui;
 
@@ -78,7 +80,8 @@ private:
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
-	eth::u256s m_data;
+	eth::u256s m_storage;
+	eth::bytes m_data;
 	eth::Address m_nameReg;
 
 	QNetworkAccessManager m_webCtrl;

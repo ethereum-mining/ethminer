@@ -24,11 +24,12 @@
 using namespace std;
 using namespace eth;
 
-u256 const c_stepGas = 1;
-u256 const c_ioGas = 20;
-u256 const c_memoryGas = 5;
-u256 const c_newMemoryFee = 5;
-u256 const c_extroFee = 40;
-u256 const c_balanceGas = 40;
-u256 const c_createGas = 100;
-u256 const c_callGas = 100;
+u256 const eth::c_stepGas = 1;
+u256 const eth::c_balanceGas = 20;
+u256 const eth::c_sha3Gas = 20;
+u256 const eth::c_sloadGas = 20;
+u256 const eth::c_sstoreGas = 100;
+u256 const eth::c_createGas = 100;
+u256 const eth::c_callGas = 20;
+u256 const eth::c_memoryGas = 1;
+u256 const eth::c_txDataGas = 5;
