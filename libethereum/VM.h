@@ -91,7 +91,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 
 		// FEES...
 		bigint runGas = c_stepGas;
-		unsigned newTempSize = m_temp.size();
+		unsigned newTempSize = (unsigned)m_temp.size();
 		switch (inst)
 		{
 		case Instruction::SSTORE:
@@ -150,7 +150,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
 
-			unsigned wc = std::min<unsigned>(inSize / 32 * 32 + inOff, m_temp.size());
+			unsigned wc = std::min(inSize / 32 * 32 + inOff, (unsigned)m_temp.size());
 			unsigned nonZero = 0;
 			for (unsigned i = inOff; i < wc; i += 32)
 				if (!!*(h256*)(m_temp.data() + inOff))
