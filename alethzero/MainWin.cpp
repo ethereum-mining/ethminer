@@ -52,7 +52,6 @@ static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
 		_b->addItem(QString::fromStdString(units()[n].second), n);
-	_b->setCurrentIndex(6);
 }
 
 Main::Main(QWidget *parent) :
@@ -96,8 +95,11 @@ Main::Main(QWidget *parent) :
 #endif
 
 	on_verbosity_sliderMoved();
-	initUnits(ui->valueUnits);
 	initUnits(ui->gasPriceUnits);
+	initUnits(ui->valueUnits);
+	ui->valueUnits->setCurrentIndex(6);
+	ui->gasPriceUnits->setCurrentIndex(4);
+	ui->gasPrice->setValue(10);
 	on_destination_textChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
@@ -541,17 +543,11 @@ void Main::on_data_textChanged()
 
 bool Main::isCreation() const
 {
-	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt());
+	return !(ui->destination->text().isEmpty() || !ui->destination->text().toInt());
 }
 
 u256 Main::fee() const
 {
-	cnote << gasPrice();
-	cnote << isCreation();
-	cnote << ui->gas->value();
-	cnote << m_data.size();
-	cnote << m_storage.size();
-
 	return (isCreation() ? state().createGas(m_storage.size()) : state().callGas(m_data.size(), ui->gas->value())) * gasPrice();
 }
 

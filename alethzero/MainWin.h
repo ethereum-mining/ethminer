@@ -38,7 +38,10 @@ private slots:
 	void on_data_textChanged();
 	void on_idealPeers_valueChanged();
 	void on_value_valueChanged() { updateFee(); }
+	void on_gas_valueChanged() { updateFee(); }
 	void on_valueUnits_currentIndexChanged() { updateFee(); }
+	void on_gasPriceUnits_currentIndexChanged() { updateFee(); }
+	void on_gasPrice_valueChanged() { updateFee(); }
 	void on_log_doubleClicked();
 	void on_blocks_currentItemChanged();
 	void on_contracts_doubleClicked();
