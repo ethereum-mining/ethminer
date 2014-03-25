@@ -92,7 +92,16 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 {
 	if (m_net.get())
 		return;
-	m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	try
+	{
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	}
+	catch (std::exception const&)
+	{
+		// Probably already have the port open.
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode));
+	}
+
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
@@ -135,6 +144,7 @@ void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
+	t.isCreation = false;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.receiveAddress = _dest;
 	t.value = _value;
@@ -151,6 +161,7 @@ void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _st
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
+	t.isCreation = true;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;

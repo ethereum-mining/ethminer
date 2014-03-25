@@ -23,6 +23,7 @@
 #include "vector_ref.h"
 #include "Exceptions.h"
 #include "Transaction.h"
+#include "Log.h"
 using namespace std;
 using namespace eth;
 
@@ -129,7 +130,7 @@ void Transaction::fillStream(RLPStream& _s, bool _sig) const
 	if (isCreation)
 		_s << storage;
 	else
-		_s << receiveAddress << gas << data;
+		(_s << receiveAddress << gas).appendVector(data);
 	if (_sig)
 		_s << vrs.v << vrs.r << vrs.s;
 }
