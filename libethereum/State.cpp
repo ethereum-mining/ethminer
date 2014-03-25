@@ -608,6 +608,13 @@ void State::execute(bytesConstRef _rlp)
 		throw InvalidNonce(nonceReq, t.nonce);
 	}
 
+	// Don't like transactions whose gas price is too low.
+	if (t.gasPrice < 10 * szabo)
+	{
+		clog(StateChat) << "Offered gas-price is too low.";
+		throw GasPriceTooLow();
+	}
+
 	// Entry point for a contract-originated transaction.
 	u256 gasCost;
 	if (t.isCreation)
@@ -617,10 +624,19 @@ void State::execute(bytesConstRef _rlp)
 			if (i)
 				nonZero++;
 		gasCost = nonZero * c_sstoreGas + c_createGas;
+		t.gas = gasCost;
 	}
 	else
-		gasCost = t.data.size() * c_txDataGas + c_callGas + t.gas;
-	u256 cost = t.value + gasCost * t.gasPrice;
+	{
+		gasCost = t.data.size() * c_txDataGas + c_callGas;
+		if (t.gas < gasCost)
+		{
+			clog(StateChat) << "Not enough gas to pay for the transaction.";
+			throw OutOfGas();
+		}
+	}
+
+	u256 cost = t.value + t.gas * t.gasPrice;
 
 	// Avoid unaffordable transactions.
 	if (balance(sender) < cost)
@@ -629,41 +645,39 @@ void State::execute(bytesConstRef _rlp)
 		throw NotEnoughCash();
 	}
 
+	u256 gas = t.gas - gasCost;
+
+	// Increment associated nonce for sender.
+	noteSending(sender);
+
+	// Pay...
+	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
+	subBalance(sender, cost);
+
 	if (t.isCreation)
 	{
 		Address newAddress = right160(t.sha3());
-
 		while (isContractAddress(newAddress) || isNormalAddress(newAddress))
 			newAddress = (u160)newAddress + 1;
-
-		// Increment associated nonce for sender.
-		noteSending(sender);
-
-		// Pay out of sender...
-		subBalance(sender, cost);
 
 		// Set up new account...
 		m_cache[newAddress] = AddressState(t.value, 0, AddressType::Contract);
 		auto& mem = m_cache[newAddress].memory();
-		for (uint i = 0; i < t.data.size(); ++i)
+		for (uint i = 0; i < t.storage.size(); ++i)
 			mem[i] = t.storage[i];
 	}
 	else
 	{
-		// Increment associated nonce for sender.
-		noteSending(sender);
-
-		// Pay...
-		subBalance(sender, cost);
+		cnote << "Giving" << formatBalance(t.value) << "to receiver";
 		addBalance(t.receiveAddress, t.value);
-		u256 gas = t.gas;
 
 		if (isContractAddress(t.receiveAddress))
 			// Once we get here, there's no going back.
 			call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
-
-		addBalance(t.receiveAddress, gas * t.gasPrice);
 	}
+
+	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
+	addBalance(sender, gas * t.gasPrice);
 
 	// Add to the user-originated transactions that we've executed.
 	// NOTE: Here, contract-originated transactions will not get added to the transaction list.
