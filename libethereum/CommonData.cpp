@@ -72,8 +72,7 @@ int eth::fromHex(char _i)
 
 bytes eth::fromHex(std::string const& _s)
 {
-	assert(_s.size() % 2 == 0);
-	if (_s.size() < 2)
+	if (_s.size() % 2 || _s.size() < 2)
 		return bytes();
 	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
 	std::vector<uint8_t> ret;

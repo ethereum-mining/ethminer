@@ -44,6 +44,7 @@ Transaction::Transaction(bytesConstRef _rlpData)
 			storage.reserve(rlp[field = 3].itemCountStrict());
 			for (auto const& i: rlp[3])
 				storage.push_back(i.toInt<u256>());
+			vrs = Signature{ rlp[field = 4].toInt<byte>(), rlp[field = 5].toInt<u256>(), rlp[field = 6].toInt<u256>() };
 		}
 		else
 		{
@@ -52,8 +53,8 @@ Transaction::Transaction(bytesConstRef _rlpData)
 			data.reserve(rlp[field = 5].itemCountStrict());
 			for (auto const& i: rlp[5])
 				data.push_back(i.toInt<byte>());
+			vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
 		}
-		vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
 	}
 	catch (RLPException const&)
 	{
