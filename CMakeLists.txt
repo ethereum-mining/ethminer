@@ -17,6 +17,10 @@ if ("x${TARGET_PLATFORM}" STREQUAL "x")
 	set(TARGET_PLATFORM "linux")
 endif ()
 
+if ("${TARGET_PLATFORM}" STREQUAL "linux")
+	set(CMAKE_THREAD_LIBS_INIT pthread)
+endif ()
+
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
