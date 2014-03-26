@@ -84,6 +84,7 @@ void interactiveHelp()
         << "    secret  Gives the current secret" << endl
         << "    block  Gives the current block height." << endl
         << "    balance  Gives the current balance." << endl
+        << "    peers  List the peers that are connected" << endl
         << "    transact <secret> <dest> <amount>  Executes a given transaction." << endl
         << "    send <dest> <amount>  Executes a given transaction with current secret." << endl
         << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
@@ -268,6 +269,13 @@ int main(int argc, char** argv)
 				cout << endl;
 				cout << "Current block # " << n << endl;
 				cout << "===" << endl;
+			}
+			else if (cmd == "peers")
+			{
+				for (auto it: c.peers())
+					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
+						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
+						<< endl;
 			}
 			else if (cmd == "balance")
 			{
