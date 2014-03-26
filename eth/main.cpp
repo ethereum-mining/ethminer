@@ -272,7 +272,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "peers")
 			{
-				for(auto it : c.peers())
+				for (auto it: c.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
