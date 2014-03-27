@@ -20,11 +20,12 @@
  * Ethereum client.
  */
 
+#include <ncurses.h>
+#undef OK
 #include <thread>
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <ncurses.h>
 #include "Defaults.h"
 #include "Client.h"
 #include "PeerNetwork.h"
