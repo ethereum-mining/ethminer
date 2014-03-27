@@ -100,112 +100,127 @@ void version()
 	exit(0);
 }
 
-namespace nc {
-	class nc_window_streambuf : public std::streambuf
-	{
-	private:
-		WINDOW * m_pnl;
-		unsigned long m_flags;
-		std::ostream * m_os;
-		std::streambuf * m_old;
-		void copy( const nc_window_streambuf & rhs );
-	public:
-		nc_window_streambuf( WINDOW * p, std::ostream & os, unsigned long curses_attr = 0 );
-		nc_window_streambuf( WINDOW * p, unsigned long curses_attr = 0 );
-		nc_window_streambuf( const nc_window_streambuf & rhs );
-		nc_window_streambuf & operator=( const nc_window_streambuf & rhs );
-		virtual ~nc_window_streambuf();
-		virtual int overflow( int c );
-		virtual int sync();
-	};
+namespace nc
+{
 
-	nc_window_streambuf::nc_window_streambuf( WINDOW * p, unsigned long curses_attr ) : m_pnl(p), m_flags(curses_attr), m_os(0),m_old(0)
-	{
-		// Tell parent class that we want to call overflow() for each
-		// input char:
-		this->setp( 0, 0 );
-		this->setg( 0, 0, 0 );
-		scrollok(p, true);
-		mvwinch( p, 0, 0 );
-	}
+class nc_window_streambuf: public std::streambuf
+{
+public:
+	nc_window_streambuf(WINDOW* p, std::ostream& os, unsigned long cursesAttr = 0);
+	nc_window_streambuf(WINDOW* p, unsigned long _cursesAttr = 0);
+	nc_window_streambuf(nc_window_streambuf const& _rhs);
+	virtual ~nc_window_streambuf();
 
-	nc_window_streambuf::nc_window_streambuf( WINDOW * p, std::ostream & os, unsigned long curses_attr ) : m_pnl(p), m_flags(curses_attr), m_os(&os),m_old(os.rdbuf())
-	{
-		this->setp( 0, 0 );
-		this->setg( 0, 0, 0 );
-		os.rdbuf( this );
-		scrollok(p, true);
-		mvwinch( p, 0, 0 );
-	}
+	nc_window_streambuf& operator=(nc_window_streambuf const& _rhs);
 
-	void nc_window_streambuf::copy( const nc_window_streambuf & rhs )
-	{
-		if ( this != &rhs )
-		{
-			this->m_pnl = rhs.m_pnl;
-			this->m_flags = rhs.m_flags;
-			this->m_os = rhs.m_os;
-			this->m_old = rhs.m_old;
-		}
-	}
+	virtual int overflow(int c);
+	virtual int sync();
 
-	nc_window_streambuf::nc_window_streambuf( const nc_window_streambuf & rhs )
-	{
-		this->copy(rhs);
-	}
+private:
+	void copy(nc_window_streambuf const& _rhs);
 
-	nc_window_streambuf & nc_window_streambuf::operator=( const nc_window_streambuf & rhs )
-	{
-		this->copy(rhs);
-		return *this;
-	}
+	WINDOW* m_pnl;
+	unsigned long m_flags;
+	std::ostream* m_os;
+	std::streambuf* m_old;
+};
 
-	nc_window_streambuf::~nc_window_streambuf()
-	{
-		if ( this->m_os )
-		{
-			this->m_os->rdbuf( this->m_old );
-		}
-	}
+nc_window_streambuf::nc_window_streambuf(WINDOW * p, unsigned long _cursesAttr):
+	m_pnl(p),
+	m_flags(_cursesAttr),
+	m_os(0),
+	m_old(0)
+{
+	// Tell parent class that we want to call overflow() for each
+	// input char:
+	setp(0, 0);
+	setg(0, 0, 0);
+	scrollok(p, true);
+	mvwinch(p, 0, 0);
+}
 
-	int nc_window_streambuf::overflow( int c )
-	{
-		int ret = c;
-		if ( c != EOF )
-		{
-			int x = 0;
-			int y = 0;
-			getyx( this->m_pnl, y, x);
-			if (y < 1) { y = 1; }
-			if (x < 2) { x = 2; }
-			if ( this->m_flags )
-			{
-				wattron( this->m_pnl, this->m_flags );
-				if( ERR == mvwaddch( this->m_pnl, y, x++, (chtype)c ) ) ret = EOF;
-				wattroff( this->m_pnl, this->m_flags );
-			}
-			else if ( ERR == mvwaddch( this->m_pnl, y, x++, (chtype)c ) ) ret = EOF;
-		}
-		if ( (EOF==c) ) // || std::isspace(c) )
-		{
-			if ( EOF == this->sync() ) ret = EOF;
-		}
-		return ret;
-	}
+nc_window_streambuf::nc_window_streambuf(WINDOW* _p, std::ostream& _os, unsigned long _cursesAttr):
+	m_pnl(_p),
+	m_flags(_cursesAttr),
+	m_os(&_os),
+	m_old(_os.rdbuf())
+{
+	setp(0, 0);
+	setg(0, 0, 0);
+	_os.rdbuf(this);
+	scrollok(_p, true);
+	mvwinch(_p, 0, 0);
+}
 
-	int nc_window_streambuf::sync()
+void nc_window_streambuf::copy(nc_window_streambuf const& _rhs)
+{
+	if (this != &_rhs)
 	{
-		if ( stdscr && this->m_pnl )
-		{
-			return (ERR == wrefresh( this->m_pnl )) ? EOF : 0;
-		}
-		return EOF;
+		m_pnl = _rhs.m_pnl;
+		m_flags = _rhs.m_flags;
+		m_os = _rhs.m_os;
+		m_old = _rhs.m_old;
 	}
 }
 
+nc_window_streambuf::nc_window_streambuf(nc_window_streambuf const& _rhs):
+	std::streambuf()
+{
+	copy(_rhs);
+}
 
-int main(int argc, char** argv) {
+nc_window_streambuf& nc_window_streambuf::operator=(nc_window_streambuf const& _rhs)
+{
+	copy(_rhs);
+	return *this;
+}
 
+nc_window_streambuf::~nc_window_streambuf()
+{
+	if (m_os)
+		m_os->rdbuf(m_old);
+}
+
+int nc_window_streambuf::overflow( int c )
+{
+	int ret = c;
+	if (c != EOF)
+	{
+		int x = 0;
+		int y = 0;
+		getyx(m_pnl, y, x);
+		if (y < 1)
+			y = 1;
+		if (x < 2)
+			x = 2;
+		if (m_flags)
+		{
+			wattron(m_pnl, m_flags);
+			if (mvwaddch(m_pnl, y, x++, (chtype)c) == ERR)
+				ret = EOF;
+			wattroff(m_pnl, m_flags);
+		}
+		else if (mvwaddch(m_pnl, y, x++, (chtype)c) == ERR)
+			ret = EOF;
+	}
+	if (c == EOF) // || std::isspace(c)
+		if (sync() == EOF)
+			ret = EOF;
+	return ret;
+}
+
+int nc_window_streambuf::sync()
+{
+	if (stdscr && m_pnl)
+		return (wrefresh(m_pnl) == ERR) ? EOF : 0;
+	return EOF;
+}
+
+}
+
+
+int main(int argc, char** argv)
+{
 	unsigned short listenPort = 30303;
 	string remoteHost;
 	unsigned short remotePort = 30303;
@@ -320,10 +335,11 @@ int main(int argc, char** argv) {
 
 	if (interactive)
 	{
-		cout << "Ethereum (++)" << endl;
+		g_logPost = std::function<void(std::string const&, char const*)>();
+/*		cout << "Ethereum (++)" << endl;
 		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
 		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
-
+*/
 		/*  Initialize ncurses  */
 		const char* chr;
 		char* str = new char[255];
@@ -331,7 +347,8 @@ int main(int argc, char** argv) {
 		std::string cmd;
 		WINDOW * mainwin, * consolewin, * logwin, * blockswin, * pendingwin, * contractswin, * peerswin;
 
-		if ( (mainwin = initscr()) == NULL ) {
+		if (!(mainwin = initscr()))
+		{
 			cerr << "Error initialising ncurses.";
 			return -1;
 		}
@@ -432,7 +449,8 @@ int main(int argc, char** argv) {
 			mvwprintw(mainwin, 1, 2, "> ");
 			clrtoeol();
 
-			if (s.length() > 1) {
+			if (s.length() > 1)
+			{
 				mvwaddstr(consolewin, height * 3 / 5 - 3, 2, "> ");
 				wclrtoeol(consolewin);
 				mvwaddnstr(consolewin, height * 3 / 5 - 3, 4, str, width - 6);
@@ -453,17 +471,11 @@ int main(int argc, char** argv) {
 				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
-			{
 				c.stopNetwork();
-			}
 			else if (cmd == "minestart")
-			{
 				c.startMining();
-			}
 			else if (cmd == "minestop")
-			{
 				c.stopMining();
-			}
 			else if (cmd == "address")
 			{
 				mvwaddstr(consolewin, height * 3 / 5 - 3, 2, "Current address:\n");
@@ -522,9 +534,7 @@ int main(int argc, char** argv) {
 				iss >> rechex;
 
 				if (rechex.length() != 40)
-				{
 					cout << "Invalid address length" << endl;
-				}
 				else
 				{
 					c.lock();
@@ -535,7 +545,7 @@ int main(int argc, char** argv) {
 					u256 next = 0;
 					unsigned numerics = 0;
 					bool unexpectedNumeric = false;
-					for (auto i: mem)
+					for (auto const& i: mem)
 					{
 						if (next < i.first)
 						{
@@ -548,9 +558,7 @@ int main(int argc, char** argv) {
 								s << "\n@" << showbase << hex << i.first << "    ";
 						}
 						else if (!next)
-						{
 							s << "@" << showbase << hex << i.first << "    ";
-						}
 						auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
 						if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
 						{
@@ -579,13 +587,9 @@ int main(int argc, char** argv) {
 				}
 			}
 			else if (cmd == "help")
-			{
 				interactiveHelp();
-			}
 			else if (cmd == "exit")
-			{
 				break;
-			}
 
 			// Clear cmd at each pass
 			cmd = "";
@@ -611,9 +615,11 @@ int main(int argc, char** argv) {
 						"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
 					y += 1;
 					mvwaddnstr(blockswin, y, 2, ss.c_str(), width / 4 - 6);
-					if (y > height * 3 / 5 - 4) break;
+					if (y > height * 3 / 5 - 4)
+						break;
 				}
-				if (y > height * 3 / 5 - 3) break;
+				if (y > height * 3 / 5 - 3)
+					break;
 			}
 
 
@@ -622,15 +628,14 @@ int main(int argc, char** argv) {
 			for (Transaction const& t: c.pending())
 			{
 				std::string ss;
-				if (t.receiveAddress) {
+				if (t.receiveAddress)
 					ss = toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
-				}
-				else {
+				else
 					ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
-				}
 				y += 1;
 				mvwaddnstr(pendingwin, y, 2, ss.c_str(), width / 4 - 6);
-				if (y > height * 3 / 5 - 4) break;
+				if (y > height * 3 / 5 - 4)
+					break;
 			}
 
 
@@ -638,16 +643,18 @@ int main(int argc, char** argv) {
 			auto acs = st.addresses();
 			y = 0;
 			for (auto n = 0; n < 2; ++n)
-				for (auto i: acs)
+				for (auto const& i: acs)
 				{
 					auto r = i.first;
 
-					if (st.isContractAddress(r)) {
+					if (st.isContractAddress(r))
+					{
 						std::string ss;
 						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
 						y += 1;
 						mvwaddnstr(contractswin, y, 2, ss.c_str(), width / 4 - 5);
-						if (y > height * 3 / 5 - 4) break;
+						if (y > height * 3 / 5 - 4)
+							break;
 					}
 				}
 
@@ -662,7 +669,8 @@ int main(int argc, char** argv) {
 				pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
 				y += 1;
 				mvwaddnstr(peerswin, y, 2, pss.c_str(), width / 4 - 5);
-				if (y > height * 2 / 5 - 4) break;
+				if (y > height * 2 / 5 - 4)
+					break;
 			}
 
 			wrefresh(consolewin);
