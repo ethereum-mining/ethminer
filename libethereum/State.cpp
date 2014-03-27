@@ -679,10 +679,13 @@ void State::execute(bytesConstRef _rlp)
 	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
 	addBalance(sender, gas * t.gasPrice);
 
+	u256 gasSpent = (t.gas - gas) * t.gasPrice;
+	unsigned c_feesKept = 8;
+	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
+	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
+	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
+
 	// Add to the user-originated transactions that we've executed.
-	// NOTE: Here, contract-originated transactions will not get added to the transaction list.
-	// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
-	// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
 	m_transactions.push_back(t);
 	m_transactionSet.insert(t.sha3());
 }
