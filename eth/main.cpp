@@ -93,12 +93,14 @@ void interactiveHelp()
         << "    exit  Exits the application." << endl;
 }
 
-void credits()
+std::string credits()
 {
-	cout
+	std::ostringstream ccout;
+	ccout
 		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
+	return ccout.str();
 }
 
 void version()
@@ -345,7 +347,7 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-	credits();
+	cout << credits();
 
 	if (interactive)
 	{
@@ -393,9 +395,19 @@ int main(int argc, char** argv)
 		wsetscrreg(peerswin, 1, vl);
 		wsetscrreg(contractswin, 1, vl);
 
-		credits();
+		ccout << credits();
+
+		std::string vs = toString(ETH_QUOTED(ETH_VERSION));
+		vs = vs.substr(vs.find_first_of('.') + 1)[0];
+		int pocnumber = stoi(vs);
+		std::string m_servers;
+		if (pocnumber == 3)
+			m_servers = "54.201.28.117";
+		if (pocnumber == 4)
+			m_servers = "54.72.31.55";
+
 		ccout << "Type 'netstart 30303' to start networking" << endl;
-		ccout << "Type 'connect 54.201.28.117 30303' to connect" << endl;
+		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
 		ccout << "Type 'exit' to quit" << endl;
 
 		mvwprintw(mainwin, 1, x, "> ");
