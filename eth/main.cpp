@@ -421,9 +421,6 @@ int main(int argc, char** argv)
 
 		while (true)
 		{
-			getmaxyx(mainwin, height, width);
-			qwidth = width / 4 - 4;
-
 			wclrtobot(consolewin);
 			wclrtobot(pendingwin);
 			wclrtobot(peerswin);
@@ -605,7 +602,7 @@ int main(int argc, char** argv)
 					if (y > height * 3 / 5 - 4)
 						break;
 				}
-				if (y > height * 3 / 5 - 3)
+				if (y > height * 3 / 5 - 4)
 					break;
 			}
 
@@ -620,8 +617,8 @@ int main(int argc, char** argv)
 				else
 					ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
 				y += 1;
-				mvwaddnstr(pendingwin, y, x, ss.c_str(), width / 4 - 6);
-				if (y > height * 3 / 5 - 4)
+				mvwaddnstr(pendingwin, y, x, ss.c_str(), qwidth);
+				if (y > height * 3 / 5 - 6)
 					break;
 			}
 
@@ -639,7 +636,7 @@ int main(int argc, char** argv)
 						std::string ss;
 						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
 						y += 1;
-						mvwaddnstr(contractswin, y, x, ss.c_str(), width / 4 - 5);
+						mvwaddnstr(contractswin, y, x, ss.c_str(), qwidth);
 						if (y > height * 3 / 5 - 4)
 							break;
 					}
@@ -655,8 +652,8 @@ int main(int argc, char** argv)
 			{
 				pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
 				y += 1;
-				mvwaddnstr(peerswin, y, x, pss.c_str(), width / 4 - 5);
-				if (y > height * 2 / 5 - 4)
+				mvwaddnstr(peerswin, y, x, pss.c_str(), qwidth);
+				if (y > height * 2 / 5 - 6)
 					break;
 			}
 
@@ -683,11 +680,11 @@ int main(int argc, char** argv)
 			mvwprintw(blockswin, 0, 10, chr);
 
 			// Balance
-			mvwprintw(consolewin, height * 3 / 5 - 1, x, "Balance: ");
+			mvwprintw(consolewin, 0, x, "Balance: ");
 			u256 balance = c.state().balance(us.address());
 			chr = toString(balance).c_str();
-			mvwprintw(consolewin, height * 3 / 5 - 1, 11, chr);
-			wmove(consolewin, y, x);
+			mvwprintw(consolewin, 0, 11, chr);
+			wmove(consolewin, 1, x);
 
 			// Peers
 			mvwprintw(peerswin, 0, x, "Peers: ");
