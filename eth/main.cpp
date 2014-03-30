@@ -93,7 +93,7 @@ void interactiveHelp()
         << "    exit  Exits the application." << endl;
 }
 
-std::string credits()
+string credits()
 {
 	std::ostringstream ccout;
 	ccout
@@ -191,12 +191,15 @@ nc_window_streambuf::~nc_window_streambuf()
 		m_os->rdbuf(m_old);
 }
 
-int nc_window_streambuf::overflow( int c )
+int nc_window_streambuf::overflow(int c)
 {
 	int ret = c;
 	if (c != EOF)
 	{
-		int x = 0, y = 0, mx = 0, my = 0;
+		int x = 0;
+		int y = 0;
+		int mx = 0;
+		int my = 0;
 		getyx(m_pnl, y, x);
 		getmaxyx(m_pnl, my, mx);
 		if (y < 1)
@@ -356,9 +359,11 @@ int main(int argc, char** argv)
 		/*  Initialize ncurses  */
 		const char* chr;
 		char* str = new char[255];
-		int width, height;
-		int y = 0, x = 2;
-		std::string cmd;
+		int width;
+		int height;
+		int y = 0;
+		int x = 2;
+		string cmd;
 		WINDOW * mainwin, * consolewin, * logwin, * blockswin, * pendingwin, * contractswin, * peerswin;
 
 		if (!(mainwin = initscr()))
@@ -377,12 +382,12 @@ int main(int argc, char** argv)
 		keypad(mainwin, true);
 
 		logwin = newwin(height * 2 / 5 - 2, width, height * 3 / 5, 0);
-		nc::nc_window_streambuf outbuf( logwin, std::cout );
+		nc::nc_window_streambuf outbuf(logwin, std::cout);
 		// nc::nc_window_streambuf errbuf( logwin, std::cerr );
 		g_logVerbosity = 1; // Force verbosity level for now
 
 		consolewin   = newwin(height * 3 / 5, width / 4, 0, 0);
-		nc::nc_window_streambuf coutbuf( consolewin, ccout );
+		nc::nc_window_streambuf coutbuf(consolewin, ccout);
 		blockswin    = newwin(height * 3 / 5, width / 4, 0, width / 4);
 		pendingwin   = newwin(height * 1 / 5, width / 4, 0, width * 2 / 4);
 		peerswin     = newwin(height * 2 / 5, width / 4, height * 1 / 5, width * 2 / 4);
@@ -397,10 +402,10 @@ int main(int argc, char** argv)
 
 		ccout << credits();
 
-		std::string vs = toString(ETH_QUOTED(ETH_VERSION));
+		string vs = toString(ETH_QUOTED(ETH_VERSION));
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
-		std::string m_servers;
+		string m_servers;
 		if (pocnumber == 3)
 			m_servers = "54.201.28.117";
 		if (pocnumber == 4)
@@ -586,23 +591,23 @@ int main(int argc, char** argv)
 			for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
 			{
 				auto d = bc.details(h);
-				std::string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
+				string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
 				y += 1;
 				mvwaddnstr(blockswin, y, x, s.c_str(), qwidth);
 
 				for (auto const& i: RLP(bc.block(h))[1])
 				{
 					Transaction t(i.data());
-					std::string ss;
+					string ss;
 					ss = t.receiveAddress ?
 						"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
 						"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
 					y += 1;
-					mvwaddnstr(blockswin, y, x, ss.c_str(), width / 4 - 6);
-					if (y > height * 3 / 5 - 4)
+					mvwaddnstr(blockswin, y, x, ss.c_str(), qwidth - 2);
+					if (y > height * 3 / 5 - 2)
 						break;
 				}
-				if (y > height * 3 / 5 - 4)
+				if (y > height * 3 / 5 - 2)
 					break;
 			}
 
@@ -611,14 +616,14 @@ int main(int argc, char** argv)
 			y = 0;
 			for (Transaction const& t: c.pending())
 			{
-				std::string ss;
+				string ss;
 				if (t.receiveAddress)
 					ss = toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
 				else
 					ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
 				y += 1;
 				mvwaddnstr(pendingwin, y, x, ss.c_str(), qwidth);
-				if (y > height * 3 / 5 - 6)
+				if (y > height * 3 / 5 - 4)
 					break;
 			}
 
@@ -633,19 +638,19 @@ int main(int argc, char** argv)
 
 					if (st.isContractAddress(r))
 					{
-						std::string ss;
+						string ss;
 						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
 						y += 1;
 						mvwaddnstr(contractswin, y, x, ss.c_str(), qwidth);
-						if (y > height * 3 / 5 - 4)
+						if (y > height * 3 / 5 - 2)
 							break;
 					}
 				}
 
 			// Peers
 			y = 0;
-			std::string psc;
-			std::string pss;
+			string psc;
+			string pss;
 			auto cp = c.peers();
 			psc = toString(cp.size()) + " peer(s)";
 			for (PeerInfo const& i: cp)
@@ -653,7 +658,7 @@ int main(int argc, char** argv)
 				pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
 				y += 1;
 				mvwaddnstr(peerswin, y, x, pss.c_str(), qwidth);
-				if (y > height * 2 / 5 - 6)
+				if (y > height * 2 / 5 - 4)
 					break;
 			}
 
@@ -661,7 +666,6 @@ int main(int argc, char** argv)
 			ccout << "Address:" << endl;
 			chr = toHex(us.address().asArray()).c_str();
 			ccout << chr << endl << endl;
-			// wmove(consolewin, 3, x);
 
 			box(mainwin, 0, 0);
 			box(blockswin, 0, 0);
