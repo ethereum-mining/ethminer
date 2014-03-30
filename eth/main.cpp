@@ -93,7 +93,7 @@ void interactiveHelp()
         << "    exit  Exits the application." << endl;
 }
 
-string credits(bool interactive = false)
+string credits(bool _interactive = false)
 {
 	std::ostringstream ccout;
 	ccout
@@ -101,7 +101,7 @@ string credits(bool interactive = false)
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	if (interactive)
+	if (_interactive)
 	{
 		string vs = toString(ETH_QUOTED(ETH_VERSION));
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
