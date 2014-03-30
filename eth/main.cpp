@@ -93,13 +93,29 @@ void interactiveHelp()
         << "    exit  Exits the application." << endl;
 }
 
-string credits()
+string credits(bool interactive = false)
 {
 	std::ostringstream ccout;
 	ccout
 		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
+
+	if (interactive)
+	{
+		string vs = toString(ETH_QUOTED(ETH_VERSION));
+		vs = vs.substr(vs.find_first_of('.') + 1)[0];
+		int pocnumber = stoi(vs);
+		string m_servers;
+		if (pocnumber == 3)
+			m_servers = "54.201.28.117";
+		if (pocnumber == 4)
+			m_servers = "54.72.31.55";
+
+		ccout << "Type 'netstart 30303' to start networking" << endl;
+		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+		ccout << "Type 'exit' to quit" << endl << endl;
+	}
 	return ccout.str();
 }
 
@@ -400,21 +416,6 @@ int main(int argc, char** argv)
 		wsetscrreg(peerswin, 1, vl);
 		wsetscrreg(contractswin, 1, vl);
 
-		ccout << credits();
-
-		string vs = toString(ETH_QUOTED(ETH_VERSION));
-		vs = vs.substr(vs.find_first_of('.') + 1)[0];
-		int pocnumber = stoi(vs);
-		string m_servers;
-		if (pocnumber == 3)
-			m_servers = "54.201.28.117";
-		if (pocnumber == 4)
-			m_servers = "54.72.31.55";
-
-		ccout << "Type 'netstart 30303' to start networking" << endl;
-		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
-		ccout << "Type 'exit' to quit" << endl;
-
 		mvwprintw(mainwin, 1, x, "> ");
 		wresize(mainwin, 3, width);
 		mvwin(mainwin, height - 3, 0);
@@ -431,6 +432,8 @@ int main(int argc, char** argv)
 			wclrtobot(peerswin);
 			wclrtobot(contractswin);
 
+			ccout << credits(true);
+
 			// Prompt
 			wmove(mainwin, 1, 4);
 			getstr(str);
@@ -438,6 +441,11 @@ int main(int argc, char** argv)
 			string s(str);
 			istringstream iss(s);
 			iss >> cmd;
+
+			// Address
+			ccout << "Address:" << endl;
+			chr = toHex(us.address().asArray()).c_str();
+			ccout << chr << endl << endl;
 
 			mvwprintw(mainwin, 1, x, "> ");
 			clrtoeol();
@@ -482,7 +490,7 @@ int main(int argc, char** argv)
 			else if (cmd == "block")
 			{
 				eth::uint n = c.blockChain().details().number;
-				ccout << "Current block #:" << endl;
+				ccout << "Current block # ";
 				const char* addchr = toString(n).c_str();
 				ccout << addchr << endl;
 			}
@@ -662,26 +670,12 @@ int main(int argc, char** argv)
 					break;
 			}
 
-			// Address
-			ccout << "Address:" << endl;
-			chr = toHex(us.address().asArray()).c_str();
-			ccout << chr << endl << endl;
-
-			box(mainwin, 0, 0);
+			box(consolewin, 0, 0);
 			box(blockswin, 0, 0);
 			box(pendingwin, 0, 0);
 			box(peerswin, 0, 0);
-			box(consolewin, 0, 0);
 			box(contractswin, 0, 0);
-
-			mvwprintw(pendingwin, 0, x, "Pending");
-			mvwprintw(contractswin, 0, x, "Contracts");
-
-			// Block
-			mvwprintw(blockswin, 0, x, "Block # ");
-			eth::uint n = c.blockChain().details().number;
-			chr = toString(n).c_str();
-			mvwprintw(blockswin, 0, 10, chr);
+			box(mainwin, 0, 0);
 
 			// Balance
 			mvwprintw(consolewin, 0, x, "Balance: ");
@@ -689,6 +683,15 @@ int main(int argc, char** argv)
 			chr = toString(balance).c_str();
 			mvwprintw(consolewin, 0, 11, chr);
 			wmove(consolewin, 1, x);
+
+			// Block
+			mvwprintw(blockswin, 0, x, "Block # ");
+			eth::uint n = c.blockChain().details().number;
+			chr = toString(n).c_str();
+			mvwprintw(blockswin, 0, 10, chr);
+
+			mvwprintw(pendingwin, 0, x, "Pending");
+			mvwprintw(contractswin, 0, x, "Contracts");
 
 			// Peers
 			mvwprintw(peerswin, 0, x, "Peers: ");
