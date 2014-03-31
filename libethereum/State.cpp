@@ -655,26 +655,20 @@ void State::execute(bytesConstRef _rlp)
 	subBalance(sender, cost);
 
 	if (t.isCreation())
-	{
-		create(t, sender, &gas);
-	}
+		create(sender, t.value, t.gasPrice, &gas, &t.data, &t.init);
 	else
-	{
-		cnote << "Passing" << formatBalance(t.value) << "to receiver";
-		addBalance(t.receiveAddress, t.value);
-
-		if (isContractAddress(t.receiveAddress))
-			// Once we get here, there's no going back.
-			call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
-	}
+		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
 
 	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
 	addBalance(sender, gas * t.gasPrice);
 
 	u256 gasSpent = (t.gas - gas) * t.gasPrice;
-	unsigned c_feesKept = 8;
+/*	unsigned c_feesKept = 8;
 	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
 	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
+*/
+	u256 feesEarned = gasSpent;
+	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Add to the user-originated transactions that we've executed.
@@ -682,69 +676,63 @@ void State::execute(bytesConstRef _rlp)
 	m_transactionSet.insert(t.sha3());
 }
 
-bool State::call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out)
+bool State::call(Address _receiveAddress, Address _sendAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out)
 {
-	VM vm(*_gas);
-	ExtVM evm(*this, _myAddress, _txSender, _txValue, _gasPrice, _txData, &contractCode(_myAddress));
-	bool revert = false;
+	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+	addBalance(_receiveAddress, _value);
 
-	try
+	if (isContractAddress(_receiveAddress))
 	{
-		auto out = vm.go(evm);
-		memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-	}
-	catch (OutOfGas const& /*_e*/)
-	{
-		clog(StateChat) << "Out of Gas! Reverting.";
-		revert = true;
-	}
-	catch (VMException const& _e)
-	{
-		clog(StateChat) << "VM Exception: " << _e.description();
-	}
-	catch (Exception const& _e)
-	{
-		clog(StateChat) << "Exception in VM: " << _e.description();
-	}
-	catch (std::exception const& _e)
-	{
-		clog(StateChat) << "std::exception in VM: " << _e.what();
-	}
+		VM vm(*_gas);
+		ExtVM evm(*this, _receiveAddress, _sendAddress, _value, _gasPrice, _data, &contractCode(_receiveAddress));
+		bool revert = false;
 
-	// Write state out only in the case of a non-excepted transaction.
-	if (revert)
-		evm.revert();
+		try
+		{
+			auto out = vm.go(evm);
+			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+		}
+		catch (OutOfGas const& /*_e*/)
+		{
+			clog(StateChat) << "Out of Gas! Reverting.";
+			revert = true;
+		}
+		catch (VMException const& _e)
+		{
+			clog(StateChat) << "VM Exception: " << _e.description();
+		}
+		catch (Exception const& _e)
+		{
+			clog(StateChat) << "Exception in VM: " << _e.description();
+		}
+		catch (std::exception const& _e)
+		{
+			clog(StateChat) << "std::exception in VM: " << _e.what();
+		}
 
-	*_gas = vm.gas();
+		// Write state out only in the case of a non-excepted transaction.
+		if (revert)
+			evm.revert();
 
-	return !revert;
+		*_gas = vm.gas();
+
+		return !revert;
+	}
+	return true;
 }
 
-h160 State::create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 {
-	Transaction t;
-	t.value = _endowment;
-	t.gasPrice = _gasPrice;
-	t.gas = *_gas;
-	t.nonce = transactionsFrom(_txSender);
-	t.init = _init.toBytes();
-	t.data = _code.toBytes();
-
-	return create(t, _txSender, _gas);
-}
-
-Address State::create(Transaction const& _t, Address _sender, u256* _gas)
-{
-	Address newAddress = right160(_t.sha3(false));
+	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender))));
 	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, 0, &_t.data);
+	m_cache[newAddress] = AddressState(0, 0, _code);
 
 	// Execute _init.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _t.value, _t.gasPrice, bytesConstRef(), &_t.init);
+	ExtVM evm(*this, newAddress, _sender, _endowment, _gasPrice, bytesConstRef(), _init);
 	bool revert = false;
 
 	// Increment associated nonce for sender.
