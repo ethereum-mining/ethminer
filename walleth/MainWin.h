@@ -141,8 +141,7 @@ public:
 
 public slots:
 	void transact(eth::Secret _secret, eth::Address _dest, eth::u256 _amount, eth::u256 _gasPrice, eth::u256 _gas, QByteArray _data);
-	void transact(eth::Secret _secret, eth::u256 _amount, eth::u256 _gasPrice, QVector<eth::u256> _storage);
-
+	void transact(eth::Secret _secret, eth::u256 _amount, eth::u256 _gasPrice, eth::u256 _gas, QByteArray _code, QByteArray _init);
 	void setCoinbase(eth::Address);
 	void setMining(bool _l);
 

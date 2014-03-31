@@ -20,6 +20,14 @@
  */
 
 #include "AddressState.h"
+#include "CommonEth.h"
 using namespace std;
 using namespace eth;
 
+AddressState::AddressState(u256 _balance, u256 _nonce, bytesConstRef _code):
+	m_type(AddressType::Contract),
+	m_balance(_balance),
+	m_nonce(_nonce),
+	m_isComplete(true),
+	m_code(_code.toBytes())
+{}

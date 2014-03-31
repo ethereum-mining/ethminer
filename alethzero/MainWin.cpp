@@ -395,17 +395,19 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			auto ss = tx.safeSender();
 			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
-			if (tx.isCreation)
+			if (tx.isCreation())
 				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
 			else
 				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
-			if (tx.isCreation)
+			if (tx.isCreation())
 			{
-				s << "<br/>Storage:&nbsp;&emsp;&nbsp;";
-				s << "</br>" << disassemble(tx.storage);
+				s << "<br/>Init:";
+				s << "<br/>" << disassemble(tx.init);
+				s << "<br/>Code:";
+				s << "<br/>" << disassemble(tx.data);
 			}
 			else
 			{
@@ -524,10 +526,10 @@ void Main::on_data_textChanged()
 	if (isCreation())
 	{
 		string code = ui->data->toPlainText().toStdString();
-		m_storage = code[0] == '(' ? compileLisp(code, true) : assemble(code, true);
-		ui->code->setPlainText(QString::fromStdString(disassemble(m_storage)));
-		ui->gas->setValue((qint64)state().createGas(m_storage.size()));
-		ui->gas->setEnabled(false);
+		m_data = compileLisp(code, true, m_init);
+		ui->code->setPlainText(QString::fromStdString(disassemble(m_data)) + "\n; Init:" + QString::fromStdString(disassemble(m_init)));
+		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size()));
+		ui->gas->setEnabled(true);
 	}
 	else
 	{
@@ -659,9 +661,9 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), gasPrice(), m_storage);
+				m_client->transact(s, value(), gasPrice(), ui->gas->value(), m_data, m_init);
 			else
-				m_client->transact(s, value(), gasPrice(), fromString(ui->destination->text()), ui->gas->value(), m_data);
+				m_client->transact(s, value(), gasPrice(), ui->gas->value(), fromString(ui->destination->text()), m_data);
 			refresh();
 			return;
 		}

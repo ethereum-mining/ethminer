@@ -140,16 +140,15 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest, u256 _gas, bytes _data)
+void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Address _dest, bytes const& _data)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
-	t.isCreation = false;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
-	t.receiveAddress = _dest;
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
+	t.receiveAddress = _dest;
 	t.data = _data;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
@@ -157,15 +156,17 @@ void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, Address _dest
 	m_changed = true;
 }
 
-void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _storage)
+void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256 _gas, bytes const& _code, bytes const& _init)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
-	t.isCreation = true;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
-	t.storage = _storage;
+	t.gas = _gas;
+	t.receiveAddress = Address();
+	t.data = _code;
+	t.init = _init;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());

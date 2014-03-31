@@ -325,14 +325,6 @@ private:
 			*(b--) = (byte)_i;
 	}
 
-	/// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
-	template <class _T> static uint bytesRequired(_T _i)
-	{
-		uint i = 0;
-		for (; _i != 0; ++i, _i >>= 8) {}
-		return i;
-	}
-
 	/// Our output byte stream.
 	bytes m_out;
 

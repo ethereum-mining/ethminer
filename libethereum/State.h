@@ -46,6 +46,8 @@ std::map<Address, AddressState> const& genesisState();
 
 static const std::map<u256, u256> EmptyMapU256U256;
 
+static const bytes EmptyBytes;
+
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
 class ExtVM;
@@ -151,6 +153,10 @@ public:
 	/// @returns std::map<u256, u256> if no contract exists at that address.
 	std::map<u256, u256> const& contractMemory(Address _contract) const;
 
+	/// Get the code of a contract.
+	/// @returns bytes() if no contract exists at that address.
+	bytes const& contractCode(Address _contract) const;
+
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 
@@ -201,7 +207,8 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, vector_ref<h256 const> _storage);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init);
+	h160 create(Transaction const& _t, Address _sender, u256* _gas);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
@@ -246,8 +253,8 @@ private:
 class ExtVM: public ExtVMFace
 {
 public:
-	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData):
-		ExtVMFace(_myAddress, _txSender, _txValue, _gasPrice, _txData, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
+	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, bytesConstRef _code):
+		ExtVMFace(_myAddress, _txSender, _txValue, _gasPrice, _txData, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 		m_store = &(m_s.m_cache[_myAddress].memory());
@@ -266,9 +273,9 @@ public:
 			m_store->erase(_n);
 	}
 
-	h160 create(u256 _endowment, vector_ref<h256 const> _storage)
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 	{
-		return m_s.create(myAddress, _endowment, gasPrice, _storage);
+		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init);
 	}
 
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
@@ -332,7 +339,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
 			if (i.second.type() == AddressType::Contract)
 			{
-				if (i.second.haveMemory())
+				if (i.second.isComplete())
 				{
 					_out << std::endl << i.second.memory();
 				}
@@ -366,7 +373,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.balance() << i.second.nonce();
 			if (i.second.type() == AddressType::Contract)
 			{
-				if (i.second.haveMemory())
+				if (i.second.isComplete())
 				{
 					TrieDB<h256, DB> memdb(&_db);
 					memdb.init();
@@ -374,9 +381,17 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						if (j.second)
 							memdb.insert(j.first, rlp(j.second));
 					s << memdb.root();
+					if (i.second.freshCode())
+					{
+						h256 ch = sha3(i.second.code());
+						_db.insert(ch, &i.second.code());
+						s << ch;
+					}
+					else
+						s << i.second.codeHash();
 				}
 				else
-					s << i.second.oldRoot();
+					s << i.second.oldRoot() << i.second.codeHash();
 			}
 			_state.insert(i.first, &s.out());
 		}

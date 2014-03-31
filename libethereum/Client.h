@@ -84,10 +84,10 @@ public:
 	~Client();
 
 	/// Submits the given transaction.
-	void transact(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
+	void transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Address _dest, bytes const& _data);
 
 	/// Submits a new contract.
-	void transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256s _storage = u256s());
+	void transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256 _gas, bytes const& _code, bytes const& _init);
 
 	/// Makes the given call. Nothing is recorded into the state. TODO
 //	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
