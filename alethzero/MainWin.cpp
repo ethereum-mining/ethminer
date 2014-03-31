@@ -526,9 +526,10 @@ void Main::on_data_textChanged()
 	if (isCreation())
 	{
 		string code = ui->data->toPlainText().toStdString();
+		m_init.clear();
 		m_data = compileLisp(code, true, m_init);
 		ui->code->setPlainText(QString::fromStdString(disassemble(m_data)) + "\n; Init:" + QString::fromStdString(disassemble(m_init)));
-		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size()));
+		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
 		ui->gas->setEnabled(true);
 	}
 	else

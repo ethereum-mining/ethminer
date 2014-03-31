@@ -321,7 +321,7 @@ static unsigned pushLiteral(bytes& o_code, u256 _literalValue)
 	for (unsigned i = 0; i < br; ++i)
 	{
 		o_code[o_code.size() - 1 - i] = (byte)(_literalValue & 0xff);
-		_literalValue <<= 8;
+		_literalValue >>= 8;
 	}
 	return br + 1;
 }
@@ -883,7 +883,7 @@ string eth::disassemble(bytes const& _mem)
 		{
 			if (numerics)
 				numerics--;
-			ret << "0x" << hex << n << " ";
+			ret << "0x" << hex << (int)n << " ";
 		}
 		else
 		{
