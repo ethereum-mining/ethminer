@@ -177,7 +177,7 @@ public:
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
 	/// Get the fee associated for a contract created with the given data.
-	u256 createGas(uint _nonZeroStorageCount) const { return c_sstoreGas * _nonZeroStorageCount + c_createGas; }
+	u256 createGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_createGas + _gas; }
 
 	/// Get the fee associated for a normal transaction.
 	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
