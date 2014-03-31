@@ -78,8 +78,8 @@ void interactiveHelp()
 {
 	cout
         << "Commands:" << endl
-        << "    netstart <port> Starts the network sybsystem on a specific port." << endl
-        << "    netstop   Stops the network subsystem." << endl
+        << "    netstart <port>  Starts the network sybsystem on a specific port." << endl
+        << "    netstop  Stops the network subsystem." << endl
         << "    connect <addr> <port>  Connects to a specific peer." << endl
         << "    minestart  Starts mining." << endl
         << "    minestop  Stops mining." << endl
@@ -87,9 +87,9 @@ void interactiveHelp()
         << "    secret  Gives the current secret" << endl
         << "    block  Gives the current block height." << endl
         << "    balance  Gives the current balance." << endl
-        << "    transact <secret> <dest> <amount>  Executes a given transaction." << endl
-        << "    send <dest> <amount>  Executes a given transaction with current secret." << endl
-        << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+        << "    transact <secret> <dest> <amount> <gasPrice> <gas> <data>  Executes a given transaction." << endl
+        << "    send <dest> <amount> <gasPrice> <gas>  Executes a given transaction with current secret." << endl
+        << "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
         << "    exit  Exits the application." << endl;
 }
 
@@ -508,10 +508,11 @@ int main(int argc, char** argv)
 				u256 amount;
 				u256 gasPrice;
 				u256 gas;
-				cin >> sechex >> rechex >> amount >> gasPrice >> gas;
+				iss >> sechex >> rechex >> amount >> gasPrice >> gas;
 				Secret secret = h256(fromHex(sechex));
 				Address dest = h160(fromHex(rechex));
 				bytes data;
+
 				c.transact(secret, amount, gasPrice, gas, dest, data);
 			}
 			else if (cmd == "send")
@@ -520,7 +521,7 @@ int main(int argc, char** argv)
 				u256 amount;
 				u256 gasPrice;
 				u256 gas;
-				cin >> rechex >> amount >> gasPrice >> gas;
+				iss >> rechex >> amount >> gasPrice >> gas;
 				Address dest = h160(fromHex(rechex));
 
 				c.transact(us.secret(), amount, gasPrice, gas, dest, bytes());
