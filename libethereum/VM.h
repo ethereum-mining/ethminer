@@ -84,10 +84,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		m_stepCount++;
 
 		// INSTRUCTION...
-		auto rawInst = _ext.store(m_curPC);
-		if (rawInst > 0xff)
-			throw BadInstruction();
-		Instruction inst = (Instruction)(uint8_t)rawInst;
+		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
 		// FEES...
 		bigint runGas = c_stepGas;
@@ -349,10 +346,44 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::GASLIMIT:
 			m_stack.push_back(1000000);
 			break;
-		case Instruction::PUSH:
+		case Instruction::PUSH1:
+		case Instruction::PUSH2:
+		case Instruction::PUSH3:
+		case Instruction::PUSH4:
+		case Instruction::PUSH5:
+		case Instruction::PUSH6:
+		case Instruction::PUSH7:
+		case Instruction::PUSH8:
+		case Instruction::PUSH9:
+		case Instruction::PUSH10:
+		case Instruction::PUSH11:
+		case Instruction::PUSH12:
+		case Instruction::PUSH13:
+		case Instruction::PUSH14:
+		case Instruction::PUSH15:
+		case Instruction::PUSH16:
+		case Instruction::PUSH17:
+		case Instruction::PUSH18:
+		case Instruction::PUSH19:
+		case Instruction::PUSH20:
+		case Instruction::PUSH21:
+		case Instruction::PUSH22:
+		case Instruction::PUSH23:
+		case Instruction::PUSH24:
+		case Instruction::PUSH25:
+		case Instruction::PUSH26:
+		case Instruction::PUSH27:
+		case Instruction::PUSH28:
+		case Instruction::PUSH29:
+		case Instruction::PUSH30:
+		case Instruction::PUSH31:
+		case Instruction::PUSH32:
 		{
-			m_stack.push_back(_ext.store(m_curPC + 1));
-			m_nextPC = m_curPC + 2;
+			int i = (int)inst - (int)Instruction::PUSH1 + 1;
+			m_nextPC = m_curPC + 1;
+			m_stack.push_back(0);
+			for (; i--; m_nextPC++)
+				m_stack.back() = (m_stack.back() << 8) | _ext.getCode(m_nextPC);
 			break;
 		}
 		case Instruction::POP:
@@ -447,19 +478,23 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::CREATE:
 		{
-			require(3);
+			require(5);
 
 			u256 endowment = m_stack.back();
 			m_stack.pop_back();
-			unsigned inOff = (unsigned)m_stack.back();
+			unsigned codeOff = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned inSize = (unsigned)m_stack.back();
+			unsigned codeSize = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned initOff = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned initSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
 				_ext.subBalance(endowment);
-				m_stack.push_back((u160)_ext.create(endowment, vector_ref<h256 const>((h256 const*)(m_temp.data() + inOff), inSize / 32)));
+				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + codeOff, codeSize), bytesConstRef(m_temp.data() + initOff, initSize)));
 			}
 			else
 				m_stack.push_back(0);

@@ -515,7 +515,7 @@ int main(int argc, char** argv)
 				Secret secret = h256(fromHex(sechex));
 				Address dest = h160(fromHex(rechex));
 				bytes data;
-				c.transact(secret, amount, gasPrice, dest, gas, data);
+				c.transact(secret, amount, gasPrice, gas, dest, data);
 			}
 			else if (cmd == "send")
 			{
@@ -526,7 +526,7 @@ int main(int argc, char** argv)
 				cin >> rechex >> amount >> gasPrice >> gas;
 				Address dest = h160(fromHex(rechex));
 
-				c.transact(us.secret(), amount, gasPrice, dest, gas, bytes());
+				c.transact(us.secret(), amount, gasPrice, gas, dest, bytes());
 			}
 			else if (cmd == "inspect")
 			{

@@ -137,16 +137,16 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		else if (state.itemCount() == 2)
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>());
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>());
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
-	if (_requireMemory && !it->second.haveMemory())
+	if (_requireMemory && !it->second.isComplete())
 	{
 		// Populate memory.
 		assert(it->second.type() == AddressType::Contract);
 		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-		map<u256, u256>& mem = it->second.setHaveMemory();
+		map<u256, u256>& mem = it->second.setIsComplete(bytesConstRef(m_db.lookup(it->second.codeHash())));
 		for (auto const& i: memdb)
 			mem[i.first] = RLP(i.second).toInt<u256>();
 	}
@@ -572,7 +572,7 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end() || it->second.type() != AddressType::Contract)
 		return 0;
-	else if (it->second.haveMemory())
+	else if (it->second.isComplete())
 	{
 		auto mit = it->second.memory().find(_memory);
 		if (mit == it->second.memory().end())
@@ -591,6 +591,14 @@ map<u256, u256> const& State::contractMemory(Address _contract) const
 		return EmptyMapU256U256;
 	ensureCached(_contract, true, true);
 	return m_cache[_contract].memory();
+}
+
+bytes const& State::contractCode(Address _contract) const
+{
+	if (!isContractAddress(_contract))
+		return EmptyBytes;
+	ensureCached(_contract, true, true);
+	return m_cache[_contract].code();
 }
 
 void State::execute(bytesConstRef _rlp)
@@ -617,23 +625,15 @@ void State::execute(bytesConstRef _rlp)
 
 	// Entry point for a contract-originated transaction.
 	u256 gasCost;
-	if (t.isCreation)
-	{
-		unsigned nonZero = 0;
-		for (auto i: t.storage)
-			if (i)
-				nonZero++;
-		gasCost = nonZero * c_sstoreGas + c_createGas;
-		t.gas = gasCost;
-	}
+	if (t.isCreation())
+		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;
 	else
-	{
 		gasCost = t.data.size() * c_txDataGas + c_callGas;
-		if (t.gas < gasCost)
-		{
-			clog(StateChat) << "Not enough gas to pay for the transaction.";
-			throw OutOfGas();
-		}
+
+	if (t.gas < gasCost)
+	{
+		clog(StateChat) << "Not enough gas to pay for the transaction.";
+		throw OutOfGas();
 	}
 
 	u256 cost = t.value + t.gas * t.gasPrice;
@@ -654,21 +654,13 @@ void State::execute(bytesConstRef _rlp)
 	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
 	subBalance(sender, cost);
 
-	if (t.isCreation)
+	if (t.isCreation())
 	{
-		Address newAddress = right160(t.sha3());
-		while (isContractAddress(newAddress) || isNormalAddress(newAddress))
-			newAddress = (u160)newAddress + 1;
-
-		// Set up new account...
-		m_cache[newAddress] = AddressState(t.value, 0, AddressType::Contract);
-		auto& mem = m_cache[newAddress].memory();
-		for (uint i = 0; i < t.storage.size(); ++i)
-			mem[i] = t.storage[i];
+		create(t, sender, &gas);
 	}
 	else
 	{
-		cnote << "Giving" << formatBalance(t.value) << "to receiver";
+		cnote << "Passing" << formatBalance(t.value) << "to receiver";
 		addBalance(t.receiveAddress, t.value);
 
 		if (isContractAddress(t.receiveAddress))
@@ -693,7 +685,7 @@ void State::execute(bytesConstRef _rlp)
 bool State::call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out)
 {
 	VM vm(*_gas);
-	ExtVM evm(*this, _myAddress, _txSender, _txValue, _gasPrice, _txData);
+	ExtVM evm(*this, _myAddress, _txSender, _txValue, _gasPrice, _txData, &contractCode(_myAddress));
 	bool revert = false;
 
 	try
@@ -728,27 +720,69 @@ bool State::call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gas
 	return !revert;
 }
 
-h160 State::create(Address _txSender, u256 _endowment, u256 _gasPrice, vector_ref<h256 const> _storage)
+h160 State::create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 {
 	Transaction t;
-	for (auto const& i: _storage)
-		t.storage.push_back((u256)i);
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
+	t.gas = *_gas;
 	t.nonce = transactionsFrom(_txSender);
-	Address newAddress = right160(t.sha3());
+	t.init = _init.toBytes();
+	t.data = _code.toBytes();
 
+	return create(t, _txSender, _gas);
+}
+
+Address State::create(Transaction const& _t, Address _sender, u256* _gas)
+{
+	Address newAddress = right160(_t.sha3(false));
 	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
 		newAddress = (u160)newAddress + 1;
 
-	// Increment associated nonce for sender.
-	noteSending(_txSender);
-
 	// Set up new account...
-	m_cache[newAddress] = AddressState(_endowment, 0, AddressType::Contract);
-	auto& mem = m_cache[newAddress].memory();
-	for (uint i = 0; i < _storage.size(); ++i)
-		mem[i] = (u256)_storage[i];
+	m_cache[newAddress] = AddressState(0, 0, &_t.data);
+
+	// Execute _init.
+	VM vm(*_gas);
+	ExtVM evm(*this, newAddress, _sender, _t.value, _t.gasPrice, bytesConstRef(), &_t.init);
+	bool revert = false;
+
+	// Increment associated nonce for sender.
+	noteSending(_sender);
+
+	try
+	{
+		/*auto out =*/ vm.go(evm);
+		// Don't do anything with the output (yet).
+		//memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+	}
+	catch (OutOfGas const& /*_e*/)
+	{
+		clog(StateChat) << "Out of Gas! Reverting.";
+		revert = true;
+	}
+	catch (VMException const& _e)
+	{
+		clog(StateChat) << "VM Exception: " << _e.description();
+	}
+	catch (Exception const& _e)
+	{
+		clog(StateChat) << "Exception in VM: " << _e.description();
+	}
+	catch (std::exception const& _e)
+	{
+		clog(StateChat) << "std::exception in VM: " << _e.what();
+	}
+
+	// Write state out only in the case of a non-excepted transaction.
+	if (revert)
+	{
+		evm.revert();
+		m_cache.erase(newAddress);
+		newAddress = Address();
+	}
+
+	*_gas = vm.gas();
 
 	return newAddress;
 }

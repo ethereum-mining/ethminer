@@ -143,6 +143,15 @@ std::string randomWord();
 
 // General datatype convenience functions.
 
+/// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
+template <class _T>
+inline uint bytesRequired(_T _i)
+{
+	uint i = 0;
+	for (; _i != 0; ++i, _i >>= 8) {}
+	return i;
+}
+
 /// Trims a given number of elements from the front of a collection.
 /// Only works for POD element types.
 template <class _T>

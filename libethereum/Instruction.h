@@ -69,8 +69,7 @@ enum class Instruction: uint8_t
 	DIFFICULTY,
 	GASLIMIT,
 
-	PUSH = 0x50,
-	POP,
+	POP = 0x50,
 	DUP,
 	SWAP,
 	MLOAD,
@@ -84,10 +83,43 @@ enum class Instruction: uint8_t
 	MEMSIZE,
 	GAS,
 
-	CREATE = 0x60,
+	PUSH1 = 0x60,
+	PUSH2,
+	PUSH3,
+	PUSH4,
+	PUSH5,
+	PUSH6,
+	PUSH7,
+	PUSH8,
+	PUSH9,
+	PUSH10,
+	PUSH11,
+	PUSH12,
+	PUSH13,
+	PUSH14,
+	PUSH15,
+	PUSH16,
+	PUSH17,
+	PUSH18,
+	PUSH19,
+	PUSH20,
+	PUSH21,
+	PUSH22,
+	PUSH23,
+	PUSH24,
+	PUSH25,
+	PUSH26,
+	PUSH27,
+	PUSH28,
+	PUSH29,
+	PUSH30,
+	PUSH31,
+	PUSH32,
+
+	CREATE = 0xf0,
 	CALL,
 	RETURN,
-	SUICIDE = 0x7f
+	SUICIDE = 0xff
 };
 
 /// Information structure for a particular instruction.
@@ -106,12 +138,12 @@ extern const std::map<Instruction, InstructionInfo> c_instructionInfo;
 extern const std::map<std::string, Instruction> c_instructions;
 
 /// Convert from simple EVM assembly language to EVM code.
-u256s assemble(std::string const& _code, bool _quiet = false);
+bytes assemble(std::string const& _code, bool _quiet = false);
 
 /// Convert from EVM code to simple EVM assembly language.
-std::string disassemble(u256s const& _mem);
+std::string disassemble(bytes const& _mem);
 
 /// Compile a Low-level Lisp-like Language program into EVM-code.
-u256s compileLisp(std::string const& _code, bool _quiet = false);
+bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
 
 }

@@ -37,14 +37,10 @@ enum class AddressType
 class AddressState
 {
 public:
-	AddressState(): m_type(AddressType::Dead), m_balance(0), m_nonce(0), m_haveMemory(false) {}
-	AddressState(u256 _balance, u256 _nonce, AddressType _type = AddressType::Normal): m_type(_type), m_balance(_balance), m_nonce(_nonce), m_haveMemory(true) {}
-	AddressState(u256 _balance, u256 _nonce, h256 _contractRoot): m_type(AddressType::Contract), m_balance(_balance), m_nonce(_nonce), m_haveMemory(false), m_contractRoot(_contractRoot) {}
-	AddressState(u256 _balance, u256 _nonce, u256s _memory): m_type(AddressType::Contract), m_balance(_balance), m_nonce(_nonce), m_haveMemory(true)
-	{
-		for (unsigned i = 0; i < _memory.size(); ++i)
-			m_memory[(u256)i] = _memory[i];
-	}
+	AddressState(): m_type(AddressType::Dead), m_balance(0), m_nonce(0), m_isComplete(false) {}
+	AddressState(u256 _balance, u256 _nonce, AddressType _type = AddressType::Normal): m_type(_type), m_balance(_balance), m_nonce(_nonce), m_isComplete(true) {}
+	AddressState(u256 _balance, u256 _nonce, h256 _contractRoot, h256 _codeHash): m_type(AddressType::Contract), m_balance(_balance), m_nonce(_nonce), m_isComplete(false), m_contractRoot(_contractRoot), m_codeHash(_codeHash) {}
+	AddressState(u256 _balance, u256 _nonce, bytesConstRef _code);
 
 	void incNonce() { m_nonce++; }
 	void addBalance(bigint _i) { m_balance = (u256)((bigint)m_balance + _i); }
@@ -55,20 +51,25 @@ public:
 	u256 const& balance() const { return m_balance; }
 	u256& nonce() { return m_nonce; }
 	u256 const& nonce() const { return m_nonce; }
-	bool haveMemory() const { return m_haveMemory; }
-	std::map<u256, u256>& setHaveMemory() { assert(m_type == AddressType::Contract); m_haveMemory = true; m_contractRoot = h256(); return m_memory; }
-	h256 oldRoot() const { assert(!haveMemory()); return m_contractRoot; }
-	std::map<u256, u256>& memory() { assert(m_type == AddressType::Contract && haveMemory()); return m_memory; }
-	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract && haveMemory()); return m_memory; }
+	bool isComplete() const { return m_isComplete; }
+	std::map<u256, u256>& setIsComplete(bytesConstRef _code) { assert(m_type == AddressType::Contract); m_isComplete = true; m_contractRoot = h256(); m_code = _code.toBytes(); return m_memory; }
+	h256 oldRoot() const { assert(!isComplete()); return m_contractRoot; }
+	h256 codeHash() const { assert(m_codeHash); return m_codeHash; }
+	std::map<u256, u256>& memory() { assert(m_type == AddressType::Contract && isComplete()); return m_memory; }
+	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract && isComplete()); return m_memory; }
+	bytes const& code() const { assert(m_type == AddressType::Contract && isComplete()); return m_code; }
+	bool freshCode() const { return !m_codeHash && m_isComplete; }
 
 private:
 	AddressType m_type;
 	u256 m_balance;
 	u256 m_nonce;
-	bool m_haveMemory;
+	bool m_isComplete;
 	h256 m_contractRoot;
+	h256 m_codeHash;	// if 0 and m_isComplete, has been created and needs to be inserted.
 	// TODO: change to unordered_map.
 	std::map<u256, u256> m_memory;
+	bytes m_code;
 };
 
 }

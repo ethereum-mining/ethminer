@@ -83,8 +83,8 @@ private:
 	QStringList m_servers;
 	QVector<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
-	eth::u256s m_storage;
 	eth::bytes m_data;
+	eth::bytes m_init;
 	eth::Address m_nameReg;
 
 	QNetworkAccessManager m_webCtrl;
