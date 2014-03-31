@@ -438,39 +438,23 @@ void Main::on_contracts_currentItemChanged()
 		stringstream s;
 		auto mem = state().contractMemory(h);
 		u256 next = 0;
-		unsigned numerics = 0;
-		bool unexpectedNumeric = false;
 		for (auto const& i: mem)
 		{
 			if (next < i.first)
 			{
 				unsigned j;
-				for (j = 0; j <= numerics && next + j < i.first; ++j)
-					s << (j < numerics || unexpectedNumeric ? " 0" : " <b>STOP</b>");
-				unexpectedNumeric = false;
-				numerics -= min(numerics, j);
+				for (j = 0; next + j < i.first; ++j)
+					s << " 0";
 				if (next + j < i.first)
 					s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
 			}
 			else if (!next)
 				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
-			auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
-			if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
-			{
-				if (numerics)
-					numerics--;
-				else
-					unexpectedNumeric = true;
-				s << " " << showbase << hex << i.second;
-			}
-			else
-			{
-				auto const& ii = iit->second;
-				s << " <b>" << ii.name << "</b>";
-				numerics = ii.additional;
-			}
+			s << " " << showbase << hex << i.second;
 			next = i.first + 1;
 		}
+		s << "<br/><br/>Code:";
+		s << "<br/>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
 	m_client->unlock();
@@ -568,11 +552,15 @@ u256 Main::fee() const
 
 u256 Main::value() const
 {
+	if (ui->valueUnits->currentIndex() == -1)
+		return 0;
 	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
 }
 
 u256 Main::gasPrice() const
 {
+	if (ui->gasPriceUnits->currentIndex() == -1)
+		return 0;
 	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
 }
 

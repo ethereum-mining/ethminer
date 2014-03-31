@@ -119,7 +119,7 @@ void Transaction::sign(Secret _priv)
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
-	_s.appendList((_sig ? 3 : 0) + (isCreation() ? 6 : 7));
+	_s.appendList((_sig ? 3 : 0) + (isCreation() ? 7 : 6));
 	_s << nonce << value << receiveAddress << gasPrice << gas << data;
 	if (isCreation())
 		_s << init;

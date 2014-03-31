@@ -414,7 +414,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 				{
 					bytes codes;
 					vector<unsigned> locs;
-					if (compileLispFragment(d, e, _quiet, codes, locs))
+					if (compileLispFragment(d, e, _quiet, codes, locs) != -1)
 					{
 						appendCode(o_code, o_locs, codes, locs);
 						while (compileLispFragment(d, e, _quiet, codes, locs) != -1)
