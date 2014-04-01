@@ -37,6 +37,8 @@ using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
+using eth::sha3;
+using eth::left160;
 using eth::right160;
 using eth::simpleDebugOut;
 using eth::toLog2;
@@ -287,7 +289,7 @@ void Main::refresh(bool _override)
 				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
-					.arg(render(right160(t.sha3())))
+					.arg(render(left160(sha3(rlpList(t.safeSender(), t.nonce)))))
 					.arg((unsigned)t.nonce);
 			ui->transactionQueue->addItem(s);
 		}
@@ -313,7 +315,7 @@ void Main::refresh(bool _override)
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
-						.arg(render(right160(t.sha3())))
+						.arg(render(left160(sha3(rlpList(t.safeSender(), t.nonce)))))
 						.arg((unsigned)t.nonce);
 				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
@@ -390,13 +392,13 @@ void Main::on_blocks_currentItemChanged()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			Transaction tx(block[1][txi].data());
-			h256 th = tx.sha3();
+			auto ss = tx.safeSender();
+			h256 th = sha3(rlpList(ss, tx.nonce));
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
-			auto ss = tx.safeSender();
 			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
 			if (tx.isCreation())
-				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
+				s << "<br/>Creates: <b>" << pretty(left160(th)).toStdString() << "</b> " << left160(th);
 			else
 				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";

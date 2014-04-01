@@ -529,6 +529,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						return false;
 
 					unsigned startLocation = (unsigned)o_code.size();
+					o_locs.push_back(startLocation);
 
 					// First fragment - predicate
 					appendCode(o_code, o_locs, codes[0], locs[0]);
