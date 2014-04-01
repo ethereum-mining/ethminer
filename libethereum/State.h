@@ -275,6 +275,9 @@ public:
 
 	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 	{
+		// Increment associated nonce for sender.
+		m_s.noteSending(myAddress);
+
 		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init);
 	}
 

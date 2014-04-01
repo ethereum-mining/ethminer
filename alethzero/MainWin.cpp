@@ -506,7 +506,7 @@ void Main::on_data_textChanged()
 	}
 	else
 	{
-		string code = ui->data->toPlainText().replace(" ", "").toStdString();
+		string code = ui->data->toPlainText().replace(" ", "").replace("\n", "").replace("\t", "").toStdString();
 		try
 		{
 			m_data = fromHex(code);
