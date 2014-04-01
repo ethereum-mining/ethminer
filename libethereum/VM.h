@@ -36,12 +36,14 @@ namespace eth
 // Currently we just pull out the right (low-order in BE) 160-bits.
 inline Address asAddress(u256 _item)
 {
-	return right160(h256(_item));
+	return left160(h256(_item));
 }
 
 inline u256 fromAddress(Address _a)
 {
-	return (u160)_a;
+	u256 ret;
+	memcpy(&_a, &ret, sizeof(_a));
+	return ret;
 }
 
 /**
@@ -311,7 +313,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::CALLDATALOAD:
 		{
 			require(1);
-			if ((unsigned)m_stack.back() < _ext.txData.size() + 32)
+			if ((unsigned)m_stack.back() + 32 < _ext.txData.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.txData.data() + (unsigned)m_stack.back());
 			else
 			{
