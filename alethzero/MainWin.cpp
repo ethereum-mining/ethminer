@@ -437,23 +437,9 @@ void Main::on_contracts_currentItemChanged()
 
 		stringstream s;
 		auto mem = state().contractMemory(h);
-		u256 next = 0;
 		for (auto const& i: mem)
-		{
-			if (next < i.first)
-			{
-				unsigned j;
-				for (j = 0; next + j < i.first; ++j)
-					s << " 0";
-				if (next + j < i.first)
-					s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
-			}
-			else if (!next)
-				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
-			s << " " << showbase << hex << i.second;
-			next = i.first + 1;
-		}
-		s << "<br/><br/>Code:";
+			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+		s << "<br/>Code:";
 		s << "<br/>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}

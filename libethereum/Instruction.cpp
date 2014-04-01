@@ -141,7 +141,7 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::CALLER, { "CALLER", 0, 0, 1 } },
 	{ Instruction::CALLVALUE, { "CALLVALUE", 0, 0, 1 } },
 	{ Instruction::CALLDATALOAD, { "CALLDATALOAD", 0, 1, 1 } },
-	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 1, 1 } },
+	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 0, 1 } },
 	{ Instruction::GASPRICE, { "BASEFEE", 0, 0, 1 } },
 	{ Instruction::PREVHASH, { "PREVHASH", 0, 0, 1 } },
 	{ Instruction::COINBASE, { "COINBASE", 0, 0, 1 } },
@@ -766,28 +766,25 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						auto it = c_arith.find(t);
 						if (it != c_arith.end())
 						{
-							int i = 0;
+							vector<pair<bytes, vector<unsigned>>> codes(1);
+							int totalArgs = 0;
 							while (d != e)
 							{
-								bytes codes;
-								vector<unsigned> locs;
-								int o = compileLispFragment(d, e, _quiet, codes, locs);
-								if (o == -1)
-								{
-									if (!i)
-										cwarn << "Expected at least one argument to operation" << t;
+								int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+								if (o < 1)
 									break;
-								}
-								if (o == 0)
-								{
-									cwarn << "null operation given to " << t;
-									break;
-								}
-								appendCode(o_code, o_locs, codes, locs);
-								i += o;
-								for (; i > 1; --i)
-									o_code.push_back((byte)it->second);
+								codes.push_back(pair<bytes, vector<unsigned>>());
+								totalArgs += o;
 							}
+							codes.pop_back();
+							if (!totalArgs)
+							{
+								cwarn << "Expected at least one argument to operation" << t;
+								break;
+							}
+							for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
+								appendCode(o_code, o_locs, jt->first, jt->second);
+							o_code.push_back((byte)it->second);
 						}
 						else
 						{
@@ -814,7 +811,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 								for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
 									appendCode(o_code, o_locs, jt->first, jt->second);
 								if (it->second.second)
-									o_code.push_back((byte)Instruction::EQ);
+									o_code.push_back((byte)Instruction::NOT);
 								o_code.push_back((byte)it->second.first);
 							}
 							else
