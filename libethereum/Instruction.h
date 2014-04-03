@@ -42,46 +42,84 @@ enum class Instruction: uint8_t
 	EXP,
 	NEG,
 	LT,
-	LE,
 	GT,
-	GE,
 	EQ,
 	NOT,
-	MYADDRESS,			///< pushes the transaction sender
-	TXSENDER,			///< pushes the transaction sender
-	TXVALUE	,			///< pushes the transaction value
-	TXDATAN,			///< pushes the number of data items
-	TXDATA,				///< pops one item and pushes data item S[-1], or zero if index out of range
-	BLK_PREVHASH,		///< pushes the hash of the previous block (NOT the current one since that's impossible!)
-	BLK_COINBASE,		///< pushes the coinbase of the current block
-	BLK_TIMESTAMP,		///< pushes the timestamp of the current block
-	BLK_NUMBER,			///< pushes the current block number
-	BLK_DIFFICULTY,		///< pushes the difficulty of the current block
-	BLK_NONCE,
-	BASEFEE,
-	SHA256 = 0x20,
-	RIPEMD160,
-	ECMUL,
-	ECADD,
-	ECSIGN,
-	ECRECOVER,
-	ECVALID,
-	SHA3,
-	PUSH = 0x30,
-	POP,
+
+	AND = 0x10,
+	OR,
+	XOR,
+	BYTE,
+
+	SHA3 = 0x20,
+
+	ADDRESS = 0x30,
+	BALANCE,
+	ORIGIN,
+	CALLER,
+	CALLVALUE,
+	CALLDATALOAD,
+	CALLDATASIZE,
+	GASPRICE,
+
+	PREVHASH = 0x40,
+	COINBASE,
+	TIMESTAMP,
+	NUMBER,
+	DIFFICULTY,
+	GASLIMIT,
+
+	POP = 0x50,
 	DUP,
 	SWAP,
 	MLOAD,
 	MSTORE,
+	MSTORE8,
 	SLOAD,
 	SSTORE,
-	JMP,
-	JMPI,
-	IND,
-	EXTRO,
-	BALANCE,
-	MKTX,
-	SUICIDE = 0x3f
+	JUMP,
+	JUMPI,
+	PC,
+	MEMSIZE,
+	GAS,
+
+	PUSH1 = 0x60,
+	PUSH2,
+	PUSH3,
+	PUSH4,
+	PUSH5,
+	PUSH6,
+	PUSH7,
+	PUSH8,
+	PUSH9,
+	PUSH10,
+	PUSH11,
+	PUSH12,
+	PUSH13,
+	PUSH14,
+	PUSH15,
+	PUSH16,
+	PUSH17,
+	PUSH18,
+	PUSH19,
+	PUSH20,
+	PUSH21,
+	PUSH22,
+	PUSH23,
+	PUSH24,
+	PUSH25,
+	PUSH26,
+	PUSH27,
+	PUSH28,
+	PUSH29,
+	PUSH30,
+	PUSH31,
+	PUSH32,
+
+	CREATE = 0xf0,
+	CALL,
+	RETURN,
+	SUICIDE = 0xff
 };
 
 /// Information structure for a particular instruction.
@@ -100,12 +138,12 @@ extern const std::map<Instruction, InstructionInfo> c_instructionInfo;
 extern const std::map<std::string, Instruction> c_instructions;
 
 /// Convert from simple EVM assembly language to EVM code.
-u256s assemble(std::string const& _code, bool _quiet = false);
+bytes assemble(std::string const& _code, bool _quiet = false);
 
 /// Convert from EVM code to simple EVM assembly language.
-std::string disassemble(u256s const& _mem);
+std::string disassemble(bytes const& _mem);
 
 /// Compile a Low-level Lisp-like Language program into EVM-code.
-u256s compileLisp(std::string const& _code, bool _quiet = false);
+bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
 
 }

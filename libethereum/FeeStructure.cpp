@@ -24,26 +24,12 @@
 using namespace std;
 using namespace eth;
 
-u256 const c_stepFee = 1;
-u256 const c_dataFee = 20;
-u256 const c_memoryFee = 5;
-u256 const c_extroFee = 40;
-u256 const c_cryptoFee = 20;
-u256 const c_newContractFee = 100;
-u256 const c_txFee = 100;
-
-void FeeStructure::setMultiplier(u256 _x)
-{
-	m_stepFee = c_stepFee * _x;
-	m_dataFee = c_dataFee * _x;
-	m_memoryFee = c_memoryFee * _x;
-	m_extroFee = c_extroFee * _x;
-	m_cryptoFee = c_cryptoFee * _x;
-	m_newContractFee = c_newContractFee * _x;
-	m_txFee = c_txFee * _x;
-}
-
-u256 FeeStructure::multiplier() const
-{
-	return m_stepFee / c_stepFee;
-}
+u256 const eth::c_stepGas = 1;
+u256 const eth::c_balanceGas = 20;
+u256 const eth::c_sha3Gas = 20;
+u256 const eth::c_sloadGas = 20;
+u256 const eth::c_sstoreGas = 100;
+u256 const eth::c_createGas = 100;
+u256 const eth::c_callGas = 20;
+u256 const eth::c_memoryGas = 1;
+u256 const eth::c_txDataGas = 5;
