@@ -616,14 +616,14 @@ void State::execute(bytesConstRef _rlp)
 		throw InvalidNonce(nonceReq, t.nonce);
 	}
 
-	// Don't like transactions whose gas price is too low.
+	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas proce discovery protocol going.
 	if (t.gasPrice < 10 * szabo)
 	{
 		clog(StateChat) << "Offered gas-price is too low.";
 		throw GasPriceTooLow();
 	}
 
-	// Entry point for a contract-originated transaction.
+	// Check gas cost is enough.
 	u256 gasCost;
 	if (t.isCreation())
 		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;

@@ -41,8 +41,8 @@ inline Address asAddress(u256 _item)
 
 inline u256 fromAddress(Address _a)
 {
-	u256 ret;
-	memcpy(&_a, &ret, sizeof(_a));
+	h256 ret;
+	memcpy(&ret, &_a, sizeof(_a));
 	return ret;
 }
 
@@ -176,7 +176,8 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 
 		m_gas = (u256)((bigint)m_gas - runGas);
 
-		m_temp.resize(newTempSize);
+		if (newTempSize > m_temp.size())
+			m_temp.resize(newTempSize);
 
 		// EXECUTE...
 		switch (inst)
