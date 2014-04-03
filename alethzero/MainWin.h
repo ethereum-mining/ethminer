@@ -87,6 +87,8 @@ private:
 	eth::bytes m_init;
 	eth::Address m_nameReg;
 
+	unsigned m_backupGas;
+
 	QNetworkAccessManager m_webCtrl;
 };
 
