@@ -73,6 +73,7 @@ public:
 
 	Address myAddress;
 	Address txSender;
+	Address origin;
 	u256 txValue;
 	u256 gasPrice;
 	bytesConstRef txData;

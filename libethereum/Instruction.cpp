@@ -493,6 +493,8 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 
 					// First fragment - predicate
 					appendCode(o_code, o_locs, codes[0], locs[0]);
+					if (t == "WHEN")
+						o_code.push_back((byte)Instruction::NOT);
 
 					// Push the positive location.
 					unsigned endLocation = (unsigned)o_code.size();
@@ -500,8 +502,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					pushLocation(o_code, 0);
 
 					// Jump to end...
-					if (t == "WHEN")
-						o_code.push_back((byte)Instruction::NOT);
 					o_code.push_back((byte)Instruction::JUMPI);
 
 					// Second fragment - negative.
@@ -532,6 +532,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 
 					// First fragment - predicate
 					appendCode(o_code, o_locs, codes[0], locs[0]);
+					o_code.push_back((byte)Instruction::NOT);
 
 					// Push the positive location.
 					unsigned endInsertion = (unsigned)o_code.size();
@@ -539,7 +540,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					pushLocation(o_code, 0);
 
 					// Jump to positive if true.
-					o_code.push_back((byte)Instruction::NOT);
 					o_code.push_back((byte)Instruction::JUMPI);
 
 					// Second fragment - negative.
