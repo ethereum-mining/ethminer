@@ -509,25 +509,49 @@ void Main::on_data_textChanged()
 		m_data = compileLisp(code, true, m_init);
 		ui->code->setPlainText(QString::fromStdString(disassemble(m_data)) + "\n; Init:" + QString::fromStdString(disassemble(m_init)));
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
+		if (!ui->gas->isEnabled())
+			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
 	}
 	else
 	{
-		string code = ui->data->toPlainText().replace(" ", "").replace("\n", "").replace("\t", "").toStdString();
-		try
+		m_data.clear();
+		QString s = ui->data->toPlainText();
+		while (s.size())
 		{
-			m_data = fromHex(code);
+			QRegExp r("@?\"(.*)\"(.*)");
+			QRegExp h("([a-fA-F0-9][a-fA-F0-9])(.*)");
+			if (r.exactMatch(s))
+			{
+				for (auto i: r.cap(1))
+					m_data.push_back((byte)i.toLatin1());
+				if (s[0] == '@')
+					m_data.push_back(0);
+				else
+					for (int i = r.cap(1).size(); i < 32; ++i)
+						m_data.push_back(0);
+				s = r.cap(2);
+			}
+			else if (h.exactMatch(s))
+			{
+				m_data.push_back(fromHex(h.cap(1).toStdString())[0]);
+				s = h.cap(2);
+			}
+			else
+				s = s.mid(1);
 		}
-		catch (...)
-		{}
 		ui->code->setPlainText(QString::fromStdString(toHex(m_data)));
 		if (m_client->postState().isContractAddress(fromString(ui->destination->text())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
+			if (!ui->gas->isEnabled())
+				ui->gas->setValue(m_backupGas);
 			ui->gas->setEnabled(true);
 		}
 		else
 		{
+			if (ui->gas->isEnabled())
+				m_backupGas = ui->gas->value();
 			ui->gas->setValue((qint64)state().callGas(m_data.size()));
 			ui->gas->setEnabled(false);
 		}
