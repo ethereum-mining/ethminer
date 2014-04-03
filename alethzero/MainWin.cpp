@@ -117,9 +117,16 @@ Main::~Main()
 	writeSettings();
 }
 
+inline h256 fromAddress(Address _a)
+{
+	h256 ret;
+	memcpy(&ret, &_a, sizeof(_a));
+	return ret;
+}
+
 QString Main::pretty(eth::Address _a) const
 {
-	if (h256 n = state().contractMemory(m_nameReg, (h256)(u256)(u160)_a))
+	if (h256 n = state().contractMemory(m_nameReg, fromAddress(_a)))
 	{
 		std::string s((char const*)n.data(), 32);
 		if (s.find_first_of('\0') != string::npos)
@@ -147,7 +154,7 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 		if (h256 a = state().contractMemory(m_nameReg, n))
-			return right160(a);
+			return left160(a);
 	if (_a.size() == 40)
 		return Address(fromHex(_a.toStdString()));
 	else
@@ -216,9 +223,9 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	if (s.value("nameReg").toString() == "11f62328e131dbb05ce4c73a3de3c7ab1c84a163")
+	if (s.value("nameReg").toString() == "c5c00217ce5acb4f0be2fb85929b11b8eeea0096")
 		s.remove("nameReg");
-	ui->nameReg->setText(s.value("nameReg", "8ff91e5b145a23ab1afef34f12587c18bd42aec0").toString());
+	ui->nameReg->setText(s.value("nameReg", "3f795321dd223e3d94c8f89b149ddab3b9c9b5d7").toString());
 
 }
 
