@@ -93,6 +93,10 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		unsigned newTempSize = (unsigned)m_temp.size();
 		switch (inst)
 		{
+		case Instruction::STOP:
+			runGas = 0;
+			break;
+
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])

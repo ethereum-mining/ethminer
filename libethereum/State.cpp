@@ -723,7 +723,7 @@ bool State::call(Address _receiveAddress, Address _sendAddress, u256 _value, u25
 
 h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 {
-	Address newAddress = left160(sha3(rlpList(_sender, transactionsFrom(_sender))));
+	Address newAddress = left160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
 		newAddress = (u160)newAddress + 1;
 
@@ -734,9 +734,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	VM vm(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _endowment, _gasPrice, bytesConstRef(), _init);
 	bool revert = false;
-
-	// Increment associated nonce for sender.
-	noteSending(_sender);
 
 	try
 	{
