@@ -72,7 +72,6 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_ourAddress(_coinbaseAddress)
 {
 	m_blockReward = 1500 * finney;
-	m_fees.setMultiplier(100 * szabo);
 
 	secp256k1_start();
 
@@ -98,7 +97,6 @@ State::State(State const& _s):
 	m_currentBlock(_s.m_currentBlock),
 	m_currentNumber(_s.m_currentNumber),
 	m_ourAddress(_s.m_ourAddress),
-	m_fees(_s.m_fees),
 	m_blockReward(_s.m_blockReward)
 {
 }
@@ -114,15 +112,19 @@ State& State::operator=(State const& _s)
 	m_currentBlock = _s.m_currentBlock;
 	m_currentNumber = _s.m_currentNumber;
 	m_ourAddress = _s.m_ourAddress;
-	m_fees = _s.m_fees;
 	m_blockReward = _s.m_blockReward;
 	return *this;
 }
 
 void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
 {
-	auto it = m_cache.find(_a);
-	if (it == m_cache.end())
+	ensureCached(m_cache, _a, _requireMemory, _forceCreate);
+}
+
+void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireMemory, bool _forceCreate) const
+{
+	auto it = _cache.find(_a);
+	if (it == _cache.end())
 	{
 		// populate basic info.
 		string stateBack = m_state.at(_a);
@@ -135,16 +137,16 @@ void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) con
 		else if (state.itemCount() == 2)
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>());
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>());
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
-		tie(it, ok) = m_cache.insert(make_pair(_a, s));
+		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
-	if (_requireMemory && !it->second.haveMemory())
+	if (_requireMemory && !it->second.isComplete())
 	{
 		// Populate memory.
 		assert(it->second.type() == AddressType::Contract);
 		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-		map<u256, u256>& mem = it->second.setHaveMemory();
+		map<u256, u256>& mem = it->second.setIsComplete(bytesConstRef(m_db.lookup(it->second.codeHash())));
 		for (auto const& i: memdb)
 			mem[i.first] = RLP(i.second).toInt<u256>();
 	}
@@ -570,7 +572,7 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end() || it->second.type() != AddressType::Contract)
 		return 0;
-	else if (it->second.haveMemory())
+	else if (it->second.isComplete())
 	{
 		auto mit = it->second.memory().find(_memory);
 		if (mit == it->second.memory().end())
@@ -591,18 +593,183 @@ map<u256, u256> const& State::contractMemory(Address _contract) const
 	return m_cache[_contract].memory();
 }
 
+bytes const& State::contractCode(Address _contract) const
+{
+	if (!isContractAddress(_contract))
+		return EmptyBytes;
+	ensureCached(_contract, true, true);
+	return m_cache[_contract].code();
+}
+
 void State::execute(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
 	Transaction t(_rlp);
-	executeBare(t, t.sender());
+
+	auto sender = t.sender();
+
+	// Avoid invalid transactions.
+	auto nonceReq = transactionsFrom(sender);
+	if (t.nonce != nonceReq)
+	{
+		clog(StateChat) << "Invalid Nonce.";
+		throw InvalidNonce(nonceReq, t.nonce);
+	}
+
+	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas proce discovery protocol going.
+	if (t.gasPrice < 10 * szabo)
+	{
+		clog(StateChat) << "Offered gas-price is too low.";
+		throw GasPriceTooLow();
+	}
+
+	// Check gas cost is enough.
+	u256 gasCost;
+	if (t.isCreation())
+		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;
+	else
+		gasCost = t.data.size() * c_txDataGas + c_callGas;
+
+	if (t.gas < gasCost)
+	{
+		clog(StateChat) << "Not enough gas to pay for the transaction.";
+		throw OutOfGas();
+	}
+
+	u256 cost = t.value + t.gas * t.gasPrice;
+
+	// Avoid unaffordable transactions.
+	if (balance(sender) < cost)
+	{
+		clog(StateChat) << "Not enough cash.";
+		throw NotEnoughCash();
+	}
+
+	u256 gas = t.gas - gasCost;
+
+	// Increment associated nonce for sender.
+	noteSending(sender);
+
+	// Pay...
+	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
+	subBalance(sender, cost);
+
+	if (t.isCreation())
+		create(sender, t.value, t.gasPrice, &gas, &t.data, &t.init);
+	else
+		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
+
+	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
+	addBalance(sender, gas * t.gasPrice);
+
+	u256 gasSpent = (t.gas - gas) * t.gasPrice;
+/*	unsigned c_feesKept = 8;
+	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
+	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
+*/
+	u256 feesEarned = gasSpent;
+	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
+	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Add to the user-originated transactions that we've executed.
-	// NOTE: Here, contract-originated transactions will not get added to the transaction list.
-	// If this is wrong, move this line into execute(Transaction const& _t, Address _sender) and
-	// don't forget to allow unsigned transactions in the tx list if they concur with the script execution.
 	m_transactions.push_back(t);
 	m_transactionSet.insert(t.sha3());
+}
+
+bool State::call(Address _receiveAddress, Address _sendAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out)
+{
+	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+	addBalance(_receiveAddress, _value);
+
+	if (isContractAddress(_receiveAddress))
+	{
+		VM vm(*_gas);
+		ExtVM evm(*this, _receiveAddress, _sendAddress, _value, _gasPrice, _data, &contractCode(_receiveAddress));
+		bool revert = false;
+
+		try
+		{
+			auto out = vm.go(evm);
+			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+		}
+		catch (OutOfGas const& /*_e*/)
+		{
+			clog(StateChat) << "Out of Gas! Reverting.";
+			revert = true;
+		}
+		catch (VMException const& _e)
+		{
+			clog(StateChat) << "VM Exception: " << _e.description();
+		}
+		catch (Exception const& _e)
+		{
+			clog(StateChat) << "Exception in VM: " << _e.description();
+		}
+		catch (std::exception const& _e)
+		{
+			clog(StateChat) << "std::exception in VM: " << _e.what();
+		}
+
+		// Write state out only in the case of a non-excepted transaction.
+		if (revert)
+			evm.revert();
+
+		*_gas = vm.gas();
+
+		return !revert;
+	}
+	return true;
+}
+
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
+{
+	Address newAddress = left160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
+	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
+		newAddress = (u160)newAddress + 1;
+
+	// Set up new account...
+	m_cache[newAddress] = AddressState(0, 0, _code);
+
+	// Execute _init.
+	VM vm(*_gas);
+	ExtVM evm(*this, newAddress, _sender, _endowment, _gasPrice, bytesConstRef(), _init);
+	bool revert = false;
+
+	try
+	{
+		/*auto out =*/ vm.go(evm);
+		// Don't do anything with the output (yet).
+		//memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+	}
+	catch (OutOfGas const& /*_e*/)
+	{
+		clog(StateChat) << "Out of Gas! Reverting.";
+		revert = true;
+	}
+	catch (VMException const& _e)
+	{
+		clog(StateChat) << "VM Exception: " << _e.description();
+	}
+	catch (Exception const& _e)
+	{
+		clog(StateChat) << "Exception in VM: " << _e.description();
+	}
+	catch (std::exception const& _e)
+	{
+		clog(StateChat) << "std::exception in VM: " << _e.what();
+	}
+
+	// Write state out only in the case of a non-excepted transaction.
+	if (revert)
+	{
+		evm.revert();
+		m_cache.erase(newAddress);
+		newAddress = Address();
+	}
+
+	*_gas = vm.gas();
+
+	return newAddress;
 }
 
 void State::applyRewards(Addresses const& _uncleAddresses)
@@ -625,103 +792,4 @@ void State::unapplyRewards(Addresses const& _uncleAddresses)
 		r += m_blockReward / 8;
 	}
 	subBalance(m_currentBlock.coinbaseAddress, r);
-}
-
-void State::executeBare(Transaction const& _t, Address _sender)
-{
-#if ETH_DEBUG
-	commit();
-	clog(StateChat) << "State:" << rootHash();
-	clog(StateChat) << "Executing TX:" << _t;
-#endif
-
-	// Entry point for a contract-originated transaction.
-
-	// Ignore invalid transactions.
-	auto nonceReq = transactionsFrom(_sender);
-	if (_t.nonce != nonceReq)
-	{
-		clog(StateChat) << "Invalid Nonce.";
-		throw InvalidNonce(nonceReq, _t.nonce);
-	}
-
-	unsigned nonZeroData = 0;
-	for (auto i: _t.data)
-		if (i)
-			nonZeroData++;
-	u256 fee = _t.receiveAddress ? m_fees.m_txFee : (nonZeroData * m_fees.m_memoryFee + m_fees.m_newContractFee);
-
-	// Not considered invalid - just pointless.
-	if (balance(_sender) < _t.value + fee)
-	{
-		clog(StateChat) << "Not enough cash.";
-		throw NotEnoughCash();
-	}
-
-	if (_t.receiveAddress)
-	{
-		// Increment associated nonce for sender.
-		noteSending(_sender);
-
-		// Pay...
-		subBalance(_sender, _t.value + fee);
-		addBalance(_t.receiveAddress, _t.value);
-
-		if (isContractAddress(_t.receiveAddress))
-		{
-			// Once we get here, there's no going back.
-			try
-			{
-				MinerFeeAdder feeAdder({this, 0});	// will add fee on destruction.
-				execute(_t.receiveAddress, _sender, _t.value, _t.data, &feeAdder.fee);
-			}
-			catch (VMException const& _e)
-			{
-				clog(StateChat) << "VM Exception: " << _e.description();
-			}
-			catch (Exception const& _e)
-			{
-				clog(StateChat) << "Exception in VM: " << _e.description();
-			}
-			catch (std::exception const& _e)
-			{
-				clog(StateChat) << "std::exception in VM: " << _e.what();
-			}
-		}
-	}
-	else
-	{
-		Address newAddress = right160(_t.sha3());
-
-		if (isContractAddress(newAddress) || isNormalAddress(newAddress))
-		{
-			clog(StateChat) << "Contract address collision.";
-			throw ContractAddressCollision();
-		}
-
-		// Increment associated nonce for sender.
-		noteSending(_sender);
-
-		// Pay out of sender...
-		subBalance(_sender, _t.value + fee);
-
-		// Set up new account...
-		m_cache[newAddress] = AddressState(_t.value, 0, AddressType::Contract);
-		auto& mem = m_cache[newAddress].memory();
-		for (uint i = 0; i < _t.data.size(); ++i)
-			mem[i] = _t.data[i];
-	}
-
-#if ETH_DEBUG
-	commit();
-	clog(StateChat) << "New state:" << rootHash();
-#endif
-}
-
-void State::execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* _totalFee)
-{
-	VM vm;
-	ExtVM evm(*this, _myAddress, _txSender, _txValue, _txData);
-	vm.go(evm);
-	*_totalFee = vm.runFee();
 }

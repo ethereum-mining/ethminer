@@ -46,6 +46,8 @@ std::map<Address, AddressState> const& genesisState();
 
 static const std::map<u256, u256> EmptyMapU256U256;
 
+static const bytes EmptyBytes;
+
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
 class ExtVM;
@@ -119,6 +121,7 @@ public:
 	bool cull(TransactionQueue& _tq) const;
 
 	/// Execute a given transaction.
+	/// This will append @a _t to the transaction list and change the state accordingly.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
 	void execute(bytesConstRef _rlp);
 
@@ -150,6 +153,10 @@ public:
 	/// @returns std::map<u256, u256> if no contract exists at that address.
 	std::map<u256, u256> const& contractMemory(Address _contract) const;
 
+	/// Get the code of a contract.
+	/// @returns bytes() if no contract exists at that address.
+	bytes const& contractCode(Address _contract) const;
+
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 
@@ -170,25 +177,20 @@ public:
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
 	/// Get the fee associated for a contract created with the given data.
-	u256 fee(uint _dataCount) const { return m_fees.m_memoryFee * _dataCount + m_fees.m_newContractFee; }
+	u256 createGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_createGas + _gas; }
 
 	/// Get the fee associated for a normal transaction.
-	u256 fee() const { return m_fees.m_txFee; }
+	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
 
 private:
-	/// Fee-adder on destruction RAII class.
-	struct MinerFeeAdder
-	{
-		~MinerFeeAdder() { /*state->addBalance(state->m_currentBlock.coinbaseAddress, fee);*/ }	// No fees paid now.
-		State* state;
-		u256 fee;
-	};
-
 	/// Retrieve all information about a given address into the cache.
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
 	/// exist in the DB.
 	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
+
+	/// Retrieve all information about a given address into a cache.
+	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireMemory, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
@@ -201,12 +203,17 @@ private:
 	/// Throws on failure.
 	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
 
-	/// Execute a decoded transaction object, given a sender.
-	/// This will append @a _t to the transaction list and change the state accordingly.
-	void executeBare(Transaction const& _t, Address _sender);
+	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
+	// We assume all instrinsic fees are paid up before this point.
 
-	/// Execute a contract transaction.
-	void execute(Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData, u256* o_totalFee);
+	/// Execute a contract-creation transaction.
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init);
+	h160 create(Transaction const& _t, Address _sender, u256* _gas);
+
+	/// Execute a call.
+	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
+	/// @returns false if the call ran out of gas before completion. true otherwise.
+	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -236,7 +243,6 @@ private:
 
 	Dagger m_dagger;
 
-	FeeStructure m_fees;
 	u256 m_blockReward;
 
 	static std::string c_defaultPath;
@@ -247,8 +253,8 @@ private:
 class ExtVM: public ExtVMFace
 {
 public:
-	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256s const& _txData):
-		ExtVMFace(_myAddress, _txSender, _txValue, _txData, _s.m_fees, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s)
+	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, bytesConstRef _code):
+		ExtVMFace(_myAddress, _txSender, _txValue, _gasPrice, _txData, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 		m_store = &(m_s.m_cache[_myAddress].memory());
@@ -267,30 +273,36 @@ public:
 			m_store->erase(_n);
 	}
 
-	void payFee(bigint _f)
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 	{
-		if (_f > m_s.balance(myAddress))
-			throw NotEnoughCash();
-		m_s.subBalance(myAddress, _f);
+		// Increment associated nonce for sender.
+		m_s.noteSending(myAddress);
+
+		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init);
 	}
 
-	void mktx(Transaction& _t)
+	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
-		_t.nonce = m_s.transactionsFrom(myAddress);
-		m_s.executeBare(_t, myAddress);
+		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out);
 	}
+
 	u256 balance(Address _a) { return m_s.balance(_a); }
+	void subBalance(u256 _a) { m_s.subBalance(myAddress, _a); }
 	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
-	u256 extro(Address _a, u256 _pos) { return m_s.contractMemory(_a, _pos); }
-	u256 extroPrice(Address /*_a*/) { return 0; }
 	void suicide(Address _a)
 	{
-		m_s.addBalance(_a, m_s.balance(myAddress) + m_store->size() * fees.m_memoryFee);
+		m_s.addBalance(_a, m_s.balance(myAddress));
 		m_s.m_cache[myAddress].kill();
+	}
+
+	void revert()
+	{
+		m_s.m_cache = m_origCache;
 	}
 
 private:
 	State& m_s;
+	std::map<Address, AddressState> m_origCache;
 	std::map<u256, u256>* m_store;
 };
 
@@ -330,7 +342,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
 			if (i.second.type() == AddressType::Contract)
 			{
-				if (i.second.haveMemory())
+				if (i.second.isComplete())
 				{
 					_out << std::endl << i.second.memory();
 				}
@@ -364,7 +376,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.balance() << i.second.nonce();
 			if (i.second.type() == AddressType::Contract)
 			{
-				if (i.second.haveMemory())
+				if (i.second.isComplete())
 				{
 					TrieDB<h256, DB> memdb(&_db);
 					memdb.init();
@@ -372,9 +384,17 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						if (j.second)
 							memdb.insert(j.first, rlp(j.second));
 					s << memdb.root();
+					if (i.second.freshCode())
+					{
+						h256 ch = sha3(i.second.code());
+						_db.insert(ch, &i.second.code());
+						s << ch;
+					}
+					else
+						s << i.second.codeHash();
 				}
 				else
-					s << i.second.oldRoot();
+					s << i.second.oldRoot() << i.second.codeHash();
 			}
 			_state.insert(i.first, &s.out());
 		}

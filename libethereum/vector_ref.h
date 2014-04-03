@@ -19,6 +19,7 @@ class vector_ref
 public:
 	typedef _T value_type;
 	typedef _T element_type;
+	typedef typename std::conditional<std::is_const<_T>::value, typename std::remove_const<_T>::type, _T>::type mutable_value_type;
 
 	vector_ref(): m_data(nullptr), m_count(0) {}
 	vector_ref(_T* _data, size_t _count): m_data(_data), m_count(_count) {}
@@ -29,8 +30,8 @@ public:
 
 	explicit operator bool() const { return m_data && m_count; }
 
-	bool contentsEqual(std::vector<_T> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
-	std::vector<_T> toVector() const { return std::vector<_T>(m_data, m_data + m_count); }
+	bool contentsEqual(std::vector<mutable_value_type> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
+	std::vector<mutable_value_type> toVector() const { return std::vector<mutable_value_type>(m_data, m_data + m_count); }
 	std::vector<unsigned char> toBytes() const { return std::vector<unsigned char>((unsigned char const*)m_data, m_data + m_count * sizeof(_T)); }
 	std::string toString() const { return std::string((char const*)m_data, ((char const*)m_data) + m_count); }
 	template <class _T2> operator vector_ref<_T2>() const { assert(m_count * sizeof(_T) / sizeof(_T2) * sizeof(_T2) / sizeof(_T) == m_count); return vector_ref<_T2>((_T2*)m_data, m_count * sizeof(_T) / sizeof(_T2)); }

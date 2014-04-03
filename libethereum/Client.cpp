@@ -92,7 +92,16 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 {
 	if (m_net.get())
 		return;
-	m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	try
+	{
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	}
+	catch (std::exception const&)
+	{
+		// Probably already have the port open.
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode));
+	}
+
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
@@ -131,14 +140,33 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
+void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Address _dest, bytes const& _data)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	t.value = _value;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
 	t.receiveAddress = _dest;
-	t.value = _amount;
 	t.data = _data;
+	t.sign(_secret);
+	cnote << "New transaction " << t;
+	m_tq.attemptImport(t.rlp());
+	m_changed = true;
+}
+
+void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256 _gas, bytes const& _code, bytes const& _init)
+{
+	lock_guard<recursive_mutex> l(m_lock);
+	Transaction t;
+	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	t.value = _endowment;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
+	t.receiveAddress = Address();
+	t.data = _code;
+	t.init = _init;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
