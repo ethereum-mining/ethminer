@@ -87,7 +87,8 @@ public:
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Submits a new contract-creation transaction.
-	void transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	/// @returns the new contract's address (assuming it all goes through).
+	Address transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Makes the given call. Nothing is recorded into the state. TODO
 //	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());

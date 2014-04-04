@@ -156,7 +156,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_changed = true;
 }
 
-void Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
@@ -171,6 +171,7 @@ void Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 	m_changed = true;
+	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
 void Client::work()
