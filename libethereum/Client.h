@@ -83,11 +83,11 @@ public:
 	/// Destructor.
 	~Client();
 
-	/// Submits the given transaction.
-	void transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Address _dest, bytes const& _data);
+	/// Submits the given message-call transaction.
+	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
-	/// Submits a new contract.
-	void transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256 _gas, bytes const& _code, bytes const& _init);
+	/// Submits a new contract-creation transaction.
+	void transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Makes the given call. Nothing is recorded into the state. TODO
 //	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());

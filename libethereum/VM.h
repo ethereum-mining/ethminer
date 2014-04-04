@@ -36,14 +36,15 @@ namespace eth
 // Currently we just pull out the right (low-order in BE) 160-bits.
 inline Address asAddress(u256 _item)
 {
-	return left160(h256(_item));
+	return right160(h256(_item));
 }
 
 inline u256 fromAddress(Address _a)
 {
-	h256 ret;
-	memcpy(&ret, &_a, sizeof(_a));
-	return ret;
+	return (u160)_a;
+//	h256 ret;
+//	memcpy(&ret, &_a, sizeof(_a));
+//	return ret;
 }
 
 /**
@@ -300,8 +301,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(fromAddress(_ext.myAddress));
 			break;
 		case Instruction::ORIGIN:
-			// TODO get originator from ext.
-			m_stack.push_back(fromAddress(_ext.txSender));
+			m_stack.push_back(fromAddress(_ext.origin));
 			break;
 		case Instruction::BALANCE:
 		{
@@ -310,27 +310,27 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		}
 		case Instruction::CALLER:
-			m_stack.push_back(fromAddress(_ext.txSender));
+			m_stack.push_back(fromAddress(_ext.caller));
 			break;
 		case Instruction::CALLVALUE:
-			m_stack.push_back(_ext.txValue);
+			m_stack.push_back(_ext.value);
 			break;
 		case Instruction::CALLDATALOAD:
 		{
 			require(1);
-			if ((unsigned)m_stack.back() + 32 < _ext.txData.size())
-				m_stack.back() = (u256)*(h256 const*)(_ext.txData.data() + (unsigned)m_stack.back());
+			if ((unsigned)m_stack.back() + 32 < _ext.data.size())
+				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (unsigned)m_stack.back());
 			else
 			{
 				h256 r;
 				for (unsigned i = (unsigned)m_stack.back(), e = (unsigned)m_stack.back() + 32, j = 0; i < e; ++i, ++j)
-					r[j] = i < _ext.txData.size() ? _ext.txData[i] : 0;
+					r[j] = i < _ext.data.size() ? _ext.data[i] : 0;
 				m_stack.back() = (u256)r;
 			}
 			break;
 		}
 		case Instruction::CALLDATASIZE:
-			m_stack.push_back(_ext.txData.size());
+			m_stack.push_back(_ext.data.size());
 			break;
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);

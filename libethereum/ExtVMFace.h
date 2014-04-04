@@ -41,12 +41,13 @@ public:
 		currentNumber(_currentNumber)
 	{}
 
-	ExtVMFace(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
 		myAddress(_myAddress),
-		txSender(_txSender),
-		txValue(_txValue),
+		caller(_caller),
+		origin(_origin),
+		value(_value),
 		gasPrice(_gasPrice),
-		txData(_txData),
+		data(_data),
 		code(_code),
 		previousBlock(_previousBlock),
 		currentBlock(_currentBlock),
@@ -72,11 +73,11 @@ public:
 #pragma warning(pop)
 
 	Address myAddress;
-	Address txSender;
+	Address caller;
 	Address origin;
-	u256 txValue;
+	u256 value;
 	u256 gasPrice;
-	bytesConstRef txData;
+	bytesConstRef data;
 	bytesConstRef code;
 	BlockInfo previousBlock;					///< The current block's information.
 	BlockInfo currentBlock;						///< The current block's information.
