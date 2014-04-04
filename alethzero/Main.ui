@@ -457,12 +457,9 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QPlainTextEdit" name="data"/>
-       <widget class="QPlainTextEdit" name="code">
+       <widget class="QTextEdit" name="code">
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
         </property>
        </widget>
       </widget>
@@ -758,7 +755,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_9">
+  <widget class="QDockWidget" name="configDock">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>

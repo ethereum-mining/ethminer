@@ -96,7 +96,7 @@ PeerServer::~PeerServer()
 
 unsigned PeerServer::protocolVersion()
 {
-	return 10;
+	return 11;
 }
 
 void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)

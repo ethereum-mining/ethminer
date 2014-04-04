@@ -62,11 +62,6 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-
-	// Synchronise the state according to the head of the block chain.
-	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	m_preMine.sync(m_bc);
-	m_postMine = m_preMine;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -76,6 +71,11 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 		while (m_workState.load(std::memory_order_acquire) != Deleting)
 			work();
 		m_workState.store(Deleted, std::memory_order_release);
+
+		// Synchronise the state according to the head of the block chain.
+		// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+		m_preMine.sync(m_bc);
+		m_postMine = m_preMine;
 	}));
 }
 

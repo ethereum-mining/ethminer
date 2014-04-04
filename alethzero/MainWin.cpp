@@ -56,6 +56,31 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
+string htmlDump(bytes const& _b, unsigned _w = 8)
+{
+	stringstream ret;
+	ret << "<pre>";
+	for (unsigned i = 0; i < _b.size(); i += _w)
+	{
+		ret << hex << setw(4) << setfill('0') << i << " ";
+		for (unsigned j = i; j < i + _w; ++j)
+			if (j < _b.size())
+				if (_b[j] >= 32 && _b[j] < 128)
+					ret << (char)_b[j];
+				else ret << '?';
+			else
+				ret << ' ';
+		ret << " ";
+		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
+			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
+		ret << "\n";
+	}
+	ret << "</pre>";
+	return ret.str();
+}
+
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
+
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
@@ -98,6 +123,8 @@ Main::Main(QWidget *parent) :
 	}
 #endif
 
+	ui->configDock->close();
+
 	on_verbosity_sliderMoved();
 	initUnits(ui->gasPriceUnits);
 	initUnits(ui->valueUnits);
@@ -117,16 +144,17 @@ Main::~Main()
 	writeSettings();
 }
 
-inline h256 fromAddress(Address _a)
-{
-	h256 ret;
-	memcpy(&ret, &_a, sizeof(_a));
-	return ret;
-}
-
 QString Main::pretty(eth::Address _a) const
 {
-	if (h256 n = state().contractStorage(m_nameReg, fromAddress(_a)))
+	h256 n;
+
+	if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
+		n = state().contractStorage(nameReg, (u160)(_a));
+
+	if (!n)
+		n = state().contractStorage(m_nameReg, (u160)(_a));
+
+	if (n)
 	{
 		std::string s((char const*)n.data(), 32);
 		if (s.find_first_of('\0') != string::npos)
@@ -153,8 +181,14 @@ Address Main::fromString(QString const& _a) const
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
+	{
+		if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
+			if (h256 a = state().contractStorage(nameReg, n))
+				return right160(a);
+
 		if (h256 a = state().contractStorage(m_nameReg, n))
 			return right160(a);
+	}
 	if (_a.size() == 40)
 		return Address(fromHex(_a.toStdString()));
 	else
@@ -223,10 +257,7 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	if (s.value("nameReg").toString() == "c5c00217ce5acb4f0be2fb85929b11b8eeea0096")
-		s.remove("nameReg");
-	ui->nameReg->setText(s.value("nameReg", "3f795321dd223e3d94c8f89b149ddab3b9c9b5d7").toString());
-
+	ui->nameReg->setText(s.value("NameReg", "").toString());
 }
 
 void Main::on_nameReg_textChanged()
@@ -237,6 +268,8 @@ void Main::on_nameReg_textChanged()
 		m_nameReg = Address(fromHex(s));
 		refresh(true);
 	}
+	else
+		m_nameReg = Address();
 }
 
 void Main::refreshNetwork()
@@ -411,20 +444,18 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
+			s << "<br/>Gas: <b>" << tx.gas << "</b>";
 			if (tx.isCreation())
 			{
-				s << "<br/>Init:";
-				s << "<br/>" << disassemble(tx.init);
-				s << "<br/>Code:";
-				s << "<br/>" << disassemble(tx.data);
+				if (tx.init.size())
+					s << "<h4>Init</h4>" << disassemble(tx.init);
+				if (tx.data.size())
+					s << "<h4>Body</h4>" << disassemble(tx.data);
 			}
 			else
 			{
-				s << "<br/>Gas: <b>" << tx.gas << "</b>";
-				s << "<br/>Data:&nbsp;&emsp;&nbsp; 0x..." << setw(2) << setfill('0') << hex;
-				unsigned c = 0;
-				for (auto i: tx.data)
-					s << i << (c % 8 ? "" : " ");
+				if (tx.data.size())
+					s << htmlDump(tx.data, 16);
 			}
 		}
 
@@ -448,8 +479,7 @@ void Main::on_contracts_currentItemChanged()
 		auto mem = state().contractStorage(h);
 		for (auto const& i: mem)
 			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		s << "<br/>Code:";
-		s << "<br/>" << disassemble(state().contractCode(h));
+		s << "<h4>Body Code</h4>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
 	m_client->unlock();
@@ -507,7 +537,7 @@ void Main::on_data_textChanged()
 		string code = ui->data->toPlainText().toStdString();
 		m_init.clear();
 		m_data = compileLisp(code, true, m_init);
-		ui->code->setPlainText(QString::fromStdString(disassemble(m_data)) + "\n; Init:" + QString::fromStdString(disassemble(m_init)));
+		ui->code->setHtml((m_init.size() ? ("<h4>Init</h4><pre>" + QString::fromStdString(disassemble(m_init)) + "</pre>") : "") + "<h4>Body</h4><pre>" + QString::fromStdString(disassemble(m_data)) + "</pre>");
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
@@ -526,27 +556,26 @@ void Main::on_data_textChanged()
 				for (auto i: r.cap(1))
 					m_data.push_back((byte)i.toLatin1());
 				if (s[0] == '@')
-					m_data.push_back(0);
-				else
 					for (int i = r.cap(1).size(); i < 32; ++i)
 						m_data.push_back(0);
+				else
+					m_data.push_back(0);
 				s = r.cap(2);
 			}
 			else if (h.exactMatch(s))
 			{
+				bytes bs = fromHex(h.cap(2).toStdString());
 				if (s[0] == '@')
-				{
-					bytes bs = fromHex(h.cap(2).toStdString());
-
-					for (auto b: bs)
-						m_data.push_back(b);
-				}
+					for (auto i = bs.size(); i < 32; ++i)
+						m_data.push_back(0);
+				for (auto b: bs)
+					m_data.push_back(b);
 				s = h.cap(4);
 			}
 			else
 				s = s.mid(1);
 		}
-		ui->code->setPlainText(QString::fromStdString(toHex(m_data)));
+		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
 		if (m_client->postState().isContractAddress(fromString(ui->destination->text())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
