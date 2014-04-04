@@ -566,7 +566,7 @@ u256 State::transactionsFrom(Address _id) const
 		return it->second.nonce();
 }
 
-u256 State::contractMemory(Address _id, u256 _memory) const
+u256 State::contractStorage(Address _id, u256 _memory) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -585,7 +585,7 @@ u256 State::contractMemory(Address _id, u256 _memory) const
 	return ret.size() ? RLP(ret).toInt<u256>() : 0;
 }
 
-map<u256, u256> const& State::contractMemory(Address _contract) const
+map<u256, u256> const& State::contractStorage(Address _contract) const
 {
 	if (!isContractAddress(_contract))
 		return EmptyMapU256U256;
@@ -676,15 +676,18 @@ void State::execute(bytesConstRef _rlp)
 	m_transactionSet.insert(t.sha3());
 }
 
-bool State::call(Address _receiveAddress, Address _sendAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress)
 {
+	if (!_originAddress)
+		_originAddress = _senderAddress;
+
 	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
 	if (isContractAddress(_receiveAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _sendAddress, _value, _gasPrice, _data, &contractCode(_receiveAddress));
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &contractCode(_receiveAddress));
 		bool revert = false;
 
 		try
@@ -721,9 +724,12 @@ bool State::call(Address _receiveAddress, Address _sendAddress, u256 _value, u25
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init, Address _origin)
 {
-	Address newAddress = left160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
+	if (!_origin)
+		_origin = _sender;
+
+	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
 		newAddress = (u160)newAddress + 1;
 
@@ -732,7 +738,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 
 	// Execute _init.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _endowment, _gasPrice, bytesConstRef(), _init);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
 	bool revert = false;
 
 	try

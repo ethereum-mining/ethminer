@@ -140,7 +140,7 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Address _dest, bytes const& _data)
+void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
@@ -156,7 +156,7 @@ void Client::transact(Secret _secret, u256 _value, u256 _gasPrice, u256 _gas, Ad
 	m_changed = true;
 }
 
-void Client::transact(Secret _secret, u256 _endowment, u256 _gasPrice, u256 _gas, bytes const& _code, bytes const& _init)
+void Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;

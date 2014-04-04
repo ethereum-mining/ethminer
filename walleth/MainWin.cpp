@@ -176,12 +176,12 @@ unsigned QEthereum::peerCount() const
 
 void QEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _code, QByteArray _init)
 {
-	client()->transact(_secret, _amount, _gasPrice, _gas, bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()));
+	client()->transact(_secret, _amount, bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
 }
 
 void QEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
 {
-	client()->transact(_secret, _amount, _gasPrice, _gas, _dest, bytes(_data.data(), _data.data() + _data.size()));
+	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
 }
 
 Main::Main(QWidget *parent) :

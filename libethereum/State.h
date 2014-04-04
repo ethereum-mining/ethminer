@@ -147,11 +147,11 @@ public:
 
 	/// Get the value of a memory position of a contract.
 	/// @returns 0 if no contract exists at that address.
-	u256 contractMemory(Address _contract, u256 _memory) const;
+	u256 contractStorage(Address _contract, u256 _memory) const;
 
 	/// Get the memory of a contract.
 	/// @returns std::map<u256, u256> if no contract exists at that address.
-	std::map<u256, u256> const& contractMemory(Address _contract) const;
+	std::map<u256, u256> const& contractStorage(Address _contract) const;
 
 	/// Get the code of a contract.
 	/// @returns bytes() if no contract exists at that address.
@@ -207,13 +207,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init);
-	h160 create(Transaction const& _t, Address _sender, u256* _gas);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init, Address _originAddress = Address());
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out);
+	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address());
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -253,8 +252,8 @@ private:
 class ExtVM: public ExtVMFace
 {
 public:
-	ExtVM(State& _s, Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, bytesConstRef _code):
-		ExtVMFace(_myAddress, _txSender, _txValue, _gasPrice, _txData, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
+	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code):
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 		m_store = &(m_s.m_cache[_myAddress].memory());
@@ -278,12 +277,12 @@ public:
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
 
-		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init);
+		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init, origin);
 	}
 
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
-		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out);
+		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin);
 	}
 
 	u256 balance(Address _a) { return m_s.balance(_a); }

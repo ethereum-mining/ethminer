@@ -126,7 +126,7 @@ inline h256 fromAddress(Address _a)
 
 QString Main::pretty(eth::Address _a) const
 {
-	if (h256 n = state().contractMemory(m_nameReg, fromAddress(_a)))
+	if (h256 n = state().contractStorage(m_nameReg, fromAddress(_a)))
 	{
 		std::string s((char const*)n.data(), 32);
 		if (s.find_first_of('\0') != string::npos)
@@ -153,8 +153,8 @@ Address Main::fromString(QString const& _a) const
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
-		if (h256 a = state().contractMemory(m_nameReg, n))
-			return left160(a);
+		if (h256 a = state().contractStorage(m_nameReg, n))
+			return right160(a);
 	if (_a.size() == 40)
 		return Address(fromHex(_a.toStdString()));
 	else
@@ -296,7 +296,7 @@ void Main::refresh(bool _override)
 				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
-					.arg(render(left160(sha3(rlpList(t.safeSender(), t.nonce)))))
+					.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
 					.arg((unsigned)t.nonce);
 			ui->transactionQueue->addItem(s);
 		}
@@ -322,7 +322,7 @@ void Main::refresh(bool _override)
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
-						.arg(render(left160(sha3(rlpList(t.safeSender(), t.nonce)))))
+						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
 						.arg((unsigned)t.nonce);
 				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
@@ -405,7 +405,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
 			if (tx.isCreation())
-				s << "<br/>Creates: <b>" << pretty(left160(th)).toStdString() << "</b> " << left160(th);
+				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
 			else
 				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
@@ -445,7 +445,7 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto mem = state().contractMemory(h);
+		auto mem = state().contractStorage(h);
 		for (auto const& i: mem)
 			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
 		s << "<br/>Code:";
@@ -520,7 +520,7 @@ void Main::on_data_textChanged()
 		while (s.size())
 		{
 			QRegExp r("@?\"(.*)\"(.*)");
-			QRegExp h("([a-fA-F0-9][a-fA-F0-9])(.*)");
+			QRegExp h("@?(0x)?(([a-fA-F0-9][a-fA-F0-9])+)(.*)");
 			if (r.exactMatch(s))
 			{
 				for (auto i: r.cap(1))
@@ -534,8 +534,14 @@ void Main::on_data_textChanged()
 			}
 			else if (h.exactMatch(s))
 			{
-				m_data.push_back(fromHex(h.cap(1).toStdString())[0]);
-				s = h.cap(2);
+				if (s[0] == '@')
+				{
+					bytes bs = fromHex(h.cap(2).toStdString());
+
+					for (auto b: bs)
+						m_data.push_back(b);
+				}
+				s = h.cap(4);
 			}
 			else
 				s = s.mid(1);
@@ -669,9 +675,9 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), gasPrice(), ui->gas->value(), m_data, m_init);
+				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
 			else
-				m_client->transact(s, value(), gasPrice(), ui->gas->value(), fromString(ui->destination->text()), m_data);
+				m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
 			refresh();
 			return;
 		}

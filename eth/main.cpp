@@ -522,7 +522,7 @@ int main(int argc, char** argv)
 				Address dest = h160(fromHex(rechex));
 				bytes data;
 
-				c.transact(secret, amount, gasPrice, gas, dest, data);
+				c.transact(secret, amount, dest, data, gas, gasPrice);
 			}
 			else if (cmd == "send")
 			{
@@ -533,7 +533,7 @@ int main(int argc, char** argv)
 				iss >> rechex >> amount >> gasPrice >> gas;
 				Address dest = h160(fromHex(rechex));
 
-				c.transact(us.secret(), amount, gasPrice, gas, dest, bytes());
+				c.transact(us.secret(), amount, dest, bytes(), gas, gasPrice);
 			}
 			else if (cmd == "inspect")
 			{
@@ -548,7 +548,7 @@ int main(int argc, char** argv)
 					auto h = h160(fromHex(rechex));
 
 					stringstream s;
-					auto mem = c.state().contractMemory(h);
+					auto mem = c.state().contractStorage(h);
 					u256 next = 0;
 					unsigned numerics = 0;
 					bool unexpectedNumeric = false;
