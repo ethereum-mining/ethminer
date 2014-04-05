@@ -537,7 +537,7 @@ void Main::on_data_textChanged()
 		string code = ui->data->toPlainText().toStdString();
 		m_init.clear();
 		m_data = compileLisp(code, true, m_init);
-		ui->code->setHtml((m_init.size() ? ("<h4>Init</h4><pre>" + QString::fromStdString(disassemble(m_init)) + "</pre>") : "") + "<h4>Body</h4><pre>" + QString::fromStdString(disassemble(m_data)) + "</pre>");
+		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);

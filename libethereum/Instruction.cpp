@@ -339,7 +339,7 @@ static void appendCode(bytes& o_code, vector<unsigned>& o_locs, bytes _code, vec
 		o_code.push_back(i);
 }
 
-static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs)
+static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs, map<string, unsigned>& _vars)
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
 	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
@@ -352,7 +352,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"' && !c_allowed.count(*d) && *d != ';'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
@@ -374,6 +374,59 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			else
 				// unexpected - return false as we don't know what to do with it.
 				return -1;
+		case '@':
+		{
+			if (exec)
+				return -1;
+			bool store = false;
+			++d;
+			if (*d == '@')
+			{
+				++d;
+				store = true;
+			}
+			bytes codes;
+			vector<unsigned> locs;
+			if (compileLispFragment(d, e, _quiet, codes, locs, _vars) != 1)
+				return -1;
+			while (d != e && isspace(*d))
+				++d;
+			appendCode(o_code, o_locs, codes, locs);
+			o_code.push_back((byte)(store ? Instruction::SLOAD : Instruction::MLOAD));
+			return 1;
+		}
+		case '[':
+		{
+			if (exec)
+				return -1;
+			bool store = false;
+			++d;
+			if (*d == '[')
+			{
+				++d;
+				store = true;
+			}
+			bytes codes;
+			vector<unsigned> locs;
+			if (compileLispFragment(d, e, _quiet, codes, locs, _vars) != 1)
+				return -1;
+			while (d != e && isspace(*d))
+				++d;
+
+			if (*d != ']')
+				return -1;
+			++d;
+			if (store && *d != ']')
+				return -1;
+			++d;
+
+			if (compileLispFragment(d, e, _quiet, o_code, o_locs, _vars) != 1)
+				return -1;
+
+			appendCode(o_code, o_locs, codes, locs);
+			o_code.push_back((byte)(store ? Instruction::SSTORE: Instruction::MSTORE));
+			return 1;
+		}
 		default:
 		{
 			bool haveLiteral = false;
@@ -414,10 +467,10 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 				{
 					bytes codes;
 					vector<unsigned> locs;
-					if (compileLispFragment(d, e, _quiet, codes, locs) != -1)
+					if (compileLispFragment(d, e, _quiet, codes, locs, _vars) != -1)
 					{
 						appendCode(o_code, o_locs, codes, locs);
-						while (compileLispFragment(d, e, _quiet, codes, locs) != -1)
+						while (compileLispFragment(d, e, _quiet, codes, locs, _vars) != -1)
 							if (!_quiet)
 								cwarn << "Additional items in bare store. Ignoring.";
 						bareLoad = false;
@@ -437,13 +490,13 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					vector<unsigned> locs[4];
 					for (int i = 0; i < 3; ++i)
 					{
-						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i]);
+						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
 						if (i == 1)
 							outs = o;
 						if ((i == 0 && o != 1) || o == -1 || (i == 2 && o != outs))
 							return -1;
 					}
-					if (compileLispFragment(d, e, _quiet, codes[3], locs[3]) != -1)
+					if (compileLispFragment(d, e, _quiet, codes[3], locs[3], _vars) != -1)
 						return false;
 
 					// First fragment - predicate
@@ -481,14 +534,14 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					vector<unsigned> locs[3];
 					for (int i = 0; i < 2; ++i)
 					{
-						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i]);
+						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
 						if (o == -1 || (i == 0 && o != 1))
 							return false;
 						if (i == 1)
 							for (int j = 0; j < o; ++j)
 								codes[i].push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
 					}
-					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]) != -1)
+					if (compileLispFragment(d, e, _quiet, codes[2], locs[2], _vars) != -1)
 						return false;
 
 					// First fragment - predicate
@@ -518,14 +571,14 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					vector<unsigned> locs[3];
 					for (int i = 0; i < 2; ++i)
 					{
-						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i]);
+						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
 						if (o == -1 || (i == 0 && o != 1))
 							return false;
 						if (i == 1)
 							for (int j = 0; j < o; ++j)
 								codes[i].push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
 					}
-					if (compileLispFragment(d, e, _quiet, codes[2], locs[2]) != -1)
+					if (compileLispFragment(d, e, _quiet, codes[2], locs[2], _vars) != -1)
 						return false;
 
 					unsigned startLocation = (unsigned)o_code.size();
@@ -561,7 +614,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						vector<unsigned> locs;
 						outs = 0;
 						int o;
-						if ((o = compileLispFragment(d, e, _quiet, codes, locs)) > -1)
+						if ((o = compileLispFragment(d, e, _quiet, codes, locs, _vars)) > -1)
 						{
 							for (int i = 0; i < outs; ++i)
 								o_code.push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
@@ -580,7 +633,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						int totalArgs = 0;
 						while (d != e)
 						{
-							int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+							int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second, _vars);
 							if (o < 1)
 								break;
 							codes.push_back(pair<bytes, vector<unsigned>>());
@@ -612,7 +665,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						vector<unsigned> locs;
 						outs = 0;
 						int o;
-						if ((o = compileLispFragment(d, e, _quiet, codes, locs)) > -1)
+						if ((o = compileLispFragment(d, e, _quiet, codes, locs, _vars)) > -1)
 						{
 							outs += o;
 							appendCode(o_code, o_locs, codes, locs);
@@ -630,11 +683,11 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						codes.resize(codes.size() + 1);
 						locs.resize(locs.size() + 1);
 						{
-							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back());
+							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
 							if (o != 1)
 								return false;
 						}
-						if (compileLispFragment(d, e, _quiet, codes.back(), locs.back()) != -1)
+						if (compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars) != -1)
 							break;
 					}
 
@@ -684,7 +737,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						codes.resize(codes.size() + 1);
 						locs.resize(locs.size() + 1);
 						{
-							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back());
+							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
 							if (o != 1)
 								return false;
 						}
@@ -737,7 +790,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							int totalArgs = 0;
 							while (d != e)
 							{
-								int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+								int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second, _vars);
 								if (o < 1)
 									break;
 								codes.push_back(pair<bytes, vector<unsigned>>());
@@ -770,7 +823,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							int totalArgs = 0;
 							while (d != e)
 							{
-								int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+								int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second, _vars);
 								if (o < 1)
 									break;
 								codes.push_back(pair<bytes, vector<unsigned>>());
@@ -795,7 +848,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 								int totalArgs = 0;
 								while (d != e)
 								{
-									int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+									int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second, _vars);
 									if (o < 1)
 										break;
 									codes.push_back(pair<bytes, vector<unsigned>>());
@@ -823,7 +876,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 									int totalArgs = 0;
 									while (d != e)
 									{
-										int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second);
+										int o = compileLispFragment(d, e, _quiet, codes.back().first, codes.back().second, _vars);
 										if (o == -1)
 											break;
 										totalArgs += o;
@@ -840,8 +893,16 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 										appendCode(o_code, o_locs, it->first, it->second);
 									o_code.push_back((byte)it->second);
 								}
-								else if (!_quiet)
-									cwarn << "Unknown assembler token" << t;
+								else
+								{
+									auto it = _vars.find(t);
+									if (it == _vars.end())
+									{
+										bool ok;
+										tie(it, ok) = _vars.insert(make_pair(t, _vars.size() * 32));
+									}
+									pushLiteral(o_code, it->second);
+								}
 							}
 						}
 					}
@@ -860,12 +921,19 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 {
 	char const* d = _code.data();
 	char const* e = _code.data() + _code.size();
-	bytes ret;
+	bytes first;
+	bytes second;
 	vector<unsigned> locs;
-	compileLispFragment(d, e, _quiet, ret, locs);
+	map<string, unsigned> vars;
+	compileLispFragment(d, e, _quiet, first, locs, vars);
 	locs.clear();
-	compileLispFragment(d, e, _quiet, _init, locs);
-	return ret;
+	vars.clear();
+	if (compileLispFragment(d, e, _quiet, second, locs, vars) > -1)
+	{
+		_init = first;
+		return second;
+	}
+	return first;
 }
 
 string eth::disassemble(bytes const& _mem)
