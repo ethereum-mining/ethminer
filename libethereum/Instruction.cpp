@@ -347,7 +347,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
 
 	bool exec = false;
-	int outs = 1;
+	int outs = 0;
 	bool seq = false;
 
 	while (d != e)
@@ -445,16 +445,19 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			if (*d != ']')
 				return -1;
 			++d;
-			if (store && *d != ']')
-				return -1;
-			++d;
+			if (store)
+			{
+				if (*d != ']')
+					return -1;
+				++d;
+			}
 
 			if (compileLispFragment(d, e, _quiet, o_code, o_locs, _vars) != 1)
 				return -1;
 
 			appendCode(o_code, o_locs, codes, locs);
 			o_code.push_back((byte)(store ? Instruction::SSTORE: Instruction::MSTORE));
-			return 1;
+			return 0;
 		}
 		default:
 		{
@@ -508,6 +511,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 				pushLiteral(o_code, literalValue);
 				if (exec)
 					o_code.push_back(bareLoad ? (byte)Instruction::SLOAD : (byte)Instruction::SSTORE);
+				outs = bareLoad ? 1 : 0;
 			}
 			else
 			{
@@ -592,7 +596,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					// At end now.
 					increaseLocation(o_code, endLocation, o_code.size());
 				}
-				else if (t == "FOR")
+				else if (t == "WHILE")
 				{
 					outs = 0;
 					// Compile all the code...
@@ -635,6 +639,54 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					// At end now.
 					increaseLocation(o_code, endInsertion, o_code.size());
 				}
+				else if (t == "FOR")
+				{
+					compileLispFragment(d, e, _quiet, o_code, o_locs, _vars);
+					outs = 0;
+					// Compile all the code...
+					bytes codes[4];
+					vector<unsigned> locs[4];
+					for (int i = 0; i < 3; ++i)
+					{
+						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
+						if (o == -1 || (i == 0 && o != 1))
+							return false;
+						cnote << "FOR " << i << o;
+						if (i > 0)
+							for (int j = 0; j < o; ++j)
+								codes[i].push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
+					}
+					if (compileLispFragment(d, e, _quiet, codes[3], locs[3], _vars) != -1)
+						return false;
+
+					unsigned startLocation = (unsigned)o_code.size();
+
+					// First fragment - predicate
+					appendCode(o_code, o_locs, codes[0], locs[0]);
+					o_code.push_back((byte)Instruction::NOT);
+
+					// Push the positive location.
+					unsigned endInsertion = (unsigned)o_code.size();
+					o_locs.push_back(endInsertion);
+					pushLocation(o_code, 0);
+
+					// Jump to positive if true.
+					o_code.push_back((byte)Instruction::JUMPI);
+
+					// Second fragment - negative.
+					appendCode(o_code, o_locs, codes[1], locs[1]);
+
+					// Third fragment - incrementor.
+					appendCode(o_code, o_locs, codes[2], locs[2]);
+
+					// Jump to beginning afterwards.
+					o_locs.push_back((unsigned)o_code.size());
+					pushLocation(o_code, startLocation);
+					o_code.push_back((byte)Instruction::JUMP);
+
+					// At end now.
+					increaseLocation(o_code, endInsertion, o_code.size());
+				}
 				else if (t == "SEQ")
 				{
 					while (d != e)
@@ -654,7 +706,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							break;
 					}
 				}
-				else if (t == "CALL")
+				/*else if (t == "CALL")
 				{
 					if (exec)
 					{
@@ -677,9 +729,9 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						for (auto it = codes.rbegin(); it != codes.rend(); ++it)
 							appendCode(o_code, o_locs, it->first, it->second);
 						o_code.push_back((byte)Instruction::CALL);
-						outs = 0;
+						outs = 1;
 					}
-				}
+				}*/
 				else if (t == "MULTI")
 				{
 					while (d != e)
@@ -750,6 +802,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					// At end now.
 					for (auto i: ends)
 						increaseLocation(o_code, i, o_code.size());
+					outs = 1;
 				}
 				else if (t == "OR")
 				{
@@ -801,6 +854,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					// At end now.
 					for (auto i: ends)
 						increaseLocation(o_code, i, o_code.size());
+					outs = 1;
 				}
 				else
 				{
@@ -835,6 +889,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						{
 							o_code.push_back((byte)Instruction::PUSH1);
 							o_code.push_back((byte)it->second);
+							outs = 1;
 						}
 					}
 					else
@@ -861,6 +916,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
 								appendCode(o_code, o_locs, jt->first, jt->second);
 							o_code.push_back((byte)it->second);
+							outs = 1;
 						}
 						else
 						{
@@ -889,6 +945,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 								if (it->second.second)
 									o_code.push_back((byte)Instruction::NOT);
 								o_code.push_back((byte)it->second.first);
+								outs = 1;
 							}
 							else
 							{
@@ -915,6 +972,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 									for (auto it = codes.rbegin(); it != codes.rend(); ++it)
 										appendCode(o_code, o_locs, it->first, it->second);
 									o_code.push_back((byte)it->second);
+									outs = 1;
 								}
 								else
 								{
@@ -925,6 +983,8 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 										tie(it, ok) = _vars.insert(make_pair(t, _vars.size() * 32));
 									}
 									pushLiteral(o_code, it->second);
+									outs = 1;
+									// happens when it's an actual literal, escapes with -1 :-(
 								}
 							}
 						}
