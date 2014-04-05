@@ -348,11 +348,12 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 
 	bool exec = false;
 	int outs = 1;
+	bool seq = false;
 
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '_' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '_' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
@@ -365,6 +366,33 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			exec = true;
 			++d;
 			break;
+		case '{':
+			++d;
+			while (d != e)
+			{
+				bytes codes;
+				vector<unsigned> locs;
+				outs = 0;
+				int o;
+				if ((o = compileLispFragment(d, e, _quiet, codes, locs, _vars)) > -1)
+				{
+					for (int i = 0; i < outs; ++i)
+						o_code.push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).
+					outs = o;
+					appendCode(o_code, o_locs, codes, locs);
+				}
+				else
+					break;
+			}
+			seq = true;
+			break;
+		case '}':
+			if (seq)
+			{
+				++d;
+				return outs;
+			}
+			return -1;
 		case ')':
 			if (exec)
 			{
@@ -374,6 +402,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			else
 				// unexpected - return false as we don't know what to do with it.
 				return -1;
+
 		case '@':
 		{
 			if (exec)
@@ -639,20 +668,14 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							codes.push_back(pair<bytes, vector<unsigned>>());
 							totalArgs += o;
 						}
-						if (totalArgs < 2)
+						if (totalArgs < 7)
 						{
-							cwarn << "Expected at least 2 arguments to CALL; got" << totalArgs << ".";
+							cwarn << "Expected at least 7 arguments to CALL; got" << totalArgs << ".";
 							break;
 						}
 
-						unsigned datan = (unsigned)codes.size() - 3;
-						unsigned i = 0;
-						for (auto it = codes.rbegin(); it != codes.rend(); ++it, ++i)
-						{
+						for (auto it = codes.rbegin(); it != codes.rend(); ++it)
 							appendCode(o_code, o_locs, it->first, it->second);
-							if (i == datan)
-								pushLocation(o_code, datan);
-						}
 						o_code.push_back((byte)Instruction::CALL);
 						outs = 0;
 					}
