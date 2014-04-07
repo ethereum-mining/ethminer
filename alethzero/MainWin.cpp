@@ -379,14 +379,19 @@ void Main::refresh(bool _override)
 		m_keysChanged = false;
 		ui->ourAccounts->clear();
 		u256 totalBalance = 0;
+		u256 totalGavCoinBalance = 0;
+		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
 		for (auto i: m_myKeys)
 		{
 			u256 b = st.balance(i.address());
 			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)st.transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
+
+			totalGavCoinBalance += st.contractStorage(gavCoin, (u160)i.address());
 		}
-		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
+
+		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
 	m_client->unlock();
 }
