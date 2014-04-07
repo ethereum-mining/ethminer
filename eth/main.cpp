@@ -398,7 +398,7 @@ int main(int argc, char** argv)
 	{
 		std::ostringstream ccout;
 
-		/*  Initialize ncurses  */
+		// Initialize ncurses
 		const char* chr;
 		char* str = new char[255];
 		int width;
@@ -424,7 +424,7 @@ int main(int argc, char** argv)
 		echo();
 		keypad(mainwin, true);
 
-		/* Initialize color pairs */
+		// Initialize color pairs
 		start_color();
 		init_pair(1, COLOR_WHITE, COLOR_BLACK);
 		init_pair(2, COLOR_RED, COLOR_BLACK);
@@ -564,7 +564,8 @@ int main(int argc, char** argv)
 					if (fs > 0)
 						cwarn << "Missing parameter";
 				}
-				else {
+				else
+				{
 					fields[0].erase(std::remove(fields[0].begin(), fields[0].end(), ' '), fields[0].end());
 					fields[4].erase(std::remove(fields[4].begin(), fields[4].end(), ' '), fields[4].end());
 					fields[5].erase(std::find_if(fields[5].rbegin(), fields[5].rend(), std::bind1st(std::not_equal_to<char>(), ' ')).base(), fields[5].end());
@@ -590,7 +591,8 @@ int main(int argc, char** argv)
 						if (ssize > 0)
 							cwarn << "Invalid secret length:" << ssize;
 					}
-					else {
+					else
+					{
 						Secret secret = h256(fromHex(sechex));
 						Address dest = h160(fromHex(fields[0]));
 						bytes data = asBytes(sdata);
@@ -614,7 +616,8 @@ int main(int argc, char** argv)
 					if (fs > 0)
 						cwarn << "Missing parameter";
 				}
-				else {
+				else
+				{
 					fields[0].erase(std::remove(fields[0].begin(), fields[0].end(), ' '), fields[0].end());
 					int size = fields[0].length();
 					u256 amount = atoll(fields[1].c_str());
@@ -647,11 +650,13 @@ int main(int argc, char** argv)
 				vector<string> fields = form_dialog(s, l, b, height, width, cmd);
 				c.unlock();
 				int fs = fields.size();
-				if (fs < 5) {
+				if (fs < 5)
+				{
 					if (fs > 0)
 						cwarn << "Missing parameter";
 				}
-				else {
+				else
+				{
 					u256 endowment = atoll(fields[0].c_str());
 					u256 gas = atoll(fields[2].c_str());
 					u256 gasPrice = atoll(fields[1].c_str());
@@ -958,7 +963,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int height = _cols;
 	int width = _rows;
 
-	/* Initialize the fields */
+	// Initialize the fields
 	int si;
 	int li;
 	int bi = 0;
@@ -989,16 +994,16 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	}
 	field[maxfields] = NULL;
 
-	/* Create the form and post it */
+	// Create the form and post it
 	FORM *form = new_form(field);
 
-	/* Calculate the area required for the form */
+	// Calculate the area required for the form
 	scale_form(form, &_rows, &_cols);
 
-	/* Create the window to be associated with the form */
+	// Create the window to be associated with the form
 	form_win = newwin(_rows + 4, _cols + 8, (height / 2 - _rows / 2 - 2), (width / 2 - _cols / 2 - 2));
 
-	/* Set main window and sub window */
+	// Set main window and sub window
 	set_form_win(form, form_win);
 	set_form_sub(form, derwin(form_win, _rows, _cols, 2, 2));
 
@@ -1045,7 +1050,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	print_in_middle(form_win, 6, 0, _cols, string("Press ENTER to submit the form and ESC to cancel."), COLOR_PAIR(1));
 	refresh();
 
-	while ((ch = wgetch(form_win)) != 27 and ch != 13) // KEY_F(1))
+	while ((ch = wgetch(form_win)) != 27 && ch != 13) // KEY_F(1))
 	{
 		switch (ch)
 		{
