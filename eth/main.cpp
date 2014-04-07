@@ -846,7 +846,6 @@ int main(int argc, char** argv)
 			u256 totalGavCoinBalance = st.contractStorage(gavCoin, (u160)us.address());
 			ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 			mvwprintw(consolewin, 0, x, ssb.str().c_str());
-			mvwprintw(consolewin, 0, x, ssb.str().c_str());
 
 			// Block
 			mvwprintw(blockswin, 0, x, "Block # ");
