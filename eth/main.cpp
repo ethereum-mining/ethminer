@@ -576,7 +576,8 @@ int main(int argc, char** argv)
 					string sechex = fields[4];
 					string sdata = fields[5];
 					int ssize = fields[4].length();
-					if (size < 40) {
+					if (size < 40)
+					{
 						if (size > 0)
 							cwarn << "Invalid address length: " << size;
 					}
@@ -621,7 +622,8 @@ int main(int argc, char** argv)
 					fields[0].erase(std::remove(fields[0].begin(), fields[0].end(), ' '), fields[0].end());
 					int size = fields[0].length();
 					u256 amount = atoll(fields[1].c_str());
-					if (size < 40) {
+					if (size < 40)
+					{
 						if (size > 0)
 							cwarn << "Invalid address length: " << size;
 					}
