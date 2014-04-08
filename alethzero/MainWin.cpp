@@ -331,6 +331,11 @@ Main::Main(QWidget *parent) :
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
 
+	connect(ui->webView, &QWebView::loadFinished, [=]()
+	{
+		this->changed();
+	});
+
 	QWebFrame* f = ui->webView->page()->currentFrame();
 	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
 		f->addToJavaScriptWindowObject("eth", new QEthereum, QWebFrame::ScriptOwnership);
@@ -513,6 +518,8 @@ void Main::refresh(bool _override)
 	bool c = m_client->changed();
 	if (c || _override)
 	{
+		changed();
+
 		auto d = m_client->blockChain().details();
 		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));

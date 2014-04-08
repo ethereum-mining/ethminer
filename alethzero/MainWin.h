@@ -263,6 +263,9 @@ private slots:
 	void refresh(bool _override = false);
 	void refreshNetwork();
 
+signals:
+	void changed();	// TODO: manifest
+
 private:
 	QString pretty(eth::Address _a) const;
 
