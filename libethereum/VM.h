@@ -206,30 +206,22 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::DIV:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			m_stack[m_stack.size() - 2] = m_stack.back() / m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() / m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SDIV:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2];
+			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			m_stack[m_stack.size() - 2] = m_stack.back() % m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() % m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SMOD:
 			require(2);
-			if (!m_stack[m_stack.size() - 2])
-				return bytesConstRef();
-			(s256&)m_stack[m_stack.size() - 2] = (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2];
+			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
