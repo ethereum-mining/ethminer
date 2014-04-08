@@ -99,7 +99,8 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 	catch (std::exception const&)
 	{
 		// Probably already have the port open.
-		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode));
+		cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
 	}
 
 	m_net->setIdealPeerCount(_peers);
