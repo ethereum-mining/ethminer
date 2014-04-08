@@ -37,7 +37,27 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QWidget" name="widget" native="true"/>
+     <widget class="QTabWidget" name="tabWidget">
+      <widget class="QWidget" name="tabWidgetPage1">
+       <attribute name="title">
+        <string/>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QLineEdit" name="urlEdit"/>
+        </item>
+        <item>
+         <widget class="QWebView" name="webView">
+          <property name="url">
+           <url>
+            <string>about:blank</string>
+           </url>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -849,6 +869,13 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QWebView</class>
+   <extends>QWidget</extends>
+   <header>QtWebKitWidgets/QWebView</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>destination</tabstop>
   <tabstop>calculatedName</tabstop>
