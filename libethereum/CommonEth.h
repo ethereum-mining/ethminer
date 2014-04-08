@@ -101,6 +101,9 @@ public:
 	/// Retrieve the associated address of the public key.
 	Address const& address() const { return m_address; }
 
+	bool operator==(KeyPair const& _c) const { return m_secret == _c.m_secret; }
+	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
+
 private:
 	Secret m_secret;
 	Public m_public;
