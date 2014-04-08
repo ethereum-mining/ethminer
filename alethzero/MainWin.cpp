@@ -1,6 +1,8 @@
 #include <QtNetwork/QNetworkReply>
+#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
+#include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <libethereum/Dagger.h>
@@ -50,6 +52,152 @@ using eth::g_logPost;
 using eth::g_logVerbosity;
 using eth::c_instructionInfo;
 
+// Horrible global for the mainwindow. Needed for the QEthereums to find the Main window which acts as multiplexer for now.
+// Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
+Main* g_main = nullptr;
+
+QEthereum::QEthereum(QObject* _p): QObject(_p)
+{
+	connect(g_main, SIGNAL(changed()), SIGNAL(changed()));
+}
+
+QEthereum::~QEthereum()
+{
+}
+
+Client* QEthereum::client() const
+{
+	return g_main->client();
+}
+
+Address QEthereum::coinbase() const
+{
+	return client()->address();
+}
+
+Address QEthereum::account() const
+{
+	if (g_main->owned().empty())
+		return Address();
+	return g_main->owned()[0].address();
+}
+
+QVector<Address> QEthereum::accounts() const
+{
+	QVector<Address> ret;
+	for (auto i: g_main->owned())
+		ret.push_back(i.address());
+	return ret;
+}
+
+void QEthereum::setCoinbase(Address _a)
+{
+	if (client()->address() != _a)
+	{
+		client()->setAddress(_a);
+		changed();
+	}
+}
+
+QAccount::QAccount(QObject*)
+{
+}
+
+QAccount::~QAccount()
+{
+}
+
+void QAccount::setEthereum(QEthereum* _eth)
+{
+	if (m_eth == _eth)
+		return;
+	if (m_eth)
+		disconnect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
+	m_eth = _eth;
+	if (m_eth)
+		connect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
+	ethChanged();
+	changed();
+}
+
+u256 QAccount::balance() const
+{
+	if (m_eth)
+		return m_eth->balanceAt(m_address);
+	return 0;
+}
+
+double QAccount::txCount() const
+{
+	if (m_eth)
+		return m_eth->txCountAt(m_address);
+	return 0;
+}
+
+bool QAccount::isContract() const
+{
+	if (m_eth)
+		return m_eth->isContractAt(m_address);
+	return 0;
+}
+
+u256 QEthereum::balanceAt(Address _a) const
+{
+	return client()->postState().balance(_a);
+}
+
+bool QEthereum::isContractAt(Address _a) const
+{
+	return client()->postState().isContractAddress(_a);
+}
+
+bool QEthereum::isMining() const
+{
+	return client()->isMining();
+}
+
+bool QEthereum::isListening() const
+{
+	return client()->haveNetwork();
+}
+
+void QEthereum::setMining(bool _l)
+{
+	if (_l)
+		client()->startMining();
+	else
+		client()->stopMining();
+}
+
+void QEthereum::setListening(bool _l)
+{
+	if (_l)
+		client()->startNetwork();
+	else
+		client()->stopNetwork();
+}
+
+double QEthereum::txCountAt(Address _a) const
+{
+	return (double)client()->postState().transactionsFrom(_a);
+}
+
+unsigned QEthereum::peerCount() const
+{
+	return (unsigned)client()->peerCount();
+}
+
+void QEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _code, QByteArray _init)
+{
+	client()->transact(_secret, _amount, bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
+}
+
+void QEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
+{
+	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
+}
+
+
 static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
@@ -85,13 +233,19 @@ Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
+	g_main = this;
+
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
 
-	readSettings();
-	refresh();
+	qRegisterMetaType<eth::u256>("eth::u256");
+	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
+	qRegisterMetaType<eth::Secret>("eth::Secret");
+	qRegisterMetaType<eth::Address>("eth::Address");
+	qRegisterMetaType<QAccount*>("QAccount*");
+	qRegisterMetaType<QEthereum*>("QEthereum*");
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
@@ -136,6 +290,21 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockCount);
+
+	connect(ui->webView, &QWebView::titleChanged, [=]()
+	{
+		ui->tabWidget->setTabText(0, ui->webView->title());
+	});
+
+	QWebFrame* f = ui->webView->page()->currentFrame();
+	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
+		f->addToJavaScriptWindowObject("eth", new QEthereum, QWebFrame::ScriptOwnership);
+		f->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
+		f->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
+	});
+
+	readSettings();
+	refresh();
 
 	{
 		QSettings s("ethereum", "alethzero");
@@ -236,6 +405,8 @@ void Main::writeSettings()
 	s.setValue("peers", m_peers);
 	s.setValue("nameReg", ui->nameReg->text());
 
+	s.setValue("url", ui->urlEdit->text());
+
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
 }
@@ -267,6 +438,8 @@ void Main::readSettings()
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("NameReg", "").toString());
+	ui->urlEdit->setText(s.value("url", "file:///home/gav/gavcoin.html").toString());
+	on_urlEdit_editingFinished();
 }
 
 void Main::on_nameReg_textChanged()
@@ -394,6 +567,11 @@ void Main::refresh(bool _override)
 		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
 	m_client->unlock();
+}
+
+void Main::on_urlEdit_editingFinished()
+{
+	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::ourAccountsRowsMoved()
