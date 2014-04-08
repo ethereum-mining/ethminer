@@ -42,8 +42,11 @@ class PeerServer
 public:
 	/// Start server, listening for connections on the given port.
 	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, unsigned short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	/// Start server, listening for connections on a system-assigned port.
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
 	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m = NodeMode::Full);
+
 	~PeerServer();
 
 	static unsigned protocolVersion();
