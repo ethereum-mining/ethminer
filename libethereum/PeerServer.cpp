@@ -71,6 +71,25 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4)) << "Mode: " << (_m == NodeMode::PeerServer ? "PeerServer" : "Full");
 }
 
+PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m, string const& _publicAddress, bool _upnp):
+	m_clientVersion(_clientVersion),
+	m_mode(_m),
+	m_listenPort(0),
+	m_chain(&_ch),
+	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
+	m_socket(m_ioService),
+	m_key(KeyPair::create()),
+	m_networkId(_networkId)
+{
+	m_listenPort = m_acceptor.local_endpoint().port();
+
+	// populate addresses.
+	populateAddresses();
+	determinePublic(_publicAddress, _upnp);
+	ensureAccepting();
+	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4)) << "Mode: " << (m_mode == NodeMode::PeerServer ? "PeerServer" : "Full");
+}
+
 PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m):
 	m_clientVersion(_clientVersion),
 	m_mode(_m),
