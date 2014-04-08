@@ -474,7 +474,7 @@ void Main::readSettings()
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("NameReg", "").toString());
-	ui->urlEdit->setText(s.value("url", "file:///home/gav/gavcoin.html").toString());
+	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
 	on_urlEdit_editingFinished();
 }
 
