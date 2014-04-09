@@ -21,38 +21,12 @@
 
 #include "VM.h"
 
-#include <secp256k1.h>
-#include <boost/filesystem.hpp>
-#if WIN32
-#pragma warning(push)
-#pragma warning(disable:4244)
-#else
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#if WIN32
-#pragma warning(pop)
-#else
-#endif
-#include <ctime>
-#include <random>
-#include "BlockChain.h"
-#include "Instruction.h"
-#include "Exceptions.h"
-#include "Dagger.h"
-#include "Defaults.h"
 using namespace std;
 using namespace eth;
 
-VM::VM()
+void VM::reset(u256 _gas)
 {
-	reset();
-}
-
-void VM::reset()
-{
+	m_gas = _gas;
 	m_curPC = 0;
 	m_nextPC = 1;
 	m_stepCount = 0;

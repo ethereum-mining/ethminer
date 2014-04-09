@@ -83,8 +83,15 @@ public:
 	/// Destructor.
 	~Client();
 
-	/// Executes the given transaction.
-	void transact(Secret _secret, Address _dest, u256 _amount, u256s _data = u256s());
+	/// Submits the given message-call transaction.
+	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+
+	/// Submits a new contract-creation transaction.
+	/// @returns the new contract's address (assuming it all goes through).
+	Address transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+
+	/// Makes the given call. Nothing is recorded into the state. TODO
+//	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
 
 	/// Requires transactions involving this address be queued for inspection.
 	void setInterest(Address _dest);
@@ -125,9 +132,9 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers() { return m_net ? m_net->peers() : std::vector<PeerInfo>(); }
+	std::vector<PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
-	size_t peerCount() const { return m_net ? m_net->peerCount() : 0; }
+	size_t peerCount() const;
 
 	/// Start the network subsystem.
 	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
@@ -135,6 +142,8 @@ public:
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 	/// Stop the network subsystem.
 	void stopNetwork();
+	/// Is the network subsystem up?
+	bool haveNetwork() { return !!m_net; }
 	/// Get access to the peer server object. This will be null if the network isn't online.
 	PeerServer* peerServer() const { return m_net.get(); }
 
@@ -148,6 +157,8 @@ public:
 	void startMining();
 	/// Stop mining.
 	void stopMining();
+	/// Are we mining now?
+	bool isMining() { return m_doMine; }
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { return m_mineProgress; }
 

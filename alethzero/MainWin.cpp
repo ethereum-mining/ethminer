@@ -1,11 +1,14 @@
 #include <QtNetwork/QNetworkReply>
+#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
+#include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
+#include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -30,12 +33,14 @@ using eth::Secret;
 using eth::Transaction;
 
 // functions
-using eth::asHex;
+using eth::toHex;
 using eth::assemble;
 using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
-using eth::fromUserHex;
+using eth::fromHex;
+using eth::sha3;
+using eth::left160;
 using eth::right160;
 using eth::simpleDebugOut;
 using eth::toLog2;
@@ -51,8 +56,32 @@ static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
 		_b->addItem(QString::fromStdString(units()[n].second), n);
-	_b->setCurrentIndex(6);
 }
+
+string htmlDump(bytes const& _b, unsigned _w = 8)
+{
+	stringstream ret;
+	ret << "<pre>";
+	for (unsigned i = 0; i < _b.size(); i += _w)
+	{
+		ret << hex << setw(4) << setfill('0') << i << " ";
+		for (unsigned j = i; j < i + _w; ++j)
+			if (j < _b.size())
+				if (_b[j] >= 32 && _b[j] < 128)
+					ret << (char)_b[j];
+				else ret << '?';
+			else
+				ret << ' ';
+		ret << " ";
+		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
+			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
+		ret << "\n";
+	}
+	ret << "</pre>";
+	return ret.str();
+}
+
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -62,47 +91,6 @@ Main::Main(QWidget *parent) :
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
-
-	/*
-	ui->librariesView->setModel(m_libraryMan);
-	ui->graphsView->setModel(m_graphMan);
-	setWindowIcon(QIcon(":/Noted.png"));
-
-	qmlRegisterSingletonType<TimeHelper>("com.llr", 1, 0, "Time", TimelineItem::constructTimeHelper);
-	qmlRegisterType<GraphItem>("com.llr", 1, 0, "Graph");
-	qmlRegisterType<CursorGraphItem>("com.llr", 1, 0, "CursorGraph");
-	qmlRegisterType<IntervalItem>("com.llr", 1, 0, "Interval");
-	qmlRegisterType<CursorItem>("com.llr", 1, 0, "Cursor");
-	qmlRegisterType<TimelinesItem>("com.llr", 1, 0, "Timelines");
-	qmlRegisterType<TimeLabelsItem>("com.llr", 1, 0, "TimeLabels");
-	qmlRegisterType<XLabelsItem>("com.llr", 1, 0, "XLabels");
-	qmlRegisterType<XScaleItem>("com.llr", 1, 0, "XScale");
-	qmlRegisterType<YLabelsItem>("com.llr", 1, 0, "YLabels");
-	qmlRegisterType<YScaleItem>("com.llr", 1, 0, "YScale");
-
-	m_view = new QQuickView();
-	QQmlContext* context = m_view->rootContext();
-	context->setContextProperty("libs", libs());
-	context->setContextProperty("compute", compute());
-	context->setContextProperty("data", data());
-	context->setContextProperty("graphs", graphs());
-	context->setContextProperty("audio", audio());
-	context->setContextProperty("view", view());
-	m_view->setSource(QUrl("qrc:/Noted.qml"));
-
-	QWidget* w = QWidget::createWindowContainer(m_view);
-	w->setAcceptDrops(true);
-	m_view->setResizeMode(QQuickView::SizeRootObjectToView);
-	ui->fullDisplay->insertWidget(0, w);
-	m_view->create();
-
-	m_timelinesItem = m_view->rootObject()->findChild<TimelinesItem*>("timelines");
-	qDebug() << m_view->rootObject();
-	*/
-
-
-	readSettings();
-	refresh();
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
@@ -119,6 +107,8 @@ Main::Main(QWidget *parent) :
 	int pocnumber = QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1).toInt();
 	if (pocnumber == 3)
 		m_servers.push_back("54.201.28.117:30303");
+	else if (pocnumber == 4)
+		m_servers.push_back("54.72.31.55:30303");
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
@@ -132,13 +122,31 @@ Main::Main(QWidget *parent) :
 	}
 #endif
 
+	ui->configDock->close();
+
 	on_verbosity_sliderMoved();
+	initUnits(ui->gasPriceUnits);
 	initUnits(ui->valueUnits);
+	ui->valueUnits->setCurrentIndex(6);
+	ui->gasPriceUnits->setCurrentIndex(4);
+	ui->gasPrice->setValue(10);
 	on_destination_textChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->blockCount);
+
+	readSettings();
+	refresh();
+
+	{
+		QSettings s("ethereum", "alethzero");
+		if (s.value("splashMessage", true).toBool())
+		{
+			QMessageBox::information(this, "Here Be Dragons!", "This is proof-of-concept software. The project as a whole is not even at the alpha-testing stage. It here to show you, if you have a technical bent, the sort of thing that might be possible down the line.\nPlease don't blame us if it does something unexpected or if you're underwhelmed with the user-experience. We have great plans for it in terms of UX down the line but right now we just want to get the groundwork sorted. We welcome contributions, be they in code, testing or documentation!\nAfter you close this message it won't appear again.");
+			s.setValue("splashMessage", false);
+		}
+	}
 }
 
 Main::~Main()
@@ -149,7 +157,15 @@ Main::~Main()
 
 QString Main::pretty(eth::Address _a) const
 {
-	if (h256 n = state().contractMemory(m_nameReg, (h256)(u256)(u160)_a))
+	h256 n;
+
+	if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
+		n = state().contractStorage(nameReg, (u160)(_a));
+
+	if (!n)
+		n = state().contractStorage(m_nameReg, (u160)(_a));
+
+	if (n)
 	{
 		std::string s((char const*)n.data(), 32);
 		if (s.find_first_of('\0') != string::npos)
@@ -176,10 +192,16 @@ Address Main::fromString(QString const& _a) const
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
-		if (h256 a = state().contractMemory(m_nameReg, n))
+	{
+		if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
+			if (h256 a = state().contractStorage(nameReg, n))
+				return right160(a);
+
+		if (h256 a = state().contractStorage(m_nameReg, n))
 			return right160(a);
+	}
 	if (_a.size() == 40)
-		return Address(fromUserHex(_a.toStdString()));
+		return Address(fromHex(_a.toStdString()));
 	else
 		return Address();
 }
@@ -246,10 +268,7 @@ void Main::readSettings()
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	if (s.value("nameReg").toString() == "11f62328e131dbb05ce4c73a3de3c7ab1c84a163")
-		s.remove("nameReg");
-	ui->nameReg->setText(s.value("nameReg", "8ff91e5b145a23ab1afef34f12587c18bd42aec0").toString());
-
+	ui->nameReg->setText(s.value("NameReg", "").toString());
 }
 
 void Main::on_nameReg_textChanged()
@@ -257,9 +276,11 @@ void Main::on_nameReg_textChanged()
 	string s = ui->nameReg->text().toStdString();
 	if (s.size() == 40)
 	{
-		m_nameReg = Address(fromUserHex(s));
+		m_nameReg = Address(fromHex(s));
 		refresh(true);
 	}
+	else
+		m_nameReg = Address();
 }
 
 void Main::refreshNetwork()
@@ -319,7 +340,7 @@ void Main::refresh(bool _override)
 				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
-					.arg(render(right160(t.sha3())))
+					.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
 					.arg((unsigned)t.nonce);
 			ui->transactionQueue->addItem(s);
 		}
@@ -345,7 +366,7 @@ void Main::refresh(bool _override)
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
-						.arg(render(right160(t.sha3())))
+						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
 						.arg((unsigned)t.nonce);
 				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
@@ -360,14 +381,19 @@ void Main::refresh(bool _override)
 		m_keysChanged = false;
 		ui->ourAccounts->clear();
 		u256 totalBalance = 0;
+		u256 totalGavCoinBalance = 0;
+		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
 		for (auto i: m_myKeys)
 		{
 			u256 b = st.balance(i.address());
 			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)st.transactionsFrom(i.address())), ui->ourAccounts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
+
+			totalGavCoinBalance += st.contractStorage(gavCoin, (u160)i.address());
 		}
-		ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
+
+		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
 	m_client->unlock();
 }
@@ -422,23 +448,30 @@ void Main::on_blocks_currentItemChanged()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			Transaction tx(block[1][txi].data());
-			h256 th = tx.sha3();
+			auto ss = tx.safeSender();
+			h256 th = sha3(rlpList(ss, tx.nonce));
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
-			auto ss = tx.safeSender();
 			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
-			if (tx.receiveAddress)
-				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
-			else
+			if (tx.isCreation())
 				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
+			else
+				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
-			if (tx.data.size())
+			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
+			s << "<br/>Gas: <b>" << tx.gas << "</b>";
+			if (tx.isCreation())
 			{
-				s << "<br/>Data:&nbsp;&emsp;&nbsp;";
-//				for (auto i: tx.data)
-//					s << "0x<b>" << hex << i << "</b>&emsp;";
-				s << "</br>" << disassemble(tx.data);
+				if (tx.init.size())
+					s << "<h4>Init</h4>" << disassemble(tx.init);
+				if (tx.data.size())
+					s << "<h4>Body</h4>" << disassemble(tx.data);
+			}
+			else
+			{
+				if (tx.data.size())
+					s << htmlDump(tx.data, 16);
 			}
 		}
 
@@ -459,43 +492,10 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto mem = state().contractMemory(h);
-		u256 next = 0;
-		unsigned numerics = 0;
-		bool unexpectedNumeric = false;
-		for (auto i: mem)
-		{
-			if (next < i.first)
-			{
-				unsigned j;
-				for (j = 0; j <= numerics && next + j < i.first; ++j)
-					s << (j < numerics || unexpectedNumeric ? " 0" : " <b>STOP</b>");
-				unexpectedNumeric = false;
-				numerics -= min(numerics, j);
-				if (next + j < i.first)
-					s << " ...<br/>@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
-			}
-			else if (!next)
-			{
-				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;";
-			}
-			auto iit = c_instructionInfo.find((Instruction)(unsigned)i.second);
-			if (numerics || iit == c_instructionInfo.end() || (u256)(unsigned)iit->first != i.second)	// not an instruction or expecting an argument...
-			{
-				if (numerics)
-					numerics--;
-				else
-					unexpectedNumeric = true;
-				s << " " << showbase << hex << i.second;
-			}
-			else
-			{
-				auto const& ii = iit->second;
-				s << " <b>" << ii.name << "</b>";
-				numerics = ii.additional;
-			}
-			next = i.first + 1;
-		}
+		auto mem = state().contractStorage(h);
+		for (auto const& i: mem)
+			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+		s << "<h4>Body Code</h4>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
 	m_client->unlock();
@@ -511,7 +511,7 @@ void Main::on_ourAccounts_doubleClicked()
 {
 	auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_log_doubleClicked()
@@ -523,14 +523,14 @@ void Main::on_accounts_doubleClicked()
 {
 	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_contracts_doubleClicked()
 {
 	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(asHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
 void Main::on_destination_textChanged()
@@ -542,25 +542,96 @@ void Main::on_destination_textChanged()
 			ui->calculatedName->setText("Unknown Address");
 	else
 		ui->calculatedName->setText("Create Contract");
-	updateFee();
+	on_data_textChanged();
+//	updateFee();
 }
 
 void Main::on_data_textChanged()
 {
-	string code = ui->data->toPlainText().toStdString();
-	m_data = code[0] == '(' ? compileLisp(code, true) : assemble(code, true);
-	ui->code->setPlainText(QString::fromStdString(disassemble(m_data)));
+	if (isCreation())
+	{
+		string code = ui->data->toPlainText().toStdString();
+		m_init.clear();
+		m_data = compileLisp(code, true, m_init);
+		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
+		if (!ui->gas->isEnabled())
+			ui->gas->setValue(m_backupGas);
+		ui->gas->setEnabled(true);
+	}
+	else
+	{
+		m_data.clear();
+		QString s = ui->data->toPlainText();
+		while (s.size())
+		{
+			QRegExp r("@?\"(.*)\"(.*)");
+			QRegExp h("@?(0x)?(([a-fA-F0-9][a-fA-F0-9])+)(.*)");
+			if (r.exactMatch(s))
+			{
+				for (auto i: r.cap(1))
+					m_data.push_back((byte)i.toLatin1());
+				if (s[0] == '@')
+					for (int i = r.cap(1).size(); i < 32; ++i)
+						m_data.push_back(0);
+				else
+					m_data.push_back(0);
+				s = r.cap(2);
+			}
+			else if (h.exactMatch(s))
+			{
+				bytes bs = fromHex(h.cap(2).toStdString());
+				if (s[0] == '@')
+					for (auto i = bs.size(); i < 32; ++i)
+						m_data.push_back(0);
+				for (auto b: bs)
+					m_data.push_back(b);
+				s = h.cap(4);
+			}
+			else
+				s = s.mid(1);
+		}
+		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
+		if (m_client->postState().isContractAddress(fromString(ui->destination->text())))
+		{
+			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
+			if (!ui->gas->isEnabled())
+				ui->gas->setValue(m_backupGas);
+			ui->gas->setEnabled(true);
+		}
+		else
+		{
+			if (ui->gas->isEnabled())
+				m_backupGas = ui->gas->value();
+			ui->gas->setValue((qint64)state().callGas(m_data.size()));
+			ui->gas->setEnabled(false);
+		}
+	}
 	updateFee();
+}
+
+bool Main::isCreation() const
+{
+	return ui->destination->text().isEmpty()/* || !ui->destination->text().toInt()*/;
 }
 
 u256 Main::fee() const
 {
-	return (ui->destination->text().isEmpty() || !ui->destination->text().toInt()) ? state().fee(m_data.size()) : state().fee();
+	return ui->gas->value() * gasPrice();
 }
 
 u256 Main::value() const
 {
+	if (ui->valueUnits->currentIndex() == -1)
+		return 0;
 	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
+}
+
+u256 Main::gasPrice() const
+{
+	if (ui->gasPriceUnits->currentIndex() == -1)
+		return 0;
+	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
 }
 
 u256 Main::total() const
@@ -570,7 +641,7 @@ u256 Main::total() const
 
 void Main::updateFee()
 {
-	ui->fee->setText(QString("(fee: %1)").arg(formatBalance(fee()).c_str()));
+	ui->fee->setText(QString("(gas sub-total: %1)").arg(formatBalance(fee()).c_str()));
 	auto totalReq = total();
 	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
 
@@ -644,12 +715,14 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq	)
+		if (m_client->state().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			Address r = fromString(ui->destination->text());
-			m_client->transact(s, r, value(), m_data);
+			if (isCreation())
+				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
+			else
+				m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
 			refresh();
 			return;
 		}

@@ -17,6 +17,10 @@ if ("x${TARGET_PLATFORM}" STREQUAL "x")
 	set(TARGET_PLATFORM "linux")
 endif ()
 
+if ("${TARGET_PLATFORM}" STREQUAL "linux")
+	set(CMAKE_THREAD_LIBS_INIT pthread)
+endif ()
+
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
@@ -58,7 +62,7 @@ else ()
 endif ()
 
 # Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
+set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
@@ -150,7 +154,11 @@ add_subdirectory(test)
 add_subdirectory(eth)
 if (NOT HEADLESS)
 	add_subdirectory(alethzero)
+	add_subdirectory(walleth)
 endif ()
+
+enable_testing()
+add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
 unset(HEADLESS CACHE)
 #unset(TARGET_PLATFORM CACHE)

@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 		if (it->key().ToString() != "best")
 		{
 			BlockDetails d(RLP(it->value().ToString()));
-			_out << asHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
 		}
 	delete it;
 	return _out;
@@ -221,7 +221,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
-	// This might be the new last block...
+	// This might be the new best block...
 	if (td > details(m_lastBlockHash).totalDifficulty)
 	{
 		m_lastBlockHash = newHash;

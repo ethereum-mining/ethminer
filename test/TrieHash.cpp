@@ -19,9 +19,10 @@
  * @date 2014
  */
 
-#include "Common.h"
-#include "TrieCommon.h"
 #include "TrieHash.h"
+
+#include <CommonEth.h>
+#include <TrieCommon.h>
 using namespace std;
 using namespace eth;
 
@@ -58,7 +59,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 		_rlp.appendList(2) << hexPrefixEncode(_begin->first, true, _preLen) << _begin->second;
 #if ENABLE_DEBUG_PRINT
 		if (g_hashDebug)
-			std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha3(_rlp.out()) << std::endl;
+			std::cerr << s_indent << toHex(bytesConstRef(_begin->first.data() + _preLen, _begin->first.size() - _preLen), 1) << ": " << _begin->second << " = " << sha3(_rlp.out()) << std::endl;
 #endif
 	}
 	else
@@ -79,7 +80,7 @@ void hash256rlp(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 			// if they all have the same next nibble, we also want a pair.
 #if ENABLE_DEBUG_PRINT
 			if (g_hashDebug)
-				std::cerr << s_indent << asHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
+				std::cerr << s_indent << toHex(bytesConstRef(_begin->first.data() + _preLen, sharedPre), 1) << ": " << std::endl;
 #endif
 			_rlp.appendList(2) << hexPrefixEncode(_begin->first, false, _preLen, (int)sharedPre);
 			hash256aux(_s, _begin, _end, (unsigned)sharedPre, _rlp);
@@ -162,7 +163,7 @@ h256 hash256(StringMap const& _s)
 		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[toHex(i->first)] = i->second;
+		hexMap[asNibbles(i->first)] = i->second;
 	RLPStream s;
 	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return sha3(s.out());
@@ -175,7 +176,7 @@ bytes rlp256(StringMap const& _s)
 		return bytes();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[toHex(i->first)] = i->second;
+		hexMap[asNibbles(i->first)] = i->second;
 	RLPStream s;
 	hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return s.out();
@@ -188,7 +189,7 @@ h256 hash256(u256Map const& _s)
 		return h256();
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[toHex(toBigEndianString(i->first))] = asString(rlp(i->second));
+		hexMap[asNibbles(toBigEndianString(i->first))] = asString(rlp(i->second));
 	RLPStream s;
 	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return sha3(s.out());

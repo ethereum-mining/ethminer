@@ -283,8 +283,9 @@ public:
 	RLPStream& append(RLP const& _rlp, uint _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.
-	template <class _T> RLPStream& append(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T> RLPStream& append(std::vector<_T> const& _s) { return appendVector(_s); }
 	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T> RLPStream& appendVector(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 
 	/// Appends a list.
 	RLPStream& appendList(uint _items);
@@ -322,14 +323,6 @@ private:
 		byte* b = &m_out.back();
 		for (; _i; _i >>= 8)
 			*(b--) = (byte)_i;
-	}
-
-	/// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
-	template <class _T> static uint bytesRequired(_T _i)
-	{
-		uint i = 0;
-		for (; _i != 0; ++i, _i >>= 8) {}
-		return i;
 	}
 
 	/// Our output byte stream.

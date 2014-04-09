@@ -14,40 +14,36 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MemTrie.h
- * @author Gav Wood <i@gavwood.com>
+/** @file TestHelper.cpp
+ * @author Marko Simovic <markobarko@gmail.com>
  * @date 2014
  */
 
-#pragma once
-
-#include "Common.h"
+#include <thread>
+#include <chrono>
+#include <Client.h>
+#include "TestHelper.h"
 
 namespace eth
 {
 
-class MemTrieNode;
-
-/**
- * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
- */
-class MemTrie
+void mine(Client& c, int numBlocks)
 {
-public:
-	MemTrie(): m_root(nullptr) {}
-	~MemTrie();
+	auto startBlock = c.blockChain().details().number;
 
-	h256 hash256() const;
-	bytes rlp() const;
+	c.startMining();
+	while(c.blockChain().details().number < startBlock + numBlocks)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	c.stopMining();
+}
 
-	void debugPrint();
-
-	std::string const& at(std::string const& _key) const;
-	void insert(std::string const& _key, std::string const& _value);
-	void remove(std::string const& _key);
-
-private:
-	MemTrieNode* m_root;
-};
+void connectClients(Client& c1, Client& c2)
+{
+	short c1Port = 20000;
+	short c2Port = 21000;
+	c1.startNetwork(c1Port);
+	c2.startNetwork(c2Port);
+	c2.connect("127.0.0.1", c1Port);
+}
 
 }

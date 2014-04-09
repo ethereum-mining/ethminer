@@ -26,6 +26,7 @@
 #include <boost/filesystem.hpp>
 #include "Common.h"
 #include "Defaults.h"
+#include "PeerServer.h"
 using namespace std;
 using namespace eth;
 
@@ -51,7 +52,7 @@ void VersionChecker::setOk()
 
 Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath):
 	m_clientVersion(_clientVersion),
-	m_vc(_dbPath, PeerSession::protocolVersion()),
+	m_vc(_dbPath, PeerServer::protocolVersion()),
 	m_bc(_dbPath, !m_vc.ok()),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok())),
 	m_preMine(_us, m_stateDB),
@@ -61,11 +62,6 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-
-	// Synchronise the state according to the head of the block chain.
-	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	m_preMine.sync(m_bc);
-	m_postMine = m_preMine;
 	m_changed = true;
 
 	static const char* c_threadName = "eth";
@@ -75,6 +71,11 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 		while (m_workState.load(std::memory_order_acquire) != Deleting)
 			work();
 		m_workState.store(Deleted, std::memory_order_release);
+
+		// Synchronise the state according to the head of the block chain.
+		// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+		m_preMine.sync(m_bc);
+		m_postMine = m_preMine;
 	}));
 }
 
@@ -91,10 +92,30 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 {
 	if (m_net.get())
 		return;
-	m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	try
+	{
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+	}
+	catch (std::exception const&)
+	{
+		// Probably already have the port open.
+		cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+	}
+
 	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
+}
+
+std::vector<PeerInfo> Client::peers()
+{
+	return m_net ? m_net->peers() : std::vector<PeerInfo>();
+}
+
+size_t Client::peerCount() const
+{
+	return m_net ? m_net->peerCount() : 0;
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
@@ -120,18 +141,38 @@ void Client::stopMining()
 	m_doMine = false;
 }
 
-void Client::transact(Secret _secret, Address _dest, u256 _amount, u256s _data)
+void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	t.value = _value;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
 	t.receiveAddress = _dest;
-	t.value = _amount;
 	t.data = _data;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 	m_changed = true;
+}
+
+Address Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
+{
+	lock_guard<recursive_mutex> l(m_lock);
+	Transaction t;
+	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	t.value = _endowment;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
+	t.receiveAddress = Address();
+	t.data = _code;
+	t.init = _init;
+	t.sign(_secret);
+	cnote << "New transaction " << t;
+	m_tq.attemptImport(t.rlp());
+	m_changed = true;
+	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
 void Client::work()

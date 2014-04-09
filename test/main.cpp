@@ -20,6 +20,8 @@
  * Main test functions.
  */
 
+#include <boost/test/unit_test.hpp>
+
 // TODO: utilise the shared testdata.
 
 int trieTest();
@@ -34,12 +36,12 @@ int peerTest(int argc, char** argv);
 #include <BlockInfo.h>
 using namespace eth;
 
-int main(int, char**)
+BOOST_AUTO_TEST_CASE(basic_tests)
 {
 /*	RLPStream s;
 	BlockInfo::genesis().fillStream(s, false);
 	std::cout << RLP(s.out()) << std::endl;
-	std::cout << asHex(s.out()) << std::endl;
+	std::cout << toHex(s.out()) << std::endl;
 	std::cout << sha3(s.out()) << std::endl;*/
 
 	int r = 0;
@@ -51,7 +53,6 @@ int main(int, char**)
 //	r += daggerTest();
 //	r += stateTest();
 //	r += peerTest(argc, argv);
-	assert(!r);
-	return 0;
+	BOOST_REQUIRE(!r);
 }
 

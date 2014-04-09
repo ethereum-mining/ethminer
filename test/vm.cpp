@@ -21,12 +21,12 @@
  */
 
 #include <fstream>
-#include "../json_spirit/json_spirit_reader_template.h"
-#include "../json_spirit/json_spirit_writer_template.h"
 #include <ExtVMFace.h>
 #include <Transaction.h>
 #include <VM.h>
+#include <Log.h>
 #include <Instruction.h>
+#include "JsonSpiritHeaders.h"
 using namespace std;
 using namespace json_spirit;
 using namespace eth;
@@ -39,39 +39,27 @@ class FakeExtVM: public ExtVMFace
 public:
 	FakeExtVM()
 	{}
-	FakeExtVM(FeeStructure const& _fees, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
-		ExtVMFace(Address(), Address(), 0, u256s(), _fees, _previousBlock, _currentBlock, _currentNumber)
+	FakeExtVM(BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+		ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytesConstRef(), _previousBlock, _currentBlock, _currentNumber)
 	{}
 
 	u256 store(u256 _n)
 	{
-#ifdef __clang__
-		tuple<u256, u256, u256, map<u256, u256> > & address = addresses[myAddress];
-		map<u256, u256> & third = get<3>(address);
-		auto sFinder = third.find(_n);
-		if (sFinder != third.end())
-			return sFinder->second;
-		else
-			return 0;
-#else
 		return get<3>(addresses[myAddress])[_n];
-#endif
 	}
 	void setStore(u256 _n, u256 _v)
 	{
-#ifdef __clang__
-		tuple<u256, u256, u256, map<u256, u256> > & address = addresses[myAddress];
-		map<u256, u256> & third = get<3>(address);
-		auto sFinder = third.find(_n);
-		if (sFinder != third.end())
-			sFinder->second = _v;
-		else
-			third.insert(std::make_pair(_n, _v));
-#else
 		get<3>(addresses[myAddress])[_n] = _v;
-#endif
 	}
-	void mktx(Transaction& _t)
+	u256 balance(Address _a) { return get<0>(addresses[_a]); }
+	void subBalance(u256 _a) { get<0>(addresses[myAddress]) -= _a; }
+	u256 txCount(Address _a) { return get<1>(addresses[_a]); }
+	void suicide(Address _a)
+	{
+		get<0>(addresses[_a]) += get<0>(addresses[myAddress]);
+		addresses.erase(myAddress);
+	}
+	void transact(Transaction& _t)
 	{
 		if (get<0>(addresses[myAddress]) >= _t.value)
 		{
@@ -81,63 +69,57 @@ public:
 			txs.push_back(_t);
 		}
 	}
-	u256 balance(Address _a) { return get<0>(addresses[_a]); }
-	void payFee(bigint _fee) { get<0>(addresses[myAddress]) = (u256)(get<0>(addresses[myAddress]) - _fee); }
-	u256 txCount(Address _a) { return get<1>(addresses[_a]); }
-	u256 extro(Address _a, u256 _pos)
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
 	{
-#ifdef __clang__
-		tuple<u256, u256, u256, map<u256, u256> > & address = addresses[_a];
-		map<u256, u256> & third = get<3>(address);
-		auto sFinder = third.find(_pos);
-		if (sFinder != third.end())
-			return sFinder->second;
-		else
-			return 0;
-#else
-		return get<3>(addresses[_a])[_pos];
-#endif
-	}
-	u256 extroPrice(Address _a) { return get<2>(addresses[_a]); }
-	void suicide(Address _a)
-	{
-		for (auto const& i: get<3>(addresses[myAddress]))
-			if (i.second)
-				get<0>(addresses[_a]) += fees.m_memoryFee;
-		get<0>(addresses[_a]) += get<0>(addresses[myAddress]);
-		addresses.erase(myAddress);
+		Transaction t;
+		t.value = _endowment;
+		t.gasPrice = gasPrice;
+		t.gas = *_gas;
+		t.data = _code.toBytes();
+		t.init = _init.toBytes();
+		txs.push_back(t);
+		return right160(t.sha3(false));
 	}
 
-	void setTransaction(Address _txSender, u256 _txValue, u256s const& _txData)
+	bool call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out)
 	{
-		txSender = _txSender;
-		txValue = _txValue;
-		txData = _txData;
+		Transaction t;
+		t.value = _value;
+		t.gasPrice = gasPrice;
+		t.gas = *_gas;
+		t.data = _data.toVector();
+		t.receiveAddress = _receiveAddress;
+		txs.push_back(t);
+		(void)_out;
+		return true;
 	}
-	void setContract(Address _myAddress, u256 _myBalance, u256 _myNonce, u256s _myData)
+
+	void setTransaction(Address _caller, u256 _value, u256 _gasPrice, bytes const& _data)
+	{
+		caller = origin = _caller;
+		value = _value;
+		data = &_data;
+		gasPrice = _gasPrice;
+	}
+	void setContract(Address _myAddress, u256 _myBalance, u256 _myNonce, bytes const& _code, map<u256, u256> const& _storage)
 	{
 		myAddress = _myAddress;
-		set(myAddress, _myBalance, _myNonce, _myData);
+		set(myAddress, _myBalance, _myNonce, _code, _storage);
 	}
-	void set(Address _a, u256 _myBalance, u256 _myNonce, u256s _myData)
+	void set(Address _a, u256 _myBalance, u256 _myNonce, bytes const& _code, map<u256, u256> const& _storage)
 	{
 		get<0>(addresses[_a]) = _myBalance;
 		get<1>(addresses[_a]) = _myNonce;
 		get<2>(addresses[_a]) = 0;
-		for (unsigned i = 0; i < _myData.size(); ++i)
-#ifdef __clang__
-		{
-			tuple<u256, u256, u256, map<u256, u256> > & address = addresses[_a];
-			map<u256, u256> & third = get<3>(address);
-			auto sFinder = third.find(i);
-			if (sFinder != third.end())
-				sFinder->second = _myData[i];
-			else
-				third.insert(std::make_pair(i, _myData[i]));
-		}
-#else
-			get<3>(addresses[_a])[i] = _myData[i];
-#endif
+		get<3>(addresses[_a]) = _storage;
+		get<4>(addresses[_a]) = _code;
+	}
+
+	void reset(u256 _myBalance, u256 _myNonce, map<u256, u256> const& _storage)
+	{
+		txs.clear();
+		addresses.clear();
+		set(myAddress, _myBalance, _myNonce, get<4>(addresses[myAddress]), _storage);
 	}
 
 	mObject exportEnv()
@@ -148,7 +130,6 @@ public:
 		push(ret, "currentDifficulty", currentBlock.difficulty);
 		push(ret, "currentTimestamp", currentBlock.timestamp);
 		ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress);
-		push(ret, "feeMultiplier", fees.multiplier());
 		return ret;
 	}
 
@@ -159,7 +140,6 @@ public:
 		currentBlock.difficulty = toInt(_o["currentDifficulty"]);
 		currentBlock.timestamp = toInt(_o["currentTimestamp"]);
 		currentBlock.coinbaseAddress = Address(_o["currentCoinbase"].get_str());
-		fees.setMultiplier(toInt(_o["feeMultiplier"]));
 	}
 
 	static u256 toInt(mValue const& _v)
@@ -170,6 +150,19 @@ public:
 		case int_type: return (u256)_v.get_uint64();
 		case bool_type: return (u256)(uint64_t)_v.get_bool();
 		case real_type: return (u256)(uint64_t)_v.get_real();
+		default: cwarn << "Bad type for scalar: " << _v.type();
+		}
+		return 0;
+	}
+
+	static byte toByte(mValue const& _v)
+	{
+		switch (_v.type())
+		{
+		case str_type: return (byte)stoi(_v.get_str());
+		case int_type: return (byte)_v.get_uint64();
+		case bool_type: return (byte)_v.get_bool();
+		case real_type: return (byte)_v.get_real();
 		default: cwarn << "Bad type for scalar: " << _v.type();
 		}
 		return 0;
@@ -199,7 +192,6 @@ public:
 			mObject o;
 			push(o, "balance", get<0>(a.second));
 			push(o, "nonce", get<1>(a.second));
-			push(o, "extroPrice", get<2>(a.second));
 
 			mObject store;
 			string curKey;
@@ -239,42 +231,18 @@ public:
 			auto& a = addresses[Address(i.first)];
 			get<0>(a) = toInt(o["balance"]);
 			get<1>(a) = toInt(o["nonce"]);
-			get<2>(a) = toInt(o["extroPrice"]);
 			if (o.count("store"))
 				for (auto const& j: o["store"].get_obj())
 				{
 					u256 adr(j.first);
 					for (auto const& k: j.second.get_array())
-#ifdef __clang__
-					{
-						map<u256, u256> & third = get<3>(a);
-						auto sFinder = third.find(adr);
-						if (sFinder != third.end())
-							sFinder->second = toInt(k);
-						else
-							third.insert(std::make_pair(adr, toInt(k)));
-						adr++;
-					}
-#else
 						get<3>(a)[adr++] = toInt(k);
-#endif
 				}
 			if (o.count("code"))
 			{
-				u256s d = compileLisp(o["code"].get_str());
-				for (unsigned i = 0; i < d.size(); ++i)
-#ifdef __clang__
-				{
-					map<u256, u256> & third = get<3>(a);
-					auto sFinder = third.find(i);
-					if (sFinder != third.end())
-						sFinder->second = d[i];
-					else
-						third.insert(std::make_pair(i, d[i]));
-				}
-#else
-					get<3>(a)[(u256)i] = d[i];
-#endif
+				bytes e;
+				bytes d = compileLisp(o["code"].get_str(), false, e);
+				get<4>(a) = d;
 			}
 		}
 	}
@@ -283,10 +251,12 @@ public:
 	{
 		mObject ret;
 		ret["address"] = toString(myAddress);
-		ret["sender"] = toString(txSender);
-		push(ret, "value", txValue);
+		ret["caller"] = toString(caller);
+		ret["origin"] = toString(origin);
+		push(ret, "value", value);
+		push(ret, "gasPrice", gasPrice);
 		mArray d;
-		for (auto const& i: txData)
+		for (auto const& i: data)
 			push(d, i);
 		ret["data"] = d;
 		return ret;
@@ -295,10 +265,14 @@ public:
 	void importExec(mObject& _o)
 	{
 		myAddress = Address(_o["address"].get_str());
-		txSender = Address(_o["sender"].get_str());
-		txValue = toInt(_o["value"]);
+		caller = Address(_o["caller"].get_str());
+		origin = Address(_o["origin"].get_str());
+		value = toInt(_o["value"]);
+		gasPrice = toInt(_o["gasPrice"]);
+		thisTxData.clear();
 		for (auto const& j: _o["data"].get_array())
-			txData.push_back(toInt(j));
+			thisTxData.push_back(toByte(j));
+		data = &thisTxData;
 	}
 
 	mArray exportTxs()
@@ -327,20 +301,14 @@ public:
 			t.receiveAddress = Address(tx["destination"].get_str());
 			t.value = toInt(tx["value"]);
 			for (auto const& j: tx["data"].get_array())
-				t.data.push_back(toInt(j));
+				t.data.push_back(toByte(j));
 			txs.push_back(t);
 		}
 	}
 
-	void reset(u256 _myBalance, u256 _myNonce, u256s _myData)
-	{
-		txs.clear();
-		addresses.clear();
-		set(myAddress, _myBalance, _myNonce, _myData);
-	}
-
-	map<Address, tuple<u256, u256, u256, map<u256, u256>>> addresses;
+	map<Address, tuple<u256, u256, u256, map<u256, u256>, bytes>> addresses;
 	Transactions txs;
+	bytes thisTxData;
 };
 
 #define CREATE_TESTS 0
@@ -380,21 +348,37 @@ public:
 			if (_fillin)
 				o["pre"] = mValue(fev.exportState());
 
+			bytes output;
 			for (auto i: o["exec"].get_array())
 			{
 				fev.importExec(i.get_obj());
-				vm.go(fev);
+				output = vm.go(fev).toBytes();
 			}
 			if (_fillin)
 			{
 				o["post"] = mValue(fev.exportState());
 				o["txs"] = fev.exportTxs();
+				mArray df;
+				for (auto const& i: output)
+					FakeExtVM::push(df, i);
+				o["out"] = df;
 			}
 			else
 			{
 				FakeExtVM test;
 				test.importState(o["post"].get_obj());
 				test.importTxs(o["txs"].get_array());
+				int i = 0;
+				for (auto const& d: o["out"].get_array())
+				{
+					if (output[i] != FakeExtVM::toInt(d))
+					{
+						cwarn << "Test failed: output byte" << i << "different.";
+						passed = false;
+					}
+					++i;
+				}
+
 				if (test.addresses != fev.addresses)
 				{
 					cwarn << "Test failed: state different.";
@@ -424,13 +408,12 @@ public:
 		cb.difficulty = 256;
 		cb.timestamp = 1;
 		cb.coinbaseAddress = toAddress(sha3("coinbase"));
-		FeeStructure fees;
-		fees.setMultiplier(1);
-		FakeExtVM fev(fees, pb, cb, 0);
-		fev.setContract(toAddress(sha3("contract")), ether, 0, compileLisp("(suicide (txsender))"));
+		FakeExtVM fev(pb, cb, 0);
+		bytes init;
+		fev.setContract(toAddress(sha3("contract")), ether, 0, compileLisp("(suicide (txsender))", false, init), map<u256, u256>());
 		o["env"] = fev.exportEnv();
 		o["pre"] = fev.exportState();
-		fev.setTransaction(toAddress(sha3("sender")), ether, u256s());
+		fev.setTransaction(toAddress(sha3("sender")), ether, finney, bytes());
 		mArray execs;
 		execs.push_back(fev.exportExec());
 		o["exec"] = execs;

@@ -23,6 +23,7 @@
 #include "vector_ref.h"
 #include "Exceptions.h"
 #include "Transaction.h"
+#include "Log.h"
 using namespace std;
 using namespace eth;
 
@@ -35,12 +36,18 @@ Transaction::Transaction(bytesConstRef _rlpData)
 	try
 	{
 		nonce = rlp[field = 0].toInt<u256>();
-		receiveAddress = rlp[field = 1].toHash<Address>();
-		value = rlp[field = 2].toInt<u256>();
-		data.reserve(rlp[field = 3].itemCountStrict());
-		for (auto const& i: rlp[3])
-			data.push_back(i.toInt<u256>());
-		vrs = Signature{ rlp[field = 4].toInt<byte>(), rlp[field = 5].toInt<u256>(), rlp[field = 6].toInt<u256>() };
+		value = rlp[field = 1].toInt<u256>();
+		receiveAddress = rlp[field = 2].toHash<Address>();
+		gasPrice = rlp[field = 3].toInt<u256>();
+		gas = rlp[field = 4].toInt<u256>();
+		data = rlp[field = 5].toBytes();
+		if (isCreation())
+		{
+			init = rlp[field = 6].toBytes();
+			vrs = Signature{ rlp[field = 7].toInt<byte>(), rlp[field = 8].toInt<u256>(), rlp[field = 9].toInt<u256>() };
+		}
+		else
+			vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
 	}
 	catch (RLPException const&)
 	{
@@ -79,7 +86,7 @@ Address Transaction::sender() const
 	cout << "---- RECOVER -------------------------------" << endl;
 	cout << "MSG: " << msg << endl;
 	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
-	cout << "PUB: " << asHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
 	cout << "ADR: " << ret << endl;
 #endif
 	return ret;
@@ -112,8 +119,10 @@ void Transaction::sign(Secret _priv)
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
-	_s.appendList(_sig ? 7 : 4);
-	_s << nonce << receiveAddress << value << data;
+	_s.appendList((_sig ? 3 : 0) + (isCreation() ? 7 : 6));
+	_s << nonce << value << receiveAddress << gasPrice << gas << data;
+	if (isCreation())
+		_s << init;
 	if (_sig)
 		_s << vrs.v << vrs.r << vrs.s;
 }
