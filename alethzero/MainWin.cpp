@@ -268,19 +268,10 @@ Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
-	g_main = this;
-
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
-
-	qRegisterMetaType<eth::u256>("eth::u256");
-	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
-	qRegisterMetaType<eth::Secret>("eth::Secret");
-	qRegisterMetaType<eth::Address>("eth::Address");
-	qRegisterMetaType<QAccount*>("QAccount*");
-	qRegisterMetaType<QEthereum*>("QEthereum*");
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
@@ -446,8 +437,6 @@ void Main::writeSettings()
 	s.setValue("peers", m_peers);
 	s.setValue("nameReg", ui->nameReg->text());
 
-	s.setValue("url", ui->urlEdit->text());
-
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
 }
@@ -610,11 +599,6 @@ void Main::refresh(bool _override)
 		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
 	m_client->unlock();
-}
-
-void Main::on_urlEdit_editingFinished()
-{
-	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::ourAccountsRowsMoved()
