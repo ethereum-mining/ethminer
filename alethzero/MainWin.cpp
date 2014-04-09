@@ -268,6 +268,8 @@ Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
+	g_main = this;
+
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
@@ -470,6 +472,11 @@ void Main::readSettings()
 	ui->nameReg->setText(s.value("NameReg", "").toString());
 	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
 	on_urlEdit_editingFinished();
+}
+
+void Main::on_urlEdit_editingFinished()
+{
+	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::on_nameReg_textChanged()

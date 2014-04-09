@@ -59,6 +59,8 @@ public:
 
 private:
 	State& m_s;
+
+
 };
 
 /**
@@ -133,8 +135,7 @@ public:
 	/// This will append @a _t to the transaction list and change the state accordingly.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
 	void execute(bytesConstRef _rlp);
-
-
+	std::shared_ptr<ExecutionState> executionState(bytesConstRef _rlp);
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
