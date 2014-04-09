@@ -601,6 +601,10 @@ bytes const& State::contractCode(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+void State::prepExecution(bytesConstRef _rlp)
+{
+}
+
 void State::execute(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
@@ -616,7 +620,7 @@ void State::execute(bytesConstRef _rlp)
 		throw InvalidNonce(nonceReq, t.nonce);
 	}
 
-	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas proce discovery protocol going.
+	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
 	if (t.gasPrice < 10 * szabo)
 	{
 		clog(StateChat) << "Offered gas-price is too low.";

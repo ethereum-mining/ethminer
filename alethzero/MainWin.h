@@ -191,6 +191,8 @@ private:
 	Q_PROPERTY(QEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
 };
 
+class ExecutionContext;
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -287,6 +289,9 @@ private slots:
 	void on_preview_triggered() { refresh(true); }
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_editingFinished();
+	void on_debugStep_triggered();
+	void on_debugContinue_triggered();
+	void on_enableDebug_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
@@ -297,6 +302,7 @@ signals:
 private:
 	QString pretty(eth::Address _a) const;
 
+	void updateExecution();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
 
@@ -328,6 +334,8 @@ private:
 	eth::Address m_nameReg;
 
 	unsigned m_backupGas;
+
+	std::shared_ptr<ExecutionContext> m_currentExecution;
 
 	QNetworkAccessManager m_webCtrl;
 

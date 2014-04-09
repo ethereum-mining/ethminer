@@ -939,9 +939,17 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
+				if (ui->enableDebug->checked())
+				{
+				}
+				else
+					m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
 			else
-				m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
+				if (ui->enableDebug->checked())
+				{
+				}
+				else
+					m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
 			refresh();
 			return;
 		}
@@ -953,6 +961,49 @@ void Main::on_create_triggered()
 {
 	m_myKeys.append(KeyPair::create());
 	m_keysChanged = true;
+}
+
+class ExecutionContext
+{
+public:
+	bool go(unsigned _steps = (unsigned)-1);
+};
+
+bool ExecutionContext::go(unsigned _steps)
+{
+
+}
+
+void Main::on_enableDebug_triggered()
+{
+	ui->debugPanel->setEnabled(ui->enableDebug->checked());
+	ui->debugStep->setEnabled(ui->enableDebug->checked());
+	ui->debugContinue->setEnabled(ui->enableDebug->checked());
+	ui->send->setText(ui->enableDebug->checked() ? "D&ebug" : "&Execute");
+}
+
+void Main::on_step_triggered()
+{
+	if (!m_currentExecution)
+		return;
+	if (m_currentExecution->go(1))
+		finished();
+	else
+		updateExecution();
+}
+
+void Main::on_continue_triggered()
+{
+	if (!m_currentExecution)
+		return;
+	if (m_currentExecution->go())
+		finished();
+	else
+		updateExecution();
+}
+
+void Main::updateExecution()
+{
 }
 
 // extra bits needed to link on VS
