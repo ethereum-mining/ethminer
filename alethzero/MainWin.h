@@ -73,6 +73,9 @@ public:
 	Q_INVOKABLE QByteArray bytesOf(QVariant _t) const { eth::h256 b = in(_t); return QByteArray((char const*)&b, sizeof(eth::h256)); }
 
 	Q_INVOKABLE QVariant fromAddress(QVariant/*eth::Address*/ _a) const { return out((eth::u160)to<eth::Address>(_a)); }
+	Q_INVOKABLE QVariant toAddress(QVariant/*eth::Address*/ _a) const { return toQJS<eth::Address>((eth::u160)in(_a)); }
+
+	Q_INVOKABLE bool isNull(QVariant/*eth::Address*/ _a) const { return !in(_a); }
 };
 
 class KeyHelper: public QObject
@@ -124,6 +127,31 @@ public:
 	{
 		_v.append(_w);
 		return _v;
+	}
+	Q_INVOKABLE QByteArray fromString(QString _s) const
+	{
+		return _s.toLatin1();
+	}
+	Q_INVOKABLE QByteArray fromString(QString _s, unsigned _padding) const
+	{
+		QByteArray b = _s.toLatin1();
+		for (unsigned i = b.size(); i < _padding; ++i)
+			b.append((char)0);
+		b.resize(_padding);
+		return b;
+	}
+	Q_INVOKABLE QString toString(QByteArray _b) const
+	{
+		while (_b.size() && !_b[_b.size() - 1])
+			_b.resize(_b.size() - 1);
+		return QString::fromLatin1(_b);
+	}
+	Q_INVOKABLE QVariant u256of(QByteArray _s) const
+	{
+		while (_s.size() < 32)
+			_s.append((char)0);
+		eth::h256 ret((uint8_t const*)_s.data(), eth::h256::ConstructFromPointer);
+		return toQJS<eth::u256>(ret);
 	}
 };
 
