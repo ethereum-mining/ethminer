@@ -134,7 +134,7 @@ public:
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
 	void execute(bytesConstRef _rlp);
 
-	void prepExecution(bytesConstRef _rlp);
+
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;

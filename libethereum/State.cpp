@@ -603,6 +603,81 @@ bytes const& State::contractCode(Address _contract) const
 
 void State::prepExecution(bytesConstRef _rlp)
 {
+	// Entry point for a user-executed transaction.
+	Transaction t(_rlp);
+
+	auto sender = t.sender();
+
+	// Avoid invalid transactions.
+	auto nonceReq = transactionsFrom(sender);
+	if (t.nonce != nonceReq)
+	{
+		clog(StateChat) << "Invalid Nonce.";
+		throw InvalidNonce(nonceReq, t.nonce);
+	}
+
+	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
+	if (t.gasPrice < 10 * szabo)
+	{
+		clog(StateChat) << "Offered gas-price is too low.";
+		throw GasPriceTooLow();
+	}
+
+	// Check gas cost is enough.
+	u256 gasCost;
+	if (t.isCreation())
+		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;
+	else
+		gasCost = t.data.size() * c_txDataGas + c_callGas;
+
+	if (t.gas < gasCost)
+	{
+		clog(StateChat) << "Not enough gas to pay for the transaction.";
+		throw OutOfGas();
+	}
+
+	u256 cost = t.value + t.gas * t.gasPrice;
+
+	// Avoid unaffordable transactions.
+	if (balance(sender) < cost)
+	{
+		clog(StateChat) << "Not enough cash.";
+		throw NotEnoughCash();
+	}
+
+	u256 gas = t.gas - gasCost;
+
+	// Increment associated nonce for sender.
+	noteSending(sender);
+
+	// Pay...
+	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
+	subBalance(sender, cost);
+
+	if (t.isCreation())
+		create(sender, t.value, t.gasPrice, &gas, &t.data, &t.init);
+	else
+		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
+
+	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
+	addBalance(sender, gas * t.gasPrice);
+
+	u256 gasSpent = (t.gas - gas) * t.gasPrice;
+/*	unsigned c_feesKept = 8;
+	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
+	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
+*/
+	u256 feesEarned = gasSpent;
+	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
+	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
+
+	// Add to the user-originated transactions that we've executed.
+	m_transactions.push_back(t);
+	m_transactionSet.insert(t.sha3());
+}
+
+void State::finaliseExecution()
+{
 }
 
 void State::execute(bytesConstRef _rlp)
