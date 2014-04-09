@@ -52,6 +52,15 @@ struct StateChat: public LogChannel { static const char* name() { return "=S="; 
 
 class ExtVM;
 
+class ExecutionState
+{
+public:
+	ExecutionState(State& _s): m_s(_s) {}
+
+private:
+	State& m_s;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -124,6 +133,8 @@ public:
 	/// This will append @a _t to the transaction list and change the state accordingly.
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
 	void execute(bytesConstRef _rlp);
+
+	void prepExecution(bytesConstRef _rlp);
 
 	/// Check if the address is a valid normal (non-contract) account address.
 	bool isNormalAddress(Address _address) const;
