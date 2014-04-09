@@ -275,13 +275,6 @@ Main::Main(QWidget *parent) :
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
 
-	qRegisterMetaType<eth::u256>("eth::u256");
-	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
-	qRegisterMetaType<eth::Secret>("eth::Secret");
-	qRegisterMetaType<eth::Address>("eth::Address");
-	qRegisterMetaType<QAccount*>("QAccount*");
-	qRegisterMetaType<QEthereum*>("QEthereum*");
-
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
 	m_refresh->start(100);
@@ -446,8 +439,6 @@ void Main::writeSettings()
 	s.setValue("peers", m_peers);
 	s.setValue("nameReg", ui->nameReg->text());
 
-	s.setValue("url", ui->urlEdit->text());
-
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
 }
@@ -481,6 +472,11 @@ void Main::readSettings()
 	ui->nameReg->setText(s.value("NameReg", "").toString());
 	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
 	on_urlEdit_editingFinished();
+}
+
+void Main::on_urlEdit_editingFinished()
+{
+	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::on_nameReg_textChanged()
@@ -610,11 +606,6 @@ void Main::refresh(bool _override)
 		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
 	m_client->unlock();
-}
-
-void Main::on_urlEdit_editingFinished()
-{
-	ui->webView->setUrl(ui->urlEdit->text());
 }
 
 void Main::ourAccountsRowsMoved()
