@@ -338,6 +338,8 @@ private:
 	std::shared_ptr<ExecutionContext> m_currentExecution;
 
 	QNetworkAccessManager m_webCtrl;
+
+	QEthereum* m_ethereum;
 };
 
 #endif // MAIN_H
