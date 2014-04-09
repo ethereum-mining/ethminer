@@ -4,7 +4,7 @@
   <PropertyGroup Label="UserMacros">
     <QtDir>../../Qt/$(Platform)</QtDir>
     <QtBin>$(QtDir)/qtbase/bin</QtBin>
-    <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include</QtInclude>
+    <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include</QtInclude>
     <QtLib>$(QtDir)/qtbase/lib;$(QtDir)/qtbase/plugins/platforms</QtLib>
   </PropertyGroup>
   <PropertyGroup />

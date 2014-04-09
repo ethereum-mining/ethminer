@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include "Log.h"
 #include "Transaction.h"
 #include "TransactionQueue.h"
 using namespace std;

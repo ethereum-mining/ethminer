@@ -23,15 +23,19 @@
 #include <thread>
 #include <chrono>
 #include <fstream>
+#include <iostream>
 #include "Defaults.h"
 #include "Client.h"
 #include "PeerNetwork.h"
 #include "BlockChain.h"
 #include "State.h"
 #include "FileSystem.h"
+#include "Instruction.h"
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
+using eth::Instruction;
+using eth::c_instructionInfo;
 
 bool isTrue(std::string const& _m)
 {
@@ -68,6 +72,32 @@ void help()
         exit(0);
 }
 
+string credits(bool _interactive = false)
+{
+	std::ostringstream ccout;
+	ccout
+		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
+		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
+		<< "  Based on a design by Vitalik Buterin." << endl << endl;
+
+	if (_interactive)
+	{
+		string vs = toString(ETH_QUOTED(ETH_VERSION));
+		vs = vs.substr(vs.find_first_of('.') + 1)[0];
+		int pocnumber = stoi(vs);
+		string m_servers;
+		if (pocnumber == 3)
+			m_servers = "54.201.28.117";
+		if (pocnumber == 4)
+			m_servers = "54.72.31.55";
+
+		ccout << "Type 'netstart 30303' to start networking" << endl;
+		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+		ccout << "Type 'exit' to quit" << endl << endl;
+	}
+	return ccout.str();
+}
+
 void version()
 {
 	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
@@ -75,12 +105,30 @@ void version()
 	exit(0);
 }
 
+u256 c_minGasPrice = 10000000000000;
+u256 c_minGas = 100;
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
+string pretty(h160 _a, eth::State _st)
+{
+	string ns;
+	h256 n;
+	if (h160 nameReg = (u160)_st.contractStorage(c_config, 0))
+		n = _st.contractStorage(nameReg, (u160)(_a));
+	if (n)
+	{
+		std::string s((char const*)n.data(), 32);
+		if (s.find_first_of('\0') != string::npos)
+			s.resize(s.find_first_of('\0'));
+		ns = " " + s;
+	}
+	return ns;
+}
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	bool interactive = false;
 	string dbPath;
 	eth::uint mining = ~(eth::uint)0;
 	NodeMode mode = NodeMode::Full;
@@ -138,11 +186,9 @@ int main(int argc, char** argv)
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-			coinbase = h160(fromUserHex(argv[++i]));
+			coinbase = h160(fromHex(argv[++i]));
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-			us = KeyPair(h256(fromUserHex(argv[++i])));
-		else if (arg == "-i" || arg == "--interactive")
-			interactive = true;
+			us = KeyPair(h256(fromHex(argv[++i])));
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
@@ -188,102 +234,19 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	cout << credits();
 
-	if (interactive)
+	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
+	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	eth::uint n = c.blockChain().details().number;
+	if (mining)
+		c.startMining();
+	while (true)
 	{
-		cout << "Ethereum (++)" << endl;
-		cout << "  Code by Gav Wood, (c) 2013, 2014." << endl;
-		cout << "  Based on a design by Vitalik Buterin." << endl << endl;
-
-		while (true)
-		{
-			cout << "> " << flush;
-			std::string cmd;
-			cin >> cmd;
-			if (cmd == "netstart")
-			{
-				eth::uint port;
-				cin >> port;
-				c.startNetwork((short)port);
-			}
-			else if (cmd == "connect")
-			{
-				string addr;
-				eth::uint port;
-				cin >> addr >> port;
-				c.connect(addr, (short)port);
-			}
-			else if (cmd == "netstop")
-			{
-				c.stopNetwork();
-			}
-			else if (cmd == "minestart")
-			{
-				c.startMining();
-			}
-			else if (cmd == "minestop")
-			{
-				c.stopMining();
-			}
-			else if (cmd == "address")
-			{
-				cout << endl;
-				cout << "Current address: " + asHex(us.address().asArray()) << endl;
-				cout << "===" << endl;
-			}
-			else if (cmd == "secret")
-			{
-				cout << endl;
-				cout << "Current secret: " + asHex(us.secret().asArray()) << endl;
-				cout << "===" << endl;
-			}
-			else if (cmd == "balance")
-			{
-				u256 balance = c.state().balance(us.address());
-				cout << endl;
-				cout << "Current balance: ";
-				cout << balance << endl;
-				cout << "===" << endl;
-			}	
-			else if (cmd == "transact")
-			{
-				string sechex;
-				string rechex;
-				u256 amount;
-				cin >> sechex >> rechex >> amount;
-				Secret secret = h256(fromUserHex(sechex));
-				Address dest = h160(fromUserHex(rechex));
-				c.transact(secret, dest, amount);
-			}
-			else if (cmd == "send")
-			{
-				string rechex;
-				u256 amount;
-				cin >> rechex >> amount;
-				Address dest = h160(fromUserHex(rechex));
-				c.transact(us.secret(), dest, amount);
-			}
-			else if (cmd == "exit")
-			{
-				break;
-			}
-		}
+		if (c.blockChain().details().number - n == mining)
+			c.stopMining();
+		this_thread::sleep_for(chrono::milliseconds(100));
 	}
-	else
-	{
-		cout << "Address: " << endl << asHex(us.address().asArray()) << endl;
-		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
-		eth::uint n = c.blockChain().details().number;
-		if (mining)
-			c.startMining();
-		while (true)
-		{
-			if (c.blockChain().details().number - n == mining)
-				c.stopMining();
-			this_thread::sleep_for(chrono::milliseconds(100));
-		}
-	}
-
 
 	return 0;
 }

@@ -26,18 +26,14 @@
 namespace eth
 {
 
-struct FeeStructure
-{
-	/// The fee structure. Values yet to be agreed on...
-	void setMultiplier(u256 _x);				///< The current block multiplier.
-	u256 multiplier() const;
-	u256 m_stepFee;
-	u256 m_dataFee;
-	u256 m_memoryFee;
-	u256 m_extroFee;
-	u256 m_cryptoFee;
-	u256 m_newContractFee;
-	u256 m_txFee;
-};
+extern u256 const c_stepGas;			///< Once per operation, except for SSTORE, SLOAD, BALANCE, SHA3, CREATE, CALL.
+extern u256 const c_balanceGas;			///< Once per BALANCE operation.
+extern u256 const c_sha3Gas;			///< Once per SHA3 operation.
+extern u256 const c_sloadGas;			///< Once per SLOAD operation.
+extern u256 const c_sstoreGas;			///< Once per non-zero storage element in a CREATE call/transaction. Also, once/twice per SSTORE operation depending on whether the zeroness changes (twice iff it changes from zero; nothing at all if to zero) or doesn't (once).
+extern u256 const c_createGas;			///< Once per CREATE operation & contract-creation transaction.
+extern u256 const c_callGas;			///< Once per CALL operation & message call transaction.
+extern u256 const c_memoryGas;			///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
+extern u256 const c_txDataGas;			///< Per byte of data attached to a message-call transaction. NOTE: Not payable on data of calls between transactions.
 
 }

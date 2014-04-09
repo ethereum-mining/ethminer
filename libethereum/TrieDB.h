@@ -23,8 +23,9 @@
 
 #include <map>
 #include <memory>
-#include <leveldb/db.h>
 #include "Exceptions.h"
+#include "CommonEth.h"
+#include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
@@ -54,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
 	{
 		_out << i.first << ": ";
 		_out << RLP(i.second);
-		_out << " " << asHex(i.second);
+		_out << " " << toHex(i.second);
 		_out << std::endl;
 	}
 	return _out;
@@ -81,11 +82,6 @@ private:
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
 };
-
-#if WIN32
-#pragma warning(push)
-#pragma warning(disable:4100) // disable warnings so it compiles
-#endif
 
 extern const h256 c_shaNull;
 
@@ -177,7 +173,7 @@ public:
 					}
 					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
 					{
-						cdebug << b.rlp.size() << asHex(b.rlp);
+						cdebug << b.rlp.size() << toHex(b.rlp);
 						cdebug << rlp;
 						auto c = rlp.itemCount();
 						cdebug << c;
@@ -336,10 +332,6 @@ std::ostream& operator<<(std::ostream& _out, GenericTrieDB<DB> const& _db)
 		_out << escaped(i.first.toString(), false) << ": " << escaped(i.second.toString(), false) << std::endl;
 	return _out;
 }
-
-#if WIN32
-#pragma warning(pop)
-#endif
 
 template <class KeyType, class DB>
 class TrieDB: public GenericTrieDB<DB>
