@@ -757,13 +757,11 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					{
 						codes.resize(codes.size() + 1);
 						locs.resize(locs.size() + 1);
-						{
-							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
-							if (o != 1)
-								return false;
-						}
-						if (compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars) != -1)
+						int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
+						if (o == -1)
 							break;
+						if (o != 1)
+							return false;
 					}
 
 					// last one is empty.
@@ -814,6 +812,8 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						locs.resize(locs.size() + 1);
 						{
 							int o = compileLispFragment(d, e, _quiet, codes.back(), locs.back(), _vars);
+							if (o == -1)
+								break;
 							if (o != 1)
 								return false;
 						}
