@@ -227,11 +227,12 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		{
 			// TODO: better implementation?
 			require(2);
-			auto n = m_stack.back();
+			auto base = m_stack.back();
 			auto x = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
+			u256 n = 1;
 			for (u256 i = 0; i < x; ++i)
-				n *= n;
+				n = (u256) n * base;
 			m_stack.back() = n;
 			break;
 		}
