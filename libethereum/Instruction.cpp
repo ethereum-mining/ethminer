@@ -341,10 +341,10 @@ static void appendCode(bytes& o_code, vector<unsigned>& o_locs, bytes _code, vec
 
 static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs, map<string, unsigned>& _vars)
 {
-	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD } };
+	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
 	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
-	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!' };
+	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '~' };
 
 	bool exec = false;
 	int outs = 0;
@@ -353,7 +353,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '_' && *d != '&' && *d != '|' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
@@ -483,7 +483,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			else
 			{
 				char const* s = d;
-				for (; d != e && (isalnum(*d) || *d == '&' || *d == '|' || *d == '_' || c_allowed.count(*d)); ++d) {}
+				for (; d != e && (isalnum(*d) || *d == '_' || c_allowed.count(*d)); ++d) {}
 				t = string(s, d - s);
 				if (isdigit(t[0]))
 				{
@@ -801,6 +801,21 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					for (auto i: ends)
 						increaseLocation(o_code, i, o_code.size());
 					outs = 1;
+				}
+				else if (t == "~")
+				{
+					if (compileLispFragment(d, e, _quiet, o_code, o_locs, _vars) == 1)
+					{
+						bytes codes;
+						vector<unsigned> locs;
+						if (compileLispFragment(d, e, _quiet, codes, locs, _vars) != -1)
+							return false;
+						pushLiteral(o_code, 1);
+						pushLiteral(o_code, 0);
+						o_code.push_back((byte)Instruction::SUB);
+						o_code.push_back((byte)Instruction::SUB);
+						outs = 1;
+					}
 				}
 				else if (t == "||")
 				{
