@@ -50,7 +50,43 @@ static const bytes EmptyBytes;
 
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
+class VM;
 class ExtVM;
+class State;
+
+class Executive
+{
+public:
+	Executive(State& _s): m_s(_s) {}
+	~Executive();
+
+	void setup(bytesConstRef _transaction);
+	void create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, bytesConstRef _init, Address _originAddress);
+	void call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
+	bool go(uint64_t _steps = (unsigned)-1);
+	void finalize();
+
+	u256 gas() const;
+
+	bytesConstRef out() const { return m_out; }
+	h160 newAddress() const { return m_newAddress; }
+
+	VM const& vm() const { return *m_vm; }
+	State const& state() const { return m_s; }
+	ExtVM const& ext() const { return *m_ext; }
+
+private:
+	State& m_s;
+	ExtVM* m_ext = nullptr;	// TODO: make safe.
+	VM* m_vm = nullptr;
+	bytesConstRef m_out;
+	Address m_newAddress;
+
+	Transaction m_t;
+
+	u256 m_startGas;
+	u256 m_endGas;
+};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -61,10 +97,11 @@ class State
 {
 	template <unsigned T> friend class UnitTest;
 	friend class ExtVM;
+	friend class Executive;
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress, Overlay const& _db);
+	State(Address _coinbaseAddress = Address(), Overlay const& _db = Overlay());
 
 	/// Copy state object.
 	State(State const& _s);

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1504</width>
-    <height>798</height>
+    <width>1711</width>
+    <height>1138</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -83,11 +83,6 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_4">
-         <attribute name="title">
-          <string>Tab 2</string>
-         </attribute>
-        </widget>
        </widget>
       </item>
      </layout>
@@ -99,7 +94,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1504</width>
+     <width>1711</width>
      <height>20</height>
     </rect>
    </property>
@@ -131,9 +126,18 @@
     </property>
     <addaction name="about"/>
    </widget>
+   <widget class="QMenu" name="menu_Debug">
+    <property name="title">
+     <string>&amp;Debug</string>
+    </property>
+    <addaction name="enableDebug"/>
+    <addaction name="debugStep"/>
+    <addaction name="debugContinue"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menu_Debug"/>
    <addaction name="menu_Help"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -403,7 +407,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>442</width>
+     <width>510</width>
      <height>360</height>
     </size>
    </property>
@@ -437,29 +441,26 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label5_2">
-       <property name="text">
-        <string>&amp;Amount</string>
+     <item row="5" column="0" colspan="4">
+      <widget class="QSplitter" name="splitter_5">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
-       <property name="buddy">
-        <cstring>value</cstring>
-       </property>
+       <widget class="QPlainTextEdit" name="data"/>
+       <widget class="QTextEdit" name="code">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+       </widget>
       </widget>
      </item>
-     <item row="3" column="3">
-      <widget class="QComboBox" name="gasPriceUnits"/>
-     </item>
-     <item row="2" column="1" colspan="2">
-      <widget class="QSpinBox" name="value">
-       <property name="suffix">
-        <string/>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>&amp;Gas</string>
        </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-       <property name="value">
-        <number>0</number>
+       <property name="buddy">
+        <cstring>gas</cstring>
        </property>
       </widget>
      </item>
@@ -479,32 +480,6 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="0" colspan="4">
-      <widget class="QSplitter" name="splitter_5">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <widget class="QPlainTextEdit" name="data"/>
-       <widget class="QTextEdit" name="code">
-        <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
-        </property>
-       </widget>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="QSpinBox" name="gasPrice">
-       <property name="prefix">
-        <string>@ </string>
-       </property>
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-      </widget>
-     </item>
      <item row="3" column="1">
       <widget class="QSpinBox" name="gas">
        <property name="suffix">
@@ -521,41 +496,8 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="3">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>&amp;Gas</string>
-       </property>
-       <property name="buddy">
-        <cstring>gas</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1" colspan="3">
-      <widget class="QLabel" name="fee">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="3">
-      <widget class="QPushButton" name="send">
-       <property name="text">
-        <string>&amp;Send</string>
-       </property>
-      </widget>
+     <item row="3" column="3">
+      <widget class="QComboBox" name="gasPriceUnits"/>
      </item>
      <item row="6" column="0" colspan="3">
       <widget class="QLabel" name="total">
@@ -567,6 +509,35 @@
        </property>
        <property name="text">
         <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QComboBox" name="valueUnits"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QSpinBox" name="gasPrice">
+       <property name="prefix">
+        <string>@ </string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>430000000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="3">
+      <widget class="QLineEdit" name="destination">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="placeholderText">
+        <string>(Create Contract)</string>
        </property>
       </widget>
      </item>
@@ -583,16 +554,49 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1" colspan="3">
-      <widget class="QLineEdit" name="destination">
+     <item row="6" column="3">
+      <widget class="QPushButton" name="send">
+       <property name="text">
+        <string>&amp;Execute</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="2">
+      <widget class="QSpinBox" name="value">
+       <property name="suffix">
+        <string/>
+       </property>
+       <property name="maximum">
+        <number>430000000</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label5_2">
+       <property name="text">
+        <string>&amp;Amount</string>
+       </property>
+       <property name="buddy">
+        <cstring>value</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1" colspan="3">
+      <widget class="QLabel" name="fee">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+         <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="placeholderText">
-        <string>(Create Contract)</string>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
@@ -820,6 +824,87 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_9">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Debugger</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="debugPanel">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <item>
+      <widget class="QSplitter" name="splitter_6">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <widget class="QListWidget" name="debugCode">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+       <widget class="QSplitter" name="splitter_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <widget class="QListWidget" name="debugStack">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugMemory">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::NoTextInteraction</set>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugStorage">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::NoTextInteraction</set>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="debugStateInfo">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
@@ -873,6 +958,36 @@
    </property>
    <property name="text">
     <string>&amp;Preview</string>
+   </property>
+  </action>
+  <action name="enableDebug">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Debug EVM Execution</string>
+   </property>
+  </action>
+  <action name="debugStep">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Single Step</string>
+   </property>
+   <property name="shortcut">
+    <string>F10</string>
+   </property>
+  </action>
+  <action name="debugContinue">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Continue</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
  </widget>

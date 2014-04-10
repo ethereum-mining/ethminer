@@ -7,6 +7,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libethereum/CommonEth.h>
+#include <libethereum/State.h>
 #include <libethereum/RLP.h>
 
 namespace Ui {
@@ -287,6 +288,9 @@ private slots:
 	void on_preview_triggered() { refresh(true); }
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_editingFinished();
+	void on_debugStep_triggered();
+	void on_debugContinue_triggered();
+	void on_enableDebug_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
@@ -297,6 +301,9 @@ signals:
 private:
 	QString pretty(eth::Address _a) const;
 
+	void initDebugger();
+	void updateDebugger();
+	void debugFinished();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
 
@@ -328,6 +335,10 @@ private:
 	eth::Address m_nameReg;
 
 	unsigned m_backupGas;
+
+	eth::State m_executiveState;
+	std::unique_ptr<eth::Executive> m_currentExecution;
+	QMap<unsigned, unsigned> m_pcWarp;
 
 	QNetworkAccessManager m_webCtrl;
 
