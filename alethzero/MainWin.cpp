@@ -1,3 +1,8 @@
+#include <fstream>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <boost/process.hpp>
+#pragma GCC diagnostic pop
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -265,6 +270,49 @@ string htmlDump(bytes const& _b, unsigned _w = 8)
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
+
+using namespace boost::process;
+
+string findSerpent()
+{
+	string ret;
+	vector<string> paths = { ".", "..", "../cpp-ethereum", "../../cpp-ethereum", "/usr/local/bin", "/usr/bin/" };
+	for (auto i: paths)
+		if (!ifstream(i + "/serpent_cli.py").fail())
+		{
+			ret = i + "/serpent_cli.py";
+			break;
+		}
+	if (ret.empty())
+		cwarn << "Serpent compiler not found. Please install into the same path as this executable.";
+	return ret;
+}
+
+bytes compileSerpent(string const& _code)
+{
+	static const string exec = findSerpent();
+	if (exec.empty())
+		return bytes();
+
+	vector<string> args = vector<string>({"serpent_cli.py", "-b", "compile"});
+	context ctx;
+	ctx.environment = self::get_environment();
+	ctx.stdin_behavior = capture_stream();
+	ctx.stdout_behavior = capture_stream();
+	child c = launch(exec, args, ctx);
+	postream& os = c.get_stdin();
+	pistream& is = c.get_stdout();
+
+	os << _code;
+	os.close();
+
+	string hex;
+	int i;
+	while ((i = is.get()) != -1 && i != '\n')
+		hex.push_back(i);
+
+	return fromHex(hex);
+}
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -762,9 +810,20 @@ void Main::on_data_textChanged()
 {
 	if (isCreation())
 	{
-		string code = ui->data->toPlainText().toStdString();
+		QString code = ui->data->toPlainText();
 		m_init.clear();
-		m_data = compileLisp(code, true, m_init);
+		auto init = code.indexOf("init:");
+		auto body = code.indexOf("body:");
+		if (body == -1 && init == -1)
+			m_data = compileLisp(code.toStdString(), true, m_init);
+		else
+		{
+			init = (init == -1 ? 0 : (init + 5));
+			int initSize = (body == -1 ? code.size() : (body - init));
+			body = (body == -1 ? code.size() : (body + 5));
+			m_init = compileSerpent(code.mid(init, initSize).trimmed().toStdString());
+			m_data = compileSerpent(code.mid(body).trimmed().toStdString());
+		}
 		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
 		if (!ui->gas->isEnabled())
