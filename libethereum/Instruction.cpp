@@ -130,7 +130,7 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::GT, { "GT", 0, 2, 1 } },
 	{ Instruction::EQ, { "EQ", 0, 2, 1 } },
 	{ Instruction::NOT, { "NOT", 0, 1, 1 } },
-	{ Instruction::ADD, { "ADD", 0, 2, 1 } },
+	{ Instruction::AND, { "AND", 0, 2, 1 } },
 	{ Instruction::OR, { "OR", 0, 2, 1 } },
 	{ Instruction::XOR, { "XOR", 0, 2, 1 } },
 	{ Instruction::BYTE, { "BYTE", 0, 2, 1 } },
@@ -353,7 +353,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 	while (d != e)
 	{
 		// skip to next token
-		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '_' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
+		for (; d != e && !isalnum(*d) && *d != '(' && *d != ')' && *d != '{' && *d != '}' && *d != '_' && *d != '&' && *d != '|' && *d != '"' && *d != '@' && *d != '[' && !c_allowed.count(*d) && *d != ';'; ++d) {}
 		if (d == e)
 			break;
 
@@ -483,7 +483,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 			else
 			{
 				char const* s = d;
-				for (; d != e && (isalnum(*d) || *d == '_' || c_allowed.count(*d)); ++d) {}
+				for (; d != e && (isalnum(*d) || *d == '&' || *d == '|' || *d == '_' || c_allowed.count(*d)); ++d) {}
 				t = string(s, d - s);
 				if (isdigit(t[0]))
 				{
@@ -749,7 +749,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							break;
 					}
 				}
-				else if (t == "AND")
+				else if (t == "&&")
 				{
 					vector<bytes> codes;
 					vector<vector<unsigned>> locs;
@@ -802,7 +802,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						increaseLocation(o_code, i, o_code.size());
 					outs = 1;
 				}
-				else if (t == "OR")
+				else if (t == "||")
 				{
 					vector<bytes> codes;
 					vector<vector<unsigned>> locs;
