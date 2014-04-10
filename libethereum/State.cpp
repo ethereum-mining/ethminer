@@ -601,23 +601,30 @@ bytes const& State::contractCode(Address _contract) const
 	return m_cache[_contract].code();
 }
 
-void State::prepExecution(bytesConstRef _rlp)
+Executive::~Executive()
+{
+	// TODO: Make safe.
+	delete m_ext;
+	delete m_vm;
+}
+
+void Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	Transaction t(_rlp);
+	m_t = Transaction(_rlp);
 
-	auto sender = t.sender();
+	auto sender = m_t.sender();
 
 	// Avoid invalid transactions.
-	auto nonceReq = transactionsFrom(sender);
-	if (t.nonce != nonceReq)
+	auto nonceReq = m_s.transactionsFrom(sender);
+	if (m_t.nonce != nonceReq)
 	{
 		clog(StateChat) << "Invalid Nonce.";
-		throw InvalidNonce(nonceReq, t.nonce);
+		throw InvalidNonce(nonceReq, m_t.nonce);
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
-	if (t.gasPrice < 10 * szabo)
+	if (m_t.gasPrice < 10 * szabo)
 	{
 		clog(StateChat) << "Offered gas-price is too low.";
 		throw GasPriceTooLow();
@@ -625,59 +632,133 @@ void State::prepExecution(bytesConstRef _rlp)
 
 	// Check gas cost is enough.
 	u256 gasCost;
-	if (t.isCreation())
-		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;
+	if (m_t.isCreation())
+		gasCost = (m_t.init.size() + m_t.data.size()) * c_txDataGas + c_createGas;
 	else
-		gasCost = t.data.size() * c_txDataGas + c_callGas;
+		gasCost = m_t.data.size() * c_txDataGas + c_callGas;
 
-	if (t.gas < gasCost)
+	if (m_t.gas < gasCost)
 	{
 		clog(StateChat) << "Not enough gas to pay for the transaction.";
 		throw OutOfGas();
 	}
 
-	u256 cost = t.value + t.gas * t.gasPrice;
+	m_startGas = m_t.gas;
+
+	u256 cost = m_t.value + m_t.gas * m_t.gasPrice;
 
 	// Avoid unaffordable transactions.
-	if (balance(sender) < cost)
+	if (m_s.balance(sender) < cost)
 	{
 		clog(StateChat) << "Not enough cash.";
 		throw NotEnoughCash();
 	}
 
-	u256 gas = t.gas - gasCost;
-
 	// Increment associated nonce for sender.
-	noteSending(sender);
+	m_s.noteSending(sender);
 
 	// Pay...
-	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
-	subBalance(sender, cost);
+	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
+	m_s.subBalance(sender, cost);
 
-	if (t.isCreation())
-		create(sender, t.value, t.gasPrice, &gas, &t.data, &t.init);
+	if (m_t.isCreation())
+		create(sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, &m_t.init, sender);
 	else
-		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
+		call(m_t.receiveAddress, sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, sender);
+}
 
-	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
-	addBalance(sender, gas * t.gasPrice);
+void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
+{
+	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+	m_s.addBalance(_receiveAddress, _value);
 
-	u256 gasSpent = (t.gas - gas) * t.gasPrice;
+	if (m_s.isContractAddress(_receiveAddress))
+	{
+		m_vm = new VM(_gas);
+		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &m_s.contractCode(_receiveAddress));
+	}
+	else
+		m_endGas = _gas;
+}
+
+void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, bytesConstRef _init, Address _origin)
+{
+	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
+	while (m_s.isContractAddress(m_newAddress) || m_s.isNormalAddress(m_newAddress))
+		m_newAddress = (u160)m_newAddress + 1;
+
+	// Set up new account...
+	m_s.m_cache[m_newAddress] = AddressState(0, 0, _code);
+
+	// Execute _init.
+	m_vm = new VM(_gas);
+	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+}
+
+bool Executive::go(uint64_t _steps)
+{
+	if (m_vm)
+	{
+		bool revert = false;
+		try
+		{
+			m_vm->go(*m_ext, _steps);
+			m_endGas = m_vm->gas();
+		}
+		catch (StepsDone const&)
+		{
+			return false;
+		}
+		catch (OutOfGas const& /*_e*/)
+		{
+			clog(StateChat) << "Out of Gas! Reverting.";
+			revert = true;
+		}
+		catch (VMException const& _e)
+		{
+			clog(StateChat) << "VM Exception: " << _e.description();
+		}
+		catch (Exception const& _e)
+		{
+			clog(StateChat) << "Exception in VM: " << _e.description();
+		}
+		catch (std::exception const& _e)
+		{
+			clog(StateChat) << "std::exception in VM: " << _e.what();
+		}
+
+		// Write state out only in the case of a non-excepted transaction.
+		if (revert)
+		{
+			m_ext->revert();
+			if (m_newAddress)
+			{
+				m_s.m_cache.erase(m_newAddress);
+				m_newAddress = Address();
+			}
+		}
+	}
+	return true;
+}
+
+u256 Executive::gas() const
+{
+	return m_vm->gas();
+}
+
+void Executive::finalize()
+{
+	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
+	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
+
+	u256 gasSpent = (m_startGas - m_endGas) * m_ext->gasPrice;
 /*	unsigned c_feesKept = 8;
 	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
 	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
 */
 	u256 feesEarned = gasSpent;
 	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
-	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
-
-	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(t);
-	m_transactionSet.insert(t.sha3());
-}
-
-void State::finaliseExecution()
-{
+	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 }
 
 void State::execute(bytesConstRef _rlp)
@@ -750,6 +831,7 @@ void State::execute(bytesConstRef _rlp)
 	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
 
+	// !!!!!!!!!!!!!!!!!!!!! If moving to use Executive, this still needs to be done - Executive won't do it.
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(t);
 	m_transactionSet.insert(t.sha3());

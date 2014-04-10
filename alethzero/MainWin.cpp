@@ -9,6 +9,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
+#include <libethereum/VM.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -31,6 +32,7 @@ using eth::PeerInfo;
 using eth::RLP;
 using eth::Secret;
 using eth::Transaction;
+using eth::Executive;
 
 // functions
 using eth::toHex;
@@ -702,8 +704,8 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto mem = state().contractStorage(h);
-		for (auto const& i: mem)
+		auto storage = state().contractStorage(h);
+		for (auto const& i: storage)
 			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
 		s << "<h4>Body Code</h4>" << disassemble(state().contractCode(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
@@ -929,19 +931,42 @@ void Main::on_send_clicked()
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			if (isCreation())
-				if (ui->enableDebug->checked())
+			if (ui->enableDebug->isChecked())
+			{
+				m_client->lock();
+				m_executiveState = state();
+				m_client->unlock();
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+				Transaction t;
+				t.nonce = m_executiveState.transactionsFrom(toAddress(s));
+				t.value = value();
+				t.gasPrice = gasPrice();
+				t.gas = ui->gas->value();
+				t.data = m_data;
+				if (isCreation())
 				{
+					t.receiveAddress = Address();
+					t.init = m_init;
 				}
 				else
-					m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
-			else
-				if (ui->enableDebug->checked())
 				{
+					t.receiveAddress = fromString(ui->destination->text());
+					t.data = m_data;
 				}
+				t.sign(s);
+				auto r = t.rlp();
+				m_currentExecution->setup(&r);
+				initDebugger();
+				updateDebugger();
+			}
+			else
+			{
+				if (isCreation())
+					m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
 				else
 					m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
-			refresh();
+				refresh();
+			}
 			return;
 		}
 	m_client->unlock();
@@ -954,47 +979,100 @@ void Main::on_create_triggered()
 	m_keysChanged = true;
 }
 
-class ExecutionContext
-{
-public:
-	bool go(unsigned _steps = (unsigned)-1);
-};
-
-bool ExecutionContext::go(unsigned _steps)
-{
-
-}
-
 void Main::on_enableDebug_triggered()
 {
-	ui->debugPanel->setEnabled(ui->enableDebug->checked());
-	ui->debugStep->setEnabled(ui->enableDebug->checked());
-	ui->debugContinue->setEnabled(ui->enableDebug->checked());
-	ui->send->setText(ui->enableDebug->checked() ? "D&ebug" : "&Execute");
+	ui->debugPanel->setEnabled(ui->enableDebug->isChecked());
+	ui->send->setText(ui->enableDebug->isChecked() ? "D&ebug" : "&Execute");
 }
 
-void Main::on_step_triggered()
+void Main::on_debugStep_triggered()
 {
 	if (!m_currentExecution)
 		return;
 	if (m_currentExecution->go(1))
-		finished();
+		debugFinished();
 	else
-		updateExecution();
+		updateDebugger();
 }
 
-void Main::on_continue_triggered()
+void Main::on_debugContinue_triggered()
 {
 	if (!m_currentExecution)
 		return;
 	if (m_currentExecution->go())
-		finished();
+		debugFinished();
 	else
-		updateExecution();
+		updateDebugger();
 }
 
-void Main::updateExecution()
+void Main::debugFinished()
 {
+	m_currentExecution.reset();
+	ui->debugCode->clear();
+	ui->debugStack->clear();
+	ui->debugMemory->setHtml("");
+	ui->debugStorage->setHtml("");
+	ui->debugStateInfo->setText("");
+	ui->send->setEnabled(true);
+	ui->enableDebug->setEnabled(true);
+	ui->debugStep->setEnabled(false);
+	ui->debugContinue->setEnabled(false);
+	ui->debugPanel->setEnabled(false);
+}
+
+void Main::initDebugger()
+{
+	ui->send->setEnabled(false);
+	ui->enableDebug->setEnabled(false);
+	ui->debugStep->setEnabled(true);
+	ui->debugContinue->setEnabled(true);
+	ui->debugPanel->setEnabled(true);
+	ui->debugCode->setEnabled(false);
+
+	QListWidget* dc = ui->debugCode;
+	dc->clear();
+	if (m_currentExecution)
+	{
+		for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
+		{
+			byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
+			QString s = c_instructionInfo.at((Instruction)b).name;
+			m_pcWarp[i] = dc->count();
+			ostringstream out;
+			out << hex << setw(4) << setfill('0') << i;
+			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+			{
+				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
+				i += bc;
+			}
+			dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
+		}
+
+	}
+}
+
+void Main::updateDebugger()
+{
+	QListWidget* ds = ui->debugStack;
+	ds->clear();
+	if (m_currentExecution)
+	{
+		eth::VM const& vm = m_currentExecution->vm();
+		for (auto i: vm.stack())
+			ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
+		ui->debugMemory->setHtml(QString::fromStdString(htmlDump(vm.memory(), 16)));
+		ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)vm.curPC()]);
+		ostringstream ss;
+		ss << hex << "PC: 0x" << vm.curPC() << "  |  GAS: 0x" << vm.gas();
+		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+
+		stringstream s;
+		auto storage = m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress);
+		for (auto const& i: storage)
+			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+		ui->debugStorage->setHtml(QString::fromStdString(s.str()));
+	}
 }
 
 // extra bits needed to link on VS
