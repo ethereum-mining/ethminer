@@ -64,17 +64,17 @@ public:
 
 	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-	u256 runFee() const { return m_runFee; }
 	u256 gas() const { return m_gas; }
+	u256 curPC() const { return m_curPC; }
+
+	bytes const& memory() const { return m_temp; }
+	u256s const& stack() const { return m_stack; }
 
 private:
 	u256 m_gas = 0;
 	u256 m_curPC = 0;
-	u256 m_nextPC = 1;
-	uint64_t m_stepCount = 0;
 	bytes m_temp;
-	std::vector<u256> m_stack;
-	u256 m_runFee = 0;
+	u256s m_stack;
 };
 
 }
@@ -82,10 +82,9 @@ private:
 // INLINE:
 template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 {
-	for (bool stopped = false; !stopped && _steps--; m_curPC = m_nextPC, m_nextPC = m_curPC + 1)
+	u256 nextPC = m_curPC + 1;
+	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
 	{
-		m_stepCount++;
-
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
@@ -310,7 +309,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::CALLDATALOAD:
 		{
 			require(1);
-			if ((unsigned)m_stack.back() + 32 < _ext.data.size())
+			if ((unsigned)m_stack.back() + 31 < _ext.data.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (unsigned)m_stack.back());
 			else
 			{
@@ -379,10 +378,10 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::PUSH32:
 		{
 			int i = (int)inst - (int)Instruction::PUSH1 + 1;
-			m_nextPC = m_curPC + 1;
+			nextPC = m_curPC + 1;
 			m_stack.push_back(0);
-			for (; i--; m_nextPC++)
-				m_stack.back() = (m_stack.back() << 8) | _ext.getCode(m_nextPC);
+			for (; i--; nextPC++)
+				m_stack.back() = (m_stack.back() << 8) | _ext.getCode(nextPC);
 			break;
 		}
 		case Instruction::POP:
@@ -456,13 +455,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::JUMP:
 			require(1);
-			m_nextPC = m_stack.back();
+			nextPC = m_stack.back();
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
 			require(2);
 			if (m_stack[m_stack.size() - 2])
-				m_nextPC = m_stack.back();
+				nextPC = m_stack.back();
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
@@ -557,7 +556,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			throw BadInstruction();
 		}
 	}
-	if (_steps == (unsigned)-1)
+	if (_steps == (uint64_t)-1)
 		throw StepsDone();
 	return bytesConstRef();
 }

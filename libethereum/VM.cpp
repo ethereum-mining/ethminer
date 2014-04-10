@@ -28,7 +28,4 @@ void VM::reset(u256 _gas)
 {
 	m_gas = _gas;
 	m_curPC = 0;
-	m_nextPC = 1;
-	m_stepCount = 0;
-	m_runFee = 0;
 }

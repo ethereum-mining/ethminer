@@ -7,6 +7,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libethereum/CommonEth.h>
+#include <libethereum/State.h>
 #include <libethereum/RLP.h>
 
 namespace Ui {
@@ -191,8 +192,6 @@ private:
 	Q_PROPERTY(QEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
 };
 
-class ExecutionContext;
-
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -302,7 +301,9 @@ signals:
 private:
 	QString pretty(eth::Address _a) const;
 
-	void updateExecution();
+	void initDebugger();
+	void updateDebugger();
+	void debugFinished();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
 
@@ -335,7 +336,9 @@ private:
 
 	unsigned m_backupGas;
 
-	std::shared_ptr<ExecutionContext> m_currentExecution;
+	eth::State m_executiveState;
+	std::unique_ptr<eth::Executive> m_currentExecution;
+	QMap<unsigned, unsigned> m_pcWarp;
 
 	QNetworkAccessManager m_webCtrl;
 
