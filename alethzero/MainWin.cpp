@@ -1000,6 +1000,7 @@ void Main::on_mine_triggered()
 
 void Main::on_send_clicked()
 {
+	debugFinished();
 	u256 totalReq = value() + fee();
 	m_client->lock();
 	for (auto i: m_myKeys)
@@ -1007,52 +1008,62 @@ void Main::on_send_clicked()
 		{
 			m_client->unlock();
 			Secret s = i.secret();
-			if (ui->enableDebug->isChecked())
-			{
-				m_client->lock();
-				m_executiveState = state();
-				m_client->unlock();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-				Transaction t;
-				t.nonce = m_executiveState.transactionsFrom(toAddress(s));
-				t.value = value();
-				t.gasPrice = gasPrice();
-				t.gas = ui->gas->value();
-				t.data = m_data;
-				if (isCreation())
-				{
-					t.receiveAddress = Address();
-					t.init = m_init;
-				}
-				else
-				{
-					t.receiveAddress = fromString(ui->destination->currentText());
-					t.data = m_data;
-				}
-				t.sign(s);
-				auto r = t.rlp();
-				m_currentExecution->setup(&r);
+			if (isCreation())
+				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
+			else
+				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+			refresh();
+			return;
+		}
+	m_client->unlock();
+	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+}
 
-				m_pcWarp.clear();
-				m_history.clear();
-				bool ok = true;
-				while (ok)
-				{
-					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress)}));
-					ok = !m_currentExecution->go(1);
-				}
-				initDebugger();
-				m_currentExecution.reset();
-				updateDebugger();
+void Main::on_debug_clicked()
+{
+	debugFinished();
+	u256 totalReq = value() + fee();
+	m_client->lock();
+	for (auto i: m_myKeys)
+		if (m_client->state().balance(i.address()) >= totalReq)
+		{
+			m_client->unlock();
+			Secret s = i.secret();
+			m_client->lock();
+			m_executiveState = state();
+			m_client->unlock();
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			Transaction t;
+			t.nonce = m_executiveState.transactionsFrom(toAddress(s));
+			t.value = value();
+			t.gasPrice = gasPrice();
+			t.gas = ui->gas->value();
+			t.data = m_data;
+			if (isCreation())
+			{
+				t.receiveAddress = Address();
+				t.init = m_init;
 			}
 			else
 			{
-				if (isCreation())
-					m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
-				else
-					m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
-				refresh();
+				t.receiveAddress = fromString(ui->destination->currentText());
+				t.data = m_data;
 			}
+			t.sign(s);
+			auto r = t.rlp();
+			m_currentExecution->setup(&r);
+
+			m_pcWarp.clear();
+			m_history.clear();
+			bool ok = true;
+			while (ok)
+			{
+				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress)}));
+				ok = !m_currentExecution->go(1);
+			}
+			initDebugger();
+			m_currentExecution.reset();
+			updateDebugger();
 			return;
 		}
 	m_client->unlock();
@@ -1063,14 +1074,6 @@ void Main::on_create_triggered()
 {
 	m_myKeys.append(KeyPair::create());
 	m_keysChanged = true;
-}
-
-void Main::on_enableDebug_triggered()
-{
-	ui->debugPanel->setEnabled(ui->enableDebug->isChecked());
-	ui->send->setText(ui->enableDebug->isChecked() ? "D&ebug" : "&Execute");
-	if (!ui->enableDebug->isChecked())
-		debugFinished();
 }
 
 void Main::on_debugStep_triggered()
@@ -1088,18 +1091,14 @@ void Main::debugFinished()
 	ui->debugStorage->setHtml("");
 	ui->debugStateInfo->setText("");
 	ui->send->setEnabled(true);
-	ui->enableDebug->setEnabled(true);
 	ui->debugStep->setEnabled(false);
-	ui->debugContinue->setEnabled(false);
 	ui->debugPanel->setEnabled(false);
 }
 
 void Main::initDebugger()
 {
 	ui->send->setEnabled(false);
-	ui->enableDebug->setEnabled(false);
 	ui->debugStep->setEnabled(true);
-	ui->debugContinue->setEnabled(true);
 	ui->debugPanel->setEnabled(true);
 	ui->debugCode->setEnabled(false);
 	ui->debugTimeline->setMinimum(0);

@@ -130,9 +130,7 @@
     <property name="title">
      <string>Deb&amp;ug</string>
     </property>
-    <addaction name="enableDebug"/>
     <addaction name="debugStep"/>
-    <addaction name="debugContinue"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -502,19 +500,6 @@
      <item row="3" column="3">
       <widget class="QComboBox" name="gasPriceUnits"/>
      </item>
-     <item row="6" column="0" colspan="3">
-      <widget class="QLabel" name="total">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
      <item row="3" column="2">
       <widget class="QSpinBox" name="gasPrice">
        <property name="prefix">
@@ -538,13 +523,6 @@
        </property>
        <property name="placeholderText">
         <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="3">
-      <widget class="QPushButton" name="send">
-       <property name="text">
-        <string>&amp;Execute</string>
        </property>
       </widget>
      </item>
@@ -597,6 +575,33 @@
          <string>(Create Contract)</string>
         </property>
        </item>
+      </widget>
+     </item>
+     <item row="6" column="3">
+      <widget class="QPushButton" name="send">
+       <property name="text">
+        <string>&amp;Execute</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0" colspan="2">
+      <widget class="QLabel" name="total">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QPushButton" name="debug">
+       <property name="text">
+        <string>De&amp;bug</string>
+       </property>
       </widget>
      </item>
     </layout>
@@ -966,14 +971,6 @@
     <string>&amp;Preview</string>
    </property>
   </action>
-  <action name="enableDebug">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Debug EVM Execution</string>
-   </property>
-  </action>
   <action name="debugStep">
    <property name="enabled">
     <bool>false</bool>
@@ -983,17 +980,6 @@
    </property>
    <property name="shortcut">
     <string>F10</string>
-   </property>
-  </action>
-  <action name="debugContinue">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Continue</string>
-   </property>
-   <property name="shortcut">
-    <string>F5</string>
    </property>
   </action>
  </widget>

@@ -298,7 +298,7 @@ private slots:
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_editingFinished();
 	void on_debugStep_triggered();
-	void on_enableDebug_triggered();
+	void on_debug_clicked();
 	void on_debugTimeline_valueChanged();
 
 	void refresh(bool _override = false);
