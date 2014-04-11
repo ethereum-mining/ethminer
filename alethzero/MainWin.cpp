@@ -659,7 +659,7 @@ void Main::refresh(bool _override)
 		ui->ourAccounts->clear();
 		u256 totalBalance = 0;
 		u256 totalGavCoinBalance = 0;
-		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
+		Address gavCoin = fromString("GavCoin");
 		for (auto i: m_myKeys)
 		{
 			u256 b = st.balance(i.address());
