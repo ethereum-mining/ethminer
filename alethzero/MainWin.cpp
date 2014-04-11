@@ -900,7 +900,7 @@ void Main::on_data_textChanged()
 
 bool Main::isCreation() const
 {
-	return ui->destination->currentText().isEmpty()/* || !ui->destination->currentText().toInt()*/;
+	return ui->destination->currentText().isEmpty() || ui->destination->currentText() == "(Create Contract)";
 }
 
 u256 Main::fee() const
@@ -1032,7 +1032,17 @@ void Main::on_send_clicked()
 				t.sign(s);
 				auto r = t.rlp();
 				m_currentExecution->setup(&r);
+
+				m_pcWarp.clear();
+				m_history.clear();
+				bool ok = true;
+				while (ok)
+				{
+					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress)}));
+					ok = !m_currentExecution->go(1);
+				}
 				initDebugger();
+				m_currentExecution.reset();
 				updateDebugger();
 			}
 			else
@@ -1059,31 +1069,19 @@ void Main::on_enableDebug_triggered()
 {
 	ui->debugPanel->setEnabled(ui->enableDebug->isChecked());
 	ui->send->setText(ui->enableDebug->isChecked() ? "D&ebug" : "&Execute");
+	if (!ui->enableDebug->isChecked())
+		debugFinished();
 }
 
 void Main::on_debugStep_triggered()
 {
-	if (!m_currentExecution)
-		return;
-	if (m_currentExecution->go(1))
-		debugFinished();
-	else
-		updateDebugger();
-}
-
-void Main::on_debugContinue_triggered()
-{
-	if (!m_currentExecution)
-		return;
-	if (m_currentExecution->go())
-		debugFinished();
-	else
-		updateDebugger();
+	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
 }
 
 void Main::debugFinished()
 {
-	m_currentExecution.reset();
+	m_pcWarp.clear();
+	m_history.clear();
 	ui->debugCode->clear();
 	ui->debugStack->clear();
 	ui->debugMemory->setHtml("");
@@ -1104,6 +1102,9 @@ void Main::initDebugger()
 	ui->debugContinue->setEnabled(true);
 	ui->debugPanel->setEnabled(true);
 	ui->debugCode->setEnabled(false);
+	ui->debugTimeline->setMinimum(0);
+	ui->debugTimeline->setMaximum(m_history.size() - 1);
+	ui->debugTimeline->setValue(0);
 
 	QListWidget* dc = ui->debugCode;
 	dc->clear();
@@ -1128,27 +1129,30 @@ void Main::initDebugger()
 	}
 }
 
+void Main::on_debugTimeline_valueChanged()
+{
+	updateDebugger();
+}
+
 void Main::updateDebugger()
 {
 	QListWidget* ds = ui->debugStack;
 	ds->clear();
-	if (m_currentExecution)
-	{
-		eth::VM const& vm = m_currentExecution->vm();
-		for (auto i: vm.stack())
-			ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
-		ui->debugMemory->setHtml(QString::fromStdString(htmlDump(vm.memory(), 16)));
-		ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)vm.curPC()]);
-		ostringstream ss;
-		ss << hex << "PC: 0x" << vm.curPC() << "  |  GAS: 0x" << vm.gas();
-		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 
-		stringstream s;
-		auto storage = m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress);
-		for (auto const& i: storage)
-			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		ui->debugStorage->setHtml(QString::fromStdString(s.str()));
-	}
+	WorldState const& ws = m_history[ui->debugTimeline->value()];
+
+	for (auto i: ws.stack)
+		ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
+	ui->debugMemory->setHtml(QString::fromStdString(htmlDump(ws.memory, 16)));
+	ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
+	ostringstream ss;
+	ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
+	ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+
+	stringstream s;
+	for (auto const& i: ws.storage)
+		s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+	ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 }
 
 // extra bits needed to link on VS

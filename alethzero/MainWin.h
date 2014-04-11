@@ -249,6 +249,15 @@ private:
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
 
+struct WorldState
+{
+	eth::u256 curPC;
+	eth::u256 gas;
+	eth::u256s stack;
+	eth::bytes memory;
+	std::map<eth::u256, eth::u256> storage;
+};
+
 class Main : public QMainWindow
 {
 	Q_OBJECT
@@ -289,8 +298,8 @@ private slots:
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_editingFinished();
 	void on_debugStep_triggered();
-	void on_debugContinue_triggered();
 	void on_enableDebug_triggered();
+	void on_debugTimeline_valueChanged();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
@@ -338,7 +347,9 @@ private:
 
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
+
 	QMap<unsigned, unsigned> m_pcWarp;
+	QList<WorldState> m_history;
 
 	QNetworkAccessManager m_webCtrl;
 

@@ -901,6 +901,13 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QSlider" name="debugTimeline">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
   </widget>
