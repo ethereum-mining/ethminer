@@ -957,9 +957,9 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 								}
 								for (auto jt = codes.rbegin(); jt != codes.rend(); ++jt)
 									appendCode(o_code, o_locs, jt->first, jt->second);
+								o_code.push_back((byte)it->second.first);
 								if (it->second.second)
 									o_code.push_back((byte)Instruction::NOT);
-								o_code.push_back((byte)it->second.first);
 								outs = 1;
 							}
 							else
