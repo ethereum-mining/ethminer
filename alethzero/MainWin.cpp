@@ -249,7 +249,7 @@ static void initUnits(QComboBox* _b)
 string htmlDump(bytes const& _b, unsigned _w = 8)
 {
 	stringstream ret;
-	ret << "<pre>";
+	ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
 	for (unsigned i = 0; i < _b.size(); i += _w)
 	{
 		ret << hex << setw(4) << setfill('0') << i << " ";
@@ -365,7 +365,7 @@ Main::Main(QWidget *parent) :
 	ui->valueUnits->setCurrentIndex(6);
 	ui->gasPriceUnits->setCurrentIndex(4);
 	ui->gasPrice->setValue(10);
-	on_destination_textChanged();
+	on_destination_currentTextChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
@@ -438,6 +438,9 @@ QString Main::render(eth::Address _a) const
 
 Address Main::fromString(QString const& _a) const
 {
+	if (_a == "(Create Contract)")
+		return Address();
+
 	string sn = _a.toStdString();
 	if (sn.size() > 32)
 		sn.resize(32);
@@ -586,8 +589,20 @@ void Main::refresh(bool _override)
 					if (st.isContractAddress(i.first))
 						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
 							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+
+					if (r.contains('('))
+					{
+						// A namereg address
+						QString s = pretty(i.first);
+						if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
+							ui->destination->addItem(s);
+					}
 				}
 			}
+
+		for (int i = 0; i < ui->destination->count(); ++i)
+			if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
+				ui->destination->removeItem(i--);
 
 		ui->transactionQueue->clear();
 		for (Transaction const& t: m_client->pending())
@@ -795,10 +810,10 @@ void Main::on_contracts_doubleClicked()
 	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
-void Main::on_destination_textChanged()
+void Main::on_destination_currentTextChanged()
 {
-	if (ui->destination->text().size())
-		if (Address a = fromString(ui->destination->text()))
+	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
+		if (Address a = fromString(ui->destination->currentText()))
 			ui->calculatedName->setText(render(a));
 		else
 			ui->calculatedName->setText("Unknown Address");
@@ -838,34 +853,34 @@ void Main::on_data_textChanged()
 		QString s = ui->data->toPlainText();
 		while (s.size())
 		{
-			QRegExp r("@?\"(.*)\"(.*)");
-			QRegExp h("@?(0x)?(([a-fA-F0-9][a-fA-F0-9])+)(.*)");
+			QRegExp r("(@|\\$)?\"(.*)\"(.*)");
+			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(.*)");
 			if (r.exactMatch(s))
 			{
-				for (auto i: r.cap(1))
+				for (auto i: r.cap(2))
 					m_data.push_back((byte)i.toLatin1());
-				if (s[0] == '@')
-					for (int i = r.cap(1).size(); i < 32; ++i)
+				if (r.cap(1) != "$")
+					for (int i = r.cap(2).size(); i < 32; ++i)
 						m_data.push_back(0);
 				else
 					m_data.push_back(0);
-				s = r.cap(2);
+				s = r.cap(3);
 			}
 			else if (h.exactMatch(s))
 			{
-				bytes bs = fromHex(h.cap(2).toStdString());
-				if (s[0] == '@')
+				bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
+				if (h.cap(1) != "$")
 					for (auto i = bs.size(); i < 32; ++i)
 						m_data.push_back(0);
 				for (auto b: bs)
 					m_data.push_back(b);
-				s = h.cap(4);
+				s = h.cap(5);
 			}
 			else
 				s = s.mid(1);
 		}
 		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
-		if (m_client->postState().isContractAddress(fromString(ui->destination->text())))
+		if (m_client->postState().isContractAddress(fromString(ui->destination->currentText())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
@@ -885,7 +900,7 @@ void Main::on_data_textChanged()
 
 bool Main::isCreation() const
 {
-	return ui->destination->text().isEmpty()/* || !ui->destination->text().toInt()*/;
+	return ui->destination->currentText().isEmpty()/* || !ui->destination->currentText().toInt()*/;
 }
 
 u256 Main::fee() const
@@ -1011,7 +1026,7 @@ void Main::on_send_clicked()
 				}
 				else
 				{
-					t.receiveAddress = fromString(ui->destination->text());
+					t.receiveAddress = fromString(ui->destination->currentText());
 					t.data = m_data;
 				}
 				t.sign(s);
@@ -1025,7 +1040,7 @@ void Main::on_send_clicked()
 				if (isCreation())
 					m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
 				else
-					m_client->transact(s, value(), fromString(ui->destination->text()), m_data, ui->gas->value(), gasPrice());
+					m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 				refresh();
 			}
 			return;

@@ -128,7 +128,7 @@
    </widget>
    <widget class="QMenu" name="menu_Debug">
     <property name="title">
-     <string>&amp;Debug</string>
+     <string>Deb&amp;ug</string>
     </property>
     <addaction name="enableDebug"/>
     <addaction name="debugStep"/>
@@ -496,6 +496,9 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="3">
+      <widget class="QComboBox" name="valueUnits"/>
+     </item>
      <item row="3" column="3">
       <widget class="QComboBox" name="gasPriceUnits"/>
      </item>
@@ -512,9 +515,6 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="3">
-      <widget class="QComboBox" name="valueUnits"/>
-     </item>
      <item row="3" column="2">
       <widget class="QSpinBox" name="gasPrice">
        <property name="prefix">
@@ -525,19 +525,6 @@
        </property>
        <property name="maximum">
         <number>430000000</number>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1" colspan="3">
-      <widget class="QLineEdit" name="destination">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="placeholderText">
-        <string>(Create Contract)</string>
        </property>
       </widget>
      </item>
@@ -598,6 +585,18 @@
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="3">
+      <widget class="QComboBox" name="destination">
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+       <item>
+        <property name="text">
+         <string>(Create Contract)</string>
+        </property>
+       </item>
       </widget>
      </item>
     </layout>
@@ -1012,8 +1011,15 @@
   <tabstop>idealPeers</tabstop>
   <tabstop>port</tabstop>
   <tabstop>clientName</tabstop>
-  <tabstop>nameReg</tabstop>
   <tabstop>verbosity</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>urlEdit</tabstop>
+  <tabstop>webView</tabstop>
+  <tabstop>nameReg</tabstop>
+  <tabstop>debugCode</tabstop>
+  <tabstop>debugStack</tabstop>
+  <tabstop>debugMemory</tabstop>
+  <tabstop>debugStorage</tabstop>
  </tabstops>
  <resources/>
  <connections/>

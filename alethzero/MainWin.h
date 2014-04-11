@@ -271,7 +271,7 @@ private slots:
 	void on_ourAccounts_doubleClicked();
 	void ourAccountsRowsMoved();
 	void on_accounts_doubleClicked();
-	void on_destination_textChanged();
+	void on_destination_currentTextChanged();
 	void on_data_textChanged();
 	void on_idealPeers_valueChanged();
 	void on_value_valueChanged() { updateFee(); }
