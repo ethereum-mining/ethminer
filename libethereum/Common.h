@@ -24,7 +24,7 @@
 #pragma once
 
 // define version
-#define ETH_VERSION 0.5.0
+#define ETH_VERSION 0.5.1
 
 // way to many uint to size_t warnings in 32 bit build
 #ifdef _M_IX86
