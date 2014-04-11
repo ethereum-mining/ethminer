@@ -244,9 +244,9 @@ signals:
 //	void miningChanged();
 
 private:
-	Q_PROPERTY(QVariant coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
-	Q_PROPERTY(bool listening READ isListening WRITE setListening)
-	Q_PROPERTY(bool mining READ isMining WRITE setMining)
+//	Q_PROPERTY(QVariant coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
+//	Q_PROPERTY(bool listening READ isListening WRITE setListening)
+//	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
 
 struct WorldState
