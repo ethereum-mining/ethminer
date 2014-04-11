@@ -158,7 +158,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-		clog(BlockChainChat) << newHash << ": Not new.";
+		clog(BlockChainNote) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
 
@@ -166,9 +166,17 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		clog(BlockChainChat) << newHash << ": Unknown parent " << bi.parentHash;
+		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
+	}
+
+	// Check it's not crazy
+	if (bi.timestamp > (u256)time(0))
+	{
+		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
+		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		throw FutureTime();
 	}
 
 	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
