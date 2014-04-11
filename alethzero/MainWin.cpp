@@ -342,6 +342,8 @@ Main::Main(QWidget *parent) :
 		m_servers.push_back("54.201.28.117:30303");
 	else if (pocnumber == 4)
 		m_servers.push_back("54.72.31.55:30303");
+	else if (pocnumber == 5)
+		m_servers.push_back("54.201.28.117:30303");
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
