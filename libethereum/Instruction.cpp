@@ -674,10 +674,10 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 					o_code.push_back((byte)Instruction::JUMPI);
 
 					// Second fragment - negative.
-					appendCode(o_code, o_locs, codes[1], locs[1]);
+					appendCode(o_code, o_locs, codes[2], locs[2]);
 
 					// Third fragment - incrementor.
-					appendCode(o_code, o_locs, codes[2], locs[2]);
+					appendCode(o_code, o_locs, codes[1], locs[1]);
 
 					// Jump to beginning afterwards.
 					o_locs.push_back((unsigned)o_code.size());
