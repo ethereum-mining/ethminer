@@ -1,0 +1,48 @@
+cmake_policy(SET CMP0015 NEW)
+
+aux_source_directory(. SRC_LIST)
+
+include_directories(../libethereum)
+link_directories(../libethereum)
+
+add_executable(neth ${SRC_LIST})
+
+if (${TARGET_PLATFORM} STREQUAL "w64")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+	target_link_libraries(neth gcc)
+	target_link_libraries(neth gdi32)
+	target_link_libraries(neth ws2_32)
+	target_link_libraries(neth mswsock)
+	target_link_libraries(neth shlwapi)
+	target_link_libraries(neth iphlpapi)
+	target_link_libraries(neth cryptopp)
+	target_link_libraries(neth ncurses)
+	target_link_libraries(neth form)
+	target_link_libraries(neth boost_system-mt-s)
+	target_link_libraries(neth boost_filesystem-mt-s)
+	target_link_libraries(neth boost_thread_win32-mt-s)
+	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+elseif (UNIX)
+	target_link_libraries(neth ncurses)
+	target_link_libraries(neth form)
+else ()
+	target_link_libraries(neth ${CRYPTOPP_LIBRARIES})
+	target_link_libraries(neth boost_system)
+	target_link_libraries(neth boost_filesystem)
+	target_link_libraries(neth ncurses)
+	target_link_libraries(neth form)
+	find_package(Threads REQUIRED)
+	target_link_libraries(neth ${CMAKE_THREAD_LIBS_INIT})
+endif ()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	include_directories(/usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
+target_link_libraries(neth ethereum)
+target_link_libraries(neth miniupnpc)
+target_link_libraries(neth leveldb)
+target_link_libraries(neth gmp)
+
+install( TARGETS neth DESTINATION bin )
+
