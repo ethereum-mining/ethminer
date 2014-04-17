@@ -10,6 +10,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 link_directories(../libethereum)
+link_directories(../libqethereum)
 
 # Find Qt5 for Apple and update src_list for windows
 if (APPLE)
@@ -54,7 +55,7 @@ else ()
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network WebKit WebKitWidgets)
-target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${EXECUTEABLE} qethereum ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
 
 if (APPLE)
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
@@ -78,7 +79,7 @@ if (APPLE)
 	install(CODE "
 		include(BundleUtilities)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
+                fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
 		" COMPONENT RUNTIME )
 	
 	add_custom_target(addframeworks ALL

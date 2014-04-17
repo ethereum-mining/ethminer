@@ -63,183 +63,6 @@ using eth::c_instructionInfo;
 // Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
 Main* g_main = nullptr;
 
-QEthereum::QEthereum(QObject* _p): QObject(_p)
-{
-	connect(g_main, SIGNAL(changed()), SIGNAL(changed()));
-}
-
-QEthereum::~QEthereum()
-{
-}
-
-Client* QEthereum::client() const
-{
-	return g_main->client();
-}
-
-QVariant QEthereum::coinbase() const
-{
-	return toQJS(client()->address());
-}
-
-QVariant QEthereum::account() const
-{
-	if (g_main->owned().empty())
-		return toQJS(Address());
-	return toQJS(g_main->owned()[0].address());
-}
-
-QList<QVariant> QEthereum::accounts() const
-{
-	QList<QVariant> ret;
-	for (auto i: g_main->owned())
-		ret.push_back(toQJS(i.address()));
-	return ret;
-}
-
-QVariant QEthereum::key() const
-{
-	if (g_main->owned().empty())
-		return toQJS(KeyPair());
-	return toQJS(g_main->owned()[0]);
-}
-
-QList<QVariant> QEthereum::keys() const
-{
-	QList<QVariant> ret;
-	for (auto i: g_main->owned())
-		ret.push_back(toQJS(i));
-	return ret;
-}
-
-void QEthereum::setCoinbase(QVariant _a)
-{
-	if (client()->address() != to<Address>(_a))
-	{
-		client()->setAddress(to<Address>(_a));
-		changed();
-	}
-}
-
-QAccount::QAccount(QObject*)
-{
-}
-
-QAccount::~QAccount()
-{
-}
-
-void QAccount::setEthereum(QEthereum* _eth)
-{
-	if (m_eth == _eth)
-		return;
-	if (m_eth)
-		disconnect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	m_eth = _eth;
-	if (m_eth)
-		connect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	ethChanged();
-	changed();
-}
-
-QVariant QAccount::balance() const
-{
-	if (m_eth)
-		return toQJS(m_eth->balanceAt(m_address));
-	return toQJS<u256>(0);
-}
-
-double QAccount::txCount() const
-{
-	if (m_eth)
-		return m_eth->txCountAt(m_address);
-	return 0;
-}
-
-bool QAccount::isContract() const
-{
-	if (m_eth)
-		return m_eth->isContractAt(m_address);
-	return 0;
-}
-
-QVariant QEthereum::balanceAt(QVariant _a) const
-{
-	return toQJS(client()->postState().balance(to<Address>(_a)));
-}
-
-QVariant QEthereum::storageAt(QVariant _a, QVariant _p) const
-{
-	return toQJS(client()->postState().contractStorage(to<Address>(_a), to<u256>(_p)));
-}
-
-u256 QEthereum::balanceAt(Address _a) const
-{
-	return client()->postState().balance(_a);
-}
-
-bool QEthereum::isContractAt(QVariant _a) const
-{
-	return client()->postState().isContractAddress(to<Address>(_a));
-}
-
-bool QEthereum::isContractAt(Address _a) const
-{
-	return client()->postState().isContractAddress(_a);
-}
-
-bool QEthereum::isMining() const
-{
-	return client()->isMining();
-}
-
-bool QEthereum::isListening() const
-{
-	return client()->haveNetwork();
-}
-
-void QEthereum::setMining(bool _l)
-{
-	if (_l)
-		client()->startMining();
-	else
-		client()->stopMining();
-}
-
-void QEthereum::setListening(bool _l)
-{
-	if (_l)
-		client()->startNetwork();
-	else
-		client()->stopNetwork();
-}
-
-double QEthereum::txCountAt(QVariant _a) const
-{
-	return (double)client()->postState().transactionsFrom(to<Address>(_a));
-}
-
-double QEthereum::txCountAt(Address _a) const
-{
-	return (double)client()->postState().transactionsFrom(_a);
-}
-
-unsigned QEthereum::peerCount() const
-{
-	return (unsigned)client()->peerCount();
-}
-
-QVariant QEthereum::create(QVariant _secret, QVariant _amount, QByteArray _code, QByteArray _init, QVariant _gas, QVariant _gasPrice)
-{
-	return toQJS(client()->transact(to<Secret>(_secret), to<u256>(_amount), bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), to<u256>(_gas), to<u256>(_gasPrice)));
-}
-
-void QEthereum::transact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice)
-{
-	client()->transact(to<Secret>(_secret), to<u256>(_amount), to<Address>(_dest), bytes(_data.data(), _data.data() + _data.size()), to<u256>(_gas), to<u256>(_gasPrice));
-}
-
-
 static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
@@ -383,7 +206,7 @@ Main::Main(QWidget *parent) :
 
 	QWebFrame* f = ui->webView->page()->currentFrame();
 	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
-		f->addToJavaScriptWindowObject("eth", new QEthereum, QWebFrame::ScriptOwnership);
+		f->addToJavaScriptWindowObject("eth", new QEthereum(this, m_client.get(), owned()), QWebFrame::ScriptOwnership);
 		f->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
 		f->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
 		f->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
@@ -677,7 +500,7 @@ void Main::refresh(bool _override)
 
 void Main::ourAccountsRowsMoved()
 {
-	QVector<KeyPair> myKeys;
+	QList<KeyPair> myKeys;
 	for (int i = 0; i < ui->ourAccounts->count(); ++i)
 	{
 		auto hba = ui->ourAccounts->item(i)->data(Qt::UserRole).toByteArray();
