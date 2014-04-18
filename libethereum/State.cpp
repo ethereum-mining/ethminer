@@ -658,7 +658,7 @@ void Executive::setup(bytesConstRef _rlp)
 	m_s.noteSending(sender);
 
 	// Pay...
-	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
+//	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
 	m_s.subBalance(sender, cost);
 
 	if (m_t.isCreation())
@@ -669,7 +669,7 @@ void Executive::setup(bytesConstRef _rlp)
 
 void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
 {
-	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
 	if (m_s.isContractAddress(_receiveAddress))
@@ -748,7 +748,7 @@ u256 Executive::gas() const
 
 void Executive::finalize()
 {
-	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
+//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
 
 	u256 gasSpent = (m_startGas - m_endGas) * m_ext->gasPrice;
@@ -757,7 +757,7 @@ void Executive::finalize()
 	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
 */
 	u256 feesEarned = gasSpent;
-	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
+//	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 }
 
@@ -842,7 +842,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	if (!_originAddress)
 		_originAddress = _senderAddress;
 
-	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
 	if (isContractAddress(_receiveAddress))
