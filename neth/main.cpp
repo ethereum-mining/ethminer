@@ -98,35 +98,32 @@ void interactiveHelp()
 		<< "    exit  Exits the application." << endl;
 }
 
-string credits(bool _interactive = false)
+string credits()
 {
 	std::ostringstream ccout;
 	ccout
-		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
-		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
+		<< "NEthereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
+		<< "  Code by Gav Wood & , (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	if (_interactive)
-	{
-		string vs = toString(ETH_QUOTED(ETH_VERSION));
-		vs = vs.substr(vs.find_first_of('.') + 1)[0];
-		int pocnumber = stoi(vs);
-		string m_servers;
-		if (pocnumber == 4)
-			m_servers = "54.72.31.55";
-		else
-			m_servers = "54.201.28.117";
+	string vs = toString(ETH_QUOTED(ETH_VERSION));
+	vs = vs.substr(vs.find_first_of('.') + 1)[0];
+	int pocnumber = stoi(vs);
+	string m_servers;
+	if (pocnumber == 4)
+		m_servers = "54.72.31.55";
+	else
+		m_servers = "54.201.28.117";
 
-		ccout << "Type 'netstart 30303' to start networking" << endl;
-		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
-		ccout << "Type 'exit' to quit" << endl << endl;
-	}
+	ccout << "Type 'netstart 30303' to start networking" << endl;
+	ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+	ccout << "Type 'exit' to quit" << endl << endl;
 	return ccout.str();
 }
 
 void version()
 {
-	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
+	cout << "neth version " << ETH_QUOTED(ETH_VERSION) << endl;
 	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -374,7 +371,7 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	Client c("NEthereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	cout << credits();
 
 	std::ostringstream ccout;
@@ -449,7 +446,7 @@ int main(int argc, char** argv)
 		wclrtobot(addswin);
 		wclrtobot(contractswin);
 
-		ccout << credits(true);
+		ccout << credits();
 
 		// Prompt
 		wmove(mainwin, 1, 4);
