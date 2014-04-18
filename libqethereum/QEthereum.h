@@ -89,11 +89,13 @@ public:
 	Q_INVOKABLE eth::u256 balance() const;
 	Q_INVOKABLE double txCount() const;
 	Q_INVOKABLE bool isContract() const;
+	Q_INVOKABLE eth::Address address() const { return m_address; }
 
 	// TODO: past transactions models.
 
 public slots:
 	void setEthereum(QmlEthereum* _eth);
+	void setAddress(eth::Address _a) { m_address = _a; }
 
 signals:
 	void changed();
@@ -106,7 +108,7 @@ private:
 	Q_PROPERTY(eth::u256 balance READ balance NOTIFY changed STORED false)
 	Q_PROPERTY(double txCount READ txCount NOTIFY changed STORED false)
 	Q_PROPERTY(bool isContract READ isContract NOTIFY changed STORED false)
-	Q_PROPERTY(eth::Address address MEMBER m_address NOTIFY changed)
+	Q_PROPERTY(eth::Address address READ address WRITE setAddress NOTIFY changed)
 	Q_PROPERTY(QmlEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
 };
 
