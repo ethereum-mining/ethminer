@@ -138,6 +138,54 @@ else ()
 	if(NOT APPLE)
 		link_directories(${CRYPTOPP_LIBRARIES})
 	endif()
+
+	find_path( LEVELDB_ID leveldb/db.h
+		/usr/include
+		/usr/local/include
+		)
+	if ( LEVELDB_ID ) 
+		message(STATUS "Found LevelDB Headers")
+	else () 
+		message(FATAL_ERROR "Failed to find the LevelDB headers")
+	endif ()
+
+	# Check for accessory dev libraries leveldb and miniupnpc
+	find_library( LEVELDB_LS NAMES leveldb
+		PATHS
+		/usr/lib
+		/usr/local/lib
+		/opt/local/lib
+		/usr/lib/*/
+		)
+	if ( LEVELDB_LS ) 
+		message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
+	else () 
+		message(FATAL_ERROR "Failed to find the LevelDB Library!")
+	endif ()
+
+	find_path( MINIUPNPC_ID miniupnpc/miniwget.h
+		/usr/include/miniupnpc
+		/usr/local/include/miniupnpc
+		)
+	if ( MINIUPNPC_ID ) 
+		message(STATUS "Found miniupnpc headers")
+	else () 
+		message(FATAL_ERROR "Failed to find the miniupnpc headers!")
+	endif ()
+
+	find_library( MINIUPNPC_LS NAMES miniupnpc
+		PATHS
+		/usr/lib
+		/usr/local/lib
+		/opt/local/lib
+		/usr/lib/*/
+		)
+	if ( MINIUPNPC_LS ) 
+		message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
+	else ()
+		message(FATAL_ERROR "Failed to find the miniupnpc library!")
+	endif ()
+
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
