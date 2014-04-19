@@ -686,7 +686,6 @@ int main(int argc, char** argv)
 						cwarn << "No code submitted";
 					else
 					{
-						bytes data;
 						bytes code = fromHex(scode);
 						cnote << "Assembled:";
 						stringstream ssc;
