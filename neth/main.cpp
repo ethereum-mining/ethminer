@@ -65,14 +65,15 @@ void help()
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
         << "    -h,--help  Show this help message and exit." << endl
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
+        << "    -m,--mining <on/off>  Enable mining (default: off)" << endl
         << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
         << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
         << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
         << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
-		<< "    -v,--verbosity <0..9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
-        << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
+        << "    -v,--verbosity <0..9>  Set the log verbosity from 0 to 9 (tmp forced to 1)." << endl
+        << "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
         << "    -V,--version  Show the version and exit." << endl;
         exit(0);
 }
@@ -94,8 +95,8 @@ void interactiveHelp()
         << "    transact  Execute a given transaction." << endl
         << "    send  Execute a given transaction with current secret." << endl
         << "    contract  Create a new contract with current secret." << endl
-		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
-		<< "    exit  Exits the application." << endl;
+        << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+        << "    exit  Exits the application." << endl;
 }
 
 string credits()
@@ -284,6 +285,7 @@ int main(int argc, char** argv)
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	string dbPath;
+	bool mining = false;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	string publicIP;
@@ -344,6 +346,18 @@ int main(int argc, char** argv)
 			us = KeyPair(h256(fromHex(argv[++i])));
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
+		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (isTrue(m))
+				mining = true;
+			else if (isFalse(m))
+				mining = false;
+			else
+			{
+				cerr << "Unknown mining option: " << m << endl;
+			}
+		}
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -437,6 +451,8 @@ int main(int argc, char** argv)
 
 	if (!remoteHost.empty())
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	if (mining)
+		c.startMining();
 
 	while (true)
 	{
@@ -632,8 +648,8 @@ int main(int argc, char** argv)
 			l.push_back("Gas price");
 			l.push_back("Gas");
 			vector<string> b;
-			b.push_back("Code");
-			b.push_back("Init");
+			b.push_back("Code (hex)");
+			b.push_back("Init (hex)");
 			c.lock();
 			vector<string> fields = form_dialog(s, l, b, height, width, cmd);
 			c.unlock();
@@ -671,22 +687,17 @@ int main(int argc, char** argv)
 					else
 					{
 						bytes data;
-						// bytes code = compileLisp(scode, false, data);
-						// scode = asString(code);
-						bytes code = assemble(scode);
+						bytes code = fromHex(scode);
 						cnote << "Assembled:";
 						stringstream ssc;
 						ssc << disassemble(code);
 						cnote << ssc.str();
-						// int ssize = sinit.length();
-						// bytes init = compileLisp(sinit, false, data);
-						// sinit = asString(init);
-						bytes init = assemble(sinit);
+						bytes init = fromHex(sinit);
 						ssc.str(string());
 						ssc << disassemble(init);
 						cnote << "Init:";
 						cnote << ssc.str();
-						c.transact(us.secret(), endowment, data, init, gas, gasPrice);
+						c.transact(us.secret(), endowment, code, init, gas, gasPrice);
 					}
 				}
 			}
