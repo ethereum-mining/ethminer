@@ -17,6 +17,9 @@
     <ClCompile Include="..\test\peer.cpp" />
     <ClCompile Include="..\test\boostTest.cpp" />
     <ClCompile Include="..\test\txTest.cpp" />
+    <ClCompile Include="..\test\fork.cpp" />
+    <ClCompile Include="..\test\network.cpp" />
+    <ClCompile Include="..\test\TestHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -30,5 +33,6 @@
     <ClInclude Include="..\test\TrieHash.h" />
     <ClInclude Include="..\test\MemTrie.h" />
     <ClInclude Include="..\test\JsonSpiritHeaders.h" />
+    <ClInclude Include="..\test\TestHelper.h" />
   </ItemGroup>
 </Project>

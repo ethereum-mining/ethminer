@@ -5,7 +5,6 @@
 #include <libethereum/Instruction.h>
 #include <libethereum/FileSystem.h>
 #include <libethereum/PeerServer.h>
-#include "BuildInfo.h"
 #include "QEthereum.h"
 using namespace std;
 
@@ -317,3 +316,25 @@ void QEthereum::transact(QVariant _secret, QVariant _amount, QVariant _dest, QBy
 {
 	client()->transact(to<Secret>(_secret), to<u256>(_amount), to<Address>(_dest), bytes(_data.data(), _data.data() + _data.size()), to<u256>(_gas), to<u256>(_gasPrice));
 }
+
+// extra bits needed to link on VS
+#ifdef _MSC_VER
+
+// include moc file, ofuscated to hide from automoc
+#include\
+"moc_QEthereum.cpp"
+
+// specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
+#ifdef _DEBUG
+#define QTLIB(x) x"d.lib"
+#else 
+#define QTLIB(x) x".lib"
+#endif
+
+#pragma comment(lib, QTLIB("Qt5PlatformSupport"))
+#pragma comment(lib, QTLIB("Qt5Core"))
+#pragma comment(lib, QTLIB("Qt5GUI"))
+#pragma comment(lib, QTLIB("Qt5Widgets"))
+#pragma comment(lib, QTLIB("Qt5Network"))
+
+#endif
