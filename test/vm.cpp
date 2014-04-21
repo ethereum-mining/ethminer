@@ -27,12 +27,13 @@
 #include <Log.h>
 #include <Instruction.h>
 #include "JsonSpiritHeaders.h"
+#include <boost/test/unit_test.hpp>
+
 using namespace std;
 using namespace json_spirit;
 using namespace eth;
 
-namespace eth
-{
+namespace eth { namespace test {
 
 class FakeExtVM: public ExtVMFace
 {
@@ -135,6 +136,12 @@ public:
 
 	void importEnv(mObject& _o)
 	{
+		BOOST_REQUIRE(_o.count("previousHash") > 0 ); 
+		BOOST_REQUIRE(_o.count("previousNonce") > 0 ); 
+		BOOST_REQUIRE(_o.count("currentDifficulty") > 0 ); 
+		BOOST_REQUIRE(_o.count("currentTimestamp") > 0 ); 
+		BOOST_REQUIRE(_o.count("currentCoinbase") > 0 ); 
+
 		previousBlock.hash = h256(_o["previousHash"].get_str());
 		previousBlock.nonce = h256(_o["previousNonce"].get_str());
 		currentBlock.difficulty = toInt(_o["currentDifficulty"]);
@@ -228,6 +235,10 @@ public:
 		for (auto const& i: _o)
 		{
 			mObject o = i.second.get_obj();
+			BOOST_REQUIRE(o.count("balance") > 0 ); 
+			BOOST_REQUIRE(o.count("nonce") > 0 ); 
+			BOOST_REQUIRE(o.count("store") > 0 ); 
+
 			auto& a = addresses[Address(i.first)];
 			get<0>(a) = toInt(o["balance"]);
 			get<1>(a) = toInt(o["nonce"]);
@@ -249,6 +260,7 @@ public:
 
 	mObject exportExec()
 	{
+
 		mObject ret;
 		ret["address"] = toString(myAddress);
 		ret["caller"] = toString(caller);
@@ -264,6 +276,13 @@ public:
 
 	void importExec(mObject& _o)
 	{
+		BOOST_REQUIRE(_o.count("address")> 0); 
+		BOOST_REQUIRE(_o.count("caller") > 0); 
+		BOOST_REQUIRE(_o.count("origin") > 0); 
+		BOOST_REQUIRE(_o.count("value") > 0); 
+		BOOST_REQUIRE(_o.count("gasPrice") > 0); 
+		BOOST_REQUIRE(_o.count("data") > 0 ); 
+
 		myAddress = Address(_o["address"].get_str());
 		caller = Address(_o["caller"].get_str());
 		origin = Address(_o["origin"].get_str());
@@ -297,6 +316,9 @@ public:
 		for (mValue& v: _txs)
 		{
 			auto tx = v.get_obj();
+			BOOST_REQUIRE(tx.count("destination") > 0); 
+			BOOST_REQUIRE(tx.count("value") > 0 ); 
+			BOOST_REQUIRE(tx.count("data") > 0 ); 
 			Transaction t;
 			t.receiveAddress = Address(tx["destination"].get_str());
 			t.value = toInt(tx["value"]);
@@ -311,37 +333,20 @@ public:
 	bytes thisTxData;
 };
 
-#define CREATE_TESTS 0
-
-template <> class UnitTest<1>
-{
-public:
-	int operator()()
+	void doTests(json_spirit::mValue& v, bool _fillin)
 	{
-		json_spirit::mValue v;
-#if CREATE_TESTS
-		string s = asString(contents("../../cpp-ethereum/test/vmtests.json"));
-		json_spirit::read_string(s, v);
-		bool passed = doTests(v, true);
-		cout << json_spirit::write_string(v, true) << endl;
-#else
-		string s = asString(contents("../../tests/vmtests.json"));
-		json_spirit::read_string(s, v);
-		bool passed = doTests(v, false);
-#endif
-		return passed ? 0 : 1;
-	}
-
-	bool doTests(json_spirit::mValue& v, bool _fillin)
-	{
-		bool passed = true;
 		for (auto& i: v.get_obj())
+
 		{
 			cnote << i.first;
 			mObject& o = i.second.get_obj();
 
+			BOOST_REQUIRE( o.count("env") > 0 ); 
+			BOOST_REQUIRE( o.count("pre") > 0 ); 
+			BOOST_REQUIRE( o.count("exec") > 0 ); 
+
 			VM vm;
-			FakeExtVM fev;
+			eth::test::FakeExtVM fev;
 			fev.importEnv(o["env"].get_obj());
 			fev.importState(o["pre"].get_obj());
 
@@ -365,37 +370,44 @@ public:
 			}
 			else
 			{
-				FakeExtVM test;
+				BOOST_REQUIRE( o.count("post") > 0 ); 
+				BOOST_REQUIRE( o.count("txs") > 0 ); 
+				BOOST_REQUIRE( o.count("out") > 0 ); 
+
+				eth::test::FakeExtVM test;
 				test.importState(o["post"].get_obj());
 				test.importTxs(o["txs"].get_array());
 				int i = 0;
 				for (auto const& d: o["out"].get_array())
 				{
-					if (output[i] != FakeExtVM::toInt(d))
-					{
-						cwarn << "Test failed: output byte" << i << "different.";
-						passed = false;
-					}
+					BOOST_CHECK_MESSAGE( output[i] == FakeExtVM::toInt(d), "Output byte [" << i << "] different!"); 
 					++i;
 				}
-
-				if (test.addresses != fev.addresses)
-				{
-					cwarn << "Test failed: state different.";
-					passed = false;
-				}
-				if (test.txs != fev.txs)
-				{
-					cwarn << "Test failed: tx list different:";
-					cwarn << test.txs;
-					cwarn << fev.txs;
-					passed = false;
-				}
+				BOOST_CHECK( test.addresses == fev.addresses); 
+				BOOST_CHECK( test.txs == fev.txs ); 
 			}
 		}
-		return passed;
 	}
+} } // Namespace Close
 
+BOOST_AUTO_TEST_CASE(vm_tests)
+{
+	try
+	{
+		cnote << "Testing VM...";
+		json_spirit::mValue v;
+		string s = asString(contents("../../tests/vmtests.json"));
+		BOOST_REQUIRE_MESSAGE( s.length() > 0, "Contents of 'vmtests.json' is empty. Have you cloned the 'tests' repo branch develop?" );			
+		json_spirit::read_string(s, v);
+		eth::test::doTests(v, false);
+	}
+	catch( std::exception& e)
+	{
+		BOOST_ERROR("Failed VM Test with Exception: " << e.what()); 
+	}
+}
+
+#if 0 
 	string makeTestCase()
 	{
 		json_spirit::mObject o;
@@ -427,9 +439,5 @@ public:
 
 }
 
-int vmTest()
-{
-	cnote << "Testing VM...";
-	return UnitTest<1>()();
-}
 
+#endif
