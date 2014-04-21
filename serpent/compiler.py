@@ -35,9 +35,9 @@ funtable = [
     ['>=', 2, 1, ['<1>', '<0>', 'LT', 'NOT']],
     ['!', 1, 1, ['<0>', 'NOT']],
     ['or', 2, 1, ['<1>', '<0>', 'DUP', 4, 'PC',
-                  'ADD', 'JMPI', 'POP', 'SWAP', 'POP']],
+                  'ADD', 'JUMPI', 'POP', 'SWAP', 'POP']],
     ['||', 2, 1, ['<1>', '<0>', 'DUP', 4, 'PC',
-                  'ADD', 'JMPI', 'POP', 'SWAP', 'POP']],
+                  'ADD', 'JUMPI', 'POP', 'SWAP', 'POP']],
     ['and', 2, 1, ['<1>', '<0>', 'NOT', 'NOT', 'MUL']],
     ['&&', 2, 1, ['<1>', '<0>', 'NOT', 'NOT', 'MUL']],
     ['xor', 2, 1, ['<1>', '<0>', 'XOR']],
@@ -49,6 +49,8 @@ funtable = [
     ['access', 2, 1, ['<0>', '<1>', 32, 'MUL', 'ADD', 'MLOAD']],
     # arr, ind, val
     ['arrset', 3, 0, ['<2>', '<0>', '<1>', 32, 'MUL', 'ADD', 'MSTORE']],
+    # val, pointer -> pointer+32
+    ['set_and_inc', 2, 1, ['<1>', 'DUP', '<0>', 'SWAP', 'MSTORE', 32, 'ADD']],
     # len (32 MUL) len*32 (MSIZE) len*32 MSIZE (SWAP) MSIZE len*32 (MSIZE ADD)
     # MSIZE MSIZE+len*32 (1) MSIZE MSIZE+len*32 1 (SWAP SUB) MSIZE
     # MSIZE+len*32-1 (0 SWAP MSTORE8) MSIZE
@@ -69,9 +71,9 @@ funtable = [
     # <3> <2> <1> <0> (CALL) MSIZE FLAG (POP) MSIZE (MLOAD) RESULT
     ['msg', 5, 1, ['MSIZE', 0, 'MSIZE', 'MSTORE', 'DUP', 32, 'SWAP', '<4>', 32, 'MUL', '<3>',
                    '<2>', '<1>', '<0>', 'CALL', 'POP', 'MLOAD']],  # to, value, gas, data, datasize -> out32
-    # <5> MSIZE (SWAP) MSIZE <5> (MSIZE SWAP) MSIZE MSIZE <5> (32 MUL) MSIZE MSIZE <5>*32 (DUP ADD 1 SWAP SUB) MSIZE MSIZE <6>*32 MEND (MSTORE8) MSIZE MSIZE <6>*32 (... CALL)
-    ['msg', 6, 0, ['<5>', 'MSIZE', 'SWAP', 'MSIZE', 'SWAP', 32, 'MUL', 'DUP', 'ADD', 1, 'SWAP', 'SUB', 'MSTORE8',
-                   '<4>', '<3>', '<2>', '<1>', '<0>', 'CALL', 'POP']],  # to, value, gas, data, datasize, outsize -> out
+    # <5>*32 (MSIZE SWAP MSIZE SWAP) MSIZE MSIZE <5>*32 (DUP MSIZE ADD) MSIZE MSIZE <5>*32 MEND+1 (1 SWAP SUB) MSIZE MSIZE <5>*32 MEND (0 SWAP MSTORE8) MSIZE MSIZE <5>*32 (SWAP) MSIZE <5>*32 MSIZE
+    ['msg', 6, 1, ['<5>', 32, 'MUL', 'MSIZE', 'SWAP', 'MSIZE', 'SWAP', 'DUP', 'MSIZE', 'ADD', 1, 'SWAP', 'SUB', 0, 'SWAP', 'MSTORE8', 'SWAP',
+                   '<4>', 32, 'MUL', '<3>', '<2>', '<1>', '<0>', 'CALL', 'POP']],  # to, value, gas, data, datasize, outsize -> out
     # value, gas, data, datasize
     ['create', 4, 1, ['<3>', '<2>', '<1>', '<0>', 'CREATE']],
     ['sha3', 1, 1, [32, 'MSIZE', '<0>', 'MSIZE', 'MSTORE', 'SHA3']],
@@ -153,11 +155,13 @@ def rewrite(ast):
         elif ast[1] == 'contract.storage':
             return ['sload', rewrite(ast[2])]
     elif ast[0] == 'array_lit':
-        tempvar = mklabel('_temp')
-        o1 = ['set', tempvar, ['array', str(len(ast[1:]))]]
-        of = map(
-            lambda i: ['arrset', tempvar, str(i), rewrite(ast[i + 1])], range(0, len(ast[1:])))
-        return ['seq'] + [o1] + of + [tempvar]
+        o = ['array', str(len(ast[1:]))]
+        for a in ast[1:]:
+            o = ['set_and_inc', rewrite(a), o]
+        return ['-', o, str(len(ast[1:])*32)]
+    elif ast[0] == 'return':
+        if len(ast) == 2 and ast[1][0] == 'array_lit':
+            return ['return', rewrite(ast[1]), str(len(ast[1][1:]))]
     return map(rewrite, ast)
 
 
@@ -245,6 +249,7 @@ def compile_expr(ast, varhash, lc=[0]):
     # Functions and operations
     for f in funtable:
         if ast[0] == f[0] and len(ast[1:]) == f[1]:
+            # If arity of all args is 1
             if reduce(lambda x, y: x * arity(y), ast[1:], 1):
                 iq = f[3][:]
                 oq = []
@@ -301,9 +306,9 @@ def optimize(c):
                 multipop(oq, 3).append(ntok)
         if oq[-1] == 'NOT' and len(oq) >= 2 and oq[-2] == 'NOT':
             multipop(oq, 2)
-        if oq[-1] == 'ADD' and len(oq) >= 3 and oq[-2] == 0:
+        if oq[-1] == 'ADD' and len(oq) >= 3 and oq[-2] == 0 and is_numberlike(oq[-3]):
             multipop(oq, 2)
-        if oq[-1] in ['SUB', 'ADD'] and len(oq) >= 3 and oq[-3] == 0:
+        if oq[-1] in ['SUB', 'ADD'] and len(oq) >= 3 and oq[-3] == 0 and is_numberlike(oq[-2]):
             ntok = oq[-2]
             multipop(oq, 3).append(ntok)
     return oq
@@ -423,7 +428,13 @@ def encode_datalist(vals):
             return 1
         elif n is False or n is None:
             return 0
-    return ''.join(map(enc, vals))
+    if isinstance(vals, (tuple, list)):
+        return ''.join(map(enc, vals))
+    elif vals == '':
+        return ''
+    else:
+        # Assume you're getting in numbers or 0x...
+        return ''.join(map(enc, map(numberize, vals.split(' '))))
 
 
 def decode_datalist(arr):

@@ -26,8 +26,10 @@ def main():
         else:
             cmd = sys.argv[1]
             args = sys.argv[2:]
-        if args[0] in os.listdir(os.getcwd()):
+        try:
             args[0] = open(args[0]).read()
+        except:
+            pass
         o = getattr(serpent, cmd)(*args)
         if isinstance(o, (list, dict)):
             print json.dumps(o)

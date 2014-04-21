@@ -126,7 +126,7 @@ bytes compileSerpent(string const& _code)
 	postream& os = c.get_stdin();
 	pistream& is = c.get_stdout();
 
-	os << _code;
+	os << _code << "\n";
 	os.close();
 
 	string hex;
