@@ -811,7 +811,7 @@ void State::execute(bytesConstRef _rlp)
 	noteSending(sender);
 
 	// Pay...
-	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
+//	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
 	subBalance(sender, cost);
 
 	if (t.isCreation())
@@ -819,7 +819,7 @@ void State::execute(bytesConstRef _rlp)
 	else
 		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
 
-	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
+//	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
 	addBalance(sender, gas * t.gasPrice);
 
 	u256 gasSpent = (t.gas - gas) * t.gasPrice;
@@ -828,7 +828,7 @@ void State::execute(bytesConstRef _rlp)
 	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
 */
 	u256 feesEarned = gasSpent;
-	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
+//	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
 
 	// !!!!!!!!!!!!!!!!!!!!! If moving to use Executive, this still needs to be done - Executive won't do it.
