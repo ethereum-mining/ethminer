@@ -10,6 +10,13 @@ def spaces(ln):
 def parse(document):
     return parse_lines(document.split('\n'))
 
+def strip_line(ln):
+    ln2 = ln.strip()
+    if '//' in ln2:
+        return ln2[:ln2.find('//')]
+    else:
+        return ln2
+
 # Parse the statement-level structure, including if and while statements
 def parse_lines(lns):
     o = []
@@ -22,16 +29,20 @@ def parse_lines(lns):
             continue
         if spaces(main) > 0:
             raise Exception("Line "+str(i)+" indented too much!")
+        main = strip_line(main)
         # Grab the child block of an if statement
         start_child_block = i+1
         indent = 99999999
         i += 1
+        child_lns = []
         while i < len(lns):
-            sp = spaces(lns[i])
-            if sp == 0: break
-            indent = min(sp,indent)
+            if len(strip_line(lns[i])) > 0:
+                sp = spaces(lns[i])
+                if sp == 0: break
+                indent = min(sp,indent)
+                child_lns.append(lns[i])
             i += 1
-        child_block = map(lambda x:x[indent:],lns[start_child_block:i])
+        child_block = map(lambda x:x[indent:],child_lns)
         # Calls parse_line to parse the individual line
         out = parse_line(main)
         # Include the child block into the parsed expression
@@ -79,8 +90,6 @@ def tokenize(ln):
     o = []
     global cur
     cur = ''
-    # Comments
-    if '//' in ln: ln = ln[:ln.find('//')]
     # Finish a token and start a new one
     def nxt():
         global cur
@@ -158,7 +167,7 @@ def toktype(token):
     elif token in ['!']: return 'unary_operation' 
     elif not isinstance(token,str): return 'compound'
     elif token in precedence: return 'binary_operation'
-    elif re.match('^[0-9a-z\-\.]*$',token): return 'alphanum'
+    elif re.match('^[0-9a-zA-Z\-\.]*$',token): return 'alphanum'
     elif token[0] in ['"',"'"] and token[0] == token[-1]: return 'alphanum'
     else: raise Exception("Invalid token: "+token)
 
@@ -226,7 +235,7 @@ def shunting_yard(tokens):
         elif typ == 'left_paren':
             # Handle cases like 3 * (2 + 5) by using 'id' as a default function
             # name
-            if toktype(prev) != 'alphanum' and toktype(prev) != 'rparen':
+            if toktype(prev) != 'alphanum' and toktype(prev) != 'right_paren':
                 oq.append('id')
             # Say the statement is "... f(45...". At the start, we would have f
             # as the last item on the oq. So we move it onto the stack, put the
