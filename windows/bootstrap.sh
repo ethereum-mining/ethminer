@@ -5,14 +5,23 @@
 # Script to fetch and compile depdencies for building Ethereum using Visual Studio Express 2013.
 # Prerequisites:
 #  - Visual Studio Express 2013 for Desktop
-#  - On PATH: bash, git, git-svn, curl, sed, 7z
+#  - On PATH: bash, git, git-svn, curl, 7z, perl, ruby, python
+
+# put /bin, /usr/bin and /usr/local/bin at end of PATH (want to ensure non Git/MSys/Git perl takes priority)
+PATH=${PATH/#\/bin:/:/}
+PATH=${PATH/#\/usr\/bin:/:/}
+PATH=${PATH/#\/usr\/local\/bin:/:/}
+PATH=${PATH//:\/bin:/:/}
+PATH=${PATH//:\/usr\/bin:/:/}
+PATH=${PATH//:\/usr\/local\/bin:/:/}
+PATH=$PATH:/bin:/usr/bin:/usr/local/bin
 
 error_exit() {
     echo $1 1>&2
     exit 1
 }
 
-for i in python perl curl git sed 7z; do
+for i in ruby python perl curl git 7z; do
 	which $i &>/dev/null || error_exit "Could not find $i on PATH"
 done
 
@@ -65,6 +74,15 @@ if [[ ! $@ ]] || [ $1 == "fetch" ]; then
 		echo
 	fi
 
+	# fetch and unpack icu
+	if [ ! -d icu ]; then
+		git svn clone -rHEAD http://source.icu-project.org/repos/icu/icu/tags/release-52-1 icu
+		cd icu
+		# patch for VS2013 and Windows Qt build
+		git am --3way --ignore-space-change -s ../cpp-ethereum/windows/patches/icu/0*.patch
+		cd ..
+	fi
+
 	# fetch and unpack Qt 5.1.2 source
 	if [ ! -d Qt ]; then
 		if [ ! -f _download/qt-everywhere-opensource-src-5.2.1.zip ]; then
@@ -75,8 +93,6 @@ if [[ ! $@ ]] || [ $1 == "fetch" ]; then
 		cd Qt
 		(set -x; 7z x ../_download/qt-everywhere-opensource-src-5.2.1.zip)
 		(set -x; mv qt-everywhere-opensource-src-5.2.1 Src)
-		# patch qmake.conf to use the static CRT
-		(set -x; sed -i -e 's/-MD/-MT/g' Src/qtbase/mkspecs/win32-msvc2013/qmake.conf)
 		cd ..
 		echo
 	fi
@@ -119,7 +135,7 @@ compile_boost()
 	
 	if [ ! -d "stage/$platform" ]; then
 		targets="--with-filesystem --with-system --with-thread --with-date_time --with-regex --with-test"
-		(set -x; ./b2 -j4 --build-type=complete link=static runtime-link=static variant=debug,release threading=multi $addressModel $targets stage)
+		(set -x; ./b2 -j4 --build-type=complete link=static runtime-link=shared variant=debug,release threading=multi $addressModel $targets stage)
 		(set -x; mv stage/lib stage/$platform)
 	fi
 }
@@ -138,10 +154,42 @@ if [[ ! $@ ]] || [ $1 == "compile-boost" ]; then
 	echo
 fi
 
+compile_icu()
+{
+	if [ ! -d lib_$platform ] || [ ! -d bin_$platform ]; then
+		(set -x; cmd.exe /c "..\\cpp-ethereum\\windows\\compile_icu.bat $platform")
+		if [ $platform == "x64" ]; then
+			icu_suff="64"
+		else
+			icu_suff=""
+		fi
+		rm -rf lib_$platform
+		rm -rf bin_$platform
+		mv lib$icu_suff lib_$platform
+		mv bin$icu_suff bin_$platform
+	fi
+}
+
+if [[ ! $@ ]] || [ $1 == "compile-icu" ]; then
+	cd icu
+	platform="x64"; compile_icu
+	platform="Win32"; compile_icu
+	cd ..
+fi
+
 compile_qt()
 {
 	if [ ! -d $platform ]; then
-		(set -x; cmd.exe /c "..\\cpp-ethereum\\windows\\compile_qt.bat $platform")
+		(
+			set -x
+			
+			# copy icu dlls to Qt bin folder (this is so the Qt tools work without global adjustment to PATH)
+			mkdir -p $platform/qtbase/bin
+			cp -a ../icu/bin_$platform/*.dll $platform/qtbase/bin/
+		
+			# compile qt
+			cmd.exe /c "..\\cpp-ethereum\\windows\\compile_qt.bat $platform"
+		)
 	fi
 }
 

@@ -4,18 +4,25 @@
   <PropertyGroup Label="UserMacros">
     <QtDir>../../Qt/$(Platform)</QtDir>
     <QtBin>$(QtDir)/qtbase/bin</QtBin>
-    <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include</QtInclude>
-    <QtLib>$(QtDir)/qtbase/lib;$(QtDir)/qtbase/plugins/platforms</QtLib>
+    <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include;../../Qt/Src/qtwebkit/include</QtInclude>
+    <QtLib>$(QtDir)/qtbase/lib;$(QtDir)/qtbase/plugins/platforms;../../icu/lib64</QtLib>
   </PropertyGroup>
-  <PropertyGroup />
+  <PropertyGroup>
+    <_PropertySheetDisplayName>LibQEthereum</_PropertySheetDisplayName>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link />
     <ClCompile>
       <AdditionalIncludeDirectories>..;$(QtInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4718;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(QtLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="QtDir">

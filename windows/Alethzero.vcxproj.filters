@@ -9,7 +9,6 @@
     <ClCompile Include="WinMain.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
-    <ClCompile Include="qt_plugin_import.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

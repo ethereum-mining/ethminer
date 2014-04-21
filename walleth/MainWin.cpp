@@ -303,18 +303,7 @@ void Main::on_create_triggered()
 #define QTLIB(x) x".lib"
 #endif
 
-#pragma comment(lib, QTLIB("Qt5PlatformSupport"))
-#pragma comment(lib, QTLIB("Qt5Core"))
-#pragma comment(lib, QTLIB("Qt5GUI"))
-#pragma comment(lib, QTLIB("Qt5Widgets"))
-#pragma comment(lib, QTLIB("Qt5Network"))
 #pragma comment(lib, QTLIB("Qt5Quick"))
-#pragma comment(lib, QTLIB("Qt5Declarative"))
 #pragma comment(lib, QTLIB("Qt5Qml"))
-#pragma comment(lib, QTLIB("qwindows"))
-#pragma comment(lib, "Imm32.lib")
-#pragma comment(lib, "opengl32.lib")
-#pragma comment(lib, "winmm.lib")
-
 
 #endif
