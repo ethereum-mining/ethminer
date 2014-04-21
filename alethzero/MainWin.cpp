@@ -654,6 +654,9 @@ void Main::on_data_textChanged()
 		m_init.clear();
 		auto init = code.indexOf("init:");
 		auto body = code.indexOf("body:");
+		if (body == -1)
+			body = code.indexOf("code:");
+
 		if (body == -1 && init == -1)
 			m_data = compileLisp(code.toStdString(), true, m_init);
 		else
@@ -661,8 +664,16 @@ void Main::on_data_textChanged()
 			init = (init == -1 ? 0 : (init + 5));
 			int initSize = (body == -1 ? code.size() : (body - init));
 			body = (body == -1 ? code.size() : (body + 5));
-			m_init = compileSerpent(code.mid(init, initSize).trimmed().toStdString());
-			m_data = compileSerpent(code.mid(body).trimmed().toStdString());
+			auto initCode = code.mid(init, initSize).trimmed();
+			auto bodyCode = code.mid(body).trimmed();
+			if (QRegExp("[^0-9a-fA-F]").indexIn(initCode) == -1)
+				m_init = fromHex(initCode.toStdString());
+			else
+				m_init = compileSerpent(initCode.toStdString());
+			if (QRegExp("[^0-9a-zA-Z]").indexIn(bodyCode) == -1)
+				m_data = fromHex(bodyCode.toStdString());
+			else
+				m_data = compileSerpent(bodyCode.toStdString());
 		}
 		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
