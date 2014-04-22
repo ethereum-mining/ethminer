@@ -342,7 +342,7 @@ inline PROCESS_INFORMATION win32_start(const Executable &exe, const Arguments &a
 
     boost::shared_array<char> envstrs = environment_to_win32_strings(env); 
 
-    if (!::CreateProcessA(executable.get(), cmdline.get(), NULL, NULL, TRUE, 0, envstrs.get(), workdir.get(), si.get(), &pi)) 
+    if (!::CreateProcessA(executable.get()[0] ? executable.get() : NULL, cmdline.get(), NULL, NULL, TRUE, CREATE_NO_WINDOW, envstrs.get(), workdir.get(), si.get(), &pi)) 
         boost::throw_exception(boost::system::system_error(boost::system::error_code(::GetLastError(), boost::system::get_system_category()), "boost::process::detail::win32_start: CreateProcess failed")); 
 
     return pi; 

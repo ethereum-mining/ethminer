@@ -116,28 +116,43 @@ string findSerpent()
 
 bytes compileSerpent(string const& _code)
 {
-	static const string exec = findSerpent();
-	if (exec.empty())
+	static const string serpent = findSerpent();
+	if (serpent.empty())
 		return bytes();
 
+#ifdef _WIN32
+	vector<string> args = vector<string>({"python", serpent, "-b", "compile"});
+	string exec = "";
+#else
 	vector<string> args = vector<string>({"serpent_cli.py", "-b", "compile"});
+	string exec = serpent;
+#endif
+
 	context ctx;
 	ctx.environment = self::get_environment();
 	ctx.stdin_behavior = capture_stream();
 	ctx.stdout_behavior = capture_stream();
-	child c = launch(exec, args, ctx);
-	postream& os = c.get_stdin();
-	pistream& is = c.get_stdout();
+	try
+	{
+		child c = launch(exec, args, ctx);
+		postream& os = c.get_stdin();
+		pistream& is = c.get_stdout();
 
-	os << _code << "\n";
-	os.close();
+		os << _code << "\n";
+		os.close();
 
-	string hex;
-	int i;
-	while ((i = is.get()) != -1 && i != '\n')
-		hex.push_back(i);
+		string hex;
+		int i;
+		while ((i = is.get()) != -1 && i != '\r' && i != '\n')
+			hex.push_back(i);
 
-	return fromHex(hex);
+		return fromHex(hex);
+	}
+	catch (boost::system::system_error&)
+	{
+		cwarn << "Serpent compiler failed to launch.";
+		return bytes();
+	}
 }
 
 Main::Main(QWidget *parent) :
