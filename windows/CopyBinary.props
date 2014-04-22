@@ -5,7 +5,8 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <PostBuildEvent>
-      <Command>xcopy /F /Y $(OutDir)$(TargetName)$(TargetExt) ..\..\_binaries\$(Platform)\</Command>
+      <Command>xcopy /D /Y $(OutDir)$(TargetName)$(TargetExt) ..\..\_binaries\$(Platform)\ &gt; nul
+xcopy /D $(OutDir)*.dll ..\..\_binaries\$(Platform)\ &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>

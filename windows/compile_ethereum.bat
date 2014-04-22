@@ -1,5 +1,5 @@
 @echo off
-rem @file compileqt.bat
+rem @file compile_ethereum.bat
 rem @author Tim Hughes <tim@twistedfury.com>
 rem @date 2014
 echo on

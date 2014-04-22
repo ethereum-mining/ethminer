@@ -38,13 +38,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -53,24 +51,28 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Debug.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Debug.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Release.props" />
+    <Import Project="LibQEthereum.props" />
     <Import Project="CopyBinary.props" />
-    <Import Project="UseQt.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Release.props" />
+    <Import Project="LibQEthereum.props" />
     <Import Project="CopyBinary.props" />
-    <Import Project="UseQt.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -88,7 +90,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -97,13 +99,32 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <PreLinkEvent>
+      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
+</Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -111,6 +132,25 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreLinkEvent>
+      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
+</Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -119,7 +159,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -131,6 +171,25 @@
       <OptimizeReferences>true</OptimizeReferences>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <PreLinkEvent>
+      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
+</Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -139,7 +198,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -150,16 +209,34 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <PreLinkEvent>
+      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
+xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
+</Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\windows\LibEthereum.vcxproj">
-      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    <ProjectReference Include="LibQEthereum.vcxproj">
+      <Project>{df3c5b07-a1a2-4f16-b37f-a27333622cdd}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\alethzero\main.cpp" />
     <ClCompile Include="..\alethzero\MainWin.cpp" />
-    <ClCompile Include="qt_plugin_import.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
