@@ -1,8 +1,11 @@
 #include <fstream>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma warning(push)
+#pragma warning(disable:4100)
 #include <boost/process.hpp>
 #pragma GCC diagnostic pop
+#pragma warning(pop)
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -1002,15 +1005,7 @@ void Main::updateDebugger()
 #define QTLIB(x) x".lib"
 #endif
 
-#pragma comment(lib, QTLIB("Qt5PlatformSupport"))
-#pragma comment(lib, QTLIB("Qt5Core"))
-#pragma comment(lib, QTLIB("Qt5GUI"))
-#pragma comment(lib, QTLIB("Qt5Widgets"))
-#pragma comment(lib, QTLIB("Qt5Network"))
-#pragma comment(lib, QTLIB("qwindows"))
-#pragma comment(lib, "Imm32.lib")
-#pragma comment(lib, "opengl32.lib")
-#pragma comment(lib, "winmm.lib")
-
+#pragma comment(lib, QTLIB("Qt5Webkit"))
+#pragma comment(lib, QTLIB("Qt5WebkitWidgets"))
 
 #endif
