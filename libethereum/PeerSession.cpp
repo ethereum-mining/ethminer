@@ -164,7 +164,7 @@ bool PeerSession::interpret(RLP const& _r)
 		for (auto i: peers)
 		{
 			clogS(NetMessageDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
-			s.appendList(3) << i.second.address().to_v4().to_bytes() << i.second.port() << i.first;
+			s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
 		}
 		sealAndSend(s);
 		break;
@@ -173,7 +173,7 @@ bool PeerSession::interpret(RLP const& _r)
 		clogS(NetMessageSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			bi::address_v4 peerAddress(_r[i][0].toArray<byte, 4>());
+			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			Public id = _r[i][2].toHash<Public>();
 			if (isPrivateAddress(peerAddress))
