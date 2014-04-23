@@ -254,11 +254,11 @@ QString Main::pretty(eth::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
-		n = state().contractStorage(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)state().storage(c_config, 0))
+		n = state().storage(nameReg, (u160)(_a));
 
 	if (!n)
-		n = state().contractStorage(m_nameReg, (u160)(_a));
+		n = state().storage(m_nameReg, (u160)(_a));
 
 	if (n)
 	{
@@ -291,11 +291,11 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)state().contractStorage(c_config, 0))
-			if (h256 a = state().contractStorage(nameReg, n))
+		if (h160 nameReg = (u160)state().storage(c_config, 0))
+			if (h256 a = state().storage(nameReg, n))
 				return right160(a);
 
-		if (h256 a = state().contractStorage(m_nameReg, n))
+		if (h256 a = state().storage(m_nameReg, n))
 			return right160(a);
 	}
 	if (_a.size() == 40)
@@ -428,7 +428,7 @@ void Main::refresh(bool _override)
 				{
 					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)state().transactionsFrom(i.first)), ui->accounts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-					if (st.isContractAddress(i.first))
+					if (st.addressHasCode(i.first))
 						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
 							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 
@@ -455,7 +455,7 @@ void Main::refresh(bool _override)
 					.arg(render(t.safeSender()))
 					.arg(render(t.receiveAddress))
 					.arg((unsigned)t.nonce)
-					.arg(st.isContractAddress(t.receiveAddress) ? '*' : '-') :
+					.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
 				QString("%2 +> %3: %1 [%4]")
 					.arg(formatBalance(t.value).c_str())
 					.arg(render(t.safeSender()))
@@ -481,7 +481,7 @@ void Main::refresh(bool _override)
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
-						.arg(st.isContractAddress(t.receiveAddress) ? '*' : '-') :
+						.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
@@ -509,7 +509,7 @@ void Main::refresh(bool _override)
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 
-			totalGavCoinBalance += st.contractStorage(gavCoin, (u160)i.address());
+			totalGavCoinBalance += st.storage(gavCoin, (u160)i.address());
 		}
 
 		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
@@ -609,10 +609,10 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto storage = state().contractStorage(h);
+		auto storage = state().storage(h);
 		for (auto const& i: storage)
 			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		s << "<h4>Body Code</h4>" << disassemble(state().contractCode(h));
+		s << "<h4>Body Code</h4>" << disassemble(state().code(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
 	m_client->unlock();
@@ -753,7 +753,7 @@ void Main::on_data_textChanged()
 				s = s.mid(1);
 		}
 		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
-		if (m_client->postState().isContractAddress(fromString(ui->destination->currentText())))
+		if (m_client->postState().addressHasCode(fromString(ui->destination->currentText())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
@@ -922,7 +922,7 @@ void Main::on_debug_clicked()
 			bool ok = true;
 			while (ok)
 			{
-				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().contractStorage(m_currentExecution->ext().myAddress)}));
+				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
 				ok = !m_currentExecution->go(1);
 			}
 			initDebugger();

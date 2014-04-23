@@ -112,8 +112,8 @@ string pretty(h160 _a, eth::State _st)
 {
 	string ns;
 	h256 n;
-	if (h160 nameReg = (u160)_st.contractStorage(c_config, 0))
-		n = _st.contractStorage(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)_st.storage(c_config, 0))
+		n = _st.storage(nameReg, (u160)(_a));
 	if (n)
 	{
 		std::string s((char const*)n.data(), 32);

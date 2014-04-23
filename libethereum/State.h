@@ -164,11 +164,11 @@ public:
 	void execute(bytes const& _rlp) { return execute(&_rlp); }
 	void execute(bytesConstRef _rlp);
 
-	/// Check if the address is a valid normal (non-contract) account address.
-	bool isNormalAddress(Address _address) const;
+	/// Check if the address is in use.
+	bool addressInUse(Address _address) const;
 
-	/// Check if the address is a valid contract's address.
-	bool isContractAddress(Address _address) const;
+	/// Check if the address contains executable code.
+	bool addressHasCode(Address _address) const;
 
 	/// Get an account's balance.
 	/// @returns 0 if the address has never been used.
@@ -184,17 +184,21 @@ public:
 	 */
 	void subBalance(Address _id, bigint _value);
 
-	/// Get the value of a memory position of a contract.
+	/// Get the value of a storage position of an account.
 	/// @returns 0 if no contract exists at that address.
-	u256 contractStorage(Address _contract, u256 _memory) const;
+	u256 storage(Address _contract, u256 _memory) const;
 
-	/// Get the memory of a contract.
+	/// Set the value of a storage position of an account.
+	void setStorage(Address _contract, u256 _location, u256 _value) { m_cache[_contract].setStorage(_location, _value); }
+
+	/// Get the storage of an account.
+	/// @note This is expensive. Don't use it unless you need to.
 	/// @returns std::map<u256, u256> if no contract exists at that address.
-	std::map<u256, u256> const& contractStorage(Address _contract) const;
+	std::map<u256, u256> storage(Address _contract) const;
 
-	/// Get the code of a contract.
+	/// Get the code of an account.
 	/// @returns bytes() if no contract exists at that address.
-	bytes const& contractCode(Address _contract) const;
+	bytes const& code(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
@@ -226,10 +230,10 @@ private:
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
 	/// exist in the DB.
-	void ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const;
+	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireMemory, bool _forceCreate) const;
+	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
@@ -295,20 +299,15 @@ public:
 		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
-		m_store = &(m_s.m_cache[_myAddress].memory());
 	}
 
 	u256 store(u256 _n)
 	{
-		auto i = m_store->find(_n);
-		return i == m_store->end() ? 0 : i->second;
+		return m_s.storage(myAddress, _n);
 	}
 	void setStore(u256 _n, u256 _v)
 	{
-		if (_v)
-			(*m_store)[_n] = _v;
-		else
-			m_store->erase(_n);
+		m_s.setStorage(myAddress, _n, _v);
 	}
 
 	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code)
@@ -380,22 +379,15 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
 			if (i.second.codeHash() != EmptySHA3)
 			{
-				if (i.second.isComplete())
+				_out << " *" << i.second.oldRoot();
+				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
+				std::map<u256, u256> mem;
+				for (auto const& j: memdb)
 				{
-					_out << std::endl << i.second.memory();
+					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
+					mem[j.first] = RLP(j.second).toInt<u256>();
 				}
-				else
-				{
-					_out << " *" << i.second.oldRoot();
-					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
-					std::map<u256, u256> mem;
-					for (auto const& j: memdb)
-					{
-						_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-						mem[j.first] = RLP(j.second).toInt<u256>();
-					}
-					_out << std::endl << mem;
-				}
+				_out << std::endl << mem;
 			}
 			_out << std::endl;
 		}
@@ -413,30 +405,28 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			RLPStream s(4);
 			s << i.second.balance() << i.second.nonce();
 
-			if (i.second.isComplete())
+			if (i.second.storage().empty())
+				s << i.second.oldRoot();
+			else
 			{
-				if (i.second.memory().empty())
-					s << h256();
-				else
-				{
-					TrieDB<h256, DB> storageDB(&_db);
-					storageDB.init();
-					for (auto const& j: i.second.memory())
-						if (j.second)
-							storageDB.insert(j.first, rlp(j.second));
-					s << storageDB.root();
-				}
-				if (i.second.freshCode())
-				{
-					h256 ch = sha3(i.second.code());
-					_db.insert(ch, &i.second.code());
-					s << ch;
-				}
-				else
-					s << i.second.codeHash();
+				TrieDB<h256, DB> storageDB(&_db, i.second.oldRoot());
+				for (auto const& j: i.second.storage())
+					if (j.second)
+						storageDB.insert(j.first, rlp(j.second));
+					else
+						storageDB.remove(j.first);
+				s << storageDB.root();
+			}
+
+			if (i.second.isFreshCode())
+			{
+				h256 ch = sha3(i.second.code());
+				_db.insert(ch, &i.second.code());
+				s << ch;
 			}
 			else
-				s << i.second.oldRoot() << i.second.codeHash();
+				s << i.second.codeHash();
+
 			_state.insert(i.first, &s.out());
 		}
 }

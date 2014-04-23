@@ -116,12 +116,12 @@ State& State::operator=(State const& _s)
 	return *this;
 }
 
-void State::ensureCached(Address _a, bool _requireMemory, bool _forceCreate) const
+void State::ensureCached(Address _a, bool _requireCode, bool _forceCreate) const
 {
-	ensureCached(m_cache, _a, _requireMemory, _forceCreate);
+	ensureCached(m_cache, _a, _requireCode, _forceCreate);
 }
 
-void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireMemory, bool _forceCreate) const
+void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
 {
 	auto it = _cache.find(_a);
 	if (it == _cache.end())
@@ -139,14 +139,8 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
-	if (_requireMemory && !it->second.isComplete())
-	{
-		// Populate memory.
-		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-		map<u256, u256>& mem = it->second.setIsComplete(it->second.codeHash() == EmptySHA3 ? bytesConstRef() : bytesConstRef(m_db.lookup(it->second.codeHash())));
-		for (auto const& i: memdb)
-			mem[i.first] = RLP(i.second).toInt<u256>();
-	}
+	if (_requireCode && it != _cache.end() && !it->second.isFreshCode())
+		it->second.noteCode(it->second.codeHash() == EmptySHA3 ? bytesConstRef() : bytesConstRef(m_db.lookup(it->second.codeHash())));
 }
 
 void State::commit()
@@ -496,22 +490,22 @@ MineInfo State::mine(uint _msTimeout)
 	return ret;
 }
 
-bool State::isNormalAddress(Address _id) const
+bool State::addressInUse(Address _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
-	return it->second.codeHash() == EmptySHA3;
+	return true;
 }
 
-bool State::isContractAddress(Address _id) const
+bool State::addressHasCode(Address _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
-	return it->second.codeHash() != EmptySHA3;
+	return it->second.isFreshCode() || it->second.codeHash() != EmptySHA3;
 }
 
 u256 State::balance(Address _id) const
@@ -563,38 +557,60 @@ u256 State::transactionsFrom(Address _id) const
 		return it->second.nonce();
 }
 
-u256 State::contractStorage(Address _id, u256 _memory) const
+u256 State::storage(Address _id, u256 _memory) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end() || it->second.codeHash() == EmptySHA3)
+
+	// Account doesn't exist - exit now.
+	if (it == m_cache.end())
 		return 0;
-	else if (it->second.isComplete())
-	{
-		auto mit = it->second.memory().find(_memory);
-		if (mit == it->second.memory().end())
-			return 0;
+
+	// See if it's in the account's storage cache.
+	auto mit = it->second.storage().find(_memory);
+	if (mit != it->second.storage().end())
 		return mit->second;
-	}
-	// Memory not cached - just grab one item from the DB rather than cache the lot.
+
+	// Not in the storage cache - go to the DB.
 	TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
-	string ret = memdb.at(_memory);
-	return ret.size() ? RLP(ret).toInt<u256>() : 0;
+	string payload = memdb.at(_memory);
+	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
+	it->second.setStorage(_memory, ret);
+	return ret;
 }
 
-map<u256, u256> const& State::contractStorage(Address _contract) const
+map<u256, u256> State::storage(Address _id) const
 {
-	if (!isContractAddress(_contract))
-		return EmptyMapU256U256;
-	ensureCached(_contract, true, true);
-	return m_cache[_contract].memory();
+	map<u256, u256> ret;
+
+	ensureCached(_id, false, false);
+	auto it = m_cache.find(_id);
+	if (it != m_cache.end())
+	{
+		// Pull out all values from trie storage.
+		if (it->second.oldRoot())
+		{
+			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+			ret = it->second.storage();
+			for (auto const& i: memdb)
+				ret[i.first] = RLP(i.second).toInt<u256>();
+		}
+
+		// Then merge cached storage over the top.
+		for (auto const& i: it->second.storage())
+			if (i.second)
+				ret.insert(i);
+			else
+				ret.erase(i.first);
+	}
+	return ret;
 }
 
-bytes const& State::contractCode(Address _contract) const
+bytes const& State::code(Address _contract) const
 {
-	if (!isContractAddress(_contract))
+	if (!addressHasCode(_contract))
 		return EmptyBytes;
-	ensureCached(_contract, true, true);
+	ensureCached(_contract, true, false);
 	return m_cache[_contract].code();
 }
 
@@ -665,10 +681,10 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
-	if (m_s.isContractAddress(_receiveAddress))
+	if (m_s.addressHasCode(_receiveAddress))
 	{
 		m_vm = new VM(_gas);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &m_s.contractCode(_receiveAddress));
+		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &m_s.code(_receiveAddress));
 	}
 	else
 		m_endGas = _gas;
@@ -677,11 +693,11 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
-	while (m_s.isContractAddress(m_newAddress) || m_s.isNormalAddress(m_newAddress))
+	while (m_s.addressInUse(m_newAddress))
 		m_newAddress = (u160)m_newAddress + 1;
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, 0, bytesConstRef());
+	m_s.m_cache[m_newAddress] = AddressState(0, 0, h256(), h256());
 
 	// Execute _init.
 	m_vm = new VM(_gas);
@@ -780,10 +796,10 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
-	if (isContractAddress(_receiveAddress))
+	if (addressHasCode(_receiveAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &contractCode(_receiveAddress));
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress));
 		bool revert = false;
 
 		try
@@ -826,11 +842,11 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		_origin = _sender;
 
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-	while (isContractAddress(newAddress) || isNormalAddress(newAddress))
+	while (addressInUse(newAddress))
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, 0, {});
+	m_cache[newAddress] = AddressState(0, 0, h256(), h256());
 
 	// Execute _init.
 	VM vm(*_gas);
