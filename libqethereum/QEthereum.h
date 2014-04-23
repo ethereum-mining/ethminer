@@ -196,7 +196,7 @@ public:
 	Q_INVOKABLE QString stringOf(QVariant _t) const { return QString::fromStdString(eth::toString(in(_t))); }
 
 	Q_INVOKABLE QByteArray bytesOf(QVariant _t) const { eth::h256 b = in(_t); return QByteArray((char const*)&b, sizeof(eth::h256)); }
-	Q_INVOKABLE QVariant fromHex(QString _s) const { return out(eth::u256(_s.toStdString())); }
+	Q_INVOKABLE QVariant fromHex(QString _s) const { return out((eth::u256)eth::h256(_s.toStdString())); }
 
 	Q_INVOKABLE QVariant fromAddress(QVariant/*eth::Address*/ _a) const { return out((eth::u160)to<eth::Address>(_a)); }
 	Q_INVOKABLE QVariant toAddress(QVariant/*eth::Address*/ _a) const { return toQJS<eth::Address>((eth::u160)in(_a)); }
