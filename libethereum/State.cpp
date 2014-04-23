@@ -42,10 +42,10 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
-		s_ret[Address(fromHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, AddressType::Normal);
+		s_ret[Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+		s_ret[Address(fromHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+		s_ret[Address(fromHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+		s_ret[Address(fromHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
 	}
 	return s_ret;
 }
@@ -133,9 +133,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
-			s = AddressState(0, 0);
-		else if (state.itemCount() == 2)
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>());
+			s = AddressState(0, 0, h256(), EmptySHA3);
 		else
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
@@ -144,9 +142,8 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 	if (_requireMemory && !it->second.isComplete())
 	{
 		// Populate memory.
-		assert(it->second.type() == AddressType::Contract);
 		TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-		map<u256, u256>& mem = it->second.setIsComplete(bytesConstRef(m_db.lookup(it->second.codeHash())));
+		map<u256, u256>& mem = it->second.setIsComplete(it->second.codeHash() == EmptySHA3 ? bytesConstRef() : bytesConstRef(m_db.lookup(it->second.codeHash())));
 		for (auto const& i: memdb)
 			mem[i.first] = RLP(i.second).toInt<u256>();
 	}
@@ -226,7 +223,7 @@ map<Address, u256> State::addresses() const
 {
 	map<Address, u256> ret;
 	for (auto i: m_cache)
-		if (i.second.type() != AddressType::Dead)
+		if (i.second.isAlive())
 			ret[i.first] = i.second.balance();
 	for (auto const& i: m_state)
 		if (m_cache.find(i.first) == m_cache.end())
@@ -505,7 +502,7 @@ bool State::isNormalAddress(Address _id) const
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
-	return it->second.type() == AddressType::Normal;
+	return it->second.codeHash() == EmptySHA3;
 }
 
 bool State::isContractAddress(Address _id) const
@@ -514,7 +511,7 @@ bool State::isContractAddress(Address _id) const
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
 		return false;
-	return it->second.type() == AddressType::Contract;
+	return it->second.codeHash() != EmptySHA3;
 }
 
 u256 State::balance(Address _id) const
@@ -531,7 +528,7 @@ void State::noteSending(Address _id)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(0, 1);
+		m_cache[_id] = AddressState(0, 1, h256(), EmptySHA3);
 	else
 		it->second.incNonce();
 }
@@ -541,7 +538,7 @@ void State::addBalance(Address _id, u256 _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(_amount, 0);
+		m_cache[_id] = AddressState(_amount, 0, h256(), EmptySHA3);
 	else
 		it->second.addBalance(_amount);
 }
@@ -570,7 +567,7 @@ u256 State::contractStorage(Address _id, u256 _memory) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end() || it->second.type() != AddressType::Contract)
+	if (it == m_cache.end() || it->second.codeHash() == EmptySHA3)
 		return 0;
 	else if (it->second.isComplete())
 	{

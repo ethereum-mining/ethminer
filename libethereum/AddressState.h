@@ -27,49 +27,48 @@
 namespace eth
 {
 
-enum class AddressType
-{
-	Dead,
-	Normal,
-	Contract
-};
+// TODO: Don't pre-cache all of storage.
 
 class AddressState
 {
 public:
-	AddressState(): m_type(AddressType::Dead), m_balance(0), m_nonce(0), m_isComplete(false) {}
-	AddressState(u256 _balance, u256 _nonce, AddressType _type = AddressType::Normal): m_type(_type), m_balance(_balance), m_nonce(_nonce), m_isComplete(true) {}
-	AddressState(u256 _balance, u256 _nonce, h256 _contractRoot, h256 _codeHash): m_type(AddressType::Contract), m_balance(_balance), m_nonce(_nonce), m_isComplete(false), m_contractRoot(_contractRoot), m_codeHash(_codeHash) {}
+	AddressState(): m_isAlive(false), m_isComplete(false), m_balance(0), m_nonce(0) {}
+	AddressState(u256 _balance, u256 _nonce, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_isComplete(_codeHash == EmptySHA3 && !_contractRoot), m_balance(_balance), m_nonce(_nonce), m_storageRoot(_contractRoot), m_codeHash(_codeHash) {}
 	AddressState(u256 _balance, u256 _nonce, bytesConstRef _code);
 
-	void incNonce() { m_nonce++; }
-	void addBalance(bigint _i) { m_balance = (u256)((bigint)m_balance + _i); }
-	void kill() { m_type = AddressType::Dead; m_memory.clear(); m_contractRoot = h256(); m_balance = 0; m_nonce = 0; }
+	void kill() { m_isAlive = false; m_storage.clear(); m_codeHash = EmptySHA3; m_storageRoot = h256(); m_balance = 0; m_nonce = 0; }
+	bool isAlive() const { return m_isAlive; }
 
-	AddressType type() const { return m_type; }
 	u256& balance() { return m_balance; }
 	u256 const& balance() const { return m_balance; }
+	void addBalance(bigint _i) { m_balance = (u256)((bigint)m_balance + _i); }
+
 	u256& nonce() { return m_nonce; }
 	u256 const& nonce() const { return m_nonce; }
+	void incNonce() { m_nonce++; }
+
 	bool isComplete() const { return m_isComplete; }
-	std::map<u256, u256>& setIsComplete(bytesConstRef _code) { assert(m_type == AddressType::Contract); m_isComplete = true; m_contractRoot = h256(); m_code = _code.toBytes(); return m_memory; }
-	h256 oldRoot() const { assert(!isComplete()); return m_contractRoot; }
+	std::map<u256, u256>& setIsComplete(bytesConstRef _code) { m_isComplete = true; m_storageRoot = h256(); m_code = _code.toBytes(); return m_storage; }
+
+	h256 oldRoot() const { assert(!isComplete()); return m_storageRoot; }
+	std::map<u256, u256>& memory() { return m_storage; }
+	std::map<u256, u256> const& memory() const { assert(isComplete()); return m_storage; }
+
 	h256 codeHash() const { assert(m_codeHash); return m_codeHash; }
-	std::map<u256, u256>& memory() { assert(m_type == AddressType::Contract && isComplete()); return m_memory; }
-	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract && isComplete()); return m_memory; }
-	bytes const& code() const { assert(m_type == AddressType::Contract && isComplete()); return m_code; }
+	bytes const& code() const { assert(isComplete()); return m_code; }
 	bool freshCode() const { return !m_codeHash && m_isComplete; }
 	void setCode(bytesConstRef _code) { assert(freshCode()); m_code = _code.toBytes(); }
 
 private:
-	AddressType m_type;
+	bool m_isAlive;
+	bool m_isComplete;
+	bool m_gotCode;
 	u256 m_balance;
 	u256 m_nonce;
-	bool m_isComplete;
-	h256 m_contractRoot;
+	h256 m_storageRoot;
 	h256 m_codeHash;	// if 0 and m_isComplete, has been created and needs to be inserted.
 	// TODO: change to unordered_map.
-	std::map<u256, u256> m_memory;
+	std::map<u256, u256> m_storage;
 	bytes m_code;
 };
 

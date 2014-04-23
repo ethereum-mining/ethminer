@@ -212,6 +212,8 @@ inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_inpu
 /// Calculate SHA3-256 hash of the given input (presented as a binary-filled string), returning as a 256-bit hash.
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
 
+extern h256 EmptySHA3;
+
 }
 
 namespace std
