@@ -127,7 +127,7 @@ u256 QmlEthereum::balanceAt(Address _a) const
 
 bool QmlEthereum::isContractAt(Address _a) const
 {
-	return client()->postState().isContractAddress(_a);
+	return client()->postState().addressHasCode(_a);
 }
 
 bool QmlEthereum::isMining() const
@@ -248,7 +248,7 @@ QVariant QEthereum::balanceAt(QVariant _a) const
 
 QVariant QEthereum::storageAt(QVariant _a, QVariant _p) const
 {
-	return toQJS(client()->postState().contractStorage(to<Address>(_a), to<u256>(_p)));
+	return toQJS(client()->postState().storage(to<Address>(_a), to<u256>(_p)));
 }
 
 u256 QEthereum::balanceAt(Address _a) const
@@ -258,12 +258,12 @@ u256 QEthereum::balanceAt(Address _a) const
 
 bool QEthereum::isContractAt(QVariant _a) const
 {
-	return client()->postState().isContractAddress(to<Address>(_a));
+	return client()->postState().addressHasCode(to<Address>(_a));
 }
 
 bool QEthereum::isContractAt(Address _a) const
 {
-	return client()->postState().isContractAddress(_a);
+	return client()->postState().addressHasCode(_a);
 }
 
 bool QEthereum::isMining() const

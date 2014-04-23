@@ -23,11 +23,3 @@
 #include "CommonEth.h"
 using namespace std;
 using namespace eth;
-
-AddressState::AddressState(u256 _balance, u256 _nonce, bytesConstRef _code):
-	m_isAlive(true),
-	m_isComplete(true),
-	m_balance(_balance),
-	m_nonce(_nonce),
-	m_code(_code.toBytes())
-{}

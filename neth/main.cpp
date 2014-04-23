@@ -136,8 +136,8 @@ string pretty(h160 _a, eth::State _st)
 {
 	string ns;
 	h256 n;
-	if (h160 nameReg = (u160)_st.contractStorage(c_config, 0))
-		n = _st.contractStorage(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)_st.storage(c_config, 0))
+		n = _st.storage(nameReg, (u160)(_a));
 	if (n)
 	{
 		std::string s((char const*)n.data(), 32);
@@ -731,11 +731,11 @@ int main(int argc, char** argv)
 				c.lock();
 				auto h = h160(fromHex(rechex));
 				stringstream s;
-				auto mem = c.state().contractStorage(h);
+				auto mem = c.state().storage(h);
 
 				for (auto const& i: mem)
 					s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-				s << endl << disassemble(c.state().contractCode(h));
+				s << endl << disassemble(c.state().code(h));
 
 				string outFile = getDataDir() + "/" + rechex + ".evm";
 				ofstream ofs;
@@ -773,7 +773,7 @@ int main(int argc, char** argv)
 				Transaction t(i.data());
 				string ss;
 				ss = t.receiveAddress ?
-					"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
+					"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
 					"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
 				mvwaddnstr(blockswin, y++, x, ss.c_str(), qwidth - 2);
 				if (y > qheight - 2)
@@ -791,7 +791,7 @@ int main(int argc, char** argv)
 		{
 			string ss;
 			if (t.receiveAddress)
-				ss = toString(toHex(t.safeSender().asArray())) + " " + (st.isContractAddress(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
+				ss = toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
 			else
 				ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
 			mvwaddnstr(pendingwin, y++, x, ss.c_str(), qwidth);
@@ -813,7 +813,7 @@ int main(int argc, char** argv)
 			mvwaddnstr(addswin, y++, x, ss.c_str(), width / 2 - 4);
 			scrollok(addswin, true);
 
-			if (st.isContractAddress(r))
+			if (st.addressHasCode(r))
 			{
 				ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
 				mvwaddnstr(contractswin, cc++, x, ss.c_str(), qwidth);
@@ -850,7 +850,7 @@ int main(int argc, char** argv)
 		stringstream ssb;
 		u256 balance = c.state().balance(us.address());
 		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
-		u256 totalGavCoinBalance = st.contractStorage(gavCoin, (u160)us.address());
+		u256 totalGavCoinBalance = st.storage(gavCoin, (u160)us.address());
 		ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
 
