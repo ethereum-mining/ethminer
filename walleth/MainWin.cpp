@@ -296,6 +296,10 @@ void Main::on_create_triggered()
 #include\
 "moc_MainWin.cpp"
 
+// include qrc content
+#include\
+"qrc_Resources.cpp"
+
 // specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
 #ifdef _DEBUG
 #define QTLIB(x) x"d.lib"
