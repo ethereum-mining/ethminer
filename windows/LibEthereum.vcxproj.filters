@@ -1,70 +1,48 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="stdafx.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
     <ClCompile Include="..\libethereum\BlockInfo.cpp" />
     <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\Common.cpp" />
-    <ClCompile Include="..\libethereum\CommonData.cpp" />
     <ClCompile Include="..\libethereum\CommonEth.cpp" />
-    <ClCompile Include="..\libethereum\CommonIO.cpp" />
     <ClCompile Include="..\libethereum\Dagger.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
     <ClCompile Include="..\libethereum\FeeStructure.cpp" />
-    <ClCompile Include="..\libethereum\FileSystem.cpp" />
-    <ClCompile Include="..\libethereum\FixedHash.cpp" />
     <ClCompile Include="..\libethereum\Instruction.cpp" />
-    <ClCompile Include="..\libethereum\Log.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
-    <ClCompile Include="..\libethereum\RLP.cpp" />
     <ClCompile Include="..\libethereum\State.cpp" />
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libethereum\TrieCommon.cpp" />
-    <ClCompile Include="..\libethereum\TrieDB.cpp" />
-    <ClCompile Include="..\libethereum\UPnP.cpp" />
     <ClCompile Include="..\libethereum\VM.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+    <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
     <ClInclude Include="..\libethereum\BlockInfo.h" />
     <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\Common.h" />
-    <ClInclude Include="..\libethereum\CommonData.h" />
     <ClInclude Include="..\libethereum\CommonEth.h" />
-    <ClInclude Include="..\libethereum\CommonIO.h" />
     <ClInclude Include="..\libethereum\Dagger.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
     <ClInclude Include="..\libethereum\Exceptions.h" />
     <ClInclude Include="..\libethereum\ExtVMFace.h" />
     <ClInclude Include="..\libethereum\FeeStructure.h" />
-    <ClInclude Include="..\libethereum\FileSystem.h" />
-    <ClInclude Include="..\libethereum\FixedHash.h" />
     <ClInclude Include="..\libethereum\Instruction.h" />
-    <ClInclude Include="..\libethereum\Log.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />
-    <ClInclude Include="..\libethereum\RLP.h" />
     <ClInclude Include="..\libethereum\State.h" />
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libethereum\TrieCommon.h" />
-    <ClInclude Include="..\libethereum\TrieDB.h" />
-    <ClInclude Include="..\libethereum\UPnP.h" />
-    <ClInclude Include="..\libethereum\vector_ref.h" />
     <ClInclude Include="..\libethereum\VM.h" />
-    <ClInclude Include="..\libethereum\AddressState.h" />
-    <ClInclude Include="..\libethereum\CryptoHeaders.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
