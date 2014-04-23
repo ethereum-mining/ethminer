@@ -59,6 +59,7 @@ public:
 	std::map<u256, u256> const& memory() const { assert(m_type == AddressType::Contract && isComplete()); return m_memory; }
 	bytes const& code() const { assert(m_type == AddressType::Contract && isComplete()); return m_code; }
 	bool freshCode() const { return !m_codeHash && m_isComplete; }
+	void setCode(bytesConstRef _code) { assert(freshCode()); m_code = _code.toBytes(); }
 
 private:
 	AddressType m_type;

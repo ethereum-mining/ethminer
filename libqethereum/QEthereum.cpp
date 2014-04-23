@@ -166,9 +166,9 @@ unsigned QmlEthereum::peerCount() const
 	return (unsigned)client()->peerCount();
 }
 
-void QmlEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _code, QByteArray _init)
+void QmlEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _init)
 {
-	client()->transact(_secret, _amount, bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
+	client()->transact(_secret, _amount, bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
 }
 
 void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
@@ -307,9 +307,9 @@ unsigned QEthereum::peerCount() const
 	return (unsigned)client()->peerCount();
 }
 
-QVariant QEthereum::create(QVariant _secret, QVariant _amount, QByteArray _code, QByteArray _init, QVariant _gas, QVariant _gasPrice)
+QVariant QEthereum::create(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice)
 {
-	return toQJS(client()->transact(to<Secret>(_secret), to<u256>(_amount), bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), to<u256>(_gas), to<u256>(_gasPrice)));
+	return toQJS(client()->transact(to<Secret>(_secret), to<u256>(_amount), bytes(_init.data(), _init.data() + _init.size()), to<u256>(_gas), to<u256>(_gasPrice)));
 }
 
 void QEthereum::transact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice)

@@ -45,6 +45,7 @@ using eth::Executive;
 // functions
 using eth::toHex;
 using eth::assemble;
+using eth::pushLiteral;
 using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
@@ -581,10 +582,8 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Gas: <b>" << tx.gas << "</b>";
 			if (tx.isCreation())
 			{
-				if (tx.init.size())
-					s << "<h4>Init</h4>" << disassemble(tx.init);
 				if (tx.data.size())
-					s << "<h4>Body</h4>" << disassemble(tx.data);
+					s << "<h4>Code</h4>" << disassemble(tx.data);
 			}
 			else
 			{
@@ -669,14 +668,15 @@ void Main::on_data_textChanged()
 	if (isCreation())
 	{
 		QString code = ui->data->toPlainText();
-		m_init.clear();
+		bytes initBytes;
+		bytes bodyBytes;
 		auto init = code.indexOf("init:");
 		auto body = code.indexOf("body:");
 		if (body == -1)
 			body = code.indexOf("code:");
 
 		if (body == -1 && init == -1)
-			m_data = compileLisp(code.toStdString(), true, m_init);
+			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
 		else
 		{
 			init = (init == -1 ? 0 : (init + 5));
@@ -685,16 +685,37 @@ void Main::on_data_textChanged()
 			auto initCode = code.mid(init, initSize).trimmed();
 			auto bodyCode = code.mid(body).trimmed();
 			if (QRegExp("[^0-9a-fA-F]").indexIn(initCode) == -1)
-				m_init = fromHex(initCode.toStdString());
+				initBytes = fromHex(initCode.toStdString());
 			else
-				m_init = compileSerpent(initCode.toStdString());
+				initBytes = compileSerpent(initCode.toStdString());
 			if (QRegExp("[^0-9a-zA-Z]").indexIn(bodyCode) == -1)
-				m_data = fromHex(bodyCode.toStdString());
+				bodyBytes = fromHex(bodyCode.toStdString());
 			else
-				m_data = compileSerpent(bodyCode.toStdString());
+				bodyBytes = compileSerpent(bodyCode.toStdString());
 		}
-		ui->code->setHtml((m_init.size() ? "<h4>Init</h4>" + QString::fromStdString(disassemble(m_init)).toHtmlEscaped() : "") + "<h4>Body</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
-		ui->gas->setMinimum((qint64)state().createGas(m_data.size() + m_init.size(), 0));
+
+		m_data.clear();
+		if (initBytes.size())
+			m_data = initBytes;
+		if (bodyBytes.size())
+		{
+			unsigned s = bodyBytes.size();
+			auto ss = pushLiteral(m_data, s);
+			unsigned p = m_data.size() + 4 + 2 + 1 + ss + 2 + 1;
+			pushLiteral(m_data, p);
+			pushLiteral(m_data, 0);
+			m_data.push_back((byte)Instruction::CALLDATACOPY);
+			pushLiteral(m_data, s);
+			pushLiteral(m_data, 0);
+			m_data.push_back((byte)Instruction::RETURN);
+			while (m_data.size() < p)
+				m_data.push_back(0);
+			for (auto b: bodyBytes)
+				m_data.push_back(b);
+		}
+
+		ui->code->setHtml("<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->gas->setMinimum((qint64)state().createGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
@@ -861,7 +882,7 @@ void Main::on_send_clicked()
 			m_client->unlock();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), m_data, m_init, ui->gas->value(), gasPrice());
+				m_client->transact(s, value(), m_data, ui->gas->value(), gasPrice());
 			else
 				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			refresh();
@@ -891,16 +912,7 @@ void Main::on_debug_clicked()
 			t.gasPrice = gasPrice();
 			t.gas = ui->gas->value();
 			t.data = m_data;
-			if (isCreation())
-			{
-				t.receiveAddress = Address();
-				t.init = m_init;
-			}
-			else
-			{
-				t.receiveAddress = fromString(ui->destination->currentText());
-				t.data = m_data;
-			}
+			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 			t.sign(s);
 			auto r = t.rlp();
 			m_currentExecution->setup(&r);
@@ -942,14 +954,14 @@ void Main::debugFinished()
 	ui->debugMemory->setHtml("");
 	ui->debugStorage->setHtml("");
 	ui->debugStateInfo->setText("");
-	ui->send->setEnabled(true);
+//	ui->send->setEnabled(true);
 	ui->debugStep->setEnabled(false);
 	ui->debugPanel->setEnabled(false);
 }
 
 void Main::initDebugger()
 {
-	ui->send->setEnabled(false);
+//	ui->send->setEnabled(false);
 	ui->debugStep->setEnabled(true);
 	ui->debugPanel->setEnabled(true);
 	ui->debugCode->setEnabled(false);

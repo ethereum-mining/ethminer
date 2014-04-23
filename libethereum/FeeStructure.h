@@ -34,6 +34,7 @@ extern u256 const c_sstoreGas;			///< Once per non-zero storage element in a CRE
 extern u256 const c_createGas;			///< Once per CREATE operation & contract-creation transaction.
 extern u256 const c_callGas;			///< Once per CALL operation & message call transaction.
 extern u256 const c_memoryGas;			///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
-extern u256 const c_txDataGas;			///< Per byte of data attached to a message-call transaction. NOTE: Not payable on data of calls between transactions.
+extern u256 const c_txDataGas;			///< Per byte of data attached to a transaction. NOTE: Not payable on data of calls between transactions.
+extern u256 const c_txGas;				///< Per transaction. NOTE: Not payable on data of calls between transactions.
 
 }

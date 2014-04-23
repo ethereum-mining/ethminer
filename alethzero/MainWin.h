@@ -113,7 +113,6 @@ private:
 	QList<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
 	eth::bytes m_data;
-	eth::bytes m_init;
 	eth::Address m_nameReg;
 
 	unsigned m_backupGas;

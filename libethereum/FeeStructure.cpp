@@ -33,3 +33,4 @@ u256 const eth::c_createGas = 100;
 u256 const eth::c_callGas = 20;
 u256 const eth::c_memoryGas = 1;
 u256 const eth::c_txDataGas = 5;
+u256 const eth::c_txGas = 500;

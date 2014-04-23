@@ -52,8 +52,7 @@ struct Transaction
 	u256 gasPrice;		///< The base fee and thus the implied exchange rate of ETH to GAS.
 	u256 gas;			///< The total gas to convert, paid for from sender's account. Any unused gas gets refunded once the contract is ended.
 
-	bytes data;			///< The data associated with the transaction, or the main body if it's a creation transaction.
-	bytes init;			///< The initialisation associated with the transaction.
+	bytes data;			///< The data associated with the transaction, or the initialiser if it's a creation transaction.
 
 	Signature vrs;		///< The signature of the transaction. Encodes the sender.
 

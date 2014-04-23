@@ -61,10 +61,12 @@ public:
 	~Executive();
 
 	void setup(bytesConstRef _transaction);
-	void create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, bytesConstRef _init, Address _originAddress);
+	void create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	void call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
 	bool go(uint64_t _steps = (unsigned)-1);
 	void finalize();
+
+	Transaction const& t() const { return m_t; }
 
 	u256 gas() const;
 
@@ -244,7 +246,7 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init, Address _originAddress = Address());
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address());
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
@@ -309,12 +311,12 @@ public:
 			m_store->erase(_n);
 	}
 
-	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init)
+	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code)
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
 
-		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, _init, origin);
+		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin);
 	}
 
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
