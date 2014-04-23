@@ -298,6 +298,28 @@ xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) 
       <Project>{df3c5b07-a1a2-4f16-b37f-a27333622cdd}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\walleth\Resources.qrc">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QtBin)/rcc" -o "$(IntDir)qrc_%(FileName).cpp" "%(FullPath)"</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)qrc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)qrc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)qrc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)qrc_%(FileName).cpp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../Walleth/Simple.qml</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../Walleth/Simple.qml</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../Walleth/Simple.qml</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../Walleth/Simple.qml</AdditionalInputs>
+    </CustomBuild>
+    <None Include="..\walleth\Simple.qml" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
