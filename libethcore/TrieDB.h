@@ -23,8 +23,7 @@
 
 #include <map>
 #include <memory>
-#include "Exceptions.h"
-#include "CommonEth.h"
+#include "Common.h"
 #include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;

@@ -197,6 +197,7 @@ add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/Build
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(secp256k1)
+add_subdirectory(libethcore)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)

@@ -20,9 +20,9 @@
  */
 
 #include "CommonEth.h"
-#include "CryptoHeaders.h"
-#include "Exceptions.h"
 #include <random>
+#include <secp256k1/secp256k1.h>
+#include "Exceptions.h"
 using namespace std;
 using namespace eth;
 
@@ -147,43 +147,4 @@ KeyPair::KeyPair(h256 _sec):
 	cout << "PUB: " << m_public << endl;
 	cout << "ADR: " << m_address << endl;
 #endif
-}
-
-std::string eth::sha3(std::string const& _input, bool _hex)
-{
-	if (!_hex)
-	{
-		string ret(32, '\0');
-		sha3(bytesConstRef((byte const*)_input.data(), _input.size()), bytesRef((byte*)ret.data(), 32));
-		return ret;
-	}
-
-	uint8_t buf[32];
-	sha3(bytesConstRef((byte const*)_input.data(), _input.size()), bytesRef((byte*)&(buf[0]), 32));
-	std::string ret(64, '\0');
-	for (unsigned int i = 0; i < 32; i++)
-		sprintf((char*)(ret.data())+i*2, "%02x", buf[i]);
-	return ret;
-}
-
-void eth::sha3(bytesConstRef _input, bytesRef _output)
-{
-	CryptoPP::SHA3_256 ctx;
-	ctx.Update((byte*)_input.data(), _input.size());
-	assert(_output.size() >= 32);
-	ctx.Final(_output.data());
-}
-
-bytes eth::sha3Bytes(bytesConstRef _input)
-{
-	bytes ret(32);
-	sha3(_input, &ret);
-	return ret;
-}
-
-h256 eth::sha3(bytesConstRef _input)
-{
-	h256 ret;
-	sha3(_input, bytesRef(&ret[0], 32));
-	return ret;
 }

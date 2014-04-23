@@ -24,7 +24,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include "Common.h"
+#include <libethcore/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"

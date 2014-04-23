@@ -19,11 +19,11 @@
  * @date 2014
  */
 
-#include <secp256k1.h>
-#include "vector_ref.h"
+#include <secp256k1/secp256k1.h>
+#include <libethcore/vector_ref.h>
+#include <libethcore/Log.h>
 #include "Exceptions.h"
 #include "Transaction.h"
-#include "Log.h"
 using namespace std;
 using namespace eth;
 

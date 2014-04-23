@@ -2,7 +2,7 @@
 
 #include <QtCore/QAbstractListModel>
 #include <libethereum/CommonEth.h>
-#include <libethereum/CommonIO.h>
+#include <libethcore/CommonIO.h>
 
 namespace eth {
 class Client;

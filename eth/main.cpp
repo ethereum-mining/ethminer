@@ -24,13 +24,13 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include "Defaults.h"
-#include "Client.h"
-#include "PeerNetwork.h"
-#include "BlockChain.h"
-#include "State.h"
-#include "FileSystem.h"
-#include "Instruction.h"
+#include <libethcore/FileSystem.h>
+#include <libethereum/Defaults.h>
+#include <libethereum/Client.h>
+#include <libethereum/PeerNetwork.h>
+#include <libethereum/BlockChain.h>
+#include <libethereum/State.h>
+#include <libethereum/Instruction.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;

@@ -25,7 +25,7 @@
 #include <set>
 #include <memory>
 #include <utility>
-#include "RLP.h"
+#include <libethcore/RLP.h>
 #include "CommonEth.h"
 #include "PeerNetwork.h"
 

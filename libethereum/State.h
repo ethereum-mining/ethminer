@@ -24,14 +24,14 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include "Common.h"
-#include "RLP.h"
+#include <libethcore/Common.h>
+#include <libethcore/RLP.h>
+#include <libethcore/TrieDB.h>
 #include "TransactionQueue.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "TrieDB.h"
 #include "FeeStructure.h"
 #include "Dagger.h"
 #include "ExtVMFace.h"

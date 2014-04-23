@@ -21,7 +21,7 @@
 
 #include "Defaults.h"
 
-#include "FileSystem.h"
+#include <libethcore/FileSystem.h>
 using namespace std;
 using namespace eth;
 

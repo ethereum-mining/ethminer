@@ -186,6 +186,32 @@ inline h160 left160(h256 const& _t)
 	return ret;
 }
 
+// SHA-3 convenience routines.
+
+/// Calculate SHA3-256 hash of the given input and load it into the given output.
+void sha3(bytesConstRef _input, bytesRef _output);
+
+/// Calculate SHA3-256 hash of the given input, possibly interpreting it as nibbles, and return the hash as a string filled with binary data.
+std::string sha3(std::string const& _input, bool _isNibbles);
+
+/// Calculate SHA3-256 hash of the given input, returning as a byte array.
+bytes sha3Bytes(bytesConstRef _input);
+
+/// Calculate SHA3-256 hash of the given input (presented as a binary string), returning as a byte array.
+inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::string*)&_input); }
+
+/// Calculate SHA3-256 hash of the given input, returning as a byte array.
+inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
+
+/// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
+h256 sha3(bytesConstRef _input);
+
+/// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
+inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+
+/// Calculate SHA3-256 hash of the given input (presented as a binary-filled string), returning as a 256-bit hash.
+inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
+
 }
 
 namespace std

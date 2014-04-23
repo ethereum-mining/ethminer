@@ -34,12 +34,12 @@
 #include <set>
 #include <chrono>
 #include <thread>
+#include <libethcore/Common.h>
+#include <libethcore/UPnP.h>
 #include "Exceptions.h"
-#include "Common.h"
 #include "BlockChain.h"
 #include "BlockInfo.h"
 #include "TransactionQueue.h"
-#include "UPnP.h"
 #include "PeerSession.h"
 using namespace std;
 using namespace eth;

@@ -22,13 +22,13 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include "Common.h"
-#include "RLP.h"
+#include <libethcore/Common.h>
+#include <libethcore/RLP.h>
+#include <libethcore/FileSystem.h>
 #include "Exceptions.h"
 #include "Dagger.h"
 #include "BlockInfo.h"
 #include "State.h"
-#include "FileSystem.h"
 #include "Defaults.h"
 using namespace std;
 using namespace eth;
