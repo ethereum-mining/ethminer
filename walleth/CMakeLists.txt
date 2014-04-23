@@ -9,6 +9,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
+link_directories(../libethcore)
 link_directories(../libethereum)
 link_directories(../libqethereum)
 

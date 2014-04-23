@@ -19,9 +19,11 @@
  * @date 2014
  */
 
-#include "Log.h"
-#include "Transaction.h"
 #include "TransactionQueue.h"
+
+#include <libethcore/Log.h>
+#include "Exceptions.h"
+#include "Transaction.h"
 using namespace std;
 using namespace eth;
 

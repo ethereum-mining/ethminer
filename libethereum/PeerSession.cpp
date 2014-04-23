@@ -22,8 +22,8 @@
 #include "PeerSession.h"
 
 #include <chrono>
+#include <libethcore/Common.h>
 #include "Exceptions.h"
-#include "Common.h"
 #include "BlockChain.h"
 #include "BlockInfo.h"
 #include "PeerServer.h"

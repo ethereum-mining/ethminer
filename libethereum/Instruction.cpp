@@ -22,8 +22,8 @@
 #include "Instruction.h"
 
 #include <boost/algorithm/string.hpp>
+#include <libethcore/Log.h>
 #include "CommonEth.h"
-#include "Log.h"
 using namespace std;
 using namespace eth;
 

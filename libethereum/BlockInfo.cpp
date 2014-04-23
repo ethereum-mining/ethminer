@@ -19,10 +19,10 @@
  * @date 2014
  */
 
-#include "Common.h"
+#include <libethcore/Common.h>
+#include <libethcore/RLP.h>
 #include "Dagger.h"
 #include "Exceptions.h"
-#include "RLP.h"
 #include "State.h"
 #include "BlockInfo.h"
 using namespace std;

@@ -21,7 +21,7 @@
 
 #include "State.h"
 
-#include <secp256k1.h>
+#include <secp256k1/secp256k1.h>
 #include <boost/filesystem.hpp>
 #include <time.h>
 #include <random>

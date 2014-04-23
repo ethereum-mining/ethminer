@@ -2,7 +2,8 @@ cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(../libethereum)
+include_directories(..)
+link_directories(../libethcore)
 link_directories(../libethereum)
 
 add_executable(neth ${SRC_LIST})

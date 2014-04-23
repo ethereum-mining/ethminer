@@ -22,8 +22,8 @@
 #pragma once
 
 #include <mutex>
+#include <libethcore/Log.h>
 #include "CommonEth.h"
-#include "Log.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
 
