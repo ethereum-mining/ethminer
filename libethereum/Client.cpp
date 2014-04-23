@@ -157,7 +157,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_changed = true;
 }
 
-Address Client::transact(Secret _secret, u256 _endowment, bytes const& _code, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	lock_guard<recursive_mutex> l(m_lock);
 	Transaction t;
@@ -166,8 +166,7 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _code, by
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
 	t.receiveAddress = Address();
-	t.data = _code;
-	t.init = _init;
+	t.data = _init;
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());

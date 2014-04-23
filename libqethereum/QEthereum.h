@@ -140,7 +140,7 @@ public:
 
 public slots:
 	void transact(eth::Secret _secret, eth::Address _dest, eth::u256 _amount, eth::u256 _gasPrice, eth::u256 _gas, QByteArray _data);
-	void transact(eth::Secret _secret, eth::u256 _amount, eth::u256 _gasPrice, eth::u256 _gas, QByteArray _code, QByteArray _init);
+	void transact(eth::Secret _secret, eth::u256 _amount, eth::u256 _gasPrice, eth::u256 _gas, QByteArray _init);
 	void setCoinbase(eth::Address);
 	void setMining(bool _l);
 
@@ -314,7 +314,7 @@ public:
 
 	Q_INVOKABLE QEthereum* self() { return this; }
 
-	Q_INVOKABLE QVariant create(QVariant _secret, QVariant _amount, QByteArray _code, QByteArray _init, QVariant _gas, QVariant _gasPrice);
+	Q_INVOKABLE QVariant create(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice);
 	Q_INVOKABLE void transact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice);
 
 	eth::u256 balanceAt(eth::Address _a) const;

@@ -631,11 +631,7 @@ void Executive::setup(bytesConstRef _rlp)
 	}
 
 	// Check gas cost is enough.
-	u256 gasCost;
-	if (m_t.isCreation())
-		gasCost = (m_t.init.size() + m_t.data.size()) * c_txDataGas + c_createGas;
-	else
-		gasCost = m_t.data.size() * c_txDataGas + c_callGas;
+	u256 gasCost = m_t.data.size() * c_txDataGas + c_txGas;
 
 	if (m_t.gas < gasCost)
 	{
@@ -662,7 +658,7 @@ void Executive::setup(bytesConstRef _rlp)
 	m_s.subBalance(sender, cost);
 
 	if (m_t.isCreation())
-		create(sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, &m_t.init, sender);
+		create(sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, sender);
 	else
 		call(m_t.receiveAddress, sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, sender);
 }
@@ -681,18 +677,18 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_endGas = _gas;
 }
 
-void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, bytesConstRef _init, Address _origin)
+void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 	while (m_s.isContractAddress(m_newAddress) || m_s.isNormalAddress(m_newAddress))
 		m_newAddress = (u160)m_newAddress + 1;
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, 0, _code);
+	m_s.m_cache[m_newAddress] = AddressState(0, 0, bytesConstRef());
 
 	// Execute _init.
 	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, _init, _init);
 }
 
 bool Executive::go(uint64_t _steps)
@@ -702,7 +698,7 @@ bool Executive::go(uint64_t _steps)
 		bool revert = false;
 		try
 		{
-			m_vm->go(*m_ext, _steps);
+			m_out = m_vm->go(*m_ext, _steps);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
@@ -751,6 +747,10 @@ void Executive::finalize()
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
 
+	if (m_t.isCreation() && m_newAddress && m_out.size())
+		// non-reverted creation - put code in place.
+		m_s.m_cache[m_newAddress].setCode(m_out);
+
 	u256 gasSpent = (m_startGas - m_endGas) * m_ext->gasPrice;
 /*	unsigned c_feesKept = 8;
 	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
@@ -763,78 +763,16 @@ void Executive::finalize()
 
 void State::execute(bytesConstRef _rlp)
 {
-	// Entry point for a user-executed transaction.
-	Transaction t(_rlp);
-
-	auto sender = t.sender();
-
-	// Avoid invalid transactions.
-	auto nonceReq = transactionsFrom(sender);
-	if (t.nonce != nonceReq)
+	Executive e(*this);
 	{
-		clog(StateChat) << "Invalid Nonce.";
-		throw InvalidNonce(nonceReq, t.nonce);
+		e.setup(_rlp);
+		e.go();
+		e.finalize();
 	}
 
-	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
-	if (t.gasPrice < 10 * szabo)
-	{
-		clog(StateChat) << "Offered gas-price is too low.";
-		throw GasPriceTooLow();
-	}
-
-	// Check gas cost is enough.
-	u256 gasCost;
-	if (t.isCreation())
-		gasCost = (t.init.size() + t.data.size()) * c_txDataGas + c_createGas;
-	else
-		gasCost = t.data.size() * c_txDataGas + c_callGas;
-
-	if (t.gas < gasCost)
-	{
-		clog(StateChat) << "Not enough gas to pay for the transaction.";
-		throw OutOfGas();
-	}
-
-	u256 cost = t.value + t.gas * t.gasPrice;
-
-	// Avoid unaffordable transactions.
-	if (balance(sender) < cost)
-	{
-		clog(StateChat) << "Not enough cash.";
-		throw NotEnoughCash();
-	}
-
-	u256 gas = t.gas - gasCost;
-
-	// Increment associated nonce for sender.
-	noteSending(sender);
-
-	// Pay...
-//	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << t.gas << "gas at" << formatBalance(t.gasPrice) << ")";
-	subBalance(sender, cost);
-
-	if (t.isCreation())
-		create(sender, t.value, t.gasPrice, &gas, &t.data, &t.init);
-	else
-		call(t.receiveAddress, sender, t.value, t.gasPrice, bytesConstRef(&t.data), &gas, bytesRef());
-
-//	cnote << "Refunding" << formatBalance(gas * t.gasPrice) << "to sender (=" << gas << "*" << formatBalance(t.gasPrice) << ")";
-	addBalance(sender, gas * t.gasPrice);
-
-	u256 gasSpent = (t.gas - gas) * t.gasPrice;
-/*	unsigned c_feesKept = 8;
-	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
-	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
-*/
-	u256 feesEarned = gasSpent;
-//	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
-	addBalance(m_currentBlock.coinbaseAddress, feesEarned);
-
-	// !!!!!!!!!!!!!!!!!!!!! If moving to use Executive, this still needs to be done - Executive won't do it.
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(t);
-	m_transactionSet.insert(t.sha3());
+	m_transactions.push_back(e.t());
+	m_transactionSet.insert(e.t().sha3());
 }
 
 bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress)
@@ -885,7 +823,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, bytesConstRef _init, Address _origin)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -895,18 +833,17 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, 0, _code);
+	m_cache[newAddress] = AddressState(0, 0, {});
 
 	// Execute _init.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code);
 	bool revert = false;
+	bytesConstRef out;
 
 	try
 	{
-		/*auto out =*/ vm.go(evm);
-		// Don't do anything with the output (yet).
-		//memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+		out = vm.go(evm);
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -926,13 +863,19 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		clog(StateChat) << "std::exception in VM: " << _e.what();
 	}
 
-	// Write state out only in the case of a non-excepted transaction.
+	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)
-	{
 		evm.revert();
+
+	// Kill contract if there's no code.
+	if (out.empty())
+	{
 		m_cache.erase(newAddress);
 		newAddress = Address();
 	}
+	else
+		m_cache[newAddress].setCode(out);
+
 
 	*_gas = vm.gas();
 

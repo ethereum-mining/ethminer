@@ -56,6 +56,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CALLVALUE", Instruction::CALLVALUE },
 	{ "CALLDATALOAD", Instruction::CALLDATALOAD },
 	{ "CALLDATASIZE", Instruction::CALLDATASIZE },
+	{ "CALLDATACOPY", Instruction::CALLDATACOPY },
 	{ "BASEFEE", Instruction::GASPRICE },
 	{ "PREVHASH", Instruction::PREVHASH },
 	{ "COINBASE", Instruction::COINBASE },
@@ -142,6 +143,7 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::CALLVALUE,    { "CALLVALUE",    0, 0, 1 } },
 	{ Instruction::CALLDATALOAD, { "CALLDATALOAD", 0, 1, 1 } },
 	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 0, 1 } },
+	{ Instruction::CALLDATACOPY, { "CALLDATACOPY", 0, 3, 0 } },
 	{ Instruction::GASPRICE,     { "BASEFEE",      0, 0, 1 } },
 	{ Instruction::PREVHASH,     { "PREVHASH",     0, 0, 1 } },
 	{ Instruction::COINBASE,     { "COINBASE",     0, 0, 1 } },
@@ -313,7 +315,7 @@ static void pushLocation(bytes& o_code, uint32_t _locationValue)
 	toBigEndian(_locationValue, r);
 }
 
-static unsigned pushLiteral(bytes& o_code, u256 _literalValue)
+unsigned eth::pushLiteral(bytes& o_code, u256 _literalValue)
 {
 	unsigned br = max<unsigned>(1, bytesRequired(_literalValue));
 	o_code.push_back((byte)Instruction::PUSH1 + br - 1);

@@ -707,17 +707,14 @@ int main(int argc, char** argv)
 						cwarn << "No code submitted";
 					else
 					{
-						bytes code = fromHex(scode);
 						cnote << "Assembled:";
 						stringstream ssc;
-						ssc << disassemble(code);
-						cnote << ssc.str();
 						bytes init = fromHex(sinit);
 						ssc.str(string());
 						ssc << disassemble(init);
 						cnote << "Init:";
 						cnote << ssc.str();
-						c.transact(us.secret(), endowment, code, init, gas, gasPrice);
+						c.transact(us.secret(), endowment, init, gas, gasPrice);
 					}
 				}
 			}
