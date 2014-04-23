@@ -25,6 +25,8 @@
 using namespace std;
 using namespace eth;
 
+h256 eth::EmptySHA3 = sha3(bytesConstRef());
+
 std::string eth::sha3(std::string const& _input, bool _hex)
 {
 	if (!_hex)

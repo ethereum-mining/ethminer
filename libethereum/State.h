@@ -354,8 +354,8 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		if (it == _s.m_cache.end())
 		{
 			RLP r(i.second);
-			_out << "[    " << (r.itemCount() == 3 ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
-			if (r.itemCount() == 3)
+			_out << "[    ]" << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
+			if (r.itemCount() == 4)
 			{
 				_out << " *" << r[2].toHash<h256>();
 				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
@@ -373,12 +373,12 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 			d.insert(i.first);
 	}
 	for (auto i: _s.m_cache)
-		if (i.second.type() == AddressType::Dead)
+		if (!i.second.isAlive())
 			_out << "[XXX " << i.first << std::endl;
 		else
 		{
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << (i.second.type() == AddressType::Contract ? "CONTRACT] " : "  NORMAL] ") << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.type() == AddressType::Contract)
+			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
+			if (i.second.codeHash() != EmptySHA3)
 			{
 				if (i.second.isComplete())
 				{
@@ -406,34 +406,37 @@ template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
-		if (i.second.type() == AddressType::Dead)
+		if (!i.second.isAlive())
 			_state.remove(i.first);
 		else
 		{
-			RLPStream s(i.second.type() == AddressType::Contract ? 3 : 2);
+			RLPStream s(4);
 			s << i.second.balance() << i.second.nonce();
-			if (i.second.type() == AddressType::Contract)
+
+			if (i.second.isComplete())
 			{
-				if (i.second.isComplete())
+				if (i.second.memory().empty())
+					s << h256();
+				else
 				{
-					TrieDB<h256, DB> memdb(&_db);
-					memdb.init();
+					TrieDB<h256, DB> storageDB(&_db);
+					storageDB.init();
 					for (auto const& j: i.second.memory())
 						if (j.second)
-							memdb.insert(j.first, rlp(j.second));
-					s << memdb.root();
-					if (i.second.freshCode())
-					{
-						h256 ch = sha3(i.second.code());
-						_db.insert(ch, &i.second.code());
-						s << ch;
-					}
-					else
-						s << i.second.codeHash();
+							storageDB.insert(j.first, rlp(j.second));
+					s << storageDB.root();
+				}
+				if (i.second.freshCode())
+				{
+					h256 ch = sha3(i.second.code());
+					_db.insert(ch, &i.second.code());
+					s << ch;
 				}
 				else
-					s << i.second.oldRoot() << i.second.codeHash();
+					s << i.second.codeHash();
 			}
+			else
+				s << i.second.oldRoot() << i.second.codeHash();
 			_state.insert(i.first, &s.out());
 		}
 }
