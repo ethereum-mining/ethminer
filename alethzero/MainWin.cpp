@@ -348,7 +348,6 @@ void Main::readSettings()
 	restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
 
-
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
 		m_myKeys.append(KeyPair::create());
@@ -561,7 +560,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>State: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
-			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.sha3Transactions << "</b>";
+			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 		}
 		else

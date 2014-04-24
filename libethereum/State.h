@@ -47,6 +47,22 @@ std::map<Address, AddressState> const& genesisState();
 
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 
+struct TransactionReceipt
+{
+	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed): transaction(_t), stateRoot(_root), gasUsed(_gasUsed) {}
+
+	void fillStream(RLPStream& _s) const
+	{
+		_s.appendList(3);
+		transaction.fillStream(_s);
+		_s << stateRoot << gasUsed;
+	}
+
+	Transaction transaction;
+	h256 stateRoot;
+	u256 gasUsed;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -118,8 +134,8 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	void execute(bytes const& _rlp) { return execute(&_rlp); }
-	void execute(bytesConstRef _rlp);
+	u256 execute(bytes const& _rlp) { return execute(&_rlp); }
+	u256 execute(bytesConstRef _rlp);
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
@@ -168,7 +184,7 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	Transactions const& pending() const { return m_transactions; }
+	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
@@ -197,11 +213,11 @@ private:
 
 	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
 	/// Any failure will be critical.
-	u256 playback(bytesConstRef _block, bool _fullCommit);
+	u256 trustedPlayback(bytesConstRef _block, bool _fullCommit);
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
+	u256 playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
 
 	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
@@ -220,20 +236,22 @@ private:
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);
 
+	void refreshManifest(RLPStream* _txs = nullptr);
+
 	/// Unfinalise the block, unapplying the earned rewards.
 	void unapplyRewards(Addresses const& _uncleAddresses);
 
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
-	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
+	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
-	uint m_currentNumber;
 
 	bytes m_currentTxs;
 	bytes m_currentUncles;

@@ -35,13 +35,12 @@ class ExtVMFace
 public:
 	ExtVMFace() {}
 
-	ExtVMFace(BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+	ExtVMFace(BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
 		previousBlock(_previousBlock),
-		currentBlock(_currentBlock),
-		currentNumber(_currentNumber)
+		currentBlock(_currentBlock)
 	{}
 
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, uint _currentNumber):
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
 		myAddress(_myAddress),
 		caller(_caller),
 		origin(_origin),
@@ -50,8 +49,7 @@ public:
 		data(_data),
 		code(_code),
 		previousBlock(_previousBlock),
-		currentBlock(_currentBlock),
-		currentNumber(_currentNumber)
+		currentBlock(_currentBlock)
 	{}
 
 #pragma warning(push)
@@ -81,7 +79,6 @@ public:
 	bytesConstRef code;
 	BlockInfo previousBlock;					///< The current block's information.
 	BlockInfo currentBlock;						///< The current block's information.
-	uint currentNumber;
 };
 
 }

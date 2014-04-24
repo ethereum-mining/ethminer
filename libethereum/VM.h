@@ -344,7 +344,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.push_back(_ext.currentBlock.timestamp);
 			break;
 		case Instruction::NUMBER:
-			m_stack.push_back(_ext.currentNumber);
+			m_stack.push_back(_ext.currentBlock.number);
 			break;
 		case Instruction::DIFFICULTY:
 			m_stack.push_back(_ext.currentBlock.difficulty);
