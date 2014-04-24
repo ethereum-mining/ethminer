@@ -27,7 +27,7 @@
 namespace eth
 {
 
-// TODO: Document.
+// TODO: Document fully.
 
 class AddressState
 {

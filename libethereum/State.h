@@ -35,6 +35,7 @@
 #include "FeeStructure.h"
 #include "Dagger.h"
 #include "ExtVMFace.h"
+#include "Executive.h"
 
 namespace eth
 {
@@ -44,51 +45,7 @@ class BlockChain;
 extern u256 c_genesisDifficulty;
 std::map<Address, AddressState> const& genesisState();
 
-static const std::map<u256, u256> EmptyMapU256U256;
-
-static const bytes EmptyBytes;
-
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
-
-class VM;
-class ExtVM;
-class State;
-
-class Executive
-{
-public:
-	Executive(State& _s): m_s(_s) {}
-	~Executive();
-
-	void setup(bytesConstRef _transaction);
-	void create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
-	void call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
-	bool go(uint64_t _steps = (unsigned)-1);
-	void finalize();
-
-	Transaction const& t() const { return m_t; }
-
-	u256 gas() const;
-
-	bytesConstRef out() const { return m_out; }
-	h160 newAddress() const { return m_newAddress; }
-
-	VM const& vm() const { return *m_vm; }
-	State const& state() const { return m_s; }
-	ExtVM const& ext() const { return *m_ext; }
-
-private:
-	State& m_s;
-	ExtVM* m_ext = nullptr;	// TODO: make safe.
-	VM* m_vm = nullptr;
-	bytesConstRef m_out;
-	Address m_newAddress;
-
-	Transaction m_t;
-
-	u256 m_startGas;
-	u256 m_endGas;
-};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -292,57 +249,8 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
-class ExtVM: public ExtVMFace
-{
-public:
-	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
-	{
-		m_s.ensureCached(_myAddress, true, true);
-	}
-
-	u256 store(u256 _n)
-	{
-		return m_s.storage(myAddress, _n);
-	}
-	void setStore(u256 _n, u256 _v)
-	{
-		m_s.setStorage(myAddress, _n, _v);
-	}
-
-	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code)
-	{
-		// Increment associated nonce for sender.
-		m_s.noteSending(myAddress);
-
-		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin);
-	}
-
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
-	{
-		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin);
-	}
-
-	u256 balance(Address _a) { return m_s.balance(_a); }
-	void subBalance(u256 _a) { m_s.subBalance(myAddress, _a); }
-	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
-	void suicide(Address _a)
-	{
-		m_s.addBalance(_a, m_s.balance(myAddress));
-		m_s.m_cache[myAddress].kill();
-	}
-
-	void revert()
-	{
-		m_s.m_cache = m_origCache;
-	}
-
-private:
-	State& m_s;
-	std::map<Address, AddressState> m_origCache;
-	std::map<u256, u256>* m_store;
-};
-
+// TODO: Update for latest AddressState/StateTrie changes.
+// trie should always be used as base. AddressState just contains overlay.
 inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
