@@ -18,6 +18,7 @@
 #include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
 #include <libethereum/VM.h>
+#include <libethereum/ExtVM.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
