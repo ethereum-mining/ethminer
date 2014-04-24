@@ -70,6 +70,7 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_db(_db),
 	m_state(&m_db),
+	m_transactionManifest(&m_db),
 	m_ourAddress(_coinbaseAddress)
 {
 	m_blockReward = 1500 * finney;
@@ -93,10 +94,10 @@ State::State(State const& _s):
 	m_state(&m_db, _s.m_state.root()),
 	m_transactions(_s.m_transactions),
 	m_transactionSet(_s.m_transactionSet),
+	m_transactionManifest(&m_db, _s.m_transactionManifest.root()),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
-	m_currentNumber(_s.m_currentNumber),
 	m_ourAddress(_s.m_ourAddress),
 	m_blockReward(_s.m_blockReward)
 {
@@ -108,10 +109,10 @@ State& State::operator=(State const& _s)
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
 	m_transactionSet = _s.m_transactionSet;
+	m_transactionManifest.open(&m_db, _s.m_transactionManifest.root());
 	m_cache = _s.m_cache;
 	m_previousBlock = _s.m_previousBlock;
 	m_currentBlock = _s.m_currentBlock;
-	m_currentNumber = _s.m_currentNumber;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
 	return *this;
@@ -179,7 +180,6 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 		// Our state is good - we just need to move on to next.
 		m_previousBlock = m_currentBlock;
 		resetCurrent();
-		m_currentNumber++;
 		ret = true;
 	}
 	else if (bi == m_previousBlock)
@@ -205,9 +205,8 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 
 		// Iterate through in reverse, playing back each of the blocks.
 		for (auto it = chain.rbegin(); it != chain.rend(); ++it)
-			playback(_bc.block(*it), true);
+			trustedPlayback(_bc.block(*it), true);
 
-		m_currentNumber = _bc.details(_block).number + 1;
 		resetCurrent();
 		ret = true;
 	}
@@ -230,16 +229,18 @@ void State::resetCurrent()
 {
 	m_transactions.clear();
 	m_transactionSet.clear();
+	m_transactionManifest.init();
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
-	m_currentBlock.stateRoot = m_previousBlock.stateRoot;
-	m_currentBlock.parentHash = m_previousBlock.hash;
-	m_currentBlock.sha3Transactions = h256();
+	m_currentBlock.timestamp = time(0);
+	m_currentBlock.transactionsRoot = h256();
 	m_currentBlock.sha3Uncles = h256();
+	m_currentBlock.minGasPrice = 10 * szabo;
+	m_currentBlock.populateFromParent(m_previousBlock);
 
 	// Update timestamp according to clock.
-	m_currentBlock.timestamp = time(0);
+	// TODO: check.
 
 	m_state.setRoot(m_currentBlock.stateRoot);
 }
@@ -316,13 +317,20 @@ bool State::sync(TransactionQueue& _tq)
 	return ret;
 }
 
-u256 State::playback(bytesConstRef _block, bool _fullCommit)
+u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit)
+{
+	m_currentBlock = _bi;
+	m_previousBlock = _parent;
+	return playbackRaw(_block, _grandParent, _fullCommit);
+}
+
+u256 State::trustedPlayback(bytesConstRef _block, bool _fullCommit)
 {
 	try
 	{
 		m_currentBlock.populate(_block);
 		m_currentBlock.verifyInternals(_block);
-		return playback(_block, BlockInfo(), _fullCommit);
+		return playbackRaw(_block, BlockInfo(), _fullCommit);
 	}
 	catch (...)
 	{
@@ -332,14 +340,7 @@ u256 State::playback(bytesConstRef _block, bool _fullCommit)
 	}
 }
 
-u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit)
-{
-	m_currentBlock = _bi;
-	m_previousBlock = _parent;
-	return playback(_block, _grandParent, _fullCommit);
-}
-
-u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit)
+u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit)
 {
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
@@ -347,23 +348,44 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
+	if (_fullCommit)
+		m_transactionManifest.init();
 	// All ok with the block generally. Play back the transactions now...
-	for (auto const& i: RLP(_block)[1])
-		execute(i.data());
+	unsigned i = 0;
+	for (auto const& tr: RLP(_block)[1])
+	{
+		execute(tr[0].data());
+		if (tr[1].toInt<u256>() != m_state.root())
+			throw InvalidTransactionStateRoot();
+		if (tr[2].toInt<u256>() != m_currentBlock.gasUsed)
+			throw InvalidTransactionGasUsed();
+		if (_fullCommit)
+		{
+			bytes k = rlp(i);
+			m_transactionManifest.insert(&k, tr.data());
+		}
+		++i;
+	}
 
 	// Initialise total difficulty calculation.
 	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
 	// TODO: Check for uniqueness of uncles.
+	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	for (auto const& i: RLP(_block)[2])
 	{
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
+
 		if (m_previousBlock.parentHash != uncle.parentHash)
-			throw InvalidUncle();
+			throw UncleNotAnUncle();
+		if (nonces.count(uncle.nonce))
+			throw DuplicateUncleNonce();
 		if (_grandParent)
 			uncle.verifyParent(_grandParent);
+
+		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
 		rewarded.push_back(uncle.coinbaseAddress);
 	}
@@ -407,7 +429,7 @@ u256 State::playback(bytesConstRef _block, BlockInfo const& _grandParent, bool _
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
-	if (m_currentBlock.sha3Transactions != h256() || m_currentBlock.sha3Uncles != h256())
+	if (m_currentBlock.sha3Uncles != h256())
 	{
 		Addresses uncleAddresses;
 		for (auto i: RLP(m_currentUncles))
@@ -439,15 +461,28 @@ void State::commitToMine(BlockChain const& _bc)
 		uncles.appendList(0);
 
 	applyRewards(uncleAddresses);
+	if (m_transactionManifest.isNull())
+		m_transactionManifest.init();
+	else
+		while(!m_transactionManifest.isEmpty())
+			m_transactionManifest.remove((*m_transactionManifest.begin()).first);
 
-	RLPStream txs(m_transactions.size());
-	for (auto const& i: m_transactions)
-		i.fillStream(txs);
+	RLPStream txs;
+	txs.appendList(m_transactions.size());
+	for (unsigned i = 0; i < m_transactions.size(); ++i)
+	{
+		RLPStream k;
+		k << i;
+		RLPStream v;
+		m_transactions[i].fillStream(v);
+		m_transactionManifest.insert(&k.out(), &v.out());
+		txs.appendRaw(v.out());
+	}
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
 
-	m_currentBlock.sha3Transactions = sha3(m_currentTxs);
+	m_currentBlock.transactionsRoot = m_transactionManifest.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
@@ -615,18 +650,24 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
-void State::execute(bytesConstRef _rlp)
+u256 State::execute(bytesConstRef _rlp)
 {
 	Executive e(*this);
-	{
-		e.setup(_rlp);
-		e.go();
-		e.finalize();
-	}
+	e.setup(_rlp);
+
+	if (m_currentBlock.gasUsed + e.t().gas > m_currentBlock.gasLimit)
+		throw BlockGasLimitReached();	// TODO: make sure this is handled.
+
+	e.go();
+	e.finalize();
+
+	commit();
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(e.t());
+	m_currentBlock.gasUsed += e.gasUsed();
+	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), m_currentBlock.gasUsed));
 	m_transactionSet.insert(e.t().sha3());
+	return e.gasUsed();
 }
 
 bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress)

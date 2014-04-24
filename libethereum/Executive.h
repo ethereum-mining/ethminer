@@ -42,6 +42,7 @@ public:
 	void call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
 	bool go(uint64_t _steps = (unsigned)-1);
 	void finalize();
+	u256 gasUsed() const;
 
 	Transaction const& t() const { return m_t; }
 
@@ -62,8 +63,6 @@ private:
 	Address m_newAddress;
 
 	Transaction m_t;
-
-	u256 m_startGas;
 	u256 m_endGas;
 };
 

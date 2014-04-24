@@ -33,6 +33,11 @@ Executive::~Executive()
 	delete m_vm;
 }
 
+u256 Executive::gasUsed() const
+{
+	return m_t.gas - m_endGas;
+}
+
 void Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
@@ -49,7 +54,7 @@ void Executive::setup(bytesConstRef _rlp)
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
-	if (m_t.gasPrice < 10 * szabo)
+	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
 	{
 		clog(StateChat) << "Offered gas-price is too low.";
 		throw GasPriceTooLow();
@@ -63,8 +68,6 @@ void Executive::setup(bytesConstRef _rlp)
 		clog(StateChat) << "Not enough gas to pay for the transaction.";
 		throw OutOfGas();
 	}
-
-	m_startGas = m_t.gas;
 
 	u256 cost = m_t.value + m_t.gas * m_t.gasPrice;
 
@@ -169,19 +172,19 @@ u256 Executive::gas() const
 
 void Executive::finalize()
 {
-//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
-
 	if (m_t.isCreation() && m_newAddress && m_out.size())
 		// non-reverted creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
 
-	u256 gasSpent = (m_startGas - m_endGas) * m_ext->gasPrice;
+//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
+	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
+
+	u256 gasSpentInEth = (m_t.gas - m_endGas) * m_ext->gasPrice;
 /*	unsigned c_feesKept = 8;
-	u256 feesEarned = gasSpent - (gasSpent / c_feesKept);
-	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpent - feesEarned) << "is burnt).";
+	u256 feesEarned = gasSpentInEth - (gasSpentInEth / c_feesKept);
+	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpentInEth - feesEarned) << "is burnt).";
 */
-	u256 feesEarned = gasSpent;
+	u256 feesEarned = gasSpentInEth;
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 }

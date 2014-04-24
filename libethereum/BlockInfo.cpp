@@ -21,6 +21,7 @@
 
 #include <libethcore/Common.h>
 #include <libethcore/RLP.h>
+#include <libethcore/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "State.h"
@@ -60,7 +61,7 @@ bytes BlockInfo::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(9) << h256() << sha3EmptyList << h160() << stateRoot << sha3EmptyList << c_genesisDifficulty << (uint)0 << string() << sha3(bytes(1, 42));
+	block.appendList(13) << h256() << sha3EmptyList << h160() << stateRoot << h256() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -75,7 +76,7 @@ h256 BlockInfo::headerHashWithoutNonce() const
 
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 9 : 8) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << sha3Transactions << difficulty << timestamp << extraData;
+	_s.appendList(_nonce ? 13 : 12) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
 }
@@ -95,16 +96,30 @@ void BlockInfo::populateFromHeader(RLP const& _header)
 		sha3Uncles = _header[field = 1].toHash<h256>();
 		coinbaseAddress = _header[field = 2].toHash<Address>();
 		stateRoot = _header[field = 3].toHash<h256>();
-		sha3Transactions = _header[field = 4].toHash<h256>();
+		transactionsRoot = _header[field = 4].toHash<h256>();
 		difficulty = _header[field = 5].toInt<u256>();
-		timestamp = _header[field = 6].toInt<u256>();
-		extraData = _header[field = 7].toBytes();
-		nonce = _header[field = 8].toHash<h256>();
+		number = _header[field = 6].toInt<u256>();
+		minGasPrice = _header[field = 7].toInt<u256>();
+		gasLimit = _header[field = 8].toInt<u256>();
+		gasUsed = _header[field = 9].toInt<u256>();
+		timestamp = _header[field = 10].toInt<u256>();
+		extraData = _header[field = 11].toBytes();
+		nonce = _header[field = 12].toHash<h256>();
 	}
 	catch (RLPException const&)
 	{
 		throw InvalidBlockHeaderFormat(field, _header[field].data());
 	}
+
+	// check it hashes according to proof of work or that it's the genesis block.
+	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
+		throw InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty);
+
+	if (gasUsed > gasLimit)
+		throw TooMuchGasUsed();
+
+	if (number && extraData.size() > 1024)
+		throw ExtraDataTooBig();
 }
 
 void BlockInfo::populate(bytesConstRef _block)
@@ -121,20 +136,53 @@ void BlockInfo::populate(bytesConstRef _block)
 		throw InvalidBlockFormat(1, root[1].data());
 	if (!root[2].isList())
 		throw InvalidBlockFormat(2, root[2].data());
-	// check it hashes according to proof of work or that it's the genesis block.
-	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
-		throw InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty);
 }
 
 void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
-	if (sha3Transactions != sha3(root[1].data()))
-		throw InvalidTransactionsHash(sha3Transactions, sha3(root[1].data()));
+	u256 mgp = 0;
+
+	Overlay db;
+	GenericTrieDB<Overlay> t(&db);
+	t.init();
+	unsigned i = 0;
+	for (auto const& tr: root[1])
+	{
+		bytes k = rlp(i);
+		t.insert(&k, tr.data());
+		u256 gp = tr[0][1].toInt<u256>();
+		if (!i || mgp > gp)
+			mgp = gp;
+		++i;
+	}
+	if (transactionsRoot != t.root())
+		throw InvalidTransactionsHash(t.root(), transactionsRoot);
+
+	if (minGasPrice > mgp)
+		throw InvalidMinGasPrice();
 
 	if (sha3Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();
+}
+
+void BlockInfo::populateFromParent(BlockInfo const& _parent)
+{
+	stateRoot = _parent.stateRoot;
+	parentHash = _parent.hash;
+	number = _parent.number + 1;
+	gasLimit = calculateGasLimit(_parent);
+	gasUsed = 0;
+	difficulty = calculateDifficulty(_parent);
+}
+
+u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
+{
+	if (!parentHash)
+		return 1000000;
+	else
+		return (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024;
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
@@ -151,7 +199,19 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	if (difficulty != calculateDifficulty(_parent))
 		throw InvalidDifficulty();
 
+	if (gasLimit != calculateGasLimit(_parent))
+		throw InvalidGasLimit();
+
 	// Check timestamp is after previous timestamp.
-	if (parentHash && _parent.timestamp > timestamp)
-		throw InvalidTimestamp();
+	if (parentHash)
+	{
+		if (parentHash != _parent.hash)
+			throw InvalidParentHash();
+
+		if (timestamp < _parent.timestamp)
+			throw InvalidTimestamp();
+
+		if (number != _parent.number + 1)
+			throw InvalidNumber();
+	}
 }

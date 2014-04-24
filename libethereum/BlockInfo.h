@@ -35,8 +35,12 @@ public:
 	h256 sha3Uncles;
 	Address coinbaseAddress;
 	h256 stateRoot;
-	h256 sha3Transactions;
+	h256 transactionsRoot;
 	u256 difficulty;
+	u256 number;
+	u256 minGasPrice;
+	u256 gasLimit;
+	u256 gasUsed;
 	u256 timestamp;
 	bytes extraData;
 	h256 nonce;
@@ -54,8 +58,12 @@ public:
 				sha3Uncles == _cmp.sha3Uncles &&
 				coinbaseAddress == _cmp.coinbaseAddress &&
 				stateRoot == _cmp.stateRoot &&
-				sha3Transactions == _cmp.sha3Transactions &&
+				transactionsRoot == _cmp.transactionsRoot &&
 				difficulty == _cmp.difficulty &&
+				number == _cmp.number &&
+				minGasPrice == _cmp.minGasPrice &&
+				gasLimit == _cmp.gasLimit &&
+				gasUsed == _cmp.gasUsed &&
 				timestamp == _cmp.timestamp &&
 				extraData == _cmp.extraData &&
 				nonce == _cmp.nonce;
@@ -67,8 +75,10 @@ public:
 	void populate(bytesConstRef _block);
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
+	void populateFromParent(BlockInfo const& parent);
 
-	u256 calculateDifficulty(BlockInfo const& _bi) const;
+	u256 calculateDifficulty(BlockInfo const& _parent) const;
+	u256 calculateGasLimit(BlockInfo const& _parent) const;
 
 	/// No-nonce sha3 of the header only.
 	h256 headerHashWithoutNonce() const;
@@ -84,8 +94,8 @@ private:
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
-	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.sha3Transactions << " " <<
-			_bi.difficulty << " " << _bi.timestamp << " " << _bi.nonce;
+	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
+			_bi.difficulty << " " << _bi.number << " " << _bi.minGasPrice << " " << _bi.gasLimit << " " << _bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
 	return _out;
 }
 

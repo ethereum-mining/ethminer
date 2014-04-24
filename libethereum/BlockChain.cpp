@@ -139,11 +139,13 @@ bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
 void BlockChain::import(bytes const& _block, Overlay const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
-	BlockInfo bi(&_block);
+	BlockInfo bi;
+
 #if ETH_CATCH
 	try
 #endif
 	{
+		bi.populate(&_block);
 		bi.verifyInternals(&_block);
 	}
 #if ETH_CATCH

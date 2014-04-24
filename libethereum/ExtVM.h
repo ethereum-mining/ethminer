@@ -34,7 +34,7 @@ class ExtVM: public ExtVMFace
 {
 public:
 	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _s.m_currentNumber), m_s(_s), m_origCache(_s.m_cache)
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}
