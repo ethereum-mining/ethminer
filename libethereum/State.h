@@ -241,6 +241,8 @@ private:
 	/// Unfinalise the block, unapplying the earned rewards.
 	void unapplyRewards(Addresses const& _uncleAddresses);
 
+	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.

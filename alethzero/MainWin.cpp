@@ -474,7 +474,7 @@ void Main::refresh(bool _override)
 			int n = 0;
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
-				Transaction t(i.data());
+				Transaction t(i[0].data());
 				QString s = t.receiveAddress ?
 					QString("    %2 %5> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
@@ -566,7 +566,7 @@ void Main::on_blocks_currentItemChanged()
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi].data());
+			Transaction tx(block[1][txi][0].data());
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce));
 			s << "<h3>" << th << "</h3>";

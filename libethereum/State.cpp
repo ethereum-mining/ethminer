@@ -319,6 +319,7 @@ bool State::sync(TransactionQueue& _tq)
 
 u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit)
 {
+	resetCurrent();
 	m_currentBlock = _bi;
 	m_previousBlock = _parent;
 	return playbackRaw(_block, _grandParent, _fullCommit);
@@ -342,6 +343,8 @@ u256 State::trustedPlayback(bytesConstRef _block, bool _fullCommit)
 
 u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit)
 {
+	// m_currentBlock is assumed to be prepopulated.
+
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
 
@@ -350,6 +353,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 		m_transactionManifest.init();
+
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
@@ -357,7 +361,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		execute(tr[0].data());
 		if (tr[1].toInt<u256>() != m_state.root())
 			throw InvalidTransactionStateRoot();
-		if (tr[2].toInt<u256>() != m_currentBlock.gasUsed)
+		if (tr[2].toInt<u256>() != gasUsed())
 			throw InvalidTransactionGasUsed();
 		if (_fullCommit)
 		{
@@ -414,13 +418,13 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		m_db.commit();
 
 		m_previousBlock = m_currentBlock;
-		resetCurrent();
 	}
 	else
 	{
 		m_db.rollback();
-		resetCurrent();
 	}
+
+	resetCurrent();
 
 	return tdIncrease;
 }
@@ -492,6 +496,7 @@ void State::commitToMine(BlockChain const& _bc)
 //	cnote << m_state;
 //	cnote << *this;
 
+	m_currentBlock.gasUsed = gasUsed();
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
@@ -655,7 +660,8 @@ u256 State::execute(bytesConstRef _rlp)
 	Executive e(*this);
 	e.setup(_rlp);
 
-	if (m_currentBlock.gasUsed + e.t().gas > m_currentBlock.gasLimit)
+	u256 startGasUSed = gasUsed();
+	if (startGasUSed + e.t().gas > m_currentBlock.gasLimit)
 		throw BlockGasLimitReached();	// TODO: make sure this is handled.
 
 	e.go();
@@ -664,8 +670,7 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();
 
 	// Add to the user-originated transactions that we've executed.
-	m_currentBlock.gasUsed += e.gasUsed();
-	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), m_currentBlock.gasUsed));
+	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
