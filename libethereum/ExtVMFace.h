@@ -22,63 +22,60 @@
 #pragma once
 
 #include <libethcore/Common.h>
-#include "FeeStructure.h"
 #include "BlockInfo.h"
 
 namespace eth
 {
 
-struct Transaction;
-
+/**
+ * @brief A null implementation of the class for specifying VM externalities.
+ */
 class ExtVMFace
 {
 public:
+	/// Null constructor.
 	ExtVMFace() {}
 
-	ExtVMFace(BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
-		previousBlock(_previousBlock),
-		currentBlock(_currentBlock)
-	{}
+	/// Full constructor.
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock);
 
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
-		myAddress(_myAddress),
-		caller(_caller),
-		origin(_origin),
-		value(_value),
-		gasPrice(_gasPrice),
-		data(_data),
-		code(_code),
-		previousBlock(_previousBlock),
-		currentBlock(_currentBlock)
-	{}
 
-#pragma warning(push)
-#pragma warning(disable: 4100)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
+	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
-	u256 store(u256 _n) { return 0; }
-	void setStore(u256 _n, u256 _v) {}
-	u256 balance(Address _a) { return 0; }
-	void subBalance(u256 _a) {}
-	u256 txCount(Address _a) { return 0; }
-	void suicide(Address _a) {}
-	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, bytesConstRef _init) { return h160(); }
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _tx) { return false; }
 
-#pragma GCC diagnostic pop
-#pragma warning(pop)
+	/// Read storage location.
+	u256 store(u256) { return 0; }
 
-	Address myAddress;
-	Address caller;
-	Address origin;
-	u256 value;
-	u256 gasPrice;
-	bytesConstRef data;
-	bytesConstRef code;
-	BlockInfo previousBlock;					///< The current block's information.
-	BlockInfo currentBlock;						///< The current block's information.
+	/// Write a value in storage.
+	void setStore(u256, u256) {}
+
+	/// Read address's balance.
+	u256 balance(Address) { return 0; }
+
+	/// Subtract amount from address's balance.
+	void subBalance(u256) {}
+
+	/// Determine address's TX count.
+	u256 txCount(Address) { return 0; }
+
+	/// Suicide the associated contract to the given address.
+	void suicide(Address) {}
+
+	/// Create a new contract.
+	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
+
+	/// Make a new message call.
+	bool call(Address, u256, bytesConstRef, u256*, bytesRef) { return false; }
+
+	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
+	Address caller;				///< Address which sent the message (either equal to origin or a contract).
+	Address origin;				///< Original transactor.
+	u256 value;					///< Value (in Wei) that was passed to this address.
+	u256 gasPrice;				///< Price of gas (that we already paid).
+	bytesConstRef data;			///< Current input data.
+	bytesConstRef code;			///< Current code that is executing.
+	BlockInfo previousBlock;	///< The previous block's information.
+	BlockInfo currentBlock;		///< The current block's information.
 };
 
 }
