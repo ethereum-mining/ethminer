@@ -285,6 +285,24 @@ public:
 };
 #endif
 
+inline eth::bytes asBytes(QString const& _s)
+{
+	eth::bytes ret;
+	ret.reserve(_s.size());
+	for (QChar c: _s)
+		ret.push_back(c.cell());
+	return ret;
+}
+
+inline QString asQString(eth::bytes const& _s)
+{
+	QString ret;
+	ret.reserve(_s.size());
+	for (auto c: _s)
+		ret.push_back(QChar(c, 0));
+	return ret;
+}
+
 eth::bytes toBytes(QString const& _s);
 QString padded(QString const& _s, unsigned _l, unsigned _r);
 QString padded(QString const& _s, unsigned _l);
@@ -300,17 +318,19 @@ template <unsigned N> eth::FixedHash<N> toFixed(QString const& _s)
 		return (typename eth::FixedHash<N>::Arith)(_s.toStdString());
 	else
 		// Binary
-		return eth::FixedHash<N>(eth::asBytes(padded(_s, N).toStdString()));
+		return eth::FixedHash<N>(asBytes(padded(_s, N)));
 }
 
-template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
+template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
 {
-	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
+	if (_s.startsWith("0x"))
+		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(eth::fromHex(_s.toStdString().substr(2)));
+	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Hex or Decimal
-		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s.toStdString());
+		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s.toStdString());
 	else
 		// Binary
-		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(eth::asBytes(padded(_s, N).toStdString()));
+		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(padded(_s, N)));
 }
 
 inline eth::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
@@ -322,12 +342,12 @@ template <unsigned N> QString toQJS(boost::multiprecision::number<boost::multipr
 
 inline QString toBinary(QString const& _s)
 {
-	return QString::fromStdString(eth::asString(toBytes(_s)));
+	return asQString(toBytes(_s));
 }
 
 inline QString fromBinary(QString const& _s)
 {
-	return QString::fromStdString("0x" + eth::toHex(eth::asBytes(_s.toStdString())));
+	return QString::fromStdString("0x" + eth::toHex(asBytes(_s)));
 }
 
 class QEthereum: public QObject
