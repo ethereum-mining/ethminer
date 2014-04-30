@@ -186,7 +186,7 @@ Main::Main(QWidget *parent) :
 	else if (pocnumber == 4)
 		m_servers.push_back("54.72.31.55:30303");
 	else if (pocnumber == 5)
-		m_servers.push_back("54.201.28.117:30303");
+		m_servers.push_back("54.72.31.55:30305");
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
@@ -226,10 +226,8 @@ Main::Main(QWidget *parent) :
 
 	QWebFrame* f = ui->webView->page()->currentFrame();
 	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
-		f->addToJavaScriptWindowObject("eth", new QEthereum(this, m_client.get(), owned()), QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
-		f->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
+		auto qe = new QEthereum(this, m_client.get(), owned());
+		qe->setup(f);
 	});
 
 	readSettings();
@@ -249,6 +247,12 @@ Main::~Main()
 {
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+void Main::on_jsInput_returnPressed()
+{
+	ui->jsInput->setText(ui->webView->page()->currentFrame()->evaluateJavaScript(ui->jsInput->text()).toString());
+	ui->jsInput->setSelection(0, ui->jsInput->text().size());
 }
 
 QString Main::pretty(eth::Address _a) const
@@ -368,10 +372,10 @@ void Main::readSettings()
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("NameReg", "").toString());
 	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
-	on_urlEdit_editingFinished();
+	on_urlEdit_returnPressed();
 }
 
-void Main::on_urlEdit_editingFinished()
+void Main::on_urlEdit_returnPressed()
 {
 	ui->webView->setUrl(ui->urlEdit->text());
 }

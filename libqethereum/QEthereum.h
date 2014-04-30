@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QAbstractListModel>
+#include <QtQml>
 #include <libethereum/CommonEth.h>
 #include <libethcore/CommonIO.h>
 
@@ -11,6 +12,7 @@ class State;
 
 class QQmlEngine;
 class QJSEngine;
+class QWebFrame;
 
 class QEthereum;
 class QmlAccount;
@@ -291,6 +293,9 @@ public:
 
 	eth::Client* client() const;
 
+	void setup(QWebFrame* _e);
+	void teardown(QWebFrame* _e);
+
 	Q_INVOKABLE QVariant/*eth::Address*/ coinbase() const;
 
 	Q_INVOKABLE bool isListening() const;
@@ -304,6 +309,7 @@ public:
 	Q_INVOKABLE QVariant gasPrice() const { return toQJS(10 * eth::szabo); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
+	Q_INVOKABLE void ethTest2() { changed(); }
 
 	Q_INVOKABLE QVariant/*eth::KeyPair*/ key() const;
 	Q_INVOKABLE QList<QVariant/*eth::KeyPair*/> keys() const;
@@ -329,6 +335,7 @@ public slots:
 
 signals:
 	void changed();
+	void testcallback();
 //	void netChanged();
 //	void miningChanged();
 

@@ -142,7 +142,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
-	u256 mgp = 0;
+	u256 mgp = (u256)-1;
 
 	Overlay db;
 	GenericTrieDB<Overlay> t(&db);
@@ -153,15 +153,14 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 		bytes k = rlp(i);
 		t.insert(&k, tr.data());
 		u256 gp = tr[0][1].toInt<u256>();
-		if (!i || mgp > gp)
-			mgp = gp;
+		mgp = min(mgp, gp);
 		++i;
 	}
 	if (transactionsRoot != t.root())
 		throw InvalidTransactionsHash(t.root(), transactionsRoot);
 
 	if (minGasPrice > mgp)
-		throw InvalidMinGasPrice();
+		throw InvalidMinGasPrice(minGasPrice, mgp);
 
 	if (sha3Uncles != sha3(root[2].data()))
 		throw InvalidUnclesHash();
