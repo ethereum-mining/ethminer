@@ -193,7 +193,7 @@ eth::bytes toBytes(QString const& _s)
 		return eth::toCompactBigEndian(eth::bigint(_s.toStdString()));
 	else
 		// Binary
-		return eth::asBytes(_s.toStdString());
+		return asBytes(_s);
 }
 
 QString padded(QString const& _s, unsigned _l, unsigned _r)
@@ -205,6 +205,8 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 		b.push_back(0);
 	return QString::fromStdString(eth::asString(b).substr(b.size() - max(_l, _r)));
 }
+
+//"0xff".bin().unbin()
 
 QString padded(QString const& _s, unsigned _l)
 {
@@ -245,7 +247,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { eth.doCreate(s, v, c, g, p); if (f) f() }");
 	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
-	_e->evaluateJavaScript("String.prototype.bin = function(l) { return eth.toBinary(this) }");
+	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
 }
