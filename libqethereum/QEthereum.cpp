@@ -183,6 +183,33 @@ void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _ga
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+eth::bytes toBytes(QString const& _s)
+{
+	if (_s.startsWith("0x"))
+		// Hex
+		return eth::fromHex(_s.mid(2).toStdString());
+	else if (!_s.contains(QRegExp("[^0-9]")))
+	{
+		// Decimal
+		eth::bytes ret;
+		eth::toBigEndian(eth::bigint(_s.toStdString()), ret);
+		return ret;
+	}
+	else
+		// Binary
+		return eth::asBytes(_s.toStdString());
+}
+
+QString padded(QString const& _s, unsigned _l, unsigned _r)
+{
+	eth::bytes b = toBytes(_s);
+	while (b.size() < _l)
+		b.insert(b.begin(), 0);
+	while (b.size() < _r)
+		b.push_back(0);
+	b.resize(_r);
+	return QString::fromStdString(eth::asString(b));
+}
 
 QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
 {
@@ -201,11 +228,16 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
 	_e->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
 	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
-//	_e->evaluateJavaScript("xeth = new Object({\"callback\": function(f) { eth.testcallback.connect(f) }})");
-	_e->evaluateJavaScript("eth.onChanged = function(f) { eth.changed.connect(f) }");
+	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
+	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
+	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { eth.doCreate(s, v, c, g, p); if (f) f() }");
+	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
+	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
+	_e->evaluateJavaScript("String.prototype.bin = function(l) { return eth.toBinary(this) }");
+	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
 }
 
-void QEthereum::teardown(QWebFrame* _e)
+void QEthereum::teardown(QWebFrame*)
 {
 }
 
@@ -324,12 +356,12 @@ unsigned QEthereum::peerCount() const
 	return (unsigned)client()->peerCount();
 }
 
-QVariant QEthereum::create(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice)
+QVariant QEthereum::doCreate(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice)
 {
 	return toQJS(client()->transact(to<Secret>(_secret), to<u256>(_amount), bytes(_init.data(), _init.data() + _init.size()), to<u256>(_gas), to<u256>(_gasPrice)));
 }
 
-void QEthereum::transact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice)
+void QEthereum::doTransact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice)
 {
 	client()->transact(to<Secret>(_secret), to<u256>(_amount), to<Address>(_dest), bytes(_data.data(), _data.data() + _data.size()), to<u256>(_gas), to<u256>(_gasPrice));
 }
