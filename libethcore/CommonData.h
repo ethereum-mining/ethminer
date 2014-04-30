@@ -106,6 +106,18 @@ inline bytes toBigEndian(u256 _val) { bytes ret(32); toBigEndian(_val, ret); ret
 inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); return ret; }
 
 /// Convenience function for toBigEndian.
+/// @returns a byte array just big enough to represent @a _val.
+template <class _T>
+inline bytes toCompactBigEndian(_T _val)
+{
+	int i = 0;
+	for (_T v = _val; v; ++i, v >>= 8) {}
+	bytes ret(i, 0);
+	toBigEndian(_val, ret);
+	return ret;
+}
+
+/// Convenience function for toBigEndian.
 /// @returns a string just big enough to represent @a _val.
 template <class _T>
 inline std::string toCompactBigEndianString(_T _val)

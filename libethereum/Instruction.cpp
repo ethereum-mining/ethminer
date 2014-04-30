@@ -57,6 +57,8 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CALLDATALOAD", Instruction::CALLDATALOAD },
 	{ "CALLDATASIZE", Instruction::CALLDATASIZE },
 	{ "CALLDATACOPY", Instruction::CALLDATACOPY },
+	{ "CODESIZE", Instruction::CODESIZE },
+	{ "CODECOPY", Instruction::CODECOPY },
 	{ "GASPRICE", Instruction::GASPRICE },
 	{ "PREVHASH", Instruction::PREVHASH },
 	{ "COINBASE", Instruction::COINBASE },
@@ -144,6 +146,8 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::CALLDATALOAD, { "CALLDATALOAD", 0, 1, 1 } },
 	{ Instruction::CALLDATASIZE, { "CALLDATASIZE", 0, 0, 1 } },
 	{ Instruction::CALLDATACOPY, { "CALLDATACOPY", 0, 3, 0 } },
+	{ Instruction::CODESIZE,     { "CODESIZE",     0, 0, 1 } },
+	{ Instruction::CODECOPY,     { "CODECOPY",     0, 3, 0 } },
 	{ Instruction::GASPRICE,     { "GASPRICE",     0, 0, 1 } },
 	{ Instruction::PREVHASH,     { "PREVHASH",     0, 0, 1 } },
 	{ Instruction::COINBASE,     { "COINBASE",     0, 0, 1 } },
@@ -783,6 +787,7 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						{
 							// Check if true - predicate
 							appendCode(o_code, o_locs, codes[i - 1], locs[i - 1]);
+							o_code.push_back((byte)Instruction::NOT);
 
 							// Push the false location.
 							ends.push_back((unsigned)o_code.size());
@@ -790,7 +795,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							pushLocation(o_code, 0);
 
 							// Jump to end...
-							o_code.push_back((byte)Instruction::NOT);
 							o_code.push_back((byte)Instruction::JUMPI);
 						}
 						o_code.push_back((byte)Instruction::POP);

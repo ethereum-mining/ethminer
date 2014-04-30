@@ -189,12 +189,8 @@ eth::bytes toBytes(QString const& _s)
 		// Hex
 		return eth::fromHex(_s.mid(2).toStdString());
 	else if (!_s.contains(QRegExp("[^0-9]")))
-	{
 		// Decimal
-		eth::bytes ret;
-		eth::toBigEndian(eth::bigint(_s.toStdString()), ret);
-		return ret;
-	}
+		return eth::toCompactBigEndian(eth::bigint(_s.toStdString()));
 	else
 		// Binary
 		return eth::asBytes(_s.toStdString());
@@ -207,8 +203,24 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 		b.insert(b.begin(), 0);
 	while (b.size() < _r)
 		b.push_back(0);
-	b.resize(_r);
-	return QString::fromStdString(eth::asString(b));
+	return QString::fromStdString(eth::asString(b).substr(b.size() - max(_l, _r)));
+}
+
+QString padded(QString const& _s, unsigned _l)
+{
+	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
+		// Numeric: pad to right
+		return padded(_s, _l, _l);
+	else
+		// Text: pad to the left
+		return padded(_s, 0, _l);
+}
+
+QString unpadded(QString _s)
+{
+	while (_s.size() && _s.endsWith(QChar(0)))
+		_s.chop(1);
+	return _s;
 }
 
 QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
@@ -225,9 +237,9 @@ void QEthereum::setup(QWebFrame* _e)
 	// disconnect
 	disconnect(SIGNAL(changed()));
 	_e->addToJavaScriptWindowObject("eth", this, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
+/*	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
 	_e->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
+	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);*/
 	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
 	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
 	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { eth.doCreate(s, v, c, g, p); if (f) f() }");
@@ -235,6 +247,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
 	_e->evaluateJavaScript("String.prototype.bin = function(l) { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
+	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
 }
 
 void QEthereum::teardown(QWebFrame*)
@@ -246,58 +259,58 @@ Client* QEthereum::client() const
 	return m_client;
 }
 
-QVariant QEthereum::coinbase() const
+QString QEthereum::coinbase() const
 {
 	return toQJS(client()->address());
 }
 
-QVariant QEthereum::account() const
+QString QEthereum::account() const
 {
 	if (m_accounts.empty())
 		return toQJS(Address());
 	return toQJS(m_accounts[0].address());
 }
 
-QList<QVariant> QEthereum::accounts() const
+QStringList QEthereum::accounts() const
 {
-	QList<QVariant> ret;
+	QStringList ret;
 	for (auto i: m_accounts)
 		ret.push_back(toQJS(i.address()));
 	return ret;
 }
 
-QVariant QEthereum::key() const
+QString QEthereum::key() const
 {
 	if (m_accounts.empty())
-		return toQJS(KeyPair());
-	return toQJS(m_accounts[0]);
+		return toQJS(KeyPair().sec());
+	return toQJS(m_accounts[0].sec());
 }
 
-QList<QVariant> QEthereum::keys() const
+QStringList QEthereum::keys() const
 {
-	QList<QVariant> ret;
+	QStringList ret;
 	for (auto i: m_accounts)
-		ret.push_back(toQJS(i));
+		ret.push_back(toQJS(i.sec()));
 	return ret;
 }
 
-void QEthereum::setCoinbase(QVariant _a)
+void QEthereum::setCoinbase(QString _a)
 {
-	if (client()->address() != to<Address>(_a))
+	if (client()->address() != toAddress(_a))
 	{
-		client()->setAddress(to<Address>(_a));
+		client()->setAddress(toAddress(_a));
 		changed();
 	}
 }
 
-QVariant QEthereum::balanceAt(QVariant _a) const
+QString QEthereum::balanceAt(QString _a) const
 {
-	return toQJS(client()->postState().balance(to<Address>(_a)));
+	return toQJS(client()->postState().balance(toAddress(_a)));
 }
 
-QVariant QEthereum::storageAt(QVariant _a, QVariant _p) const
+QString QEthereum::storageAt(QString _a, QString _p) const
 {
-	return toQJS(client()->postState().storage(to<Address>(_a), to<u256>(_p)));
+	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
 }
 
 u256 QEthereum::balanceAt(Address _a) const
@@ -305,9 +318,9 @@ u256 QEthereum::balanceAt(Address _a) const
 	return client()->postState().balance(_a);
 }
 
-bool QEthereum::isContractAt(QVariant _a) const
+bool QEthereum::isContractAt(QString _a) const
 {
-	return client()->postState().addressHasCode(to<Address>(_a));
+	return client()->postState().addressHasCode(toAddress(_a));
 }
 
 bool QEthereum::isContractAt(Address _a) const
@@ -341,9 +354,9 @@ void QEthereum::setListening(bool _l)
 		client()->stopNetwork();
 }
 
-double QEthereum::txCountAt(QVariant _a) const
+double QEthereum::txCountAt(QString _a) const
 {
-	return (double)client()->postState().transactionsFrom(to<Address>(_a));
+	return (double)client()->postState().transactionsFrom(toAddress(_a));
 }
 
 double QEthereum::txCountAt(Address _a) const
@@ -356,14 +369,14 @@ unsigned QEthereum::peerCount() const
 	return (unsigned)client()->peerCount();
 }
 
-QVariant QEthereum::doCreate(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice)
+QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
 {
-	return toQJS(client()->transact(to<Secret>(_secret), to<u256>(_amount), bytes(_init.data(), _init.data() + _init.size()), to<u256>(_gas), to<u256>(_gasPrice)));
+	return toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
 }
 
-void QEthereum::doTransact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice)
+void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice)
 {
-	client()->transact(to<Secret>(_secret), to<u256>(_amount), to<Address>(_dest), bytes(_data.data(), _data.data() + _data.size()), to<u256>(_gas), to<u256>(_gasPrice));
+	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
 }
 
 // extra bits needed to link on VS
