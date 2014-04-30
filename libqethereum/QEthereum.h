@@ -159,6 +159,7 @@ private:
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
 
+#if 0
 template <class T> T to(QVariant const& _s) { if (_s.type() != QVariant::String) return T(); auto s = _s.toString().toLatin1(); assert(s.size() == sizeof(T)); return *(T*)s.data(); }
 template <class T> QVariant toQJS(T const& _s) { QLatin1String ret((char*)&_s, sizeof(T)); assert(QVariant(QString(ret)).toString().toLatin1().size() == sizeof(T)); assert(*(T*)(QVariant(QString(ret)).toString().toLatin1().data()) == _s); return QVariant(QString(ret)); }
 
@@ -282,32 +283,42 @@ public:
 		return toQJS<eth::u256>(ret);
 	}
 };
+#endif
 
 eth::bytes toBytes(QString const& _s);
 QString padded(QString const& _s, unsigned _l, unsigned _r);
+QString padded(QString const& _s, unsigned _l);
+QString unpadded(QString _s);
 
-template <class H> H toFixed(QString const& _s)
+template <unsigned N> eth::FixedHash<N> toFixed(QString const& _s)
 {
 	if (_s.startsWith("0x"))
 		// Hex
-		return H(_s.mid(2));
+		return eth::FixedHash<N>(_s.mid(2).toStdString());
 	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Decimal
-		return (typename H::Arith)(_s);
+		return (typename eth::FixedHash<N>::Arith)(_s.toStdString());
 	else
 		// Binary
-		return H(toBytes(_s));
+		return eth::FixedHash<N>(eth::asBytes(padded(_s, N).toStdString()));
 }
 
-template <class I> I toInt(QString const& _s)
+template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
 {
 	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
 		// Hex or Decimal
-		return (I)eth::bigint(_s);
+		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s.toStdString());
 	else
 		// Binary
-		return eth::fromBigEndian<I>(toBytes(_s));
+		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(eth::asBytes(padded(_s, N).toStdString()));
 }
+
+inline eth::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
+inline eth::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
+inline eth::u256 toU256(QString const& _s) { return toInt<32>(_s); }
+
+template <unsigned S> QString toQJS(eth::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
+template <unsigned N> QString toQJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return QString::fromStdString("0x" + eth::toHex(eth::toCompactBigEndian(_n))); }
 
 inline QString toBinary(QString const& _s)
 {
@@ -335,7 +346,9 @@ public:
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
 
+	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
 	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
+	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
 	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
 
@@ -351,7 +364,7 @@ public:
 	bool isMining() const;
 
 	QString/*eth::Address*/ coinbase() const;
-	QString/*eth::u256*/ gasPrice() const { return toString(10 * eth::szabo); }
+	QString/*eth::u256*/ gasPrice() const { return toQJS(10 * eth::szabo); }
 
 	eth::u256 balanceAt(eth::Address _a) const;
 	double txCountAt(eth::Address _a) const;
@@ -380,7 +393,7 @@ private:
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 	Q_PROPERTY(QString gasPrice READ gasPrice NOTIFY changed)
 	Q_PROPERTY(QString key READ key NOTIFY changed)
-	Q_PROPERTY(QString keys READ keys NOTIFY changed)
+	Q_PROPERTY(QStringList keys READ keys NOTIFY changed)
 	Q_PROPERTY(unsigned peerCount READ peerCount)
 
 	eth::Client* m_client;
