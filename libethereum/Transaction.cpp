@@ -123,6 +123,8 @@ void Transaction::fillStream(RLPStream& _s, bool _sig) const
 h256 Transaction::kFromMessage(h256 _msg, h256 _priv)
 {
 	// TODO!
+//	bytes v(32, 1);
+//	bytes k(32, 0);
 	/*
 	v = '\x01' * 32
 	k = '\x00' * 32

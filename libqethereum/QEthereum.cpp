@@ -1,5 +1,6 @@
 #include <QtQml/QtQml>
 #include <QtCore/QtCore>
+#include <QtWebKitWidgets/QWebFrame>
 #include <libethcore/FileSystem.h>
 #include <libethereum/Dagger.h>
 #include <libethereum/Client.h>
@@ -189,6 +190,22 @@ QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QO
 }
 
 QEthereum::~QEthereum()
+{
+}
+
+void QEthereum::setup(QWebFrame* _e)
+{
+	// disconnect
+	disconnect(SIGNAL(changed()));
+	_e->addToJavaScriptWindowObject("eth", this, QWebFrame::ScriptOwnership);
+	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
+	_e->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
+	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);
+//	_e->evaluateJavaScript("xeth = new Object({\"callback\": function(f) { eth.testcallback.connect(f) }})");
+	_e->evaluateJavaScript("eth.onChanged = function(f) { eth.changed.connect(f) }");
+}
+
+void QEthereum::teardown(QWebFrame* _e)
 {
 }
 

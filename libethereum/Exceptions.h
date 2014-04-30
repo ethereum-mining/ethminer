@@ -35,7 +35,7 @@ class InvalidTransactionsHash: public Exception { public: InvalidTransactionsHas
 class InvalidTransaction: public Exception {};
 class InvalidDifficulty: public Exception {};
 class InvalidGasLimit: public Exception {};
-class InvalidMinGasPrice: public Exception {};
+class InvalidMinGasPrice: public Exception { public: InvalidMinGasPrice(u256 _provided = 0, u256 _limit = 0): provided(_provided), limit(_limit) {} u256 provided; u256 limit; virtual std::string description() const { return "Invalid minimum gas price (provided: " + toString(provided) + " limit:" + toString(limit) + ")"; } };
 class InvalidTransactionGasUsed: public Exception {};
 class InvalidTransactionStateRoot: public Exception {};
 class InvalidTimestamp: public Exception {};
