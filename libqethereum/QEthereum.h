@@ -283,6 +283,42 @@ public:
 	}
 };
 
+eth::bytes toBytes(QString const& _s);
+QString padded(QString const& _s, unsigned _l, unsigned _r);
+
+template <class H> H toFixed(QString const& _s)
+{
+	if (_s.startsWith("0x"))
+		// Hex
+		return H(_s.mid(2));
+	else if (!_s.contains(QRegExp("[^0-9]")))
+		// Decimal
+		return (typename H::Arith)(_s);
+	else
+		// Binary
+		return H(toBytes(_s));
+}
+
+template <class I> I toInt(QString const& _s)
+{
+	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
+		// Hex or Decimal
+		return (I)eth::bigint(_s);
+	else
+		// Binary
+		return eth::fromBigEndian<I>(toBytes(_s));
+}
+
+inline QString toBinary(QString const& _s)
+{
+	return QString::fromStdString(eth::asString(toBytes(_s)));
+}
+
+inline QString fromBinary(QString const& _s)
+{
+	return QString::fromStdString("0x" + eth::toHex(eth::asBytes(_s.toStdString())));
+}
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -296,32 +332,35 @@ public:
 	void setup(QWebFrame* _e);
 	void teardown(QWebFrame* _e);
 
+	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
+	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
+	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
+
 	Q_INVOKABLE QVariant/*eth::Address*/ coinbase() const;
 
-	Q_INVOKABLE bool isListening() const;
-	Q_INVOKABLE bool isMining() const;
+	bool isListening() const;
+	bool isMining() const;
 
 	Q_INVOKABLE QVariant/*eth::u256*/ balanceAt(QVariant/*eth::Address*/ _a) const;
 	Q_INVOKABLE QVariant/*eth::u256*/ storageAt(QVariant/*eth::Address*/ _a, QVariant/*eth::u256*/ _p) const;
 	Q_INVOKABLE double txCountAt(QVariant/*eth::Address*/ _a) const;
 	Q_INVOKABLE bool isContractAt(QVariant/*eth::Address*/ _a) const;
 
-	Q_INVOKABLE QVariant gasPrice() const { return toQJS(10 * eth::szabo); }
+	QVariant gasPrice() const { return toQJS(10 * eth::szabo); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
-	Q_INVOKABLE void ethTest2() { changed(); }
 
-	Q_INVOKABLE QVariant/*eth::KeyPair*/ key() const;
-	Q_INVOKABLE QList<QVariant/*eth::KeyPair*/> keys() const;
-	Q_INVOKABLE QVariant/*eth::Address*/ account() const;
-	Q_INVOKABLE QList<QVariant/*eth::Address*/> accounts() const;
+	QVariant/*eth::KeyPair*/ key() const;
+	QList<QVariant/*eth::KeyPair*/> keys() const;
+	QVariant/*eth::Address*/ account() const;
+	QList<QVariant/*eth::Address*/> accounts() const;
 
-	Q_INVOKABLE unsigned peerCount() const;
+	unsigned peerCount() const;
 
 	Q_INVOKABLE QEthereum* self() { return this; }
 
-	Q_INVOKABLE QVariant create(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice);
-	Q_INVOKABLE void transact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice);
+	Q_INVOKABLE QVariant doCreate(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice);
+	Q_INVOKABLE void doTransact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice);
 
 	eth::u256 balanceAt(eth::Address _a) const;
 	double txCountAt(eth::Address _a) const;
@@ -335,14 +374,17 @@ public slots:
 
 signals:
 	void changed();
-	void testcallback();
 //	void netChanged();
 //	void miningChanged();
 
 private:
-//	Q_PROPERTY(QVariant coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
-//	Q_PROPERTY(bool listening READ isListening WRITE setListening)
-//	Q_PROPERTY(bool mining READ isMining WRITE setMining)
+	Q_PROPERTY(QVariant coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
+	Q_PROPERTY(bool listening READ isListening WRITE setListening)
+	Q_PROPERTY(bool mining READ isMining WRITE setMining)
+	Q_PROPERTY(QVariant gasPrice READ gasPrice NOTIFY changed)
+	Q_PROPERTY(QVariant key READ key NOTIFY changed)
+	Q_PROPERTY(QVariant keys READ keys NOTIFY changed)
+	Q_PROPERTY(unsigned peerCount READ peerCount)
 
 	eth::Client* m_client;
 	QList<eth::KeyPair> m_accounts;

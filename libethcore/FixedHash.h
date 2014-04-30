@@ -36,10 +36,10 @@ namespace eth
 template <unsigned N>
 class FixedHash
 {
+public:
 	/// The corresponding arithmetic type.
 	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 
-public:
 	/// The size of the container.
 	enum { size = N };
 
