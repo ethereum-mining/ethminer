@@ -332,44 +332,41 @@ public:
 	void setup(QWebFrame* _e);
 	void teardown(QWebFrame* _e);
 
+	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
+	Q_INVOKABLE QEthereum* self() { return this; }
+
 	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
 	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
 
-	Q_INVOKABLE QVariant/*eth::Address*/ coinbase() const;
+	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
+	Q_INVOKABLE QString/*eth::u256*/ storageAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;
+	Q_INVOKABLE double txCountAt(QString/*eth::Address*/ _a) const;
+	Q_INVOKABLE bool isContractAt(QString/*eth::Address*/ _a) const;
+
+	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
+	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
 
 	bool isListening() const;
 	bool isMining() const;
 
-	Q_INVOKABLE QVariant/*eth::u256*/ balanceAt(QVariant/*eth::Address*/ _a) const;
-	Q_INVOKABLE QVariant/*eth::u256*/ storageAt(QVariant/*eth::Address*/ _a, QVariant/*eth::u256*/ _p) const;
-	Q_INVOKABLE double txCountAt(QVariant/*eth::Address*/ _a) const;
-	Q_INVOKABLE bool isContractAt(QVariant/*eth::Address*/ _a) const;
-
-	QVariant gasPrice() const { return toQJS(10 * eth::szabo); }
-
-	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
-
-	QVariant/*eth::KeyPair*/ key() const;
-	QList<QVariant/*eth::KeyPair*/> keys() const;
-	QVariant/*eth::Address*/ account() const;
-	QList<QVariant/*eth::Address*/> accounts() const;
-
-	unsigned peerCount() const;
-
-	Q_INVOKABLE QEthereum* self() { return this; }
-
-	Q_INVOKABLE QVariant doCreate(QVariant _secret, QVariant _amount, QByteArray _init, QVariant _gas, QVariant _gasPrice);
-	Q_INVOKABLE void doTransact(QVariant _secret, QVariant _amount, QVariant _dest, QByteArray _data, QVariant _gas, QVariant _gasPrice);
+	QString/*eth::Address*/ coinbase() const;
+	QString/*eth::u256*/ gasPrice() const { return toString(10 * eth::szabo); }
 
 	eth::u256 balanceAt(eth::Address _a) const;
 	double txCountAt(eth::Address _a) const;
 	bool isContractAt(eth::Address _a) const;
 
-public slots:
-	void setCoinbase(QVariant/*eth::Address*/);
-	void setMining(bool _l);
+	QString/*eth::KeyPair*/ key() const;
+	QStringList/*list of eth::KeyPair*/ keys() const;
+	QString/*eth::Address*/ account() const;
+	QStringList/*list of eth::Address*/ accounts() const;
 
+	unsigned peerCount() const;
+
+public slots:
+	void setCoinbase(QString/*eth::Address*/);
+	void setMining(bool _l);
 	void setListening(bool _l);
 
 signals:
@@ -378,12 +375,12 @@ signals:
 //	void miningChanged();
 
 private:
-	Q_PROPERTY(QVariant coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
+	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
-	Q_PROPERTY(QVariant gasPrice READ gasPrice NOTIFY changed)
-	Q_PROPERTY(QVariant key READ key NOTIFY changed)
-	Q_PROPERTY(QVariant keys READ keys NOTIFY changed)
+	Q_PROPERTY(QString gasPrice READ gasPrice NOTIFY changed)
+	Q_PROPERTY(QString key READ key NOTIFY changed)
+	Q_PROPERTY(QString keys READ keys NOTIFY changed)
 	Q_PROPERTY(unsigned peerCount READ peerCount)
 
 	eth::Client* m_client;
