@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 		_out << "<-" << _t.sender().abridged();
 	}
 	catch (...) {}
-	_out << "}";
+	_out << " #" << _t.data.size() << "}";
 	return _out;
 }
 

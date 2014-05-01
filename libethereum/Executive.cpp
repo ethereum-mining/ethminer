@@ -99,7 +99,8 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	if (m_s.addressHasCode(_receiveAddress))
 	{
 		m_vm = new VM(_gas);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &m_s.code(_receiveAddress));
+		bytes const& c = m_s.code(_receiveAddress);
+		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
 	}
 	else
 		m_endGas = _gas;

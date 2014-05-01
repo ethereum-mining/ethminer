@@ -977,9 +977,12 @@ void Main::initDebugger()
 	dc->clear();
 	if (m_currentExecution)
 	{
+		for (unsigned i = 0; i < m_currentExecution->ext().code.size(); ++i)
+			cnote << i << std::hex << (int)m_currentExecution->ext().code[i];
 		for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
 		{
 			byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
+			cnote << i << std::hex << (int)b;
 			QString s = c_instructionInfo.at((Instruction)b).name;
 			m_pcWarp[i] = dc->count();
 			ostringstream out;
