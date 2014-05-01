@@ -20,6 +20,9 @@
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
     <ClCompile Include="..\libethereum\VM.cpp" />
+    <ClCompile Include="..\libethereum\Executive.cpp" />
+    <ClCompile Include="..\libethereum\ExtVM.cpp" />
+    <ClCompile Include="..\libethereum\ExtVMFace.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -43,6 +46,8 @@
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
     <ClInclude Include="..\libethereum\VM.h" />
+    <ClInclude Include="..\libethereum\Executive.h" />
+    <ClInclude Include="..\libethereum\ExtVM.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
