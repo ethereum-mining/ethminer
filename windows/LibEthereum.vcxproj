@@ -26,6 +26,9 @@
     <ClCompile Include="..\libethereum\CommonEth.cpp" />
     <ClCompile Include="..\libethereum\Dagger.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
+    <ClCompile Include="..\libethereum\Executive.cpp" />
+    <ClCompile Include="..\libethereum\ExtVM.cpp" />
+    <ClCompile Include="..\libethereum\ExtVMFace.cpp" />
     <ClCompile Include="..\libethereum\FeeStructure.cpp" />
     <ClCompile Include="..\libethereum\Instruction.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
@@ -52,6 +55,8 @@
     <ClInclude Include="..\libethereum\Dagger.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
     <ClInclude Include="..\libethereum\Exceptions.h" />
+    <ClInclude Include="..\libethereum\Executive.h" />
+    <ClInclude Include="..\libethereum\ExtVM.h" />
     <ClInclude Include="..\libethereum\ExtVMFace.h" />
     <ClInclude Include="..\libethereum\FeeStructure.h" />
     <ClInclude Include="..\libethereum\Instruction.h" />

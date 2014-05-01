@@ -404,7 +404,9 @@ void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QStr
 #pragma comment(lib, QTLIB("Qt5PlatformSupport"))
 #pragma comment(lib, QTLIB("Qt5Core"))
 #pragma comment(lib, QTLIB("Qt5GUI"))
-#pragma comment(lib, QTLIB("Qt5Widgets"))
 #pragma comment(lib, QTLIB("Qt5Network"))
+#pragma comment(lib, QTLIB("Qt5Webkit"))
+#pragma comment(lib, QTLIB("Qt5WebkitWidgets"))
+#pragma comment(lib, QTLIB("Qt5Widgets"))
 
 #endif
