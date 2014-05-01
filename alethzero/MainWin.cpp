@@ -181,12 +181,10 @@ Main::Main(QWidget *parent) :
 	m_servers.append("192.168.0.10:30301");
 #else
 	int pocnumber = QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1).toInt();
-	if (pocnumber == 3)
-		m_servers.push_back("54.201.28.117:30303");
-	else if (pocnumber == 4)
+	if (pocnumber == 4)
 		m_servers.push_back("54.72.31.55:30303");
 	else if (pocnumber == 5)
-		m_servers.push_back("54.72.31.55:30305");
+		m_servers.push_back("54.201.28.117:30303");
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
