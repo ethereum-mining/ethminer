@@ -452,7 +452,11 @@ int main(int argc, char** argv)
 	if (!remoteHost.empty())
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 	if (mining)
+	{
+		c.lock();
 		c.startMining();
+		c.unlock();
+	}
 
 	while (true)
 	{
@@ -477,6 +481,12 @@ int main(int argc, char** argv)
 		chr = toHex(us.address().asArray()).c_str();
 		ccout << chr << endl << endl;
 
+		c.lock();
+		auto const& st = c.state();
+		auto const& bc = c.blockChain();
+		ccout << "Genesis hash: " << bc.genesisHash() << endl;
+		c.unlock();
+
 		mvwprintw(mainwin, 1, 1, " > ");
 		clrtoeol();
 
@@ -490,21 +500,37 @@ int main(int argc, char** argv)
 		{
 			eth::uint port;
 			iss >> port;
+			c.lock();
 			c.startNetwork((short)port);
+			c.unlock();
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
 			eth::uint port;
 			iss >> addr >> port;
+			c.lock();
 			c.connect(addr, (short)port);
+			c.unlock();
 		}
 		else if (cmd == "netstop")
+		{
+			c.lock();
 			c.stopNetwork();
+			c.unlock();
+		}
 		else if (cmd == "minestart")
+		{
+			c.lock();
 			c.startMining();
+			c.unlock();
+		}
 		else if (cmd == "minestop")
+		{
+			c.lock();
 			c.stopMining();
+			c.unlock();
+		}
 		else if (cmd == "address")
 		{
 			ccout << "Current address:" << endl;
@@ -759,8 +785,6 @@ int main(int argc, char** argv)
 		c.lock();
 
 		// Blocks
-		auto const& st = c.state();
-		auto const& bc = c.blockChain();
 		y = 1;
 		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
 		{
@@ -770,7 +794,7 @@ int main(int argc, char** argv)
 
 			for (auto const& i: RLP(bc.block(h))[1])
 			{
-				Transaction t(i.data());
+				Transaction t(i[0].data());
 				string ss;
 				ss = t.receiveAddress ?
 					"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
