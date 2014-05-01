@@ -19,22 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\libethereum\AddressState.cpp" />
-    <ClCompile Include="..\libethereum\BlockChain.cpp" />
-    <ClCompile Include="..\libethereum\BlockInfo.cpp" />
-    <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\CommonEth.cpp" />
-    <ClCompile Include="..\libethereum\Dagger.cpp" />
-    <ClCompile Include="..\libethereum\Defaults.cpp" />
-    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
-    <ClCompile Include="..\libethereum\Instruction.cpp" />
-    <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
-    <ClCompile Include="..\libethereum\PeerServer.cpp" />
-    <ClCompile Include="..\libethereum\PeerSession.cpp" />
-    <ClCompile Include="..\libethereum\State.cpp" />
-    <ClCompile Include="..\libethereum\Transaction.cpp" />
-    <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libethereum\VM.cpp" />
+    <ClCompile Include="..\libethcore\Common.cpp" />
+    <ClCompile Include="..\libethcore\CommonData.cpp" />
+    <ClCompile Include="..\libethcore\CommonIO.cpp" />
+    <ClCompile Include="..\libethcore\FileSystem.cpp" />
+    <ClCompile Include="..\libethcore\FixedHash.cpp" />
+    <ClCompile Include="..\libethcore\Log.cpp" />
+    <ClCompile Include="..\libethcore\RLP.cpp" />
+    <ClCompile Include="..\libethcore\TrieCommon.cpp" />
+    <ClCompile Include="..\libethcore\TrieDB.cpp" />
+    <ClCompile Include="..\libethcore\UPnP.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -44,32 +38,24 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\libethereum\AddressState.h" />
-    <ClInclude Include="..\libethereum\BlockChain.h" />
-    <ClInclude Include="..\libethereum\BlockInfo.h" />
-    <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\CommonEth.h" />
-    <ClInclude Include="..\libethereum\Dagger.h" />
-    <ClInclude Include="..\libethereum\Defaults.h" />
-    <ClInclude Include="..\libethereum\Exceptions.h" />
-    <ClInclude Include="..\libethereum\ExtVMFace.h" />
-    <ClInclude Include="..\libethereum\FeeStructure.h" />
-    <ClInclude Include="..\libethereum\Instruction.h" />
-    <ClInclude Include="..\libethereum\PeerNetwork.h" />
-    <ClInclude Include="..\libethereum\PeerServer.h" />
-    <ClInclude Include="..\libethereum\PeerSession.h" />
-    <ClInclude Include="..\libethereum\State.h" />
-    <ClInclude Include="..\libethereum\Transaction.h" />
-    <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libethereum\VM.h" />
+    <ClInclude Include="..\libethcore\Common.h" />
+    <ClInclude Include="..\libethcore\CommonData.h" />
+    <ClInclude Include="..\libethcore\CommonIO.h" />
+    <ClInclude Include="..\libethcore\CryptoHeaders.h" />
+    <ClInclude Include="..\libethcore\Exceptions.h" />
+    <ClInclude Include="..\libethcore\FileSystem.h" />
+    <ClInclude Include="..\libethcore\FixedHash.h" />
+    <ClInclude Include="..\libethcore\Log.h" />
+    <ClInclude Include="..\libethcore\RLP.h" />
+    <ClInclude Include="..\libethcore\TrieCommon.h" />
+    <ClInclude Include="..\libethcore\TrieDB.h" />
+    <ClInclude Include="..\libethcore\UPnP.h" />
+    <ClInclude Include="..\libethcore\vector_ref.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="LibCryptoPP.vcxproj">
       <Project>{1cc213a4-3482-4211-b47b-172e90dac7de}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibEthCore.vcxproj">
-      <Project>{22dad0b1-4ec6-425a-b75c-fe7f01fee615}</Project>
     </ProjectReference>
     <ProjectReference Include="LibLevelDB.vcxproj">
       <Project>{27014763-955d-486b-9ba7-69872192e6f4}</Project>
@@ -82,9 +68,9 @@
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{826E68CB-D3EE-4A8A-B540-59A8C3F38D4F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>LibEthereum</RootNamespace>
+    <RootNamespace>LibEthCore</RootNamespace>
+    <ProjectGuid>{22DAD0B1-4EC6-425A-B75C-FE7F01FEE615}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
