@@ -27,4 +27,8 @@
       <Filter>Windows</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\walleth\Resources.qrc" />
+    <None Include="..\walleth\Simple.qml" />
+  </ItemGroup>
 </Project>
