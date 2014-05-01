@@ -208,6 +208,11 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 
 //"0xff".bin().unbin()
 
+QString QEthereum::secretToAddress(QString _s) const
+{
+	return toQJS(KeyPair(toSecret(_s)).address());
+}
+
 QString padded(QString const& _s, unsigned _l)
 {
 	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
