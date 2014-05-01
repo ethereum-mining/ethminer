@@ -659,7 +659,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k)
 {
-	bytes b = deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
+	bytes b = _orig.isEmpty() ? bytes() : deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
 
 	if (!b.size())	// not found - no change.
 		return false;
