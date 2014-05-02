@@ -117,7 +117,7 @@ void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, _init, _init);
+	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
 }
 
 bool Executive::go(uint64_t _steps)
