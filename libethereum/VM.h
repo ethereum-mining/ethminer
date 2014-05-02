@@ -97,6 +97,10 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			runGas = 0;
 			break;
 
+		case Instruction::SUICIDE:
+			runGas = 0;
+			break;
+
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
@@ -148,7 +152,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 
 		case Instruction::CALL:
 			require(7);
-			runGas = c_callGas + (unsigned)m_stack[m_stack.size() - 3];
+			runGas = c_callGas + (unsigned)m_stack[m_stack.size() - 1];
 			newTempSize = std::max((unsigned)m_stack[m_stack.size() - 6] + (unsigned)m_stack[m_stack.size() - 7], (unsigned)m_stack[m_stack.size() - 4] + (unsigned)m_stack[m_stack.size() - 5]);
 			break;
 
@@ -529,11 +533,11 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		{
 			require(7);
 
+			u256 gas = m_stack.back();
+			m_stack.pop_back();
 			u160 receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
 			u256 value = m_stack.back();
-			m_stack.pop_back();
-			u256 gas = m_stack.back();
 			m_stack.pop_back();
 
 			unsigned inOff = (unsigned)m_stack.back();
@@ -545,11 +549,6 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			unsigned outSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (!gas)
-			{
-				gas = m_gas;
-				m_gas = 0;
-			}
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);

@@ -665,8 +665,8 @@ bytes const& State::code(Address _contract) const
 
 u256 State::execute(bytesConstRef _rlp)
 {
-	cnote << m_state.root() << m_state;
-	cnote << *this;
+//	cnote << m_state.root() << m_state;
+//	cnote << *this;
 
 	Executive e(*this);
 	e.setup(_rlp);
@@ -680,9 +680,9 @@ u256 State::execute(bytesConstRef _rlp)
 
 	commit();
 
-	cnote << "Done TX";
-	cnote << m_state.root() << m_state;
-	cnote << *this;
+//	cnote << "Done TX";
+//	cnote << m_state.root() << m_state;
+//	cnote << *this;
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
