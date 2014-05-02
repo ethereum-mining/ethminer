@@ -332,7 +332,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.data.size() ? _ext.data.size() - cf : l;
+			unsigned el = cf + l > _ext.data.size() ? _ext.data.size() < cf ? 0 : _ext.data.size() - cf : l;
 			memcpy(m_temp.data() + mf, _ext.data.data() + cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
@@ -349,7 +349,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() - cf : l;
+			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() < cf ? 0 : _ext.code.size() - cf : l;
 			memcpy(m_temp.data() + mf, _ext.code.data() + cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;

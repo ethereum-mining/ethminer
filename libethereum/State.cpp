@@ -358,9 +358,17 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
 	{
+//		cnote << m_state.root() << m_state;
+//		cnote << *this;
 		execute(tr[0].data());
 		if (tr[1].toInt<u256>() != m_state.root())
+		{
+			// Invalid state root
+			cnote << m_state.root() << m_state;
+			cnote << *this;
+			cnote << "INVALID: " << tr[1].toInt<u256>();
 			throw InvalidTransactionStateRoot();
+		}
 		if (tr[2].toInt<u256>() != gasUsed())
 			throw InvalidTransactionGasUsed();
 		if (_fullCommit)
@@ -657,6 +665,9 @@ bytes const& State::code(Address _contract) const
 
 u256 State::execute(bytesConstRef _rlp)
 {
+	cnote << m_state.root() << m_state;
+	cnote << *this;
+
 	Executive e(*this);
 	e.setup(_rlp);
 
@@ -668,6 +679,10 @@ u256 State::execute(bytesConstRef _rlp)
 	e.finalize();
 
 	commit();
+
+	cnote << "Done TX";
+	cnote << m_state.root() << m_state;
+	cnote << *this;
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
