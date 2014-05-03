@@ -304,6 +304,7 @@ inline QString asQString(eth::bytes const& _s)
 }
 
 eth::bytes toBytes(QString const& _s);
+
 QString padded(QString const& _s, unsigned _l, unsigned _r);
 QString padded(QString const& _s, unsigned _l);
 QString unpadded(QString _s);
@@ -345,6 +346,11 @@ inline QString toBinary(QString const& _s)
 	return asQString(toBytes(_s));
 }
 
+inline QString toDecimal(QString const& _s)
+{
+	return QString::fromStdString(eth::toString(toU256(_s)));
+}
+
 inline QString fromBinary(QString const& _s)
 {
 	return QString::fromStdString("0x" + eth::toHex(asBytes(_s)));
@@ -373,6 +379,7 @@ public:
 	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
 	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
+	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
 
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
 	Q_INVOKABLE QString/*eth::u256*/ storageAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;

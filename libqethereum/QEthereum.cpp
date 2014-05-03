@@ -255,6 +255,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
+	_e->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }");
 }
 
 void QEthereum::teardown(QWebFrame*)
