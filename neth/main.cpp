@@ -240,14 +240,21 @@ int nc_window_streambuf::overflow(int c)
 		int my = 0;
 		getyx(m_pnl, y, x);
 		getmaxyx(m_pnl, my, mx);
-		(void)my;
 		if (y < 1)
 			y = 1;
 		if (x < 2)
 			x = 2;
 		if (x > mx - 4)
 		{
-			y++;
+			if (y + 1 >= my)
+			{
+				if (mvwaddch(m_pnl, y, x++, (chtype)EOF) == ERR)
+					return EOF;
+				else
+					return c;
+			}
+			else
+				y++;
 			x = 2;
 		}
 		if (m_flags)
