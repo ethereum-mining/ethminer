@@ -29,6 +29,9 @@
 namespace eth
 {
 
+/// Current protocol version.
+extern const unsigned c_protocolVersion;
+
 /// A secret key: 32 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Secret = h256;
