@@ -3,9 +3,11 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <QtDir>../../Qt/$(Platform)</QtDir>
-    <QtBin>$(QtDir)/qtbase/bin</QtBin>
-    <QtInclude>$(QtDir)/qtbase/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include;../../Qt/Src/qtwebkit/include</QtInclude>
-    <QtLib>$(QtDir)/qtbase/lib;$(QtDir)/qtbase/plugins/platforms;../../icu/lib64</QtLib>
+    <QtBase>$(QtDir)/qtbase</QtBase>
+    <QtBin>$(QtBase)/bin</QtBin>
+    <QtInclude>$(QtBase)/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include;../../Qt/Src/qtwebkit/include</QtInclude>
+    <QtLib>$(QtBase)/lib;$(QtBase)/plugins/platforms;../../icu/lib64</QtLib>
+    <CopyDlls>..\..\icu\bin_$(Platform)\icu*52.dll;$(QtBase)\lib\Qt5Core$(d).dll;$(QtBase)\lib\Qt5Gui$(d).dll;$(QtBase)\lib\Qt5Multimedia$(d).dll;$(QtBase)\lib\Qt5MultimediaWidgets$(d).dll;$(QtBase)\lib\Qt5OpenGL$(d).dll;$(QtBase)\lib\Qt5Positioning$(d).dll;$(QtBase)\lib\Qt5PrintSupport$(d).dll;$(QtBase)\lib\Qt5Network$(d).dll;$(QtBase)\lib\Qt5Qml$(d).dll;$(QtBase)\lib\Qt5Quick$(d).dll;$(QtBase)\lib\Qt5Sensors$(d).dll;$(QtBase)\lib\Qt5Sql$(d).dll;$(QtBase)\lib\Qt5Webkit$(d).dll;$(QtBase)\lib\Qt5WebkitWidgets$(d).dll;$(QtBase)\lib\Qt5Widgets$(d).dll;$(QtBase)\plugins\**\qwindows$(d).dll;$(QtBase)\plugins\**\qgenericbearer$(d).dll;$(QtBase)\plugins\**\qnativewifibearer$(d).dll;$(QtBase)\plugins\**\qgif$(d).dll;$(QtBase)\plugins\**\qico$(d).dll;$(QtBase)\plugins\**\qjpeg$(d).dll;$(QtBase)\plugins\**\qsvg$(d).dll;$(QtBase)\plugins\**\qtsensors_dummy$(d).dll</CopyDlls>
   </PropertyGroup>
   <PropertyGroup>
     <_PropertySheetDisplayName>LibQEthereum</_PropertySheetDisplayName>
@@ -16,17 +18,23 @@
       <AdditionalIncludeDirectories>..;$(QtInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4718;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>$(QtLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
+    <Link />
     <PreBuildEvent>
       <Command>
       </Command>
     </PreBuildEvent>
+    <Lib />
+    <Link>
+      <AdditionalLibraryDirectories>$(QtLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Qt5PlatformSupport$(d).lib;Qt5Core$(d).lib;Qt5GUI$(d).lib;Qt5Network$(d).lib;Qt5Quick$(d).lib;Qt5Qml$(d).lib;Qt5Webkit$(d).lib;Qt5WebkitWidgets$(d).lib;Qt5Widgets$(d).lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="QtDir">
       <Value>$(QtDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="QtBase">
+      <Value>$(QtBase)</Value>
     </BuildMacro>
     <BuildMacro Include="QtBin">
       <Value>$(QtBin)</Value>
@@ -37,5 +45,25 @@
     <BuildMacro Include="QtLib">
       <Value>$(QtLib)</Value>
     </BuildMacro>
+    <BuildMacro Include="CopyDlls">
+      <Value>$(CopyDlls)</Value>
+    </BuildMacro>
   </ItemGroup>
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <CopyItems Include="&#xA;        ..\..\icu\bin_$(Platform)\icu*52.dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll;&#xA;        ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll;&#xA;        " />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyItems)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <!--
+..\..\Qt\$(Platform)\qtbase\plugins\platforms\qwindows$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\platforms\qwindows$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\bearer\qgenericbearer$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\bearer\qnativewifibearer$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\imageformats\qgif$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\imageformats\qico$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\imageformats\qjpeg$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\imageformats\qsvg$(DebugSuffix).dll
+..\..\Qt\$(Platform)\qtbase\plugins\sensors\qtsensors_dummy$(DebugSuffix).dll
+-->
 </Project>
