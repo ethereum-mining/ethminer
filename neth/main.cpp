@@ -391,7 +391,6 @@ int main(int argc, char** argv)
 	std::ostringstream ccout;
 
 	// Initialize ncurses
-	const char* chr;
 	char* str = new char[255];
 	int width;
 	int height;
@@ -478,8 +477,7 @@ int main(int argc, char** argv)
 
 		// Address
 		ccout << "Address:" << endl;
-		chr = toHex(us.address().asArray()).c_str();
-		ccout << chr << endl << endl;
+		ccout << toHex(us.address().asArray()) << endl << endl;
 
 		c.lock();
 		auto const& st = c.state();
@@ -534,21 +532,18 @@ int main(int argc, char** argv)
 		else if (cmd == "address")
 		{
 			ccout << "Current address:" << endl;
-			const char* addchr = toHex(us.address().asArray()).c_str();
-			ccout << addchr << endl;
+			ccout << toHex(us.address().asArray()) << endl;
 		}
 		else if (cmd == "secret")
 		{
 			ccout << "Current secret:" << endl;
-			const char* addchr = toHex(us.secret().asArray()).c_str();
-			ccout << addchr << endl;
+			ccout << toHex(us.secret().asArray()) << endl;
 		}
 		else if (cmd == "block")
 		{
 			eth::uint n = c.blockChain().details().number;
 			ccout << "Current block # ";
-			const char* addchr = toString(n).c_str();
-			ccout << addchr << endl;
+			ccout << toString(n) << endl;
 		}
 		else if (cmd == "peers")
 		{
@@ -561,8 +556,7 @@ int main(int argc, char** argv)
 		{
 			u256 balance = c.state().balance(us.address());
 			ccout << "Current balance:" << endl;
-			const char* addchr = toString(balance).c_str();
-			ccout << addchr << endl;
+			ccout << toString(balance) << endl;
 		}
 		else if (cmd == "transact")
 		{
@@ -881,8 +875,7 @@ int main(int argc, char** argv)
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
 		eth::uint n = c.blockChain().details().number;
-		chr = toString(n).c_str();
-		mvwprintw(blockswin, 0, 10, chr);
+		mvwprintw(blockswin, 0, 10, toString(n).c_str());
 
 		// Pending
 		string pc;
@@ -896,8 +889,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
-		chr = toString(c.peers().size()).c_str();
-		mvwprintw(peerswin, 0, 9, chr);
+		mvwprintw(peerswin, 0, 9, toString(c.peers().size()).c_str());
 
 		// Mining flag
 		if (c.isMining())
