@@ -20,10 +20,6 @@
  * Ethereum client.
  */
 
-#include <ncurses.h>
-#undef OK
-#include <form.h>
-#undef OK
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -38,6 +34,13 @@
 #include <libethereum/State.h>
 #include <libethereum/Instruction.h>
 #include "BuildInfo.h"
+
+#undef KEY_EVENT // from windows.h
+#include <ncurses.h>
+#undef OK
+#include <form.h>
+#undef OK
+
 using namespace std;
 using namespace eth;
 using namespace boost::algorithm;
@@ -962,7 +965,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int _lfields = _lv.size();
 	int _bfields = _bv.size();
 	int maxfields = _sfields + _lfields + _bfields;
-	FIELD *field[maxfields];
+	vector<FIELD*> field(maxfields);
 	int ch;
 	int starty = 6;
 	int height = _cols;
@@ -1000,7 +1003,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	field[maxfields] = NULL;
 
 	// Create the form and post it
-	FORM *form = new_form(field);
+	FORM *form = new_form(&field[0]);
 
 	// Calculate the area required for the form
 	scale_form(form, &_rows, &_cols);
