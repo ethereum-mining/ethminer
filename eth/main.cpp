@@ -20,6 +20,9 @@
  * Ethereum client.
  */
 
+#define ETH_READLINE 1
+#define ETH_JSONRPC 1
+
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -31,6 +34,13 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/State.h>
 #include <libethereum/Instruction.h>
+#if ETH_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+#if ETH_JSONRPC
+#include "EthStubServer.h"
+#endif
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
@@ -47,6 +57,29 @@ bool isFalse(std::string const& _m)
 	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
 }
 
+void interactiveHelp()
+{
+	cout
+		<< "Commands:" << endl
+		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
+		<< "    netstop  Stops the network subsystem." << endl
+		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
+		<< "    jsonstop  Stops the JSON-RPC server." << endl
+		<< "    connect <addr> <port>  Connects to a specific peer." << endl
+		<< "    minestart  Starts mining." << endl
+		<< "    minestop  Stops mining." << endl
+		<< "    address  Gives the current address." << endl
+		<< "    secret  Gives the current secret" << endl
+		<< "    block  Gives the current block height." << endl
+		<< "    balance  Gives the current balance." << endl
+		<< "    peers  List the peers that are connected" << endl
+		<< "    transact  Execute a given transaction. TODO." << endl
+		<< "    send  Execute a given transaction with current secret. TODO." << endl
+		<< "    create  Create a new contract with current secret. TODO." << endl
+		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    exit  Exits the application." << endl;
+}
+
 void help()
 {
 	cout
@@ -58,6 +91,9 @@ void help()
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
         << "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+#if ETH_JSONRPC
+		<< "    -j,--json-rpc <port>  Start JSON-RPC server." << endl
+#endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
         << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
@@ -74,8 +110,8 @@ void help()
 
 string credits(bool _interactive = false)
 {
-	std::ostringstream ccout;
-	ccout
+	std::ostringstream cout;
+	cout
 		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
@@ -91,11 +127,11 @@ string credits(bool _interactive = false)
 		if (pocnumber == 4)
 			m_servers = "54.72.31.55";
 
-		ccout << "Type 'netstart 30303' to start networking" << endl;
-		ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
-		ccout << "Type 'exit' to quit" << endl << endl;
+		cout << "Type 'netstart 30303' to start networking" << endl;
+		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+		cout << "Type 'exit' to quit" << endl << endl;
 	}
-	return ccout.str();
+	return cout.str();
 }
 
 void version()
@@ -133,6 +169,10 @@ int main(int argc, char** argv)
 	eth::uint mining = ~(eth::uint)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
+	bool interactive = false;
+#if ETH_JSONRPC
+	int jsonrpc = -1;
+#endif
 	string publicIP;
 	bool upnp = true;
 	string clientName;
@@ -206,6 +246,12 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-i" || arg == "--interactive")
+			interactive = true;
+#if ETH_JSONRPC
+		else if ((arg == "-j" || arg == "--json-rpc") && i + 1 < argc)
+			jsonrpc = atoi(argv[++i]);
+#endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -238,15 +284,180 @@ int main(int argc, char** argv)
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
-	eth::uint n = c.blockChain().details().number;
-	if (mining)
-		c.startMining();
-	while (true)
+
+#if ETH_JSONRPC
+	auto_ptr<EthStubServer> jsonrpcServer;
+	if (jsonrpc > -1)
 	{
-		if (c.blockChain().details().number - n == mining)
-			c.stopMining();
-		this_thread::sleep_for(chrono::milliseconds(100));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer->StartListening();
 	}
+#endif
+
+	if (interactive)
+	{
+		string l;
+		while (true)
+		{
+#if ETH_READLINE
+			if (l.size())
+				add_history(l.c_str());
+			if (auto c = readline("> "))
+			{
+				l = c;
+				free(c);
+			}
+			else
+				break;
+#else
+			string l;
+			cout << "> " << flush;
+			std::getline(cin, l);
+#endif
+			istringstream iss(l);
+			string cmd;
+			iss >> cmd;
+			if (cmd == "netstart")
+			{
+				eth::uint port;
+				iss >> port;
+				c.lock();
+				c.startNetwork((short)port);
+				c.unlock();
+			}
+			else if (cmd == "connect")
+			{
+				string addr;
+				eth::uint port;
+				iss >> addr >> port;
+				c.lock();
+				c.connect(addr, (short)port);
+				c.unlock();
+			}
+			else if (cmd == "netstop")
+			{
+				c.lock();
+				c.stopNetwork();
+				c.unlock();
+			}
+			else if (cmd == "minestart")
+			{
+				c.lock();
+				c.startMining();
+				c.unlock();
+			}
+			else if (cmd == "minestop")
+			{
+				c.lock();
+				c.stopMining();
+				c.unlock();
+			}
+			else if (cmd == "jsonstart")
+			{
+				unsigned port;
+				iss >> port;
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(port), c));
+				jsonrpcServer->StartListening();
+			}
+			else if (cmd == "jsonstop")
+			{
+				jsonrpcServer->StopListening();
+				jsonrpcServer.reset();
+			}
+			else if (cmd == "address")
+			{
+				cout << "Current address:" << endl;
+				const char* addchr = toHex(us.address().asArray()).c_str();
+				cout << addchr << endl;
+			}
+			else if (cmd == "secret")
+			{
+				cout << "Current secret:" << endl;
+				const char* addchr = toHex(us.secret().asArray()).c_str();
+				cout << addchr << endl;
+			}
+			else if (cmd == "block")
+			{
+				eth::uint n = c.blockChain().details().number;
+				cout << "Current block # ";
+				const char* addchr = toString(n).c_str();
+				cout << addchr << endl;
+			}
+			else if (cmd == "peers")
+			{
+				for (auto it: c.peers())
+					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
+						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
+						<< endl;
+			}
+			else if (cmd == "balance")
+			{
+				u256 balance = c.state().balance(us.address());
+				cout << "Current balance:" << endl;
+				const char* addchr = toString(balance).c_str();
+				cout << addchr << endl;
+			}
+			else if (cmd == "transact")
+			{
+				//TODO.
+			}
+			else if (cmd == "send")
+			{
+				//TODO
+			}
+			else if (cmd == "create")
+			{
+				//TODO
+			}
+			else if (cmd == "inspect")
+			{
+				string rechex;
+				iss >> rechex;
+
+				if (rechex.length() != 40)
+					cwarn << "Invalid address length";
+				else
+				{
+					c.lock();
+					auto h = h160(fromHex(rechex));
+					stringstream s;
+					auto mem = c.state().storage(h);
+
+					for (auto const& i: mem)
+						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+					s << endl << disassemble(c.state().code(h));
+
+					string outFile = getDataDir() + "/" + rechex + ".evm";
+					ofstream ofs;
+					ofs.open(outFile, ofstream::binary);
+					ofs.write(s.str().c_str(), s.str().length());
+					ofs.close();
+
+					c.unlock();
+				}
+			}
+			else if (cmd == "help")
+				interactiveHelp();
+			else if (cmd == "exit")
+				break;
+			else
+				cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
+		}
+		jsonrpcServer->StopListening();
+	}
+	else
+	{
+		eth::uint n = c.blockChain().details().number;
+		if (mining)
+			c.startMining();
+		while (true)
+		{
+			if (c.blockChain().details().number - n == mining)
+				c.stopMining();
+			this_thread::sleep_for(chrono::milliseconds(100));
+		}
+	}
+
 
 	return 0;
 }
