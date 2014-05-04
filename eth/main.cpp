@@ -66,6 +66,7 @@ void interactiveHelp()
 		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
 		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
+		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    address  Gives the current address." << endl
@@ -321,36 +322,35 @@ int main(int argc, char** argv)
 			{
 				eth::uint port;
 				iss >> port;
-				c.lock();
+				ClientGuard g(&c);
 				c.startNetwork((short)port);
-				c.unlock();
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				eth::uint port;
 				iss >> addr >> port;
-				c.lock();
+				ClientGuard g(&c);
 				c.connect(addr, (short)port);
-				c.unlock();
 			}
 			else if (cmd == "netstop")
 			{
-				c.lock();
+				ClientGuard g(&c);
 				c.stopNetwork();
-				c.unlock();
 			}
 			else if (cmd == "minestart")
 			{
-				c.lock();
 				c.startMining();
-				c.unlock();
 			}
 			else if (cmd == "minestop")
 			{
-				c.lock();
 				c.stopMining();
-				c.unlock();
+			}
+			else if (cmd == "verbosity")
+			{
+				if (iss.peek() != -1)
+					iss >> g_logVerbosity;
+				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
 			else if (cmd == "jsonstart")
 			{
@@ -361,7 +361,8 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "jsonstop")
 			{
-				jsonrpcServer->StopListening();
+				if (jsonrpcServer.get())
+					jsonrpcServer->StopListening();
 				jsonrpcServer.reset();
 			}
 			else if (cmd == "address")
@@ -378,6 +379,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "block")
 			{
+				ClientGuard g(&c);
 				eth::uint n = c.blockChain().details().number;
 				cout << "Current block # ";
 				const char* addchr = toString(n).c_str();
@@ -385,6 +387,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "peers")
 			{
+				ClientGuard g(&c);
 				for (auto it: c.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
@@ -392,6 +395,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "balance")
 			{
+				ClientGuard g(&c);
 				u256 balance = c.state().balance(us.address());
 				cout << "Current balance:" << endl;
 				const char* addchr = toString(balance).c_str();
@@ -418,7 +422,7 @@ int main(int argc, char** argv)
 					cwarn << "Invalid address length";
 				else
 				{
-					c.lock();
+					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
 					auto mem = c.state().storage(h);
@@ -432,8 +436,6 @@ int main(int argc, char** argv)
 					ofs.open(outFile, ofstream::binary);
 					ofs.write(s.str().c_str(), s.str().length());
 					ofs.close();
-
-					c.unlock();
 				}
 			}
 			else if (cmd == "help")
@@ -443,7 +445,8 @@ int main(int argc, char** argv)
 			else
 				cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
 		}
-		jsonrpcServer->StopListening();
+		if (jsonrpcServer.get())
+			jsonrpcServer->StopListening();
 	}
 	else
 	{
