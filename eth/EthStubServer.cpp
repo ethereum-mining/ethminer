@@ -34,11 +34,13 @@ EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, Client& _c
 
 std::string EthStubServer::coinbase()
 {
+	ClientGuard g(&m_client);
 	return toJS(m_client.address());
 }
 
 std::string EthStubServer::balanceAt(std::string const& _a)
 {
+	ClientGuard g(&m_client);
 	return toJS(m_client.postState().balance(jsToAddress(_a)));
 }
 
