@@ -300,14 +300,4 @@ void Main::on_create_triggered()
 #include\
 "qrc_Resources.cpp"
 
-// specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
-#ifdef _DEBUG
-#define QTLIB(x) x"d.lib"
-#else 
-#define QTLIB(x) x".lib"
-#endif
-
-#pragma comment(lib, QTLIB("Qt5Quick"))
-#pragma comment(lib, QTLIB("Qt5Qml"))
-
 #endif

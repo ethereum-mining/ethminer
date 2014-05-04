@@ -1027,14 +1027,4 @@ void Main::updateDebugger()
 #include\
 "moc_MainWin.cpp"
 
-// specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
-#ifdef _DEBUG
-#define QTLIB(x) x"d.lib"
-#else 
-#define QTLIB(x) x".lib"
-#endif
-
-#pragma comment(lib, QTLIB("Qt5Webkit"))
-#pragma comment(lib, QTLIB("Qt5WebkitWidgets"))
-
 #endif

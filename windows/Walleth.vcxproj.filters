@@ -16,6 +16,7 @@
     <CustomBuild Include="BuildInfo.lua">
       <Filter>Windows</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\walleth\Resources.qrc" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -28,7 +29,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\walleth\Resources.qrc" />
     <None Include="..\walleth\Simple.qml" />
   </ItemGroup>
 </Project>
