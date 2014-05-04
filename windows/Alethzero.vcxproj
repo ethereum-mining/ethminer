@@ -65,14 +65,12 @@
     <Import Project="LibEthereum.props" />
     <Import Project="LibEthereum_Release.props" />
     <Import Project="LibQEthereum.props" />
-    <Import Project="CopyBinary.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
     <Import Project="LibEthereum_Release.props" />
     <Import Project="LibQEthereum.props" />
-    <Import Project="CopyBinary.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -100,23 +98,8 @@
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
-      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
-</Command>
+      <Command>
+      </Command>
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,23 +116,8 @@ xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) 
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreLinkEvent>
-      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
-</Command>
+      <Command>
+      </Command>
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -172,23 +140,8 @@ xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) 
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PreLinkEvent>
-      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
-</Command>
+      <Command>
+      </Command>
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -210,23 +163,8 @@ xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) 
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PreLinkEvent>
-      <Command>xcopy /D ..\..\icu\bin_$(Platform)\icu*52.dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Core$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Gui$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Multimedia$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5MultimediaWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Network$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5OpenGL$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Positioning$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5PrintSupport$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Qml$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Quick$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sensors$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Sql$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Webkit$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5WebkitWidgets$(DebugSuffix).dll $(OutDir) &gt; nul
-xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) &gt; nul
-</Command>
+      <Command>
+      </Command>
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -311,4 +249,17 @@ xcopy /D ..\..\Qt\$(Platform)\qtbase\lib\Qt5Widgets$(DebugSuffix).dll $(OutDir) 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <CopyToOutDir Include="$(CopyDlls)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyToOutDir)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
+  </Target>
+  <PropertyGroup><BuildDependsOn>$(BuildDependsOn);FinalCopy</BuildDependsOn></PropertyGroup>
+  <Target Name="FinalCopy" DependsOnTargets="AfterBuild" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <CopyToBinDir Include="$(OutDir)\**\*.dll;$(OutDir)\*.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyToBinDir)" DestinationFiles="@(CopyToBinDir->'..\..\_binaries\$(Platform)\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
 </Project>

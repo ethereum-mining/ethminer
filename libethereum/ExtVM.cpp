@@ -20,3 +20,5 @@
  */
 
 #include "ExtVM.h"
+
+namespace { char dummy; };
