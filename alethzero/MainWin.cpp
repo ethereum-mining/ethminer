@@ -678,7 +678,11 @@ void Main::on_data_textChanged()
 			body = code.indexOf("code:");
 
 		if (body == -1 && init == -1)
+		{
 			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
+			if (!bodyBytes.size())
+				swap(initBytes, bodyBytes);
+		}
 		else
 		{
 			init = (init == -1 ? 0 : (init + 5));
@@ -706,7 +710,7 @@ void Main::on_data_textChanged()
 			unsigned p = m_data.size() + 4 + 2 + 1 + ss + 2 + 1;
 			pushLiteral(m_data, p);
 			pushLiteral(m_data, 0);
-			m_data.push_back((byte)Instruction::CALLDATACOPY);
+			m_data.push_back((byte)Instruction::CODECOPY);
 			pushLiteral(m_data, s);
 			pushLiteral(m_data, 0);
 			m_data.push_back((byte)Instruction::RETURN);
