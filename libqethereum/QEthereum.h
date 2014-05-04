@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QtCore/QAbstractListModel>
-#include <QtQml>
+#include <QtQml/QtQml>
 #include <libethereum/CommonEth.h>
 #include <libethcore/CommonIO.h>
 

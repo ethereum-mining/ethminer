@@ -3,12 +3,16 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <DebugSuffix>d</DebugSuffix>
+    <d>d</d>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
   <ItemGroup>
     <BuildMacro Include="DebugSuffix">
       <Value>$(DebugSuffix)</Value>
+    </BuildMacro>
+    <BuildMacro Include="d">
+      <Value>$(d)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
