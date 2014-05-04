@@ -247,12 +247,7 @@ int nc_window_streambuf::overflow(int c)
 		if (x > mx - 4)
 		{
 			if (y + 1 >= my)
-			{
-				if (mvwaddch(m_pnl, y, x++, (chtype)EOF) == ERR)
-					return EOF;
-				else
-					return c;
-			}
+				scroll(m_pnl);
 			else
 				y++;
 			x = 2;
