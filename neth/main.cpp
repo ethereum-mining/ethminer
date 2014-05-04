@@ -20,10 +20,6 @@
  * Ethereum client.
  */
 
-#include <ncurses.h>
-#undef OK
-#include <form.h>
-#undef OK
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -38,6 +34,13 @@
 #include <libethereum/State.h>
 #include <libethereum/Instruction.h>
 #include "BuildInfo.h"
+
+#undef KEY_EVENT // from windows.h
+#include <ncurses.h>
+#undef OK
+#include <form.h>
+#undef OK
+
 using namespace std;
 using namespace eth;
 using namespace boost::algorithm;
@@ -240,14 +243,16 @@ int nc_window_streambuf::overflow(int c)
 		int my = 0;
 		getyx(m_pnl, y, x);
 		getmaxyx(m_pnl, my, mx);
-		(void)my;
 		if (y < 1)
 			y = 1;
 		if (x < 2)
 			x = 2;
 		if (x > mx - 4)
 		{
-			y++;
+			if (y + 1 >= my)
+				scroll(m_pnl);
+			else
+				y++;
 			x = 2;
 		}
 		if (m_flags)
@@ -391,7 +396,6 @@ int main(int argc, char** argv)
 	std::ostringstream ccout;
 
 	// Initialize ncurses
-	const char* chr;
 	char* str = new char[255];
 	int width;
 	int height;
@@ -478,8 +482,7 @@ int main(int argc, char** argv)
 
 		// Address
 		ccout << "Address:" << endl;
-		chr = toHex(us.address().asArray()).c_str();
-		ccout << chr << endl << endl;
+		ccout << toHex(us.address().asArray()) << endl << endl;
 
 		c.lock();
 		auto const& st = c.state();
@@ -534,21 +537,18 @@ int main(int argc, char** argv)
 		else if (cmd == "address")
 		{
 			ccout << "Current address:" << endl;
-			const char* addchr = toHex(us.address().asArray()).c_str();
-			ccout << addchr << endl;
+			ccout << toHex(us.address().asArray()) << endl;
 		}
 		else if (cmd == "secret")
 		{
 			ccout << "Current secret:" << endl;
-			const char* addchr = toHex(us.secret().asArray()).c_str();
-			ccout << addchr << endl;
+			ccout << toHex(us.secret().asArray()) << endl;
 		}
 		else if (cmd == "block")
 		{
 			eth::uint n = c.blockChain().details().number;
 			ccout << "Current block # ";
-			const char* addchr = toString(n).c_str();
-			ccout << addchr << endl;
+			ccout << toString(n) << endl;
 		}
 		else if (cmd == "peers")
 		{
@@ -561,8 +561,7 @@ int main(int argc, char** argv)
 		{
 			u256 balance = c.state().balance(us.address());
 			ccout << "Current balance:" << endl;
-			const char* addchr = toString(balance).c_str();
-			ccout << addchr << endl;
+			ccout << toString(balance) << endl;
 		}
 		else if (cmd == "transact")
 		{
@@ -881,8 +880,7 @@ int main(int argc, char** argv)
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
 		eth::uint n = c.blockChain().details().number;
-		chr = toString(n).c_str();
-		mvwprintw(blockswin, 0, 10, chr);
+		mvwprintw(blockswin, 0, 10, toString(n).c_str());
 
 		// Pending
 		string pc;
@@ -896,8 +894,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
-		chr = toString(c.peers().size()).c_str();
-		mvwprintw(peerswin, 0, 9, chr);
+		mvwprintw(peerswin, 0, 9, toString(c.peers().size()).c_str());
 
 		// Mining flag
 		if (c.isMining())
@@ -970,7 +967,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int _lfields = _lv.size();
 	int _bfields = _bv.size();
 	int maxfields = _sfields + _lfields + _bfields;
-	FIELD *field[maxfields];
+	vector<FIELD*> field(maxfields);
 	int ch;
 	int starty = 6;
 	int height = _cols;
@@ -1008,7 +1005,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	field[maxfields] = NULL;
 
 	// Create the form and post it
-	FORM *form = new_form(field);
+	FORM *form = new_form(&field[0]);
 
 	// Calculate the area required for the form
 	scale_form(form, &_rows, &_cols);

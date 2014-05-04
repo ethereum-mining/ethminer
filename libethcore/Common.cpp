@@ -23,3 +23,5 @@
 
 using namespace std;
 using namespace eth;
+
+namespace { char dummy; };

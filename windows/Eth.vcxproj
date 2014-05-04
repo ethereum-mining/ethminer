@@ -18,97 +18,30 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\libethereum\AddressState.cpp" />
-    <ClCompile Include="..\libethereum\BlockChain.cpp" />
-    <ClCompile Include="..\libethereum\BlockInfo.cpp" />
-    <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\CommonEth.cpp" />
-    <ClCompile Include="..\libethereum\Dagger.cpp" />
-    <ClCompile Include="..\libethereum\Defaults.cpp" />
-    <ClCompile Include="..\libethereum\Executive.cpp" />
-    <ClCompile Include="..\libethereum\ExtVM.cpp" />
-    <ClCompile Include="..\libethereum\ExtVMFace.cpp" />
-    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
-    <ClCompile Include="..\libethereum\Instruction.cpp" />
-    <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
-    <ClCompile Include="..\libethereum\PeerServer.cpp" />
-    <ClCompile Include="..\libethereum\PeerSession.cpp" />
-    <ClCompile Include="..\libethereum\State.cpp" />
-    <ClCompile Include="..\libethereum\Transaction.cpp" />
-    <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libethereum\VM.cpp" />
-    <ClCompile Include="stdafx.cpp">
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\libethereum\AddressState.h" />
-    <ClInclude Include="..\libethereum\BlockChain.h" />
-    <ClInclude Include="..\libethereum\BlockInfo.h" />
-    <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\CommonEth.h" />
-    <ClInclude Include="..\libethereum\Dagger.h" />
-    <ClInclude Include="..\libethereum\Defaults.h" />
-    <ClInclude Include="..\libethereum\Exceptions.h" />
-    <ClInclude Include="..\libethereum\Executive.h" />
-    <ClInclude Include="..\libethereum\ExtVM.h" />
-    <ClInclude Include="..\libethereum\ExtVMFace.h" />
-    <ClInclude Include="..\libethereum\FeeStructure.h" />
-    <ClInclude Include="..\libethereum\Instruction.h" />
-    <ClInclude Include="..\libethereum\PeerNetwork.h" />
-    <ClInclude Include="..\libethereum\PeerServer.h" />
-    <ClInclude Include="..\libethereum\PeerSession.h" />
-    <ClInclude Include="..\libethereum\State.h" />
-    <ClInclude Include="..\libethereum\Transaction.h" />
-    <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libethereum\VM.h" />
-    <ClInclude Include="stdafx.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="LibCryptoPP.vcxproj">
-      <Project>{1cc213a4-3482-4211-b47b-172e90dac7de}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibEthCore.vcxproj">
-      <Project>{22dad0b1-4ec6-425a-b75c-fe7f01fee615}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibLevelDB.vcxproj">
-      <Project>{27014763-955d-486b-9ba7-69872192e6f4}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibMiniUPnPc.vcxproj">
-      <Project>{1b1ca20e-39c3-4d9b-ac37-3783048e6672}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibSecp256k1.vcxproj">
-      <Project>{1e1175bb-c4a9-41d8-b2d1-9022f71d3cea}</Project>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{826E68CB-D3EE-4A8A-B540-59A8C3F38D4F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>LibEthereum</RootNamespace>
+    <RootNamespace>Ethereum</RootNamespace>
+    <ProjectName>eth</ProjectName>
+    <ProjectGuid>{C60C065C-2135-4B2B-AFD4-35FD7AC56B40}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
@@ -136,77 +69,127 @@
     <Import Project="LibEthereum_Release.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>false</MinimalRebuild>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>false</MinimalRebuild>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib />
-    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
+      <StringPooling>true</StringPooling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
+      <StringPooling>true</StringPooling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\windows\LibEthereum.vcxproj">
+      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\eth\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="BuildInfo.lua">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(FileName).h</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(FileName).h</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(FileName).h</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) "%(FullPath)" "$(IntDir)%(FileName).h"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(FileName).h</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../.git/index</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../.git/index</AdditionalInputs>
+    </CustomBuild>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);FinalCopy</BuildDependsOn>
+  </PropertyGroup>
+  <Target Name="FinalCopy" DependsOnTargets="AfterBuild" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <CopyToBinDir Include="$(OutDir)\*.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyToBinDir)" DestinationFiles="@(CopyToBinDir->'..\..\_binaries\$(Platform)\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
 </Project>

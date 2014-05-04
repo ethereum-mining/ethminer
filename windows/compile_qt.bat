@@ -22,7 +22,7 @@ set QT=%CD%
 set PATH=%QT%\Src\gnuwin32\bin;%PATH%
 
 rem : create the build folder and add the qtbase/bin folder to the PATH
-if not exist %QT%\%PLATFORM% (
+if not exist %QT%\%PLATFORM%\Makefile (
 	set DO_CONFIGURE=1
 	mkdir %QT%\%PLATFORM%
 ) else (
@@ -33,18 +33,19 @@ if %USE_PREFIX%==1 (
 	if not exist %QT%\%PLATFORM%\qtbase mkdir %QT%\%PLATFORM%\qtbase
 	cd %QT%\%PLATFORM%-Build
 	set QT_PREFIX=-prefix %Qt%\%PLATFORM%\qtbase
-	set QT_TARGETS=module-qtbase-install_subtargets module-qtquick1-install_subtargets module-qtwebkit-install_subtargets
+	set QT_TARGETS=install
 ) else (
 	cd %QT%\%PLATFORM%
 	set QT_PREFIX=
-	set QT_TARGETS=module-qtbase module-qtquick1 module-qtwebkit
+	set QT_TARGETS=
 )
 set PATH=%CD%\qtbase\bin;%PATH%
 
 rem : run Qt configure with desired settings
 if %DO_CONFIGURE%==1 (
-	call %QT%\Src\configure.bat %QT_PREFIX% -opensource -confirm-license -debug-and-release -opengl desktop -platform win32-msvc2013 -icu -I "%QT%\..\icu\include" -L "%QT%\..\icu\lib_%PLATFORM%" -no-compile-examples -nomake tests -nomake examples -no-accessibility
+	call %QT%\Src\configure.bat %QT_PREFIX% -opensource -confirm-license -debug-and-release -opengl desktop -platform win32-msvc2013 -icu -I "%QT%\..\icu\include" -L "%QT%\..\icu\lib_%PLATFORM%" -nomake tests -nomake examples
 )
 
 rem : compile and install module-qtbase
-%QT%\jom\jom %QT_TARGETS%
+%QT%\jom\jom
+
