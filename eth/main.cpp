@@ -351,6 +351,7 @@ int main(int argc, char** argv)
 					iss >> g_logVerbosity;
 				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
+#if ETH_JSONRPC
 			else if (cmd == "jsonport")
 			{
 				if (iss.peek() != -1)
@@ -371,6 +372,7 @@ int main(int argc, char** argv)
 					jsonrpcServer->StopListening();
 				jsonrpcServer.reset();
 			}
+#endif
 			else if (cmd == "address")
 			{
 				cout << "Current address:" << endl;
@@ -443,8 +445,10 @@ int main(int argc, char** argv)
 			else
 				cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
 		}
+#if ETH_JSONRPC
 		if (jsonrpcServer.get())
 			jsonrpcServer->StopListening();
+#endif
 	}
 	else
 	{
