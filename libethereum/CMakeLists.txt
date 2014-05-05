@@ -18,11 +18,12 @@ endif()
 file(GLOB HEADERS "*.h") 
 
 include_directories(..)
+include_directories(${LEVELDB_ID})
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} miniupnpc)
-target_link_libraries(${EXECUTABLE} leveldb)
+target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} gmp)
 
 
@@ -50,8 +51,6 @@ elseif (UNIX)
 	target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARY})
 	target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY})
 	target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARY})
-	target_link_libraries(${EXECUTABLE} leveldb)
-#	target_link_libraries(${EXECUTABLE} snappy)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 else ()
 	target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})

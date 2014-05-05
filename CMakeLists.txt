@@ -143,9 +143,9 @@ else ()
 		/usr/include
 		/usr/local/include
 		)
-	if ( LEVELDB_ID ) 
+	if ( LEVELDB_ID )
 		message(STATUS "Found LevelDB Headers")
-	else () 
+	else ()
 		message(FATAL_ERROR "Failed to find the LevelDB headers")
 	endif ()
 
@@ -164,8 +164,8 @@ else ()
 	endif ()
 
 	find_path( MINIUPNPC_ID miniupnpc/miniwget.h
-		/usr/include/miniupnpc
-		/usr/local/include/miniupnpc
+		/usr/include
+		/usr/local/include
 		)
 	if ( MINIUPNPC_ID ) 
 		message(STATUS "Found miniupnpc headers")
@@ -184,6 +184,51 @@ else ()
 		message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
 	else ()
 		message(FATAL_ERROR "Failed to find the miniupnpc library!")
+	endif ()
+
+
+	find_path( JSONRPC_ID jsonrpc/rpc.h
+		/usr/include
+		/usr/local/include
+		)
+	if ( JSONRPC_ID )
+		message(STATUS "Found jsonrpc headers")
+		find_library( JSONRPC_LS NAMES jsonrpc
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			/usr/lib/*/
+			)
+		if ( JSONRPC_LS )
+			message(STATUS "Found jsonrpc library: ${JSONRPC_LS}")
+		else ()
+			message(STATUS "Failed to find the jsonrpc library!")
+		endif ()
+	else ()
+		message(STATUS "Failed to find the jsonrpc headers!")
+	endif ()
+
+	find_path( READLINE_ID readline/readline.h
+		/usr/include
+		/usr/local/include
+		)
+	if ( READLINE_ID )
+		message(STATUS "Found readline headers")
+		find_library( READLINE_LS NAMES readline
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			/usr/lib/*/
+			)
+		if ( READLINE_LS )
+			message(STATUS "Found readline library: ${READLINE_LS}")
+		else ()
+			message(STATUS "Failed to find the readline library!")
+		endif ()
+	else ()
+		message(STATUS "Failed to find the readline headers!")
 	endif ()
 
 endif()
