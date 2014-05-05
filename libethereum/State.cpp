@@ -486,14 +486,14 @@ void State::commitToMine(BlockChain const& _bc)
 	else
 		uncles.appendList(0);
 
-	cnote << *this;
+//	cnote << *this;
 	applyRewards(uncleAddresses);
 	if (m_transactionManifest.isNull())
 		m_transactionManifest.init();
 	else
 		while(!m_transactionManifest.isEmpty())
 			m_transactionManifest.remove((*m_transactionManifest.begin()).first);
-	cnote << *this;
+//	cnote << *this;
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
