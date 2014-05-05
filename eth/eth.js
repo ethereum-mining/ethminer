@@ -1,5 +1,10 @@
+if (typeof(require) !== "undefined")
+	require( ['ethString'], function() {} )
+else if (typeof(String.prototype.pad) === "undefined")
+	alert("You need to have included ethString.js for eth to work.")
+
 var spec = [
-     { "method": "coinbase", "params": null, "returns" : "" },
+    { "method": "coinbase", "params": null, "returns" : "" },
 	{ "method": "isListening", "params": null, "returns" : false },
 	{ "method": "isMining", "params": null, "returns" : false },
 	{ "method": "gasPrice", "params": null, "returns" : "" },
@@ -15,7 +20,7 @@ var spec = [
     { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" }
 ];
 
-var eth = (function ethScope() {
+window.eth = (function ethScope() {
 	var m_reqId = 0
 	var ret = {}
 	function reqSync(m, p) {
@@ -53,7 +58,7 @@ var eth = (function ethScope() {
 		var getParams = function(a) {
 			var p = s.params ? {} : null
 			for (j in s.order)
-				p[s.order[j]] = a[j]
+				p[s.order[j]] = (s.order[j][0] === "b") ? a[j].unbin() : a[j]
 			return p
 		};
 		ret[am] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
