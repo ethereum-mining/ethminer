@@ -97,7 +97,7 @@ string htmlDump(bytes const& _b, unsigned _w = 8)
 	return ret.str();
 }
 
-Address c_config = Address("5620133321fcac7f15a5c570016f6cb6dc263f9d");
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
 
 using namespace boost::process;
 
