@@ -29,9 +29,9 @@ String.prototype.bin = function() {
 		bytes = []
 		var i = 2;
 		// Check if it's odd - pad with a zero if so.
-		if (s.length % 2)
+		if (this.length % 2)
 			bytes.push(parseInt(this.substr(i++, 1), 16))
-		for (; i < s.length - 1; i += 2)
+		for (; i < this.length - 1; i += 2)
 		    bytes.push(parseInt(this.substr(i, 2), 16));
 		return String.fromCharCode.apply(String, bytes);
     } else if (/^\d+$/.test(this))
@@ -49,6 +49,14 @@ String.prototype.unbin = function() {
     }
 
     return "0x" + o;
+}
+
+String.prototype.dec = function() {
+    return bigInt(this.substr(0)).toString()
+}
+
+String.prototype.hex = function() {
+    return bigInt(this).toHex()
 }
 
 
