@@ -57,7 +57,13 @@ var eth = (function ethScope() {
 			return p
 		};
 		ret[am] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
-		ret[m] = function() { return reqSync(m, getParams(arguments)) }
+		if (s.params)
+			ret[m] = function() { return reqSync(m, getParams(arguments)) }
+		else
+			Object.defineProperty(ret, m, {
+				get: function() { return reqSync(m, {}); },
+				set: function(v) {}
+			})
 	})(spec[si]);
 
 	ret.check = function(force) {
