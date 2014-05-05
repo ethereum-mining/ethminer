@@ -20,6 +20,7 @@
  * @date 2014
  */
 
+#if ETH_JSONRPC
 #include "EthStubServer.h"
 #include <libethereum/Client.h>
 #include "CommonJS.h"
@@ -128,3 +129,4 @@ std::string EthStubServer::secretToAddress(const std::string& _a)
 {
 	return toJS(KeyPair(jsToSecret(_a)).address());
 }
+#endif

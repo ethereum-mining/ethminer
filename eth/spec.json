@@ -1,0 +1,21 @@
+[
+    { "method": "coinbase", "params": null, "returns" : "" },
+	{ "method": "isListening", "params": null, "returns" : false },
+	{ "method": "isMining", "params": null, "returns" : false },
+	{ "method": "gasPrice", "params": null, "returns" : "" },
+	{ "method": "key", "params": null, "returns" : "" },
+	{ "method": "keys", "params": null, "returns" : [""] },
+	{ "method": "peerCount", "params": null, "returns" : 0 },
+    { "method": "balanceAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
+    { "method": "storageAt", "params": { "a": "", "x": "" }, "order": ["a", "x"], "returns" : "" },
+    { "method": "txCountAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
+    { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
+    { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] },
+    { "method": "transact", "params": { "sec": "", "xValue": "", "aDest": "", "bData": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xValue", "aDest", "bData", "xGas", "xGasPrice"] },
+    { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" }
+	,
+
+    { "method": "check", "params": { "a": [ "", "", "" ] }, "returns" : [ "", "" ] }
+]
+
+
