@@ -53,7 +53,7 @@
 	}
         if (text === "-0") text = "0";
 	text = text.toUpperCase();
-        var isValid = (base == 16 ? /^[0-9A-F]+$/ : /^[0-9]+$/).test(text);
+        var isValid = (base == 16 ? /^[0-9A-F]*$/ : /^[0-9]+$/).test(text);
         if (!isValid) throw new Error("Invalid integer");
 	if (base == 16) {
 		var val = bigInt(0);
@@ -335,7 +335,7 @@
                     str = str.slice(1);
                 }
                 if (!str.length) str = "0";
-                var s = first.sign === sign.positive ? "" : "-";
+                var s = (first.sign === sign.positive || str == "0") ? "" : "-";
                 return s + str;
             },
             toHex: function (m) {

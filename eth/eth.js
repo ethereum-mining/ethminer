@@ -1,7 +1,18 @@
+if (typeof(window.eth) === "undefined")
+{
 if (typeof(require) !== "undefined")
 	require( ['ethString'], function() {} )
 else if (typeof(String.prototype.pad) === "undefined")
-	alert("You need to have included ethString.js for eth to work.")
+{
+	var scriptTag = document.getElementsByTagName('script');
+	scriptTag = scriptTag[scriptTag.length - 1]; 
+	var scriptPath = scriptTag.src; 
+	var path = scriptPath.substr(0, scriptPath.lastIndexOf( '/' ));
+	var start = '<script src="' + path + '/';
+	var slash = '"><'+'/script>';
+	document.write(start + 'BigInteger.js' + slash);
+	document.write(start + 'ethString.js' + slash);
+}
 
 var spec = [
     { "method": "coinbase", "params": null, "returns" : "" },
@@ -107,4 +118,6 @@ window.eth = (function ethScope() {
 	}
 	return ret;
 }());
+
+}
 
