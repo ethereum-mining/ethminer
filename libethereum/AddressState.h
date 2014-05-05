@@ -51,8 +51,9 @@ public:
 	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; }
 
 	bool isFreshCode() const { return !m_codeHash; }
+	bool codeBearing() const { return m_codeHash != EmptySHA3; }
+	bool codeCacheValid() const { return m_codeHash == EmptySHA3 || !m_codeHash || m_codeCache.size(); }
 	h256 codeHash() const { assert(m_codeHash); return m_codeHash; }
-	bool haveCode() const { return m_codeHash != EmptySHA3 || m_codeCache.size(); }
 	bytes const& code() const { assert(m_codeHash == EmptySHA3 || !m_codeHash || m_codeCache.size()); return m_codeCache; }
 	void setCode(bytesConstRef _code) { assert(!m_codeHash); m_codeCache = _code.toBytes(); }
 	void noteCode(bytesConstRef _code) { assert(sha3(_code) == m_codeHash); m_codeCache = _code.toBytes(); }

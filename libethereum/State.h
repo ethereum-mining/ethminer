@@ -309,7 +309,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		else
 		{
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.isFreshCode() || i.second.haveCode())
+			if (i.second.codeBearing())
 			{
 				_out << " *" << i.second.oldRoot();
 				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
