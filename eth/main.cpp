@@ -20,9 +20,6 @@
  * Ethereum client.
  */
 
-#define ETH_READLINE 1
-#define ETH_JSONRPC 1
-
 #include <thread>
 #include <chrono>
 #include <fstream>
