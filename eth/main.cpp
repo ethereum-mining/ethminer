@@ -90,7 +90,8 @@ void help()
         << "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
-		<< "    -j,--json-rpc <port>  Start JSON-RPC server." << endl
+		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
@@ -167,7 +168,7 @@ int main(int argc, char** argv)
 	unsigned peers = 5;
 	bool interactive = false;
 #if ETH_JSONRPC
-	int jsonrpc = -1;
+	int jsonrpc = 8080;
 #endif
 	string publicIP;
 	bool upnp = true;
@@ -245,7 +246,9 @@ int main(int argc, char** argv)
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
-		else if ((arg == "-j" || arg == "--json-rpc") && i + 1 < argc)
+		else if ((arg == "-j" || arg == "--json-rpc"))
+			jsonrpc = jsonrpc ? jsonrpc : 8080;
+		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
@@ -348,11 +351,17 @@ int main(int argc, char** argv)
 					iss >> g_logVerbosity;
 				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
+			else if (cmd == "jsonport")
+			{
+				if (iss.peek() != -1)
+					iss >> jsonrpc;
+				cout << "JSONRPC Port: " << jsonrpc << endl;
+			}
 			else if (cmd == "jsonstart")
 			{
-				unsigned port;
-				iss >> port;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(port), c));
+				if (jsonrpc < 0)
+					jsonrpc = 8080;
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
@@ -370,17 +379,12 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "secret")
 			{
-				cout << "Current secret:" << endl;
-				const char* addchr = toHex(us.secret().asArray()).c_str();
-				cout << addchr << endl;
+				cout << "Secret Key: " << toHex(us.secret().asArray()) << endl;
 			}
 			else if (cmd == "block")
 			{
 				ClientGuard g(&c);
-				eth::uint n = c.blockChain().details().number;
-				cout << "Current block # ";
-				const char* addchr = toString(n).c_str();
-				cout << addchr << endl;
+				cout << "Current block: " << c.blockChain().details().number;
 			}
 			else if (cmd == "peers")
 			{
@@ -393,10 +397,7 @@ int main(int argc, char** argv)
 			else if (cmd == "balance")
 			{
 				ClientGuard g(&c);
-				u256 balance = c.state().balance(us.address());
-				cout << "Current balance:" << endl;
-				const char* addchr = toString(balance).c_str();
-				cout << addchr << endl;
+				cout << "Current balance: " << c.postState().balance(us.address()) << endl;
 			}
 			else if (cmd == "transact")
 			{
