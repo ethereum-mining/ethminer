@@ -127,8 +127,9 @@ public:
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
 	bool sync(BlockChain const& _bc, h256 _blockHash);
 
+	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	bool sync(TransactionQueue& _tq);
+	bool sync(TransactionQueue& _tq, bool* _changed = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
@@ -199,6 +200,9 @@ public:
 	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
 
 private:
+	/// Undo the changes to the state for committing to mine.
+	void uncommitToMine();
+
 	/// Retrieve all information about a given address into the cache.
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
@@ -305,7 +309,7 @@ inline std::ostream& operator<<(std::ostream& _out, State const& _s)
 		else
 		{
 			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.codeHash() != EmptySHA3)
+			if (i.second.isFreshCode() || i.second.haveCode())
 			{
 				_out << " *" << i.second.oldRoot();
 				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)

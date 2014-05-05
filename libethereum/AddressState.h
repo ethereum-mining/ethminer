@@ -52,7 +52,7 @@ public:
 
 	bool isFreshCode() const { return !m_codeHash; }
 	h256 codeHash() const { assert(m_codeHash); return m_codeHash; }
-	bool haveCode() const { return m_codeHash == EmptySHA3 || !m_codeHash || m_codeCache.size(); }
+	bool haveCode() const { return m_codeHash != EmptySHA3 || m_codeCache.size(); }
 	bytes const& code() const { assert(m_codeHash == EmptySHA3 || !m_codeHash || m_codeCache.size()); return m_codeCache; }
 	void setCode(bytesConstRef _code) { assert(!m_codeHash); m_codeCache = _code.toBytes(); }
 	void noteCode(bytesConstRef _code) { assert(sha3(_code) == m_codeHash); m_codeCache = _code.toBytes(); }

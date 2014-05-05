@@ -153,7 +153,7 @@ void State::commit()
 
 bool State::sync(BlockChain const& _bc)
 {
-return sync(_bc, _bc.currentHash());
+	return sync(_bc, _bc.currentHash());
 }
 
 bool State::sync(BlockChain const& _bc, h256 _block)
@@ -272,7 +272,7 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-bool State::sync(TransactionQueue& _tq)
+bool State::sync(TransactionQueue& _tq, bool* _changed)
 {
 	// TRANSACTIONS
 	bool ret = false;
@@ -289,8 +289,11 @@ bool State::sync(TransactionQueue& _tq)
 				// don't have it yet! Execute it now.
 				try
 				{
-					execute(i.second);
 					ret = true;
+					uncommitToMine();
+					execute(i.second);
+					if (_changed)
+						*_changed = true;
 					_tq.noteGood(i);
 					++goodTxs;
 				}
@@ -300,7 +303,8 @@ bool State::sync(TransactionQueue& _tq)
 					{
 						// too old
 						_tq.drop(i.first);
-						ret = true;
+						if (_changed)
+							*_changed = true;
 					}
 					else
 						_tq.setFuture(i);
@@ -309,7 +313,8 @@ bool State::sync(TransactionQueue& _tq)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					ret = true;
+					if (_changed)
+						*_changed = true;
 				}
 			}
 		}
@@ -364,9 +369,9 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		if (tr[1].toInt<u256>() != m_state.root())
 		{
 			// Invalid state root
-			cnote << m_state.root() << m_state;
+			cnote << m_state.root() << "\n" << m_state;
 			cnote << *this;
-			cnote << "INVALID: " << tr[1].toInt<u256>();
+			cnote << "INVALID: " << hex << tr[1].toInt<u256>();
 			throw InvalidTransactionStateRoot();
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
@@ -437,17 +442,26 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	return tdIncrease;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
-void State::commitToMine(BlockChain const& _bc)
+void State::uncommitToMine()
 {
 	if (m_currentBlock.sha3Uncles != h256())
 	{
+//		cnote << "Unapplying rewards: " << balance(m_currentBlock.coinbaseAddress);
 		Addresses uncleAddresses;
 		for (auto i: RLP(m_currentUncles))
 			uncleAddresses.push_back(i[2].toHash<Address>());
 		unapplyRewards(uncleAddresses);
+//		cnote << "Unapplied rewards: " << balance(m_currentBlock.coinbaseAddress);
+
+		m_currentBlock.sha3Uncles = h256();
 	}
+}
+
+// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
+// (i.e. all the transactions we executed).
+void State::commitToMine(BlockChain const& _bc)
+{
+	uncommitToMine();
 
 	cnote << "Commiting to mine on" << m_previousBlock.hash;
 
@@ -472,12 +486,14 @@ void State::commitToMine(BlockChain const& _bc)
 	else
 		uncles.appendList(0);
 
+	cnote << *this;
 	applyRewards(uncleAddresses);
 	if (m_transactionManifest.isNull())
 		m_transactionManifest.init();
 	else
 		while(!m_transactionManifest.isEmpty())
 			m_transactionManifest.remove((*m_transactionManifest.begin()).first);
+	cnote << *this;
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -665,11 +681,12 @@ bytes const& State::code(Address _contract) const
 
 u256 State::execute(bytesConstRef _rlp)
 {
-//	cnote << m_state.root() << m_state;
-//	cnote << *this;
-
 	Executive e(*this);
 	e.setup(_rlp);
+
+//	cnote << "Executing " << e.t();
+//	cnote << m_state.root() << "\n" << m_state;
+//	cnote << *this;
 
 	u256 startGasUSed = gasUsed();
 	if (startGasUSed + e.t().gas > m_currentBlock.gasLimit)
@@ -680,8 +697,8 @@ u256 State::execute(bytesConstRef _rlp)
 
 	commit();
 
-//	cnote << "Done TX";
-//	cnote << m_state.root() << m_state;
+//	cnote << "Executed.";
+//	cnote << m_state.root() << "\n" << m_state;
 //	cnote << *this;
 
 	// Add to the user-originated transactions that we've executed.
