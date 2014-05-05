@@ -39,10 +39,6 @@ else ()
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	include_directories(/usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
