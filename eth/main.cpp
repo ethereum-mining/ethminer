@@ -142,8 +142,6 @@ void version()
 	exit(0);
 }
 
-u256 c_minGasPrice = 10000000000000;
-u256 c_minGas = 100;
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
 string pretty(h160 _a, eth::State _st)
 {
@@ -291,6 +289,7 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -357,6 +356,7 @@ int main(int argc, char** argv)
 				unsigned port;
 				iss >> port;
 				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(port), c));
+				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
