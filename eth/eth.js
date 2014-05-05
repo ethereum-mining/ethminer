@@ -23,7 +23,7 @@ var eth = (function ethScope() {
 		m_reqId++
 		var request = new XMLHttpRequest();	
 		request.open("POST", "http://localhost:8080", false);
-		console.log("Sending " + JSON.stringify(req))
+//		console.log("Sending " + JSON.stringify(req))
 		request.send(JSON.stringify(req));
 		return JSON.parse(request.responseText).result;
 	}
@@ -66,15 +66,12 @@ var eth = (function ethScope() {
 		var watching = [];
 		for (var w in m_watching)
 			watching.push(w)
-		console.log("Checking " + JSON.stringify(watching));
 		var changed = reqSync("check", { "a": watching } );
 		console.log("Got " + JSON.stringify(changed));
 		for (var c in changed)
-			m_watching[c]()
-		console.log("Setting timeout");
+			m_watching[changed[c]]()
 		var that = this;
 		setTimeout(function() { that.check() }, 5000)
-		console.log("OK");
 	}
 
 	ret.watch = function(a, fx, f) {
@@ -88,17 +85,12 @@ var eth = (function ethScope() {
 			this.check()
 	}
 	ret.unwatch = function(f, fx) {
-		console.log(JSON.stringify(m_watching) + " " + (m_watching == {}))
 		delete m_watching[fx ? f + fx : f];
-		console.log(JSON.stringify(m_watching) + " " + (m_watching == {}))
 	}
 	ret.newBlock = function(f) {
-		console.log(JSON.stringify(m_watching) + " " + (m_watching == {}))
 		var old = isEmpty(m_watching)
 		m_watching[""] = f
 		f()
-		console.log(JSON.stringify(m_watching) + " " + (m_watching == {}))
-		console.log("Check?" + (m_watching === {}) + "!=" + old)
 		if (isEmpty(m_watching) != old)
 			this.check()
 	}
