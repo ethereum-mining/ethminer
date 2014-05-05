@@ -67,7 +67,7 @@ var eth = (function ethScope() {
 		for (var w in m_watching)
 			watching.push(w)
 		var changed = reqSync("check", { "a": watching } );
-		console.log("Got " + JSON.stringify(changed));
+//		console.log("Got " + JSON.stringify(changed));
 		for (var c in changed)
 			m_watching[changed[c]]()
 		var that = this;
