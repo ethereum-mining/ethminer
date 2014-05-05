@@ -207,11 +207,10 @@ void Client::work()
 			m_restartMining = true;	// need to re-commit to mine.
 			m_postMine = m_preMine;
 		}
-		if (m_postMine.sync(m_tq))
+		if (m_postMine.sync(m_tq, &changed))
 		{
 			if (m_doMine)
 				cnote << "Additional transaction ready: Restarting mining operation.";
-			changed = true;
 			m_restartMining = true;
 		}
 	}
