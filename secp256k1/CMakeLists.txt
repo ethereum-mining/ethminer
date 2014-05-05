@@ -26,6 +26,3 @@ endif()
 
 target_link_libraries(secp256k1 gmp)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	include_directories(/usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

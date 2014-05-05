@@ -233,21 +233,21 @@ else ()
 
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	link_directories(/usr/local/lib)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	link_directories(/usr/local/lib)
+	include_directories(/usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_subdirectory(secp256k1)
 add_subdirectory(libethcore)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
-if ("${TARGET_PLATFORM}" STREQUAL "w64")
-else ()
+if (NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
 	add_subdirectory(neth)
 endif ()
 if (NOT HEADLESS)

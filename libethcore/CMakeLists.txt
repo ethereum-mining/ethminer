@@ -61,11 +61,6 @@ else ()
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	link_directories(/usr/local/lib)
-	include_directories(/usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-
 message("Installation path: ${CMAKE_INSTALL_PREFIX}")
 
 install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
