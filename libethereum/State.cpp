@@ -141,7 +141,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
-	if (_requireCode && it != _cache.end() && !it->second.isFreshCode() && !it->second.haveCode())
+	if (_requireCode && it != _cache.end() && !it->second.isFreshCode() && !it->second.codeCacheValid())
 		it->second.noteCode(it->second.codeHash() == EmptySHA3 ? bytesConstRef() : bytesConstRef(m_db.lookup(it->second.codeHash())));
 }
 
