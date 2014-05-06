@@ -554,6 +554,8 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize)));
 			}
+			else
+				m_stack.push_back(0);
 
 			m_gas += gas;
 			break;

@@ -63,6 +63,41 @@ struct TransactionReceipt
 	u256 gasUsed;
 };
 
+enum class ExistDiff { Same, New, Dead };
+template <class T>
+class Diff
+{
+public:
+	Diff() {}
+	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
+
+	T const& from() const { return m_from; }
+	T const& to() const { return m_to; }
+
+	explicit operator bool() const { return m_from != m_to; }
+
+private:
+	T m_from;
+	T m_to;
+};
+
+struct AccountDiff
+{
+	inline bool changed() const { return storage.size() || code || nonce || balance || exist; }
+	char const* lead() const;
+
+	Diff<bool> exist;
+	Diff<u256> balance;
+	Diff<u256> nonce;
+	std::map<u256, Diff<u256>> storage;
+	Diff<bytes> code;
+};
+
+struct StateDiff
+{
+	std::map<Address, AccountDiff> accounts;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -96,18 +131,12 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
-	/// Cancels transactions and rolls back the state to the end of the previous block.
-	/// @warning This will only work for on any transactions after you called the last commitToMine().
-	/// It's one or the other.
-	void rollback() { m_cache.clear(); }
-
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
 	/// The only thing left to do after this is to actually mine().
 	///
-	/// This may be called multiple times and without issue, however, until the current state is cleared,
-	/// calls after the first are ignored.
+	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
@@ -129,7 +158,10 @@ public:
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	bool sync(TransactionQueue& _tq, bool* _changed = nullptr);
+	/// @returns true if we uncommitted from mining during the operation.
+	/// @a o_changed boolean pointer, the value of which will be set to true if the state changed and the pointer
+	/// is non-null
+	bool sync(TransactionQueue& _tq, bool* o_changed = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
@@ -199,6 +231,9 @@ public:
 	/// Get the fee associated for a normal transaction.
 	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
 
+	/// @return the difference between this state (origin) and @a _c (destination).
+	StateDiff diff(State const& _c) const;
+
 private:
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
@@ -245,6 +280,7 @@ private:
 	/// Unfinalise the block, unapplying the earned rewards.
 	void unapplyRewards(Addresses const& _uncleAddresses);
 
+	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
 	Overlay m_db;								///< Our overlay for the state tree.
@@ -274,6 +310,8 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& _out, State const& _s);
+std::ostream& operator<<(std::ostream& _out, StateDiff const& _s);
+std::ostream& operator<<(std::ostream& _out, AccountDiff const& _s);
 
 template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
