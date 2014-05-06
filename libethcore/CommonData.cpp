@@ -78,7 +78,11 @@ bytes eth::fromHex(std::string const& _s)
 	std::vector<uint8_t> ret;
 	ret.reserve((_s.size() - s) / 2);
 	for (uint i = s; i < _s.size(); i += 2)
-		ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
+		try
+		{
+			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
+		}
+		catch (...){}
 	return ret;
 }
 
