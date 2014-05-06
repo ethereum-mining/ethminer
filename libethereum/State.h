@@ -273,58 +273,7 @@ private:
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };
 
-// TODO: Update for latest AddressState/StateTrie changes.
-// trie should always be used as base. AddressState just contains overlay.
-inline std::ostream& operator<<(std::ostream& _out, State const& _s)
-{
-	_out << "--- " << _s.rootHash() << std::endl;
-	std::set<Address> d;
-	for (auto const& i: TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash()))
-	{
-		auto it = _s.m_cache.find(i.first);
-		if (it == _s.m_cache.end())
-		{
-			RLP r(i.second);
-			_out << "[    ]" << i.first << ": " << std::dec << r[1].toInt<u256>() << "@" << r[0].toInt<u256>();
-			if (r.itemCount() == 4)
-			{
-				_out << " *" << r[2].toHash<h256>();
-				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-				std::map<u256, u256> mem;
-				for (auto const& j: memdb)
-				{
-					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-					mem[j.first] = RLP(j.second).toInt<u256>();
-				}
-				_out << std::endl << mem;
-			}
-			_out << std::endl;
-		}
-		else
-			d.insert(i.first);
-	}
-	for (auto i: _s.m_cache)
-		if (!i.second.isAlive())
-			_out << "[XXX " << i.first << std::endl;
-		else
-		{
-			_out << (d.count(i.first) ? "[ !  " : "[ *  ") << "]" << i.first << ": " << std::dec << i.second.nonce() << "@" << i.second.balance();
-			if (i.second.codeBearing())
-			{
-				_out << " *" << i.second.oldRoot();
-				TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), i.second.oldRoot());		// promise we won't alter the overlay! :)
-				std::map<u256, u256> mem;
-				for (auto const& j: memdb)
-				{
-					_out << std::endl << "    [" << j.first << ":" << toHex(j.second) << "]";
-					mem[j.first] = RLP(j.second).toInt<u256>();
-				}
-				_out << std::endl << mem;
-			}
-			_out << std::endl;
-		}
-	return _out;
-}
+std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
 void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
