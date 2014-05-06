@@ -916,15 +916,9 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	if (revert)
 		evm.revert();
 
-	// Kill contract if there's no code.
-	if (out.empty())
-	{
-		m_cache.erase(newAddress);
-		newAddress = Address();
-	}
-	else
+	// Set code as long as we didn't suicide.
+	if (addressInUse(newAddress))
 		m_cache[newAddress].setCode(out);
-
 
 	*_gas = vm.gas();
 
