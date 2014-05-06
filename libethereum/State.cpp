@@ -118,6 +118,122 @@ State& State::operator=(State const& _s)
 	return *this;
 }
 
+struct CachedAddressState
+{
+	CachedAddressState(std::string const& _rlp, AddressState const* _s, Overlay const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
+
+	bool exists() const
+	{
+		return (r && (!s || s->isAlive())) || (s && s->isAlive());
+	}
+
+	u256 balance() const
+	{
+		return r ? s ? s->balance() : r[0].toInt<u256>() : 0;
+	}
+
+	u256 nonce() const
+	{
+		return r ? s ? s->nonce() : r[1].toInt<u256>() : 0;
+	}
+
+	bytes code() const
+	{
+		if (s && s->codeCacheValid())
+			return s->code();
+		h256 h = r ? s ? s->codeHash() : r[3].toHash<h256>() : EmptySHA3;
+		return h == EmptySHA3 ? bytes() : asBytes(o->lookup(h));
+	}
+
+	std::map<u256, u256> storage() const
+	{
+		std::map<u256, u256> ret;
+		if (r)
+		{
+			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+			for (auto const& j: memdb)
+				ret[j.first] = RLP(j.second).toInt<u256>();
+		}
+		if (s)
+			for (auto const& j: s->storage())
+				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
+					ret[j.first] = j.second;
+		return ret;
+	}
+
+	AccountDiff diff(CachedAddressState const& _c)
+	{
+		AccountDiff ret;
+		ret.exist = Diff<bool>(exists(), _c.exists());
+		ret.balance = Diff<u256>(balance(), _c.balance());
+		ret.nonce = Diff<u256>(nonce(), _c.nonce());
+		ret.code = Diff<bytes>(code(), _c.code());
+		auto st = storage();
+		auto cst = _c.storage();
+		auto it = st.begin();
+		auto cit = cst.begin();
+		while (it != st.end() || cit != cst.end())
+		{
+			if (it != st.end() && cit != cst.end() && it->first == cit->first && (it->second || cit->second) && (it->second != cit->second))
+				ret.storage[it->first] = Diff<u256>(it->second, cit->second);
+			else if (it != st.end() && (cit == cst.end() || it->first < cit->first) && it->second)
+				ret.storage[it->first] = Diff<u256>(it->second, 0);
+			else if (cit != cst.end() && (it == st.end() || it->first > cit->first) && cit->second)
+				ret.storage[cit->first] = Diff<u256>(0, cit->second);
+			if (it == st.end())
+				++cit;
+			else if (cit == cst.end())
+				++it;
+			else if (it->first < cit->first)
+				++it;
+			else if (it->first > cit->first)
+				++cit;
+			else
+				++it, ++cit;
+		}
+		return ret;
+	}
+
+	std::string rS;
+	RLP r;
+	AddressState const* s;
+	Overlay const* o;
+};
+
+StateDiff State::diff(State const& _c) const
+{
+	StateDiff ret;
+
+	std::set<Address> ads;
+	std::set<Address> trieAds;
+	std::set<Address> trieAdsD;
+
+	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&m_db), rootHash());
+	auto trieD = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_c.m_db), _c.rootHash());
+
+	for (auto i: trie)
+		ads.insert(i.first), trieAds.insert(i.first);
+	for (auto i: trieD)
+		ads.insert(i.first), trieAdsD.insert(i.first);
+	for (auto i: m_cache)
+		ads.insert(i.first);
+	for (auto i: _c.m_cache)
+		ads.insert(i.first);
+
+	for (auto i: ads)
+	{
+		auto it = m_cache.find(i);
+		auto itD = _c.m_cache.find(i);
+		CachedAddressState source(trieAds.count(i) ? trie.at(i) : "", it != m_cache.end() ? &it->second : nullptr, &m_db);
+		CachedAddressState dest(trieAdsD.count(i) ? trieD.at(i) : "", itD != _c.m_cache.end() ? &itD->second : nullptr, &_c.m_db);
+		AccountDiff acd = source.diff(dest);
+		if (acd.changed())
+			ret.accounts[i] = acd;
+	}
+
+	return ret;
+}
+
 void State::ensureCached(Address _a, bool _requireCode, bool _forceCreate) const
 {
 	ensureCached(m_cache, _a, _requireCode, _forceCreate);
@@ -681,12 +797,14 @@ bytes const& State::code(Address _contract) const
 
 u256 State::execute(bytesConstRef _rlp)
 {
+	State old(*this);
+
+	auto h = rootHash();
+
 	Executive e(*this);
 	e.setup(_rlp);
 
-	cnote << "Executing " << e.t();
-//	cnote << m_state.root() << "\n" << m_state;
-	cnote << *this;
+	cnote << "Executing " << e.t() << "on" << h;
 
 	u256 startGasUSed = gasUsed();
 	if (startGasUSed + e.t().gas > m_currentBlock.gasLimit)
@@ -695,15 +813,10 @@ u256 State::execute(bytesConstRef _rlp)
 	e.go();
 	e.finalize();
 
-	cnote << "Executed.";
-//	cnote << m_state.root() << "\n" << m_state;
-	cnote << *this;
-
 	commit();
 
-	cnote << "Committed.";
-//	cnote << m_state.root() << "\n" << m_state;
-	cnote << *this;
+	cnote << "Executed; now" << rootHash();
+	cnote << old.diff(*this);
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
@@ -911,5 +1024,49 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 			_out << lead << i << ": " << std::dec << (cache ? cache->balance() : r[0].toInt<u256>()) << " #:" << (cache ? cache->nonce() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
+	return _out;
+}
+
+char const* AccountDiff::lead() const
+{
+	bool bn = (balance || nonce);
+	bool sc = (!storage.empty() || code);
+	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
+}
+
+std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
+{
+	if (!_s.exist.to())
+		return _out;
+
+	if (_s.balance)
+	{
+		_out << std::dec << _s.balance.to() << " ";
+		if (_s.balance.from())
+			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
+	}
+	if (_s.nonce)
+	{
+		_out << std::dec << "#" << _s.nonce.to() << " ";
+		if (_s.nonce.from())
+			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
+	}
+	if (_s.code)
+		_out << "$" << std::hex << _s.code.to() << " (" << _s.code.from() << ") ";
+	for (pair<u256, Diff<u256>> const& i: _s.storage)
+		if (!i.second.from())
+			_out << endl << " +     " << (h256)i.first << ": " << std::hex << i.second.to();
+		else if (!i.second.to())
+			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << i.second.from() << ")";
+		else
+			_out << endl << " *     " << (h256)i.first << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+	return _out;
+}
+
+std::ostream& eth::operator<<(std::ostream& _out, StateDiff const& _s)
+{
+	_out << _s.accounts.size() << " accounts changed:" << endl;
+	for (auto const& i: _s.accounts)
+		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }
