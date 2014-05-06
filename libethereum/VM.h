@@ -228,15 +228,11 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::EXP:
 		{
-			// TODO: better implementation?
 			require(2);
 			auto base = m_stack.back();
-			auto x = m_stack[m_stack.size() - 2];
+			unsigned expon = (unsigned)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
-			u256 n = 1;
-			for (u256 i = 0; i < x; ++i)
-				n = (u256) n * base;
-			m_stack.back() = n;
+			m_stack.back() = boost::multiprecision::pow(base, expon);
 			break;
 		}
 		case Instruction::NEG:
