@@ -684,9 +684,9 @@ u256 State::execute(bytesConstRef _rlp)
 	Executive e(*this);
 	e.setup(_rlp);
 
-//	cnote << "Executing " << e.t();
+	cnote << "Executing " << e.t();
 //	cnote << m_state.root() << "\n" << m_state;
-//	cnote << *this;
+	cnote << *this;
 
 	u256 startGasUSed = gasUsed();
 	if (startGasUSed + e.t().gas > m_currentBlock.gasLimit)
@@ -695,11 +695,15 @@ u256 State::execute(bytesConstRef _rlp)
 	e.go();
 	e.finalize();
 
+	cnote << "Executed.";
+//	cnote << m_state.root() << "\n" << m_state;
+	cnote << *this;
+
 	commit();
 
-//	cnote << "Executed.";
+	cnote << "Committed.";
 //	cnote << m_state.root() << "\n" << m_state;
-//	cnote << *this;
+	cnote << *this;
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
@@ -834,4 +838,75 @@ void State::unapplyRewards(Addresses const& _uncleAddresses)
 		r += m_blockReward / 8;
 	}
 	subBalance(m_currentBlock.coinbaseAddress, r);
+}
+
+std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
+{
+	_out << "--- " << _s.rootHash() << std::endl;
+	std::set<Address> d;
+	std::set<Address> dtr;
+	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash());
+	for (auto i: trie)
+		d.insert(i.first), dtr.insert(i.first);
+	for (auto i: _s.m_cache)
+		d.insert(i.first);
+
+	for (auto i: d)
+	{
+		auto it = _s.m_cache.find(i);
+		AddressState* cache = it != _s.m_cache.end() ? &it->second : nullptr;
+		auto rlpString = trie.at(i);
+		RLP r(dtr.count(i) ? rlpString : "");
+		assert(cache || r);
+
+		if (cache && !cache->isAlive())
+			_out << "XXX  " << i << std::endl;
+		else
+		{
+			string lead = (cache ? r ? " *   " : " +   " : "     ");
+			if (cache && r && (cache->balance() == r[0].toInt<u256>() && cache->nonce() == r[1].toInt<u256>()))
+				lead = " .   ";
+
+			stringstream contout;
+
+			if ((!cache || cache->codeBearing()) && (!r || r[3].toHash<h256>() != EmptySHA3))
+			{
+				std::map<u256, u256> mem;
+				std::set<u256> back;
+				std::set<u256> delta;
+				std::set<u256> cached;
+				if (r)
+				{
+					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+					for (auto const& j: memdb)
+						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
+				}
+				if (cache)
+					for (auto const& j: cache->storage())
+						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
+							mem[j.first] = j.second, delta.insert(j.first);
+						else if (j.second)
+							cached.insert(j.first);
+				if (delta.size())
+					lead = (lead == " .   ") ? "*.*  " : "***  ";
+
+				contout << " @:";
+				if (delta.size())
+					contout << "???";
+				else
+					contout << r[2].toHash<h256>();
+				contout << " $:" << (cache ? cache->isFreshCode() ? h256() : cache->codeHash() : r[3].toHash<h256>());
+
+				for (auto const& j: mem)
+					if (j.second)
+						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
+					else
+						contout << std::endl << "XXX    " << std::hex << std::setw(64) << j.first << "";
+			}
+			else
+				contout << " [SIMPLE]";
+			_out << lead << i << ": " << std::dec << (cache ? cache->balance() : r[0].toInt<u256>()) << " #:" << (cache ? cache->nonce() : r[1].toInt<u256>()) << contout.str() << std::endl;
+		}
+	}
+	return _out;
 }
