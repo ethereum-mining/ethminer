@@ -43,10 +43,10 @@ void Executive::setup(bytesConstRef _rlp)
 	// Entry point for a user-executed transaction.
 	m_t = Transaction(_rlp);
 
-	auto sender = m_t.sender();
+	m_sender = m_t.sender();
 
 	// Avoid invalid transactions.
-	auto nonceReq = m_s.transactionsFrom(sender);
+	auto nonceReq = m_s.transactionsFrom(m_sender);
 	if (m_t.nonce != nonceReq)
 	{
 		clog(StateChat) << "Invalid Nonce.";
@@ -72,23 +72,23 @@ void Executive::setup(bytesConstRef _rlp)
 	u256 cost = m_t.value + m_t.gas * m_t.gasPrice;
 
 	// Avoid unaffordable transactions.
-	if (m_s.balance(sender) < cost)
+	if (m_s.balance(m_sender) < cost)
 	{
 		clog(StateChat) << "Not enough cash.";
 		throw NotEnoughCash();
 	}
 
 	// Increment associated nonce for sender.
-	m_s.noteSending(sender);
+	m_s.noteSending(m_sender);
 
 	// Pay...
 //	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
-	m_s.subBalance(sender, cost);
+	m_s.subBalance(m_sender, cost);
 
 	if (m_t.isCreation())
-		create(sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, sender);
+		create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
 	else
-		call(m_t.receiveAddress, sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, sender);
+		call(m_t.receiveAddress, m_sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, m_sender);
 }
 
 void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
@@ -168,7 +168,7 @@ bool Executive::go(uint64_t _steps)
 
 u256 Executive::gas() const
 {
-	return m_vm->gas();
+	return m_vm ? m_vm->gas() : m_endGas;
 }
 
 void Executive::finalize()
@@ -178,9 +178,9 @@ void Executive::finalize()
 		m_s.m_cache[m_newAddress].setCode(m_out);
 
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_ext->origin, m_endGas * m_ext->gasPrice);
+	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice);
 
-	u256 gasSpentInEth = (m_t.gas - m_endGas) * m_ext->gasPrice;
+	u256 gasSpentInEth = (m_t.gas - m_endGas) * m_t.gasPrice;
 /*	unsigned c_feesKept = 8;
 	u256 feesEarned = gasSpentInEth - (gasSpentInEth / c_feesKept);
 	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpentInEth - feesEarned) << "is burnt).";

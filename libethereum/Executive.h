@@ -63,6 +63,7 @@ private:
 	Address m_newAddress;
 
 	Transaction m_t;
+	Address m_sender;
 	u256 m_endGas;
 };
 
