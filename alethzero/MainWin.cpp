@@ -680,8 +680,6 @@ void Main::on_data_textChanged()
 		if (body == -1 && init == -1)
 		{
 			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
-			if (!bodyBytes.size())
-				swap(initBytes, bodyBytes);
 		}
 		else
 		{

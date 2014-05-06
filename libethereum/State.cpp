@@ -895,7 +895,10 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 					contout << "???";
 				else
 					contout << r[2].toHash<h256>();
-				contout << " $:" << (cache ? cache->isFreshCode() ? h256() : cache->codeHash() : r[3].toHash<h256>());
+				if (cache && cache->isFreshCode())
+					contout << " $" << cache->code();
+				else
+					contout << " $" << (cache ? cache->codeHash() : r[3].toHash<h256>());
 
 				for (auto const& j: mem)
 					if (j.second)

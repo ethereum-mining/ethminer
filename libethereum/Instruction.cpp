@@ -755,6 +755,29 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 							break;
 					}
 				}
+				else if (t == "LLL")
+				{
+					bytes codes;
+					vector<unsigned> locs;
+					map<string, unsigned> vars;
+					if (compileLispFragment(d, e, _quiet, codes, locs, _vars) == -1)
+						break;
+					unsigned codeLoc = o_code.size() + 5 + 1;
+					o_locs.push_back(o_code.size());
+					pushLocation(o_code, codeLoc + codes.size());
+					o_code.push_back((byte)Instruction::JUMP);
+					for (auto b: codes)
+						o_code.push_back(b);
+
+					pushLiteral(o_code, codes.size());
+					o_locs.push_back(o_code.size());
+					pushLocation(o_code, codeLoc);
+					if (compileLispFragment(d, e, _quiet, o_code, o_locs, _vars) != 1)
+						break;
+					o_code.push_back((byte)Instruction::CODECOPY);
+					pushLiteral(o_code, codes.size());
+					outs = 1;
+				}
 				else if (t == "&&")
 				{
 					vector<bytes> codes;
@@ -1025,19 +1048,14 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 {
 	char const* d = _code.data();
 	char const* e = _code.data() + _code.size();
-	bytes first;
-	bytes second;
+	bytes body;
 	vector<unsigned> locs;
 	map<string, unsigned> vars;
-	compileLispFragment(d, e, _quiet, first, locs, vars);
+	compileLispFragment(d, e, _quiet, _init, locs, vars);
 	locs.clear();
 	vars.clear();
-	if (compileLispFragment(d, e, _quiet, second, locs, vars) > -1)
-	{
-		_init = first;
-		return second;
-	}
-	return first;
+	compileLispFragment(d, e, _quiet, body, locs, vars);
+	return body;
 }
 
 string eth::disassemble(bytes const& _mem)
