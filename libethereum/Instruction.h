@@ -43,6 +43,8 @@ enum class Instruction: uint8_t
 	NEG,
 	LT,
 	GT,
+	SLT,
+	SGT,
 	EQ,
 	NOT,
 

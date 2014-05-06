@@ -42,6 +42,8 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "NEG", Instruction::NEG },
 	{ "LT", Instruction::LT },
 	{ "GT", Instruction::GT },
+	{ "SLT", Instruction::SLT },
+	{ "SGT", Instruction::SGT },
 	{ "EQ", Instruction::EQ },
 	{ "NOT", Instruction::NOT },
 	{ "AND", Instruction::AND },
@@ -131,6 +133,8 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::NEG,          { "NEG",          0, 1, 1 } },
 	{ Instruction::LT,           { "LT",           0, 2, 1 } },
 	{ Instruction::GT,           { "GT",           0, 2, 1 } },
+	{ Instruction::SLT,          { "SLT",          0, 2, 1 } },
+	{ Instruction::SGT,          { "SGT",          0, 2, 1 } },
 	{ Instruction::EQ,           { "EQ",           0, 2, 1 } },
 	{ Instruction::NOT,          { "NOT",          0, 1, 1 } },
 	{ Instruction::AND,          { "AND",          0, 2, 1 } },
@@ -348,7 +352,7 @@ static void appendCode(bytes& o_code, vector<unsigned>& o_locs, bytes _code, vec
 static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes& o_code, vector<unsigned>& o_locs, map<string, unsigned>& _vars)
 {
 	std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
-	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
+	std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "S<", { Instruction::SLT, false } }, { "S<=", { Instruction::SGT, true } }, { "S>", { Instruction::SGT, false } }, { "S>=", { Instruction::SLT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 	std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 	std::set<char> const c_allowed = { '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '~' };
 

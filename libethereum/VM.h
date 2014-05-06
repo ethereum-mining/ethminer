@@ -253,6 +253,16 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			m_stack[m_stack.size() - 2] = m_stack.back() > m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
+		case Instruction::SLT:
+			require(2);
+			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() < (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+			m_stack.pop_back();
+			break;
+		case Instruction::SGT:
+			require(2);
+			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() > (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+			m_stack.pop_back();
+			break;
 		case Instruction::EQ:
 			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() == m_stack[m_stack.size() - 2] ? 1 : 0;
