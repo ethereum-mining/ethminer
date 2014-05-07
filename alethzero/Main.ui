@@ -370,7 +370,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -387,13 +387,20 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="transactionQueue">
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
+      <widget class="QSplitter" name="splitter_7">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
-       </property>
+       <widget class="QListWidget" name="transactionQueue">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QTextBrowser" name="pendingInfo">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
       </widget>
      </item>
     </layout>

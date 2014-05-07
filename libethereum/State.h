@@ -81,10 +81,13 @@ private:
 	T m_to;
 };
 
+enum class AccountChange { None, Creation, Deletion, Intrinsic, CodeStorage, All };
+
 struct AccountDiff
 {
 	inline bool changed() const { return storage.size() || code || nonce || balance || exist; }
 	char const* lead() const;
+	AccountChange changeType() const;
 
 	Diff<bool> exist;
 	Diff<u256> balance;
@@ -218,6 +221,11 @@ public:
 
 	/// Get the list of pending transactions.
 	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
+
+	/// Get the State immediately after the given number of pending transactions have been applied.
+	/// If (_i == 0) returns the initial state of the block.
+	/// If (_i == pending().size()) returns the final state of the block, prior to rewards.
+	State fromPending(unsigned _i) const;
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.

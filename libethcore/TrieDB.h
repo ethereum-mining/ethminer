@@ -41,7 +41,8 @@ public:
 
 	std::string lookup(h256 _h) const { auto it = m_over.find(_h); if (it != m_over.end()) return it->second; return std::string(); }
 	void insert(h256 _h, bytesConstRef _v) { m_over[_h] = _v.toString(); m_refCount[_h]++; }
-	void kill(h256 _h) { if (!--m_refCount[_h]) m_over.erase(_h); }
+	void kill(h256 _h) { --m_refCount[_h]; }
+	void purge() { for (auto const& i: m_refCount) if (!i.second) m_over.erase(i.first); }
 
 protected:
 	std::map<h256, std::string> m_over;
@@ -68,7 +69,7 @@ public:
 	ldb::DB* db() const { return m_db.get(); }
 	void setDB(ldb::DB* _db, bool _clearOverlay = true) { m_db = std::shared_ptr<ldb::DB>(_db); if (_clearOverlay) m_over.clear(); }
 
-	void commit() { if (m_db) { for (auto const& i: m_over) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); m_refCount.clear(); } }
+	void commit() { if (m_db) { for (auto const& i: m_over) if (m_refCount[i.first]) m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size())); m_over.clear(); m_refCount.clear(); } }
 	void rollback() { m_over.clear(); m_refCount.clear(); }
 
 	std::string lookup(h256 _h) const { std::string ret = BasicMap::lookup(_h); if (ret.empty() && m_db) m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret); return ret; }
