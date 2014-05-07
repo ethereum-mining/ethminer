@@ -925,6 +925,23 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	return newAddress;
 }
 
+State State::fromPending(unsigned _i) const
+{
+	State ret = *this;
+	ret.uncommitToMine();
+	_i = min<unsigned>(_i, m_transactions.size());
+	if (!_i)
+		ret.m_state.setRoot(m_previousBlock.stateRoot);
+	else
+		ret.m_state.setRoot(m_transactions[_i - 1].stateRoot);
+	while (ret.m_transactions.size() > _i)
+	{
+		ret.m_transactionSet.erase(ret.m_transactions.back().transaction.sha3());
+		ret.m_transactions.pop_back();
+	}
+	return ret;
+}
+
 void State::applyRewards(Addresses const& _uncleAddresses)
 {
 	u256 r = m_blockReward;
@@ -1019,6 +1036,13 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 		}
 	}
 	return _out;
+}
+
+AccountChange AccountDiff::changeType() const
+{
+	bool bn = (balance || nonce);
+	bool sc = (!storage.empty() || code);
+	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
 }
 
 char const* AccountDiff::lead() const

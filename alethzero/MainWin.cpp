@@ -58,6 +58,7 @@ using eth::simpleDebugOut;
 using eth::toLog2;
 using eth::toString;
 using eth::units;
+using eth::operator<<;
 
 // vars
 using eth::g_logPost;
@@ -407,7 +408,7 @@ eth::State const& Main::state() const
 
 void Main::refresh(bool _override)
 {
-	m_client->lock();
+	eth::ClientGuard g(m_client.get());
 	auto const& st = state();
 
 	bool c = m_client->changed();
@@ -516,7 +517,78 @@ void Main::refresh(bool _override)
 
 		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
 	}
-	m_client->unlock();
+}
+
+void Main::on_transactionQueue_currentItemChanged()
+{
+	ui->pendingInfo->clear();
+	eth::ClientGuard g(m_client.get());
+
+	stringstream s;
+	int i = ui->transactionQueue->currentRow();
+	if (i >= 0)
+	{
+		eth::StateDiff d = m_client->postState().fromPending(i).diff(m_client->postState().fromPending(i + 1));
+
+		auto indent = "<code style=\"white-space: pre\">     </code>";
+		unsigned ii = 0;
+		for (auto const& i: d.accounts)
+		{
+			if (ii)
+				s << "<hr/>";
+			ii++;
+
+			eth::AccountDiff const& ad = i.second;
+			s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
+			if (!ad.exist.to())
+				continue;
+
+			if (ad.balance)
+			{
+				s << "<br/>" << indent << "Balance " << std::dec << formatBalance(ad.balance.to());
+				s << " <b>" << std::showpos << (((eth::bigint)ad.balance.to()) - ((eth::bigint)ad.balance.from())) << std::noshowpos << "</b>";
+			}
+			if (ad.nonce)
+			{
+				s << "<br/>" << indent << "Count #" << std::dec << ad.nonce.to();
+				s << " <b>" << std::showpos << (((eth::bigint)ad.nonce.to()) - ((eth::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
+			}
+			if (ad.code)
+			{
+				s << "<br/>" << indent << "Code " << std::hex << ad.code.to();
+				if (ad.code.from().size())
+					 s << " (" << ad.code.from() << ")";
+			}
+
+			for (pair<u256, eth::Diff<u256>> const& i: ad.storage)
+			{
+				s << "<br/><code style=\"white-space: pre\">";
+				if (!i.second.from())
+					s << " + ";
+				else if (!i.second.to())
+					s << "XXX";
+				else
+					s << " * ";
+				s << "    </code>";
+
+				if (i.first > u256(1) << 246)
+					s << (h256)i.first;
+				else if (i.first > u160(1) << 150)
+					s << (h160)(u160)i.first;
+				else
+					s << std::hex << i.first;
+
+				if (!i.second.from())
+					s << ": " << std::hex << i.second.to();
+				else if (!i.second.to())
+					s << " (" << std::hex << i.second.from() << ")";
+				else
+					s << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+			}
+		}
+	}
+
+	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
 }
 
 void Main::ourAccountsRowsMoved()
@@ -536,7 +608,7 @@ void Main::ourAccountsRowsMoved()
 void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
-	m_client->lock();
+	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -597,7 +669,6 @@ void Main::on_blocks_currentItemChanged()
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
 	}
-	m_client->unlock();
 }
 
 void Main::on_contracts_currentItemChanged()
