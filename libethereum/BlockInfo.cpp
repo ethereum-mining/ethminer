@@ -87,7 +87,7 @@ void BlockInfo::populateGenesis()
 	populate(&genesisBlock);
 }
 
-void BlockInfo::populateFromHeader(RLP const& _header)
+void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
 	int field = 0;
 	try
@@ -112,7 +112,7 @@ void BlockInfo::populateFromHeader(RLP const& _header)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
+	if (_checkNonce && parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
 		throw InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty);
 
 	if (gasUsed > gasLimit)
@@ -122,7 +122,7 @@ void BlockInfo::populateFromHeader(RLP const& _header)
 		throw ExtraDataTooBig();
 }
 
-void BlockInfo::populate(bytesConstRef _block)
+void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 {
 	hash = eth::sha3(_block);
 
@@ -130,7 +130,7 @@ void BlockInfo::populate(bytesConstRef _block)
 	RLP header = root[0];
 	if (!header.isList())
 		throw InvalidBlockFormat(0, header.data());
-	populateFromHeader(header);
+	populateFromHeader(header, _checkNonce);
 
 	if (!root[1].isList())
 		throw InvalidBlockFormat(1, root[1].data());
