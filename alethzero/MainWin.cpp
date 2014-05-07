@@ -528,15 +528,42 @@ void Main::on_transactionQueue_currentItemChanged()
 	int i = ui->transactionQueue->currentRow();
 	if (i >= 0)
 	{
-		eth::StateDiff d = m_client->postState().fromPending(i).diff(m_client->postState().fromPending(i + 1));
+		Transaction tx(m_client->postState().pending()[i]);
+		auto ss = tx.safeSender();
+		h256 th = sha3(rlpList(ss, tx.nonce));
+		s << "<h3>" << th << "</h3>";
+		s << "From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
+		if (tx.isCreation())
+			s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
+		else
+			s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
+		s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
+		s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
+		s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
+		s << "<br/>Gas: <b>" << tx.gas << "</b>";
+		if (tx.isCreation())
+		{
+			if (tx.data.size())
+				s << "<h4>Code</h4>" << disassemble(tx.data);
+		}
+		else
+		{
+			if (tx.data.size())
+				s << htmlDump(tx.data, 16);
+		}
+		s << "<hr/>";
+
+		eth::State fs = m_client->postState().fromPending(i);
+		eth::State ts = m_client->postState().fromPending(i + 1);
+		eth::StateDiff d = fs.diff(ts);
+
+		s << "Pre: " << fs.rootHash() << "<br/>";
+		s << "Post: <b>" << ts.rootHash() << "</b>";
 
 		auto indent = "<code style=\"white-space: pre\">     </code>";
-		unsigned ii = 0;
 		for (auto const& i: d.accounts)
 		{
-			if (ii)
-				s << "<hr/>";
-			ii++;
+			s << "<hr/>";
 
 			eth::AccountDiff const& ad = i.second;
 			s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
@@ -569,7 +596,7 @@ void Main::on_transactionQueue_currentItemChanged()
 					s << "XXX";
 				else
 					s << " * ";
-				s << "    </code>";
+				s << "  </code>";
 
 				if (i.first > u256(1) << 246)
 					s << (h256)i.first;
