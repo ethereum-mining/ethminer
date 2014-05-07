@@ -7,23 +7,41 @@
 #  - Visual Studio Express 2013 for Desktop
 #  - On PATH: bash, git, git-svn, curl, 7z, perl, ruby, python
 
-# put /bin, /usr/bin and /usr/local/bin at end of PATH (want to ensure non Git/MSys/Git perl takes priority)
-PATH=${PATH/#\/bin:/:/}
-PATH=${PATH/#\/usr\/bin:/:/}
-PATH=${PATH/#\/usr\/local\/bin:/:/}
-PATH=${PATH//:\/bin:/:/}
-PATH=${PATH//:\/usr\/bin:/:/}
-PATH=${PATH//:\/usr\/local\/bin:/:/}
-PATH=$PATH:/bin:/usr/bin:/usr/local/bin
-
-error_exit() {
-    echo $1 1>&2
-    exit 1
+error_exit()
+{
+  echo $1 1>&2
+  exit 1
 }
 
-for i in ruby python perl curl git 7z; do
+# check for existance of basic tools
+for i in gawk sed curl git 7z; do
 	which $i &>/dev/null || error_exit "Could not find $i on PATH"
 done
+
+# get commands before they are removed from the path
+sed=`which sed`
+awk=`which gawk`
+which=`which which`
+
+path_remove()
+{
+	export PATH=`echo -n $PATH | "$awk" -v RS=: -v ORS=: '$0 != "'$1'"' | "$sed" 's/:$//'`
+}
+
+path_remove_bin()
+{
+	path_remove "/bin"
+	path_remove "/usr/bin"
+	path_remove "/usr/local/bin"
+}
+
+# check for native perl, python and ruby installations (needed by Qt)
+(
+	path_remove_bin;
+	for i in ruby python perl; do
+		"$which" $i &>/dev/null || error_exit "Could not find $i on PATH"
+	done
+)
 
 if [ ! -d "$VS120COMNTOOLS" ]; then
 	error_exit "Couldn't find Visual Studio 2013"
@@ -187,8 +205,15 @@ compile_qt()
 			mkdir -p $platform/qtbase/bin
 			cp -a ../icu/bin_$platform/*.dll $platform/qtbase/bin/
 		
-			# compile qt
-			cmd.exe /c "..\\cpp-ethereum\\windows\\compile_qt.bat $platform"
+			(
+				# remove bash paths
+				set +x
+				path_remove_bin
+				set -x
+				
+				# compile qt
+				cmd.exe /c "..\\cpp-ethereum\\windows\\compile_qt.bat $platform"
+			)
 		)
 	fi
 }
