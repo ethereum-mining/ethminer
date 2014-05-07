@@ -220,9 +220,24 @@ void Client::work()
 		if (m_restartMining)
 		{
 			lock_guard<recursive_mutex> l(m_lock);
-			m_postMine.commitToMine(m_bc);
+			if (m_paranoia)
+			{
+				if (m_postMine.amIJustParanoid(m_bc))
+				{
+					cnote << "I'm just paranoid. Block is fine.";
+					m_postMine.commitToMine(m_bc);
+				}
+				else
+				{
+					cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
+					m_doMine = false;
+				}
+			}
 		}
+	}
 
+	if (m_doMine)
+	{
 		m_restartMining = false;
 
 		// Mine for a while.

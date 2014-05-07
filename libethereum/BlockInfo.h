@@ -71,8 +71,8 @@ public:
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
-	void populateFromHeader(RLP const& _header);
-	void populate(bytesConstRef _block);
+	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
+	void populate(bytesConstRef _block, bool _checkNonce = true);
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 	void populateFromParent(BlockInfo const& parent);

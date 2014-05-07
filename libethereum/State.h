@@ -134,6 +134,11 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
+	/// @brief Checks that mining the current object will result in a valid block.
+	/// Effectively attempts to import the serialised block.
+	/// @returns true if all is ok. If it's false, worry.
+	bool amIJustParanoid(BlockChain const& _bc);
+
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.

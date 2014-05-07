@@ -149,6 +149,10 @@ public:
 
 	// Mining stuff:
 
+	/// Check block validity prior to mining.
+	bool paranoia() const { return m_paranoia; }
+	/// Change whether we check block validity prior to mining.
+	void setParanoia(bool _p) { m_paranoia = _p; }
 	/// Set the coinbase address.
 	void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
@@ -178,6 +182,7 @@ private:
 	
 	std::recursive_mutex m_lock;
 	std::atomic<ClientWorkState> m_workState;
+	bool m_paranoia = false;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
 	mutable bool m_restartMining = false;
