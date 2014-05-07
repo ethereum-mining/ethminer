@@ -80,6 +80,7 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
+	m_db.commit();
 //	cnote << "State root: " << m_state.root();
 
 	m_previousBlock = BlockInfo::genesis();
@@ -615,7 +616,11 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-	cnote << "Commiting to mine on" << m_previousBlock.hash;
+	cnote << "Commiting to mine on block" << m_previousBlock.hash;
+#ifndef RELEASE
+	commit();
+	cnote << "Pre-reward stateRoot:" << m_state.root();
+#endif
 
 	RLPStream uncles;
 	Addresses uncleAddresses;
@@ -668,7 +673,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-	cnote << "stateRoot:" << m_state.root();
+	cnote << "Post-reward stateRoot:" << m_state.root();
 //	cnote << m_state;
 //	cnote << *this;
 
