@@ -238,11 +238,14 @@ public:
 	/// This might throw.
 	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
 
+	/// Get the fee associated for a transaction with the given data.
+	u256 txGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_txGas + _gas; }
+
 	/// Get the fee associated for a contract created with the given data.
-	u256 createGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_createGas + _gas; }
+	u256 createGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
 
 	/// Get the fee associated for a normal transaction.
-	u256 callGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_callGas + _gas; }
+	u256 callGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
 
 	/// @return the difference between this state (origin) and @a _c (destination).
 	StateDiff diff(State const& _c) const;
@@ -289,9 +292,6 @@ private:
 	void applyRewards(Addresses const& _uncleAddresses);
 
 	void refreshManifest(RLPStream* _txs = nullptr);
-
-	/// Unfinalise the block, unapplying the earned rewards.
-	void unapplyRewards(Addresses const& _uncleAddresses);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }

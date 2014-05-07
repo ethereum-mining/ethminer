@@ -661,7 +661,6 @@ static int compileLispFragment(char const*& d, char const* e, bool _quiet, bytes
 						int o = compileLispFragment(d, e, _quiet, codes[i], locs[i], _vars);
 						if (o == -1 || (i == 0 && o != 1))
 							return false;
-						cnote << "FOR " << i << o;
 						if (i > 0)
 							for (int j = 0; j < o; ++j)
 								codes[i].push_back((byte)Instruction::POP);	// pop additional items off stack for the previous item (final item's returns get left on).

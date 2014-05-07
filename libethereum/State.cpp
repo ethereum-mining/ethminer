@@ -561,17 +561,12 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 void State::uncommitToMine()
 {
-	if (m_currentBlock.sha3Uncles != h256())
-	{
-//		cnote << "Unapplying rewards: " << balance(m_currentBlock.coinbaseAddress);
-		Addresses uncleAddresses;
-		for (auto i: RLP(m_currentUncles))
-			uncleAddresses.push_back(i[2].toHash<Address>());
-		unapplyRewards(uncleAddresses);
-//		cnote << "Unapplied rewards: " << balance(m_currentBlock.coinbaseAddress);
-
-		m_currentBlock.sha3Uncles = h256();
-	}
+	m_cache.clear();
+	if (!m_transactions.size())
+		m_state.setRoot(m_previousBlock.stateRoot);
+	else
+		m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
+	m_currentBlock.sha3Uncles = h256();
 }
 
 bool State::amIJustParanoid(BlockChain const& _bc)
@@ -972,7 +967,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 State State::fromPending(unsigned _i) const
 {
 	State ret = *this;
-	ret.uncommitToMine();
 	ret.m_cache.clear();
 	_i = min<unsigned>(_i, m_transactions.size());
 	if (!_i)
@@ -999,23 +993,6 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 		r += m_blockReward / 8;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
-}
-
-void State::unapplyRewards(Addresses const&)
-{
-	m_cache.clear();
-	if (!m_transactions.size())
-		m_state.setRoot(m_previousBlock.stateRoot);
-	else
-		m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
-
-/*	u256 r = m_blockReward;
-	for (auto const& i: _uncleAddresses)
-	{
-		subBalance(i, m_blockReward * 3 / 4);
-		r += m_blockReward / 8;
-	}
-	subBalance(m_currentBlock.coinbaseAddress, r);*/
 }
 
 std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
