@@ -149,6 +149,7 @@
      <string>Deb&amp;ug</string>
     </property>
     <addaction name="debugStep"/>
+    <addaction name="paranoia"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -420,6 +421,7 @@
    <addaction name="connect"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
+   <addaction name="paranoia"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
    <property name="sizePolicy">
@@ -1005,6 +1007,14 @@
    </property>
    <property name="shortcut">
     <string>F10</string>
+   </property>
+  </action>
+  <action name="paranoia">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mining &amp;Paranoia</string>
    </property>
   </action>
  </widget>

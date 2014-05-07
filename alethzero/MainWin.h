@@ -67,6 +67,7 @@ private slots:
 	void on_contracts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
 	void on_about_triggered();
+	void on_paranoia_triggered();
 	void on_nameReg_textChanged();
 	void on_preview_triggered() { refresh(true); }
 	void on_quit_triggered() { close(); }

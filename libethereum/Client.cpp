@@ -233,6 +233,8 @@ void Client::work()
 					m_doMine = false;
 				}
 			}
+			else
+				m_postMine.commitToMine(m_bc);
 		}
 	}
 

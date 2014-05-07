@@ -168,7 +168,7 @@ Main::Main(QWidget *parent) :
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
-	m_client->setParanoia(true);
+	m_client->setParanoia(false);
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
@@ -314,6 +314,11 @@ void Main::on_about_triggered()
 	QMessageBox::about(this, "About AlethZero PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), QString("AlethZero/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH)) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Eric Lombrozo, Marko Simovic, Alex Leverington, Tim Hughes and several others.");
 }
 
+void Main::on_paranoia_triggered()
+{
+	m_client->setParanoia(ui->paranoia->isChecked());
+}
+
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
@@ -328,6 +333,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -367,6 +373,7 @@ void Main::readSettings()
 	m_client->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
+	ui->upnp->setChecked(s.value("paranoia", false).toBool());
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
