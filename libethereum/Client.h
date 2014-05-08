@@ -78,7 +78,7 @@ class Client
 {
 public:
 	/// Constructor.
-	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string());
+	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
 
 	/// Destructor.
 	~Client();

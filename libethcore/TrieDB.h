@@ -65,6 +65,7 @@ class Overlay: public BasicMap
 {
 public:
 	Overlay(ldb::DB* _db = nullptr): m_db(_db) {}
+	~Overlay();
 
 	ldb::DB* db() const { return m_db.get(); }
 	void setDB(ldb::DB* _db, bool _clearOverlay = true) { m_db = std::shared_ptr<ldb::DB>(_db); if (_clearOverlay) m_over.clear(); }

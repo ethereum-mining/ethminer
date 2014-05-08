@@ -64,6 +64,7 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
+	cnote << "Opened state DB.";
 	return Overlay(db);
 }
 

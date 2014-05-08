@@ -168,7 +168,6 @@ Main::Main(QWidget *parent) :
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
 	m_client.reset(new Client("AlethZero"));
-	m_client->setParanoia(false);
 
 	m_refresh = new QTimer(this);
 	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
@@ -879,6 +878,16 @@ void Main::on_data_textChanged()
 		}
 	}
 	updateFee();
+}
+
+void Main::on_killBlockchain_triggered()
+{
+	writeSettings();
+	ui->mine->setChecked(false);
+	ui->net->setChecked(false);
+	m_client.reset();
+	m_client.reset(new Client("AlethZero", Address(), string(), true));
+	readSettings();
 }
 
 bool Main::isCreation() const

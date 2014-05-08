@@ -76,6 +76,7 @@ private slots:
 	void on_debug_clicked();
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
+	void on_killBlockchain_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
