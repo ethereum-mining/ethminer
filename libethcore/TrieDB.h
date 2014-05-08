@@ -39,10 +39,10 @@ public:
 	void clear() { m_over.clear(); }
 	std::map<h256, std::string> const& get() const { return m_over; }
 
-	std::string lookup(h256 _h) const { auto it = m_over.find(_h); if (it != m_over.end()) return it->second; return std::string(); }
-	void insert(h256 _h, bytesConstRef _v) { m_over[_h] = _v.toString(); m_refCount[_h]++; }
-	void kill(h256 _h) { --m_refCount[_h]; }
-	void purge() { for (auto const& i: m_refCount) if (!i.second) m_over.erase(i.first); }
+	std::string lookup(h256 _h, bool _enforceRefs = false) const;
+	void insert(h256 _h, bytesConstRef _v);
+	void kill(h256 _h);
+	void purge();
 
 protected:
 	std::map<h256, std::string> m_over;
@@ -73,7 +73,7 @@ public:
 	void commit();
 	void rollback();
 
-	std::string lookup(h256 _h) const;
+	std::string lookup(h256 _h, bool _enforceRefs = false) const;
 
 private:
 	using BasicMap::clear;
@@ -113,6 +113,7 @@ public:
 
 	void init();
 	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ if (!node(m_root).size()) throw RootNotFound(); }
+	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == h256() ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	bool isNull() const { return !node(m_root).size(); }

@@ -198,8 +198,11 @@ public:
 	 */
 	void subBalance(Address _id, bigint _value);
 
+	/// Get the root of the storage of an account.
+	h256 storageRoot(Address _contract) const;
+
 	/// Get the value of a storage position of an account.
-	/// @returns 0 if no contract exists at that address.
+	/// @returns 0 if no account exists at that address.
 	u256 storage(Address _contract, u256 _memory) const;
 
 	/// Set the value of a storage position of an account.
@@ -207,11 +210,11 @@ public:
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::map<u256, u256> if no contract exists at that address.
+	/// @returns std::map<u256, u256> if no account exists at that address.
 	std::map<u256, u256> storage(Address _contract) const;
 
 	/// Get the code of an account.
-	/// @returns bytes() if no contract exists at that address.
+	/// @returns bytes() if no account exists at that address.
 	bytes const& code(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
