@@ -102,11 +102,14 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	m_detailsDB->Get(m_readOptions, ldb::Slice("best"), &l);
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
-	cout << "Opened blockchain db. Latest: " << m_lastBlockHash << endl;
+	cnote << "Opened blockchain DB. Latest: " << m_lastBlockHash;
 }
 
 BlockChain::~BlockChain()
 {
+	cnote << "Closing blockchain DB";
+	delete m_detailsDB;
+	delete m_db;
 }
 
 template <class T, class V>

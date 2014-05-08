@@ -29,4 +29,10 @@ namespace eth
 
 const h256 c_shaNull = sha3(rlp(""));
 
+Overlay::~Overlay()
+{
+	if (m_db.use_count() == 1 && m_db.get())
+		cnote << "Closing state DB";
+}
+
 }

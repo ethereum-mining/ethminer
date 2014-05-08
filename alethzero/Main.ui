@@ -150,6 +150,7 @@
     </property>
     <addaction name="debugStep"/>
     <addaction name="paranoia"/>
+    <addaction name="killBlockchain"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1024,6 +1025,11 @@
    </property>
    <property name="text">
     <string>Mining &amp;Paranoia</string>
+   </property>
+  </action>
+  <action name="killBlockchain">
+   <property name="text">
+    <string>&amp;Kill Blockchain</string>
    </property>
   </action>
  </widget>

@@ -50,11 +50,11 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath):
+Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
 	m_clientVersion(_clientVersion),
 	m_vc(_dbPath, PeerServer::protocolVersion()),
-	m_bc(_dbPath, !m_vc.ok()),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok())),
+	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
 	m_postMine(_us, m_stateDB),
 	m_workState(Active)
