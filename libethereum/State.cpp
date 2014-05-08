@@ -867,7 +867,7 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();
 
 	if (e.t().receiveAddress)
-		assert(m_db.lookup(storageRoot(e.t().receiveAddress), true).size());
+		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress), true).size());
 
 	cnote << "Executed; now" << rootHash();
 	cnote << old.diff(*this);
