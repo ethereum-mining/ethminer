@@ -37,6 +37,7 @@ using namespace eth;
 
 namespace eth
 {
+
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.m_lastBlockHash);
@@ -280,6 +281,11 @@ bytesConstRef BlockChain::block(h256 _hash) const
 		swap(m_cache[_hash], d);
 		return bytesConstRef(&m_cache[_hash]);
 	}
+}
+
+eth::uint BlockChain::number(h256 _hash) const
+{
+	return details(_hash).number;
 }
 
 BlockDetails const& BlockChain::details(h256 _h) const

@@ -35,4 +35,37 @@ Overlay::~Overlay()
 		cnote << "Closing state DB";
 }
 
+void Overlay::setDB(ldb::DB* _db, bool _clearOverlay)
+{
+	m_db = std::shared_ptr<ldb::DB>(_db);
+	if (_clearOverlay)
+		m_over.clear();
+}
+
+void Overlay::commit()
+{
+	if (m_db)
+	{
+		for (auto const& i: m_over)
+//			if (m_refCount[i.first])
+				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
+		m_over.clear();
+		m_refCount.clear();
+	}
+}
+
+void Overlay::rollback()
+{
+	m_over.clear();
+	m_refCount.clear();
+}
+
+std::string Overlay::lookup(h256 _h) const
+{
+	std::string ret = BasicMap::lookup(_h);
+	if (ret.empty() && m_db)
+		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
+	return ret;
+}
+
 }

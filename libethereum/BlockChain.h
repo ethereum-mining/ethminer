@@ -91,6 +91,9 @@ public:
 	bytesConstRef block(h256 _hash) const;
 	bytesConstRef block() const { return block(currentHash()); }
 
+	uint number(h256 _hash) const;
+	uint number() const { return number(currentHash()); }
+
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { return m_lastBlockHash; }
 
