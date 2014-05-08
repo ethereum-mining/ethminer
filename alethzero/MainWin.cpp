@@ -367,7 +367,8 @@ void Main::readSettings()
 		for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
 		{
 			memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-			m_myKeys.append(KeyPair(k));
+			if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
+				m_myKeys.append(KeyPair(k));
 		}
 	}
 	m_client->setAddress(m_myKeys.back().address());
