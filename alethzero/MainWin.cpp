@@ -357,6 +357,7 @@ void Main::readSettings()
 	restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
 
+	m_myKeys.clear();
 	QByteArray b = s.value("address").toByteArray();
 	if (b.isEmpty())
 		m_myKeys.append(KeyPair::create());
