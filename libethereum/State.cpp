@@ -824,6 +824,17 @@ map<u256, u256> State::storage(Address _id) const
 	return ret;
 }
 
+h256 State::storageRoot(Address _id) const
+{
+	string s = m_state.at(_id);
+	if (s.size())
+	{
+		RLP r(s);
+		return r[2].toHash<h256>();
+	}
+	return h256();
+}
+
 bytes const& State::code(Address _contract) const
 {
 	if (!addressHasCode(_contract))
@@ -846,8 +857,8 @@ u256 State::execute(bytesConstRef _rlp)
 
 	cnote << "Executing " << e.t() << "on" << h;
 
-	u256 startGasUSed = gasUsed();
-	if (startGasUSed + e.t().gas > m_currentBlock.gasLimit)
+	u256 startGasUsed = gasUsed();
+	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
 		throw BlockGasLimitReached();	// TODO: make sure this is handled.
 
 	e.go();
@@ -855,11 +866,14 @@ u256 State::execute(bytesConstRef _rlp)
 
 	commit();
 
+	if (e.t().receiveAddress)
+		assert(m_db.lookup(storageRoot(e.t().receiveAddress), true).size());
+
 	cnote << "Executed; now" << rootHash();
 	cnote << old.diff(*this);
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(TransactionReceipt(e.t(), m_state.root(), startGasUSed + e.gasUsed()));
+	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
@@ -984,9 +998,6 @@ State State::fromPending(unsigned _i) const
 
 void State::applyRewards(Addresses const& _uncleAddresses)
 {
-	// Commit here so we can definitely unapply later.
-	commit();
-
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleAddresses)
 	{

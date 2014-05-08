@@ -29,6 +29,33 @@ namespace eth
 
 const h256 c_shaNull = sha3(rlp(""));
 
+std::string BasicMap::lookup(h256 _h, bool _enforceRefs) const
+{
+	auto it = m_over.find(_h);
+	if (it != m_over.end() && (!_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first))))
+		return it->second;
+	return std::string();
+}
+
+void BasicMap::insert(h256 _h, bytesConstRef _v)
+{
+	m_over[_h] = _v.toString();
+	m_refCount[_h]++;
+}
+
+void BasicMap::kill(h256 _h)
+{
+	if (m_refCount[_h] > 0)
+		--m_refCount[_h];
+}
+
+void BasicMap::purge()
+{
+	for (auto const& i: m_refCount)
+		if (!i.second)
+			m_over.erase(i.first);
+}
+
 Overlay::~Overlay()
 {
 	if (m_db.use_count() == 1 && m_db.get())
@@ -46,9 +73,13 @@ void Overlay::commit()
 {
 	if (m_db)
 	{
+//		cnote << "Committing nodes to disk DB:";
 		for (auto const& i: m_over)
-//			if (m_refCount[i.first])
+		{
+//			cnote << i.first << "#" << m_refCount[i.first];
+			if (m_refCount[i.first])
 				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
+		}
 		m_over.clear();
 		m_refCount.clear();
 	}
@@ -60,9 +91,9 @@ void Overlay::rollback()
 	m_refCount.clear();
 }
 
-std::string Overlay::lookup(h256 _h) const
+std::string Overlay::lookup(h256 _h, bool _enforceRefs) const
 {
-	std::string ret = BasicMap::lookup(_h);
+	std::string ret = BasicMap::lookup(_h, _enforceRefs);
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 	return ret;
