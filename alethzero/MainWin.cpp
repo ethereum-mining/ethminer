@@ -662,15 +662,20 @@ void Main::on_blocks_currentItemChanged()
 			time_t rawTime = (time_t)(uint64_t)info.timestamp;
 			strftime(timestamp, 64, "%c", localtime(&rawTime));
 			s << "<h3>" << h << "</h3>";
-			s << "<h4>#" << details.number;
+			s << "<h4>#" << info.number;
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
 			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
+			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
+			s << "&nbsp;&emsp;&nbsp;Minimum gas price: <b>" << formatBalance(info.minGasPrice) << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toStdString() << "</b> " << info.coinbaseAddress;
-			s << "<br/>State: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
+			s << "<br/>Pre: <b>" << BlockInfo(m_client->blockChain().block(info.parentHash)).stateRoot << "</b>";
+			for (auto const& i: block[1])
+				s << "<br/>" << sha3(i[0].data()).abridged() << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
+			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
 		}
 		else
 		{

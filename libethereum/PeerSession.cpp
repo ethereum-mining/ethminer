@@ -108,8 +108,9 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
-			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
-			uint count = std::min(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
+			uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
+			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
+			uint count = std::min(c_maxHashes, n + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
@@ -282,15 +283,15 @@ bool PeerSession::interpret(RLP const& _r)
 
 			if (m_server->m_chain->details(parent))
 			{
-				latestNumber = m_server->m_chain->details(latest).number;
-				parentNumber = m_server->m_chain->details(parent).number;
+				latestNumber = m_server->m_chain->number(latest);
+				parentNumber = m_server->m_chain->number(parent);
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
 				clogS(NetAllDetail) << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber;
 				clogS(NetAllDetail) << latest << " - " << parent;
 
 				prep(s);
 				s.appendList(1 + count) << BlocksPacket;
-				uint endNumber = m_server->m_chain->details(parent).number;
+				uint endNumber = m_server->m_chain->number(parent);
 				uint startNumber = endNumber + count;
 				clogS(NetAllDetail) << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber;
 
@@ -346,7 +347,7 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		else
 		{
-			uint count = std::min(c_maxHashes, m_server->m_chain->details(noGood).number);
+			uint count = std::min(c_maxHashes, m_server->m_chain->number(noGood));
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
