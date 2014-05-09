@@ -809,7 +809,6 @@ map<u256, u256> State::storage(Address _id) const
 		if (it->second.oldRoot())
 		{
 			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
-			ret = it->second.storage();
 			for (auto const& i: memdb)
 				ret[i.first] = RLP(i.second).toInt<u256>();
 		}

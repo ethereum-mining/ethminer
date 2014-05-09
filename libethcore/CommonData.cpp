@@ -72,17 +72,22 @@ int eth::fromHex(char _i)
 
 bytes eth::fromHex(std::string const& _s)
 {
-	if (_s.size() % 2 || _s.size() < 2)
-		return bytes();
 	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
 	std::vector<uint8_t> ret;
-	ret.reserve((_s.size() - s) / 2);
+	ret.reserve((_s.size() - s + 1) / 2);
+
+	if (_s.size() % 2)
+		try
+		{
+			ret.push_back(fromHex(_s[s++]));
+		}
+		catch (...){ ret.push_back(0); }
 	for (uint i = s; i < _s.size(); i += 2)
 		try
 		{
 			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 		}
-		catch (...){}
+		catch (...){ ret.push_back(0); }
 	return ret;
 }
 
