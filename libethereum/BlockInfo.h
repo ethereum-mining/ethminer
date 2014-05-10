@@ -27,10 +27,31 @@
 namespace eth
 {
 
+/** @brief Encapsulation of a block header.
+ * Class to contain all of a block header's data. It is able to parse a block header and populate
+ * from some given RLP block serialisation with the static fromHeader(), through the method
+ * populateFromHeader(). This will conduct a minimal level of verification. In this case extra
+ * verification can be performed through verifyInternals() and verifyParent().
+ *
+ * The object may also be populated from an entire block through the explicit
+ * constructor BlockInfo(bytesConstRef) and manually with the populate() method. These will
+ * conduct verification of the header against the other information in the block.
+ *
+ * The object may be populated with a template given a parent BlockInfo object with the
+ * populateFromParent() method. The genesis block info may be retrieved with genesis() and the
+ * corresponding RLP block created with createGenesisBlock().
+ *
+ * The difficulty and gas-limit derivations may be calculated with the calculateDifficulty()
+ * and calculateGasLimit() and the object serialised to RLP with fillStream. To determine the
+ * header hash without the nonce (for mining), the method headerHashWithoutNonce() is provided.
+ *
+ * The defualt constructor creates an empty object, which can be tested against with the boolean
+ * conversion operator.
+ */
 struct BlockInfo
 {
 public:
-	h256 hash;						///< SHA3 hash of the entire block!
+	h256 hash;						///< SHA3 hash of the entire block! Not serialised (the only member not contained in a block header).
 	h256 parentHash;
 	h256 sha3Uncles;
 	Address coinbaseAddress;
@@ -70,7 +91,6 @@ public:
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
-	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
 	void populate(bytesConstRef _block, bool _checkNonce = true);
 	void verifyInternals(bytesConstRef _block) const;
@@ -84,6 +104,7 @@ public:
 	h256 headerHashWithoutNonce() const;
 	void fillStream(RLPStream& _s, bool _nonce) const;
 
+	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
 	static bytes createGenesisBlock();
 
 private:
