@@ -15,20 +15,21 @@ else if (typeof(String.prototype.pad) === "undefined")
 }
 
 var spec = [
-    { "method": "coinbase", "params": null, "returns" : "" },
-	{ "method": "isListening", "params": null, "returns" : false },
-	{ "method": "isMining", "params": null, "returns" : false },
-	{ "method": "gasPrice", "params": null, "returns" : "" },
-	{ "method": "key", "params": null, "returns" : "" },
-	{ "method": "keys", "params": null, "returns" : [""] },
-	{ "method": "peerCount", "params": null, "returns" : 0 },
-    { "method": "balanceAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
-    { "method": "storageAt", "params": { "a": "", "x": "" }, "order": ["a", "x"], "returns" : "" },
-    { "method": "txCountAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
-    { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
-    { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] },
-    { "method": "transact", "params": { "sec": "", "xValue": "", "aDest": "", "bData": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xValue", "aDest", "bData", "xGas", "xGasPrice"] },
-    { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" }
+  { "method": "procedures", "params": null, "order": [], "returns": [] },
+  { "method": "coinbase", "params": null, "order": [], "returns" : "" },
+  { "method": "isListening", "params": null, "order": [], "returns" : false },
+  { "method": "isMining", "params": null, "order": [], "returns" : false },
+  { "method": "gasPrice", "params": null, "order": [], "returns" : "" },
+  { "method": "key", "params": null, "order": [], "returns" : "" },
+  { "method": "keys", "params": null, "order": [], "returns" : [] },
+  { "method": "peerCount", "params": null, "order": [], "returns" : 0 },
+  { "method": "balanceAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
+  { "method": "storageAt", "params": { "a": "", "x": "" }, "order": ["a", "x"], "returns" : "" },
+  { "method": "txCountAt", "params": { "a": "" },"order": ["a"], "returns" : "" },
+  { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
+  { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] , "returns": {} },
+  { "method": "transact", "params": { "sec": "", "xValue": "", "aDest": "", "bData": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xValue", "aDest", "bData", "xGas", "xGasPrice"], "returns": {} },
+  { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" }
 ];
 
 window.eth = (function ethScope() {
