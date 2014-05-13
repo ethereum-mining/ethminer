@@ -13,7 +13,8 @@
   { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
   { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] , "returns": {} },
   { "method": "transact", "params": { "sec": "", "xValue": "", "aDest": "", "bData": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xValue", "aDest", "bData", "xGas", "xGasPrice"], "returns": {} },
-  { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" },
+  { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" }
+,
   { "method": "check", "params": { "a": [] }, "order": ["a"], "returns" : [] },
   { "method": "lastBlock", "params": null, "order": [], "returns": {}},
   { "method": "block", "params": {"a":""}, "order": ["a"], "returns": {}}
