@@ -16,7 +16,7 @@
 */
 /** @file EthStubServer.cpp
  * @authors:
- * Gav Wood <i@gavwood.com>
+ *   Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
