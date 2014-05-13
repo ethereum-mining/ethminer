@@ -8,11 +8,11 @@
 
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.	If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file EthStubServer.h
  * @author Gav Wood <i@gavwood.com>
@@ -37,7 +37,7 @@ class EthStubServer: public AbstractEthStubServer
 public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, eth::Client& _client);
 
-  virtual Json::Value procedures();
+	virtual Json::Value procedures();
 	virtual std::string balanceAt(std::string const& _a);
 	virtual Json::Value check(Json::Value const& _as);
 	virtual std::string coinbase();
@@ -53,13 +53,12 @@ public:
 	virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue);
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
-  virtual Json::Value lastBlock();
-  virtual Json::Value block(const std::string&);
+	virtual Json::Value lastBlock();
+	virtual Json::Value block(const std::string&);
 	void setKeys(std::vector<eth::KeyPair> _keys) { m_keys = _keys; }
-
 private:
 	eth::Client& m_client;
 	std::vector<eth::KeyPair> m_keys;
-  Json::Value jsontypeToValue(int);
-  Json::Value blockJson(const std::string&);
+	Json::Value jsontypeToValue(int);
+	Json::Value blockJson(const std::string&);
 };
