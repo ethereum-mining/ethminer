@@ -23,4 +23,6 @@ ipch
 *.user.*
 *~
 
+build/
+
 *.pyc

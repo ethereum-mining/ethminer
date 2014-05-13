@@ -82,10 +82,10 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_state.init();
 	eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
-//	cnote << "State root: " << m_state.root();
+	cnote << "State root: " << m_state.root();
 
 	m_previousBlock = BlockInfo::genesis();
-//	cnote << "Genesis hash:" << m_previousBlock.hash;
+	cnote << "Genesis hash:" << m_previousBlock.hash;
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
