@@ -36,6 +36,7 @@ class EthStubServer: public AbstractEthStubServer
 public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, eth::Client& _client);
 
+	virtual Json::Value procedures();
 	virtual std::string balanceAt(std::string const& _a);
 	virtual Json::Value check(Json::Value const& _as);
 	virtual std::string coinbase();
@@ -51,10 +52,12 @@ public:
 	virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue);
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
-
+	virtual Json::Value lastBlock();
+	virtual Json::Value block(const std::string&);
 	void setKeys(std::vector<eth::KeyPair> _keys) { m_keys = _keys; }
-
 private:
 	eth::Client& m_client;
 	std::vector<eth::KeyPair> m_keys;
+	Json::Value jsontypeToValue(int);
+	Json::Value blockJson(const std::string&);
 };

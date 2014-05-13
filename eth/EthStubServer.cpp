@@ -33,6 +33,29 @@ EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, Client& _c
 {
 }
 
+//only works with a json spec that doesn't have notifications for now
+Json::Value EthStubServer::procedures()
+{
+	Json::Value ret;
+	
+	for (auto proc: this->GetProtocolHanlder()->GetProcedures())
+	{
+		Json::Value proc_j;
+
+		proc_j[proc.second->GetProcedureType() == 0 ? "method" : "notification"] = proc.first;
+
+		Json::Value params_j;
+		for (auto params: proc.second->GetParameters())
+			params_j[params.first] = jsontypeToValue(params.second);
+		proc_j["params"] = params_j;
+		
+		proc_j["returns"] = jsontypeToValue(proc.second->GetReturnType());
+
+		ret.append(proc_j);
+	}
+	return ret;
+}
+
 std::string EthStubServer::coinbase()
 {
 	ClientGuard g(&m_client);
@@ -129,4 +152,54 @@ std::string EthStubServer::secretToAddress(const std::string& _a)
 {
 	return toJS(KeyPair(jsToSecret(_a)).address());
 }
+
+Json::Value EthStubServer::lastBlock()
+{
+	return blockJson("");
+}
+
+Json::Value EthStubServer::block(const std::string& _hash)
+{
+	return blockJson(_hash);
+}
+
+Json::Value EthStubServer::blockJson(const std::string& _hash)
+{
+	Json::Value res;
+	auto const& bc = m_client.blockChain();
+	
+	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
+	
+	auto bi = BlockInfo(b);
+	res["number"] = to_string(bc.details(bc.currentHash()).number);
+	res["hash"] = boost::lexical_cast<string>(bi.hash);
+	res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
+	res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
+	res["coinbaseAddress"] = boost::lexical_cast<string>(bi.coinbaseAddress);
+	res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
+	res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
+	res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
+	res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
+	res["gasUsed"] = boost::lexical_cast<string>(bi.gasUsed);
+	res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
+	res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
+	res["nonce"] = boost::lexical_cast<string>(bi.nonce);
+
+	return res;
+}
+
+Json::Value EthStubServer::jsontypeToValue(int _jsontype)
+{
+	switch (_jsontype)
+	{
+		case jsonrpc::JSON_STRING: return ""; //Json::stringValue segfault, fuck knows why
+		case jsonrpc::JSON_BOOLEAN: return Json::booleanValue;
+		case jsonrpc::JSON_INTEGER: return Json::intValue;
+		case jsonrpc::JSON_REAL: return Json::realValue;
+		case jsonrpc::JSON_OBJECT: return Json::objectValue;
+		case jsonrpc::JSON_ARRAY: return Json::arrayValue;
+		default: return Json::nullValue;
+	}
+}
+
 #endif
