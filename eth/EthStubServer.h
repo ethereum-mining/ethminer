@@ -31,7 +31,6 @@
 namespace eth { class Client; }
 namespace eth { class KeyPair; }
 
-
 class EthStubServer: public AbstractEthStubServer
 {
 public:
