@@ -38,7 +38,7 @@ Json::Value EthStubServer::procedures()
 {
 	Json::Value ret;
 	
-	for(auto proc : this->GetProtocolHanlder()->GetProcedures())
+	for (auto proc: this->GetProtocolHanlder()->GetProcedures())
 	{
 		Json::Value proc_j;
 
