@@ -8,15 +8,15 @@
 
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.	If not, see <http://www.gnu.org/licenses/>.
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file EthStubServer.cpp
  * @authors:
- *	 Gav Wood <i@gavwood.com>
+ * Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
@@ -27,14 +27,11 @@
 using namespace std;
 using namespace eth;
 
-
-
 EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, Client& _client):
 	AbstractEthStubServer(_conn),
 	m_client(_client)
 {
 }
-
 
 //only works with a json spec that doesn't have notifications for now
 Json::Value EthStubServer::procedures()
@@ -48,10 +45,8 @@ Json::Value EthStubServer::procedures()
 		proc_j[proc.second->GetProcedureType() == 0 ? "method" : "notification"] = proc.first;
 
 		Json::Value params_j;
-		for(auto params : proc.second->GetParameters())
-		{
+		for (auto params: proc.second->GetParameters())
 			params_j[params.first] = jsontypeToValue(params.second);
-		}
 		proc_j["params"] = params_j;
 		
 		proc_j["returns"] = jsontypeToValue(proc.second->GetReturnType());
@@ -163,17 +158,17 @@ Json::Value EthStubServer::lastBlock()
 	return blockJson("");
 }
 
-Json::Value EthStubServer::block(const std::string& hash)
+Json::Value EthStubServer::block(const std::string& _hash)
 {
-	return blockJson(hash);
+	return blockJson(_hash);
 }
 
-Json::Value EthStubServer::blockJson(const std::string& hash)
+Json::Value EthStubServer::blockJson(const std::string& _hash)
 {
 	Json::Value res;
 	auto const& bc = m_client.blockChain();
 	
-	auto b = hash.length() ? bc.block(h256(hash)) : bc.block();
+	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
 	
 	auto bi = BlockInfo(b);
 	res["number"] = to_string(bc.details(bc.currentHash()).number);
@@ -193,10 +188,9 @@ Json::Value EthStubServer::blockJson(const std::string& hash)
 	return res;
 }
 
-Json::Value EthStubServer::jsontypeToValue(int jsontype)
+Json::Value EthStubServer::jsontypeToValue(int _jsontype)
 {
-	cout<< jsontype << endl;
-	switch(jsontype)
+	switch (_jsontype)
 	{
 		case jsonrpc::JSON_STRING: return ""; //Json::stringValue segfault, fuck knows why
 		case jsonrpc::JSON_BOOLEAN: return Json::booleanValue;
