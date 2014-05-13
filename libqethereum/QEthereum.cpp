@@ -203,7 +203,7 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 		b.insert(b.begin(), 0);
 	while (b.size() < _r)
 		b.push_back(0);
-	return QString::fromStdString(eth::asString(b).substr(b.size() - max(_l, _r)));
+	return asQString(eth::asBytes(eth::asString(b).substr(b.size() - max(_l, _r))));
 }
 
 //"0xff".bin().unbin()
