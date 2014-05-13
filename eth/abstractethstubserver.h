@@ -14,6 +14,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             jsonrpc::AbstractServer<AbstractEthStubServer>(conn) 
         {
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::balanceAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::blockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("check", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "a",jsonrpc::JSON_ARRAY, NULL), &AbstractEthStubServer::checkI);
             this->bindAndAddMethod(new jsonrpc::Procedure("coinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::coinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("create", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "bCode",jsonrpc::JSON_STRING,"sec",jsonrpc::JSON_STRING,"xEndowment",jsonrpc::JSON_STRING,"xGas",jsonrpc::JSON_STRING,"xGasPrice",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::createI);
@@ -23,7 +24,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("isMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::isMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::keyI);
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("lastBlock", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT,  NULL), &AbstractEthStubServer::lastBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("procedures", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::proceduresI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
             this->bindAndAddMethod(new jsonrpc::Procedure("storageAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::storageAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "aDest",jsonrpc::JSON_STRING,"bData",jsonrpc::JSON_STRING,"sec",jsonrpc::JSON_STRING,"xGas",jsonrpc::JSON_STRING,"xGasPrice",jsonrpc::JSON_STRING,"xValue",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactI);
@@ -34,6 +37,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         inline virtual void balanceAtI(const Json::Value& request, Json::Value& response) 
         {
             response = this->balanceAt(request["a"].asString());
+        }
+
+        inline virtual void blockI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->block(request["a"].asString());
         }
 
         inline virtual void checkI(const Json::Value& request, Json::Value& response) 
@@ -81,9 +89,19 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->keys();
         }
 
+        inline virtual void lastBlockI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->lastBlock();
+        }
+
         inline virtual void peerCountI(const Json::Value& request, Json::Value& response) 
         {
             response = this->peerCount();
+        }
+
+        inline virtual void proceduresI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->procedures();
         }
 
         inline virtual void secretToAddressI(const Json::Value& request, Json::Value& response) 
@@ -108,6 +126,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
 
         virtual std::string balanceAt(const std::string& a) = 0;
+        virtual Json::Value block(const std::string& a) = 0;
         virtual Json::Value check(const Json::Value& a) = 0;
         virtual std::string coinbase() = 0;
         virtual Json::Value create(const std::string& bCode, const std::string& sec, const std::string& xEndowment, const std::string& xGas, const std::string& xGasPrice) = 0;
@@ -117,7 +136,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual bool isMining() = 0;
         virtual std::string key() = 0;
         virtual Json::Value keys() = 0;
+        virtual Json::Value lastBlock() = 0;
         virtual int peerCount() = 0;
+        virtual Json::Value procedures() = 0;
         virtual std::string secretToAddress(const std::string& a) = 0;
         virtual std::string storageAt(const std::string& a, const std::string& x) = 0;
         virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue) = 0;

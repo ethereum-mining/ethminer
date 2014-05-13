@@ -8,7 +8,7 @@ Contributors, builders and testers include Eric Lombrozo (cross-compilation), Ti
 
 ### Building
 
-See [Build Instructions](https://github.com/ethereum/cpp-ethereum/wiki/Build-Instructions) and [Compatibility Info and Build Tips](https://github.com/ethereum/cpp-ethereum/wiki/Compatibility-Info-and-Build-Tips).
+See the [Wiki](https://github.com/ethereum/cpp-ethereum/wiki) for build instructions, compatibility information and build tips. 
 
 ### Testing
 
