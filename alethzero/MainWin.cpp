@@ -199,6 +199,8 @@ Main::Main(QWidget *parent) :
 	}
 #endif
 
+	cnote << "Genesis RLP:" << toHex(BlockInfo::createGenesisBlock());
+
 	ui->configDock->close();
 
 	on_verbosity_sliderMoved();
