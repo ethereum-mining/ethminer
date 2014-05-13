@@ -33,6 +33,13 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/State.h>
 #include <libethereum/Instruction.h>
+#if ETH_JSONRPC
+#include <eth/EthStubServer.h>
+#include <eth/EthStubServer.cpp>
+#include <eth/abstractethstubserver.h>
+#include <eth/CommonJS.h>
+#include <eth/CommonJS.cpp>
+#endif
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -67,6 +74,10 @@ void help()
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
         << "    -h,--help  Show this help message and exit." << endl
+#if ETH_JSONRPC
+        << "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+        << "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+#endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
         << "    -m,--mining <on/off>  Enable mining (default: off)" << endl
         << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
@@ -87,6 +98,10 @@ void interactiveHelp()
         << "Commands:" << endl
         << "    netstart <port>  Starts the network sybsystem on a specific port." << endl
         << "    netstop  Stops the network subsystem." << endl
+#if ETH_JSONRPC
+        << "    jsonstart <port>  Starts the JSON-RPC server." << endl
+        << "    jsonstop  Stops the JSON-RPC server." << endl
+#endif
         << "    connect <addr> <port>  Connects to a specific peer." << endl
         << "    minestart  Starts mining." << endl
         << "    minestop  Stops mining." << endl
@@ -133,7 +148,7 @@ void version()
 }
 
 u256 c_minGasPrice = 10000000000000;
-u256 c_minGas = 100;
+u256 c_minGas = 500;
 Address c_config = Address("5620133321fcac7f15a5c570016f6cb6dc263f9d");
 string pretty(h160 _a, eth::State _st)
 {
@@ -293,6 +308,9 @@ int main(int argc, char** argv)
 	bool mining = false;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
+#if ETH_JSONRPC
+	int jsonrpc = 8080;
+#endif
 	string publicIP;
 	bool upnp = true;
 	string clientName;
@@ -363,6 +381,12 @@ int main(int argc, char** argv)
 				cerr << "Unknown mining option: " << m << endl;
 			}
 		}
+#if ETH_JSONRPC
+		else if ((arg == "-j" || arg == "--json-rpc"))
+			jsonrpc = jsonrpc ? jsonrpc : 8080;
+		else if (arg == "--json-rpc-port" && i + 1 < argc)
+			jsonrpc = atoi(argv[++i]);
+#endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -462,6 +486,16 @@ int main(int argc, char** argv)
 		c.unlock();
 	}
 
+#if ETH_JSONRPC
+	auto_ptr<EthStubServer> jsonrpcServer;
+	if (jsonrpc > -1)
+	{
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer->setKeys({us});
+		jsonrpcServer->StartListening();
+	}
+#endif
+
 	while (true)
 	{
 		wclrtobot(consolewin);
@@ -534,6 +568,28 @@ int main(int argc, char** argv)
 			c.stopMining();
 			c.unlock();
 		}
+#if ETH_JSONRPC
+		else if (cmd == "jsonport")
+		{
+			if (iss.peek() != -1)
+				iss >> jsonrpc;
+			cout << "JSONRPC Port: " << jsonrpc << endl;
+		}
+		else if (cmd == "jsonstart")
+		{
+			if (jsonrpc < 0)
+				jsonrpc = 8080;
+			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+			jsonrpcServer->setKeys({us});
+			jsonrpcServer->StartListening();
+		}
+		else if (cmd == "jsonstop")
+		{
+			if (jsonrpcServer.get())
+				jsonrpcServer->StopListening();
+			jsonrpcServer.reset();
+		}
+#endif
 		else if (cmd == "address")
 		{
 			ccout << "Current address:" << endl;
@@ -613,6 +669,9 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
+				c.lock();
+				c_minGas = (u256)c.state().callGas(data.size(), 0);
+				c.unlock();
 				if (size < 40)
 				{
 					if (size > 0)
@@ -671,9 +730,11 @@ int main(int argc, char** argv)
 				else
 				{
 					u256 gasPrice = c_minGasPrice;
-					u256 gas = c_minGas;
+					c.lock();
+					c_minGas = (u256)c.state().callGas(0, 0);
+					c.unlock();
 					Address dest = h160(fromHex(fields[0]));
-					c.transact(us.secret(), amount, dest, bytes(), gas, gasPrice);
+					c.transact(us.secret(), amount, dest, bytes(), c_minGas, gasPrice);
 				}
 			}
 		}
@@ -686,12 +747,11 @@ int main(int argc, char** argv)
 			l.push_back("Gas");
 			vector<string> b;
 			b.push_back("Code (hex)");
-			b.push_back("Init (hex)");
 			c.lock();
 			vector<string> fields = form_dialog(s, l, b, height, width, cmd);
 			c.unlock();
 			int fs = fields.size();
-			if (fs < 5)
+			if (fs < 4)
 			{
 				if (fs > 0)
 					cwarn << "Missing parameter";
@@ -710,6 +770,28 @@ int main(int argc, char** argv)
 				stringstream ssp;
 				ssp << fields[1];
 				ssp >> gasPrice;
+				string sinit = fields[3];
+				trim_all(sinit);
+				int size = sinit.length();
+				bytes init;
+				cnote << "Init:";
+				cnote << sinit;
+				cnote << "Code size: " << size;
+				if (size < 1)
+					cwarn << "No code submitted";
+				else
+				{
+					cnote << "Assembled:";
+					stringstream ssc;
+					init = fromHex(sinit);
+					ssc.str(string());
+					ssc << disassemble(init);
+					cnote << "Init:";
+					cnote << ssc.str();
+				}
+				c.lock();
+				c_minGas = (u256)c.state().createGas(init.size(), 0);
+				c.unlock();
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
 				else if (gasPrice < c_minGasPrice)
@@ -718,29 +800,7 @@ int main(int argc, char** argv)
 					cwarn << "Minimum gas amount is " << c_minGas;
 				else
 				{
-					string scode = fields[3];
-					trim_all(scode);
-					string sinit = fields[4];
-					trim_all(sinit);
-					int size = scode.length();
-					cnote << "Code:";
-					cnote << scode;
-					cnote << "Init:";
-					cnote << sinit;
-					cnote << "Code size: " << size;
-					if (size < 1)
-						cwarn << "No code submitted";
-					else
-					{
-						cnote << "Assembled:";
-						stringstream ssc;
-						bytes init = fromHex(sinit);
-						ssc.str(string());
-						ssc << disassemble(init);
-						cnote << "Init:";
-						cnote << ssc.str();
-						c.transact(us.secret(), endowment, init, gas, gasPrice);
-					}
+					c.transact(us.secret(), endowment, init, gas, gasPrice);
 				}
 			}
 		}
@@ -932,6 +992,11 @@ int main(int argc, char** argv)
 	delwin(mainwin);
 	endwin();
 	refresh();
+
+#if ETH_JSONRPC
+	if (jsonrpcServer.get())
+		jsonrpcServer->StopListening();
+#endif
 
 	return 0;
 }

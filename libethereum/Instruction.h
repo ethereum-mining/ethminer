@@ -151,6 +151,7 @@ std::string disassemble(bytes const& _mem);
 /// Compile a Low-level Lisp-like Language program into EVM-code.
 bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
 
+/// Append an appropriate PUSH instruction together with the literal value onto the given code.
 unsigned pushLiteral(bytes& o_code, u256 _literalValue);
 
 }
