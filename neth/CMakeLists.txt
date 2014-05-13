@@ -11,6 +11,12 @@ set(EXECUTABLE neth)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
+if (JSONRPC_LS)
+	add_definitions(-DETH_JSONRPC)
+	include_directories(${JSONRPC_ID})
+	target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
+endif ()
+
 if (${TARGET_PLATFORM} STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 	target_link_libraries(${EXECUTABLE} gcc)
