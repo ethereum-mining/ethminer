@@ -22,11 +22,16 @@
 #include "Instruction.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/support_utree.hpp>
 #include <libethcore/Log.h>
 #include "CommonEth.h"
 using namespace std;
 using namespace eth;
-
+namespace qi = boost::spirit::qi;
+namespace px = boost::phoenix;
+namespace sp = boost::spirit;
 
 const std::map<std::string, Instruction> eth::c_instructions =
 {
@@ -209,6 +214,70 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::RETURN,       { "RETURN",       0, 2, 0 } },
 	{ Instruction::SUICIDE,      { "SUICIDE",      0, 1, 0} }
 };
+
+void killBigints(sp::utree const& _this)
+{
+	switch (_this.which())
+	{
+	case sp::utree_type::list_type: for (auto const& i: _this) killBigints(i); break;
+	case sp::utree_type::any_type: delete _this.get<bigint*>(); break;
+	default:;
+	}
+}
+
+void debugOut(ostream& _out, sp::utree const& _this)
+{
+	switch (_this.which())
+	{
+	case sp::utree_type::list_type: _out << "( "; for (auto const& i: _this) { debugOut(_out, i); _out << " "; } _out << ")"; break;
+	case sp::utree_type::int_type: _out << _this.get<int>(); break;
+	case sp::utree_type::string_type: _out << "\"" << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>() << "\""; break;
+	case sp::utree_type::symbol_type: _out << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>(); break;
+	case sp::utree_type::any_type: _out << *_this.get<bigint*>(); break;
+	default: _out << "nil";
+	}
+}
+
+void parseLLL(string const& _s, sp::utree o_out)
+{
+	using qi::ascii::space;
+	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
+	typedef string::const_iterator it;
+
+	qi::rule<it, string()> str = '"' > qi::lexeme[+(~qi::char_(std::string("\"") + '\0'))] > '"';
+	qi::rule<it, string()> strsh = '\'' > qi::lexeme[+(~qi::char_(std::string(" ;())") + '\0'))];
+	qi::rule<it, symbol_type()> symbol = qi::lexeme[+(~qi::char_(std::string(" ();\"\x01-\x1f\x7f") + '\0'))];
+	qi::rule<it, string()> intstr = qi::lexeme[ qi::no_case["0x"][qi::_val = "0x"] >> *qi::char_("0-9a-fA-F")[qi::_val += qi::_1]] | qi::lexeme[+qi::char_("0-9")[qi::_val += qi::_1]];
+	qi::rule<it, bigint()> integer = intstr;
+	qi::rule<it, bigint()> multiplier = qi::lit("wei")[qi::_val = 1] | qi::lit("szabo")[qi::_val = szabo] | qi::lit("finney")[qi::_val = finney] | qi::lit("ether")[qi::_val = ether];
+	qi::rule<it, qi::ascii::space_type, bigint()> quantity = integer[qi::_val = qi::_1] >> -multiplier[qi::_val *= qi::_1];
+	qi::rule<it, qi::ascii::space_type, sp::utree()> atom = quantity[qi::_val = px::construct<sp::any_ptr>(px::new_<bigint>(qi::_1))] | (str | strsh)[qi::_val = qi::_1] | symbol[qi::_val = qi::_1];
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> list;
+	qi::rule<it, qi::ascii::space_type, sp::utree()> element = atom | list;
+	list = '(' > *element > ')';
+
+	try
+	{
+		qi::phrase_parse(_s.begin(), _s.end(), element, space, o_out);
+	}
+	catch (std::exception& _e)
+	{
+		cnote << _e.what();
+	}
+}
+
+bytes eth::compileLLL(string const& _s, bool)
+{
+	sp::utree o;
+	parseLLL(_s, o);
+	bytes ret;
+	debugOut(cout, o);
+	cout << endl;
+	killBigints(o);
+	return ret;
+}
+
+//try compileLLL("(((69wei) 'hello) (xyz \"abc\") (>= 0x69 ether))");
 
 static string readQuoted(char const*& o_d, char const* _e)
 {
