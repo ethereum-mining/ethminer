@@ -77,6 +77,8 @@ private slots:
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
 	void on_killBlockchain_triggered();
+	void on_importKey_triggered();
+	void on_exportKey_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();

@@ -135,8 +135,11 @@
      <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
-    <addaction name="create"/>
     <addaction name="preview"/>
+    <addaction name="separator"/>
+    <addaction name="create"/>
+    <addaction name="importKey"/>
+    <addaction name="exportKey"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -1030,6 +1033,16 @@
   <action name="killBlockchain">
    <property name="text">
     <string>&amp;Kill Blockchain</string>
+   </property>
+  </action>
+  <action name="importKey">
+   <property name="text">
+    <string>&amp;Import Key...</string>
+   </property>
+  </action>
+  <action name="exportKey">
+   <property name="text">
+    <string>&amp;Export Selected Key...</string>
    </property>
   </action>
  </widget>
