@@ -385,6 +385,35 @@ void Main::readSettings()
 	on_urlEdit_returnPressed();
 }
 
+void Main::on_importKey_triggered()
+{
+	QString s = QInputDialog::getText(this, "Import Account Key", "Enter account's secret key");
+	bytes b = fromHex(s.toStdString());
+	if (b.size() == 32)
+	{
+		auto k = KeyPair(h256(b));
+		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+		{
+			m_myKeys.append(k);
+			m_keysChanged = true;
+			update();
+		}
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	else
+		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
+}
+
+void Main::on_exportKey_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	{
+		auto k = m_myKeys[ui->ourAccounts->currentRow()];
+		QMessageBox::information(this, "Export Account Key", "Secret key to account " + render(k.address()) + " is:\n" + QString::fromStdString(toHex(k.sec().ref())));
+	}
+}
+
 void Main::on_urlEdit_returnPressed()
 {
 	ui->webView->setUrl(ui->urlEdit->text());
