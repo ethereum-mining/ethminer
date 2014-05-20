@@ -267,6 +267,13 @@ Client* QEthereum::client() const
 	return m_client;
 }
 
+QString QEthereum::lll(QString _s) const
+{
+	bytes ret;
+	eth::compileLisp(_s.toStdString(), true, ret);
+	return asQString(ret);
+}
+
 QString QEthereum::coinbase() const
 {
 	return toQJS(client()->address());

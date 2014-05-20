@@ -266,19 +266,6 @@ void parseLLL(string const& _s, sp::utree o_out)
 	}
 }
 
-bytes eth::compileLLL(string const& _s, bool)
-{
-	sp::utree o;
-	parseLLL(_s, o);
-	bytes ret;
-	debugOut(cout, o);
-	cout << endl;
-	killBigints(o);
-	return ret;
-}
-
-//try compileLLL("(((69wei) 'hello) (xyz \"abc\") (>= 0x69 ether))");
-
 static string readQuoted(char const*& o_d, char const* _e)
 {
 	string ret;
@@ -1144,6 +1131,114 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 	compileLispFragment(d, e, _quiet, body, locs, vars);
 	return body;
 }
+/*
+bytes eth::compileLLL(string const& _s, vector<string>* _errors)
+{
+	sp::utree o;
+	parseLLL(_s, o);
+	bytes ret;
+	compileLLLFragment(o, ret, _errors);
+//	debugOut(cout, o);
+//	cout << endl;
+	killBigints(o);
+	return ret;
+}
+
+struct CompileState
+{
+	map<string, unsigned> vars;
+};
+
+class CodeLocation
+{
+public:
+	void increase();
+
+private:
+	CodeFragment* m_f;
+	unsigned m_pos;
+};
+
+class CodeFragment
+{
+public:
+	CodeFragment(sp::utree _t, CompileState _s = CompileState());
+
+	unsigned appendPush(u256 _l);
+	CodeLocation appendPushLocation(u256 _l);
+	void appendFragment(CodeFragment const& _f);
+	void appendInstruction(Instruction _i);
+
+private:
+	int m_deposit;
+	bytes m_code;
+	vector<unsigned> m_locs;
+};
+
+void CodeLocation::increase(unsigned _inc)
+{
+	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
+	bytesRef r(&m_f->m_code[1 + m_pos], 4);
+	toBigEndian(fromBigEndian<uint32_t>(bytesConstRef(&m_f->m_code[1 + m_pos], 4)) + _inc, r);
+}
+
+void CodeFragment::appendFragment(CodeFragment const& _f)
+{
+	m_locs.reserve(m_locs.size() + _f.m_locs.size());
+	for (auto i: _f.m_locs)
+	{
+		increaseLocation(_f.m_code, i, (unsigned)m_code.size());
+		m_locs.push_back(i + (unsigned)m_code.size());
+	}
+	m_code.reserve(m_code.size() + _f.m_code.size());
+	for (auto i: _f.m_code)
+		m_code.push_back(i);
+}
+
+void CodeFragment::appendPushLocation(uint32_t _locationValue)
+{
+	o_code.push_back((byte)Instruction::PUSH4);
+	o_code.resize(o_code.size() + 4);
+	bytesRef r(&o_code[o_code.size() - 4], 4);
+	toBigEndian(_locationValue, r);
+	m_deposit++;
+}
+
+unsigned CodeFragment::appendPush(u256 _literalValue)
+{
+	unsigned br = max<unsigned>(1, bytesRequired(_literalValue));
+	m_code.push_back((byte)Instruction::PUSH1 + br - 1);
+	m_code.resize(m_code.size() + br);
+	for (unsigned i = 0; i < br; ++i)
+	{
+		m_code[m_code.size() - 1 - i] = (byte)(_literalValue & 0xff);
+		_literalValue >>= 8;
+	}
+	m_deposit++;
+	return br + 1;
+}
+
+
+void debugOut(ostream& _out, sp::utree const& _this)
+{
+	switch (_this.which())
+	{
+	case sp::utree_type::list_type: _out << "( "; for (auto const& i: _this) { debugOut(_out, i); _out << " "; } _out << ")"; break;
+	case sp::utree_type::int_type: _out << _this.get<int>(); break;
+	case sp::utree_type::string_type: _out << "\"" << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>() << "\""; break;
+	case sp::utree_type::symbol_type: _out << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>(); break;
+	case sp::utree_type::any_type: _out << *_this.get<bigint*>(); break;
+	default: _out << "nil";
+	}
+}
+
+CodeFragment::CodeFragment(sp::utree _t, CompileState _s)
+{
+	if (_t.)
+
+}
+*/
+//try compileLLL("(((69wei) 'hello) (xyz \"abc\") (>= 0x69 ether))");
 
 string eth::disassemble(bytes const& _mem)
 {

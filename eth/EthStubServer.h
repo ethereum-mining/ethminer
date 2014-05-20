@@ -53,6 +53,7 @@ public:
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
 	virtual Json::Value lastBlock();
+	virtual std::string lll(const std::string& s);
 	virtual Json::Value block(const std::string&);
 	void setKeys(std::vector<eth::KeyPair> _keys) { m_keys = _keys; }
 private:
