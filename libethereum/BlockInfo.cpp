@@ -181,7 +181,7 @@ u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
 	if (!parentHash)
 		return 1000000;
 	else
-		return (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024;
+		return max<u256>(10000, (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
