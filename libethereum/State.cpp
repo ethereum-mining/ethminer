@@ -43,12 +43,18 @@ std::map<Address, AddressState> const& eth::genesisState()
 	if (s_ret.empty())
 	{
 		// Initialise.
-		s_ret[Address(fromHex("8a40bfaa73256b60764c1bf40675a99083efb075"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("e6716f9544a56c530d868e4bfbacb172315bdead"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("1e12515ce3e0f817a4ddef9ca55788a1d66bd2df"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("1a26338f0d905e295fccb71fa9ea849ffa12aaf4"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("2ef47100e0787b915105fd5e3f4ff6752079d5cb"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-		s_ret[Address(fromHex("cd2a3d9f938e13cd947ec05abc7fe734df8dd826"))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+		for (auto i: vector<string>({
+			"8a40bfaa73256b60764c1bf40675a99083efb075",
+			"e6716f9544a56c530d868e4bfbacb172315bdead",
+			"1e12515ce3e0f817a4ddef9ca55788a1d66bd2df",
+			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
+			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
+			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
+			"6c386a4b26f73c802f34673f7248bb118f97424a",
+			"e4157b34ea9615cfbde6b4fda419828124b70c78"
+		}))
+			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+
 	}
 	return s_ret;
 }
@@ -484,7 +490,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 //		cnote << m_state.root() << m_state;
 //		cnote << *this;
 		execute(tr[0].data());
-		if (tr[1].toInt<u256>() != m_state.root())
+		if (tr[1].toHash<h256>() != m_state.root())
 		{
 			// Invalid state root
 			cnote << m_state.root() << "\n" << m_state;

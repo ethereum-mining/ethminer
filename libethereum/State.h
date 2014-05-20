@@ -55,7 +55,7 @@ struct TransactionReceipt
 	{
 		_s.appendList(3);
 		transaction.fillStream(_s);
-		_s << stateRoot << gasUsed;
+		_s.append(stateRoot, false, true) << gasUsed;
 	}
 
 	Transaction transaction;
@@ -341,7 +341,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.balance() << i.second.nonce();
 
 			if (i.second.storage().empty())
-				s << i.second.oldRoot();
+				s.append(i.second.oldRoot(), false, true);
 			else
 			{
 				TrieDB<h256, DB> storageDB(&_db, i.second.oldRoot());
@@ -350,7 +350,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						storageDB.insert(j.first, rlp(j.second));
 					else
 						storageDB.remove(j.first);
-				s << storageDB.root();
+				s.append(storageDB.root(), false, true);
 			}
 
 			if (i.second.isFreshCode())

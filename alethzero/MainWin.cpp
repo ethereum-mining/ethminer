@@ -199,9 +199,7 @@ Main::Main(QWidget *parent) :
 	}
 #endif
 
-	cnote << "State root: " << BlockInfo::genesis().stateRoot;
-	cnote << "Genesis hash:" << sha3(BlockInfo::createGenesisBlock());
-	cnote << "Genesis RLP:" << toHex(BlockInfo::createGenesisBlock());
+	cerr << "State root: " << BlockInfo::genesis().stateRoot << endl << "Block Hash: " << sha3(BlockInfo::createGenesisBlock()) << endl << "Block RLP: " << RLP(BlockInfo::createGenesisBlock()) << endl << "Block Hex: " << toHex(BlockInfo::createGenesisBlock()) << endl;
 
 	ui->configDock->close();
 
