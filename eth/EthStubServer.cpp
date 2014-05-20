@@ -81,11 +81,11 @@ Json::Value EthStubServer::check(Json::Value const& _as)
 	}
 }
 
-Json::Value EthStubServer::create(const std::string& _bCode, const std::string& _sec, const std::string& _xEndowment, const std::string& _xGas, const std::string& _xGasPrice)
+std::string EthStubServer::create(const std::string& _bCode, const std::string& _sec, const std::string& _xEndowment, const std::string& _xGas, const std::string& _xGasPrice)
 {
 	ClientGuard g(&m_client);
-	m_client.transact(jsToSecret(_sec), jsToU256(_xEndowment), jsToBytes(_bCode), jsToU256(_xGas), jsToU256(_xGasPrice));
-	return Json::Value();
+	Address ret = m_client.transact(jsToSecret(_sec), jsToU256(_xEndowment), jsToBytes(_bCode), jsToU256(_xGas), jsToU256(_xGasPrice));
+	return toJS(ret);
 }
 
 std::string EthStubServer::lll(const std::string& _s)
