@@ -61,7 +61,8 @@ bytes BlockInfo::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(13) << h256() << sha3EmptyList << h160() << stateRoot << h256() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
+	block.appendList(13) << h256() << sha3EmptyList << h160();
+	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -76,7 +77,9 @@ h256 BlockInfo::headerHashWithoutNonce() const
 
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 13 : 12) << parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
+	_s.appendList(_nonce ? 13 : 12) << parentHash << sha3Uncles << coinbaseAddress;
+	_s.append(stateRoot, false, true).append(transactionsRoot, false, true);
+	_s << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
 }
