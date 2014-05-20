@@ -23,6 +23,7 @@
 #if ETH_JSONRPC
 #include "EthStubServer.h"
 #include <libethereum/Client.h>
+#include <libethereum/Instruction.h>
 #include "CommonJS.h"
 using namespace std;
 using namespace eth;
@@ -85,6 +86,13 @@ Json::Value EthStubServer::create(const std::string& _bCode, const std::string& 
 	ClientGuard g(&m_client);
 	m_client.transact(jsToSecret(_sec), jsToU256(_xEndowment), jsToBytes(_bCode), jsToU256(_xGas), jsToU256(_xGasPrice));
 	return Json::Value();
+}
+
+std::string EthStubServer::lll(const std::string& _s)
+{
+	bytes ret;
+	eth::compileLisp(_s, true, ret);
+	return "0x" + toHex(ret);
 }
 
 std::string EthStubServer::gasPrice()
