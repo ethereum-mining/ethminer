@@ -249,7 +249,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);*/
 	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
 	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
-	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { eth.doCreate(s, v, c, g, p); if (f) f() }");
+	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
 	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
 	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
