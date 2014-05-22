@@ -158,14 +158,9 @@ struct CachedAddressState
 		std::map<u256, u256> ret;
 		if (r)
 		{
-			cdebug << "MemDB: " << r[2].toHash<h256>();
 			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-			cdebug << memdb.root();
 			for (auto const& j: memdb)
-			{
-				cdebug << j.first;
 				ret[j.first] = RLP(j.second).toInt<u256>();
-			}
 		}
 		if (s)
 			for (auto const& j: s->storage())
@@ -859,13 +854,16 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();	// get an updated hash
 #endif
 
+	// TODO: CHECK TRIE
+
 	State old(*this);
 	auto h = rootHash();
 
 	Executive e(*this);
 	e.setup(_rlp);
 
-	cnote << "Executing " << e.t() << "on" << h;
+	cnote << "Executing" << e.t() << "on" << h;
+	cnote << toHex(e.t().rlp(true));
 
 	u256 startGasUsed = gasUsed();
 	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
@@ -881,6 +879,9 @@ u256 State::execute(bytesConstRef _rlp)
 
 	cnote << "Executed; now" << rootHash();
 	cnote << old.diff(*this);
+
+	// TODO: CHECK TRIE
+	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed()));

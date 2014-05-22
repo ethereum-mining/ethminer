@@ -35,8 +35,9 @@ class BlockChain;
 class TransactionQueue
 {
 public:
-	bool attemptImport(bytes const& _block) { try { import(_block); return true; } catch (...) { return false; } }
-	bool import(bytes const& _block);
+	bool attemptImport(bytesConstRef _block) { try { import(_block); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _block) { try { import(&_block); return true; } catch (...) { return false; } }
+	bool import(bytesConstRef _block);
 	void drop(h256 _txHash) { m_data.erase(_txHash); }
 	std::map<h256, bytes> const& transactions() const { return m_data; }
 

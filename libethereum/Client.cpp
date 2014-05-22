@@ -174,6 +174,13 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
+void Client::inject(bytesConstRef _rlp)
+{
+	lock_guard<recursive_mutex> l(m_lock);
+	m_tq.attemptImport(_rlp);
+	m_changed = true;
+}
+
 void Client::work()
 {
 	bool changed = false;
