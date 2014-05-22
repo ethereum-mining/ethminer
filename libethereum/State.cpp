@@ -848,13 +848,37 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+bool State::isTrieGood()
+{
+	for (auto const& i: m_state)
+	{
+		RLP r(i.second);
+		TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
+		try
+		{
+			for (auto const& j: storageDB) {}
+		}
+		catch (InvalidTrie)
+		{
+			return false;
+		}
+		if (r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+			return false;
+	}
+	return true;
+}
+
 u256 State::execute(bytesConstRef _rlp)
 {
 #ifndef RELEASE
 	commit();	// get an updated hash
 #endif
 
-	// TODO: CHECK TRIE
+	if (!isTrieGood())
+	{
+		cwarn << "BAD TRIE before execution begins.";
+		throw InvalidTrie();
+	}
 
 	State old(*this);
 	auto h = rootHash();
@@ -880,7 +904,12 @@ u256 State::execute(bytesConstRef _rlp)
 	cnote << "Executed; now" << rootHash();
 	cnote << old.diff(*this);
 
-	// TODO: CHECK TRIE
+	if (!isTrieGood())
+	{
+		cwarn << "BAD TRIE immediately after execution.";
+		throw InvalidTrie();
+	}
+
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.

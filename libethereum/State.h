@@ -299,6 +299,8 @@ private:
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
+	bool isTrieGood();
+
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.

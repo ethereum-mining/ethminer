@@ -767,11 +767,18 @@ void Main::on_contracts_currentItemChanged()
 		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
-		auto storage = state().storage(h);
-		for (auto const& i: storage)
-			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		s << "<h4>Body Code</h4>" << disassemble(state().code(h));
-		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
+		try
+		{
+			auto storage = state().storage(h);
+			for (auto const& i: storage)
+				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+			s << "<h4>Body Code</h4>" << disassemble(state().code(h));
+			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
+		}
+		catch (eth::InvalidTrie)
+		{
+			ui->contractInfo->appendHtml("Corrupted trie.");
+		}
 	}
 }
 
