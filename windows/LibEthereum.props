@@ -11,7 +11,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <DisableSpecificWarnings>4068;4127;4258;4244;4267;4505;4512;4706;4714</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4068;4100;4127;4258;4244;4267;4505;4512;4706;4714</DisableSpecificWarnings>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MinimalRebuild>false</MinimalRebuild>
