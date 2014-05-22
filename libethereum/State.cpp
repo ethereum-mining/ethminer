@@ -551,8 +551,20 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 	{
+		if (!isTrieGood())
+		{
+			cwarn << "INVALID TRIE prior to database commit!";
+			throw InvalidTrie();
+		}
+
 		// Commit the new trie to disk.
 		m_db.commit();
+
+		if (!isTrieGood())
+		{
+			cwarn << "INVALID TRIE immediately after database commit!";
+			throw InvalidTrie();
+		}
 
 		m_previousBlock = m_currentBlock;
 	}
@@ -850,20 +862,41 @@ bytes const& State::code(Address _contract) const
 
 bool State::isTrieGood()
 {
-	for (auto const& i: m_state)
 	{
-		RLP r(i.second);
-		TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
-		try
+		EnforceRefs r(m_db, false);
+		for (auto const& i: m_state)
 		{
-			for (auto const& j: storageDB) {}
+			RLP r(i.second);
+			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
+			try
+			{
+				for (auto const& j: storageDB) { (void)j; }
+			}
+			catch (InvalidTrie)
+			{
+				cwarn << "BAD TRIE [unenforced refs]";
+				return false;
+			}
+			if (r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+				return false;
 		}
-		catch (InvalidTrie)
+	}
+	{
+		EnforceRefs r(m_db, true);
+		for (auto const& i: m_state)
 		{
-			return false;
+			RLP r(i.second);
+			TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
+			try
+			{
+				for (auto const& j: storageDB) { (void)j; }
+			}
+			catch (InvalidTrie)
+			{
+				cwarn << "BAD TRIE [enforced refs]";
+				return false;
+			}
 		}
-		if (r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
-			return false;
 	}
 	return true;
 }
@@ -899,7 +932,10 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();
 
 	if (e.t().receiveAddress)
-		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress), true).size());
+	{
+		EnforceRefs r(m_db, true);
+		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress)).size());
+	}
 
 	cnote << "Executed; now" << rootHash();
 	cnote << old.diff(*this);

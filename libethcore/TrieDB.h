@@ -28,18 +28,22 @@
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
+#define tdebug ndebug
+
 namespace eth
 {
 
 class BasicMap
 {
+	friend class EnforceRefs;
+
 public:
 	BasicMap() {}
 
 	void clear() { m_over.clear(); }
 	std::map<h256, std::string> const& get() const { return m_over; }
 
-	std::string lookup(h256 _h, bool _enforceRefs = false) const;
+	std::string lookup(h256 _h) const;
 	void insert(h256 _h, bytesConstRef _v);
 	void kill(h256 _h);
 	void purge();
@@ -47,6 +51,8 @@ public:
 protected:
 	std::map<h256, std::string> m_over;
 	std::map<h256, uint> m_refCount;
+
+	bool m_enforceRefs = false;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
@@ -62,6 +68,7 @@ inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
 }
 
 class InvalidTrie: public std::exception {};
+class EnforceRefs;
 
 class Overlay: public BasicMap
 {
@@ -75,7 +82,7 @@ public:
 	void commit();
 	void rollback();
 
-	std::string lookup(h256 _h, bool _enforceRefs = false) const;
+	std::string lookup(h256 _h) const;
 
 private:
 	using BasicMap::clear;
@@ -84,6 +91,17 @@ private:
 
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
+};
+
+class EnforceRefs
+{
+public:
+	EnforceRefs(BasicMap& _o, bool _r): m_o(_o), m_r(_o.m_enforceRefs) { _o.m_enforceRefs = _r; }
+	~EnforceRefs() { m_o.m_enforceRefs = m_r; }
+
+private:
+	BasicMap& m_o;
+	bool m_r;
 };
 
 extern const h256 c_shaNull;
@@ -419,6 +437,8 @@ template <class DB> void GenericTrieDB<DB>::init()
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
+	cdebug << "Insert" << toHex(_key.cropped(0, 4));
+
 	std::string rv = node(m_root);
 	assert(rv.size());
 	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
@@ -469,7 +489,7 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 
 template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
 {
-//	::operator<<(std::cout << "mergeAt ", _orig) << _k << _v.toString() << std::endl;
+	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data()).abridged();
 
 	// The caller will make sure that the bytes are inserted properly.
 	// - This might mean inserting an entry into m_over
@@ -534,6 +554,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
 {
+	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()).abridged() << _orig.toHash<h256>().abridged();
 	RLP r = _orig;
 	std::string s;
 	if (!r.isList() && !r.isEmpty())
@@ -541,17 +562,15 @@ template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP cons
 		s = node(_orig.toHash<h256>());
 		r = RLP(s);
 		assert(!r.isNull());
-		killNode(_orig.toHash<h256>());
 	}
-	else
-		killNode(_orig);
 	bytes b = mergeAt(r, _k, _v);
-//	::operator<<(std::cout, RLP(b)) << std::endl;
 	streamNode(_out, b);
 }
 
 template <class DB> void GenericTrieDB<DB>::remove(bytesConstRef _key)
 {
+	tdebug << "Remove" << toHex(_key.cropped(0, 4).toBytes());
+
 	std::string rv = node(m_root);
 	bytes b = deleteAt(RLP(rv), NibbleSlice(_key));
 	if (b.size())

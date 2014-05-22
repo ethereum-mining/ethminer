@@ -24,16 +24,23 @@
 using namespace std;
 using namespace eth;
 
+#define tdebug ndebug
+
 namespace eth
 {
 
 const h256 c_shaNull = sha3(rlp(""));
 
-std::string BasicMap::lookup(h256 _h, bool _enforceRefs) const
+std::string BasicMap::lookup(h256 _h) const
 {
 	auto it = m_over.find(_h);
-	if (it != m_over.end() && (!_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first))))
-		return it->second;
+	if (it != m_over.end())
+	{
+		if (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first)))
+			return it->second;
+		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
+			cwarn << "XXX Lookup required for value with no refs:" << _h.abridged();
+	}
 	return std::string();
 }
 
@@ -41,12 +48,19 @@ void BasicMap::insert(h256 _h, bytesConstRef _v)
 {
 	m_over[_h] = _v.toString();
 	m_refCount[_h]++;
+	tdebug << "INST" << _h.abridged() << "=>" << m_refCount[_h];
 }
 
 void BasicMap::kill(h256 _h)
 {
-	if (m_refCount[_h] > 0)
-		--m_refCount[_h];
+	if (m_refCount.count(_h))
+	{
+		if (m_refCount[_h] > 0)
+			--m_refCount[_h];
+		else
+			cwarn << "Decreasing DB node ref count below zero. Probably have a corrupt Trie.";
+	}
+	tdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
 }
 
 void BasicMap::purge()
@@ -91,9 +105,9 @@ void Overlay::rollback()
 	m_refCount.clear();
 }
 
-std::string Overlay::lookup(h256 _h, bool _enforceRefs) const
+std::string Overlay::lookup(h256 _h) const
 {
-	std::string ret = BasicMap::lookup(_h, _enforceRefs);
+	std::string ret = BasicMap::lookup(_h);
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 	return ret;
