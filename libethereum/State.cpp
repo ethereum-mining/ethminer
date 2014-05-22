@@ -856,7 +856,7 @@ bool State::isTrieGood()
 		TrieDB<h256, Overlay> storageDB(&m_db, r[2].toHash<h256>());
 		try
 		{
-			for (auto const& j: storageDB) {}
+			for (auto const& j: storageDB) { j; }
 		}
 		catch (InvalidTrie)
 		{
