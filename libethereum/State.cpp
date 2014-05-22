@@ -158,9 +158,14 @@ struct CachedAddressState
 		std::map<u256, u256> ret;
 		if (r)
 		{
+			cdebug << "MemDB: " << r[2].toHash<h256>();
 			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+			cdebug << memdb.root();
 			for (auto const& j: memdb)
+			{
+				cdebug << j.first;
 				ret[j.first] = RLP(j.second).toInt<u256>();
+			}
 		}
 		if (s)
 			for (auto const& j: s->storage())

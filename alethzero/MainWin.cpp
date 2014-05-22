@@ -200,6 +200,7 @@ Main::Main(QWidget *parent) :
 #endif
 
 	cerr << "State root: " << BlockInfo::genesis().stateRoot << endl << "Block Hash: " << sha3(BlockInfo::createGenesisBlock()) << endl << "Block RLP: " << RLP(BlockInfo::createGenesisBlock()) << endl << "Block Hex: " << toHex(BlockInfo::createGenesisBlock()) << endl;
+	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
 
 	ui->configDock->close();
 
