@@ -437,7 +437,7 @@ template <class DB> void GenericTrieDB<DB>::init()
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
-	cdebug << "Insert" << toHex(_key.cropped(0, 4));
+	ndebug << "Insert" << toHex(_key.cropped(0, 4));
 
 	std::string rv = node(m_root);
 	assert(rv.size());
