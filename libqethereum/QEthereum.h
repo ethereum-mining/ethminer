@@ -375,6 +375,7 @@ public:
 	Q_INVOKABLE QString secretToAddress(QString _s) const;
 	Q_INVOKABLE QString lll(QString _s) const;
 
+	Q_INVOKABLE QString sha3(QString _s) const;
 	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
 	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
 	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
@@ -396,6 +397,7 @@ public:
 	QString/*eth::Address*/ coinbase() const;
 	QString/*eth::u256*/ gasPrice() const { return toQJS(10 * eth::szabo); }
 
+	QString number() const;
 	eth::u256 balanceAt(eth::Address _a) const;
 	double txCountAt(eth::Address _a) const;
 	bool isContractAt(eth::Address _a) const;
@@ -418,6 +420,7 @@ signals:
 //	void miningChanged();
 
 private:
+	Q_PROPERTY(QString number READ number NOTIFY changed)
 	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbase NOTIFY changed)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)

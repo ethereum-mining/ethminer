@@ -256,6 +256,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
 	_e->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }");
+	_e->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }");
 }
 
 void QEthereum::teardown(QWebFrame*)
@@ -274,9 +275,19 @@ QString QEthereum::lll(QString _s) const
 	return asQString(ret);
 }
 
+QString QEthereum::sha3(QString _s) const
+{
+	return toQJS(eth::sha3(asBytes(_s)));
+}
+
 QString QEthereum::coinbase() const
 {
 	return toQJS(client()->address());
+}
+
+QString QEthereum::number() const
+{
+	return QString::number(client()->blockChain().number() + 1);
 }
 
 QString QEthereum::account() const

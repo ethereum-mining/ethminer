@@ -191,10 +191,13 @@ public:
 					}
 					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
 					{
+						cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
 						cdebug << b.rlp.size() << toHex(b.rlp);
 						cdebug << rlp;
 						auto c = rlp.itemCount();
 						cdebug << c;
+						m_that = nullptr;
+						return;
 						assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
 					}
 					if (rlp.itemCount() == 2)
