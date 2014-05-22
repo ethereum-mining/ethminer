@@ -61,6 +61,8 @@ inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
 	return _out;
 }
 
+class InvalidTrie: public std::exception {};
+
 class Overlay: public BasicMap
 {
 public:
@@ -196,8 +198,7 @@ public:
 						cdebug << rlp;
 						auto c = rlp.itemCount();
 						cdebug << c;
-						m_that = nullptr;
-						return;
+						throw InvalidTrie();
 						assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
 					}
 					if (rlp.itemCount() == 2)

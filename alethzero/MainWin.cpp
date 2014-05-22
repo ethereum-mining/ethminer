@@ -673,6 +673,14 @@ void Main::ourAccountsRowsMoved()
 	m_myKeys = myKeys;
 }
 
+void Main::on_inject_triggered()
+{
+	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
+	bytes b = fromHex(s.toStdString());
+	m_client->inject(&b);
+	refresh();
+}
+
 void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
@@ -727,6 +735,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas << "</b>";
+			s << "<br/>V: <b>" << hex << (int)tx.vrs.v << "</b>";
+			s << "<br/>R: <b>" << hex << tx.vrs.r << "</b>";
+			s << "<br/>S: <b>" << hex << tx.vrs.s << "</b>";
+			s << "<br/>Msg: <b>" << tx.sha3(false) << "</b>";
 			if (tx.isCreation())
 			{
 				if (tx.data.size())
@@ -747,7 +759,7 @@ void Main::on_blocks_currentItemChanged()
 void Main::on_contracts_currentItemChanged()
 {
 	ui->contractInfo->clear();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	if (auto item = ui->contracts->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -761,7 +773,6 @@ void Main::on_contracts_currentItemChanged()
 		s << "<h4>Body Code</h4>" << disassemble(state().code(h));
 		ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 	}
-	m_client->unlock();
 }
 
 void Main::on_idealPeers_valueChanged()
@@ -1033,7 +1044,7 @@ void Main::on_send_clicked()
 {
 	debugFinished();
 	u256 totalReq = value() + fee();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
 		if (m_client->state().balance(i.address()) >= totalReq)
 		{
@@ -1046,7 +1057,6 @@ void Main::on_send_clicked()
 			refresh();
 			return;
 		}
-	m_client->unlock();
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 }
 
@@ -1054,7 +1064,7 @@ void Main::on_debug_clicked()
 {
 	debugFinished();
 	u256 totalReq = value() + fee();
-	m_client->lock();
+	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
 		if (m_client->state().balance(i.address()) >= totalReq)
 		{
@@ -1088,7 +1098,6 @@ void Main::on_debug_clicked()
 			updateDebugger();
 			return;
 		}
-	m_client->unlock();
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 }
 

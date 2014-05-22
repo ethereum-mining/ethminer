@@ -154,6 +154,7 @@
     <addaction name="debugStep"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
+    <addaction name="inject"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1043,6 +1044,11 @@
   <action name="exportKey">
    <property name="text">
     <string>&amp;Export Selected Key...</string>
+   </property>
+  </action>
+  <action name="inject">
+   <property name="text">
+    <string>&amp;Inject Transaction</string>
    </property>
   </action>
  </widget>

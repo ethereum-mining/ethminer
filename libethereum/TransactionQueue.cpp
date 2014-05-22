@@ -27,7 +27,7 @@
 using namespace std;
 using namespace eth;
 
-bool TransactionQueue::import(bytes const& _block)
+bool TransactionQueue::import(bytesConstRef _block)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_block);
@@ -44,7 +44,7 @@ bool TransactionQueue::import(bytes const& _block)
 			m_interestQueue.push_back(t);
 
 		// If valid, append to blocks.
-		m_data[h] = _block;
+		m_data[h] = _block.toBytes();
 	}
 	catch (InvalidTransactionFormat const& _e)
 	{

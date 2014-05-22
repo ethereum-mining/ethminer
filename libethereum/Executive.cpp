@@ -108,6 +108,11 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
+#if ETH_PARANOIA
+
+
+#endif
+
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 	while (m_s.addressInUse(m_newAddress))
 		m_newAddress = (u160)m_newAddress + 1;
