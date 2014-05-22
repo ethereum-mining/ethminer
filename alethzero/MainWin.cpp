@@ -1053,7 +1053,7 @@ void Main::on_send_clicked()
 	u256 totalReq = value() + fee();
 	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
+		if (m_client->postState().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
 			Secret s = i.secret();
