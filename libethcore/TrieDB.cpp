@@ -44,6 +44,14 @@ std::string BasicMap::lookup(h256 _h) const
 	return std::string();
 }
 
+bool BasicMap::exists(h256 _h) const
+{
+	auto it = m_over.find(_h);
+	if (it != m_over.end() && (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first))))
+		return true;
+	return false;
+}
+
 void BasicMap::insert(h256 _h, bytesConstRef _v)
 {
 	m_over[_h] = _v.toString();
@@ -58,7 +66,7 @@ void BasicMap::kill(h256 _h)
 		if (m_refCount[_h] > 0)
 			--m_refCount[_h];
 		else
-			cwarn << "Decreasing DB node ref count below zero. Probably have a corrupt Trie.";
+			cwarn << "Decreasing DB node ref count below zero. Probably have a corrupt Trie." << _h.abridged();
 	}
 	tdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
 }
@@ -111,6 +119,16 @@ std::string Overlay::lookup(h256 _h) const
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 	return ret;
+}
+
+bool Overlay::exists(h256 _h) const
+{
+	if (BasicMap::exists(_h))
+		return true;
+	std::string ret;
+	if (m_db)
+		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
+	return !ret.empty();
 }
 
 }

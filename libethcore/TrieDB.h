@@ -44,6 +44,7 @@ public:
 	std::map<h256, std::string> const& get() const { return m_over; }
 
 	std::string lookup(h256 _h) const;
+	bool exists(h256 _h) const;
 	void insert(h256 _h, bytesConstRef _v);
 	void kill(h256 _h);
 	void purge();
@@ -83,6 +84,7 @@ public:
 	void rollback();
 
 	std::string lookup(h256 _h) const;
+	bool exists(h256 _h) const;
 
 private:
 	using BasicMap::clear;
@@ -132,7 +134,16 @@ public:
 	void open(DB* _db, h256 _root) { m_db = _db; setRoot(_root); }
 
 	void init();
-	void setRoot(h256 _root) { m_root = _root == h256() ? c_shaNull : _root; /*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/ if (!node(m_root).size()) throw RootNotFound(); }
+	void setRoot(h256 _root)
+	{
+		m_root = _root == h256() ? c_shaNull : _root;
+		if (m_root == c_shaNull && !m_db->exists(m_root))
+			init();
+
+		/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
+		if (!node(m_root).size())
+			throw RootNotFound();
+	}
 	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == h256() ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
