@@ -225,13 +225,17 @@ public:
 					}
 					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
 					{
+#if ETH_PARANOIA
 						cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
 						cdebug << b.rlp.size() << toHex(b.rlp);
 						cdebug << rlp;
 						auto c = rlp.itemCount();
 						cdebug << c;
 						throw InvalidTrie();
-						assert(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17));
+#else
+						m_that = nullptr;
+						return;
+#endif
 					}
 					if (rlp.itemCount() == 2)
 					{
@@ -451,7 +455,9 @@ template <class DB> void GenericTrieDB<DB>::init()
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
-//	tdebug << "Insert" << toHex(_key.cropped(0, 4)) << "=>" << toHex(_value);
+#if ETH_PARANOIA
+	tdebug << "Insert" << toHex(_key.cropped(0, 4)) << "=>" << toHex(_value);
+#endif
 
 	std::string rv = node(m_root);
 	assert(rv.size());
@@ -503,7 +509,9 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 
 template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inline)
 {
+#if ETH_PARANOIA
 	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data()).abridged();
+#endif
 
 	// The caller will make sure that the bytes are inserted properly.
 	// - This might mean inserting an entry into m_over
@@ -570,7 +578,10 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
 {
+#if ETH_PARANOIA
 	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()).abridged() << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>().abridged() : std::string());
+#endif
+
 	RLP r = _orig;
 	std::string s;
 	// _orig is always a segment of a node's RLP - removing it alone is pointless. However, if may be a hash, in which case we deref and we know it is removable.
@@ -588,7 +599,9 @@ template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP cons
 
 template <class DB> void GenericTrieDB<DB>::remove(bytesConstRef _key)
 {
+#if ETH_PARANOIA
 	tdebug << "Remove" << toHex(_key.cropped(0, 4).toBytes());
+#endif
 
 	std::string rv = node(m_root);
 	bytes b = deleteAt(RLP(rv), NibbleSlice(_key));

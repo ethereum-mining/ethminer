@@ -54,7 +54,9 @@ void BasicMap::insert(h256 _h, bytesConstRef _v)
 {
 	m_over[_h] = _v.toString();
 	m_refCount[_h]++;
+#if ETH_PARANOIA
 	tdebug << "INST" << _h.abridged() << "=>" << m_refCount[_h];
+#endif
 }
 
 bool BasicMap::kill(h256 _h)
@@ -63,6 +65,7 @@ bool BasicMap::kill(h256 _h)
 	{
 		if (m_refCount[_h] > 0)
 			--m_refCount[_h];
+#if ETH_PARANOIA
 		else
 		{
 			// If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously
@@ -78,6 +81,10 @@ bool BasicMap::kill(h256 _h)
 		tdebug << "NOKILL" << _h.abridged();
 		return false;
 	}
+#else
+		return true;
+	}
+#endif
 }
 
 void BasicMap::purge()
@@ -142,16 +149,18 @@ bool Overlay::exists(h256 _h) const
 
 void Overlay::kill(h256 _h)
 {
+#if ETH_PARANOIA
 	if (!BasicMap::kill(_h))
 	{
-#if ETH_PARANOIA
 		std::string ret;
 		if (m_db)
 			m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 		if (ret.empty())
 			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h.abridged();
-#endif
 	}
+#else
+	BasicMap::kill(_h)
+#endif
 }
 
 }
