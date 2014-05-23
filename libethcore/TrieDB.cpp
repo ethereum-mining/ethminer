@@ -159,7 +159,7 @@ void Overlay::kill(h256 _h)
 			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h.abridged();
 	}
 #else
-	BasicMap::kill(_h)
+	BasicMap::kill(_h);
 #endif
 }
 
