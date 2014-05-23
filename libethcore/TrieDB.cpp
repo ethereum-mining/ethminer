@@ -24,8 +24,6 @@
 using namespace std;
 using namespace eth;
 
-#define tdebug ndebug
-
 namespace eth
 {
 
@@ -38,8 +36,8 @@ std::string BasicMap::lookup(h256 _h) const
 	{
 		if (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first)))
 			return it->second;
-		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
-			cwarn << "XXX Lookup required for value with no refs:" << _h.abridged();
+//		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
+//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h.abridged();
 	}
 	return std::string();
 }
@@ -59,16 +57,27 @@ void BasicMap::insert(h256 _h, bytesConstRef _v)
 	tdebug << "INST" << _h.abridged() << "=>" << m_refCount[_h];
 }
 
-void BasicMap::kill(h256 _h)
+bool BasicMap::kill(h256 _h)
 {
 	if (m_refCount.count(_h))
 	{
 		if (m_refCount[_h] > 0)
 			--m_refCount[_h];
 		else
-			cwarn << "Decreasing DB node ref count below zero. Probably have a corrupt Trie." << _h.abridged();
+		{
+			// If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously
+			// used as part of the memory-based BasicMap. Nothing to be worried about *as long as the node exists in the DB*.
+			tdebug << "NOKILL-WAS" << _h.abridged();
+			return false;
+		}
+		tdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
+		return true;
 	}
-	tdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
+	else
+	{
+		tdebug << "NOKILL" << _h.abridged();
+		return false;
+	}
 }
 
 void BasicMap::purge()
@@ -129,6 +138,20 @@ bool Overlay::exists(h256 _h) const
 	if (m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 	return !ret.empty();
+}
+
+void Overlay::kill(h256 _h)
+{
+	if (!BasicMap::kill(_h))
+	{
+#if ETH_PARANOIA
+		std::string ret;
+		if (m_db)
+			m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
+		if (ret.empty())
+			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h.abridged();
+#endif
+	}
 }
 
 }

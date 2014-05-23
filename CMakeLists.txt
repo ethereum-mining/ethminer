@@ -11,6 +11,18 @@ if ("x${HEADLESS}" STREQUAL "x")
 	set(HEADLESS 0)
 endif ()
 
+if ("x${PARANOIA}" STREQUAL "x")
+    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+        set(PARANOIA 1)
+    else ()
+        set(PARANOIA 0)
+    endif ()
+endif ()
+
+if (PARANOIA)
+    add_definitions(-DETH_PARANOIA)
+endif ()
+
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
@@ -250,6 +262,7 @@ add_subdirectory(eth)
 if (NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
 	add_subdirectory(neth)
 endif ()
+
 if (NOT HEADLESS)
 	add_subdirectory(libqethereum)
 	add_subdirectory(alethzero)
