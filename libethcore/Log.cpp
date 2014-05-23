@@ -27,7 +27,7 @@ using namespace std;
 using namespace eth;
 
 // Logging
-int eth::g_logVerbosity = 8;
+int eth::g_logVerbosity = 7;
 map<type_info const*, bool> eth::g_logOverride;
 
 ThreadLocalLogName eth::t_logThreadName("main");

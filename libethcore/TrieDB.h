@@ -28,10 +28,12 @@
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
-#define tdebug ndebug
-
 namespace eth
 {
+
+struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 6; };
+
+#define tdebug clog(TrieDBChannel)
 
 class BasicMap
 {
@@ -46,7 +48,7 @@ public:
 	std::string lookup(h256 _h) const;
 	bool exists(h256 _h) const;
 	void insert(h256 _h, bytesConstRef _v);
-	void kill(h256 _h);
+	bool kill(h256 _h);
 	void purge();
 
 protected:
@@ -85,6 +87,7 @@ public:
 
 	std::string lookup(h256 _h) const;
 	bool exists(h256 _h) const;
+	void kill(h256 _h);
 
 private:
 	using BasicMap::clear;
@@ -320,7 +323,7 @@ private:
 	std::string atAux(RLP const& _here, NibbleSlice _key) const;
 
 	void mergeAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key, bytesConstRef _value);
-	bytes mergeAt(RLP const& _replace, NibbleSlice _k, bytesConstRef _v);
+	bytes mergeAt(RLP const& _replace, NibbleSlice _k, bytesConstRef _v, bool _inline = false);
 
 	bool deleteAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key);
 	bytes deleteAt(RLP const& _replace, NibbleSlice _k);
@@ -448,7 +451,7 @@ template <class DB> void GenericTrieDB<DB>::init()
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)
 {
-	ndebug << "Insert" << toHex(_key.cropped(0, 4));
+//	tdebug << "Insert" << toHex(_key.cropped(0, 4)) << "=>" << toHex(_value);
 
 	std::string rv = node(m_root);
 	assert(rv.size());
@@ -498,7 +501,7 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 	}
 }
 
-template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
+template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inline)
 {
 	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data()).abridged();
 
@@ -523,7 +526,8 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		// partial key is our key - move down.
 		if (_k.contains(k) && !isLeaf(_orig))
 		{
-			killNode(sha3(_orig.data()));
+			if (!_inline)
+				killNode(_orig);
 			RLPStream s(2);
 			s.append(_orig[0]);
 			mergeAtAux(s, _orig[1], _k.mid(k.size()), _v);
@@ -534,10 +538,10 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 //		std::cout << _k << " sh " << k << " = " << sh << std::endl;
 		if (sh)
 			// shared stuff - cleve at disagreement.
-			return mergeAt(RLP(cleve(_orig, sh)), _k, _v);
+			return mergeAt(RLP(cleve(_orig, sh)), _k, _v, true);
 		else
 			// nothing shared - branch
-			return mergeAt(RLP(branch(_orig)), _k, _v);
+			return mergeAt(RLP(branch(_orig)), _k, _v, true);
 	}
 	else
 	{
@@ -548,7 +552,8 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 			return place(_orig, _k, _v);
 
 		// Kill the node.
-		killNode(sha3(_orig.data()));
+		if (!_inline)
+			killNode(_orig);
 
 		// not exactly our node - delve to next level at the correct index.
 		byte n = _k[0];
@@ -565,16 +570,19 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
 {
-	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()).abridged() << _orig.toHash<h256>().abridged();
+	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()).abridged() << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>().abridged() : std::string());
 	RLP r = _orig;
 	std::string s;
+	// _orig is always a segment of a node's RLP - removing it alone is pointless. However, if may be a hash, in which case we deref and we know it is removable.
+	bool isRemovable = false;
 	if (!r.isList() && !r.isEmpty())
 	{
 		s = node(_orig.toHash<h256>());
 		r = RLP(s);
 		assert(!r.isNull());
+		isRemovable = true;
 	}
-	bytes b = mergeAt(r, _k, _v);
+	bytes b = mergeAt(r, _k, _v, !isRemovable);
 	streamNode(_out, b);
 }
 
@@ -630,7 +638,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 			s.appendList(2) << _orig[0];
 			if (!deleteAtAux(s, _orig[1], _k.mid(k.size())))
 				return bytes();
-			killNode(sha3(_orig.data()));
+			killNode(_orig);
 			RLP r(s.out());
 			if (isTwoItemNode(r[1]))
 				return graft(r);
@@ -648,7 +656,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 		if (_k.size() == 0 && !_orig[16].isEmpty())
 		{
 			// Kill the node.
-			killNode(sha3(_orig.data()));
+			killNode(_orig);
 
 			byte used = uniqueInUse(_orig, 16);
 			if (used != 255)
