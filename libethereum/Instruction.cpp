@@ -215,57 +215,6 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::SUICIDE,      { "SUICIDE",      0, 1, 0} }
 };
 
-void killBigints(sp::utree const& _this)
-{
-	switch (_this.which())
-	{
-	case sp::utree_type::list_type: for (auto const& i: _this) killBigints(i); break;
-	case sp::utree_type::any_type: delete _this.get<bigint*>(); break;
-	default:;
-	}
-}
-
-void debugOut(ostream& _out, sp::utree const& _this)
-{
-	switch (_this.which())
-	{
-	case sp::utree_type::list_type: _out << "( "; for (auto const& i: _this) { debugOut(_out, i); _out << " "; } _out << ")"; break;
-	case sp::utree_type::int_type: _out << _this.get<int>(); break;
-	case sp::utree_type::string_type: _out << "\"" << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>() << "\""; break;
-	case sp::utree_type::symbol_type: _out << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>(); break;
-	case sp::utree_type::any_type: _out << *_this.get<bigint*>(); break;
-	default: _out << "nil";
-	}
-}
-
-void parseLLL(string const& _s, sp::utree& o_out)
-{
-	using qi::ascii::space;
-	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
-	typedef string::const_iterator it;
-
-	qi::rule<it, string()> str = '"' > qi::lexeme[+(~qi::char_(std::string("\"") + '\0'))] > '"';
-	qi::rule<it, string()> strsh = '\'' > qi::lexeme[+(~qi::char_(std::string(" ;())") + '\0'))];
-	qi::rule<it, symbol_type()> symbol = qi::lexeme[+(~qi::char_(std::string(" ();\"\x01-\x1f\x7f") + '\0'))];
-	qi::rule<it, string()> intstr = qi::lexeme[ qi::no_case["0x"][qi::_val = "0x"] >> *qi::char_("0-9a-fA-F")[qi::_val += qi::_1]] | qi::lexeme[+qi::char_("0-9")[qi::_val += qi::_1]];
-	qi::rule<it, bigint()> integer = intstr;
-	qi::rule<it, bigint()> multiplier = qi::lit("wei")[qi::_val = 1] | qi::lit("szabo")[qi::_val = szabo] | qi::lit("finney")[qi::_val = finney] | qi::lit("ether")[qi::_val = ether];
-	qi::rule<it, qi::ascii::space_type, bigint()> quantity = integer[qi::_val = qi::_1] >> -multiplier[qi::_val *= qi::_1];
-	qi::rule<it, qi::ascii::space_type, sp::utree()> atom = quantity[qi::_val = px::construct<sp::any_ptr>(px::new_<bigint>(qi::_1))] | (str | strsh)[qi::_val = qi::_1] | symbol[qi::_val = qi::_1];
-	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> list;
-	qi::rule<it, qi::ascii::space_type, sp::utree()> element = atom | list;
-	list = '(' > *element > ')';
-
-	try
-	{
-		qi::phrase_parse(_s.begin(), _s.end(), element, space, o_out);
-	}
-	catch (std::exception& _e)
-	{
-		cnote << _e.what();
-	}
-}
-
 static string readQuoted(char const*& o_d, char const* _e)
 {
 	string ret;
@@ -1132,6 +1081,50 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 	return body;
 }
 
+void killBigints(sp::utree const& _this)
+{
+	switch (_this.which())
+	{
+	case sp::utree_type::list_type: for (auto const& i: _this) killBigints(i); break;
+	case sp::utree_type::any_type: delete _this.get<bigint*>(); break;
+	default:;
+	}
+}
+
+void parseLLL(string const& _s, sp::utree& o_out)
+{
+	using qi::ascii::space;
+	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
+	typedef string::const_iterator it;
+
+	qi::rule<it, qi::ascii::space_type, sp::utree()> element;
+	qi::rule<it, string()> str = '"' > qi::lexeme[+(~qi::char_(std::string("\"") + '\0'))] > '"';
+	qi::rule<it, string()> strsh = '\'' > qi::lexeme[+(~qi::char_(std::string(" ;())") + '\0'))];
+	qi::rule<it, symbol_type()> symbol = qi::lexeme[+(~qi::char_(std::string(" @[]{}:();\"\x01-\x1f\x7f") + '\0'))];
+	qi::rule<it, string()> intstr = qi::lexeme[ qi::no_case["0x"][qi::_val = "0x"] >> *qi::char_("0-9a-fA-F")[qi::_val += qi::_1]] | qi::lexeme[+qi::char_("0-9")[qi::_val += qi::_1]];
+	qi::rule<it, bigint()> integer = intstr;
+	qi::rule<it, bigint()> multiplier = qi::lit("wei")[qi::_val = 1] | qi::lit("szabo")[qi::_val = szabo] | qi::lit("finney")[qi::_val = finney] | qi::lit("ether")[qi::_val = ether];
+	qi::rule<it, qi::ascii::space_type, bigint()> quantity = integer[qi::_val = qi::_1] >> -multiplier[qi::_val *= qi::_1];
+	qi::rule<it, qi::ascii::space_type, sp::utree()> atom = quantity[qi::_val = px::construct<sp::any_ptr>(px::new_<bigint>(qi::_1))] | (str | strsh)[qi::_val = qi::_1] | symbol[qi::_val = qi::_1];
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> seq = '{' > *element > '}';
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> mload = '@' > element;
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> sload = qi::lit("@@") > element;
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> mstore = '[' > element > ']' > -qi::lit(":") > element;
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> sstore = qi::lit("[[") > element > qi::lit("]]") > -qi::lit(":") > element;
+	qi::rule<it, qi::ascii::space_type, sp::utree()> extra = sload[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 2)] | mload[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 1)] | sstore[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 4)] | mstore[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 3)] | seq[qi::_val = qi::_1, bind(&sp::utree::tag, qi::_val, 5)];
+	qi::rule<it, qi::ascii::space_type, sp::utree::list_type()> list = '(' > *element > ')';
+	element = atom | list | extra;
+
+	try
+	{
+		qi::phrase_parse(_s.begin(), _s.end(), element, space, o_out);
+	}
+	catch (std::exception& _e)
+	{
+		cnote << _e.what();
+	}
+}
+
 struct CompileState
 {
 	map<string, unsigned> vars;
@@ -1303,7 +1296,19 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 {
 	switch (_this.which())
 	{
-	case sp::utree_type::list_type: _out << "( "; for (auto const& i: _this) { debugOut(_out, i); _out << " "; } _out << ")"; break;
+	case sp::utree_type::list_type:
+		switch (_this.tag())
+		{
+		case 0: _out << "( "; for (auto const& i: _this) { debugOutAST(_out, i); _out << " "; } _out << ")"; break;
+		case 1: _out << "@ "; debugOutAST(_out, _this.front()); break;
+		case 2: _out << "@@ "; debugOutAST(_out, _this.front()); break;
+		case 3: _out << "[ "; debugOutAST(_out, _this.front()); _out << " ] "; debugOutAST(_out, _this.back()); break;
+		case 4: _out << "[[ "; debugOutAST(_out, _this.front()); _out << " ]] "; debugOutAST(_out, _this.back()); break;
+		case 5: _out << "{ "; for (auto const& i: _this) { debugOutAST(_out, i); _out << " "; } _out << "}"; break;
+		default:;
+		}
+
+		break;
 	case sp::utree_type::int_type: _out << _this.get<int>(); break;
 	case sp::utree_type::string_type: _out << "\"" << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>() << "\""; break;
 	case sp::utree_type::symbol_type: _out << _this.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>(); break;
@@ -1367,13 +1372,37 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 {
 	if (_t.empty())
 		error<EmptyList>();
-	else if (_t.front().which() != sp::utree_type::symbol_type)
+	else if (_t.tag() == 0 && _t.front().which() != sp::utree_type::symbol_type)
 		error<DataNotExecutable>();
 	else
 	{
-		auto sr = _t.front().get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-		string s(sr.begin(), sr.end());
-		boost::algorithm::to_upper(s);
+		string s;
+		switch (_t.tag())
+		{
+		case 0:
+		{
+			auto sr = _t.front().get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+			s = string(sr.begin(), sr.end());
+			boost::algorithm::to_upper(s);
+			break;
+		}
+		case 1:
+			s = "MLOAD";
+			break;
+		case 2:
+			s = "SLOAD";
+			break;
+		case 3:
+			s = "MSTORE";
+			break;
+		case 4:
+			s = "SSTORE";
+			break;
+		case 5:
+			s = "SEQ";
+			break;
+		default:;
+		}
 
 		if (s == "ASM")
 		{
@@ -1390,7 +1419,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 		vector<CodeFragment> code;
 		CompileState ns = _s;
 		ns.vars.clear();
-		int c = 0;
+		int c = _t.tag() ? 1 : 0;
 		for (auto const& i: _t)
 			if (c++)
 				code.push_back(CodeFragment(i, (s == "LLL" && c == 1) ? ns : _s));
@@ -1579,8 +1608,12 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 		}
 		else if (s == "SEQ")
 		{
+			unsigned ii = 0;
 			for (auto const& i: code)
-				appendFragment(i, 0);
+				if (++ii < code.size())
+					appendFragment(i, 0);
+				else
+					appendFragment(i);
 		}
 		else
 		{
