@@ -1163,7 +1163,7 @@ class CodeFragment
 	friend class CodeLocation;
 
 public:
-	CodeFragment(sp::utree const& _t, CompileState const& _s = CompileState());
+	CodeFragment(sp::utree const& _t, CompileState const& _s = CompileState(), bool _allowASM = false);
 
 	bytes const& code() const { return m_code; }
 
@@ -1234,14 +1234,18 @@ void CodeLocation::increase(unsigned _val)
 void CodeFragment::appendFragment(CodeFragment const& _f)
 {
 	m_locs.reserve(m_locs.size() + _f.m_locs.size());
-	for (auto i: _f.m_locs)
-	{
-		CodeLocation(this, i).increase((unsigned)m_code.size());
-		m_locs.push_back(i + (unsigned)m_code.size());
-	}
 	m_code.reserve(m_code.size() + _f.m_code.size());
+
+	unsigned os = m_code.size();
 	for (auto i: _f.m_code)
 		m_code.push_back(i);
+
+	for (auto i: _f.m_locs)
+	{
+		CodeLocation(this, i + os).increase(os);
+		m_locs.push_back(i + os);
+	}
+	m_deposit += _f.m_deposit;
 }
 
 void CodeFragment::appendFragment(CodeFragment const& _f, unsigned _deposit)
@@ -1301,7 +1305,7 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 	}
 }
 
-CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s)
+CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s, bool _allowASM)
 {
 	switch (_t.which())
 	{
@@ -1322,7 +1326,22 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s)
 	}
 	case sp::utree_type::symbol_type:
 	{
-		error<SymbolNotFirst>();
+		if (_allowASM)
+		{
+			auto sr = _t.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+			string s(sr.begin(), sr.end());
+			boost::algorithm::to_upper(s);
+			if (c_instructions.count(s))
+			{
+				auto it = c_instructions.find(s);
+				m_deposit = c_instructionInfo.at(it->second).ret - c_instructionInfo.at(it->second).args;
+				m_code.push_back((byte)it->second);
+			}
+			else
+				error<InvalidOpCode>();
+		}
+		else
+			error<SymbolNotFirst>();
 		break;
 	}
 	case sp::utree_type::any_type:
@@ -1345,15 +1364,28 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 		error<DataNotExecutable>();
 	else
 	{
+		auto sr = _t.front().get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+		string s(sr.begin(), sr.end());
+		boost::algorithm::to_upper(s);
+
+		if  (s == "ASM")
+		{
+			int c = 0;
+			for (auto const& i: _t)
+				if (c++)
+					appendFragment(CodeFragment(i, _s, true));
+			return;
+		}
+
+		std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
+		std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "S<", { Instruction::SLT, false } }, { "S<=", { Instruction::SGT, true } }, { "S>", { Instruction::SGT, false } }, { "S>=", { Instruction::SLT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
+		std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
+
 		vector<CodeFragment> code;
 		int c = 0;
 		for (auto const& i: _t)
 			if (c++)
 				code.push_back(CodeFragment(i, _s));
-
-		auto sr = _t.front().get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-		string s(sr.begin(), sr.end());
-		boost::algorithm::to_upper(s);
 		auto requireSize = [&](unsigned s) { if (code.size() != s) error<IncorrectParameterCount>(); };
 		auto requireMinSize = [&](unsigned s) { if (code.size() < s) error<IncorrectParameterCount>(); };
 		auto requireDeposit = [&](unsigned i, int s) { if (code[i].m_deposit != s) error<InvalidDeposit>(); };
@@ -1399,6 +1431,11 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			appendFragment(code[1], 0);
 			donePaths();
 			end.anchor();
+		}
+		else if (s == "SEQ")
+		{
+			for (auto const& i: code)
+				appendFragment(i, 0);
 		}
 	}
 }

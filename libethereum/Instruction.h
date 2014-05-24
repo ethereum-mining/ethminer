@@ -160,6 +160,7 @@ class EmptyList: public CompilerException {};
 class DataNotExecutable: public CompilerException {};
 class IncorrectParameterCount: public CompilerException {};
 class InvalidDeposit: public CompilerException {};
+class InvalidOpCode: public CompilerException {};
 bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors);
 
 /// Append an appropriate PUSH instruction together with the literal value onto the given code.
