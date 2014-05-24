@@ -48,6 +48,7 @@ using eth::toHex;
 using eth::assemble;
 using eth::pushLiteral;
 using eth::compileLisp;
+using eth::compileLLL;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -841,7 +842,10 @@ void Main::on_data_textChanged()
 
 		if (body == -1 && init == -1)
 		{
-			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
+			vector<string> errors;
+			initBytes = compileLLL(code.toStdString(), &errors);
+			for (auto const& i: errors)
+				cwarn << i;
 		}
 		else
 		{
