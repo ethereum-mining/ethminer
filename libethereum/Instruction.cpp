@@ -1505,6 +1505,37 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			appendFragment(code[1], 1);
 			appendInstruction(Instruction::CODECOPY);
 		}
+		else if (s == "&&" || s == "||")
+		{
+			requireMinSize(1);
+			for (unsigned i = 0; i < code.size(); ++i)
+				requireDeposit(i, 1);
+
+			vector<CodeLocation> ends;
+			onePath();
+			if (code.size() > 1)
+			{
+				appendPush(s == "||" ? 1 : 0);
+				for (unsigned i = 1; i < code.size(); ++i)
+				{
+					// Check if true - predicate
+					appendFragment(code[i - 1], 1);
+					if (s == "&&")
+						appendInstruction(Instruction::NOT);
+					ends.push_back(appendJumpI());
+				}
+				appendInstruction(Instruction::POP);
+				otherPath();
+			}
+
+			// Check if true - predicate
+			appendFragment(code.back(), 1);
+			donePaths();
+
+			// At end now.
+			for (auto& i: ends)
+				i.anchor();
+		}
 		else if (s == "SEQ")
 		{
 			for (auto const& i: code)
