@@ -1388,7 +1388,8 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 		std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 
 		vector<CodeFragment> code;
-		CompileState ns;
+		CompileState ns = _s;
+		ns.vars.clear();
 		int c = 0;
 		for (auto const& i: _t)
 			if (c++)
@@ -1415,10 +1416,10 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 		{
 			auto it = c_arith.find(s);
 			requireMinSize(1);
-			for (unsigned i = 0; i < code.size(); ++i)
+			for (unsigned i = code.size(); i; --i)
 			{
-				requireDeposit(i, 1);
-				appendFragment(code[i], 1);
+				requireDeposit(i - 1, 1);
+				appendFragment(code[i - 1], 1);
 			}
 			for (unsigned i = 1; i < code.size(); ++i)
 				appendInstruction(it->second);
@@ -1545,7 +1546,6 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 				requireDeposit(i, 1);
 
 			vector<CodeLocation> ends;
-			onePath();
 			if (code.size() > 1)
 			{
 				appendPush(s == "||" ? 1 : 0);
@@ -1558,12 +1558,10 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 					ends.push_back(appendJumpI());
 				}
 				appendInstruction(Instruction::POP);
-				otherPath();
 			}
 
 			// Check if true - predicate
 			appendFragment(code.back(), 1);
-			donePaths();
 
 			// At end now.
 			for (auto& i: ends)
