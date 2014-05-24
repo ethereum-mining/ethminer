@@ -1153,6 +1153,8 @@ public:
 	void set(CodeLocation _loc) { assert(_loc.m_f == m_f); set(_loc.m_pos); }
 	void anchor();
 
+	CodeLocation operator+(unsigned _i) const { return CodeLocation(m_f, m_pos + _i); }
+
 private:
 	CodeFragment* m_f;
 	unsigned m_pos;
@@ -1174,6 +1176,7 @@ protected:
 	void appendInstruction(Instruction _i);
 
 	CodeLocation appendPushLocation(unsigned _l = 0);
+	void appendPushLocation(CodeLocation _l) { assert(_l.m_f == this); appendPushLocation(_l.m_pos); }
 
 	CodeLocation appendJump() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMP); return ret; }
 	CodeLocation appendJumpI() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMPI); return ret; }
@@ -1183,6 +1186,10 @@ protected:
 	void onePath() { assert(!m_totalDeposit && !m_baseDeposit); m_baseDeposit = m_deposit; m_totalDeposit = INT_MAX; }
 	void otherPath() { donePath(); m_totalDeposit = m_deposit; m_deposit = m_baseDeposit; }
 	void donePaths() { donePath(); m_totalDeposit = m_baseDeposit = 0; }
+	void ignored() { m_baseDeposit = m_deposit; }
+	void endIgnored() { m_deposit = m_baseDeposit; m_baseDeposit = 0; }
+
+	unsigned size() const { return m_code.size(); }
 
 private:
 	template <class T> void error() { throw T(); }
@@ -1368,7 +1375,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 		string s(sr.begin(), sr.end());
 		boost::algorithm::to_upper(s);
 
-		if  (s == "ASM")
+		if (s == "ASM")
 		{
 			int c = 0;
 			for (auto const& i: _t)
@@ -1376,7 +1383,6 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 					appendFragment(CodeFragment(i, _s, true));
 			return;
 		}
-
 		std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
 		std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "S<", { Instruction::SLT, false } }, { "S<=", { Instruction::SGT, true } }, { "S>", { Instruction::SGT, false } }, { "S>=", { Instruction::SLT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
 		std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
@@ -1385,9 +1391,10 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 		int c = 0;
 		for (auto const& i: _t)
 			if (c++)
-				code.push_back(CodeFragment(i, _s));
+				code.push_back(CodeFragment(i, (s == "LLL" && c == 1) ? CompileState() : _s));
 		auto requireSize = [&](unsigned s) { if (code.size() != s) error<IncorrectParameterCount>(); };
 		auto requireMinSize = [&](unsigned s) { if (code.size() < s) error<IncorrectParameterCount>(); };
+		auto requireMaxSize = [&](unsigned s) { if (code.size() > s) error<IncorrectParameterCount>(); };
 		auto requireDeposit = [&](unsigned i, int s) { if (code[i].m_deposit != s) error<InvalidDeposit>(); };
 
 		if (c_instructions.count(s))
@@ -1432,11 +1439,79 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			donePaths();
 			end.anchor();
 		}
+		else if (s == "WHILE")
+		{
+			requireSize(2);
+			requireDeposit(1, 1);
+			auto begin = CodeLocation(this);
+			appendFragment(code[0], 1);
+			appendInstruction(Instruction::NOT);
+			auto end = appendJumpI();
+			appendFragment(code[1], 0);
+			appendJump(begin);
+			end.anchor();
+		}
+		else if (s == "FOR")
+		{
+			requireSize(4);
+			requireDeposit(1, 1);
+			appendFragment(code[0], 0);
+			auto begin = CodeLocation(this);
+			appendFragment(code[1], 1);
+			appendInstruction(Instruction::NOT);
+			auto end = appendJumpI();
+			appendFragment(code[3], 0);
+			appendFragment(code[2], 0);
+			appendJump(begin);
+			end.anchor();
+		}
+		else if (s == "FOR")
+		{
+			requireSize(4);
+			requireDeposit(1, 1);
+			appendFragment(code[0], 0);
+			auto begin = CodeLocation(this);
+			appendFragment(code[1], 1);
+			appendInstruction(Instruction::NOT);
+			auto end = appendJumpI();
+			appendFragment(code[3], 0);
+			appendFragment(code[2], 0);
+			appendJump(begin);
+			end.anchor();
+		}
+		else if (s == "LLL")
+		{
+			requireMinSize(2);
+			requireMaxSize(3);
+			requireDeposit(1, 1);
+
+			CodeLocation codeloc(this, m_code.size() + 6);
+			appendJump(codeloc + code[0].size());
+			ignored();
+			appendFragment(code[0]);
+			endIgnored();
+			appendPush(code[0].size());
+			appendInstruction(Instruction::DUP);
+			if (code.size() == 3)
+			{
+				requireDeposit(2, 1);
+				appendFragment(code[2], 1);
+				appendInstruction(Instruction::LT);
+				appendInstruction(Instruction::NOT);
+				appendInstruction(Instruction::MUL);
+				appendInstruction(Instruction::DUP);
+			}
+			appendPushLocation(codeloc);
+			appendFragment(code[1], 1);
+			appendInstruction(Instruction::CODECOPY);
+		}
 		else if (s == "SEQ")
 		{
 			for (auto const& i: code)
 				appendFragment(i, 0);
 		}
+		else
+			error<InvalidOpCode>();
 	}
 }
 
