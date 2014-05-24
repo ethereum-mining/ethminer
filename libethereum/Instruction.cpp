@@ -238,7 +238,7 @@ void debugOut(ostream& _out, sp::utree const& _this)
 	}
 }
 
-void parseLLL(string const& _s, sp::utree o_out)
+void parseLLL(string const& _s, sp::utree& o_out)
 {
 	using qi::ascii::space;
 	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
@@ -1205,15 +1205,17 @@ CodeLocation::CodeLocation(CodeFragment* _f)
 
 unsigned CodeLocation::get() const
 {
-	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
-	return fromBigEndian<uint32_t>(bytesConstRef(&m_f->m_code[1 + m_pos], 4));
+	assert(m_f->m_code[m_pos - 1] == (byte)Instruction::PUSH4);
+	bytesConstRef r(&m_f->m_code[m_pos], 4);
+	cdebug << toHex(r);
+	return fromBigEndian<uint32_t>(r);
 }
 
 void CodeLocation::set(unsigned _val)
 {
-	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
+	assert(m_f->m_code[m_pos - 1] == (byte)Instruction::PUSH4);
 	assert(!get());
-	bytesRef r(&m_f->m_code[1 + m_pos], 4);
+	bytesRef r(&m_f->m_code[m_pos], 4);
 	toBigEndian(_val, r);
 }
 
@@ -1224,8 +1226,8 @@ void CodeLocation::anchor()
 
 void CodeLocation::increase(unsigned _val)
 {
-	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
-	bytesRef r(&m_f->m_code[1 + m_pos], 4);
+	assert(m_f->m_code[m_pos - 1] == (byte)Instruction::PUSH4);
+	bytesRef r(&m_f->m_code[m_pos], 4);
 	toBigEndian(get() + _val, r);
 }
 
@@ -1349,11 +1351,11 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			if (c++)
 				code.push_back(CodeFragment(i, _s));
 
-		auto sr = _t.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+		auto sr = _t.front().get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
 		string s(sr.begin(), sr.end());
 		boost::algorithm::to_upper(s);
-		auto requireSize = [&](unsigned s) { if (_t.size() != s) error<IncorrectParameterCount>(); };
-		auto requireMinSize = [&](unsigned s) { if (_t.size() < s) error<IncorrectParameterCount>(); };
+		auto requireSize = [&](unsigned s) { if (code.size() != s) error<IncorrectParameterCount>(); };
+		auto requireMinSize = [&](unsigned s) { if (code.size() < s) error<IncorrectParameterCount>(); };
 		auto requireDeposit = [&](unsigned i, int s) { if (code[i].m_deposit != s) error<InvalidDeposit>(); };
 
 		if (c_instructions.count(s))
@@ -1405,16 +1407,18 @@ bytes eth::compileLLL(string const& _s, vector<string>* _errors)
 {
 	sp::utree o;
 	parseLLL(_s, o);
+	debugOutAST(cerr, o);
 	bytes ret;
-	try
-	{
-		ret = CodeFragment(o).code();
-	}
-	catch (CompilerException const& _e)
-	{
-		if (_errors)
-			_errors->push_back(_e.description());
-	}
+	if (!o.empty())
+		try
+		{
+			ret = CodeFragment(o).code();
+		}
+		catch (CompilerException const& _e)
+		{
+			if (_errors)
+				_errors->push_back(_e.description());
+		}
 	killBigints(o);
 	return ret;
 }
