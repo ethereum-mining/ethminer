@@ -1131,28 +1131,27 @@ bytes eth::compileLisp(std::string const& _code, bool _quiet, bytes& _init)
 	compileLispFragment(d, e, _quiet, body, locs, vars);
 	return body;
 }
-/*
-bytes eth::compileLLL(string const& _s, vector<string>* _errors)
-{
-	sp::utree o;
-	parseLLL(_s, o);
-	bytes ret;
-	compileLLLFragment(o, ret, _errors);
-//	debugOut(cout, o);
-//	cout << endl;
-	killBigints(o);
-	return ret;
-}
 
 struct CompileState
 {
 	map<string, unsigned> vars;
 };
 
+class CodeFragment;
+
 class CodeLocation
 {
+	friend class CodeFragment;
+
 public:
-	void increase();
+	CodeLocation(CodeFragment* _f);
+	CodeLocation(CodeFragment* _f, unsigned _p): m_f(_f), m_pos(_p) {}
+
+	unsigned get() const;
+	void increase(unsigned _val);
+	void set(unsigned _val);
+	void set(CodeLocation _loc) { assert(_loc.m_f == m_f); set(_loc.m_pos); }
+	void anchor();
 
 private:
 	CodeFragment* m_f;
@@ -1161,25 +1160,73 @@ private:
 
 class CodeFragment
 {
-public:
-	CodeFragment(sp::utree _t, CompileState _s = CompileState());
+	friend class CodeLocation;
 
+public:
+	CodeFragment(sp::utree const& _t, CompileState const& _s = CompileState());
+
+	bytes const& code() const { return m_code; }
+
+protected:
 	unsigned appendPush(u256 _l);
-	CodeLocation appendPushLocation(u256 _l);
 	void appendFragment(CodeFragment const& _f);
+	void appendFragment(CodeFragment const& _f, unsigned _i);
 	void appendInstruction(Instruction _i);
 
+	CodeLocation appendPushLocation(unsigned _l = 0);
+
+	CodeLocation appendJump() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMP); return ret; }
+	CodeLocation appendJumpI() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMPI); return ret; }
+	CodeLocation appendJump(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMP); return ret; }
+	CodeLocation appendJumpI(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMPI); return ret; }
+
+	void onePath() { assert(!m_totalDeposit && !m_baseDeposit); m_baseDeposit = m_deposit; m_totalDeposit = INT_MAX; }
+	void otherPath() { donePath(); m_totalDeposit = m_deposit; m_deposit = m_baseDeposit; }
+	void donePaths() { donePath(); m_totalDeposit = m_baseDeposit = 0; }
+
 private:
-	int m_deposit;
+	template <class T> void error() { throw T(); }
+	void constructOperation(sp::utree const& _t, CompileState const& _s);
+
+	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) error<InvalidDeposit>(); }
+
+	int m_deposit = 0;
+	int m_baseDeposit = 0;
+	int m_totalDeposit = 0;
 	bytes m_code;
 	vector<unsigned> m_locs;
 };
 
-void CodeLocation::increase(unsigned _inc)
+CodeLocation::CodeLocation(CodeFragment* _f)
+{
+	m_f = _f;
+	m_pos = _f->m_code.size();
+}
+
+unsigned CodeLocation::get() const
+{
+	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
+	return fromBigEndian<uint32_t>(bytesConstRef(&m_f->m_code[1 + m_pos], 4));
+}
+
+void CodeLocation::set(unsigned _val)
+{
+	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
+	assert(!get());
+	bytesRef r(&m_f->m_code[1 + m_pos], 4);
+	toBigEndian(_val, r);
+}
+
+void CodeLocation::anchor()
+{
+	set(m_f->m_code.size());
+}
+
+void CodeLocation::increase(unsigned _val)
 {
 	assert(m_f->m_code[m_pos] == (byte)Instruction::PUSH4);
 	bytesRef r(&m_f->m_code[1 + m_pos], 4);
-	toBigEndian(fromBigEndian<uint32_t>(bytesConstRef(&m_f->m_code[1 + m_pos], 4)) + _inc, r);
+	toBigEndian(get() + _val, r);
 }
 
 void CodeFragment::appendFragment(CodeFragment const& _f)
@@ -1187,7 +1234,7 @@ void CodeFragment::appendFragment(CodeFragment const& _f)
 	m_locs.reserve(m_locs.size() + _f.m_locs.size());
 	for (auto i: _f.m_locs)
 	{
-		increaseLocation(_f.m_code, i, (unsigned)m_code.size());
+		CodeLocation(this, i).increase((unsigned)m_code.size());
 		m_locs.push_back(i + (unsigned)m_code.size());
 	}
 	m_code.reserve(m_code.size() + _f.m_code.size());
@@ -1195,13 +1242,28 @@ void CodeFragment::appendFragment(CodeFragment const& _f)
 		m_code.push_back(i);
 }
 
-void CodeFragment::appendPushLocation(uint32_t _locationValue)
+void CodeFragment::appendFragment(CodeFragment const& _f, unsigned _deposit)
 {
-	o_code.push_back((byte)Instruction::PUSH4);
-	o_code.resize(o_code.size() + 4);
-	bytesRef r(&o_code[o_code.size() - 4], 4);
+	if ((int)_deposit > _f.m_deposit)
+		error<InvalidDeposit>();
+	else
+	{
+		appendFragment(_f);
+		while (_deposit++ < (unsigned)_f.m_deposit)
+			appendInstruction(Instruction::POP);
+	}
+}
+
+CodeLocation CodeFragment::appendPushLocation(unsigned _locationValue)
+{
+	m_code.push_back((byte)Instruction::PUSH4);
+	CodeLocation ret(this, m_code.size());
+	m_locs.push_back(m_code.size());
+	m_code.resize(m_code.size() + 4);
+	bytesRef r(&m_code[m_code.size() - 4], 4);
 	toBigEndian(_locationValue, r);
 	m_deposit++;
+	return ret;
 }
 
 unsigned CodeFragment::appendPush(u256 _literalValue)
@@ -1218,8 +1280,13 @@ unsigned CodeFragment::appendPush(u256 _literalValue)
 	return br + 1;
 }
 
+void CodeFragment::appendInstruction(Instruction _i)
+{
+	m_code.push_back((byte)_i);
+	m_deposit += c_instructionInfo.at(_i).ret - c_instructionInfo.at(_i).args;
+}
 
-void debugOut(ostream& _out, sp::utree const& _this)
+void debugOutAST(ostream& _out, sp::utree const& _this)
 {
 	switch (_this.which())
 	{
@@ -1232,12 +1299,126 @@ void debugOut(ostream& _out, sp::utree const& _this)
 	}
 }
 
-CodeFragment::CodeFragment(sp::utree _t, CompileState _s)
+CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s)
 {
-	if (_t.)
-
+	switch (_t.which())
+	{
+	case sp::utree_type::list_type:
+		constructOperation(_t, _s);
+		break;
+	case sp::utree_type::string_type:
+	{
+		auto sr = _t.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
+		string s(sr.begin(), sr.end());
+		if (s.size() > 32)
+			error<StringTooLong>();
+		h256 valHash;
+		memcpy(valHash.data(), s.data(), s.size());
+		memset(valHash.data() + s.size(), 0, 32 - s.size());
+		appendPush(valHash);
+		break;
+	}
+	case sp::utree_type::symbol_type:
+	{
+		error<SymbolNotFirst>();
+		break;
+	}
+	case sp::utree_type::any_type:
+	{
+		bigint i = *_t.get<bigint*>();
+		if (i < 0 || i > bigint(u256(0) - 1))
+			error<IntegerOutOfRange>();
+		appendPush((u256)i);
+		break;
+	}
+	default: break;
+	}
 }
-*/
+
+void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _s)
+{
+	if (_t.empty())
+		error<EmptyList>();
+	else if (_t.front().which() != sp::utree_type::symbol_type)
+		error<DataNotExecutable>();
+	else
+	{
+		vector<CodeFragment> code;
+		int c = 0;
+		for (auto const& i: _t)
+			if (c++)
+				code.push_back(CodeFragment(i, _s));
+
+		auto sr = _t.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+		string s(sr.begin(), sr.end());
+		boost::algorithm::to_upper(s);
+		auto requireSize = [&](unsigned s) { if (_t.size() != s) error<IncorrectParameterCount>(); };
+		auto requireMinSize = [&](unsigned s) { if (_t.size() < s) error<IncorrectParameterCount>(); };
+		auto requireDeposit = [&](unsigned i, int s) { if (code[i].m_deposit != s) error<InvalidDeposit>(); };
+
+		if (c_instructions.count(s))
+		{
+			auto it = c_instructions.find(s);
+			int ea = c_instructionInfo.at(it->second).args;
+			if (ea >= 0)
+				requireSize(ea);
+			else
+				requireMinSize(-ea);
+
+			for (int i = code.size(); i; --i)
+				appendFragment(code[i - 1], 1);
+			appendInstruction(it->second);
+		}
+		else if (s == "IF")
+		{
+			requireSize(3);
+			requireDeposit(0, 1);
+			appendFragment(code[0]);
+			auto pos = appendJumpI();
+			onePath();
+			appendFragment(code[2]);
+			auto end = appendJump();
+			otherPath();
+			pos.anchor();
+			appendFragment(code[1]);
+			donePaths();
+			end.anchor();
+		}
+		else if (s == "WHEN" || s == "UNLESS")
+		{
+			requireSize(2);
+			requireDeposit(0, 1);
+			appendFragment(code[0]);
+			if (s == "WHEN")
+				appendInstruction(Instruction::NOT);
+			auto end = appendJumpI();
+			onePath();
+			otherPath();
+			appendFragment(code[1], 0);
+			donePaths();
+			end.anchor();
+		}
+	}
+}
+
+bytes eth::compileLLL(string const& _s, vector<string>* _errors)
+{
+	sp::utree o;
+	parseLLL(_s, o);
+	bytes ret;
+	try
+	{
+		ret = CodeFragment(o).code();
+	}
+	catch (CompilerException const& _e)
+	{
+		if (_errors)
+			_errors->push_back(_e.description());
+	}
+	killBigints(o);
+	return ret;
+}
+
 //try compileLLL("(((69wei) 'hello) (xyz \"abc\") (>= 0x69 ether))");
 
 string eth::disassemble(bytes const& _mem)

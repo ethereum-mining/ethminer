@@ -22,6 +22,7 @@
 #pragma once
 
 #include <libethcore/Common.h>
+#include "Exceptions.h"
 
 namespace eth
 {
@@ -150,7 +151,16 @@ std::string disassemble(bytes const& _mem);
 
 /// Compile a Low-level Lisp-like Language program into EVM-code.
 bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
-bytes compileLLL(std::string const& _s, bool _quiet);
+class CompilerException: public Exception {};
+class InvalidOperation: public CompilerException {};
+class SymbolNotFirst: public CompilerException {};
+class IntegerOutOfRange: public CompilerException {};
+class StringTooLong: public CompilerException {};
+class EmptyList: public CompilerException {};
+class DataNotExecutable: public CompilerException {};
+class IncorrectParameterCount: public CompilerException {};
+class InvalidDeposit: public CompilerException {};
+bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors);
 
 /// Append an appropriate PUSH instruction together with the literal value onto the given code.
 unsigned pushLiteral(bytes& o_code, u256 _literalValue);

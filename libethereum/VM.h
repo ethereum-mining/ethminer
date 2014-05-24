@@ -285,7 +285,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::BYTE:
 			require(2);
-			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(31 - m_stack.back())) & 0xff : 0;
+			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SHA3:
