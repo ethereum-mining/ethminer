@@ -1165,7 +1165,7 @@ class CodeFragment
 	friend class CodeLocation;
 
 public:
-	CodeFragment(sp::utree const& _t, CompileState const& _s = CompileState(), bool _allowASM = false);
+	CodeFragment(sp::utree const& _t, CompileState& _s, bool _allowASM = false);
 
 	bytes const& code() const { return m_code; }
 
@@ -1193,7 +1193,7 @@ protected:
 
 private:
 	template <class T> void error() { throw T(); }
-	void constructOperation(sp::utree const& _t, CompileState const& _s);
+	void constructOperation(sp::utree const& _t, CompileState& _s);
 
 	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) error<InvalidDeposit>(); }
 
@@ -1312,7 +1312,7 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 	}
 }
 
-CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s, bool _allowASM)
+CodeFragment::CodeFragment(sp::utree const& _t, CompileState& _s, bool _allowASM)
 {
 	switch (_t.which())
 	{
@@ -1363,7 +1363,7 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompileState const& _s, bool _al
 	}
 }
 
-void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _s)
+void CodeFragment::constructOperation(sp::utree const& _t, CompileState& _s)
 {
 	if (_t.empty())
 		error<EmptyList>();
@@ -1388,10 +1388,11 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 		std::map<std::string, Instruction> const c_unary = { { "!", Instruction::NOT } };
 
 		vector<CodeFragment> code;
+		CompileState ns;
 		int c = 0;
 		for (auto const& i: _t)
 			if (c++)
-				code.push_back(CodeFragment(i, (s == "LLL" && c == 1) ? CompileState() : _s));
+				code.push_back(CodeFragment(i, (s == "LLL" && c == 1) ? ns : _s));
 		auto requireSize = [&](unsigned s) { if (code.size() != s) error<IncorrectParameterCount>(); };
 		auto requireMinSize = [&](unsigned s) { if (code.size() < s) error<IncorrectParameterCount>(); };
 		auto requireMaxSize = [&](unsigned s) { if (code.size() > s) error<IncorrectParameterCount>(); };
@@ -1406,8 +1407,40 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			else
 				requireMinSize(-ea);
 
-			for (int i = code.size(); i; --i)
+			for (unsigned i = code.size(); i; --i)
 				appendFragment(code[i - 1], 1);
+			appendInstruction(it->second);
+		}
+		else if (c_arith.count(s))
+		{
+			auto it = c_arith.find(s);
+			requireMinSize(1);
+			for (unsigned i = 0; i < code.size(); ++i)
+			{
+				requireDeposit(i, 1);
+				appendFragment(code[i], 1);
+			}
+			for (unsigned i = 1; i < code.size(); ++i)
+				appendInstruction(it->second);
+		}
+		else if (c_binary.count(s))
+		{
+			auto it = c_binary.find(s);
+			requireSize(2);
+			requireDeposit(0, 1);
+			requireDeposit(1, 1);
+			appendFragment(code[1], 1);
+			appendFragment(code[0], 1);
+			appendInstruction(it->second.first);
+			if (it->second.second)
+				appendInstruction(Instruction::NOT);
+		}
+		else if (c_unary.count(s))
+		{
+			auto it = c_unary.find(s);
+			requireSize(1);
+			requireDeposit(0, 1);
+			appendFragment(code[0], 1);
 			appendInstruction(it->second);
 		}
 		else if (s == "IF")
@@ -1536,13 +1569,33 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompileState const& _
 			for (auto& i: ends)
 				i.anchor();
 		}
+		else if (s == "~")
+		{
+			requireSize(1);
+			requireDeposit(0, 1);
+			appendFragment(code[0], 1);
+			appendPush(1);
+			appendPush(0);
+			appendInstruction(Instruction::SUB);
+			appendInstruction(Instruction::SUB);
+		}
 		else if (s == "SEQ")
 		{
 			for (auto const& i: code)
 				appendFragment(i, 0);
 		}
 		else
-			error<InvalidOpCode>();
+		{
+			auto it = _s.vars.find(s);
+			if (it == _s.vars.end())
+			{
+				bool ok;
+				tie(it, ok) = _s.vars.insert(make_pair(s, _s.vars.size() * 32));
+			}
+			appendPush(it->second);
+		}
+//		else
+//			error<InvalidOpCode>();
 	}
 }
 
@@ -1555,7 +1608,8 @@ bytes eth::compileLLL(string const& _s, vector<string>* _errors)
 	if (!o.empty())
 		try
 		{
-			ret = CodeFragment(o).code();
+			CompileState cs;
+			ret = CodeFragment(o, cs).code();
 		}
 		catch (CompilerException const& _e)
 		{
