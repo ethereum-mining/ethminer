@@ -24,6 +24,9 @@
 #include <libethcore/Common.h>
 #include "Exceptions.h"
 
+namespace boost { namespace spirit { class utree; } }
+namespace sp = boost::spirit;
+
 namespace eth
 {
 
@@ -143,14 +146,10 @@ extern const std::map<Instruction, InstructionInfo> c_instructionInfo;
 /// Convert from string mnemonic to Instruction type.
 extern const std::map<std::string, Instruction> c_instructions;
 
-/// Convert from simple EVM assembly language to EVM code.
-bytes assemble(std::string const& _code, bool _quiet = false);
-
 /// Convert from EVM code to simple EVM assembly language.
 std::string disassemble(bytes const& _mem);
 
 /// Compile a Low-level Lisp-like Language program into EVM-code.
-bytes compileLisp(std::string const& _code, bool _quiet, bytes& _init);
 class CompilerException: public Exception {};
 class InvalidOperation: public CompilerException {};
 class SymbolNotFirst: public CompilerException {};
@@ -161,9 +160,79 @@ class DataNotExecutable: public CompilerException {};
 class IncorrectParameterCount: public CompilerException {};
 class InvalidDeposit: public CompilerException {};
 class InvalidOpCode: public CompilerException {};
-bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors);
+class InvalidName: public CompilerException {};
+class InvalidMacroArgs: public CompilerException {};
+class BareSymbol: public CompilerException {};
+bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors = nullptr);
 
-/// Append an appropriate PUSH instruction together with the literal value onto the given code.
-unsigned pushLiteral(bytes& o_code, u256 _literalValue);
+class CompilerState;
+class CodeFragment;
+
+class CodeLocation
+{
+	friend class CodeFragment;
+
+public:
+	CodeLocation(CodeFragment* _f);
+	CodeLocation(CodeFragment* _f, unsigned _p): m_f(_f), m_pos(_p) {}
+
+	unsigned get() const;
+	void increase(unsigned _val);
+	void set(unsigned _val);
+	void set(CodeLocation _loc) { assert(_loc.m_f == m_f); set(_loc.m_pos); }
+	void anchor();
+
+	CodeLocation operator+(unsigned _i) const { return CodeLocation(m_f, m_pos + _i); }
+
+private:
+	CodeFragment* m_f;
+	unsigned m_pos;
+};
+
+class CompilerState;
+
+class CodeFragment
+{
+	friend class CodeLocation;
+
+public:
+	CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowASM = false);
+	CodeFragment(bytes const& _c = bytes()): m_code(_c) {}
+
+	bytes const& code() const { return m_code; }
+
+	unsigned appendPush(u256 _l);
+	void appendFragment(CodeFragment const& _f);
+	void appendFragment(CodeFragment const& _f, unsigned _i);
+	void appendInstruction(Instruction _i);
+
+	CodeLocation appendPushLocation(unsigned _l = 0);
+	void appendPushLocation(CodeLocation _l) { assert(_l.m_f == this); appendPushLocation(_l.m_pos); }
+
+	CodeLocation appendJump() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMP); return ret; }
+	CodeLocation appendJumpI() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMPI); return ret; }
+	CodeLocation appendJump(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMP); return ret; }
+	CodeLocation appendJumpI(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMPI); return ret; }
+
+	void onePath() { assert(!m_totalDeposit && !m_baseDeposit); m_baseDeposit = m_deposit; m_totalDeposit = INT_MAX; }
+	void otherPath() { donePath(); m_totalDeposit = m_deposit; m_deposit = m_baseDeposit; }
+	void donePaths() { donePath(); m_totalDeposit = m_baseDeposit = 0; }
+	void ignored() { m_baseDeposit = m_deposit; }
+	void endIgnored() { m_deposit = m_baseDeposit; m_baseDeposit = 0; }
+
+	unsigned size() const { return m_code.size(); }
+
+private:
+	template <class T> void error() { throw T(); }
+	void constructOperation(sp::utree const& _t, CompilerState& _s);
+
+	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) error<InvalidDeposit>(); }
+
+	int m_deposit = 0;
+	int m_baseDeposit = 0;
+	int m_totalDeposit = 0;
+	bytes m_code;
+	std::vector<unsigned> m_locs;
+};
 
 }
