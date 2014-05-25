@@ -251,7 +251,19 @@ void parseLLL(string const& _s, sp::utree& o_out)
 
 	try
 	{
-		qi::phrase_parse(_s.begin(), _s.end(), element, space, o_out);
+		string s;
+		s.reserve(_s.size());
+		bool incomment = false;
+		for (auto i: _s)
+		{
+			if (i == ';')
+				incomment = true;
+			else if (i == '\n')
+				incomment = false;
+			if (!incomment)
+				s.push_back(i);
+		}
+		qi::phrase_parse(s.cbegin(), s.cend(), element, space, o_out);
 	}
 	catch (std::exception& _e)
 	{
@@ -443,22 +455,28 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 	{
 		auto sr = _t.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
 		string s(sr.begin(), sr.end());
+		string us = boost::algorithm::to_upper_copy(s);
 		if (_allowASM)
 		{
-			boost::algorithm::to_upper(s);
-			if (c_instructions.count(s))
+			if (c_instructions.count(us))
 			{
-				auto it = c_instructions.find(s);
+				auto it = c_instructions.find(us);
 				m_deposit = c_instructionInfo.at(it->second).ret - c_instructionInfo.at(it->second).args;
 				m_code.push_back((byte)it->second);
 			}
-			else if (_s.defs.count(s))
-				appendFragment(_s.defs.at(s));
-			else
-				error<InvalidOperation>();
 		}
-		else if (_s.defs.count(s))
+		if (_s.defs.count(s))
 			appendFragment(_s.defs.at(s));
+		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
+		{
+			auto it = _s.vars.find(s);
+			if (it == _s.vars.end())
+			{
+				bool ok;
+				tie(it, ok) = _s.vars.insert(make_pair(s, _s.vars.size() * 32));
+			}
+			appendPush(it->second);
+		}
 		else
 			error<BareSymbol>();
 
