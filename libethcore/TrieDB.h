@@ -699,6 +699,9 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 				else
 					r << _orig[i];
 
+			// Kill the node.
+			killNode(_orig);
+
 			// check if we ended up leaving the node invalid.
 			RLP rlp(r.out());
 			byte used = uniqueInUse(rlp, 255);
@@ -722,10 +725,10 @@ template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP con
 	if (!b.size())	// not found - no change.
 		return false;
 
-	if (_orig.isList())
+/*	if (_orig.isList())
 		killNode(_orig);
 	else
-		killNode(_orig.toHash<h256>());
+		killNode(_orig.toHash<h256>());*/
 
 	streamNode(_out, b);
 	return true;
