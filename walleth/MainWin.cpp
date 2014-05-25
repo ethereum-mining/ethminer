@@ -38,8 +38,6 @@ using eth::Transaction;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
