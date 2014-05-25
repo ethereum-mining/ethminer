@@ -254,12 +254,20 @@ void parseLLL(string const& _s, sp::utree& o_out)
 		string s;
 		s.reserve(_s.size());
 		bool incomment = false;
+		bool instring = false;
+		bool insstring = false;
 		for (auto i: _s)
 		{
-			if (i == ';')
+			if (i == ';' && !instring && !insstring)
 				incomment = true;
 			else if (i == '\n')
-				incomment = false;
+				incomment = instring = insstring = false;
+			else if (i == '"' && !insstring)
+				instring = !instring;
+			else if (i == '\'')
+				insstring = true;
+			else if (i == ' ')
+				insstring = false;
 			if (!incomment)
 				s.push_back(i);
 		}
@@ -278,13 +286,14 @@ struct Macro
 {
 	std::vector<std::string> args;
 	sp::utree code;
+	std::map<std::string, CodeFragment> env;
 };
 
 struct CompilerState
 {
 	std::map<std::string, unsigned> vars;
-
 	std::map<std::string, CodeFragment> defs;
+	std::map<std::string, CodeFragment> args;
 	std::map<std::string, Macro> macros;
 };
 
@@ -434,6 +443,15 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 
 CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowASM)
 {
+	cdebug << "CodeFragment. Args:";
+	for (auto const& i: _s.args)
+		cdebug << i.first << ":" << toHex(i.second.m_code);
+	cdebug << "Defs:";
+	for (auto const& i: _s.defs)
+		cdebug << i.first << ":" << toHex(i.second.m_code);
+	debugOutAST(cout, _t);
+	cout.flush();
+
 	switch (_t.which())
 	{
 	case sp::utree_type::list_type:
@@ -465,7 +483,9 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 				m_code.push_back((byte)it->second);
 			}
 		}
-		if (_s.defs.count(s))
+		if (_s.args.count(s))
+			appendFragment(_s.args.at(s));
+		else if (_s.defs.count(s))
 			appendFragment(_s.defs.at(s));
 		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		{
@@ -501,6 +521,18 @@ void CodeFragment::appendPushDataLocation(bytes const& _data)
 	m_code.resize(m_code.size() + 4);
 	memset(&m_code.back() - 3, 0, 4);
 	m_deposit++;
+}
+
+std::string CodeFragment::asPushedString() const
+{
+	string ret;
+	unsigned bc = m_code[0] - (byte)Instruction::PUSH1 + 1;
+	if (m_code[0] >= (byte)Instruction::PUSH1 && m_code[0] <= (byte)Instruction::PUSH32)
+		for (unsigned s = 0; s < bc && m_code[1 + s]; ++s)
+			ret.push_back(m_code[1 + s]);
+	else
+		error<ExpectedLiteral>();
+	return ret;
 }
 
 void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
@@ -559,10 +591,22 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			{
 				if (ii == 1)
 				{
-					if (i.tag() || i.which() != sp::utree_type::symbol_type)
+					if (i.tag())
 						error<InvalidName>();
-					auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-					n = string(sr.begin(), sr.end());
+					if (i.which() == sp::utree_type::string_type)
+					{
+						auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
+						n = string(sr.begin(), sr.end());
+					}
+					else if (i.which() != sp::utree_type::string_type)
+					{
+						auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+						n = string(sr.begin(), sr.end());
+						if (_s.args.count(n))
+							n = _s.args.at(n).asPushedString();
+						else if (_s.defs.count(n))
+							n = _s.defs.at(n).asPushedString();
+					}
 				}
 				else if (ii == 2)
 					if (_t.size() == 3)
@@ -576,9 +620,13 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 							_s.macros[n].args.push_back(string(sr.begin(), sr.end()));
 						}
 				else if (ii == 3)
+				{
 					_s.macros[n].code = i;
+					_s.macros[n].env = _s.defs;
+				}
 				++ii;
 			}
+
 		}
 		else if (us == "LIT")
 		{
@@ -659,7 +707,25 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 		auto requireMaxSize = [&](unsigned s) { if (code.size() > s) error<IncorrectParameterCount>(); };
 		auto requireDeposit = [&](unsigned i, int s) { if (code[i].m_deposit != s) error<InvalidDeposit>(); };
 
-		if (c_instructions.count(us))
+		if (_s.macros.count(s) && _s.macros.at(s).args.size() == code.size())
+		{
+			Macro const& m = _s.macros.at(s);
+			CompilerState cs = _s;
+			for (unsigned i = 0; i < m.args.size(); ++i)
+			{
+				requireDeposit(i, 1);
+				cs.args[m.args[i]] = code[i];
+			}
+			for (auto const& i: m.env)
+				if (!cs.args.count(i.first))
+					cs.args.insert(i);
+			appendFragment(CodeFragment(m.code, cs));
+			for (auto i: cs.defs)
+				_s.defs.insert(i);
+			for (auto i: cs.macros)
+				_s.macros.insert(i);
+		}
+		else if (c_instructions.count(us))
 		{
 			auto it = c_instructions.find(us);
 			int ea = c_instructionInfo.at(it->second).args;
@@ -736,7 +802,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 		else if (us == "WHILE")
 		{
 			requireSize(2);
-			requireDeposit(1, 1);
+			requireDeposit(0, 1);
 			auto begin = CodeLocation(this);
 			appendFragment(code[0], 1);
 			appendInstruction(Instruction::NOT);
@@ -828,18 +894,6 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 					appendFragment(i, 0);
 				else
 					appendFragment(i);
-		}
-		else if (_s.macros.count(s))
-		{
-			Macro const& m = _s.macros.at(s);
-			CompilerState cs = _s;
-			requireSize(m.args.size());
-			for (unsigned i = 0; i < m.args.size(); ++i)
-			{
-				requireDeposit(i, 1);
-				cs.defs[m.args[i]] = code[i];
-			}
-			appendFragment(CodeFragment(m.code, cs));
 		}
 		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		{
