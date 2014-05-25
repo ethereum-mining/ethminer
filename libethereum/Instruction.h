@@ -162,6 +162,7 @@ class InvalidName: public CompilerException {};
 class InvalidMacroArgs: public CompilerException {};
 class InvalidLiteral: public CompilerException {};
 class BareSymbol: public CompilerException {};
+class ExpectedLiteral: public CompilerException {};
 bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors = nullptr);
 
 class CompilerState;
@@ -216,18 +217,22 @@ public:
 	CodeLocation appendJump(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMP); return ret; }
 	CodeLocation appendJumpI(CodeLocation _l) { auto ret = appendPushLocation(_l.m_pos); appendInstruction(Instruction::JUMPI); return ret; }
 
+	std::string asPushedString() const;
+
 	void onePath() { assert(!m_totalDeposit && !m_baseDeposit); m_baseDeposit = m_deposit; m_totalDeposit = INT_MAX; }
 	void otherPath() { donePath(); m_totalDeposit = m_deposit; m_deposit = m_baseDeposit; }
 	void donePaths() { donePath(); m_totalDeposit = m_baseDeposit = 0; }
 	void ignored() { m_baseDeposit = m_deposit; }
 	void endIgnored() { m_deposit = m_baseDeposit; m_baseDeposit = 0; }
 
+	bool operator==(CodeFragment const& _f) const { return _f.m_code == m_code && _f.m_data == m_data; }
+	bool operator!=(CodeFragment const& _f) const { return !operator==(_f); }
 	unsigned size() const { return m_code.size(); }
 
 	void consolidateData();
 
 private:
-	template <class T> void error() { throw T(); }
+	template <class T> void error() const { throw T(); }
 	void constructOperation(sp::utree const& _t, CompilerState& _s);
 
 	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) error<InvalidDeposit>(); }
