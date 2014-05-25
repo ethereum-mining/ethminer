@@ -152,16 +152,15 @@ std::string disassemble(bytes const& _mem);
 /// Compile a Low-level Lisp-like Language program into EVM-code.
 class CompilerException: public Exception {};
 class InvalidOperation: public CompilerException {};
-class SymbolNotFirst: public CompilerException {};
 class IntegerOutOfRange: public CompilerException {};
 class StringTooLong: public CompilerException {};
 class EmptyList: public CompilerException {};
 class DataNotExecutable: public CompilerException {};
 class IncorrectParameterCount: public CompilerException {};
 class InvalidDeposit: public CompilerException {};
-class InvalidOpCode: public CompilerException {};
 class InvalidName: public CompilerException {};
 class InvalidMacroArgs: public CompilerException {};
+class InvalidLiteral: public CompilerException {};
 class BareSymbol: public CompilerException {};
 bytes compileLLL(std::string const& _s, std::vector<std::string>* _errors = nullptr);
 
@@ -199,15 +198,18 @@ public:
 	CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowASM = false);
 	CodeFragment(bytes const& _c = bytes()): m_code(_c) {}
 
-	bytes const& code() const { return m_code; }
+	/// Consolidates data and returns code.
+	bytes const& code() { consolidateData(); return m_code; }
 
 	unsigned appendPush(u256 _l);
 	void appendFragment(CodeFragment const& _f);
 	void appendFragment(CodeFragment const& _f, unsigned _i);
 	void appendInstruction(Instruction _i);
+	void appendString(std::string const& _s) { for (auto i: _s) m_code.push_back((char)i); }
 
 	CodeLocation appendPushLocation(unsigned _l = 0);
 	void appendPushLocation(CodeLocation _l) { assert(_l.m_f == this); appendPushLocation(_l.m_pos); }
+	void appendPushDataLocation(bytes const& _data);
 
 	CodeLocation appendJump() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMP); return ret; }
 	CodeLocation appendJumpI() { auto ret = appendPushLocation(0); appendInstruction(Instruction::JUMPI); return ret; }
@@ -222,6 +224,8 @@ public:
 
 	unsigned size() const { return m_code.size(); }
 
+	void consolidateData();
+
 private:
 	template <class T> void error() { throw T(); }
 	void constructOperation(sp::utree const& _t, CompilerState& _s);
@@ -233,6 +237,7 @@ private:
 	int m_totalDeposit = 0;
 	bytes m_code;
 	std::vector<unsigned> m_locs;
+	std::multimap<bytes, unsigned> m_data;
 };
 
 }
