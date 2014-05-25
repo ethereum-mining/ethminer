@@ -271,6 +271,7 @@ struct Macro
 struct CompilerState
 {
 	std::map<std::string, unsigned> vars;
+
 	std::map<std::string, CodeFragment> defs;
 	std::map<std::string, Macro> macros;
 };
@@ -317,6 +318,7 @@ void CodeFragment::appendFragment(CodeFragment const& _f)
 	m_code.reserve(m_code.size() + _f.m_code.size());
 
 	unsigned os = m_code.size();
+
 	for (auto i: _f.m_code)
 		m_code.push_back(i);
 
@@ -325,7 +327,28 @@ void CodeFragment::appendFragment(CodeFragment const& _f)
 		CodeLocation(this, i + os).increase(os);
 		m_locs.push_back(i + os);
 	}
+
+	for (auto i: _f.m_data)
+		m_data.insert(make_pair(i.first, i.second + os));
+
 	m_deposit += _f.m_deposit;
+}
+
+void CodeFragment::consolidateData()
+{
+	m_code.push_back(0);
+	bytes ld;
+	for (auto const& i: m_data)
+	{
+		if (ld != i.first)
+		{
+			ld = i.first;
+			for (auto j: ld)
+				m_code.push_back(j);
+		}
+		CodeLocation(this, i.second).set(m_code.size() - ld.size());
+	}
+	m_data.clear();
 }
 
 void CodeFragment::appendFragment(CodeFragment const& _f, unsigned _deposit)
@@ -429,8 +452,10 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 				m_deposit = c_instructionInfo.at(it->second).ret - c_instructionInfo.at(it->second).args;
 				m_code.push_back((byte)it->second);
 			}
+			else if (_s.defs.count(s))
+				appendFragment(_s.defs.at(s));
 			else
-				error<InvalidOpCode>();
+				error<InvalidOperation>();
 		}
 		else if (_s.defs.count(s))
 			appendFragment(_s.defs.at(s));
@@ -451,7 +476,14 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 	}
 }
 
-// (define plus1 (a) (+ a 1))
+void CodeFragment::appendPushDataLocation(bytes const& _data)
+{
+	m_code.push_back((byte)Instruction::PUSH4);
+	m_data.insert(make_pair(_data, m_code.size()));
+	m_code.resize(m_code.size() + 4);
+	memset(&m_code.back() - 3, 0, 4);
+	m_deposit++;
+}
 
 void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 {
@@ -490,68 +522,82 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 		default:;
 		}
 
+		// Operations who args are not standard stack-pushers.
+		bool nonStandard = true;
 		if (us == "ASM")
 		{
 			int c = 0;
 			for (auto const& i: _t)
 				if (c++)
 					appendFragment(CodeFragment(i, _s, true));
-			return;
 		}
-
-		if (us == "MACRO")
+		else if (us == "DEF")
 		{
 			string n;
 			unsigned ii = 0;
-			if (_t.size() != 4)
+			if (_t.size() != 3 && _t.size() != 4)
 				error<IncorrectParameterCount>();
 			for (auto const& i: _t)
 			{
 				if (ii == 1)
 				{
-					if (i.tag() != 0 || i.which() != sp::utree_type::symbol_type)
+					if (i.tag() || i.which() != sp::utree_type::symbol_type)
 						error<InvalidName>();
 					auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
 					n = string(sr.begin(), sr.end());
 				}
 				else if (ii == 2)
-				{
-					for (auto const& j: i)
-					{
-						if (j.tag() != 0 || j.which() != sp::utree_type::symbol_type)
-							error<InvalidMacroArgs>();
-						auto sr = j.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-						_s.macros[n].args.push_back(string(sr.begin(), sr.end()));
-					}
-				}
+					if (_t.size() == 3)
+						_s.defs[n] = CodeFragment(i, _s);
+					else
+						for (auto const& j: i)
+						{
+							if (j.tag() || j.which() != sp::utree_type::symbol_type)
+								error<InvalidMacroArgs>();
+							auto sr = j.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+							_s.macros[n].args.push_back(string(sr.begin(), sr.end()));
+						}
 				else if (ii == 3)
 					_s.macros[n].code = i;
 				++ii;
 			}
-			return;
 		}
-
-		if (us == "DEF")
+		else if (us == "LIT")
 		{
-			string n;
-			unsigned ii = 0;
-			if (_t.size() != 3)
+			if (_t.size() < 3)
 				error<IncorrectParameterCount>();
+			unsigned ii = 0;
+			CodeFragment pos;
 			for (auto const& i: _t)
 			{
 				if (ii == 1)
 				{
-					if (i.tag() != 0 || i.which() != sp::utree_type::symbol_type)
-						error<InvalidName>();
-					auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-					n = string(sr.begin(), sr.end());
+					pos = CodeFragment(i, _s);
+					if (pos.m_deposit != 1)
+						error<InvalidDeposit>();
 				}
-				else if (ii == 2)
-					_s.defs[n] = CodeFragment(i, _s);
+				else if (ii == 2 && !i.tag() && i.which() == sp::utree_type::string_type)
+				{
+					auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
+					appendPush(sr.end() - sr.begin());
+					appendInstruction(Instruction::DUP);
+					appendPushDataLocation(bytes((byte const*)sr.begin(), (byte const*)sr.end()));
+					appendFragment(pos, 1);
+					appendInstruction(Instruction::CODECOPY);
+				}
+				else if (ii >= 2 && !i.tag() && i.which() == sp::utree_type::any_type)
+				{
+				}
+				else if (ii)
+					error<InvalidLiteral>();
 				++ii;
 			}
-			return;
 		}
+		else
+			nonStandard = false;
+
+		if (nonStandard)
+			return;
 
 		std::map<std::string, Instruction> const c_arith = { { "+", Instruction::ADD }, { "-", Instruction::SUB }, { "*", Instruction::MUL }, { "/", Instruction::DIV }, { "%", Instruction::MOD }, { "&", Instruction::AND }, { "|", Instruction::OR }, { "^", Instruction::XOR } };
 		std::map<std::string, pair<Instruction, bool>> const c_binary = { { "<", { Instruction::LT, false } }, { "<=", { Instruction::GT, true } }, { ">", { Instruction::GT, false } }, { ">=", { Instruction::LT, true } }, { "S<", { Instruction::SLT, false } }, { "S<=", { Instruction::SGT, true } }, { "S>", { Instruction::SGT, false } }, { "S>=", { Instruction::SLT, true } }, { "=", { Instruction::EQ, false } }, { "!=", { Instruction::EQ, true } } };
@@ -563,7 +609,12 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 		int c = _t.tag() ? 1 : 0;
 		for (auto const& i: _t)
 			if (c++)
-				code.push_back(CodeFragment(i, (us == "LLL" && c == 1) ? ns : _s));
+			{
+				if (us == "LLL" && c == 1)
+					code.push_back(CodeFragment(i, ns));
+				else
+					code.push_back(CodeFragment(i, _s));
+			}
 		auto requireSize = [&](unsigned s) { if (code.size() != s) error<IncorrectParameterCount>(); };
 		auto requireMinSize = [&](unsigned s) { if (code.size() < s) error<IncorrectParameterCount>(); };
 		auto requireMaxSize = [&](unsigned s) { if (code.size() > s) error<IncorrectParameterCount>(); };
@@ -669,20 +720,6 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			appendJump(begin);
 			end.anchor();
 		}
-		/*else if (s == "FOR")
-		{
-			requireSize(4);
-			requireDeposit(1, 1);
-			appendFragment(code[0], 0);
-			auto begin = CodeLocation(this);
-			appendFragment(code[1], 1);
-			appendInstruction(Instruction::NOT);
-			auto end = appendJumpI();
-			appendFragment(code[3], 0);
-			appendFragment(code[2], 0);
-			appendJump(begin);
-			end.anchor();
-		}*/
 		else if (us == "LLL")
 		{
 			requireMinSize(2);
@@ -690,11 +727,8 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			requireDeposit(1, 1);
 
 			CodeLocation codeloc(this, m_code.size() + 6);
-			appendJump(codeloc + code[0].size());
-			ignored();
-			appendFragment(code[0]);
-			endIgnored();
-			appendPush(code[0].size());
+			bytes const& subcode = code[0].code();
+			appendPush(subcode.size());
 			appendInstruction(Instruction::DUP);
 			if (code.size() == 3)
 			{
@@ -705,7 +739,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				appendInstruction(Instruction::MUL);
 				appendInstruction(Instruction::DUP);
 			}
-			appendPushLocation(codeloc);
+			appendPushDataLocation(subcode);
 			appendFragment(code[1], 1);
 			appendInstruction(Instruction::CODECOPY);
 		}
@@ -768,7 +802,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			}
 			appendFragment(CodeFragment(m.code, cs));
 		}
-		else
+		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		{
 			auto it = _s.vars.find(s);
 			if (it == _s.vars.end())
@@ -778,18 +812,27 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			}
 			appendPush(it->second);
 		}
-//		else
-//			error<InvalidOpCode>();
+		else
+			error<InvalidOperation>();
 	}
 }
 
 bytes eth::compileLLL(string const& _s, vector<string>* _errors)
 {
+	bytes ret;
 	sp::utree o;
-	parseLLL(_s, o);
+	try
+	{
+		parseLLL(_s, o);
+	}
+	catch (...)
+	{
+		if (_errors)
+			_errors->push_back("Syntax error.");
+		return ret;
+	}
 	debugOutAST(cerr, o);
 	cerr << endl;
-	bytes ret;
 	if (!o.empty())
 		try
 		{
