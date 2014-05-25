@@ -30,8 +30,6 @@ using eth::Transaction;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -270,9 +268,7 @@ Client* QEthereum::client() const
 
 QString QEthereum::lll(QString _s) const
 {
-	bytes ret;
-	eth::compileLisp(_s.toStdString(), true, ret);
-	return asQString(ret);
+	return asQString(eth::compileLLL(_s.toStdString()));
 }
 
 QString QEthereum::sha3(QString _s) const

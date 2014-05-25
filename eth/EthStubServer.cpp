@@ -90,9 +90,7 @@ std::string EthStubServer::create(const std::string& _bCode, const std::string& 
 
 std::string EthStubServer::lll(const std::string& _s)
 {
-	bytes ret;
-	eth::compileLisp(_s, true, ret);
-	return "0x" + toHex(ret);
+	return "0x" + toHex(eth::compileLLL(_s));
 }
 
 std::string EthStubServer::gasPrice()
