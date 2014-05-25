@@ -289,11 +289,26 @@ struct Macro
 	std::map<std::string, CodeFragment> env;
 };
 
+static const CodeFragment NullCodeFragment;
+
 struct CompilerState
 {
+	CodeFragment const& getDef(std::string const& _s)
+	{
+		if (defs.count(_s))
+			return defs.at(_s);
+		else if (args.count(_s))
+			return args.at(_s);
+		else if (outers.count(_s))
+			return outers.at(_s);
+		else
+			return NullCodeFragment;
+	}
+
 	std::map<std::string, unsigned> vars;
 	std::map<std::string, CodeFragment> defs;
 	std::map<std::string, CodeFragment> args;
+	std::map<std::string, CodeFragment> outers;
 	std::map<std::string, Macro> macros;
 };
 
@@ -443,14 +458,17 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 
 CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowASM)
 {
-	cdebug << "CodeFragment. Args:";
-	for (auto const& i: _s.args)
-		cdebug << i.first << ":" << toHex(i.second.m_code);
-	cdebug << "Defs:";
+	cdebug << "CodeFragment. Locals:";
 	for (auto const& i: _s.defs)
 		cdebug << i.first << ":" << toHex(i.second.m_code);
+	cdebug << "Args:";
+	for (auto const& i: _s.args)
+		cdebug << i.first << ":" << toHex(i.second.m_code);
+	cdebug << "Outers:";
+	for (auto const& i: _s.outers)
+		cdebug << i.first << ":" << toHex(i.second.m_code);
 	debugOutAST(cout, _t);
-	cout.flush();
+	cout << endl << flush;
 
 	switch (_t.which())
 	{
@@ -483,10 +501,12 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 				m_code.push_back((byte)it->second);
 			}
 		}
-		if (_s.args.count(s))
-			appendFragment(_s.args.at(s));
-		else if (_s.defs.count(s))
+		if (_s.defs.count(s))
 			appendFragment(_s.defs.at(s));
+		else if (_s.args.count(s))
+			appendFragment(_s.args.at(s));
+		else if (_s.outers.count(s))
+			appendFragment(_s.outers.at(s));
 		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		{
 			auto it = _s.vars.find(s);
@@ -527,7 +547,7 @@ std::string CodeFragment::asPushedString() const
 {
 	string ret;
 	unsigned bc = m_code[0] - (byte)Instruction::PUSH1 + 1;
-	if (m_code[0] >= (byte)Instruction::PUSH1 && m_code[0] <= (byte)Instruction::PUSH32)
+	if (m_code.size() && m_code[0] >= (byte)Instruction::PUSH1 && m_code[0] <= (byte)Instruction::PUSH32)
 		for (unsigned s = 0; s < bc && m_code[1 + s]; ++s)
 			ret.push_back(m_code[1 + s]);
 	else
@@ -598,14 +618,10 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 						auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
 						n = string(sr.begin(), sr.end());
 					}
-					else if (i.which() != sp::utree_type::string_type)
+					else if (i.which() == sp::utree_type::symbol_type)
 					{
 						auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
-						n = string(sr.begin(), sr.end());
-						if (_s.args.count(n))
-							n = _s.args.at(n).asPushedString();
-						else if (_s.defs.count(n))
-							n = _s.defs.at(n).asPushedString();
+						n = _s.getDef(string(sr.begin(), sr.end())).asPushedString();
 					}
 				}
 				else if (ii == 2)
@@ -622,7 +638,11 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				else if (ii == 3)
 				{
 					_s.macros[n].code = i;
-					_s.macros[n].env = _s.defs;
+					_s.macros[n].env = _s.outers;
+					for (auto const& i: _s.args)
+						_s.macros[n].env[i.first] = i.second;
+					for (auto const& i: _s.defs)
+						_s.macros[n].env[i.first] = i.second;
 				}
 				++ii;
 			}
@@ -711,18 +731,20 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 		{
 			Macro const& m = _s.macros.at(s);
 			CompilerState cs = _s;
+			for (auto const& i: m.env)
+				cs.outers[i.first] = i.second;
+			for (auto const& i: cs.defs)
+				cs.outers[i.first] = i.second;
+			cs.defs.clear();
 			for (unsigned i = 0; i < m.args.size(); ++i)
 			{
 				requireDeposit(i, 1);
 				cs.args[m.args[i]] = code[i];
 			}
-			for (auto const& i: m.env)
-				if (!cs.args.count(i.first))
-					cs.args.insert(i);
 			appendFragment(CodeFragment(m.code, cs));
-			for (auto i: cs.defs)
-				_s.defs.insert(i);
-			for (auto i: cs.macros)
+			for (auto const& i: cs.defs)
+				_s.defs[i.first] = i.second;
+			for (auto const& i: cs.macros)
 				_s.macros.insert(i);
 		}
 		else if (c_instructions.count(us))
