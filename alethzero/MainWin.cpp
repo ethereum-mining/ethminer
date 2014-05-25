@@ -45,9 +45,7 @@ using eth::Executive;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::pushLiteral;
-using eth::compileLisp;
+using eth::compileLLL;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -841,7 +839,10 @@ void Main::on_data_textChanged()
 
 		if (body == -1 && init == -1)
 		{
-			bodyBytes = compileLisp(code.toStdString(), true, initBytes);
+			vector<string> errors;
+			initBytes = compileLLL(code.toStdString(), &errors);
+			for (auto const& i: errors)
+				cwarn << i;
 		}
 		else
 		{
@@ -865,18 +866,20 @@ void Main::on_data_textChanged()
 			m_data = initBytes;
 		if (bodyBytes.size())
 		{
+			eth::CodeFragment c(bodyBytes);
+
 			unsigned s = bodyBytes.size();
-			auto ss = pushLiteral(m_data, s);
+			unsigned ss = c.appendPush(s);
 			unsigned p = m_data.size() + 4 + 2 + 1 + ss + 2 + 1;
-			pushLiteral(m_data, p);
-			pushLiteral(m_data, 0);
-			m_data.push_back((byte)Instruction::CODECOPY);
-			pushLiteral(m_data, s);
-			pushLiteral(m_data, 0);
-			m_data.push_back((byte)Instruction::RETURN);
-			while (m_data.size() < p)
-				m_data.push_back(0);
-			for (auto b: bodyBytes)
+			c.appendPush(p);
+			c.appendPush(0);
+			c.appendInstruction(Instruction::CODECOPY);
+			c.appendPush(s);
+			c.appendPush(0);
+			c.appendInstruction(Instruction::RETURN);
+			while (c.size() < p)
+				c.appendInstruction(Instruction::STOP);
+			for (auto b: c.code())
 				m_data.push_back(b);
 		}
 
