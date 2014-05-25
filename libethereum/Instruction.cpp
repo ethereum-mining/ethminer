@@ -310,6 +310,7 @@ struct CompilerState
 	std::map<std::string, CodeFragment> args;
 	std::map<std::string, CodeFragment> outers;
 	std::map<std::string, Macro> macros;
+	std::vector<sp::utree> treesToKill;
 };
 
 }
@@ -546,12 +547,30 @@ void CodeFragment::appendPushDataLocation(bytes const& _data)
 std::string CodeFragment::asPushedString() const
 {
 	string ret;
-	unsigned bc = m_code[0] - (byte)Instruction::PUSH1 + 1;
-	if (m_code.size() && m_code[0] >= (byte)Instruction::PUSH1 && m_code[0] <= (byte)Instruction::PUSH32)
-		for (unsigned s = 0; s < bc && m_code[1 + s]; ++s)
-			ret.push_back(m_code[1 + s]);
-	else
-		error<ExpectedLiteral>();
+	if (m_code.size())
+	{
+		unsigned bc = m_code[0] - (byte)Instruction::PUSH1 + 1;
+		if (m_code[0] >= (byte)Instruction::PUSH1 && m_code[0] <= (byte)Instruction::PUSH32)
+		{
+			for (unsigned s = 0; s < bc && m_code[1 + s]; ++s)
+				ret.push_back(m_code[1 + s]);
+			return ret;
+		}
+	}
+	error<ExpectedLiteral>();
+	return ret;
+}
+
+CodeFragment compileLLLFragment(string const& _src, CompilerState& _s)
+{
+	CodeFragment ret;
+	sp::utree o;
+	parseLLL(_src, o);
+	debugOutAST(cerr, o);
+	cerr << endl;
+	if (!o.empty())
+		ret = CodeFragment(o, _s);
+	_s.treesToKill.push_back(o);
 	return ret;
 }
 
@@ -600,6 +619,26 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 			for (auto const& i: _t)
 				if (c++)
 					appendFragment(CodeFragment(i, _s, true));
+		}
+		else if (us == "INCLUDE")
+		{
+			if (_t.size() != 2)
+				error<IncorrectParameterCount>();
+			string n;
+			auto i = *++_t.begin();
+			if (i.tag())
+				error<InvalidName>();
+			if (i.which() == sp::utree_type::string_type)
+			{
+				auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
+				n = string(sr.begin(), sr.end());
+			}
+			else if (i.which() == sp::utree_type::symbol_type)
+			{
+				auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::symbol_type>>();
+				n = _s.getDef(string(sr.begin(), sr.end())).asPushedString();
+			}
+			appendFragment(compileLLLFragment(asString(contents(n)), _s));
 		}
 		else if (us == "DEF")
 		{
@@ -934,33 +973,25 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 
 bytes eth::compileLLL(string const& _s, vector<string>* _errors)
 {
-	bytes ret;
-	sp::utree o;
 	try
 	{
-		parseLLL(_s, o);
-	}
-	catch (...)
-	{
-		if (_errors)
-			_errors->push_back("Syntax error.");
+		CompilerState cs;
+		bytes ret = compileLLLFragment(_s, cs).code();
+		for (auto i: cs.treesToKill)
+			killBigints(i);
 		return ret;
 	}
-	debugOutAST(cerr, o);
-	cerr << endl;
-	if (!o.empty())
-		try
-		{
-			CompilerState cs;
-			ret = CodeFragment(o, cs).code();
-		}
-		catch (CompilerException const& _e)
-		{
-			if (_errors)
-				_errors->push_back(_e.description());
-		}
-	killBigints(o);
-	return ret;
+	catch (Exception const& _e)
+	{
+		if (_errors)
+			_errors->push_back(_e.description());
+	}
+	catch (std::exception)
+	{
+		if (_errors)
+			_errors->push_back("Parse error.");
+	}
+	return bytes();
 }
 
 string eth::disassemble(bytes const& _mem)

@@ -1,0 +1,7 @@
+{
+(def 'gav 0x8a40bfaa73256b60764c1bf40675a99083efb075)
+(def 'send (to value) (call (- (gas) 21) to value 0 0 0 0))
+(def 'makevar (name pos) { (def name (sload pos)) (def name (v) (sstore pos v)) } )
+(def 'varcount 0)
+(def 'var (name) { (makevar name varcount) (def 'varcount (+ varcount 1)) } )
+} 
