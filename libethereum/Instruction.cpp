@@ -568,6 +568,7 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				error<IncorrectParameterCount>();
 			unsigned ii = 0;
 			CodeFragment pos;
+			bytes data;
 			for (auto const& i: _t)
 			{
 				if (ii == 1)
@@ -579,19 +580,25 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				else if (ii == 2 && !i.tag() && i.which() == sp::utree_type::string_type)
 				{
 					auto sr = i.get<sp::basic_string<boost::iterator_range<char const*>, sp::utree_type::string_type>>();
-					appendPush(sr.end() - sr.begin());
-					appendInstruction(Instruction::DUP);
-					appendPushDataLocation(bytes((byte const*)sr.begin(), (byte const*)sr.end()));
-					appendFragment(pos, 1);
-					appendInstruction(Instruction::CODECOPY);
+					data = bytes((byte const*)sr.begin(), (byte const*)sr.end());
 				}
 				else if (ii >= 2 && !i.tag() && i.which() == sp::utree_type::any_type)
 				{
+					bigint bi = *i.get<bigint*>();
+					if (bi < 0 || bi > bigint(u256(0) - 1))
+						error<IntegerOutOfRange>();
+					data.resize(data.size() + 32);
+					*(h256*)(&data.back() - 31) = (u256)bi;
 				}
 				else if (ii)
 					error<InvalidLiteral>();
 				++ii;
 			}
+			appendPush(data.size());
+			appendInstruction(Instruction::DUP);
+			appendPushDataLocation(data);
+			appendFragment(pos, 1);
+			appendInstruction(Instruction::CODECOPY);
 		}
 		else
 			nonStandard = false;
