@@ -585,10 +585,24 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				else if (ii >= 2 && !i.tag() && i.which() == sp::utree_type::any_type)
 				{
 					bigint bi = *i.get<bigint*>();
-					if (bi < 0 || bi > bigint(u256(0) - 1))
+					if (bi < 0)
 						error<IntegerOutOfRange>();
-					data.resize(data.size() + 32);
-					*(h256*)(&data.back() - 31) = (u256)bi;
+					else if (bi > bigint(u256(0) - 1))
+					{
+						if (ii == 2 && _t.size() == 3)
+						{
+							// One big int - allow it as hex.
+							data.resize(bytesRequired(bi));
+							toBigEndian(bi, data);
+						}
+						else
+							error<IntegerOutOfRange>();
+					}
+					else
+					{
+						data.resize(data.size() + 32);
+						*(h256*)(&data.back() - 31) = (u256)bi;
+					}
 				}
 				else if (ii)
 					error<InvalidLiteral>();
