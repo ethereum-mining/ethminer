@@ -14,34 +14,48 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Defaults.h
+/** @file Compiler.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "Compiler.h"
+#include "Parser.h"
+#include "CompilerState.h"
+#include "CodeFragment.h"
 
-#include <libethsupport/Common.h>
+using namespace std;
+using namespace eth;
 
-namespace eth
+bytes eth::compileLLL(string const& _s, vector<string>* _errors)
 {
+	try
+	{
+		CompilerState cs;
+		bytes ret = CodeFragment::compile(_s, cs).code();
+		for (auto i: cs.treesToKill)
+			killBigints(i);
+		return ret;
+	}
+	catch (Exception const& _e)
+	{
+		if (_errors)
+			_errors->push_back(_e.description());
+	}
+	catch (std::exception)
+	{
+		if (_errors)
+			_errors->push_back("Parse error.");
+	}
+	return bytes();
+}
 
-struct Defaults
+string eth::parseLLL(string const& _src)
 {
-	friend class BlockChain;
-	friend class State;
-
-public:
-	Defaults();
-
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-	static std::string const& dbPath() { return get()->m_dbPath; }
-
-private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
-};
-
+	sp::utree o;
+	parseTreeLLL(_src, o);
+	ostringstream ret;
+	debugOutAST(ret, o);
+	killBigints(o);
+	return ret.str();
 }

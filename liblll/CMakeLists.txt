@@ -4,7 +4,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-set(EXECUTABLE ethereum)
+set(EXECUTABLE lll)
 
 if(APPLE)
 	# set(CMAKE_INSTALL_PREFIX ../lib)
@@ -18,10 +18,9 @@ endif()
 file(GLOB HEADERS "*.h") 
 
 include_directories(..)
+include_directories(${MINIUPNPC_ID})
 include_directories(${LEVELDB_ID})
 
-target_link_libraries(${EXECUTABLE} evm)
-target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethsupport)
 target_link_libraries(${EXECUTABLE} secp256k1)

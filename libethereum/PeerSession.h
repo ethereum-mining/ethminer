@@ -25,8 +25,8 @@
 #include <set>
 #include <memory>
 #include <utility>
-#include <libethcore/RLP.h>
-#include "CommonEth.h"
+#include <libethsupport/RLP.h>
+#include <libethcore/CommonEth.h>
 #include "PeerNetwork.h"
 
 namespace eth

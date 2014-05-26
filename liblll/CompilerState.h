@@ -14,34 +14,36 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Defaults.h
+/** @file CompilerState.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
 #pragma once
 
-#include <libethsupport/Common.h>
+#include <boost/spirit/include/support_utree.hpp>
+#include "CodeFragment.h"
 
 namespace eth
 {
 
-struct Defaults
+struct Macro
 {
-	friend class BlockChain;
-	friend class State;
+	std::vector<std::string> args;
+	boost::spirit::utree code;
+	std::map<std::string, CodeFragment> env;
+};
 
-public:
-	Defaults();
+struct CompilerState
+{
+	CodeFragment const& getDef(std::string const& _s);
 
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-	static std::string const& dbPath() { return get()->m_dbPath; }
-
-private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
+	std::map<std::string, unsigned> vars;
+	std::map<std::string, CodeFragment> defs;
+	std::map<std::string, CodeFragment> args;
+	std::map<std::string, CodeFragment> outers;
+	std::map<std::string, Macro> macros;
+	std::vector<boost::spirit::utree> treesToKill;
 };
 
 }

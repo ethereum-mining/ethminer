@@ -23,11 +23,11 @@
 #pragma once
 
 #include <string>
-#include <libethcore/Common.h>
-#include <libethcore/CommonIO.h>
-#include <libethcore/CommonData.h>
-#include <libethcore/FixedHash.h>
-#include <libethereum/CommonEth.h>
+#include <libethsupport/Common.h>
+#include <libethsupport/CommonIO.h>
+#include <libethsupport/CommonData.h>
+#include <libethsupport/FixedHash.h>
+#include <libethcore/CommonEth.h>
 
 namespace eth
 {

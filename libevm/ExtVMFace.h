@@ -21,8 +21,9 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
-#include "BlockInfo.h"
+#include <libethsupport/Common.h>
+#include <libethcore/CommonEth.h>
+#include <libethcore/BlockInfo.h>
 
 namespace eth
 {

@@ -2,8 +2,8 @@
 
 #include <QtCore/QAbstractListModel>
 #include <QtQml/QtQml>
-#include <libethereum/CommonEth.h>
-#include <libethcore/CommonIO.h>
+#include <libethsupport/CommonIO.h>
+#include <libethcore/CommonEth.h>
 
 namespace eth {
 class Client;

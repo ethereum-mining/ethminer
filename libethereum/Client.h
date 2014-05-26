@@ -24,11 +24,11 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <libethcore/Common.h>
+#include <libethsupport/Common.h>
+#include <libethcore/Dagger.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
-#include "Dagger.h"
 #include "PeerNetwork.h"
 
 namespace eth

@@ -19,10 +19,10 @@
  * @date 2014
  */
 
+#include <libevm/VM.h>
 #include "Executive.h"
 #include "State.h"
 #include "ExtVM.h"
-#include "VM.h"
 using namespace std;
 using namespace eth;
 

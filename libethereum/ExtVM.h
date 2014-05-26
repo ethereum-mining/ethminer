@@ -22,9 +22,9 @@
 #pragma once
 
 #include <map>
-#include "CommonEth.h"
+#include <libethcore/CommonEth.h>
+#include <libevm/ExtVMFace.h>
 #include "State.h"
-#include "ExtVMFace.h"
 
 namespace eth
 {

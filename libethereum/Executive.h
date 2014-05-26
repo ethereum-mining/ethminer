@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "CommonEth.h"
+#include <libethcore/CommonEth.h>
 #include "Transaction.h"
 
 namespace eth

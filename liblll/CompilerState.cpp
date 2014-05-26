@@ -14,34 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Defaults.h
+/** @file CompilerState.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "CompilerState.h"
 
-#include <libethsupport/Common.h>
+using namespace std;
+using namespace eth;
 
-namespace eth
+CodeFragment const& CompilerState::getDef(std::string const& _s)
 {
-
-struct Defaults
-{
-	friend class BlockChain;
-	friend class State;
-
-public:
-	Defaults();
-
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-	static std::string const& dbPath() { return get()->m_dbPath; }
-
-private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
-};
-
+	if (defs.count(_s))
+		return defs.at(_s);
+	else if (args.count(_s))
+		return args.at(_s);
+	else if (outers.count(_s))
+		return outers.at(_s);
+	else
+		return NullCodeFragment;
 }
