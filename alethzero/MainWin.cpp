@@ -839,59 +839,10 @@ void Main::on_data_textChanged()
 {
 	if (isCreation())
 	{
-		QString code = ui->data->toPlainText();
-		bytes initBytes;
-		bytes bodyBytes;
-		auto init = code.indexOf("init:");
-		auto body = code.indexOf("body:");
-		if (body == -1)
-			body = code.indexOf("code:");
-
-		if (body == -1 && init == -1)
-		{
-			vector<string> errors;
-			initBytes = compileLLL(code.toStdString(), &errors);
-			for (auto const& i: errors)
-				cwarn << i;
-		}
-		else
-		{
-			init = (init == -1 ? 0 : (init + 5));
-			int initSize = (body == -1 ? code.size() : (body - init));
-			body = (body == -1 ? code.size() : (body + 5));
-			auto initCode = code.mid(init, initSize).trimmed();
-			auto bodyCode = code.mid(body).trimmed();
-			if (QRegExp("[^0-9a-fA-F]").indexIn(initCode) == -1)
-				initBytes = fromHex(initCode.toStdString());
-			else
-				initBytes = compileSerpent(initCode.toStdString());
-			if (QRegExp("[^0-9a-zA-Z]").indexIn(bodyCode) == -1)
-				bodyBytes = fromHex(bodyCode.toStdString());
-			else
-				bodyBytes = compileSerpent(bodyCode.toStdString());
-		}
-
-		m_data.clear();
-		if (initBytes.size())
-			m_data = initBytes;
-		if (bodyBytes.size())
-		{
-			eth::CodeFragment c(bodyBytes);
-
-			unsigned s = bodyBytes.size();
-			unsigned ss = c.appendPush(s);
-			unsigned p = m_data.size() + 4 + 2 + 1 + ss + 2 + 1;
-			c.appendPush(p);
-			c.appendPush(0);
-			c.appendInstruction(Instruction::CODECOPY);
-			c.appendPush(s);
-			c.appendPush(0);
-			c.appendInstruction(Instruction::RETURN);
-			while (c.size() < p)
-				c.appendInstruction(Instruction::STOP);
-			for (auto b: c.code())
-				m_data.push_back(b);
-		}
+		vector<string> errors;
+		m_data = compileLLL(ui->data->toPlainText().toStdString(), &errors);
+		for (auto const& i: errors)
+			cwarn << i;
 
 		ui->code->setHtml("<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size(), 0));
@@ -1163,17 +1114,24 @@ void Main::initDebugger()
 		for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
 		{
 			byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
-			QString s = c_instructionInfo.at((Instruction)b).name;
-			m_pcWarp[i] = dc->count();
-			ostringstream out;
-			out << hex << setw(4) << setfill('0') << i;
-			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+			try
 			{
-				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
-				i += bc;
+				QString s = c_instructionInfo.at((Instruction)b).name;
+				m_pcWarp[i] = dc->count();
+				ostringstream out;
+				out << hex << setw(4) << setfill('0') << i;
+				if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+				{
+					unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+					s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
+					i += bc;
+				}
+				dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
 			}
-			dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
+			catch (...)
+			{
+				break;	// probably hit data segment
+			}
 		}
 
 	}
