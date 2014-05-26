@@ -22,10 +22,9 @@
 #include "PeerSession.h"
 
 #include <chrono>
-#include <libethcore/Common.h>
-#include "Exceptions.h"
+#include <libethsupport/Common.h>
+#include <libethcore/Exceptions.h>
 #include "BlockChain.h"
-#include "BlockInfo.h"
 #include "PeerServer.h"
 using namespace std;
 using namespace eth;

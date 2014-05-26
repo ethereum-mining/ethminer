@@ -24,26 +24,23 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <libethcore/Common.h>
-#include <libethcore/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libethsupport/Common.h>
+#include <libethsupport/RLP.h>
+#include <libethsupport/TrieDB.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/BlockInfo.h>
+#include <libethcore/Dagger.h>
+#include <libevm/FeeStructure.h>
+#include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
-#include "Exceptions.h"
-#include "BlockInfo.h"
 #include "AddressState.h"
 #include "Transaction.h"
-#include "FeeStructure.h"
-#include "Dagger.h"
-#include "ExtVMFace.h"
 #include "Executive.h"
 
 namespace eth
 {
 
 class BlockChain;
-
-extern u256 c_genesisDifficulty;
-std::map<Address, AddressState> const& genesisState();
 
 struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
 

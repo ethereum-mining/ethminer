@@ -1,10 +1,11 @@
 #include <QtQml/QtQml>
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
-#include <libethcore/FileSystem.h>
-#include <libethereum/Dagger.h>
+#include <libethsupport/FileSystem.h>
+#include <libethcore/Dagger.h>
+#include <libethcore/Instruction.h>
+#include <liblll/Compiler.h>
 #include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
 #include <libethereum/PeerServer.h>
 #include "QEthereum.h"
 using namespace std;

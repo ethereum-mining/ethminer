@@ -14,23 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CryptoHeaders.h
- * @author Tim Hughes <tim@twistedfury.com>
+/** @file Parser.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
+
 #pragma once
 
-// need to leave this one disabled
-#pragma GCC diagnostic ignored "-Wunused-function"
+#include <string>
+#include <vector>
+#include <libethsupport/Common.h>
 
-#pragma warning(push)
-#pragma warning(disable:4100 4244)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#include <secp256k1/secp256k1.h>
-#pragma warning(pop)
-#pragma GCC diagnostic pop
+namespace boost { namespace spirit { class utree; } }
+namespace sp = boost::spirit;
+
+namespace eth
+{
+
+void killBigints(sp::utree const& _this);
+void parseTreeLLL(std::string const& _s, sp::utree& o_out);
+
+}
+

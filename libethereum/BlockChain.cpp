@@ -22,12 +22,12 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include <libethcore/Common.h>
-#include <libethcore/RLP.h>
-#include <libethcore/FileSystem.h>
-#include "Exceptions.h"
-#include "Dagger.h"
-#include "BlockInfo.h"
+#include <libethsupport/Common.h>
+#include <libethsupport/RLP.h>
+#include <libethsupport/FileSystem.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/Dagger.h>
+#include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
@@ -66,6 +66,51 @@ bytes BlockDetails::rlp() const
 	return rlpList(number, totalDifficulty, parent, children);
 }
 
+std::map<Address, AddressState> const& eth::genesisState()
+{
+	static std::map<Address, AddressState> s_ret;
+	if (s_ret.empty())
+	{
+		// Initialise.
+		for (auto i: vector<string>({
+			"8a40bfaa73256b60764c1bf40675a99083efb075",
+			"e6716f9544a56c530d868e4bfbacb172315bdead",
+			"1e12515ce3e0f817a4ddef9ca55788a1d66bd2df",
+			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
+			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
+			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
+			"6c386a4b26f73c802f34673f7248bb118f97424a",
+			"e4157b34ea9615cfbde6b4fda419828124b70c78"
+		}))
+			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
+
+	}
+	return s_ret;
+}
+
+BlockInfo* BlockChain::s_genesis = nullptr;
+
+bytes BlockChain::createGenesisBlock()
+{
+	RLPStream block(3);
+	auto sha3EmptyList = sha3(RLPEmptyList);
+
+	h256 stateRoot;
+	{
+		BasicMap db;
+		TrieDB<Address, BasicMap> state(&db);
+		state.init();
+		eth::commit(genesisState(), db, state);
+		stateRoot = state.root();
+	}
+
+	block.appendList(13) << h256() << sha3EmptyList << h160();
+	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
+	block.appendRaw(RLPEmptyList);
+	block.appendRaw(RLPEmptyList);
+	return block.out();
+}
+
 BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -85,8 +130,8 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	assert(m_detailsDB);
 
 	// Initialise with the genesis as the last block on the longest chain.
-	m_genesisHash = BlockInfo::genesis().hash;
-	m_genesisBlock = BlockInfo::createGenesisBlock();
+	m_genesisHash = BlockChain::genesis().hash;
+	m_genesisBlock = BlockChain::createGenesisBlock();
 
 	if (!details(m_genesisHash))
 	{

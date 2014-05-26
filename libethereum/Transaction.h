@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <libethcore/RLP.h>
-#include "CommonEth.h"
+#include <libethsupport/RLP.h>
+#include <libethcore/CommonEth.h>
 
 namespace eth
 {

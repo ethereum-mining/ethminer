@@ -20,7 +20,7 @@
  */
 
 #include "AddressState.h"
-#include "CommonEth.h"
+#include <libethcore/CommonEth.h>
 using namespace std;
 using namespace eth;
 

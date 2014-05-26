@@ -13,12 +13,14 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <libethereum/Dagger.h>
-#include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
-#include <libethereum/PeerServer.h>
-#include <libethereum/VM.h>
+#include <libethcore/Dagger.h>
+#include <liblll/Compiler.h>
+#include <liblll/CodeFragment.h>
+#include <libevm/VM.h>
+#include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
+#include <libethereum/Client.h>
+#include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -37,6 +39,7 @@ using eth::Client;
 using eth::Instruction;
 using eth::KeyPair;
 using eth::NodeMode;
+using eth::BlockChain;
 using eth::PeerInfo;
 using eth::RLP;
 using eth::Secret;
@@ -197,7 +200,7 @@ Main::Main(QWidget *parent) :
 	}
 #endif
 
-	cerr << "State root: " << BlockInfo::genesis().stateRoot << endl << "Block Hash: " << sha3(BlockInfo::createGenesisBlock()) << endl << "Block RLP: " << RLP(BlockInfo::createGenesisBlock()) << endl << "Block Hex: " << toHex(BlockInfo::createGenesisBlock()) << endl;
+	cerr << "State root: " << BlockChain::genesis().stateRoot << endl << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
 	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
 
 	ui->configDock->close();

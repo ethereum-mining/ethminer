@@ -22,8 +22,9 @@
 
 #if ETH_JSONRPC
 #include "EthStubServer.h"
+#include <libethcore/Instruction.h>
+#include <liblll/Compiler.h>
 #include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
 #include "CommonJS.h"
 using namespace std;
 using namespace eth;

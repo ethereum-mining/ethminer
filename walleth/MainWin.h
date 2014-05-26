@@ -5,7 +5,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethereum/CommonEth.h>
+#include <libethcore/CommonEth.h>
 #include <libqethereum/QEthereum.h>
 
 namespace Ui {

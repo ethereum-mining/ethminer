@@ -20,9 +20,9 @@
  */
 
 #include <secp256k1/secp256k1.h>
-#include <libethcore/vector_ref.h>
-#include <libethcore/Log.h>
-#include "Exceptions.h"
+#include <libethsupport/vector_ref.h>
+#include <libethsupport/Log.h>
+#include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
 using namespace eth;

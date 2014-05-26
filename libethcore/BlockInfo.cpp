@@ -19,17 +19,16 @@
  * @date 2014
  */
 
-#include <libethcore/Common.h>
-#include <libethcore/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libethsupport/Common.h>
+#include <libethsupport/RLP.h>
+#include <libethsupport/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
-#include "State.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace eth;
 
-BlockInfo* BlockInfo::s_genesis = nullptr;
+u256 eth::c_genesisDifficulty = (u256)1 << 22;
 
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
@@ -47,27 +46,6 @@ BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
 	return ret;
 }
 
-bytes BlockInfo::createGenesisBlock()
-{
-	RLPStream block(3);
-	auto sha3EmptyList = sha3(RLPEmptyList);
-
-	h256 stateRoot;
-	{
-		BasicMap db;
-		TrieDB<Address, BasicMap> state(&db);
-		state.init();
-		eth::commit(genesisState(), db, state);
-		stateRoot = state.root();
-	}
-
-	block.appendList(13) << h256() << sha3EmptyList << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
-	block.appendRaw(RLPEmptyList);
-	block.appendRaw(RLPEmptyList);
-	return block.out();
-}
-
 h256 BlockInfo::headerHashWithoutNonce() const
 {
 	RLPStream s;
@@ -82,12 +60,6 @@ void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 	_s << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
-}
-
-void BlockInfo::populateGenesis()
-{
-	bytes genesisBlock = createGenesisBlock();
-	populate(&genesisBlock);
 }
 
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)

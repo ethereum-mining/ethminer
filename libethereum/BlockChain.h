@@ -22,8 +22,9 @@
 #pragma once
 
 #include <mutex>
-#include <libethcore/Log.h>
-#include "CommonEth.h"
+#include <libethsupport/Log.h>
+#include <libethcore/CommonEth.h>
+#include <libethcore/BlockInfo.h>
 #include "AddressState.h"
 namespace ldb = leveldb;
 
@@ -62,6 +63,9 @@ class FutureTime: public std::exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
+
+// TODO: Move all this Genesis stuff into Genesis.h/.cpp
+std::map<Address, AddressState> const& genesisState();
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -104,6 +108,9 @@ public:
 	void pushInterest(Address _a) { m_interest[_a]++; }
 	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
 
+	static BlockInfo const& genesis() { if (!s_genesis) { auto gb = createGenesisBlock(); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
+	static bytes createGenesisBlock();
+
 private:
 	void checkConsistency();
 
@@ -128,6 +135,8 @@ private:
 	ldb::WriteOptions m_writeOptions;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
+
+	static BlockInfo* s_genesis;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);

@@ -21,43 +21,19 @@
 
 #include "State.h"
 
-#include <secp256k1/secp256k1.h>
 #include <boost/filesystem.hpp>
 #include <time.h>
 #include <random>
+#include <secp256k1/secp256k1.h>
+#include <libethcore/Instruction.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/Dagger.h>
+#include <libevm/VM.h>
 #include "BlockChain.h"
-#include "Instruction.h"
-#include "Exceptions.h"
-#include "Dagger.h"
 #include "Defaults.h"
 #include "ExtVM.h"
-#include "VM.h"
 using namespace std;
 using namespace eth;
-
-u256 eth::c_genesisDifficulty = (u256)1 << 22;
-
-std::map<Address, AddressState> const& eth::genesisState()
-{
-	static std::map<Address, AddressState> s_ret;
-	if (s_ret.empty())
-	{
-		// Initialise.
-		for (auto i: vector<string>({
-			"8a40bfaa73256b60764c1bf40675a99083efb075",
-			"e6716f9544a56c530d868e4bfbacb172315bdead",
-			"1e12515ce3e0f817a4ddef9ca55788a1d66bd2df",
-			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
-			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
-			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
-			"6c386a4b26f73c802f34673f7248bb118f97424a",
-			"e4157b34ea9615cfbde6b4fda419828124b70c78"
-		}))
-			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, 0, h256(), EmptySHA3);
-
-	}
-	return s_ret;
-}
 
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
@@ -91,7 +67,7 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
 
-	m_previousBlock = BlockInfo::genesis();
+	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
@@ -318,7 +294,7 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 		// (Most recent state dump might end up being genesis.)
 
 		std::vector<h256> chain;
-		while (bi.stateRoot != BlockInfo::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
+		while (bi.stateRoot != BlockChain::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
 			chain.push_back(bi.hash);				// push back for later replay.
 			bi.populate(_bc.block(bi.parentHash));	// move to parent.
@@ -639,7 +615,7 @@ void State::commitToMine(BlockChain const& _bc)
 	RLPStream uncles;
 	Addresses uncleAddresses;
 
-	if (m_previousBlock != BlockInfo::genesis())
+	if (m_previousBlock != BlockChain::genesis())
 	{
 		// Find uncles if we're not a direct child of the genesis.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;

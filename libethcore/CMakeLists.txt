@@ -21,6 +21,7 @@ include_directories(..)
 include_directories(${MINIUPNPC_ID})
 include_directories(${LEVELDB_ID})
 
+target_link_libraries(${EXECUTABLE} ethsupport)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})

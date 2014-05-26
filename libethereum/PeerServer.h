@@ -27,8 +27,8 @@
 #include <memory>
 #include <utility>
 #include <thread>
+#include <libethcore/CommonEth.h>
 #include "PeerNetwork.h"
-#include "CommonEth.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 

@@ -21,8 +21,8 @@
 
 #include "TransactionQueue.h"
 
-#include <libethcore/Log.h>
-#include "Exceptions.h"
+#include <libethsupport/Log.h>
+#include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
 using namespace eth;

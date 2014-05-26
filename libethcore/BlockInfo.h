@@ -21,11 +21,14 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
-#include "Transaction.h"
+#include <libethsupport/Common.h>
+#include <libethsupport/RLP.h>
+#include "CommonEth.h"
 
 namespace eth
 {
+
+extern u256 c_genesisDifficulty;
 
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
@@ -103,14 +106,6 @@ public:
 	/// No-nonce sha3 of the header only.
 	h256 headerHashWithoutNonce() const;
 	void fillStream(RLPStream& _s, bool _nonce) const;
-
-	static BlockInfo const& genesis() { if (!s_genesis) (s_genesis = new BlockInfo)->populateGenesis(); return *s_genesis; }
-	static bytes createGenesisBlock();
-
-private:
-	void populateGenesis();
-
-	static BlockInfo* s_genesis;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)

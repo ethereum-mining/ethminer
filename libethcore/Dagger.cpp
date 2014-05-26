@@ -23,8 +23,8 @@
 #include <chrono>
 #include <array>
 #include <random>
-#include <libethcore/CryptoHeaders.h>
-#include <libethcore/Common.h>
+#include <libethsupport/CryptoHeaders.h>
+#include <libethsupport/Common.h>
 #include "Dagger.h"
 using namespace std;
 using namespace std::chrono;

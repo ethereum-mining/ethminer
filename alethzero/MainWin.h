@@ -6,8 +6,8 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethcore/RLP.h>
-#include <libethereum/CommonEth.h>
+#include <libethsupport/RLP.h>
+#include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
 

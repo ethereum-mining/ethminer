@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <libethcore/Common.h>
-#include <libethcore/FixedHash.h>
+#include <libethsupport/Common.h>
+#include <libethsupport/FixedHash.h>
 
 namespace eth
 {
