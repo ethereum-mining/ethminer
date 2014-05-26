@@ -35,6 +35,8 @@
 using namespace std;
 using namespace eth;
 
+#define ctrace clog(StateTrace)
+
 Overlay State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -883,11 +885,13 @@ u256 State::execute(bytesConstRef _rlp)
 	commit();	// get an updated hash
 #endif
 
+#if ETH_PARANOIA
 	if (!isTrieGood())
 	{
 		cwarn << "BAD TRIE before execution begins.";
 		throw InvalidTrie();
 	}
+#endif
 
 	State old(*this);
 	auto h = rootHash();
@@ -895,8 +899,10 @@ u256 State::execute(bytesConstRef _rlp)
 	Executive e(*this);
 	e.setup(_rlp);
 
-	cnote << "Executing" << e.t() << "on" << h;
-	cnote << toHex(e.t().rlp(true));
+#if ETH_PARANOIA
+	ctrace << "Executing" << e.t() << "on" << h;
+	ctrace << toHex(e.t().rlp(true));
+#endif
 
 	u256 startGasUsed = gasUsed();
 	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
@@ -905,22 +911,29 @@ u256 State::execute(bytesConstRef _rlp)
 	e.go();
 	e.finalize();
 
+#if ETH_PARANOIA
+	ctrace << "Ready for commit;";
+	ctrace << old.diff(*this);
+#endif
+
 	commit();
 
+#if ETH_PARANOIA
 	if (e.t().receiveAddress)
 	{
 		EnforceRefs r(m_db, true);
 		assert(!storageRoot(e.t().receiveAddress) || m_db.lookup(storageRoot(e.t().receiveAddress)).size());
 	}
 
-	cnote << "Executed; now" << rootHash();
-	cnote << old.diff(*this);
+	ctrace << "Executed; now" << rootHash();
+	ctrace << old.diff(*this);
 
 	if (!isTrieGood())
 	{
 		cwarn << "BAD TRIE immediately after execution.";
 		throw InvalidTrie();
 	}
+#endif
 
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
