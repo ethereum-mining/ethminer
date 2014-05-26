@@ -86,8 +86,14 @@ string htmlDump(bytes const& _b, unsigned _w = 8)
 		for (unsigned j = i; j < i + _w; ++j)
 			if (j < _b.size())
 				if (_b[j] >= 32 && _b[j] < 128)
-					ret << (char)_b[j];
-				else ret << '?';
+					if ((char)_b[j] == '<')
+						ret << "&lt;";
+					else if ((char)_b[j] == '&')
+						ret << "&amp;";
+					else
+						ret << (char)_b[j];
+				else
+					ret << '?';
 			else
 				ret << ' ';
 		ret << " ";
@@ -96,6 +102,7 @@ string htmlDump(bytes const& _b, unsigned _w = 8)
 		ret << "\n";
 	}
 	ret << "</pre>";
+	cdebug << ret.str();
 	return ret.str();
 }
 
