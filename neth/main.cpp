@@ -147,9 +147,7 @@ void version()
 	exit(0);
 }
 
-u256 c_minGasPrice = 10000000000000;
-u256 c_minGas = 500;
-Address c_config = Address("5620133321fcac7f15a5c570016f6cb6dc263f9d");
+Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
 string pretty(h160 _a, eth::State _st)
 {
 	string ns;
@@ -621,18 +619,23 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "transact")
 		{
+			c.lock();
+			auto const& bc = c.blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
 			vector<string> s;
 			s.push_back("Address");
 			vector<string> l;
 			l.push_back("Amount");
-			l.push_back("Gas price");
+			stringstream label;
+			label << "Gas price (" << info.minGasPrice << ")";
+			l.push_back(label.str());
 			l.push_back("Gas");
 			vector<string> b;
 			b.push_back("Secret");
 			b.push_back("Data");
-			c.lock();
 			vector<string> fields = form_dialog(s, l, b, height, width, cmd);
-			c.unlock();
 			int fs = fields.size();
 			if (fs < 6)
 			{
@@ -669,9 +672,7 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				c.lock();
-				c_minGas = (u256)c.state().callGas(data.size(), 0);
-				c.unlock();
+				u256 minGas = (u256)c.state().callGas(data.size(), 0);
 				if (size < 40)
 				{
 					if (size > 0)
@@ -679,10 +680,10 @@ int main(int argc, char** argv)
 				}
 				else if (amount < 0)
 					cwarn << "Invalid amount: " << amount;
-				else if (gasPrice < c_minGasPrice)
-					cwarn << "Minimum gas price is " << c_minGasPrice;
-				else if (gas < c_minGas)
-					cwarn << "Minimum gas amount is " << c_minGas;
+				else if (gasPrice < info.minGasPrice)
+					cwarn << "Minimum gas price is " << info.minGasPrice;
+				else if (gas < minGas)
+					cwarn << "Minimum gas amount is " << minGas;
 				else if (ssize < 40)
 				{
 					if (ssize > 0)
@@ -695,17 +696,17 @@ int main(int argc, char** argv)
 					c.transact(secret, amount, dest, data, gas, gasPrice);
 				}
 			}
+			c.unlock();
 		}
 		else if (cmd == "send")
 		{
+			c.lock();
 			vector<string> s;
 			s.push_back("Address");
 			vector<string> l;
 			l.push_back("Amount");
 			vector<string> b;
-			c.lock();
 			vector<string> fields = form_dialog(s, l, b, height, width, cmd);
-			c.unlock();
 			int fs = fields.size();
 			if (fs < 2)
 			{
@@ -729,27 +730,34 @@ int main(int argc, char** argv)
 					cwarn << "Invalid amount: " << amount;
 				else
 				{
-					u256 gasPrice = c_minGasPrice;
-					c.lock();
-					c_minGas = (u256)c.state().callGas(0, 0);
-					c.unlock();
+					auto const& bc = c.blockChain();
+					auto h = bc.currentHash();
+					auto blockData = bc.block(h);
+					BlockInfo info(blockData);
+					u256 minGas = (u256)c.state().callGas(0, 0);
 					Address dest = h160(fromHex(fields[0]));
-					c.transact(us.secret(), amount, dest, bytes(), c_minGas, gasPrice);
+					c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 				}
 			}
+			c.unlock();
 		}
 		else if (cmd == "contract")
 		{
+			c.lock();
+			auto const& bc = c.blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
 			vector<string> s;
 			vector<string> l;
 			l.push_back("Endowment");
-			l.push_back("Gas price");
+			stringstream label;
+			label << "Gas price (" << info.minGasPrice << ")";
+			l.push_back(label.str());
 			l.push_back("Gas");
 			vector<string> b;
 			b.push_back("Code (hex)");
-			c.lock();
 			vector<string> fields = form_dialog(s, l, b, height, width, cmd);
-			c.unlock();
 			int fs = fields.size();
 			if (fs < 4)
 			{
@@ -790,19 +798,19 @@ int main(int argc, char** argv)
 					cnote << ssc.str();
 				}
 				c.lock();
-				c_minGas = (u256)c.state().createGas(init.size(), 0);
-				c.unlock();
+				u256 minGas = (u256)c.state().createGas(init.size(), 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
-				else if (gasPrice < c_minGasPrice)
-					cwarn << "Minimum gas price is " << c_minGasPrice;
-				else if (gas < c_minGas)
-					cwarn << "Minimum gas amount is " << c_minGas;
+				else if (gasPrice < info.minGasPrice)
+					cwarn << "Minimum gas price is " << info.minGasPrice;
+				else if (gas < minGas)
+					cwarn << "Minimum gas amount is " << minGas;
 				else
 				{
 					c.transact(us.secret(), endowment, init, gas, gasPrice);
 				}
 			}
+			c.unlock();
 		}
 		else if (cmd == "inspect")
 		{
