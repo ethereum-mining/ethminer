@@ -459,7 +459,7 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 
 CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowASM)
 {
-	cdebug << "CodeFragment. Locals:";
+/*	cdebug << "CodeFragment. Locals:";
 	for (auto const& i: _s.defs)
 		cdebug << i.first << ":" << toHex(i.second.m_code);
 	cdebug << "Args:";
@@ -470,7 +470,7 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 		cdebug << i.first << ":" << toHex(i.second.m_code);
 	debugOutAST(cout, _t);
 	cout << endl << flush;
-
+*/
 	switch (_t.which())
 	{
 	case sp::utree_type::list_type:
@@ -508,7 +508,7 @@ CodeFragment::CodeFragment(sp::utree const& _t, CompilerState& _s, bool _allowAS
 			appendFragment(_s.args.at(s));
 		else if (_s.outers.count(s))
 			appendFragment(_s.outers.at(s));
-		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
+		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890_") == string::npos)
 		{
 			auto it = _s.vars.find(s);
 			if (it == _s.vars.end())
@@ -956,7 +956,14 @@ void CodeFragment::constructOperation(sp::utree const& _t, CompilerState& _s)
 				else
 					appendFragment(i);
 		}
-		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890") == string::npos)
+		else if (us == "RAW")
+		{
+			for (auto const& i: code)
+				appendFragment(i);
+			while (m_deposit > 1)
+				appendInstruction(Instruction::POP);
+		}
+		else if (us.find_first_of("1234567890") != 0 && us.find_first_not_of("QWERTYUIOPASDFGHJKLZXCVBNM1234567890_") == string::npos)
 		{
 			auto it = _s.vars.find(s);
 			if (it == _s.vars.end())
