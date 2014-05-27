@@ -267,7 +267,7 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 	{
 		auto b = _bc.block(_block);
 		bi.populate(b);
-		bi.verifyInternals(_bc.block(_block));
+//		bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
 	}
 	catch (...)
 	{

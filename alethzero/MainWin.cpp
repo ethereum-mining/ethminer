@@ -212,7 +212,7 @@ Main::Main(QWidget *parent) :
 
 	ui->configDock->close();
 
-	on_verbosity_sliderMoved();
+	on_verbosity_valueChanged();
 	initUnits(ui->gasPriceUnits);
 	initUnits(ui->valueUnits);
 	ui->valueUnits->setCurrentIndex(6);
@@ -995,9 +995,10 @@ void Main::on_connect_triggered()
 	}
 }
 
-void Main::on_verbosity_sliderMoved()
+void Main::on_verbosity_valueChanged()
 {
 	g_logVerbosity = ui->verbosity->value();
+	ui->verbosityLabel->setText(QString::number(g_logVerbosity));
 }
 
 void Main::on_mine_triggered()

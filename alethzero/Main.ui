@@ -317,7 +317,10 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QHBoxLayout" name="horizontalLayout_6">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <property name="spacing">
+      <number>2</number>
+     </property>
      <property name="leftMargin">
       <number>0</number>
      </property>
@@ -347,20 +350,40 @@
       </widget>
      </item>
      <item>
-      <widget class="QSlider" name="verbosity">
-       <property name="maximum">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>1</number>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="tickPosition">
-        <enum>QSlider::TicksBothSides</enum>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_5">
+       <item>
+        <widget class="QSlider" name="verbosity">
+         <property name="maximum">
+          <number>20</number>
+         </property>
+         <property name="value">
+          <number>1</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="tickPosition">
+          <enum>QSlider::TicksBothSides</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="verbosityLabel">
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>20</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </widget>
