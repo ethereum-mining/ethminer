@@ -7,9 +7,9 @@ cmake_policy(SET CMP0015 NEW)
 
 # Default HEADLESS to 0.
 set(HEADLESS CACHE BOOL 0)
-if ("x${HEADLESS}" STREQUAL "x")
-	set(HEADLESS 0)
-endif ()
+#if ("x${HEADLESS}" STREQUAL "x")
+#	set(HEADLESS 0)
+#endif ()
 
 if ("x${PARANOIA}" STREQUAL "x")
     if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
@@ -21,6 +21,18 @@ endif ()
 
 if (PARANOIA)
     add_definitions(-DETH_PARANOIA)
+endif ()
+
+if ("x${VMTRACE}" STREQUAL "x")
+    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+        set(VMTRACE 1)
+    else ()
+        set(VMTRACE 0)
+    endif ()
+endif ()
+
+if (VMTRACE)
+    add_definitions(-DETH_VMTRACE)
 endif ()
 
 # Default TARGET_PLATFORM to "linux".
@@ -276,6 +288,6 @@ endif ()
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
-unset(HEADLESS CACHE)
+#unset(HEADLESS CACHE)
 #unset(TARGET_PLATFORM CACHE)
 
