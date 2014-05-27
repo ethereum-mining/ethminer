@@ -161,27 +161,30 @@ bool Executive::go(uint64_t _steps)
 		try
 		{
 #if ETH_VMTRACE
-			for (uint64_t s = 0;; ++s)
-			{
-				ostringstream o;
-				o << endl << "    STACK" << endl;
-				for (auto i: vm().stack())
-					o << (h256)i << endl;
-				o << "    MEMORY" << endl << memDump(vm().memory());
-				o << "    STORAGE" << endl;
-				for (auto const& i: state().storage(ext().myAddress))
-					o << showbase << hex << i.first << ": " << i.second << endl;
-				eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-				eth::LogOutputStream<VMTraceChannel, false>(false) << dec << " | #" << s << " | " << hex << setw(4) << setfill('0') << vm().curPC() << " : " << c_instructionInfo.at((Instruction)ext().getCode(vm().curPC())).name << " | " << dec << vm().gas() << " ]";
-				if (s >= _steps)
-					break;
-				try
+			if (_steps == (uint64_t)0 - 1)
+				for (uint64_t s = 0;; ++s)
 				{
-					m_out = m_vm->go(*m_ext, 1);
-					break;
+					ostringstream o;
+					o << endl << "    STACK" << endl;
+					for (auto i: vm().stack())
+						o << (h256)i << endl;
+					o << "    MEMORY" << endl << memDump(vm().memory());
+					o << "    STORAGE" << endl;
+					for (auto const& i: state().storage(ext().myAddress))
+						o << showbase << hex << i.first << ": " << i.second << endl;
+					eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+					eth::LogOutputStream<VMTraceChannel, false>(false) << dec << " | #" << s << " | " << hex << setw(4) << setfill('0') << vm().curPC() << " : " << c_instructionInfo.at((Instruction)ext().getCode(vm().curPC())).name << " | " << dec << vm().gas() << " ]";
+					if (s >= _steps)
+						break;
+					try
+					{
+						m_out = m_vm->go(*m_ext, 1);
+						break;
+					}
+					catch (StepsDone const&) {}
 				}
-				catch (StepsDone const&) {}
-			}
+			else
+				m_out = m_vm->go(*m_ext, _steps);
 #else
 			m_out = m_vm->go(*m_ext, _steps);
 #endif
