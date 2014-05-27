@@ -227,10 +227,10 @@ public:
 					{
 #if ETH_PARANOIA
 						cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
-						cdebug << b.rlp.size() << toHex(b.rlp);
-						cdebug << rlp;
+						cwarn << b.rlp.size() << toHex(b.rlp);
+						cwarn << rlp;
 						auto c = rlp.itemCount();
-						cdebug << c;
+						cwarn << c;
 						throw InvalidTrie();
 #else
 						m_that = nullptr;
