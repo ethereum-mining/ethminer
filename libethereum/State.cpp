@@ -529,21 +529,23 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 	{
+#if ETH_PARANOIA
 		if (!isTrieGood())
 		{
 			cwarn << "INVALID TRIE prior to database commit!";
 			throw InvalidTrie();
 		}
-
+#endif
 		// Commit the new trie to disk.
 		m_db.commit();
 
+#if ETH_PARANOIA
 		if (!isTrieGood())
 		{
 			cwarn << "INVALID TRIE immediately after database commit!";
 			throw InvalidTrie();
 		}
-
+#endif
 		m_previousBlock = m_currentBlock;
 	}
 	else
@@ -609,7 +611,7 @@ void State::commitToMine(BlockChain const& _bc)
 	uncommitToMine();
 
 	cnote << "Commiting to mine on block" << m_previousBlock.hash;
-#ifndef RELEASE
+#ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif

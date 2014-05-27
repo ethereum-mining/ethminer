@@ -91,7 +91,7 @@ public:
 			char buf[24];
 			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 				buf[0] = '\0'; // empty if case strftime fails
-			m_sstr << Id::name() << " [ " << buf << " | " << *(t_logThreadName.m_name.get()) << (_term ? " ] " : "");
+			m_sstr << Id::name() << " [ " << buf << " | " << (t_logThreadName.m_name.get() ? *t_logThreadName.m_name.get() : std::string("<unknown>")) << (_term ? " ] " : "");
 		}
 	}
 
