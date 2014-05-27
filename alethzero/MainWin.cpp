@@ -840,12 +840,13 @@ void Main::on_data_textChanged()
 	if (isCreation())
 	{
 		vector<string> errors;
-		auto asmcode = eth::compileLLLToAsm(ui->data->toPlainText().toStdString());
-		m_data = compileLLL(ui->data->toPlainText().toStdString(), &errors);
+		auto asmcode = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), false);
+		auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
+		m_data = compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
 		for (auto const& i: errors)
 			cwarn << i;
 
-		ui->code->setHtml("<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<p/><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>");
+		ui->code->setHtml("<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre><h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
