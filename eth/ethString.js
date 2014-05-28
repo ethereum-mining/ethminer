@@ -35,7 +35,7 @@ String.prototype.bin = function() {
 		    bytes.push(parseInt(this.substr(i, 2), 16));
 		return String.fromCharCode.apply(String, bytes);
     } else if (/^\d+$/.test(this))
-		return bigInt(this).toHex().bin()
+		return bigInt(this.substr(0)).toHex().bin()
 
     // Otherwise we'll return the "String" object instead of an actual string
     return this.substr(0, this.length)
@@ -56,7 +56,7 @@ String.prototype.dec = function() {
 }
 
 String.prototype.hex = function() {
-    return bigInt(this).toHex()
+    return bigInt(this.substr(0)).toHex()
 }
 
 
