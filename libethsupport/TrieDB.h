@@ -51,6 +51,8 @@ public:
 	bool kill(h256 _h);
 	void purge();
 
+	std::set<h256> keys() const;
+
 protected:
 	std::map<h256, std::string> m_over;
 	std::map<h256, uint> m_refCount;
@@ -157,6 +159,48 @@ public:
 	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
+
+	void descendKey(h256 _k, std::set<h256>& _keyMask) const
+	{
+		_keyMask.erase(_k);
+		if (_k == m_root && _k == EmptySHA3)	// root allowed to be empty
+			return;
+		descend(RLP(node(_k)), _keyMask);
+	}
+
+	void descendEntry(RLP const& _r, std::set<h256>& _keyMask) const
+	{
+		if (_r.isData() && _r.size() == 32)
+			descendKey(_r.toHash<h256>(), _keyMask);
+		else if (_r.isList())
+			descend(_r, _keyMask);
+		else
+			throw InvalidTrie();
+	}
+
+	void descend(RLP const& _r, std::set<h256>& _keyMask) const
+	{
+		if (_r.isList() && _r.size() == 2)
+		{
+			if (!isLeaf(_r))						// don't go down leaves
+				descendEntry(_r[1], _keyMask);
+		}
+		else if (_r.isList() && _r.size() == 17)
+		{
+			for (unsigned i = 0; i < 16; ++i)
+				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
+					descendEntry(_r[i], _keyMask);
+		}
+		else
+			throw InvalidTrie();
+	}
+
+	std::set<h256> check() const
+	{
+		std::set<h256> k = m_db->keys();
+		descendKey(m_root, k);
+		return k;
+	}
 
 	std::string at(bytesConstRef _key) const;
 	void insert(bytesConstRef _key, bytesConstRef _value);

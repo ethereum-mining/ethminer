@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <libethsupport/Log.h>
 #include <libethcore/CommonEth.h>
 #include "Transaction.h"
 
@@ -31,6 +32,10 @@ class VM;
 class ExtVM;
 class State;
 
+struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
+
+std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
+
 class Executive
 {
 public:
@@ -40,7 +45,7 @@ public:
 	void setup(bytesConstRef _transaction);
 	void create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	void call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
-	bool go(uint64_t _steps = (unsigned)-1);
+	bool go(uint64_t _steps = (uint64_t)-1);
 	void finalize();
 	u256 gasUsed() const;
 

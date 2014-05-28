@@ -26,6 +26,37 @@
 using namespace std;
 using namespace eth;
 
+string eth::memDump(bytes const& _b, unsigned _w, bool _html)
+{
+	stringstream ret;
+	if (_html)
+		ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
+	for (unsigned i = 0; i < _b.size(); i += _w)
+	{
+		ret << hex << setw(4) << setfill('0') << i << " ";
+		for (unsigned j = i; j < i + _w; ++j)
+			if (j < _b.size())
+				if (_b[j] >= 32 && _b[j] < 128)
+					if ((char)_b[j] == '<' && _html)
+						ret << "&lt;";
+					else if ((char)_b[j] == '&' && _html)
+						ret << "&amp;";
+					else
+						ret << (char)_b[j];
+				else
+					ret << '?';
+			else
+				ret << ' ';
+		ret << " ";
+		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
+			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
+		ret << "\n";
+	}
+	if (_html)
+		ret << "</pre>";
+	return ret.str();
+}
+
 Executive::~Executive()
 {
 	// TODO: Make safe.
@@ -49,14 +80,14 @@ void Executive::setup(bytesConstRef _rlp)
 	auto nonceReq = m_s.transactionsFrom(m_sender);
 	if (m_t.nonce != nonceReq)
 	{
-		clog(StateChat) << "Invalid Nonce.";
+		clog(StateChat) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
 		throw InvalidNonce(nonceReq, m_t.nonce);
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
 	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
 	{
-		clog(StateChat) << "Offered gas-price is too low.";
+		clog(StateChat) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
 		throw GasPriceTooLow();
 	}
 
@@ -65,7 +96,7 @@ void Executive::setup(bytesConstRef _rlp)
 
 	if (m_t.gas < gasCost)
 	{
-		clog(StateChat) << "Not enough gas to pay for the transaction.";
+		clog(StateChat) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
 		throw OutOfGas();
 	}
 
@@ -74,7 +105,7 @@ void Executive::setup(bytesConstRef _rlp)
 	// Avoid unaffordable transactions.
 	if (m_s.balance(m_sender) < cost)
 	{
-		clog(StateChat) << "Not enough cash.";
+		clog(StateChat) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
 		throw NotEnoughCash();
 	}
 
@@ -118,39 +149,6 @@ void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// Execute _init.
 	m_vm = new VM(_gas);
 	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
-}
-
-struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
-
-string memDump(bytes const& _b, unsigned _w = 8, bool _html = false)
-{
-	stringstream ret;
-	if (_html)
-		ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
-	for (unsigned i = 0; i < _b.size(); i += _w)
-	{
-		ret << hex << setw(4) << setfill('0') << i << " ";
-		for (unsigned j = i; j < i + _w; ++j)
-			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 128)
-					if ((char)_b[j] == '<' && _html)
-						ret << "&lt;";
-					else if ((char)_b[j] == '&' && _html)
-						ret << "&amp;";
-					else
-						ret << (char)_b[j];
-				else
-					ret << '?';
-			else
-				ret << ' ';
-		ret << " ";
-		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
-			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
-		ret << "\n";
-	}
-	if (_html)
-		ret << "</pre>";
-	return ret.str();
 }
 
 bool Executive::go(uint64_t _steps)

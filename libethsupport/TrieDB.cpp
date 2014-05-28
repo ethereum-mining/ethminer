@@ -94,6 +94,15 @@ void BasicMap::purge()
 			m_over.erase(i.first);
 }
 
+set<h256> BasicMap::keys() const
+{
+	set<h256> ret;
+	for (auto const& i: m_refCount)
+		if (i.second)
+			ret.insert(i.first);
+	return ret;
+}
+
 Overlay::~Overlay()
 {
 	if (m_db.use_count() == 1 && m_db.get())
