@@ -67,19 +67,19 @@ State::State(Address _coinbaseAddress, Overlay const& _db):
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
-	paranoia("beginning of normal construction.");
+	paranoia("beginning of normal construction.", true);
 
 	eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
 
-	paranoia("after DB commit of normal construction.");
+	paranoia("after DB commit of normal construction.", true);
 
 	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
 
-	paranoia("end of normal construction.");
+	paranoia("end of normal construction.", true);
 }
 
 State::State(State const& _s):
@@ -94,15 +94,15 @@ State::State(State const& _s):
 	m_ourAddress(_s.m_ourAddress),
 	m_blockReward(_s.m_blockReward)
 {
-	paranoia("after state cloning (copy cons).");
+	paranoia("after state cloning (copy cons).", true);
 }
 
-void State::paranoia(std::string const& _when) const
+void State::paranoia(std::string const& _when, bool _enforceRefs) const
 {
 #if ETH_PARANOIA
 	// TODO: variable on context; just need to work out when there should be no leftovers
 	// [in general this is hard since contract alteration will result in nodes in the DB that are no directly part of the state DB].
-	if (!isTrieGood(false))
+	if (!isTrieGood(_enforceRefs, false))
 	{
 		cwarn << "BAD TRIE" << _when;
 		throw InvalidTrie();
@@ -114,7 +114,6 @@ void State::paranoia(std::string const& _when) const
 
 State& State::operator=(State const& _s)
 {
-	paranoia("prior state cloning (assignment op)");
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
@@ -125,7 +124,7 @@ State& State::operator=(State const& _s)
 	m_currentBlock = _s.m_currentBlock;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
-	paranoia("after state cloning (assignment op)");
+	paranoia("after state cloning (assignment op)", true);
 	return *this;
 }
 
@@ -369,9 +368,10 @@ void State::resetCurrent()
 	// Update timestamp according to clock.
 	// TODO: check.
 
+	m_lastTx = m_db;
 	m_state.setRoot(m_currentBlock.stateRoot);
 
-	paranoia("begin resetCurrent");
+	paranoia("begin resetCurrent", true);
 }
 
 bool State::cull(TransactionQueue& _tq) const
@@ -556,12 +556,12 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 	if (_fullCommit)
 	{
-		paranoia("immediately before database commit");
+		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
 		m_db.commit();
 
-		paranoia("immediately after database commit");
+		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
 	}
 	else
@@ -576,12 +576,18 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 
 void State::uncommitToMine()
 {
-	m_cache.clear();
-	if (!m_transactions.size())
-		m_state.setRoot(m_previousBlock.stateRoot);
-	else
-		m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
-	m_currentBlock.sha3Uncles = h256();
+	if (m_currentBlock.sha3Uncles)
+	{
+		m_cache.clear();
+		if (!m_transactions.size())
+			m_state.setRoot(m_previousBlock.stateRoot);
+		else
+			m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
+		m_db = m_lastTx;
+		m_transactionManifest.init();
+		paranoia("Uncommited to mine", true);
+		m_currentBlock.sha3Uncles = h256();
+	}
 }
 
 bool State::amIJustParanoid(BlockChain const& _bc)
@@ -632,6 +638,8 @@ void State::commitToMine(BlockChain const& _bc)
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif
 
+	m_lastTx = m_db;
+
 	RLPStream uncles;
 	Addresses uncleAddresses;
 
@@ -654,7 +662,6 @@ void State::commitToMine(BlockChain const& _bc)
 		uncles.appendList(0);
 
 //	cnote << *this;
-	applyRewards(uncleAddresses);
 	if (m_transactionManifest.isNull())
 		m_transactionManifest.init();
 	else
@@ -679,6 +686,9 @@ void State::commitToMine(BlockChain const& _bc)
 
 	m_currentBlock.transactionsRoot = m_transactionManifest.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
+	// Apply rewards last of all.
+	applyRewards(uncleAddresses);
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
@@ -856,9 +866,9 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
-bool State::isTrieGood(bool _requireNoLeftOvers) const
+bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
-	for (int e = 0; e < 2; ++e)
+	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
 		try
 		{
 			EnforceRefs r(m_db, !!e);
@@ -871,6 +881,7 @@ bool State::isTrieGood(bool _requireNoLeftOvers) const
 				m_state.debugStructure(cerr);
 				return false;
 			}
+			// TODO: Enable once fixed.
 			for (auto const& i: m_state)
 			{
 				RLP r(i.second);
@@ -890,13 +901,16 @@ bool State::isTrieGood(bool _requireNoLeftOvers) const
 	return true;
 }
 
+// TODO: kill temp nodes automatically in TrieDB
+// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + Overlay; allow overlay copying for rewind operations.
+
 u256 State::execute(bytesConstRef _rlp)
 {
 #ifndef RELEASE
 	commit();	// get an updated hash
 #endif
 
-	paranoia("start of execution.");
+	paranoia("start of execution.", true);
 
 	State old(*this);
 #if ETH_PARANOIA
@@ -929,7 +943,7 @@ u256 State::execute(bytesConstRef _rlp)
 	ctrace << "Executed; now" << rootHash();
 	ctrace << old.diff(*this);
 
-	paranoia("after execution commit.");
+	paranoia("after execution commit.", true);
 
 	if (e.t().receiveAddress)
 	{
