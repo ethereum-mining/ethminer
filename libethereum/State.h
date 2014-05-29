@@ -297,14 +297,15 @@ private:
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
-	bool isTrieGood(bool _requireNoLeftOvers) const;
-	void paranoia(std::string const& _when) const;
+	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
+	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
+	Overlay m_lastTx;
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
