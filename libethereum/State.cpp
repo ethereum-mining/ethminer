@@ -899,7 +899,9 @@ u256 State::execute(bytesConstRef _rlp)
 	paranoia("start of execution.");
 
 	State old(*this);
+#if ETH_PARANOIA
 	auto h = rootHash();
+#endif
 
 	Executive e(*this);
 	e.setup(_rlp);
