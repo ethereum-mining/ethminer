@@ -43,7 +43,7 @@ public:
 	BasicMap() {}
 
 	void clear() { m_over.clear(); }
-	std::map<h256, std::string> get() const;
+	std::map<h256, std::string> const& get() const { return m_over; }
 
 	std::string lookup(h256 _h) const;
 	bool exists(h256 _h) const;
@@ -160,58 +160,46 @@ public:
 
 	void debugPrint() {}
 
-	void descendKey(h256 _k, std::set<h256>& _keyMask, bool _wasExt) const
+	void descendKey(h256 _k, std::set<h256>& _keyMask) const
 	{
 		_keyMask.erase(_k);
-		if (_k == m_root && _k == c_shaNull)	// root allowed to be empty
+		if (_k == m_root && _k == EmptySHA3)	// root allowed to be empty
 			return;
-		descendList(RLP(node(_k)), _keyMask, _wasExt);	// if not, it must be a list
+		descend(RLP(node(_k)), _keyMask);
 	}
 
-	void descendEntry(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt) const
+	void descendEntry(RLP const& _r, std::set<h256>& _keyMask) const
 	{
 		if (_r.isData() && _r.size() == 32)
-			descendKey(_r.toHash<h256>(), _keyMask, _wasExt);
+			descendKey(_r.toHash<h256>(), _keyMask);
 		else if (_r.isList())
-			descendList(_r, _keyMask, _wasExt);
+			descend(_r, _keyMask);
 		else
 			throw InvalidTrie();
 	}
 
-	void descendList(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt) const
+	void descend(RLP const& _r, std::set<h256>& _keyMask) const
 	{
-		if (_r.isList() && _r.itemCount() == 2 && !_wasExt)
+		if (_r.isList() && _r.size() == 2)
 		{
 			if (!isLeaf(_r))						// don't go down leaves
-				descendEntry(_r[1], _keyMask, true);
+				descendEntry(_r[1], _keyMask);
 		}
-		else if (_r.isList() && _r.itemCount() == 17)
+		else if (_r.isList() && _r.size() == 17)
 		{
 			for (unsigned i = 0; i < 16; ++i)
 				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
-					descendEntry(_r[i], _keyMask, false);
+					descendEntry(_r[i], _keyMask);
 		}
 		else
 			throw InvalidTrie();
 	}
 
-	std::set<h256> leftOvers() const
+	std::set<h256> check() const
 	{
 		std::set<h256> k = m_db->keys();
-		descendKey(m_root, k, false);
+		descendKey(m_root, k);
 		return k;
-	}
-
-	bool check() const
-	{
-		try
-		{
-			return leftOvers().empty();
-		}
-		catch (...)
-		{
-			return false;
-		}
 	}
 
 	std::string at(bytesConstRef _key) const;
@@ -898,7 +886,6 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 //	::operator<<(std::cout << "branch ", _orig) << std::endl;
 
 	assert(_orig.isList() && _orig.itemCount() == 2);
-	killNode(_orig);
 
 	auto k = keyOf(_orig);
 	RLPStream r(17);
