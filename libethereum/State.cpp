@@ -115,12 +115,12 @@ struct CachedAddressState
 
 	u256 balance() const
 	{
-		return r ? s ? s->balance() : r[1].toInt<u256>() : 0;
+		return r ? s ? s->balance() : r[0].toInt<u256>() : 0;
 	}
 
 	u256 nonce() const
 	{
-		return r ? s ? s->nonce() : r[0].toInt<u256>() : 0;
+		return r ? s ? s->nonce() : r[1].toInt<u256>() : 0;
 	}
 
 	bytes code() const
@@ -323,7 +323,7 @@ map<Address, u256> State::addresses() const
 			ret[i.first] = i.second.balance();
 	for (auto const& i: m_state)
 		if (m_cache.find(i.first) == m_cache.end())
-			ret[i.first] = RLP(i.second)[1].toInt<u256>();
+			ret[i.first] = RLP(i.second)[0].toInt<u256>();
 	return ret;
 }
 
@@ -1098,7 +1098,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 		else
 		{
 			string lead = (cache ? r ? " *   " : " +   " : "     ");
-			if (cache && r && cache->nonce() == r[0].toInt<u256>() && cache->balance() == r[1].toInt<u256>())
+			if (cache && r && (cache->balance() == r[0].toInt<u256>() && cache->nonce() == r[1].toInt<u256>()))
 				lead = " .   ";
 
 			stringstream contout;
@@ -1142,7 +1142,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 			}
 			else
 				contout << " [SIMPLE]";
-			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
+			_out << lead << i << ": " << std::dec << (cache ? cache->balance() : r[0].toInt<u256>()) << " #:" << (cache ? cache->nonce() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
 	return _out;
@@ -1167,17 +1167,17 @@ std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
 	if (!_s.exist.to())
 		return _out;
 
-	if (_s.nonce)
-	{
-		_out << std::dec << "#" << _s.nonce.to() << " ";
-		if (_s.nonce.from())
-			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
-	}
 	if (_s.balance)
 	{
 		_out << std::dec << _s.balance.to() << " ";
 		if (_s.balance.from())
 			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
+	}
+	if (_s.nonce)
+	{
+		_out << std::dec << "#" << _s.nonce.to() << " ";
+		if (_s.nonce.from())
+			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
 	}
 	if (_s.code)
 		_out << "$" << std::hex << _s.code.to() << " (" << _s.code.from() << ") ";
