@@ -754,7 +754,7 @@ void State::noteSending(Address _id)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(0, 1, h256(), EmptySHA3);
+		m_cache[_id] = AddressState(1, 0, h256(), EmptySHA3);
 	else
 		it->second.incNonce();
 }
@@ -764,7 +764,7 @@ void State::addBalance(Address _id, u256 _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(_amount, 0, h256(), EmptySHA3);
+		m_cache[_id] = AddressState(0, _amount, h256(), EmptySHA3);
 	else
 		it->second.addBalance(_amount);
 }
