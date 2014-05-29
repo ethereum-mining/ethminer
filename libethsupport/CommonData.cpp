@@ -51,8 +51,8 @@ std::string eth::escaped(std::string const& _s, bool _all)
 std::string eth::randomWord()
 {
 	static std::mt19937_64 s_eng(0);
-	std::string ret(std::uniform_int_distribution<int>(4, 10)(s_eng), ' ');
-	char const n[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+	std::string ret(std::uniform_int_distribution<int>(1, 5)(s_eng), ' ');
+	char const n[] = "qwertyuiop";//asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
 	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
 	for (char& c: ret)
 		c = n[d(s_eng)];

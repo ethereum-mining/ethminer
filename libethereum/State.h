@@ -338,7 +338,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 		else
 		{
 			RLPStream s(4);
-			s << i.second.balance() << i.second.nonce();
+			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
 				s.append(i.second.oldRoot(), false, true);

@@ -33,7 +33,7 @@ class AddressState
 {
 public:
 	AddressState(): m_isAlive(false), m_balance(0), m_nonce(0) {}
-	AddressState(u256 _balance, u256 _nonce, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_balance(_balance), m_nonce(_nonce), m_storageRoot(_contractRoot), m_codeHash(_codeHash) {}
+	AddressState(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_balance(_balance), m_nonce(_nonce), m_storageRoot(_contractRoot), m_codeHash(_codeHash) {}
 
 	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = h256(); m_balance = 0; m_nonce = 0; }
 	bool isAlive() const { return m_isAlive; }
@@ -61,8 +61,8 @@ public:
 private:
 	bool m_isAlive;
 	bool m_gotCode;
-	u256 m_balance;
 	u256 m_nonce;
+	u256 m_balance;
 
 	/// The base storage root. Used with the state DB to give a base to the storage. m_storageOverlay is overlaid on this and takes precedence for all values set.
 	h256 m_storageRoot;
