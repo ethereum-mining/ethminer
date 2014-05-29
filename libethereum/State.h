@@ -297,7 +297,8 @@ private:
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
 
-	bool isTrieGood();
+	bool isTrieGood(bool _requireNoLeftOvers) const;
+	void paranoia(std::string const& _when) const;
 
 	Overlay m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
@@ -338,7 +339,7 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 		else
 		{
 			RLPStream s(4);
-			s << i.second.balance() << i.second.nonce();
+			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
 				s.append(i.second.oldRoot(), false, true);

@@ -43,7 +43,7 @@ public:
 	BasicMap() {}
 
 	void clear() { m_over.clear(); }
-	std::map<h256, std::string> const& get() const { return m_over; }
+	std::map<h256, std::string> get() const;
 
 	std::string lookup(h256 _h) const;
 	bool exists(h256 _h) const;
@@ -57,7 +57,7 @@ protected:
 	std::map<h256, std::string> m_over;
 	std::map<h256, uint> m_refCount;
 
-	bool m_enforceRefs = false;
+	mutable bool m_enforceRefs = false;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
@@ -103,11 +103,11 @@ private:
 class EnforceRefs
 {
 public:
-	EnforceRefs(BasicMap& _o, bool _r): m_o(_o), m_r(_o.m_enforceRefs) { _o.m_enforceRefs = _r; }
+	EnforceRefs(BasicMap const& _o, bool _r): m_o(_o), m_r(_o.m_enforceRefs) { _o.m_enforceRefs = _r; }
 	~EnforceRefs() { m_o.m_enforceRefs = m_r; }
 
 private:
-	BasicMap& m_o;
+	BasicMap const& m_o;
 	bool m_r;
 };
 
@@ -160,46 +160,67 @@ public:
 
 	void debugPrint() {}
 
-	void descendKey(h256 _k, std::set<h256>& _keyMask) const
+	void descendKey(h256 _k, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
 	{
 		_keyMask.erase(_k);
-		if (_k == m_root && _k == EmptySHA3)	// root allowed to be empty
+		if (_k == m_root && _k == c_shaNull)	// root allowed to be empty
 			return;
-		descend(RLP(node(_k)), _keyMask);
+		descendList(RLP(node(_k)), _keyMask, _wasExt, _out, _indent);	// if not, it must be a list
 	}
 
-	void descendEntry(RLP const& _r, std::set<h256>& _keyMask) const
+	void descendEntry(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
 	{
 		if (_r.isData() && _r.size() == 32)
-			descendKey(_r.toHash<h256>(), _keyMask);
+			descendKey(_r.toHash<h256>(), _keyMask, _wasExt, _out, _indent);
 		else if (_r.isList())
-			descend(_r, _keyMask);
+			descendList(_r, _keyMask, _wasExt, _out, _indent);
 		else
 			throw InvalidTrie();
 	}
 
-	void descend(RLP const& _r, std::set<h256>& _keyMask) const
+	void descendList(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
 	{
-		if (_r.isList() && _r.size() == 2)
+		if (_r.isList() && _r.itemCount() == 2 && (!_wasExt || _out))
 		{
+			if (_out)
+				(*_out) << std::string(_indent * 2, ' ') << (_wasExt ? "!2 " : "2  ") << sha3(_r.data()).abridged() << ": " << _r << "\n";
 			if (!isLeaf(_r))						// don't go down leaves
-				descendEntry(_r[1], _keyMask);
+				descendEntry(_r[1], _keyMask, true, _out, _indent + 1);
 		}
-		else if (_r.isList() && _r.size() == 17)
+		else if (_r.isList() && _r.itemCount() == 17)
 		{
+			if (_out)
+				(*_out) << std::string(_indent * 2, ' ') << "17 " << sha3(_r.data()).abridged() << ": " << _r << "\n";
 			for (unsigned i = 0; i < 16; ++i)
 				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
-					descendEntry(_r[i], _keyMask);
+					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
 		}
 		else
 			throw InvalidTrie();
 	}
 
-	std::set<h256> check() const
+	std::set<h256> leftOvers(std::ostream* _out = nullptr) const
 	{
 		std::set<h256> k = m_db->keys();
-		descendKey(m_root, k);
+		descendKey(m_root, k, false, _out);
 		return k;
+	}
+
+	void debugStructure(std::ostream& _out) const
+	{
+		leftOvers(&_out);
+	}
+
+	bool check(bool _requireNoLeftOvers) const
+	{
+		try
+		{
+			return leftOvers().empty() || !_requireNoLeftOvers;
+		}
+		catch (...)
+		{
+			return false;
+		}
 	}
 
 	std::string at(bytesConstRef _key) const;
@@ -670,6 +691,10 @@ template <class DB> std::string GenericTrieDB<DB>::deref(RLP const& _n) const
 
 template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSlice _k)
 {
+#if ETH_PARANOIA
+	tdebug << "deleteAt " << _orig << _k << sha3(_orig.data()).abridged();
+#endif
+
 	// The caller will make sure that the bytes are inserted properly.
 	// - This might mean inserting an entry into m_over
 	// We will take care to ensure that (our reference to) _orig is killed.
@@ -717,7 +742,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 			byte used = uniqueInUse(_orig, 16);
 			if (used != 255)
-				if (_orig[used].isList() && _orig[used].itemCount() == 2)
+				if (isTwoItemNode(_orig[used]))
 					return graft(RLP(merge(_orig, used)));
 				else
 					return merge(_orig, used);
@@ -764,6 +789,10 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k)
 {
+#if ETH_PARANOIA
+	tdebug << "deleteAtAux " << _orig << _k << sha3(_orig.data()).abridged() << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>().abridged() : std::string());
+#endif
+
 	bytes b = _orig.isEmpty() ? bytes() : deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
 
 	if (!b.size())	// not found - no change.
@@ -780,7 +809,10 @@ template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP con
 
 template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice _k, bytesConstRef _s)
 {
-//	::operator<<(std::cout << "place ", _orig) << ", " << _k << ", " << _s.toString() << std::endl;
+#if ETH_PARANOIA
+	tdebug << "place " << _orig << _k;
+#endif
+
 
 	killNode(_orig);
 	if (_orig.isEmpty())
@@ -803,6 +835,10 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 // out2: [V0, ..., V15, null] iff exists i: !!Vi  -- OR --  null otherwise
 template <class DB> bytes GenericTrieDB<DB>::remove(RLP const& _orig)
 {
+#if ETH_PARANOIA
+	tdebug << "kill " << _orig;
+#endif
+
 	killNode(_orig);
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
@@ -826,7 +862,9 @@ template <class DB> RLPStream& GenericTrieDB<DB>::streamNode(RLPStream& _s, byte
 
 template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 {
-//	::operator<<(std::cout << "cleve ", _orig) << ", " << _s << std::endl;
+#if ETH_PARANOIA
+	tdebug << "cleve " << _orig << _s;
+#endif
 
 	killNode(_orig);
 	assert(_orig.isList() && _orig.itemCount() == 2);
@@ -845,6 +883,10 @@ template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
 
 template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 {
+#if ETH_PARANOIA
+	tdebug << "graft " << _orig;
+#endif
+
 	assert(_orig.isList() && _orig.itemCount() == 2);
 	std::string s;
 	RLP n;
@@ -868,6 +910,10 @@ template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 
 template <class DB> bytes GenericTrieDB<DB>::merge(RLP const& _orig, byte _i)
 {
+#if ETH_PARANOIA
+	tdebug << "merge " << _orig << (int)_i;
+#endif
+
 	assert(_orig.isList() && _orig.itemCount() == 17);
 	RLPStream s(2);
 	if (_i != 16)
@@ -883,9 +929,12 @@ template <class DB> bytes GenericTrieDB<DB>::merge(RLP const& _orig, byte _i)
 
 template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 {
-//	::operator<<(std::cout << "branch ", _orig) << std::endl;
+#if ETH_PARANOIA
+	tdebug << "branch " << _orig;
+#endif
 
 	assert(_orig.isList() && _orig.itemCount() == 2);
+	killNode(_orig);
 
 	auto k = keyOf(_orig);
 	RLPStream r(17);
