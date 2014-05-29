@@ -29,6 +29,17 @@ namespace eth
 
 const h256 c_shaNull = sha3(rlp(""));
 
+std::map<h256, std::string> BasicMap::get() const
+{
+	if (!m_enforceRefs)
+		return m_over;
+	std::map<h256, std::string> ret;
+	for (auto const& i: m_refCount)
+		if (i.second)
+			ret.insert(*m_over.find(i.first));
+	return ret;
+}
+
 std::string BasicMap::lookup(h256 _h) const
 {
 	auto it = m_over.find(_h);
