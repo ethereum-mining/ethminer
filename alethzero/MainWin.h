@@ -63,7 +63,15 @@ public:
 
 	QList<eth::KeyPair> const& owned() const { return m_myKeys; }
 	
+public slots:
+	void load(QString _file);
+	void note(QString _entry);
+	void debug(QString _entry);
+	void warn(QString _entry);
+
 private slots:
+	void eval(QString const& _js);
+
 	void on_connect_triggered();
 	void on_mine_triggered();
 	void on_send_clicked();
@@ -154,6 +162,8 @@ private:
 	QList<WorldState> m_history;
 
 	QNetworkAccessManager m_webCtrl;
+
+	QList<QPair<QString, QString>> m_consoleHistory;
 
 	QEthereum* m_ethereum;
 };

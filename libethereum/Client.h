@@ -122,6 +122,7 @@ public:
 
 	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
+	bool peekChanged() const { return m_changed; }
 
 	/// Get the object representing the current state of Ethereum.
 	State const& state() const { return m_preMine; }

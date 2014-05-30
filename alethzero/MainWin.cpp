@@ -233,6 +233,7 @@ Main::Main(QWidget *parent) :
 	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
 		auto qe = new QEthereum(this, m_client.get(), owned());
 		qe->setup(f);
+		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
 	});
 
 	readSettings();
@@ -254,10 +255,74 @@ Main::~Main()
 	writeSettings();
 }
 
+void Main::load(QString _s)
+{
+	QFile fin(_s);
+	if (!fin.open(QFile::ReadOnly))
+		return;
+	QString line;
+	while (!fin.atEnd())
+	{
+		QString l = QString::fromUtf8(fin.readLine());
+		line.append(l);
+		if (line.count('"') % 2)
+		{
+			line.chop(1);
+		}
+		else if (line.endsWith("\\\n"))
+			line.chop(2);
+		else
+		{
+			ui->webView->page()->currentFrame()->evaluateJavaScript(line);
+			//eval(line);
+			line.clear();
+		}
+	}
+}
+// env.load("/home/gav/eth/init.eth")
+
+void Main::note(QString _s)
+{
+	cnote << _s.toStdString();
+}
+
+void Main::debug(QString _s)
+{
+	cdebug << _s.toStdString();
+}
+
+void Main::warn(QString _s)
+{
+	cwarn << _s.toStdString();
+}
+
 void Main::on_jsInput_returnPressed()
 {
-	ui->jsInput->setText(ui->webView->page()->currentFrame()->evaluateJavaScript(ui->jsInput->text()).toString());
-	ui->jsInput->setSelection(0, ui->jsInput->text().size());
+	eval(ui->jsInput->text());
+	ui->jsInput->setText("");
+}
+
+void Main::eval(QString const& _js)
+{
+	if (_js.trimmed().isEmpty())
+		return;
+	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
+	QString s;
+	if (ev.isNull())
+		s = "<span style=\"color: #888\">null</span>";
+	else if (ev.type() == QVariant::String)
+		s = "<span style=\"color: #444\">\"</span><span style=\"color: #f44\">" + ev.toString().toHtmlEscaped() + "</span><span style=\"color: #444\">\"</span>";
+	else if (ev.type() == QVariant::Int || ev.type() == QVariant::Double)
+		s = "<span style=\"color: #44f\">" + ev.toString().toHtmlEscaped() + "</span>";
+	else
+		s = "<span style=\"color: #888\">unknown type</span>";
+	m_consoleHistory.push_back(qMakePair(_js, s));
+	s = "<html><body style=\"font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New; margin: 0; font-size: 12pt\"><div style=\"position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%\">";
+	for (auto const& i: m_consoleHistory)
+		s +=	"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em; color: #888; font-weight: bold\">&gt;</span><span style=\"color: #35d\">" + i.first.toHtmlEscaped() + "</span></div>"
+				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
+	s += "</div></body></html>";
+	ui->jsConsole->setHtml(s);
 }
 
 QString Main::pretty(eth::Address _a) const
@@ -489,14 +554,15 @@ void Main::refresh(bool _override)
 		auto acs = st.addresses();
 		ui->accounts->clear();
 		ui->contracts->clear();
-		for (auto n = 0; n < (ui->showAllAccounts->isChecked() ? 2 : 1); ++n)
+		for (auto n = 0; n < 2; ++n)
 			for (auto i: acs)
 			{
 				auto r = render(i.first);
 				if (r.contains('(') == !n)
 				{
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)state().transactionsFrom(i.first)), ui->accounts))
-						->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+					if (n == 0 || ui->showAllAccounts->isChecked())
+						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)state().transactionsFrom(i.first)), ui->accounts))
+							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
 					if (st.addressHasCode(i.first))
 						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
 							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
