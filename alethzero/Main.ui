@@ -981,6 +981,39 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_10">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Mining</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_10">
+    <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="MiningView" name="miningView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
@@ -1109,6 +1142,12 @@
    <class>QWebView</class>
    <extends>QWidget</extends>
    <header>QtWebKitWidgets/QWebView</header>
+  </customwidget>
+  <customwidget>
+   <class>MiningView</class>
+   <extends>QWidget</extends>
+   <header>MiningView.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>

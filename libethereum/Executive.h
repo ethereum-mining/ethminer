@@ -34,8 +34,6 @@ class State;
 
 struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
 
-std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
-
 class Executive
 {
 public:

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <random>
 #include <algorithm>
 #include "CommonData.h"
 
@@ -112,6 +113,16 @@ public:
 
 	/// @returns a constant reference to the object's data as an STL array.
 	std::array<byte, N> const& asArray() const { return m_data; }
+
+	/// @returns a randomly-valued hash
+	template <class Engine>
+	static FixedHash random(Engine& _eng)
+	{
+		FixedHash ret;
+		for (auto& i: ret.m_data)
+			i = std::uniform_int_distribution<byte>(0, 255)(_eng);
+		return ret;
+	}
 
 	/// A generic std::hash compatible function object.
 	struct hash
