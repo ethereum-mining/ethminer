@@ -1256,7 +1256,7 @@ font-size: 14pt</string>
        <item>
         <widget class="QLineEdit" name="jsInput">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
