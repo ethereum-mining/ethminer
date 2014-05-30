@@ -343,7 +343,10 @@ void Main::writeSettings()
 	s.setValue("address", b);
 
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("usePast", ui->usePast->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
+	s.setValue("showAll", ui->showAll->isChecked());
+	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -385,7 +388,10 @@ void Main::readSettings()
 	m_client->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
-	ui->upnp->setChecked(s.value("paranoia", false).toBool());
+	ui->usePast->setChecked(s.value("usePast", true).toBool());
+	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
+	ui->showAll->setChecked(s.value("showAll", false).toBool());
+	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
@@ -472,7 +478,7 @@ void Main::refresh(bool _override)
 		auto acs = st.addresses();
 		ui->accounts->clear();
 		ui->contracts->clear();
-		for (auto n = 0; n < 2; ++n)
+		for (auto n = 0; n < (ui->showAllAccounts->isChecked() ? 2 : 1); ++n)
 			for (auto i: acs)
 			{
 				auto r = render(i.first);
@@ -518,7 +524,8 @@ void Main::refresh(bool _override)
 
 		ui->blocks->clear();
 		auto const& bc = m_client->blockChain();
-		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
+		unsigned i = ui->showAll->isChecked() ? (unsigned)-1 : 100;
+		for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
 		{
 			auto d = bc.details(h);
 			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
@@ -973,7 +980,7 @@ void Main::on_net_triggered()
 	if (ui->net->isChecked())
 	{
 		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
-		if (m_peers.size())
+		if (m_peers.size() && ui->usePast->isChecked())
 			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else

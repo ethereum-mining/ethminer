@@ -127,6 +127,7 @@
      <string>&amp;Network</string>
     </property>
     <addaction name="upnp"/>
+    <addaction name="usePast"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -140,6 +141,9 @@
     <addaction name="create"/>
     <addaction name="importKey"/>
     <addaction name="exportKey"/>
+    <addaction name="separator"/>
+    <addaction name="showAll"/>
+    <addaction name="showAllAccounts"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -168,7 +172,7 @@
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
    <property name="windowTitle">
-    <string>All Accounts</string>
+    <string>Accounts</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -1072,6 +1076,30 @@
   <action name="inject">
    <property name="text">
     <string>&amp;Inject Transaction</string>
+   </property>
+  </action>
+  <action name="showAll">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Ancient &amp;Blocks</string>
+   </property>
+  </action>
+  <action name="showAllAccounts">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Anonymous &amp;Accounts</string>
+   </property>
+  </action>
+  <action name="usePast">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use &amp;Past Peers</string>
    </property>
   </action>
  </widget>
