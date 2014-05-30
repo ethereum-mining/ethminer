@@ -1,3 +1,24 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file MainWin.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
 #include <fstream>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -21,6 +42,7 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
 #include <libethereum/PeerServer.h>
+#include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -74,36 +96,6 @@ static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
 		_b->addItem(QString::fromStdString(units()[n].second), n);
-}
-
-string htmlDump(bytes const& _b, unsigned _w = 8)
-{
-	stringstream ret;
-	ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
-	for (unsigned i = 0; i < _b.size(); i += _w)
-	{
-		ret << hex << setw(4) << setfill('0') << i << " ";
-		for (unsigned j = i; j < i + _w; ++j)
-			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 128)
-					if ((char)_b[j] == '<')
-						ret << "&lt;";
-					else if ((char)_b[j] == '&')
-						ret << "&amp;";
-					else
-						ret << (char)_b[j];
-				else
-					ret << '?';
-			else
-				ret << ' ';
-		ret << " ";
-		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
-			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
-		ret << "\n";
-	}
-	ret << "</pre>";
-	cdebug << ret.str();
-	return ret.str();
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
@@ -183,6 +175,9 @@ Main::Main(QWidget *parent) :
 	m_refreshNetwork = new QTimer(this);
 	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
 	m_refreshNetwork->start(1000);
+	m_refreshMining = new QTimer(this);
+	connect(m_refreshMining, SIGNAL(timeout()), SLOT(refreshMining()));
+	m_refreshMining->start(200);
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
@@ -446,6 +441,22 @@ void Main::on_nameReg_textChanged()
 		m_nameReg = Address();
 }
 
+void Main::refreshMining()
+{
+	eth::ClientGuard g(m_client.get());
+	list<eth::MineInfo> l = m_client->miningHistory();
+	eth::MineProgress p = m_client->miningProgress();
+	static uint lh = 0;
+	if (p.hashes < lh)
+		ui->miningView->resetStats();
+	lh = p.hashes;
+	ui->miningView->appendStats(l, p);
+/*	if (p.ms)
+		for (eth::MineInfo const& i: l)
+			cnote << i.hashes * 10 << "h/sec, need:" << i.requirement << " best:" << i.best << " best-so-far:" << p.best << " avg-speed:" << (p.hashes * 1000 / p.ms) << "h/sec";
+*/
+}
+
 void Main::refreshNetwork()
 {
 	auto ps = m_client->peers();
@@ -605,7 +616,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		else
 		{
 			if (tx.data.size())
-				s << htmlDump(tx.data, 16);
+				s << eth::memDump(tx.data, 16, true);
 		}
 		s << "<hr/>";
 
@@ -762,7 +773,7 @@ void Main::on_blocks_currentItemChanged()
 			else
 			{
 				if (tx.data.size())
-					s << htmlDump(tx.data, 16);
+					s << eth::memDump(tx.data, 16);
 			}
 		}
 
@@ -891,7 +902,7 @@ void Main::on_data_textChanged()
 			else
 				s = s.mid(1);
 		}
-		ui->code->setHtml(QString::fromStdString(htmlDump(m_data)));
+		ui->code->setHtml(QString::fromStdString(eth::memDump(m_data)));
 		if (m_client->postState().addressHasCode(fromString(ui->destination->currentText())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
@@ -1161,7 +1172,7 @@ void Main::updateDebugger()
 
 	for (auto i: ws.stack)
 		ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
-	ui->debugMemory->setHtml(QString::fromStdString(htmlDump(ws.memory, 16)));
+	ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16)));
 	ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
 	ostringstream ss;
 	ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;

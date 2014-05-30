@@ -23,6 +23,7 @@
 
 #include <thread>
 #include <mutex>
+#include <list>
 #include <atomic>
 #include <libethsupport/Common.h>
 #include <libethcore/Dagger.h>
@@ -36,9 +37,11 @@ namespace eth
 
 struct MineProgress
 {
-	uint requirement;
-	uint best;
-	uint current;
+	double requirement;
+	double best;
+	double current;
+	uint hashes;
+	uint ms;
 };
 
 class Client;
@@ -165,8 +168,12 @@ public:
 	void stopMining();
 	/// Are we mining now?
 	bool isMining() { return m_doMine; }
+	/// Register a callback for information concerning mining.
+	/// This callback will be in an arbitrary thread, blocking progress. JUST COPY THE DATA AND GET OUT.
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { return m_mineProgress; }
+	/// Get and clear the mining history.
+	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
 private:
 	void work();
@@ -187,6 +194,7 @@ private:
 	bool m_paranoia = false;
 	bool m_doMine = false;				///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
+	std::list<MineInfo> m_mineHistory;
 	mutable bool m_restartMining = false;
 
 	mutable bool m_changed;

@@ -26,37 +26,6 @@
 using namespace std;
 using namespace eth;
 
-string eth::memDump(bytes const& _b, unsigned _w, bool _html)
-{
-	stringstream ret;
-	if (_html)
-		ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
-	for (unsigned i = 0; i < _b.size(); i += _w)
-	{
-		ret << hex << setw(4) << setfill('0') << i << " ";
-		for (unsigned j = i; j < i + _w; ++j)
-			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 128)
-					if ((char)_b[j] == '<' && _html)
-						ret << "&lt;";
-					else if ((char)_b[j] == '&' && _html)
-						ret << "&amp;";
-					else
-						ret << (char)_b[j];
-				else
-					ret << '?';
-			else
-				ret << ' ';
-		ret << " ";
-		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
-			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
-		ret << "\n";
-	}
-	if (_html)
-		ret << "</pre>";
-	return ret.str();
-}
-
 Executive::~Executive()
 {
 	// TODO: Make safe.

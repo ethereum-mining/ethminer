@@ -46,6 +46,9 @@ bytes contents(std::string const& _file);
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
 void writeFile(std::string const& _file, bytes const& _data);
 
+/// Nicely renders the given bytes to a string, optionally as HTML.
+std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
+
 /// Converts arbitrary value to string representation using std::stringstream.
 template <class _T>
 std::string toString(_T const& _t)

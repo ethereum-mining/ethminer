@@ -37,8 +37,9 @@ inline uint toLog2(u256 _d)
 
 struct MineInfo
 {
-	uint requirement;
-	uint best;
+	double requirement;
+	double best;
+	uint hashes;
 	bool completed;
 };
 
