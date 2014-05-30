@@ -97,8 +97,8 @@ bytes BlockChain::createGenesisBlock()
 
 	h256 stateRoot;
 	{
-		BasicMap db;
-		TrieDB<Address, BasicMap> state(&db);
+		MemoryDB db;
+		TrieDB<Address, MemoryDB> state(&db);
 		state.init();
 		eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
@@ -167,7 +167,7 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
+bool BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
 {
 #if ETH_CATCH
 	try
@@ -185,7 +185,7 @@ bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
 }
 
 
-void BlockChain::import(bytes const& _block, Overlay const& _db)
+void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;

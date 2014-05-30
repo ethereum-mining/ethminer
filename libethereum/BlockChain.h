@@ -55,7 +55,7 @@ typedef std::map<h256, BlockDetails> BlockDetailsHash;
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
 
-class Overlay;
+class OverlayDB;
 
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
@@ -82,10 +82,10 @@ public:
 	void process();
 
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block, Overlay const& _stateDB);
+	bool attemptImport(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Import block into disk-backed DB
-	void import(bytes const& _block, Overlay const& _stateDB);
+	void import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the number of the last block of the longest chain.
 	BlockDetails const& details(h256 _hash) const;

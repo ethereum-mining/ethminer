@@ -119,8 +119,8 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 
 	u256 mgp = (u256)-1;
 
-	Overlay db;
-	GenericTrieDB<Overlay> t(&db);
+	OverlayDB db;
+	GenericTrieDB<OverlayDB> t(&db);
 	t.init();
 	unsigned i = 0;
 	for (auto const& tr: root[1])

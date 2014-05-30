@@ -37,7 +37,7 @@ namespace eth
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
-class Overlay;
+class OverlayDB;
 class BlockChain;
 class TransactionQueue;
 class PeerServer;

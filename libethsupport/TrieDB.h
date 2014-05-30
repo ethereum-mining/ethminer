@@ -24,6 +24,8 @@
 #include <map>
 #include <memory>
 #include "Common.h"
+#include "MemoryDB.h"
+#include "OverlayDB.h"
 #include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
@@ -32,85 +34,9 @@ namespace eth
 {
 
 struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 6; };
-
 #define tdebug clog(TrieDBChannel)
 
-class BasicMap
-{
-	friend class EnforceRefs;
-
-public:
-	BasicMap() {}
-
-	void clear() { m_over.clear(); }
-	std::map<h256, std::string> get() const;
-
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void insert(h256 _h, bytesConstRef _v);
-	bool kill(h256 _h);
-	void purge();
-
-	std::set<h256> keys() const;
-
-protected:
-	std::map<h256, std::string> m_over;
-	std::map<h256, uint> m_refCount;
-
-	mutable bool m_enforceRefs = false;
-};
-
-inline std::ostream& operator<<(std::ostream& _out, BasicMap const& _m)
-{
-	for (auto i: _m.get())
-	{
-		_out << i.first << ": ";
-		_out << RLP(i.second);
-		_out << " " << toHex(i.second);
-		_out << std::endl;
-	}
-	return _out;
-}
-
 class InvalidTrie: public std::exception {};
-class EnforceRefs;
-
-class Overlay: public BasicMap
-{
-public:
-	Overlay(ldb::DB* _db = nullptr): m_db(_db) {}
-	~Overlay();
-
-	ldb::DB* db() const { return m_db.get(); }
-	void setDB(ldb::DB* _db, bool _clearOverlay = true);
-
-	void commit();
-	void rollback();
-
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void kill(h256 _h);
-
-private:
-	using BasicMap::clear;
-
-	std::shared_ptr<ldb::DB> m_db;
-
-	ldb::ReadOptions m_readOptions;
-	ldb::WriteOptions m_writeOptions;
-};
-
-class EnforceRefs
-{
-public:
-	EnforceRefs(BasicMap const& _o, bool _r): m_o(_o), m_r(_o.m_enforceRefs) { _o.m_enforceRefs = _r; }
-	~EnforceRefs() { m_o.m_enforceRefs = m_r; }
-
-private:
-	BasicMap const& m_o;
-	bool m_r;
-};
-
 extern const h256 c_shaNull;
 
 /**
@@ -233,18 +159,9 @@ public:
 		using value_type = std::pair<bytesConstRef, bytesConstRef>;
 
 		iterator() {}
-		iterator(GenericTrieDB const* _db)
-		{
-			m_that = _db;
-			m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
-			next();
-		}
+		iterator(GenericTrieDB const* _db);
 
-		iterator& operator++()
-		{
-			next();
-			return *this;
-		}
+		iterator& operator++() { next(); return *this; }
 
 		value_type operator*() const { return at(); }
 		value_type operator->() const { return at(); }
@@ -252,119 +169,10 @@ public:
 		bool operator==(iterator const& _c) const { return _c.m_trail == m_trail; }
 		bool operator!=(iterator const& _c) const { return _c.m_trail != m_trail; }
 
-		value_type at() const
-		{
-			assert(m_trail.size());
-			Node const& b = m_trail.back();
-			assert(b.key.size());
-			assert(!(b.key[0] & 0x10));	// should be an integer number of bytes (i.e. not an odd number of nibbles).
-
-			RLP rlp(b.rlp);
-			if (rlp.itemCount() == 2)
-				return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[1].payload());
-			else
-				return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[16].payload());
-		}
+		value_type at() const;
 
 	private:
-		void next()
-		{
-			while (true)
-			{
-				if (m_trail.empty())
-				{
-					m_that = nullptr;
-					return;
-				}
-
-				Node const& b = m_trail.back();
-				RLP rlp(b.rlp);
-
-				if (m_trail.back().child == 255)
-				{
-					// Entering. Look for first...
-					if (rlp.isEmpty())
-					{
-						m_trail.pop_back();
-						continue;
-					}
-					if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
-					{
-#if ETH_PARANOIA
-						cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
-						cwarn << b.rlp.size() << toHex(b.rlp);
-						cwarn << rlp;
-						auto c = rlp.itemCount();
-						cwarn << c;
-						throw InvalidTrie();
-#else
-						m_that = nullptr;
-						return;
-#endif
-					}
-					if (rlp.itemCount() == 2)
-					{
-						// Just turn it into a valid Branch
-						m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), keyOf(rlp), false);
-						if (isLeaf(rlp))
-						{
-							// leaf - exit now.
-							m_trail.back().child = 0;
-							return;
-						}
-
-						// enter child.
-						m_trail.back().rlp = m_that->deref(rlp[1]);
-						// no need to set .child as 255 - it's already done.
-						continue;
-					}
-					else
-					{
-						// Already a branch - look for first valid.
-						m_trail.back().setFirstChild();
-						// run through to...
-					}
-				}
-				else
-				{
-					// Continuing/exiting. Look for next...
-					if (!(rlp.isList() && rlp.itemCount() == 17))
-					{
-						m_trail.pop_back();
-						continue;
-					}
-					// else run through to...
-					m_trail.back().incrementChild();
-				}
-
-				// ...here. should only get here if we're a list.
-				assert(rlp.isList() && rlp.itemCount() == 17);
-				for (;; m_trail.back().incrementChild())
-					if (m_trail.back().child == 17)
-					{
-						// finished here.
-						m_trail.pop_back();
-						break;
-					}
-					else if (!rlp[m_trail.back().child].isEmpty())
-					{
-						if (m_trail.back().child == 16)
-							return;	// have a value at this node - exit now.
-						else
-						{
-							// lead-on to another node - enter child.
-							// fixed so that Node passed into push_back is constructed *before* m_trail is potentially resized (which invalidates back and rlp)
-							Node const& back = m_trail.back();
-							m_trail.push_back(Node{
-								m_that->deref(rlp[back.child]),
-								 hexPrefixEncode(keyOf(back.key), NibbleSlice(bytesConstRef(&back.child, 1), 1), false),
-								 255
-								});
-							break;
-						}
-					}
-			}
-		}
+		void next();
 
 		struct Node
 		{
@@ -482,15 +290,7 @@ public:
 		value_type operator*() const { return at(); }
 		value_type operator->() const { return at(); }
 
-		value_type at() const
-		{
-			auto p = Super::at();
-			value_type ret;
-			assert(p.first.size() == sizeof(KeyType));
-			memcpy(&ret.first, p.first.data(), sizeof(KeyType));
-			ret.second = p.second;
-			return ret;
-		}
+		value_type at() const;
 	};
 
 	iterator begin() const { return this; }
@@ -510,6 +310,136 @@ std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
 // Template implementations...
 namespace eth
 {
+
+template <class DB> GenericTrieDB<DB>::iterator::iterator(GenericTrieDB const* _db)
+{
+	m_that = _db;
+	m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
+	next();
+}
+
+template <class DB> typename GenericTrieDB<DB>::iterator::value_type GenericTrieDB<DB>::iterator::at() const
+{
+	assert(m_trail.size());
+	Node const& b = m_trail.back();
+	assert(b.key.size());
+	assert(!(b.key[0] & 0x10));	// should be an integer number of bytes (i.e. not an odd number of nibbles).
+
+	RLP rlp(b.rlp);
+	if (rlp.itemCount() == 2)
+		return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[1].payload());
+	else
+		return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[16].payload());
+}
+
+template <class DB> void GenericTrieDB<DB>::iterator::next()
+{
+	while (true)
+	{
+		if (m_trail.empty())
+		{
+			m_that = nullptr;
+			return;
+		}
+
+		Node const& b = m_trail.back();
+		RLP rlp(b.rlp);
+
+		if (m_trail.back().child == 255)
+		{
+			// Entering. Look for first...
+			if (rlp.isEmpty())
+			{
+				m_trail.pop_back();
+				continue;
+			}
+			if (!(rlp.isList() && (rlp.itemCount() == 2 || rlp.itemCount() == 17)))
+			{
+#if ETH_PARANOIA
+				cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+				cwarn << b.rlp.size() << toHex(b.rlp);
+				cwarn << rlp;
+				auto c = rlp.itemCount();
+				cwarn << c;
+				throw InvalidTrie();
+#else
+				m_that = nullptr;
+				return;
+#endif
+			}
+			if (rlp.itemCount() == 2)
+			{
+				// Just turn it into a valid Branch
+				m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), keyOf(rlp), false);
+				if (isLeaf(rlp))
+				{
+					// leaf - exit now.
+					m_trail.back().child = 0;
+					return;
+				}
+
+				// enter child.
+				m_trail.back().rlp = m_that->deref(rlp[1]);
+				// no need to set .child as 255 - it's already done.
+				continue;
+			}
+			else
+			{
+				// Already a branch - look for first valid.
+				m_trail.back().setFirstChild();
+				// run through to...
+			}
+		}
+		else
+		{
+			// Continuing/exiting. Look for next...
+			if (!(rlp.isList() && rlp.itemCount() == 17))
+			{
+				m_trail.pop_back();
+				continue;
+			}
+			// else run through to...
+			m_trail.back().incrementChild();
+		}
+
+		// ...here. should only get here if we're a list.
+		assert(rlp.isList() && rlp.itemCount() == 17);
+		for (;; m_trail.back().incrementChild())
+			if (m_trail.back().child == 17)
+			{
+				// finished here.
+				m_trail.pop_back();
+				break;
+			}
+			else if (!rlp[m_trail.back().child].isEmpty())
+			{
+				if (m_trail.back().child == 16)
+					return;	// have a value at this node - exit now.
+				else
+				{
+					// lead-on to another node - enter child.
+					// fixed so that Node passed into push_back is constructed *before* m_trail is potentially resized (which invalidates back and rlp)
+					Node const& back = m_trail.back();
+					m_trail.push_back(Node{
+						m_that->deref(rlp[back.child]),
+						 hexPrefixEncode(keyOf(back.key), NibbleSlice(bytesConstRef(&back.child, 1), 1), false),
+						 255
+						});
+					break;
+				}
+			}
+	}
+}
+
+template <class KeyType, class DB> typename TrieDB<KeyType, DB>::iterator::value_type TrieDB<KeyType, DB>::iterator::at() const
+{
+	auto p = Super::at();
+	value_type ret;
+	assert(p.first.size() == sizeof(KeyType));
+	memcpy(&ret.first, p.first.data(), sizeof(KeyType));
+	ret.second = p.second;
+	return ret;
+}
 
 template <class DB> void GenericTrieDB<DB>::init()
 {
