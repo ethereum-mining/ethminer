@@ -57,7 +57,6 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 State::State(Address _coinbaseAddress, Overlay const& _db):
 	m_db(_db),
 	m_state(&m_db),
-	m_transactionManifest(&m_db),
 	m_ourAddress(_coinbaseAddress)
 {
 	m_blockReward = 1500 * finney;
@@ -87,7 +86,6 @@ State::State(State const& _s):
 	m_state(&m_db, _s.m_state.root()),
 	m_transactions(_s.m_transactions),
 	m_transactionSet(_s.m_transactionSet),
-	m_transactionManifest(&m_db, _s.m_transactionManifest.root()),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
@@ -118,7 +116,6 @@ State& State::operator=(State const& _s)
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
 	m_transactionSet = _s.m_transactionSet;
-	m_transactionManifest.open(&m_db, _s.m_transactionManifest.root());
 	m_cache = _s.m_cache;
 	m_previousBlock = _s.m_previousBlock;
 	m_currentBlock = _s.m_currentBlock;
@@ -355,7 +352,6 @@ void State::resetCurrent()
 {
 	m_transactions.clear();
 	m_transactionSet.clear();
-	m_transactionManifest.init();
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
@@ -485,8 +481,9 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
-	if (_fullCommit)
-		m_transactionManifest.init();
+	BasicMap tm;
+	GenericTrieDB<BasicMap> transactionManifest(&tm);
+	transactionManifest.init();
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
@@ -508,9 +505,15 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		if (_fullCommit)
 		{
 			bytes k = rlp(i);
-			m_transactionManifest.insert(&k, tr.data());
+			transactionManifest.insert(&k, tr.data());
 		}
 		++i;
+	}
+
+	if (transactionManifest.root() != m_currentBlock.transactionsRoot)
+	{
+		cwarn << "Bad transactions state root!";
+		throw InvalidTransactionStateRoot();
 	}
 
 	// Initialise total difficulty calculation.
@@ -584,7 +587,6 @@ void State::uncommitToMine()
 		else
 			m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
 		m_db = m_lastTx;
-		m_transactionManifest.init();
 		paranoia("Uncommited to mine", true);
 		m_currentBlock.sha3Uncles = h256();
 	}
@@ -661,13 +663,9 @@ void State::commitToMine(BlockChain const& _bc)
 	else
 		uncles.appendList(0);
 
-//	cnote << *this;
-	if (m_transactionManifest.isNull())
-		m_transactionManifest.init();
-	else
-		while(!m_transactionManifest.isEmpty())
-			m_transactionManifest.remove((*m_transactionManifest.begin()).first);
-//	cnote << *this;
+	BasicMap tm;
+	GenericTrieDB<BasicMap> transactionManifest(&tm);
+	transactionManifest.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -677,14 +675,14 @@ void State::commitToMine(BlockChain const& _bc)
 		k << i;
 		RLPStream v;
 		m_transactions[i].fillStream(v);
-		m_transactionManifest.insert(&k.out(), &v.out());
+		transactionManifest.insert(&k.out(), &v.out());
 		txs.appendRaw(v.out());
 	}
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = m_transactionManifest.root();
+	m_currentBlock.transactionsRoot = transactionManifest.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
@@ -903,6 +901,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 
 // TODO: kill temp nodes automatically in TrieDB
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + Overlay; allow overlay copying for rewind operations.
+// TODO: TransactionReceipt trie should be BasicMap and built as necessary
 
 u256 State::execute(bytesConstRef _rlp)
 {
@@ -920,14 +919,12 @@ u256 State::execute(bytesConstRef _rlp)
 	Executive e(*this);
 	e.setup(_rlp);
 
+	u256 startGasUsed = gasUsed();
+
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp(true));
 #endif
-
-	u256 startGasUsed = gasUsed();
-	if (startGasUsed + e.t().gas > m_currentBlock.gasLimit)
-		throw BlockGasLimitReached();	// TODO: make sure this is handled.
 
 	e.go();
 	e.finalize();

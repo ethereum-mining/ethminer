@@ -304,7 +304,7 @@ private:
 	TrieDB<Address, Overlay> m_state;			///< Our state tree, as an Overlay DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
-	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
+//	GenericTrieDB<Overlay> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 	Overlay m_lastTx;
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
