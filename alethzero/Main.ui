@@ -96,9 +96,6 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QLineEdit" name="jsInput"/>
-          </item>
          </layout>
         </widget>
        </widget>
@@ -1010,6 +1007,277 @@
      </property>
      <item>
       <widget class="MiningView" name="miningView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_11">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Javascript Console</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_11">
+    <layout class="QVBoxLayout" name="verticalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QWebView" name="jsConsole">
+       <property name="url">
+        <url>
+         <string>about:blank</string>
+        </url>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_9">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="minimumSize">
+          <size>
+           <width>14</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="palette">
+          <palette>
+           <active>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </active>
+           <inactive>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </inactive>
+           <disabled>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </disabled>
+          </palette>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: white;
+color: #35d;
+font-weight: bold;
+font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New;
+font-size: 14pt</string>
+         </property>
+         <property name="text">
+          <string>&gt;</string>
+         </property>
+         <property name="margin">
+          <number>0</number>
+         </property>
+         <property name="buddy">
+          <cstring>jsInput</cstring>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="jsInput">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background: white;
+border: 0;
+font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New</string>
+         </property>
+         <property name="inputMask">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="frame">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </widget>

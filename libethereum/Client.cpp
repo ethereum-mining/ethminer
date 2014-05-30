@@ -154,7 +154,6 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
-	m_changed = true;
 }
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
@@ -170,7 +169,6 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 	t.sign(_secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
-	m_changed = true;
 	return right160(sha3(rlpList(t.sender(), t.nonce)));
 }
 
