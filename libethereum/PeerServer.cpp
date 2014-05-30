@@ -352,7 +352,7 @@ bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 	return false;
 }
 
-bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
 	bool ret = ensureInitialised(_bc, _tq);
 

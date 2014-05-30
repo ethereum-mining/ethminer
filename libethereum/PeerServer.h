@@ -57,7 +57,7 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	bool sync(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	bool sync(BlockChain& _bc, TransactionQueue&, OverlayDB& _o);
 	bool sync();
 
 	/// Conduct I/O, polling, syncing, whatever.

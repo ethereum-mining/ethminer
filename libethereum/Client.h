@@ -175,7 +175,7 @@ private:
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
-	Overlay m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;					///< The present state of the client.
 	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.

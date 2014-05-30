@@ -37,7 +37,7 @@ using namespace eth;
 
 #define ctrace clog(StateTrace)
 
-Overlay State::openDB(std::string _path, bool _killExisting)
+OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
@@ -51,10 +51,10 @@ Overlay State::openDB(std::string _path, bool _killExisting)
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
 	cnote << "Opened state DB.";
-	return Overlay(db);
+	return OverlayDB(db);
 }
 
-State::State(Address _coinbaseAddress, Overlay const& _db):
+State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_db(_db),
 	m_state(&m_db),
 	m_ourAddress(_coinbaseAddress)
@@ -127,7 +127,7 @@ State& State::operator=(State const& _s)
 
 struct CachedAddressState
 {
-	CachedAddressState(std::string const& _rlp, AddressState const* _s, Overlay const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
+	CachedAddressState(std::string const& _rlp, AddressState const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
 
 	bool exists() const
 	{
@@ -157,7 +157,7 @@ struct CachedAddressState
 		std::map<u256, u256> ret;
 		if (r)
 		{
-			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
 			for (auto const& j: memdb)
 				ret[j.first] = RLP(j.second).toInt<u256>();
 		}
@@ -204,7 +204,7 @@ struct CachedAddressState
 	std::string rS;
 	RLP r;
 	AddressState const* s;
-	Overlay const* o;
+	OverlayDB const* o;
 };
 
 StateDiff State::diff(State const& _c) const
@@ -215,8 +215,8 @@ StateDiff State::diff(State const& _c) const
 	std::set<Address> trieAds;
 	std::set<Address> trieAdsD;
 
-	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&m_db), rootHash());
-	auto trieD = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_c.m_db), _c.rootHash());
+	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
+	auto trieD = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
 
 	for (auto i: trie)
 		ads.insert(i.first), trieAds.insert(i.first);
@@ -481,8 +481,8 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
-	BasicMap tm;
-	GenericTrieDB<BasicMap> transactionManifest(&tm);
+	MemoryDB tm;
+	GenericTrieDB<MemoryDB> transactionManifest(&tm);
 	transactionManifest.init();
 
 	// All ok with the block generally. Play back the transactions now...
@@ -548,7 +548,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	{
 		cwarn << "Bad state root!";
 		cnote << "Given to be:" << m_currentBlock.stateRoot;
-		cnote << TrieDB<Address, Overlay>(&m_db, m_currentBlock.stateRoot);
+		cnote << TrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
 		cnote << "Calculated to be:" << rootHash();
 		cnote << m_state;
 		cnote << *this;
@@ -663,8 +663,8 @@ void State::commitToMine(BlockChain const& _bc)
 	else
 		uncles.appendList(0);
 
-	BasicMap tm;
-	GenericTrieDB<BasicMap> transactionManifest(&tm);
+	MemoryDB tm;
+	GenericTrieDB<MemoryDB> transactionManifest(&tm);
 	transactionManifest.init();
 
 	RLPStream txs;
@@ -812,7 +812,7 @@ u256 State::storage(Address _id, u256 _memory) const
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
-	TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
+	TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
 	string payload = memdb.at(_memory);
 	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
 	it->second.setStorage(_memory, ret);
@@ -830,7 +830,7 @@ map<u256, u256> State::storage(Address _id) const
 		// Pull out all values from trie storage.
 		if (it->second.oldRoot())
 		{
-			TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
 			for (auto const& i: memdb)
 				ret[i.first] = RLP(i.second).toInt<u256>();
 		}
@@ -883,7 +883,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 			for (auto const& i: m_state)
 			{
 				RLP r(i.second);
-				TrieDB<h256, Overlay> storageDB(const_cast<Overlay*>(&m_db), r[2].toHash<h256>());	// promise not to alter Overlay.
+				TrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
 				for (auto const& j: storageDB) { (void)j; }
 				if (!e && r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
 					return false;
@@ -900,8 +900,8 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 }
 
 // TODO: kill temp nodes automatically in TrieDB
-// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + Overlay; allow overlay copying for rewind operations.
-// TODO: TransactionReceipt trie should be BasicMap and built as necessary
+// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+// TODO: TransactionReceipt trie should be MemoryDB and built as necessary
 
 u256 State::execute(bytesConstRef _rlp)
 {
@@ -1095,7 +1095,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
 	std::set<Address> dtr;
-	auto trie = TrieDB<Address, Overlay>(const_cast<Overlay*>(&_s.m_db), _s.rootHash());
+	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
 	for (auto i: trie)
 		d.insert(i.first), dtr.insert(i.first);
 	for (auto i: _s.m_cache)
@@ -1127,7 +1127,7 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 				std::set<u256> cached;
 				if (r)
 				{
-					TrieDB<h256, Overlay> memdb(const_cast<Overlay*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+					TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
 					for (auto const& j: memdb)
 						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
