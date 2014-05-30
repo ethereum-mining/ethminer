@@ -109,6 +109,13 @@ void Executive::setup(bytesConstRef _rlp)
 		throw NotEnoughCash();
 	}
 
+	u256 startGasUsed = m_s.gasUsed();
+	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
+	{
+		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
+		throw BlockGasLimitReached();
+	}
+
 	// Increment associated nonce for sender.
 	m_s.noteSending(m_sender);
 
