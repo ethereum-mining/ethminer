@@ -151,7 +151,7 @@ void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 		m_newAddress = (u160)m_newAddress + 1;
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, 0, h256(), h256());
+	m_s.m_cache[m_newAddress] = AddressState(0, _endowment, h256(), h256());
 
 	// Execute _init.
 	m_vm = new VM(_gas);
