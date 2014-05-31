@@ -511,7 +511,7 @@ void Main::refreshMining()
 {
 	eth::ClientGuard g(m_client.get());
 	eth::MineProgress p = m_client->miningProgress();
-	ui->mineStatus->setText(QString(m_client->isMining() ? "%1s @ %2kH/s" : "Not mining").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0));
+	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
 	list<eth::MineInfo> l = m_client->miningHistory();
