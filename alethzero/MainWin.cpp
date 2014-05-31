@@ -217,6 +217,7 @@ Main::Main(QWidget *parent) :
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
+	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -311,9 +312,9 @@ void Main::eval(QString const& _js)
 	if (ev.isNull())
 		s = "<span style=\"color: #888\">null</span>";
 	else if (ev.type() == QVariant::String)
-		s = "<span style=\"color: #444\">\"</span><span style=\"color: #f44\">" + ev.toString().toHtmlEscaped() + "</span><span style=\"color: #444\">\"</span>";
+		s = "<span style=\"color: #444\">\"</span><span style=\"color: #c00\">" + ev.toString().toHtmlEscaped() + "</span><span style=\"color: #444\">\"</span>";
 	else if (ev.type() == QVariant::Int || ev.type() == QVariant::Double)
-		s = "<span style=\"color: #44f\">" + ev.toString().toHtmlEscaped() + "</span>";
+		s = "<span style=\"color: #00c\">" + ev.toString().toHtmlEscaped() + "</span>";
 	else
 		s = "<span style=\"color: #888\">unknown type</span>";
 	m_consoleHistory.push_back(qMakePair(_js, s));
@@ -509,8 +510,11 @@ void Main::on_nameReg_textChanged()
 void Main::refreshMining()
 {
 	eth::ClientGuard g(m_client.get());
-	list<eth::MineInfo> l = m_client->miningHistory();
 	eth::MineProgress p = m_client->miningProgress();
+	ui->mineStatus->setText(QString(m_client->isMining() ? "%1s @ %2kH/s" : "Not mining").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0));
+	if (!ui->miningView->isVisible())
+		return;
+	list<eth::MineInfo> l = m_client->miningHistory();
 	static uint lh = 0;
 	if (p.hashes < lh)
 		ui->miningView->resetStats();
@@ -537,6 +541,13 @@ eth::State const& Main::state() const
 	return ui->preview->isChecked() ? m_client->postState() : m_client->state();
 }
 
+void Main::updateBlockCount()
+{
+	auto d = m_client->blockChain().details();
+	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
+	ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+}
+
 void Main::refresh(bool _override)
 {
 	eth::ClientGuard g(m_client.get());
@@ -547,9 +558,7 @@ void Main::refresh(bool _override)
 	{
 		changed();
 
-		auto d = m_client->blockChain().details();
-		auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-		ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+		updateBlockCount();
 
 		auto acs = st.addresses();
 		ui->accounts->clear();

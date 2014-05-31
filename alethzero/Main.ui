@@ -60,6 +60,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="mineStatus">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
          <number>0</number>
