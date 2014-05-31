@@ -107,6 +107,7 @@ void State::paranoia(std::string const& _when, bool _enforceRefs) const
 	}
 #else
 	(void)_when;
+	(void)_enforceRefs;
 #endif
 }
 

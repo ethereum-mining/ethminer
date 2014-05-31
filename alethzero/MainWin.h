@@ -109,6 +109,7 @@ private slots:
 	void on_exportKey_triggered();
 	void on_inject_triggered();
 	void on_showAll_triggered() { refresh(true); }
+	void on_showAllAccounts_triggered() { refresh(true); }
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
