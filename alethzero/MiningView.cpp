@@ -31,8 +31,8 @@ using namespace eth;
 using namespace lb;
 
 string id(float _y) { return toString(_y); }
-string ms(float _x){ return toString(round(_x * 1000)) + (!_x ? "ms" : ""); }
-string msL(float _x, float _y) { return toString(round(_x * 1000)) + "ms (" + toString(round(_y * 100)) + "%)"; }
+string s(float _x){ return toString(round(_x * 1000) / 1000) + (!_x ? "s" : ""); }
+string sL(float _x, float _y) { return toString(round(_x * 1000)) + "s (" + toString(_y) + ")"; }
 
 MiningView::MiningView(QWidget* _p): QWidget(_p)
 {
@@ -93,9 +93,9 @@ void MiningView::paintEvent(QPaintEvent*)
 	Grapher g;
 	QPainter p(this);
 
-	g.init(&p, make_pair(0.f, max<float>(m_duration * 0.1f, m_values.size() * 0.1f)), make_pair(m_progress.requirement - 4, 256.f), ms, id, msL);
+	g.init(&p, make_pair(0.f, max<float>(m_duration * 0.1f, m_values.size() * 0.1f)), make_pair(0, 255.f - (m_progress.requirement - 4)), s, id, sL);
 	g.drawAxes();
-	g.setDataTransform(0.1, 0);
+	g.setDataTransform(0.1, 0, -1, 255.f);
 
 	g.drawLineGraph(m_values, QColor(192, 192, 192));
 	g.drawLineGraph(m_bests, QColor(128, 128, 128));

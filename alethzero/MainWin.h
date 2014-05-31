@@ -119,6 +119,8 @@ signals:
 	void changed();	// TODO: manifest
 
 private:
+	void updateBlockCount();
+
 	QString pretty(eth::Address _a) const;
 
 	void initDebugger();
