@@ -848,7 +848,7 @@ void Main::on_blocks_currentItemChanged()
 			else
 			{
 				if (tx.data.size())
-					s << eth::memDump(tx.data, 16);
+					s << eth::memDump(tx.data, 16, true);
 			}
 		}
 
@@ -977,7 +977,7 @@ void Main::on_data_textChanged()
 			else
 				s = s.mid(1);
 		}
-		ui->code->setHtml(QString::fromStdString(eth::memDump(m_data)));
+		ui->code->setHtml(QString::fromStdString(eth::memDump(m_data, 8, true)));
 		if (m_client->postState().addressHasCode(fromString(ui->destination->currentText())))
 		{
 			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
@@ -1247,7 +1247,7 @@ void Main::updateDebugger()
 
 	for (auto i: ws.stack)
 		ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
-	ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16)));
+	ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
 	ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
 	ostringstream ss;
 	ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
