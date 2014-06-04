@@ -27,7 +27,7 @@
 
 namespace eth
 {
-class MineInfo;
+struct MineInfo;
 }
 
 class MiningView: public QWidget

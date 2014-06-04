@@ -91,8 +91,8 @@ bool MemoryDB::kill(h256 _h)
 		return false;
 	}
 #else
-		return true;
 	}
+	return true;
 #endif
 }
 

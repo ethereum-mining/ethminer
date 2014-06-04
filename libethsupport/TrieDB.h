@@ -200,7 +200,7 @@ private:
 	std::string atAux(RLP const& _here, NibbleSlice _key) const;
 
 	void mergeAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key, bytesConstRef _value);
-	bytes mergeAt(RLP const& _replace, NibbleSlice _k, bytesConstRef _v, bool _inline = false);
+	bytes mergeAt(RLP const& _replace, NibbleSlice _k, bytesConstRef _v, bool _inLine = false);
 
 	bool deleteAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key);
 	bytes deleteAt(RLP const& _replace, NibbleSlice _k);
@@ -502,7 +502,7 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 	}
 }
 
-template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inline)
+template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inLine)
 {
 #if ETH_PARANOIA
 	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data()).abridged();
@@ -529,7 +529,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		// partial key is our key - move down.
 		if (_k.contains(k) && !isLeaf(_orig))
 		{
-			if (!_inline)
+			if (!_inLine)
 				killNode(_orig);
 			RLPStream s(2);
 			s.append(_orig[0]);
@@ -555,7 +555,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 			return place(_orig, _k, _v);
 
 		// Kill the node.
-		if (!_inline)
+		if (!_inLine)
 			killNode(_orig);
 
 		// not exactly our node - delve to next level at the correct index.
