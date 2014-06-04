@@ -1266,4 +1266,7 @@ void Main::updateDebugger()
 #include\
 "moc_MainWin.cpp"
 
+#include\
+"moc_MiningView.cpp"
+
 #endif
