@@ -397,7 +397,7 @@ QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QSt
 	client()->changed();
 	auto ret = toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
 	while (!client()->peekChanged())
-		usleep(10000);
+		this_thread::sleep_for(chrono::milliseconds(10));
 	return ret;
 }
 
@@ -406,7 +406,7 @@ void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QStr
 	client()->changed();
 	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
 	while (!client()->peekChanged())
-		usleep(10000);
+		this_thread::sleep_for(chrono::milliseconds(10));
 }
 
 // extra bits needed to link on VS

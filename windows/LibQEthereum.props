@@ -5,7 +5,7 @@
     <QtDir>../../Qt/$(Platform)</QtDir>
     <QtBase>$(QtDir)/qtbase</QtBase>
     <QtBin>$(QtBase)/bin</QtBin>
-    <QtInclude>$(QtBase)/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtdeclarative/include;../../Qt/Src/qtwebkit/include</QtInclude>
+    <QtInclude>$(QtBase)/include;../../Qt/Src/qtbase/include;../../Qt/Src/qtbase/include/QtCore;../../Qt/Src/qtbase/include/QtWidgets;../../Qt/Src/qtbase/include/QtQml;../../Qt/Src/qtbase/include/QtGui;../../Qt/Src/qtdeclarative/include;../../Qt/Src/qtwebkit/include</QtInclude>
     <QtLib>$(QtBase)/lib;$(QtBase)/plugins/platforms;../../icu/lib64</QtLib>
     <CopyDlls>..\..\icu\bin_$(Platform)\icu*52.dll;$(QtBase)\lib\Qt5Core$(d).dll;$(QtBase)\lib\Qt5Gui$(d).dll;$(QtBase)\lib\Qt5Multimedia$(d).dll;$(QtBase)\lib\Qt5MultimediaWidgets$(d).dll;$(QtBase)\lib\Qt5OpenGL$(d).dll;$(QtBase)\lib\Qt5Positioning$(d).dll;$(QtBase)\lib\Qt5PrintSupport$(d).dll;$(QtBase)\lib\Qt5Network$(d).dll;$(QtBase)\lib\Qt5Qml$(d).dll;$(QtBase)\lib\Qt5Quick$(d).dll;$(QtBase)\lib\Qt5Sensors$(d).dll;$(QtBase)\lib\Qt5Sql$(d).dll;$(QtBase)\lib\Qt5Webkit$(d).dll;$(QtBase)\lib\Qt5WebkitWidgets$(d).dll;$(QtBase)\lib\Qt5Widgets$(d).dll;$(QtBase)\plugins\**\qwindows$(d).dll;$(QtBase)\plugins\**\qgenericbearer$(d).dll;$(QtBase)\plugins\**\qnativewifibearer$(d).dll;$(QtBase)\plugins\**\qgif$(d).dll;$(QtBase)\plugins\**\qico$(d).dll;$(QtBase)\plugins\**\qjpeg$(d).dll;$(QtBase)\plugins\**\qsvg$(d).dll;$(QtBase)\plugins\**\qtsensors_dummy$(d).dll</CopyDlls>
   </PropertyGroup>
