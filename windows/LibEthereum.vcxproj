@@ -19,25 +19,42 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\libethcore\BlockInfo.cpp" />
+    <ClCompile Include="..\libethcore\CommonEth.cpp" />
+    <ClCompile Include="..\libethcore\Dagger.cpp" />
+    <ClCompile Include="..\libethcore\Instruction.cpp" />
     <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
-    <ClCompile Include="..\libethereum\BlockInfo.cpp" />
     <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\CommonEth.cpp" />
-    <ClCompile Include="..\libethereum\Dagger.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
     <ClCompile Include="..\libethereum\Executive.cpp" />
     <ClCompile Include="..\libethereum\ExtVM.cpp" />
-    <ClCompile Include="..\libethereum\ExtVMFace.cpp" />
-    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
-    <ClCompile Include="..\libethereum\Instruction.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
     <ClCompile Include="..\libethereum\State.cpp" />
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libethereum\VM.cpp" />
+    <ClCompile Include="..\libethsupport\Common.cpp" />
+    <ClCompile Include="..\libethsupport\CommonData.cpp" />
+    <ClCompile Include="..\libethsupport\CommonIO.cpp" />
+    <ClCompile Include="..\libethsupport\FileSystem.cpp" />
+    <ClCompile Include="..\libethsupport\FixedHash.cpp" />
+    <ClCompile Include="..\libethsupport\Log.cpp" />
+    <ClCompile Include="..\libethsupport\MemoryDB.cpp" />
+    <ClCompile Include="..\libethsupport\OverlayDB.cpp" />
+    <ClCompile Include="..\libethsupport\RLP.cpp" />
+    <ClCompile Include="..\libethsupport\TrieCommon.cpp" />
+    <ClCompile Include="..\libethsupport\TrieDB.cpp" />
+    <ClCompile Include="..\libethsupport\UPnP.cpp" />
+    <ClCompile Include="..\libevm\ExtVMFace.cpp" />
+    <ClCompile Include="..\libevm\FeeStructure.cpp" />
+    <ClCompile Include="..\libevm\VM.cpp" />
+    <ClCompile Include="..\liblll\Assembly.cpp" />
+    <ClCompile Include="..\liblll\CodeFragment.cpp" />
+    <ClCompile Include="..\liblll\Compiler.cpp" />
+    <ClCompile Include="..\liblll\CompilerState.cpp" />
+    <ClCompile Include="..\liblll\Parser.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -47,34 +64,52 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libethcore\BlockInfo.h" />
+    <ClInclude Include="..\libethcore\CommonEth.h" />
+    <ClInclude Include="..\libethcore\Dagger.h" />
+    <ClInclude Include="..\libethcore\Exceptions.h" />
+    <ClInclude Include="..\libethcore\Instruction.h" />
     <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
-    <ClInclude Include="..\libethereum\BlockInfo.h" />
     <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\CommonEth.h" />
-    <ClInclude Include="..\libethereum\Dagger.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
-    <ClInclude Include="..\libethereum\Exceptions.h" />
     <ClInclude Include="..\libethereum\Executive.h" />
     <ClInclude Include="..\libethereum\ExtVM.h" />
-    <ClInclude Include="..\libethereum\ExtVMFace.h" />
-    <ClInclude Include="..\libethereum\FeeStructure.h" />
-    <ClInclude Include="..\libethereum\Instruction.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />
     <ClInclude Include="..\libethereum\State.h" />
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libethereum\VM.h" />
+    <ClInclude Include="..\libethsupport\Common.h" />
+    <ClInclude Include="..\libethsupport\CommonData.h" />
+    <ClInclude Include="..\libethsupport\CommonIO.h" />
+    <ClInclude Include="..\libethsupport\CryptoHeaders.h" />
+    <ClInclude Include="..\libethsupport\Exceptions.h" />
+    <ClInclude Include="..\libethsupport\FileSystem.h" />
+    <ClInclude Include="..\libethsupport\FixedHash.h" />
+    <ClInclude Include="..\libethsupport\Log.h" />
+    <ClInclude Include="..\libethsupport\MemoryDB.h" />
+    <ClInclude Include="..\libethsupport\OverlayDB.h" />
+    <ClInclude Include="..\libethsupport\RLP.h" />
+    <ClInclude Include="..\libethsupport\TrieCommon.h" />
+    <ClInclude Include="..\libethsupport\TrieDB.h" />
+    <ClInclude Include="..\libethsupport\UPnP.h" />
+    <ClInclude Include="..\libethsupport\vector_ref.h" />
+    <ClInclude Include="..\libevm\ExtVMFace.h" />
+    <ClInclude Include="..\libevm\FeeStructure.h" />
+    <ClInclude Include="..\libevm\VM.h" />
+    <ClInclude Include="..\liblll\Assembly.h" />
+    <ClInclude Include="..\liblll\CodeFragment.h" />
+    <ClInclude Include="..\liblll\Compiler.h" />
+    <ClInclude Include="..\liblll\CompilerState.h" />
+    <ClInclude Include="..\liblll\Exceptions.h" />
+    <ClInclude Include="..\liblll\Parser.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="LibCryptoPP.vcxproj">
       <Project>{1cc213a4-3482-4211-b47b-172e90dac7de}</Project>
-    </ProjectReference>
-    <ProjectReference Include="LibEthCore.vcxproj">
-      <Project>{22dad0b1-4ec6-425a-b75c-fe7f01fee615}</Project>
     </ProjectReference>
     <ProjectReference Include="LibLevelDB.vcxproj">
       <Project>{27014763-955d-486b-9ba7-69872192e6f4}</Project>
