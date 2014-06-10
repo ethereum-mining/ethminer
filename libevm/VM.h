@@ -59,8 +59,6 @@ inline u256 fromAddress(Address _a)
  */
 class VM
 {
-	template <unsigned T> friend class UnitTest;
-
 public:
 	/// Construct VM object.
 	explicit VM(u256 _gas = 0) { reset(_gas); }
@@ -221,7 +219,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SDIV:
 			require(2);
-			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() / (s256&)m_stack[m_stack.size() - 2] : 0;
+            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) / u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
@@ -231,7 +229,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SMOD:
 			require(2);
-			(s256&)m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? (s256&)m_stack.back() % (s256&)m_stack[m_stack.size() - 2] : 0;
+            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) % u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
@@ -259,12 +257,12 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 		case Instruction::SLT:
 			require(2);
-			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() < (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) < u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SGT:
 			require(2);
-			m_stack[m_stack.size() - 2] = (s256&)m_stack.back() > (s256&)m_stack[m_stack.size() - 2] ? 1 : 0;
+            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) > u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:

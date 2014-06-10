@@ -80,7 +80,23 @@ static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;
 static const std::map<u256, u256> EmptyMapU256U256;
 
-/// Trivial UnitTest type that everyone can agree on, mainly to allow befriending for test classes & their code.
-template <unsigned T> class UnitTest {};
+inline s256 u2s(u256 _u)
+{
+    static const bigint c_end = (bigint)1 << 256;
+    static const u256 c_send = (u256)1 << 255;
+    if (_u < c_send)
+        return (s256)_u;
+    else
+        return (s256)-(c_end - _u);
+}
+
+inline u256 s2u(s256 _u)
+{
+    static const bigint c_end = (bigint)1 << 256;
+    if (_u >= 0)
+        return (u256)_u;
+    else
+        return (u256)(c_end + _u);
+}
 
 }
