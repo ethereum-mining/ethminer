@@ -120,7 +120,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			break;
 
 		case Instruction::SLOAD:
-			runGas += c_sloadGas;
+            runGas = c_sloadGas;
 			break;
 
 		// These all operate on memory and therefore potentially expand it:
@@ -170,7 +170,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 			unsigned inOff = (unsigned)m_stack[m_stack.size() - 2];
 			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
-			runGas += c_createGas;
+            runGas = c_createGas;
 			break;
 		}
 
