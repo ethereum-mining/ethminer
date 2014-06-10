@@ -451,7 +451,6 @@ int main(int argc, char** argv)
 
 	logwin = newwin(height * 2 / 5 - 2, width * 2 / 3, qheight, 0);
 	nc::nc_window_streambuf outbuf(logwin, std::cout);
-	g_logVerbosity = 1; // Force verbosity level for now
 
 	consolewin   = newwin(qheight, width / 4, 0, 0);
 	nc::nc_window_streambuf coutbuf(consolewin, ccout);
@@ -479,9 +478,8 @@ int main(int argc, char** argv)
 		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
 	if (mining)
 	{
-		c.lock();
+		ClientGuard g(&c);
 		c.startMining();
-		c.unlock();
 	}
 
 #if ETH_JSONRPC
@@ -516,12 +514,6 @@ int main(int argc, char** argv)
 		ccout << "Address:" << endl;
 		ccout << toHex(us.address().asArray()) << endl << endl;
 
-		c.lock();
-		auto const& st = c.state();
-		auto const& bc = c.blockChain();
-		ccout << "Genesis hash: " << bc.genesisHash() << endl;
-		c.unlock();
-
 		mvwprintw(mainwin, 1, 1, " > ");
 		clrtoeol();
 
@@ -535,36 +527,31 @@ int main(int argc, char** argv)
 		{
 			eth::uint port;
 			iss >> port;
-			c.lock();
+			ClientGuard g(&c);
 			c.startNetwork((short)port);
-			c.unlock();
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
 			eth::uint port;
 			iss >> addr >> port;
-			c.lock();
+			ClientGuard g(&c);
 			c.connect(addr, (short)port);
-			c.unlock();
 		}
 		else if (cmd == "netstop")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			c.stopNetwork();
-			c.unlock();
 		}
 		else if (cmd == "minestart")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			c.startMining();
-			c.unlock();
 		}
 		else if (cmd == "minestop")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			c.stopMining();
-			c.unlock();
 		}
 #if ETH_JSONRPC
 		else if (cmd == "jsonport")
@@ -619,7 +606,7 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "transact")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			auto const& bc = c.blockChain();
 			auto h = bc.currentHash();
 			auto blockData = bc.block(h);
@@ -696,11 +683,10 @@ int main(int argc, char** argv)
 					c.transact(secret, amount, dest, data, gas, gasPrice);
 				}
 			}
-			c.unlock();
 		}
 		else if (cmd == "send")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			vector<string> s;
 			s.push_back("Address");
 			vector<string> l;
@@ -739,11 +725,10 @@ int main(int argc, char** argv)
 					c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 				}
 			}
-			c.unlock();
 		}
 		else if (cmd == "contract")
 		{
-			c.lock();
+			ClientGuard g(&c);
 			auto const& bc = c.blockChain();
 			auto h = bc.currentHash();
 			auto blockData = bc.block(h);
@@ -797,7 +782,7 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				c.lock();
+				ClientGuard g(&c);
 				u256 minGas = (u256)c.state().createGas(init.size(), 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
@@ -810,7 +795,6 @@ int main(int argc, char** argv)
 					c.transact(us.secret(), endowment, init, gas, gasPrice);
 				}
 			}
-			c.unlock();
 		}
 		else if (cmd == "inspect")
 		{
@@ -821,7 +805,7 @@ int main(int argc, char** argv)
 				cwarn << "Invalid address length";
 			else
 			{
-				c.lock();
+				ClientGuard g(&c);
 				auto h = h160(fromHex(rechex));
 				stringstream s;
 				auto mem = c.state().storage(h);
@@ -835,8 +819,6 @@ int main(int argc, char** argv)
 				ofs.open(outFile, ofstream::binary);
 				ofs.write(s.str().c_str(), s.str().length());
 				ofs.close();
-
-				c.unlock();
 			}
 		}
 		else if (cmd == "help")
@@ -849,7 +831,11 @@ int main(int argc, char** argv)
 
 
 		// Lock to prevent corrupt block-chain errors
-		c.lock();
+		ClientGuard g(&c);
+
+		auto const& st = c.state();
+		auto const& bc = c.blockChain();
+		ccout << "Genesis hash: " << bc.genesisHash() << endl;
 
 		// Blocks
 		y = 1;
@@ -969,9 +955,6 @@ int main(int argc, char** argv)
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
 		else
 			mvwprintw(consolewin, qheight - 1, width / 4 - 12, "Mining OFF");
-
-		// Unlock
-		c.unlock();
 
 		wmove(consolewin, 1, x);
 
