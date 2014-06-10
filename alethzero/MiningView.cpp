@@ -27,8 +27,19 @@
 #include "Grapher.h"
 
 using namespace std;
-using namespace eth;
 using namespace lb;
+
+// do *not* use eth since eth::uint conflicts with Qt's global unit definition
+// using namespace eth;
+
+// types
+
+using eth::MineInfo;
+using eth::MineProgress;
+
+// functions
+using eth::toString;
+using eth::trimFront;
 
 string id(float _y) { return toString(_y); }
 string s(float _x){ return toString(round(_x * 1000) / 1000) + (!_x ? "s" : ""); }
@@ -95,7 +106,7 @@ void MiningView::paintEvent(QPaintEvent*)
 
 	g.init(&p, make_pair(0.f, max<float>(m_duration * 0.1f, m_values.size() * 0.1f)), make_pair(0, 255.f - (m_progress.requirement - 4)), s, id, sL);
 	g.drawAxes();
-	g.setDataTransform(0.1, 0, -1, 255.f);
+	g.setDataTransform(0.1f, 0, -1.0f, 255.f);
 
 	g.drawLineGraph(m_values, QColor(192, 192, 192));
 	g.drawLineGraph(m_bests, QColor(128, 128, 128));

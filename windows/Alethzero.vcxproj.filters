@@ -9,11 +9,16 @@
     <ClCompile Include="WinMain.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="..\alethzero\Grapher.cpp" />
+    <ClCompile Include="..\alethzero\MiningView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+    <ClInclude Include="..\alethzero\Grapher.h" />
+    <ClInclude Include="..\alethzero\GraphParameters.h" />
+    <ClInclude Include="..\alethzero\MiningView.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
