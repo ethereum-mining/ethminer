@@ -224,7 +224,7 @@ void Client::work()
 	{
 		if (m_restartMining)
 		{
-			m_mineProgress.best = (uint)-1;
+			m_mineProgress.best = (double)-1;
 			m_mineProgress.hashes = 0;
 			m_mineProgress.ms = 0;
 			lock_guard<recursive_mutex> l(m_lock);
