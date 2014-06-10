@@ -106,7 +106,6 @@ struct StateDiff
  */
 class State
 {
-	template <unsigned T> friend class UnitTest;
 	friend class ExtVM;
 	friend class Executive;
 
