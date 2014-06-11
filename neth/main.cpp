@@ -121,11 +121,11 @@ string credits()
 {
 	std::ostringstream ccout;
 	ccout
-		<< "NEthereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
+		<< "NEthereum (++) " << eth::EthVersion << endl
 		<< "  Code by Gav Wood & , (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	string vs = toString(ETH_QUOTED(ETH_VERSION));
+	string vs = toString(eth::EthVersion);
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
@@ -142,7 +142,7 @@ string credits()
 
 void version()
 {
-	cout << "neth version " << ETH_QUOTED(ETH_VERSION) << endl;
+	cout << "neth version " << eth::EthVersion << endl;
 	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -412,7 +412,7 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-	Client c("NEthereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+    Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	cout << credits();
 
 	std::ostringstream ccout;

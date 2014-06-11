@@ -23,9 +23,6 @@
 
 #pragma once
 
-// define version
-#define ETH_VERSION 0.5.10
-
 // way to many uint to size_t warnings in 32 bit build
 #ifdef _M_IX86
 #pragma warning(disable:4244)
@@ -51,6 +48,8 @@ using byte = uint8_t;
 
 namespace eth
 {
+
+extern char const* EthVersion;
 
 // Binary data types.
 using bytes = std::vector<byte>;
