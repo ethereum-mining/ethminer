@@ -24,5 +24,9 @@
 using namespace std;
 using namespace eth;
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-namespace { char dummy; };
+namespace eth
+{
+
+char const* EthVersion = "0.5.11";
+
+}

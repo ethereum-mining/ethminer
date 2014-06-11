@@ -111,13 +111,13 @@ string credits(bool _interactive = false)
 {
 	std::ostringstream cout;
 	cout
-		<< "Ethereum (++) " << ETH_QUOTED(ETH_VERSION) << endl
+        << "Ethereum (++) " << eth::EthVersion << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
 	if (_interactive)
 	{
-		string vs = toString(ETH_QUOTED(ETH_VERSION));
+        string vs = eth::EthVersion;
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
 		string m_servers;
@@ -135,7 +135,7 @@ string credits(bool _interactive = false)
 
 void version()
 {
-	cout << "eth version " << ETH_QUOTED(ETH_VERSION) << endl;
+    cout << "eth version " << eth::EthVersion << endl;
 	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -278,7 +278,7 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-	Client c("Ethereum(++)/" + clientName + "v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+    Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	cout << credits();
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;

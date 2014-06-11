@@ -70,10 +70,9 @@ std::map<Address, AddressState> const& eth::genesisState()
 {
 	static std::map<Address, AddressState> s_ret;
 	if (s_ret.empty())
-	{
 		// Initialise.
 		for (auto i: vector<string>({
-			"8a40bfaa73256b60764c1bf40675a99083efb075",
+            "51ba59315b3a95761d0863b05ccc7a7f54703d99",
 			"e6716f9544a56c530d868e4bfbacb172315bdead",
 			"1e12515ce3e0f817a4ddef9ca55788a1d66bd2df",
 			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
@@ -83,8 +82,6 @@ std::map<Address, AddressState> const& eth::genesisState()
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
 			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
-
-	}
 	return s_ret;
 }
 
