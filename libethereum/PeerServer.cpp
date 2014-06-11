@@ -514,9 +514,10 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 	return ret;
 }
 
-std::vector<PeerInfo> PeerServer::peers() const
+std::vector<PeerInfo> PeerServer::peers(bool _updatePing) const
 {
-	const_cast<PeerServer*>(this)->pingAll();
+    if (_updatePing)
+        const_cast<PeerServer*>(this)->pingAll();
 	this_thread::sleep_for(chrono::milliseconds(200));
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)

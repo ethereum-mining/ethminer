@@ -47,6 +47,8 @@ struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } 
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 3; };
+struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 4; };
+struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
 struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 6; };
 struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 8; };
 struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 9; };
