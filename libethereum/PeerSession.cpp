@@ -145,32 +145,32 @@ bool PeerSession::interpret(RLP const& _r)
 	}
 	case PingPacket:
 	{
-//		clogS(NetMessageSummary) << "Ping";
+        clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
 		sealAndSend(prep(s).appendList(1) << PongPacket);
 		break;
 	}
 	case PongPacket:
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-//		clogS(NetMessageSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms";
+        clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 		break;
 	case GetPeersPacket:
 	{
-		clogS(NetMessageSummary) << "GetPeers";
+        clogS(NetTriviaSummary) << "GetPeers";
 		auto peers = m_server->potentialPeers();
 		RLPStream s;
 		prep(s).appendList(peers.size() + 1);
 		s << PeersPacket;
 		for (auto i: peers)
 		{
-			clogS(NetMessageDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
+            clogS(NetTriviaDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
 			s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
 		}
 		sealAndSend(s);
 		break;
 	}
 	case PeersPacket:
-		clogS(NetMessageSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+        clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
@@ -203,7 +203,7 @@ bool PeerSession::interpret(RLP const& _r)
 					goto CONTINUE;
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			m_server->m_freePeers.push_back(id);
-			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
+            clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
 		break;

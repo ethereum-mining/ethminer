@@ -71,7 +71,7 @@ public:
 	void setMode(NodeMode _m) { m_mode = _m; }
 
 	/// Get peer information.
-	std::vector<PeerInfo> peers() const;
+    std::vector<PeerInfo> peers(bool _updatePing = false) const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
 	size_t peerCount() const { return m_peers.size(); }
