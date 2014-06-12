@@ -1,5 +1,5 @@
 {
-(def 'gav 0x8a40bfaa73256b60764c1bf40675a99083efb075)
+(def 'gav 0x51ba59315b3a95761d0863b05ccc7a7f54703d99)
 
 (def 'alloc (len) (asm msize 0 1 len msize add sub mstore8))
 
