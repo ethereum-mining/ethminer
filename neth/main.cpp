@@ -132,7 +132,7 @@ string credits()
 	if (pocnumber == 4)
 		m_servers = "54.72.31.55";
 	else
-		m_servers = "54.201.28.117";
+		m_servers = "54.72.69.180";
 
 	ccout << "Type 'netstart 30303' to start networking" << endl;
 	ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -147,7 +147,7 @@ void version()
 	exit(0);
 }
 
-Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
+Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
 string pretty(h160 _a, eth::State _st)
 {
 	string ns;
@@ -782,7 +782,6 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				ClientGuard g(&c);
 				u256 minGas = (u256)c.state().createGas(init.size(), 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
@@ -926,7 +925,7 @@ int main(int argc, char** argv)
 		// Balance
 		stringstream ssb;
 		u256 balance = c.state().balance(us.address());
-		Address gavCoin("91a10664d0cd489085a7a018beb5245d4f2272f1");
+		Address gavCoin("0115554959f43bf1d04cd7e3749d00fb0623ce1f");
 		u256 totalGavCoinBalance = st.storage(gavCoin, (u160)us.address());
 		ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
@@ -1023,7 +1022,8 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int _lfields = _lv.size();
 	int _bfields = _bv.size();
 	int maxfields = _sfields + _lfields + _bfields;
-	vector<FIELD*> field(maxfields);
+	FIELD *field[maxfields];
+
 	int ch;
 	int starty = 6;
 	int height = _cols;
@@ -1061,7 +1061,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	field[maxfields] = NULL;
 
 	// Create the form and post it
-	FORM *form = new_form(&field[0]);
+	FORM *form = new_form(field);
 
 	// Calculate the area required for the form
 	scale_form(form, &_rows, &_cols);
