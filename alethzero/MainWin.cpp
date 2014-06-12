@@ -98,7 +98,7 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
+Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
 
 using namespace boost::process;
 
