@@ -462,11 +462,79 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "send")
 			{
-				//TODO
+				ClientGuard g(&c);
+				if(iss.peek() != -1){
+					string hexAddr;
+					u256 amount;
+					int size = hexAddr.length();
+
+					iss >> hexAddr >> amount;
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length: " << size;
+					}
+					else if (amount < 0) {
+						cwarn << "Invalid amount: " << amount;
+					} else {
+						auto const& bc = c.blockChain();
+						auto h = bc.currentHash();
+						auto blockData = bc.block(h);
+						BlockInfo info(blockData);
+						u256 minGas = (u256)c.state().callGas(0, 0);
+						Address dest = h160(fromHex(hexAddr));
+						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+					}
+					
+				} else {
+					cwarn << "Require parameters: send ADDRESS AMOUNT";
+				}
 			}
-			else if (cmd == "create")
+			else if (cmd == "contract")
 			{
-				//TODO
+				ClientGuard g(&c);
+				auto const& bc = c.blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if(iss.peek() != -1) {
+					u256 endowment;
+					u256 gas;
+					u256 gasPrice;
+					string sinit;
+					iss >> endowment >> gasPrice >> gas >> sinit;
+					trim_all(sinit);
+					int size = sinit.length();
+					bytes init;
+					cnote << "Init:";
+					cnote << sinit;
+					cnote << "Code size: " << size;
+					if (size < 1)
+						cwarn << "No code submitted";
+					else
+					{
+						cnote << "Assembled:";
+						stringstream ssc;
+						init = fromHex(sinit);
+						ssc.str(string());
+						ssc << disassemble(init);
+						cnote << "Init:";
+						cnote << ssc.str();
+					}
+					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					if (endowment < 0)
+						cwarn << "Invalid endowment";
+					else if (gasPrice < info.minGasPrice)
+						cwarn << "Minimum gas price is " << info.minGasPrice;
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is " << minGas;
+					else
+					{
+						c.transact(us.secret(), endowment, init, gas, gasPrice);
+					}
+				} else {
+					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
+				}
 			}
 			else if (cmd == "inspect")
 			{
