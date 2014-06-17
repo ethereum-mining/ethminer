@@ -26,6 +26,8 @@
 using namespace std;
 using namespace eth;
 
+#define EVM_TRACE 1
+
 Executive::~Executive()
 {
 	// TODO: Make safe.

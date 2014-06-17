@@ -95,8 +95,8 @@
            <widget class="QLineEdit" name="urlEdit"/>
           </item>
           <item>
-           <widget class="QWebView" name="webView">
-            <property name="url">
+           <widget class="QWebView" name="webView" native="true">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
@@ -117,7 +117,7 @@
      <x>0</x>
      <y>0</y>
      <width>1711</width>
-     <height>20</height>
+     <height>27</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -148,6 +148,8 @@
     <addaction name="separator"/>
     <addaction name="showAll"/>
     <addaction name="showAllAccounts"/>
+    <addaction name="separator"/>
+    <addaction name="loadJS"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -475,7 +477,7 @@
    <property name="minimumSize">
     <size>
      <width>510</width>
-     <height>360</height>
+     <height>386</height>
     </size>
    </property>
    <property name="features">
@@ -1046,8 +1048,8 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QWebView" name="jsConsole">
-       <property name="url">
+      <widget class="QWebView" name="jsConsole" native="true">
+       <property name="url" stdset="0">
         <url>
          <string>about:blank</string>
         </url>
@@ -1408,6 +1410,11 @@ font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New</string>
    </property>
    <property name="text">
     <string>Use &amp;Past Peers</string>
+   </property>
+  </action>
+  <action name="loadJS">
+   <property name="text">
+    <string>&amp;Load Javascript...</string>
    </property>
   </action>
  </widget>

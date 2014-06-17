@@ -285,6 +285,13 @@ void Main::load(QString _s)
 }
 // env.load("/home/gav/eth/init.eth")
 
+void Main::on_loadJS_triggered()
+{
+	QString f = QFileDialog::getOpenFileName(this, "Load Javascript", QString(), "Javascript (*.js);;All files (*)");
+	if (f.size())
+		load(f);
+}
+
 void Main::note(QString _s)
 {
 	cnote << _s.toStdString();

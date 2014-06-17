@@ -110,6 +110,7 @@ private slots:
 	void on_inject_triggered();
 	void on_showAll_triggered() { refresh(true); }
 	void on_showAllAccounts_triggered() { refresh(true); }
+	void on_loadJS_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
