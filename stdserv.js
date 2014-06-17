@@ -10,7 +10,7 @@ var configCode = eth.lll("{
   )
 }")
 env.note('Config code: ' + configCode.unbin())
-var config;
+var config = "0x9ef0f0d81e040012600b0c1abdef7c48f720f88a";
 eth.create(eth.key, '0', configCode, 10000, eth.gasPrice, function(a) { config = a; })
 
 env.note('Config at address ' + config)
@@ -41,7 +41,7 @@ var nameRegCode = eth.lll("{
 }");
 env.note('NameReg code: ' + nameRegCode.unbin())
 
-var nameReg;
+var nameReg = "0x3face8f2b3ef580265f0f67a57ce0fb78b135613";
 env.note('Create NameReg...')
 eth.create(eth.key, '0', nameRegCode, 10000, eth.gasPrice, function(a) { nameReg = a; })
 
