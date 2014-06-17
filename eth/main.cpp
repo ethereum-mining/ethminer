@@ -121,14 +121,14 @@ string credits(bool _interactive = false)
 
 	if (_interactive)
 	{
-        string vs = eth::EthVersion;
+        string vs = toString(eth::EthVersion);
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
 		string m_servers;
-		if (pocnumber == 3)
-			m_servers = "54.201.28.117";
 		if (pocnumber == 4)
 			m_servers = "54.72.31.55";
+		else
+			m_servers = "54.72.69.180";
 
 		cout << "Type 'netstart 30303' to start networking" << endl;
 		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
