@@ -24,6 +24,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/trim_all.hpp>
 #include <libethsupport/FileSystem.h>
 #include <libethcore/Instruction.h>
 #include <libethereum/Defaults.h>
@@ -31,6 +33,7 @@
 #include <libethereum/PeerNetwork.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/State.h>
+#include <libethcore/CommonEth.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -41,6 +44,7 @@
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
+using namespace boost::algorithm;
 using eth::Instruction;
 using eth::c_instructionInfo;
 
@@ -71,9 +75,9 @@ void interactiveHelp()
 		<< "    block  Gives the current block height." << endl
 		<< "    balance  Gives the current balance." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    transact  Execute a given transaction. TODO." << endl
-		<< "    send  Execute a given transaction with current secret. TODO." << endl
-		<< "    create  Create a new contract with current secret. TODO." << endl
+		<< "    transact  Execute a given transaction." << endl
+		<< "    send  Execute a given transaction with current secret." << endl
+		<< "    contract  Create a new contract with current secret." << endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -117,14 +121,14 @@ string credits(bool _interactive = false)
 
 	if (_interactive)
 	{
-        string vs = eth::EthVersion;
+        string vs = toString(eth::EthVersion);
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
 		string m_servers;
-		if (pocnumber == 3)
-			m_servers = "54.201.28.117";
 		if (pocnumber == 4)
 			m_servers = "54.72.31.55";
+		else
+			m_servers = "54.72.69.180";
 
 		cout << "Type 'netstart 30303' to start networking" << endl;
 		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -156,7 +160,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-
+bytes parse_data(string _args);
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -399,19 +403,138 @@ int main(int argc, char** argv)
 			else if (cmd == "balance")
 			{
 				ClientGuard g(&c);
-				cout << "Current balance: " << c.postState().balance(us.address()) << endl;
+				cout << "Current balance: " << formatBalance(c.postState().balance(us.address())) << " = " << c.postState().balance(us.address()) << " wei" << endl;
 			}
 			else if (cmd == "transact")
 			{
-				//TODO.
+				ClientGuard g(&c);
+				auto const& bc = c.blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if(iss.peek()!=-1){
+					string hexAddr;
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+
+					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
+					
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = parse_data(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					int size = hexAddr.length();
+					u256 minGas = (u256)c.state().callGas(data.size(), 0);
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length: " << size;
+					}
+					else if (amount < 0)
+						cwarn << "Invalid amount: " << amount;
+					else if (gasPrice < info.minGasPrice)
+						cwarn << "Minimum gas price is " << info.minGasPrice;
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is " << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						Secret secret = h256(fromHex(sechex));
+						Address dest = h160(fromHex(hexAddr));
+						c.transact(secret, amount, dest, data, gas, gasPrice);
+					}
+				} else {
+					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
+				}
 			}
 			else if (cmd == "send")
 			{
-				//TODO
+				ClientGuard g(&c);
+				if(iss.peek() != -1){
+					string hexAddr;
+					u256 amount;
+					int size = hexAddr.length();
+
+					iss >> hexAddr >> amount;
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length: " << size;
+					}
+					else if (amount < 0) {
+						cwarn << "Invalid amount: " << amount;
+					} else {
+						auto const& bc = c.blockChain();
+						auto h = bc.currentHash();
+						auto blockData = bc.block(h);
+						BlockInfo info(blockData);
+						u256 minGas = (u256)c.state().callGas(0, 0);
+						Address dest = h160(fromHex(hexAddr));
+						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+					}
+					
+				} else {
+					cwarn << "Require parameters: send ADDRESS AMOUNT";
+				}
 			}
-			else if (cmd == "create")
+			else if (cmd == "contract")
 			{
-				//TODO
+				ClientGuard g(&c);
+				auto const& bc = c.blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if(iss.peek() != -1) {
+					u256 endowment;
+					u256 gas;
+					u256 gasPrice;
+					string sinit;
+					iss >> endowment >> gasPrice >> gas >> sinit;
+					trim_all(sinit);
+					int size = sinit.length();
+					bytes init;
+					cnote << "Init:";
+					cnote << sinit;
+					cnote << "Code size: " << size;
+					if (size < 1)
+						cwarn << "No code submitted";
+					else
+					{
+						cnote << "Assembled:";
+						stringstream ssc;
+						init = fromHex(sinit);
+						ssc.str(string());
+						ssc << disassemble(init);
+						cnote << "Init:";
+						cnote << ssc.str();
+					}
+					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					if (endowment < 0)
+						cwarn << "Invalid endowment";
+					else if (gasPrice < info.minGasPrice)
+						cwarn << "Minimum gas price is " << info.minGasPrice;
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is " << minGas;
+					else
+					{
+						c.transact(us.secret(), endowment, init, gas, gasPrice);
+					}
+				} else {
+					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
+				}
 			}
 			else if (cmd == "inspect")
 			{
@@ -465,4 +588,60 @@ int main(int argc, char** argv)
 
 
 	return 0;
+}
+
+bytes parse_data(string _args)
+{
+	bytes m_data;
+	stringstream args(_args);
+	string arg;
+	int cc = 0;
+	while (args >> arg)
+	{
+		int al = arg.length();
+		if (boost::starts_with(arg, "0x"))
+		{
+			bytes bs = fromHex(arg);
+			m_data += bs;
+		}
+		else if (arg[0] == '@')
+		{
+			arg = arg.substr(1, arg.length());
+			if (boost::starts_with(arg, "0x"))
+			{
+				cnote << "hex: " << arg;
+				bytes bs = fromHex(arg);
+				int size = bs.size();
+				if (size < 32)
+					for (auto i = 0; i < 32 - size; ++i)
+						m_data.push_back(0);
+				m_data += bs;
+			}
+			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
+			{
+				arg = arg.substr(1, arg.length() - 2);
+				cnote << "string: " << arg;
+				if (al < 32)
+					for (int i = 0; i < 32 - al; ++i)
+						m_data.push_back(0);
+				for (int i = 0; i < al; ++i)
+					m_data.push_back(arg[i]);
+			}
+			else
+			{
+				cnote << "value: " << arg;
+				bytes bs = toBigEndian(u256(arg));
+				int size = bs.size();
+				if (size < 32)
+					for (auto i = 0; i < 32 - size; ++i)
+						m_data.push_back(0);
+				m_data += bs;
+			}
+		}
+		else
+			for (int i = 0; i < al; ++i)
+				m_data.push_back(arg[i]);
+		cc++;
+	}
+	return m_data;
 }
