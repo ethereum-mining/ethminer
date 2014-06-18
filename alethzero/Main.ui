@@ -117,7 +117,7 @@
      <x>0</x>
      <y>0</y>
      <width>1711</width>
-     <height>27</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -808,7 +808,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_8">
-    <layout class="QHBoxLayout" name="horizontalLayout_8">
+    <layout class="QVBoxLayout" name="verticalLayout_7">
      <property name="leftMargin">
       <number>0</number>
      </property>
@@ -821,6 +821,19 @@
      <property name="bottomMargin">
       <number>0</number>
      </property>
+     <item>
+      <widget class="QLineEdit" name="blockChainFilter">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="placeholderText">
+        <string>Filter...</string>
+       </property>
+       <property name="clearButtonEnabled">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QSplitter" name="splitter_2">
        <property name="orientation">

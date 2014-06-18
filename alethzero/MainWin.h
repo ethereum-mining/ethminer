@@ -111,10 +111,12 @@ private slots:
 	void on_showAll_triggered() { refresh(true); }
 	void on_showAllAccounts_triggered() { refresh(true); }
 	void on_loadJS_triggered();
+	void on_blockChainFilter_textChanged();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
 	void refreshMining();
+	void refreshBlockChain();
 
 signals:
 	void changed();	// TODO: manifest
