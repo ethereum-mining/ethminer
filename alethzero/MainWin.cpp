@@ -558,6 +558,95 @@ void Main::updateBlockCount()
 	ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
 }
 
+void Main::on_blockChainFilter_textChanged()
+{
+	static QTimer* s_delayed = nullptr;
+	if (!s_delayed)
+	{
+		s_delayed = new QTimer(this);
+		s_delayed->setSingleShot(true);
+		connect(s_delayed, SIGNAL(timeout()), SLOT(refreshBlockChain()));
+	}
+	s_delayed->stop();
+	s_delayed->start(200);
+}
+
+static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h)
+{
+	try
+	{
+		if (_f.size() > 1 && _f.size() < 10 && _f[0] == '#' && stoul(_f.substr(1)) == _b.number)
+			return true;
+	}
+	catch (...) {}
+	if (toHex(_h.ref()).find(_f) != string::npos)
+		return true;
+	return false;
+}
+
+static bool transactionMatch(string const& _f, Transaction const& _t)
+{
+	string info = toHex(_t.receiveAddress.ref()) + " " + toHex(_t.sha3(true).ref()) + " " + toHex(_t.sha3(false).ref()) + " " + toHex(_t.sender().ref());
+	if (info.find(_f) != string::npos)
+		return true;
+	return false;
+}
+
+void Main::refreshBlockChain()
+{
+	eth::ClientGuard g(m_client.get());
+	auto const& st = state();
+
+	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
+	ui->blocks->clear();
+
+	string filter = ui->blockChainFilter->text().toLower().toStdString();
+	auto const& bc = m_client->blockChain();
+	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
+	for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
+	{
+		auto d = bc.details(h);
+		if (blockMatch(filter, d, h))
+		{
+			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
+			auto hba = QByteArray((char const*)h.data(), h.size);
+			blockItem->setData(Qt::UserRole, hba);
+			if (oldSelected == hba)
+				blockItem->setSelected(true);
+		}
+		int n = 0;
+		for (auto const& i: RLP(bc.block(h))[1])
+		{
+			Transaction t(i[0].data());
+			if (transactionMatch(filter, t))
+			{
+				QString s = t.receiveAddress ?
+					QString("    %2 %5> %3: %1 [%4]")
+						.arg(formatBalance(t.value).c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(t.receiveAddress))
+						.arg((unsigned)t.nonce)
+						.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
+					QString("    %2 +> %3: %1 [%4]")
+						.arg(formatBalance(t.value).c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
+						.arg((unsigned)t.nonce);
+				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
+				auto hba = QByteArray((char const*)h.data(), h.size);
+				txItem->setData(Qt::UserRole, hba);
+				txItem->setData(Qt::UserRole + 1, n);
+				if (oldSelected == hba)
+					txItem->setSelected(true);
+			}
+			n++;
+		}
+	}
+
+	if (!ui->blocks->currentItem())
+		ui->blocks->setCurrentRow(0);
+}
+
 void Main::refresh(bool _override)
 {
 	eth::ClientGuard g(m_client.get());
@@ -618,36 +707,7 @@ void Main::refresh(bool _override)
 			ui->transactionQueue->addItem(s);
 		}
 
-		ui->blocks->clear();
-		auto const& bc = m_client->blockChain();
-		unsigned i = ui->showAll->isChecked() ? (unsigned)-1 : 100;
-		for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
-		{
-			auto d = bc.details(h);
-			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
-			blockItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
-			int n = 0;
-			for (auto const& i: RLP(bc.block(h))[1])
-			{
-				Transaction t(i[0].data());
-				QString s = t.receiveAddress ?
-					QString("    %2 %5> %3: %1 [%4]")
-						.arg(formatBalance(t.value).c_str())
-						.arg(render(t.safeSender()))
-						.arg(render(t.receiveAddress))
-						.arg((unsigned)t.nonce)
-						.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
-					QString("    %2 +> %3: %1 [%4]")
-						.arg(formatBalance(t.value).c_str())
-						.arg(render(t.safeSender()))
-						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
-						.arg((unsigned)t.nonce);
-				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
-				txItem->setData(Qt::UserRole, QByteArray((char const*)h.data(), h.size));
-				txItem->setData(Qt::UserRole + 1, n);
-				n++;
-			}
-		}
+		refreshBlockChain();
 	}
 
 	if (c || m_keysChanged || _override)
@@ -1145,11 +1205,8 @@ void Main::on_debug_clicked()
 	for (auto i: m_myKeys)
 		if (m_client->state().balance(i.address()) >= totalReq)
 		{
-			m_client->unlock();
 			Secret s = i.secret();
-			m_client->lock();
 			m_executiveState = state();
-			m_client->unlock();
 			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 			Transaction t;
 			t.nonce = m_executiveState.transactionsFrom(toAddress(s));
