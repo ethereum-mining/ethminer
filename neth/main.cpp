@@ -1022,7 +1022,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int _lfields = _lv.size();
 	int _bfields = _bv.size();
 	int maxfields = _sfields + _lfields + _bfields;
-	vector<FIELD*> field(maxfields);
+	FIELD *field[maxfields + 1];
 
 	int ch;
 	int starty = 6;
@@ -1061,7 +1061,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	field[maxfields] = NULL;
 
 	// Create the form and post it
-	FORM *form = new_form(field.data());
+	FORM *form = new_form(field);
 
 	// Calculate the area required for the form
 	scale_form(form, &_rows, &_cols);
