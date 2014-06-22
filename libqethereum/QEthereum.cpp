@@ -333,6 +333,7 @@ QString QEthereum::balanceAt(QString _a) const
 
 QString QEthereum::storageAt(QString _a, QString _p) const
 {
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
 }
 

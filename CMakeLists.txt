@@ -163,6 +163,17 @@ else ()
 		link_directories(${CRYPTOPP_LIBRARIES})
 	endif()
 
+	find_path(SERPENT_ID NAMES serpent/funcs.h serpent/util.h PATHS . ..)
+	find_library(SERPENT_LS NAMES serpent PATHS ../serpent)
+	if ( SERPENT_ID AND SERPENT_LS )
+		message(STATUS "Found serpent (headers in ${SERPENT_ID}, library ${SERPENT_LS})")
+		add_definitions(-DETH_SERPENT)
+		set( SERPENT_LIBRARIES ${SERPENT_LS} )
+	else ()
+		message(STATUS "Serpent not found. No serpent support.")
+	endif ()
+	include_directories(${SERPENT_ID})
+
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include
 		/usr/local/include

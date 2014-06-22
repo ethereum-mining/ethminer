@@ -20,13 +20,6 @@
  */
 
 #include <fstream>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma warning(push)
-#pragma warning(disable:4100)
-#include <boost/process.hpp>
-#pragma GCC diagnostic pop
-#pragma warning(pop)
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -34,6 +27,10 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
+#ifdef ETH_SERPENT
+#include <serpent/funcs.h>
+#include <serpent/util.h>
+#endif
 #include <libethcore/Dagger.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
@@ -99,64 +96,6 @@ static void initUnits(QComboBox* _b)
 }
 
 Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
-
-using namespace boost::process;
-
-string findSerpent()
-{
-	string ret;
-	vector<string> paths = { ".", "..", "../cpp-ethereum", "../../cpp-ethereum", "/usr/local/bin", "/usr/bin/" };
-	for (auto i: paths)
-		if (!ifstream(i + "/serpent_cli.py").fail())
-		{
-			ret = i + "/serpent_cli.py";
-			break;
-		}
-	if (ret.empty())
-		cwarn << "Serpent compiler not found. Please install into the same path as this executable.";
-	return ret;
-}
-
-bytes compileSerpent(string const& _code)
-{
-	static const string serpent = findSerpent();
-	if (serpent.empty())
-		return bytes();
-
-#ifdef _WIN32
-	vector<string> args = vector<string>({"python", serpent, "-b", "compile"});
-	string exec = "";
-#else
-	vector<string> args = vector<string>({"serpent_cli.py", "-b", "compile"});
-	string exec = serpent;
-#endif
-
-	context ctx;
-	ctx.environment = self::get_environment();
-	ctx.stdin_behavior = capture_stream();
-	ctx.stdout_behavior = capture_stream();
-	try
-	{
-		child c = launch(exec, args, ctx);
-		postream& os = c.get_stdin();
-		pistream& is = c.get_stdout();
-
-		os << _code << "\n";
-		os.close();
-
-		string hex;
-		int i;
-		while ((i = is.get()) != -1 && i != '\r' && i != '\n')
-			hex.push_back(i);
-
-		return fromHex(hex);
-	}
-	catch (boost::system::system_error&)
-	{
-		cwarn << "Serpent compiler failed to launch.";
-		return bytes();
-	}
-}
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -571,7 +510,7 @@ void Main::on_blockChainFilter_textChanged()
 	s_delayed->start(200);
 }
 
-static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h)
+static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
 {
 	try
 	{
@@ -580,6 +519,10 @@ static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h)
 	}
 	catch (...) {}
 	if (toHex(_h.ref()).find(_f) != string::npos)
+		return true;
+	BlockInfo bi(_bc.block(_h));
+	string info = toHex(bi.stateRoot.ref()) + " " + toHex(bi.coinbaseAddress.ref()) + " " + toHex(bi.transactionsRoot.ref()) + " " + toHex(bi.sha3Uncles.ref());
+	if (info.find(_f) != string::npos)
 		return true;
 	return false;
 }
@@ -606,7 +549,7 @@ void Main::refreshBlockChain()
 	for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
 	{
 		auto d = bc.details(h);
-		if (blockMatch(filter, d, h))
+		if (blockMatch(filter, d, h, bc))
 		{
 			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
 			auto hba = QByteArray((char const*)h.data(), h.size);
@@ -731,6 +674,71 @@ void Main::refresh(bool _override)
 	}
 }
 
+string Main::renderDiff(eth::State const& fs, eth::State const& ts) const
+{
+	stringstream s;
+
+	eth::StateDiff d = fs.diff(ts);
+
+	s << "Pre: " << fs.rootHash() << "<br/>";
+	s << "Post: <b>" << ts.rootHash() << "</b>";
+
+	auto indent = "<code style=\"white-space: pre\">     </code>";
+	for (auto const& i: d.accounts)
+	{
+		s << "<hr/>";
+
+		eth::AccountDiff const& ad = i.second;
+		s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
+		if (!ad.exist.to())
+			continue;
+
+		if (ad.balance)
+		{
+			s << "<br/>" << indent << "Balance " << std::dec << formatBalance(ad.balance.to());
+			s << " <b>" << std::showpos << (((eth::bigint)ad.balance.to()) - ((eth::bigint)ad.balance.from())) << std::noshowpos << "</b>";
+		}
+		if (ad.nonce)
+		{
+			s << "<br/>" << indent << "Count #" << std::dec << ad.nonce.to();
+			s << " <b>" << std::showpos << (((eth::bigint)ad.nonce.to()) - ((eth::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
+		}
+		if (ad.code)
+		{
+			s << "<br/>" << indent << "Code " << std::hex << ad.code.to();
+			if (ad.code.from().size())
+				 s << " (" << ad.code.from() << ")";
+		}
+
+		for (pair<u256, eth::Diff<u256>> const& i: ad.storage)
+		{
+			s << "<br/><code style=\"white-space: pre\">";
+			if (!i.second.from())
+				s << " + ";
+			else if (!i.second.to())
+				s << "XXX";
+			else
+				s << " * ";
+			s << "  </code>";
+
+			if (i.first > u256(1) << 246)
+				s << (h256)i.first;
+			else if (i.first > u160(1) << 150)
+				s << (h160)(u160)i.first;
+			else
+				s << std::hex << i.first;
+
+			if (!i.second.from())
+				s << ": " << std::hex << i.second.to();
+			else if (!i.second.to())
+				s << " (" << std::hex << i.second.from() << ")";
+			else
+				s << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+		}
+	}
+	return s.str();
+}
+
 void Main::on_transactionQueue_currentItemChanged()
 {
 	ui->pendingInfo->clear();
@@ -767,64 +775,7 @@ void Main::on_transactionQueue_currentItemChanged()
 
 		eth::State fs = m_client->postState().fromPending(i);
 		eth::State ts = m_client->postState().fromPending(i + 1);
-		eth::StateDiff d = fs.diff(ts);
-
-		s << "Pre: " << fs.rootHash() << "<br/>";
-		s << "Post: <b>" << ts.rootHash() << "</b>";
-
-		auto indent = "<code style=\"white-space: pre\">     </code>";
-		for (auto const& i: d.accounts)
-		{
-			s << "<hr/>";
-
-			eth::AccountDiff const& ad = i.second;
-			s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
-			if (!ad.exist.to())
-				continue;
-
-			if (ad.balance)
-			{
-				s << "<br/>" << indent << "Balance " << std::dec << formatBalance(ad.balance.to());
-				s << " <b>" << std::showpos << (((eth::bigint)ad.balance.to()) - ((eth::bigint)ad.balance.from())) << std::noshowpos << "</b>";
-			}
-			if (ad.nonce)
-			{
-				s << "<br/>" << indent << "Count #" << std::dec << ad.nonce.to();
-				s << " <b>" << std::showpos << (((eth::bigint)ad.nonce.to()) - ((eth::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
-			}
-			if (ad.code)
-			{
-				s << "<br/>" << indent << "Code " << std::hex << ad.code.to();
-				if (ad.code.from().size())
-					 s << " (" << ad.code.from() << ")";
-			}
-
-			for (pair<u256, eth::Diff<u256>> const& i: ad.storage)
-			{
-				s << "<br/><code style=\"white-space: pre\">";
-				if (!i.second.from())
-					s << " + ";
-				else if (!i.second.to())
-					s << "XXX";
-				else
-					s << " * ";
-				s << "  </code>";
-
-				if (i.first > u256(1) << 246)
-					s << (h256)i.first;
-				else if (i.first > u160(1) << 150)
-					s << (h160)(u160)i.first;
-				else
-					s << std::hex << i.first;
-
-				if (!i.second.from())
-					s << ": " << std::hex << i.second.to();
-				else if (!i.second.to())
-					s << " (" << std::hex << i.second.from() << ")";
-				else
-					s << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
-			}
-		}
+		s << renderDiff(fs, ts);
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -882,6 +833,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;Minimum gas price: <b>" << formatBalance(info.minGasPrice) << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
+			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			s << "<br/>Pre: <b>" << BlockInfo(m_client->blockChain().block(info.parentHash)).stateRoot << "</b>";
@@ -920,6 +872,13 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data.size())
 					s << eth::memDump(tx.data, 16, true);
 			}
+			s << "<br/><br/>";
+/*			BlockInfo parentBlockInfo();
+			eth::State s = m_client->state();
+			s.resetTo(bi.);
+			s <<*/
+
+			// TODO: Make function: State::fromBlock (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
 		}
 
 
@@ -1002,14 +961,36 @@ void Main::on_data_textChanged()
 {
 	if (isCreation())
 	{
+		string src = ui->data->toPlainText().toStdString();
 		vector<string> errors;
-		auto asmcode = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), false);
-		auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
-		m_data = compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
-		for (auto const& i: errors)
-			cwarn << i;
-
-		ui->code->setHtml("<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre><h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		QString lll;
+		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
+		{
+			m_data = fromHex(src);
+		}
+		else
+		{
+			try
+			{
+				m_data = eth::asBytes(compile(src));
+			}
+			catch (string err)
+			{
+				errors.push_back("Serpent " + err);
+				auto asmcode = eth::compileLLLToAsm(src, false);
+				auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
+				m_data = compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
+				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+			}
+		}
+		QString errs;
+		if (errors.size())
+		{
+			errs = "<h4>Errors</h4>";
+			for (auto const& i: errors)
+				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
+		}
+		ui->code->setHtml(errs + lll + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)state().createGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
