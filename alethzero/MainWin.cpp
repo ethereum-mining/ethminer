@@ -970,22 +970,26 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
+			auto asmcode = eth::compileLLLToAsm(src, false);
+			auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
+			m_data = eth::compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
 #ifdef ETH_SERPENT
-			try
+			if (errors.size())
 			{
-				m_data = eth::asBytes(compile(src));
+				try
+				{
+					m_data = eth::asBytes(compile(src));
+					for (auto& i: errors)
+						i = "(LLL " + i + ")";
+				}
+				catch (string err)
+				{
+					errors.push_back("Serpent " + err);
+				}
 			}
-			catch (string err)
-			{
-				errors.push_back("Serpent " + err);
 #endif
-				auto asmcode = eth::compileLLLToAsm(src, false);
-				auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
-				m_data = compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
+			else
 				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-#ifdef ETH_SERPENT
-			}
-#endif
 		}
 		QString errs;
 		if (errors.size())
