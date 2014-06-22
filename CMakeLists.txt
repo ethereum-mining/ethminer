@@ -168,11 +168,11 @@ else ()
 	if ( SERPENT_ID AND SERPENT_LS )
 		message(STATUS "Found serpent (headers in ${SERPENT_ID}, library ${SERPENT_LS})")
 		add_definitions(-DETH_SERPENT)
+		include_directories(${SERPENT_ID})
 		set( SERPENT_LIBRARIES ${SERPENT_LS} )
 	else ()
 		message(STATUS "Serpent not found. No serpent support.")
 	endif ()
-	include_directories(${SERPENT_ID})
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include

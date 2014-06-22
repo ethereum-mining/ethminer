@@ -970,7 +970,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-#if ETH_SERPENT
+#ifdef ETH_SERPENT
 			try
 			{
 				m_data = eth::asBytes(compile(src));
@@ -983,7 +983,7 @@ void Main::on_data_textChanged()
 				auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
 				m_data = compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
 				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-#if ETH_SERPENT
+#ifdef ETH_SERPENT
 			}
 #endif
 		}
