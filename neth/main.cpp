@@ -1022,7 +1022,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	int _lfields = _lv.size();
 	int _bfields = _bv.size();
 	int maxfields = _sfields + _lfields + _bfields;
-	vector<FIELD*> field(maxfields);
+	vector<FIELD*> field(maxfields + 1);
 
 	int ch;
 	int starty = 6;
@@ -1058,6 +1058,8 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 		set_field_back(field[bi], A_UNDERLINE);
 		starty += 4;
 	}
+
+	// The FORM expects a NULL terminated list of fields
 	field[maxfields] = NULL;
 
 	// Create the form and post it
