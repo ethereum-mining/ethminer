@@ -74,12 +74,16 @@ void interactiveHelp()
 		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
 		<< "    balance  Gives the current balance." << endl
-		<< "    peers  List the peers that are connected" << endl
 		<< "    transact  Execute a given transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
+		<< "    peers  List the peers that are connected" << endl
 		<< "    listAccounts List the accounts on the network." << endl
 		<< "    listContracts List the contracts on the network." << endl
+		<< "    setSecret <secret> Set the secret to the hex secret key." <<endl
+		<< "    setAddress <addr> Set the coinbase (mining payout) address." <<endl
+		<< "    exportConfig <path> Export the config (.RLP) to the path provided." <<endl
+		<< "    importConfig <path> Import the config (.RLP) from the path provided." <<endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -595,6 +599,12 @@ int main(int argc, char** argv)
 					ofs.write(s.str().c_str(), s.str().length());
 					ofs.close();
 				}
+			}
+			else if (cmd == "setSecret")
+			{
+				string hexSec;
+				iss >> hexSec;
+				us = KeyPair(h256(fromHex(argv[++i])));
 			}
 			else if (cmd == "help")
 				interactiveHelp();
