@@ -467,14 +467,14 @@ int main(int argc, char** argv)
 				ClientGuard g(&c);
 				auto const& st = c.state();
 				auto acs = st.addresses();
+				string ss;
 				for (auto const& i: acs)
 				{
 					auto r = i.first;
-					string ss;
 					if (st.addressHasCode(r))
 					{
 						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-						cwarn << ss;
+						cout << ss;
 					}
 				}
 			}
@@ -483,12 +483,16 @@ int main(int argc, char** argv)
 				ClientGuard g(&c);
 				auto const& st = c.state();
 				auto acs = st.addresses();
+				string ss;
 				for (auto const& i: acs)
 				{
 					auto r = i.first;
-					string ss;
-					ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-					cwarn << ss;
+					if (!st.addressHasCode(r))
+					{
+						ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						cout << ss;
+					}
+					
 				}
 			}
 			else if (cmd == "send")
