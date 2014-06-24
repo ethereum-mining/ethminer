@@ -79,7 +79,7 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    listAccounts List the accounts on the network." << endl
-		<< "    listContract List the contracts on the network." << endl
+		<< "    listContracts List the contracts on the network." << endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -470,11 +470,7 @@ int main(int argc, char** argv)
 				for (auto const& i: acs)
 				{
 					auto r = i.first;
-
 					string ss;
-					ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-					// cwarn << ss;
-
 					if (st.addressHasCode(r))
 					{
 						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
@@ -490,7 +486,6 @@ int main(int argc, char** argv)
 				for (auto const& i: acs)
 				{
 					auto r = i.first;
-
 					string ss;
 					ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
 					cwarn << ss;
