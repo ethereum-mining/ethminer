@@ -878,7 +878,9 @@ void Main::on_blocks_currentItemChanged()
 			s.resetTo(bi.);
 			s <<*/
 
-			// TODO: Make function: State::fromBlock (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
+			eth::State s = m_client->blockChain().stateAt(h);
+			StateDiff d = s.pendingDiff(txi);
+			// TODO: Make function: BlockChain::stateAt (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
 		}
 
 
@@ -987,9 +989,9 @@ void Main::on_data_textChanged()
 					errors.push_back("Serpent " + err);
 				}
 			}
-#endif
 			else
 				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+#endif
 		}
 		QString errs;
 		if (errors.size())
