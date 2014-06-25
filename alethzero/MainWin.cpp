@@ -878,8 +878,8 @@ void Main::on_blocks_currentItemChanged()
 			s.resetTo(bi.);
 			s <<*/
 
-			eth::State s = m_client->blockChain().stateAt(h);
-			StateDiff d = s.pendingDiff(txi);
+//			eth::State s = m_client->blockChain().stateAt(h);
+//			StateDiff d = s.pendingDiff(txi);
 			// TODO: Make function: BlockChain::stateAt (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
 		}
 
