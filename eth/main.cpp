@@ -604,7 +604,7 @@ int main(int argc, char** argv)
 			{
 				string hexSec;
 				iss >> hexSec;
-				us = KeyPair(h256(fromHex(argv[++i])));
+				us = KeyPair(h256(fromHex(hexSec)));
 			}
 			else if (cmd == "help")
 				interactiveHelp();
