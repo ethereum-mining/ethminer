@@ -602,9 +602,53 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "setSecret")
 			{
-				string hexSec;
-				iss >> hexSec;
-				us = KeyPair(h256(fromHex(hexSec)));
+				if(iss.peek() != -1) {
+					string hexSec;
+					iss >> hexSec;
+					us = KeyPair(h256(fromHex(hexSec)));
+				} else {
+					cwarn << "Require parameter: setSecret HEXSECRETKEY";
+				}
+			}
+			else if (cmd == "setAddress")
+			{
+				if(iss.peek() != -1) {
+					string hexAddr;
+					iss >> hexAddr;
+					coinbase = h160(fromHex(hexAddr));
+				} else {
+					cwarn << "Require parameter: setAddress HEXADDRESS";
+				}
+			}
+			else if (cmd == "exportConfig")
+			{
+				if(iss.peek() != -1) {
+					string path;
+					iss >> path;
+					RLPStream config(2);
+					config << us.secret() << coinbase;
+					writeFile(path, config.out());
+				} else {
+					cwarn << "Require parameter: exportConfig PATH";
+				}
+			}
+			else if (cmd == "importConfig")
+			{
+				if(iss.peek() != -1) {
+					string path;
+					iss >> path;
+					bytes b = contents(path);
+					if (b.size())
+					{
+						RLP config(b);
+						us = KeyPair(config[0].toHash<Secret>());
+						coinbase = config[1].toHash<Address>();
+					} else {
+						cwarn << path << " has no content!";
+					}
+				} else {
+					cwarn << "Require parameter: importConfig PATH";
+				}
 			}
 			else if (cmd == "help")
 				interactiveHelp();
