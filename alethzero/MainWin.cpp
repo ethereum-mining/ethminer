@@ -990,8 +990,8 @@ void Main::on_data_textChanged()
 				}
 			}
 			else
-				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 #endif
+				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 		}
 		QString errs;
 		if (errors.size())
@@ -1191,6 +1191,8 @@ void Main::on_send_clicked()
 void Main::on_debug_clicked()
 {
 	debugFinished();
+	try
+	{
 	u256 totalReq = value() + fee();
 	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
@@ -1224,6 +1226,11 @@ void Main::on_debug_clicked()
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+	}
+	catch (eth::Exception const& _e)
+	{
+		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(_e.description()));
+	}
 }
 
 void Main::on_create_triggered()
