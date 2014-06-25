@@ -878,7 +878,9 @@ void Main::on_blocks_currentItemChanged()
 			s.resetTo(bi.);
 			s <<*/
 
-			// TODO: Make function: State::fromBlock (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
+//			eth::State s = m_client->blockChain().stateAt(h);
+//			StateDiff d = s.pendingDiff(txi);
+			// TODO: Make function: BlockChain::stateAt (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
 		}
 
 
@@ -987,8 +989,8 @@ void Main::on_data_textChanged()
 					errors.push_back("Serpent " + err);
 				}
 			}
-#endif
 			else
+#endif
 				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 		}
 		QString errs;
@@ -1189,6 +1191,8 @@ void Main::on_send_clicked()
 void Main::on_debug_clicked()
 {
 	debugFinished();
+	try
+	{
 	u256 totalReq = value() + fee();
 	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
@@ -1222,6 +1226,11 @@ void Main::on_debug_clicked()
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+	}
+	catch (eth::Exception const& _e)
+	{
+		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(_e.description()));
+	}
 }
 
 void Main::on_create_triggered()
