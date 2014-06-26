@@ -418,7 +418,8 @@ int main(int argc, char** argv)
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
-				if(iss.peek()!=-1){
+				if (iss.peek()!=-1)
+				{
 					string hexAddr;
 					u256 amount;
 					u256 gasPrice;
@@ -462,9 +463,9 @@ int main(int argc, char** argv)
 						Address dest = h160(fromHex(hexAddr));
 						c.transact(secret, amount, dest, data, gas, gasPrice);
 					}
-				} else {
-					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 				}
+				else
+					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
 			else if (cmd == "listContracts")
 			{
@@ -502,7 +503,8 @@ int main(int argc, char** argv)
 			else if (cmd == "send")
 			{
 				ClientGuard g(&c);
-				if(iss.peek() != -1){
+				if (iss.peek() != -1)
+				{
 					string hexAddr;
 					u256 amount;
 					int size = hexAddr.length();
@@ -513,9 +515,10 @@ int main(int argc, char** argv)
 						if (size > 0)
 							cwarn << "Invalid address length: " << size;
 					}
-					else if (amount < 0) {
+					else if (amount < 0) 
 						cwarn << "Invalid amount: " << amount;
-					} else {
+					else 
+					{
 						auto const& bc = c.blockChain();
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
@@ -525,9 +528,9 @@ int main(int argc, char** argv)
 						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 					}
 					
-				} else {
+				} 
+				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
-				}
 			}
 			else if (cmd == "contract")
 			{
@@ -568,12 +571,10 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is " << minGas;
 					else
-					{
 						c.transact(us.secret(), endowment, init, gas, gasPrice);
-					}
-				} else {
+				} 
+				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
-				}
 			}
 			else if (cmd == "inspect")
 			{
@@ -602,39 +603,43 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "setSecret")
 			{
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					string hexSec;
 					iss >> hexSec;
 					us = KeyPair(h256(fromHex(hexSec)));
-				} else {
+				} 
+				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
-				}
 			}
 			else if (cmd == "setAddress")
 			{
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					string hexAddr;
 					iss >> hexAddr;
 					coinbase = h160(fromHex(hexAddr));
-				} else {
+				} 
+				else
 					cwarn << "Require parameter: setAddress HEXADDRESS";
-				}
 			}
 			else if (cmd == "exportConfig")
 			{
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					string path;
 					iss >> path;
 					RLPStream config(2);
 					config << us.secret() << coinbase;
 					writeFile(path, config.out());
-				} else {
+				} 
+				else
 					cwarn << "Require parameter: exportConfig PATH";
-				}
 			}
 			else if (cmd == "importConfig")
 			{
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					string path;
 					iss >> path;
 					bytes b = contents(path);
@@ -643,12 +648,12 @@ int main(int argc, char** argv)
 						RLP config(b);
 						us = KeyPair(config[0].toHash<Secret>());
 						coinbase = config[1].toHash<Address>();
-					} else {
+					} 
+					else
 						cwarn << path << " has no content!";
-					}
-				} else {
+				} 
+				else
 					cwarn << "Require parameter: importConfig PATH";
-				}
 			}
 			else if (cmd == "help")
 				interactiveHelp();
