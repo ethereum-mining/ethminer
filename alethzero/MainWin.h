@@ -46,6 +46,7 @@ struct WorldState
 {
 	eth::u256 curPC;
 	eth::u256 gas;
+	eth::u256 gasUsed;
 	eth::u256s stack;
 	eth::bytes memory;
 	std::map<eth::u256, eth::u256> storage;
@@ -101,6 +102,7 @@ private slots:
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_returnPressed();
 	void on_debugStep_triggered();
+	void on_debugStepback_triggered();
 	void on_debug_clicked();
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
@@ -131,7 +133,7 @@ private:
 	void debugFinished();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
-	std::string renderDiff(eth::State const& fs, eth::State const& ts) const;
+	std::string renderDiff(eth::StateDiff const& _d) const;
 
 	eth::State const& state() const;
 

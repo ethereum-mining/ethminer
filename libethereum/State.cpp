@@ -37,6 +37,8 @@ using namespace eth;
 
 #define ctrace clog(StateTrace)
 
+static const u256 c_blockReward = 1500 * finney;
+
 OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -57,10 +59,9 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_db(_db),
 	m_state(&m_db),
-	m_ourAddress(_coinbaseAddress)
+	m_ourAddress(_coinbaseAddress),
+	m_blockReward(c_blockReward)
 {
-	m_blockReward = 1500 * finney;
-
 	secp256k1_start();
 
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
@@ -79,6 +80,31 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	assert(m_state.root() == m_previousBlock.stateRoot);
 
 	paranoia("end of normal construction.", true);
+}
+
+State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
+	m_db(_db),
+	m_state(&m_db),
+	m_blockReward(c_blockReward)
+{
+	secp256k1_start();
+
+	// TODO THINK: is this necessary?
+	m_state.init();
+
+	auto b = _bc.block(_h);
+	BlockInfo bi;
+	BlockInfo bip;
+	if (_h)
+		bi.populate(b);
+	if (bi && bi.number)
+		bip.populate(_bc.block(bi.parentHash));
+	if (!_h || !bip)
+		return;
+	m_ourAddress = bi.coinbaseAddress;
+
+	sync(_bc, bi.parentHash, bip);
+	enact(b);
 }
 
 State::State(State const& _s):
@@ -280,16 +306,19 @@ bool State::sync(BlockChain const& _bc)
 	return sync(_bc, _bc.currentHash());
 }
 
-bool State::sync(BlockChain const& _bc, h256 _block)
+bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 {
 	bool ret = false;
 	// BLOCK
-	BlockInfo bi;
+	BlockInfo bi = _bi;
 	try
 	{
-		auto b = _bc.block(_block);
-		bi.populate(b);
-//		bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+		if (!bi)
+		{
+			auto b = _bc.block(_block);
+			bi.populate(b);
+//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+		}
 	}
 	catch (...)
 	{
@@ -328,13 +357,43 @@ bool State::sync(BlockChain const& _bc, h256 _block)
 		resetCurrent();
 
 		// Iterate through in reverse, playing back each of the blocks.
-		for (auto it = chain.rbegin(); it != chain.rend(); ++it)
-			trustedPlayback(_bc.block(*it), true);
+		try
+		{
+			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
+			{
+				auto b = _bc.block(*it);
+				m_currentBlock.populate(b);
+				m_currentBlock.verifyInternals(b);
+				enact(b, BlockInfo());
+				cleanup(true);
+			}
+		}
+		catch (...)
+		{
+			// TODO: Slightly nicer handling? :-)
+			cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+			exit(1);
+		}
 
 		resetCurrent();
 		ret = true;
 	}
 	return ret;
+}
+
+u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc)
+{
+	// Check family:
+	BlockInfo biParent(_bc.block(_bi.parentHash));
+	_bi.verifyParent(biParent);
+	BlockInfo biGrandParent;
+	if (biParent.number)
+		biGrandParent.populate(_bc.block(biParent.parentHash));
+	sync(_bc, _bi.parentHash);
+	resetCurrent();
+	m_currentBlock = _bi;
+	m_previousBlock = biParent;
+	return enact(_block, biGrandParent);
 }
 
 map<Address, u256> State::addresses() const
@@ -366,7 +425,7 @@ void State::resetCurrent()
 	// TODO: check.
 
 	m_lastTx = m_db;
-	m_state.setRoot(m_currentBlock.stateRoot);
+	m_state.setRoot(m_previousBlock.stateRoot);
 
 	paranoia("begin resetCurrent", true);
 }
@@ -448,33 +507,16 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 	return ret;
 }
 
-u256 State::playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit)
+u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
 {
-	resetCurrent();
-	m_currentBlock = _bi;
-	m_previousBlock = _parent;
-	return playbackRaw(_block, _grandParent, _fullCommit);
-}
+	// m_currentBlock is assumed to be prepopulated and reset.
 
-u256 State::trustedPlayback(bytesConstRef _block, bool _fullCommit)
-{
-	try
-	{
-		m_currentBlock.populate(_block);
-		m_currentBlock.verifyInternals(_block);
-		return playbackRaw(_block, BlockInfo(), _fullCommit);
-	}
-	catch (...)
-	{
-		// TODO: Slightly nicer handling? :-)
-		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-		exit(1);
-	}
-}
-
-u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit)
-{
-	// m_currentBlock is assumed to be prepopulated.
+#if !RELEASE
+	BlockInfo bi(_block);
+	assert(m_previousBlock.hash == bi.parentHash);
+	assert(m_currentBlock.parentHash == bi.parentHash);
+	assert(rootHash() == m_previousBlock.stateRoot);
+#endif
 
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
@@ -503,15 +545,12 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
 			throw InvalidTransactionGasUsed();
-		if (_fullCommit)
-		{
-			bytes k = rlp(i);
-			transactionManifest.insert(&k, tr.data());
-		}
+		bytes k = rlp(i);
+		transactionManifest.insert(&k, tr.data());
 		++i;
 	}
 
-	if (transactionManifest.root() != m_currentBlock.transactionsRoot)
+	if (m_currentBlock.transactionsRoot && transactionManifest.root() != m_currentBlock.transactionsRoot)
 	{
 		cwarn << "Bad transactions state root!";
 		throw InvalidTransactionStateRoot();
@@ -521,7 +560,6 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
-	// TODO: Check for uniqueness of uncles.
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	for (auto const& i: RLP(_block)[2])
@@ -545,7 +583,7 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
-	if (m_currentBlock.stateRoot != rootHash())
+	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
 		cwarn << "Bad state root!";
 		cnote << "Given to be:" << m_currentBlock.stateRoot;
@@ -558,6 +596,11 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 		throw InvalidStateRoot();
 	}
 
+	return tdIncrease;
+}
+
+void State::cleanup(bool _fullCommit)
+{
 	if (_fullCommit)
 	{
 		paranoia("immediately before database commit", true);
@@ -574,8 +617,6 @@ u256 State::playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, boo
 	}
 
 	resetCurrent();
-
-	return tdIncrease;
 }
 
 void State::uncommitToMine()
@@ -614,7 +655,8 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 		s.m_currentBlock.populate(&block.out(), false);	// don't check nonce for this since we haven't mined it yet.
 		s.m_currentBlock.verifyInternals(&block.out());
-		s.playbackRaw(&block.out(), BlockInfo(), false);
+		s.enact(&block.out(), BlockInfo());
+		s.cleanup(false);
 		return true;
 	}
 	catch (Exception const& e)
@@ -813,7 +855,7 @@ u256 State::storage(Address _id, u256 _memory) const
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
-	TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());			// promise we won't change the overlay! :)
+	TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());			// promise we won't change the overlay! :)
 	string payload = memdb.at(_memory);
 	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
 	it->second.setStorage(_memory, ret);
@@ -829,9 +871,9 @@ map<u256, u256> State::storage(Address _id) const
 	if (it != m_cache.end())
 	{
 		// Pull out all values from trie storage.
-		if (it->second.oldRoot())
+		if (it->second.baseRoot())
 		{
-			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.oldRoot());		// promise we won't alter the overlay! :)
+			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
 			for (auto const& i: memdb)
 				ret[i.first] = RLP(i.second).toInt<u256>();
 		}

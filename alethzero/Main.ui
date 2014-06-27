@@ -165,6 +165,7 @@
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
+    <addaction name="debugStepback"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1428,6 +1429,14 @@ font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New</string>
   <action name="loadJS">
    <property name="text">
     <string>&amp;Load Javascript...</string>
+   </property>
+  </action>
+  <action name="debugStepback">
+   <property name="text">
+    <string>Single Step &amp;Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+F10</string>
    </property>
   </action>
  </widget>
