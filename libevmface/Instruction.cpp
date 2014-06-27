@@ -21,7 +21,7 @@
 
 #include "Instruction.h"
 
-#include "CommonEth.h"
+#include <libethential/Common.h>
 using namespace std;
 using namespace eth;
 

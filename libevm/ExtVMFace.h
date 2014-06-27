@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethsupport/Common.h>
+#include <libethential/Common.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 

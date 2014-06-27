@@ -22,8 +22,8 @@
  */
 
 #include "FileSystem.h"
-#include "Common.h"
-#include "Log.h"
+#include <libethential/Common.h>
+#include <libethential/Log.h>
 
 #ifdef _WIN32
 #include <shlobj.h>

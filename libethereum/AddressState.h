@@ -21,8 +21,9 @@
 
 #pragma once
 
-#include <libethsupport/Common.h>
-#include <libethsupport/RLP.h>
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/SHA3.h>
 
 namespace eth
 {

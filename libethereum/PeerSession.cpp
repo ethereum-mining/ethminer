@@ -22,7 +22,7 @@
 #include "PeerSession.h"
 
 #include <chrono>
-#include <libethsupport/Common.h>
+#include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "PeerServer.h"

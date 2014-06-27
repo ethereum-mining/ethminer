@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "RLP.h"
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
 
 namespace eth
 {

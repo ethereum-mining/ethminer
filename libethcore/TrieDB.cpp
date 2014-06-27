@@ -14,45 +14,22 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MemoryDB.h
+/** @file TrieDB.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
-
-#include <memory>
-#include "Common.h"
-#include "MemoryDB.h"
-#include "Log.h"
-namespace ldb = leveldb;
+#include <libethential/Common.h>
+#include "TrieDB.h"
+using namespace std;
+using namespace eth;
 
 namespace eth
 {
 
-class OverlayDB: public MemoryDB
-{
-public:
-	OverlayDB(ldb::DB* _db = nullptr): m_db(_db) {}
-	~OverlayDB();
+#if !ETH_LANGUAGES
 
-	ldb::DB* db() const { return m_db.get(); }
-	void setDB(ldb::DB* _db, bool _clearOverlay = true);
+const h256 c_shaNull = sha3(rlp(""));
 
-	void commit();
-	void rollback();
-
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void kill(h256 _h);
-
-private:
-	using MemoryDB::clear;
-
-	std::shared_ptr<ldb::DB> m_db;
-
-	ldb::ReadOptions m_readOptions;
-	ldb::WriteOptions m_writeOptions;
-};
-
+#endif
 }
