@@ -360,6 +360,7 @@ void Main::writeSettings()
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
+	s.setValue("url", ui->urlEdit->text());
 
 	if (m_client->peerServer())
 	{
