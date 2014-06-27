@@ -418,7 +418,7 @@ int main(int argc, char** argv)
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
-				if (iss.peek()!=-1)
+				if (iss.peek() != -1)
 				{
 					string hexAddr;
 					u256 amount;
@@ -618,7 +618,10 @@ int main(int argc, char** argv)
 				{
 					string hexAddr;
 					iss >> hexAddr;
-					coinbase = h160(fromHex(hexAddr));
+					if (hexAddr.length() != 40)
+						cwarn << "Invalid address length: " << hexAddr.length();
+					else
+						coinbase = h160(fromHex(hexAddr));
 				} 
 				else
 					cwarn << "Require parameter: setAddress HEXADDRESS";
@@ -650,7 +653,7 @@ int main(int argc, char** argv)
 						coinbase = config[1].toHash<Address>();
 					} 
 					else
-						cwarn << path << " has no content!";
+						cwarn << path << "has no content!";
 				} 
 				else
 					cwarn << "Require parameter: importConfig PATH";
