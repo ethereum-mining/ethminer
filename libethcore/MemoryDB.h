@@ -22,10 +22,10 @@
 #pragma once
 
 #include <map>
-#include "Common.h"
-#include "FixedHash.h"
-#include "RLP.h"
-#include "Log.h"
+#include <libethential/Common.h>
+#include <libethential/FixedHash.h>
+#include <libethential/Log.h>
+#include <libethential/RLP.h>
 
 namespace eth
 {

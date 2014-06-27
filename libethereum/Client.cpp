@@ -24,7 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethsupport/Common.h>
+#include <libethential/Common.h>
 #include "Defaults.h"
 #include "PeerServer.h"
 using namespace std;

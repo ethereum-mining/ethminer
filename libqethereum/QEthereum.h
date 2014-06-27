@@ -2,7 +2,7 @@
 
 #include <QtCore/QAbstractListModel>
 #include <QtQml/QtQml>
-#include <libethsupport/CommonIO.h>
+#include <libethential/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
 namespace eth {

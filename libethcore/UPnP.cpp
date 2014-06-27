@@ -20,14 +20,16 @@
  * @date 2014
  */
 
+#if !ETH_LANGUAGES
+
 #include <stdio.h>
 #include <string.h>
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
-#include "Exceptions.h"
-#include "Common.h"
-#include "Log.h"
+#include <libethential/Exceptions.h>
+#include <libethential/Common.h>
+#include <libethential/Log.h>
 #include "UPnP.h"
 using namespace std;
 using namespace eth;
@@ -167,3 +169,5 @@ void UPnP::removeRedirect(int port)
 	UPNP_DeletePortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, "TCP", NULL);
 	m_reg.erase(port);
 }
+
+#endif
