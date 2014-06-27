@@ -868,9 +868,25 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data.size())
 					s << eth::memDump(tx.data, 16, true);
 			}
-			s << "<br/><br/>";
+			auto st = eth::State(m_client->state().db(), m_client->blockChain(), h);
+			s << renderDiff(st.pendingDiff(txi));
 
-			s << renderDiff(eth::State(m_client->state().db(), m_client->blockChain(), h).pendingDiff(txi));
+			m_executiveState = st.fromPending(txi);
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			Transaction t = st.pending()[txi];
+			auto r = t.rlp();
+
+			m_pcWarp.clear();
+			m_history.clear();
+			bool done = m_currentExecution->setup(&r);
+			if (!done)
+			{
+				for (; !done; done = m_currentExecution->go(1))
+					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
+				initDebugger();
+				updateDebugger();
+			}
+			m_currentExecution.reset();
 		}
 
 
@@ -1200,8 +1216,8 @@ void Main::on_debug_clicked()
 			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 			t.sign(s);
 			auto r = t.rlp();
-			m_currentExecution->setup(&r);
 
+			m_currentExecution->setup(&r);
 			m_pcWarp.clear();
 			m_history.clear();
 			bool ok = true;
@@ -1234,6 +1250,11 @@ void Main::on_debugStep_triggered()
 	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
 }
 
+void Main::on_debugStepback_triggered()
+{
+	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
+}
+
 void Main::debugFinished()
 {
 	m_pcWarp.clear();
@@ -1245,6 +1266,7 @@ void Main::debugFinished()
 	ui->debugStateInfo->setText("");
 //	ui->send->setEnabled(true);
 	ui->debugStep->setEnabled(false);
+	ui->debugStepback->setEnabled(false);
 	ui->debugPanel->setEnabled(false);
 }
 
@@ -1252,6 +1274,7 @@ void Main::initDebugger()
 {
 //	ui->send->setEnabled(false);
 	ui->debugStep->setEnabled(true);
+	ui->debugStepback->setEnabled(true);
 	ui->debugPanel->setEnabled(true);
 	ui->debugCode->setEnabled(false);
 	ui->debugTimeline->setMinimum(0);
