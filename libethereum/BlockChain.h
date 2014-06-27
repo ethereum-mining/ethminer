@@ -22,7 +22,7 @@
 #pragma once
 
 #include <mutex>
-#include <libethsupport/Log.h>
+#include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 #include "AddressState.h"

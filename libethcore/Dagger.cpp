@@ -19,12 +19,14 @@
  * @date 2014
  */
 
+#if !ETH_LANGUAGES
+
 #include <boost/detail/endian.hpp>
 #include <chrono>
 #include <array>
 #include <random>
-#include <libethsupport/CryptoHeaders.h>
-#include <libethsupport/Common.h>
+#include <libethcore/CryptoHeaders.h>
+#include <libethential/Common.h>
 #include "Dagger.h"
 using namespace std;
 using namespace std::chrono;
@@ -179,3 +181,5 @@ h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
 
 #endif
 }
+
+#endif

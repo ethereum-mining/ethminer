@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libethsupport/Exceptions.h>
+#include <libethential/Exceptions.h>
 
 namespace eth
 {

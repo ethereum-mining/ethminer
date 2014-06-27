@@ -23,10 +23,10 @@
 #pragma once
 
 #include <string>
-#include <libethsupport/Common.h>
-#include <libethsupport/CommonIO.h>
-#include <libethsupport/CommonData.h>
-#include <libethsupport/FixedHash.h>
+#include <libethential/Common.h>
+#include <libethential/CommonIO.h>
+#include <libethential/CommonData.h>
+#include <libethential/FixedHash.h>
 #include <libethcore/CommonEth.h>
 
 namespace eth

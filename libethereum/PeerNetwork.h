@@ -27,8 +27,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
-#include <libethsupport/Common.h>
-#include <libethsupport/Log.h>
+#include <libethential/Common.h>
+#include <libethential/Log.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 

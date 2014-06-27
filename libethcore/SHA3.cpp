@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FixedHash.cpp
+/** @file SHA3.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "FixedHash.h"
+#include "SHA3.h"
 #include "CryptoHeaders.h"
 
 using namespace std;
@@ -65,3 +65,4 @@ h256 eth::sha3(bytesConstRef _input)
 	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
 }
+

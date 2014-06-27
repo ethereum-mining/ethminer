@@ -20,9 +20,9 @@
  * Ethereum client.
  */
 
-#include <libethsupport/Log.h>
-#include <libethsupport/Common.h>
-#include <libethsupport/CommonData.h>
+#include <libethential/Log.h>
+#include <libethential/Common.h>
+#include <libethential/CommonData.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;

@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <libethsupport/Common.h>
-#include "Exceptions.h"
+#include <libethential/Common.h>
+#include <libethential/Exceptions.h>
 
 namespace boost { namespace spirit { class utree; } }
 namespace sp = boost::spirit;

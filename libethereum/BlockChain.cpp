@@ -22,9 +22,9 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include <libethsupport/Common.h>
-#include <libethsupport/RLP.h>
-#include <libethsupport/FileSystem.h>
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/Dagger.h>
 #include <libethcore/BlockInfo.h>

@@ -7,9 +7,9 @@
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <libethsupport/FileSystem.h>
+#include <libethcore/FileSystem.h>
 #include <libethcore/Dagger.h>
-#include <libethcore/Instruction.h>
+#include <libevmface/Instruction.h>
 #include <libethereum/Client.h>
 #include <libethereum/PeerServer.h>
 #include "BuildInfo.h"

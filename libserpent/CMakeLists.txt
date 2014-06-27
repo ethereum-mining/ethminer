@@ -4,7 +4,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-set(EXECUTABLE ethsupport)
+set(EXECUTABLE serpent)
 
 if(APPLE)
 	# set(CMAKE_INSTALL_PREFIX ../lib)
@@ -18,12 +18,10 @@ endif()
 file(GLOB HEADERS "*.h") 
 
 include_directories(..)
-include_directories(${MINIUPNPC_ID})
-include_directories(${LEVELDB_ID})
 
-target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
+target_link_libraries(${EXECUTABLE} ethential)
+target_link_libraries(${EXECUTABLE} evmface)
+target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} gmp)
 
 

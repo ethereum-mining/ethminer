@@ -25,7 +25,7 @@
 #include <mutex>
 #include <list>
 #include <atomic>
-#include <libethsupport/Common.h>
+#include <libethential/Common.h>
 #include <libethcore/Dagger.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"

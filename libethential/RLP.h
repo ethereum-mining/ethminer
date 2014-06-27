@@ -28,10 +28,10 @@
 #include <exception>
 #include <iostream>
 #include <iomanip>
-#include "vector_ref.h"
-#include "Common.h"
-#include "Exceptions.h"
-#include "FixedHash.h"
+#include <libethential/vector_ref.h>
+#include <libethential/Common.h>
+#include <libethential/Exceptions.h>
+#include <libethential/FixedHash.h>
 
 namespace eth
 {
