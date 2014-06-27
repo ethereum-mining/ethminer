@@ -40,7 +40,7 @@ u256 Executive::gasUsed() const
 	return m_t.gas - m_endGas;
 }
 
-void Executive::setup(bytesConstRef _rlp)
+bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
 	m_t = Transaction(_rlp);
@@ -95,12 +95,12 @@ void Executive::setup(bytesConstRef _rlp)
 	m_s.subBalance(m_sender, cost);
 
 	if (m_t.isCreation())
-		create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
+		return create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
 	else
-		call(m_t.receiveAddress, m_sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, m_sender);
+		return call(m_t.receiveAddress, m_sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, m_sender);
 }
 
-void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
+bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
 {
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
@@ -110,12 +110,16 @@ void Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_vm = new VM(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
+		return false;
 	}
 	else
+	{
 		m_endGas = _gas;
+		return true;
+	}
 }
 
-void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
+bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 	while (m_s.addressInUse(m_newAddress))
@@ -127,6 +131,7 @@ void Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// Execute _init.
 	m_vm = new VM(_gas);
 	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	return _init.empty();
 }
 
 bool Executive::go(uint64_t _steps)

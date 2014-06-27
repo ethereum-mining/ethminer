@@ -101,6 +101,7 @@ private slots:
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_returnPressed();
 	void on_debugStep_triggered();
+	void on_debugStepback_triggered();
 	void on_debug_clicked();
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
