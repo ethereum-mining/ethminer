@@ -951,7 +951,12 @@ int main(int argc, char** argv)
 
 		// Mining flag
 		if (c.isMining())
+		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
+			eth::MineProgress p = c.miningProgress();
+			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
+			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
+		}
 		else
 			mvwprintw(consolewin, qheight - 1, width / 4 - 12, "Mining OFF");
 
