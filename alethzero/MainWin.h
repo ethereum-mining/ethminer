@@ -46,6 +46,7 @@ struct WorldState
 {
 	eth::u256 curPC;
 	eth::u256 gas;
+	eth::u256 gasUsed;
 	eth::u256s stack;
 	eth::bytes memory;
 	std::map<eth::u256, eth::u256> storage;

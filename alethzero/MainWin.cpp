@@ -876,13 +876,13 @@ void Main::on_blocks_currentItemChanged()
 			Transaction t = st.pending()[txi];
 			auto r = t.rlp();
 
-			m_pcWarp.clear();
-			m_history.clear();
+			debugFinished();
 			bool done = m_currentExecution->setup(&r);
 			if (!done)
 			{
+				auto startGas = m_currentExecution->vm().gas();
 				for (; !done; done = m_currentExecution->go(1))
-					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
+					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), startGas - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
 				initDebugger();
 				updateDebugger();
 			}
@@ -1221,9 +1221,10 @@ void Main::on_debug_clicked()
 			m_pcWarp.clear();
 			m_history.clear();
 			bool ok = true;
+			auto gasBegin = m_currentExecution->vm().gas();
 			while (ok)
 			{
-				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
+				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), gasBegin - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
 				ok = !m_currentExecution->go(1);
 			}
 			initDebugger();
