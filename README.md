@@ -12,7 +12,7 @@ See the [Wiki](https://github.com/ethereum/cpp-ethereum/wiki) for build instruct
 
 ### Testing
 
-To run the tests, make sure you clone the tests repository from github.com/ethereum to tests is a sibling to cpp-ethereum-build.
+To run the tests, make sure you clone the tests repository from github.com/ethereum to tests as a sibling to cpp-ethereum.
 
 ### Yet To Do
 
