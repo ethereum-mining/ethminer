@@ -131,7 +131,7 @@ private:
 	void debugFinished();
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
-	std::string renderDiff(eth::State const& fs, eth::State const& ts) const;
+	std::string renderDiff(eth::StateDiff const& _d) const;
 
 	eth::State const& state() const;
 

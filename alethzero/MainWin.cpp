@@ -674,17 +674,12 @@ void Main::refresh(bool _override)
 	}
 }
 
-string Main::renderDiff(eth::State const& fs, eth::State const& ts) const
+string Main::renderDiff(eth::StateDiff const& _d) const
 {
 	stringstream s;
 
-	eth::StateDiff d = fs.diff(ts);
-
-	s << "Pre: " << fs.rootHash() << "<br/>";
-	s << "Post: <b>" << ts.rootHash() << "</b>";
-
 	auto indent = "<code style=\"white-space: pre\">     </code>";
-	for (auto const& i: d.accounts)
+	for (auto const& i: _d.accounts)
 	{
 		s << "<hr/>";
 
@@ -773,9 +768,10 @@ void Main::on_transactionQueue_currentItemChanged()
 		}
 		s << "<hr/>";
 
-		eth::State fs = m_client->postState().fromPending(i);
-		eth::State ts = m_client->postState().fromPending(i + 1);
-		s << renderDiff(fs, ts);
+//		s << "Pre: " << fs.rootHash() << "<br/>";
+//		s << "Post: <b>" << ts.rootHash() << "</b>";
+
+		s << renderDiff(m_client->postState().pendingDiff(i));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -873,14 +869,8 @@ void Main::on_blocks_currentItemChanged()
 					s << eth::memDump(tx.data, 16, true);
 			}
 			s << "<br/><br/>";
-/*			BlockInfo parentBlockInfo();
-			eth::State s = m_client->state();
-			s.resetTo(bi.);
-			s <<*/
 
-//			eth::State s = m_client->blockChain().stateAt(h);
-//			StateDiff d = s.pendingDiff(txi);
-			// TODO: Make function: BlockChain::stateAt (grabs block's parent's stateRoot, playback()'s transactions), then use State::fromPending(). Maybe even make a State::pendingDiff().
+			s << renderDiff(eth::State(m_client->state().db(), m_client->blockChain(), h).pendingDiff(txi));
 		}
 
 
