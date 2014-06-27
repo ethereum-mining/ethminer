@@ -14,19 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TrieDB.cpp
+/** @file FixedHash.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
-#include "TrieDB.h"
+#include "FixedHash.h"
+
 using namespace std;
 using namespace eth;
-
-namespace eth
-{
-
-const h256 c_shaNull = sha3(rlp(""));
-
-}

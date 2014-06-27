@@ -34,8 +34,8 @@
 #include <set>
 #include <chrono>
 #include <thread>
-#include <libethsupport/Common.h>
-#include <libethsupport/UPnP.h>
+#include <libethential/Common.h>
+#include <libethcore/UPnP.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"

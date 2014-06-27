@@ -23,10 +23,11 @@
 
 #include <map>
 #include <memory>
-#include "Common.h"
+#include <libethential/Common.h>
+#include <libethential/Log.h>
+#include <libethcore/SHA3.h>
 #include "MemoryDB.h"
 #include "OverlayDB.h"
-#include "Log.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 

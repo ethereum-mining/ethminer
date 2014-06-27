@@ -5,11 +5,8 @@ set(CMAKE_AUTOMOC ON)
 
 cmake_policy(SET CMP0015 NEW)
 
-# Default HEADLESS to 0.
 set(HEADLESS CACHE BOOL 0)
-#if ("x${HEADLESS}" STREQUAL "x")
-#	set(HEADLESS 0)
-#endif ()
+set(LANGUAGES CACHE BOOL 0)
 
 if ("x${PARANOIA}" STREQUAL "x")
     if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
@@ -33,6 +30,10 @@ endif ()
 
 if (VMTRACE)
     add_definitions(-DETH_VMTRACE)
+endif ()
+
+if (LANGUAGES)
+	add_definitions(-DETH_LANGUAGES)
 endif ()
 
 # Default TARGET_PLATFORM to "linux".
@@ -271,16 +272,18 @@ endif()
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-add_subdirectory(secp256k1)
-add_subdirectory(libethsupport)
-add_subdirectory(libethcore)
+add_subdirectory(libethential)
+add_subdirectory(libevmface)
 add_subdirectory(liblll)
+add_subdirectory(libserpent)
+if (NOT LANGUAGES)
+add_subdirectory(secp256k1)
+add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(test)
@@ -297,6 +300,7 @@ if (NOT HEADLESS)
 	add_subdirectory(libqethereum)
 	add_subdirectory(alethzero)
 	add_subdirectory(walleth)
+endif ()
 endif ()
 
 enable_testing()

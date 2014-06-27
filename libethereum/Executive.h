@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethsupport/Log.h>
+#include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include "Transaction.h"
 

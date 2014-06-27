@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include "Common.h"
+#include <libethential/Common.h>
 #include "OverlayDB.h"
 using namespace std;
 using namespace eth;

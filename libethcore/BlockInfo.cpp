@@ -19,9 +19,11 @@
  * @date 2014
  */
 
-#include <libethsupport/Common.h>
-#include <libethsupport/RLP.h>
-#include <libethsupport/TrieDB.h>
+#if !ETH_LANGUAGES
+
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
@@ -189,3 +191,5 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 			throw InvalidNumber();
 	}
 }
+
+#endif

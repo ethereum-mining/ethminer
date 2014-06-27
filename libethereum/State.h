@@ -24,9 +24,9 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <libethsupport/Common.h>
-#include <libethsupport/RLP.h>
-#include <libethsupport/TrieDB.h>
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/TrieDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Dagger.h>
