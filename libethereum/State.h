@@ -113,6 +113,9 @@ public:
 	/// Construct state object.
 	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB());
 
+	/// Construct state object from arbitrary point in blockchain.
+	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
+
 	/// Copy state object.
 	State(State const& _s);
 
@@ -127,6 +130,7 @@ public:
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
 	static OverlayDB openDB(std::string _path, bool _killExisting = false);
 	static OverlayDB openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
@@ -153,13 +157,6 @@ public:
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
 	bytes const& blockData() const { return m_currentBytes; }
-
-	/// Sync our state with the block chain.
-	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
-	bool sync(BlockChain const& _bc);
-
-	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 _blockHash);
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
@@ -232,11 +229,11 @@ public:
 	/// If (_i == pending().size()) returns the final state of the block, prior to rewards.
 	State fromPending(unsigned _i) const;
 
-	/// Execute all transactions within a given block.
-	/// @returns the additional total difficulty.
-	/// If the _grandParent is passed, it will check the validity of each of the uncles.
-	/// This might throw.
-	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent, bool _fullCommit);
+	/// @returns the StateDiff caused by the pending transaction of index @a _i.
+	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1)); }
+
+	/// @return the difference between this state (origin) and @a _c (destination).
+	StateDiff diff(State const& _c) const;
 
 	/// Get the fee associated for a transaction with the given data.
 	u256 txGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_txGas + _gas; }
@@ -247,8 +244,26 @@ public:
 	/// Get the fee associated for a normal transaction.
 	u256 callGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
 
-	/// @return the difference between this state (origin) and @a _c (destination).
-	StateDiff diff(State const& _c) const;
+	/// Sync our state with the block chain.
+	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
+	bool sync(BlockChain const& _bc);
+
+	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
+
+	/// Execute all transactions within a given block.
+	/// @warning We must already have been sync()ed with said block.
+	/// @returns the additional total difficulty.
+	/// If the @a _grandParent is passed, it will check the validity of each of the uncles.
+	/// @throws if there are any validation errors.
+	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent = BlockInfo());
+
+	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
+
+	/// Returns back to a pristine state after having done a playback.
+	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
+	/// the block since all state changes are ultimately reversed.
+	void cleanup(bool _fullCommit);
 
 private:
 	/// Undo the changes to the state for committing to mine.
@@ -266,13 +281,9 @@ private:
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
 
-	/// Execute the given block on our previous block. This will set up m_currentBlock first, then call the other playback().
-	/// Any failure will be critical.
-	u256 trustedPlayback(bytesConstRef _block, bool _fullCommit);
-
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 playbackRaw(bytesConstRef _block, BlockInfo const& _grandParent, bool _fullCommit);
+	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo());
 
 	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
@@ -342,10 +353,10 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
-				s.append(i.second.oldRoot(), false, true);
+				s.append(i.second.baseRoot(), false, true);
 			else
 			{
-				TrieDB<h256, DB> storageDB(&_db, i.second.oldRoot());
+				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
 				for (auto const& j: i.second.storage())
 					if (j.second)
 						storageDB.insert(j.first, rlp(j.second));

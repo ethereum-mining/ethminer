@@ -55,6 +55,7 @@ typedef std::map<h256, BlockDetails> BlockDetailsHash;
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
 
+class State;
 class OverlayDB;
 
 class AlreadyHaveBlock: public std::exception {};
