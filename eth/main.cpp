@@ -446,8 +446,6 @@ int main(int argc, char** argv)
 						if (size > 0)
 							cwarn << "Invalid address length: " << size;
 					}
-					else if (amount < 0)
-						cwarn << "Invalid amount: " << amount;
 					else if (gasPrice < info.minGasPrice)
 						cwarn << "Minimum gas price is " << info.minGasPrice;
 					else if (gas < minGas)
@@ -515,8 +513,6 @@ int main(int argc, char** argv)
 						if (size > 0)
 							cwarn << "Invalid address length: " << size;
 					}
-					else if (amount < 0) 
-						cwarn << "Invalid amount: " << amount;
 					else 
 					{
 						auto const& bc = c.blockChain();
