@@ -46,7 +46,7 @@ public:
 	u256 const& nonce() const { return m_nonce; }
 	void incNonce() { m_nonce++; }
 
-	h256 oldRoot() const { return m_storageRoot; }
+	h256 baseRoot() const { return m_storageRoot; }
 	std::map<u256, u256> const& storage() const { return m_storageOverlay; }
 	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; }
 

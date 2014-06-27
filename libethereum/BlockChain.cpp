@@ -234,19 +234,11 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	try
 #endif
 	{
-		// Check family:
-		BlockInfo biParent(block(bi.parentHash));
-		bi.verifyParent(biParent);
-
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
-		State s(bi.coinbaseAddress, _db);
-		s.sync(*this, bi.parentHash);
-
 		// Get total difficulty increase and update state, checking it.
-		BlockInfo biGrandParent;
-		if (pd.number)
-			biGrandParent.populate(block(pd.parent));
-		auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
+		State s(bi.coinbaseAddress, _db);
+		auto tdIncrease = s.enactOn(&_block, bi, *this);
+		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
 
 #if ETH_PARANOIA
