@@ -27,10 +27,8 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#ifdef ETH_SERPENT
-#include <serpent/funcs.h>
-#include <serpent/util.h>
-#endif
+#include <libserpent/funcs.h>
+#include <libserpent/util.h>
 #include <libethcore/Dagger.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
@@ -550,7 +548,8 @@ void Main::refreshBlockChain()
 	for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
 	{
 		auto d = bc.details(h);
-		if (blockMatch(filter, d, h, bc))
+		auto bm = blockMatch(filter, d, h, bc);
+		if (bm)
 		{
 			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
 			auto hba = QByteArray((char const*)h.data(), h.size);
@@ -562,7 +561,7 @@ void Main::refreshBlockChain()
 		for (auto const& i: RLP(bc.block(h))[1])
 		{
 			Transaction t(i[0].data());
-			if (transactionMatch(filter, t))
+			if (bm || transactionMatch(filter, t))
 			{
 				QString s = t.receiveAddress ?
 					QString("    %2 %5> %3: %1 [%4]")
@@ -855,9 +854,9 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas << "</b>";
-			s << "<br/>V: <b>" << hex << (int)tx.vrs.v << "</b>";
-			s << "<br/>R: <b>" << hex << tx.vrs.r << "</b>";
-			s << "<br/>S: <b>" << hex << tx.vrs.s << "</b>";
+			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.vrs.v << "</b>";
+			s << "<br/>R: <b>" << hex << nouppercase << tx.vrs.r << "</b>";
+			s << "<br/>S: <b>" << hex << nouppercase << tx.vrs.s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(false) << "</b>";
 			if (tx.isCreation())
 			{
@@ -982,7 +981,6 @@ void Main::on_data_textChanged()
 			auto asmcode = eth::compileLLLToAsm(src, false);
 			auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
 			m_data = eth::compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
-#ifdef ETH_SERPENT
 			if (errors.size())
 			{
 				try
@@ -997,7 +995,6 @@ void Main::on_data_textChanged()
 				}
 			}
 			else
-#endif
 				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 		}
 		QString errs;

@@ -1,19 +1,14 @@
 cmake_policy(SET CMP0015 NEW)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
-
 aux_source_directory(. SRC_LIST)
 
 set(EXECUTABLE ethcore)
 
-if(APPLE)
-	# set(CMAKE_INSTALL_PREFIX ../lib)
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
-else()
-	add_library(${EXECUTABLE} ${SRC_LIST})
-endif()
+# set(CMAKE_INSTALL_PREFIX ../lib)
+add_library(${EXECUTABLE} SHARED ${SRC_LIST})
+
 if (UNIX)
-    FIND_PACKAGE(Boost 1.53 REQUIRED COMPONENTS thread date_time system filesystem program_options signals serialization chrono unit_test_framework locale)
+	FIND_PACKAGE(Boost 1.53 REQUIRED COMPONENTS filesystem)
 endif()
 file(GLOB HEADERS "*.h") 
 

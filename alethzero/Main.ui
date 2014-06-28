@@ -162,10 +162,11 @@
      <string>Deb&amp;ug</string>
     </property>
     <addaction name="debugStep"/>
+    <addaction name="debugStepback"/>
+    <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
-    <addaction name="debugStepback"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1432,6 +1433,9 @@ font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New</string>
    </property>
   </action>
   <action name="debugStepback">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Single Step &amp;Backwards</string>
    </property>

@@ -10,26 +10,26 @@ set(LANGUAGES CACHE BOOL 0)
 
 if ("x${PARANOIA}" STREQUAL "x")
     if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-        set(PARANOIA 1)
+		set(PARANOIA CACHE BOOL 1)
     else ()
-        set(PARANOIA 0)
+		set(PARANOIA CACHE BOOL 0)
     endif ()
-endif ()
-
-if (PARANOIA)
-    add_definitions(-DETH_PARANOIA)
 endif ()
 
 if ("x${VMTRACE}" STREQUAL "x")
     if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-        set(VMTRACE 1)
+		set(VMTRACE CACHE BOOL 1)
     else ()
-        set(VMTRACE 0)
+		set(VMTRACE CACHE BOOL 0)
     endif ()
 endif ()
 
+if (PARANOIA)
+	add_definitions(-DETH_PARANOIA)
+endif ()
+
 if (VMTRACE)
-    add_definitions(-DETH_VMTRACE)
+	add_definitions(-DETH_VMTRACE)
 endif ()
 
 if (LANGUAGES)
@@ -87,11 +87,11 @@ else ()
 endif ()
 
 # Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
+set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC -DSHAREDLIB")
+set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
 
 #add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
 #add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
@@ -160,20 +160,9 @@ else ()
 	# Always "found", given last block.
 	include_directories(${CRYPTOPP_INCLUDE_DIR})
 
-	if(NOT APPLE)
+	if (NOT APPLE)
 		link_directories(${CRYPTOPP_LIBRARIES})
 	endif()
-
-	find_path(SERPENT_ID NAMES serpent/funcs.h serpent/util.h PATHS . ..)
-	find_library(SERPENT_LS NAMES serpent PATHS ../serpent)
-	if ( SERPENT_ID AND SERPENT_LS )
-		message(STATUS "Found serpent (headers in ${SERPENT_ID}, library ${SERPENT_LS})")
-		add_definitions(-DETH_SERPENT)
-		include_directories(${SERPENT_ID})
-		set( SERPENT_LIBRARIES ${SERPENT_LS} )
-	else ()
-		message(STATUS "Serpent not found. No serpent support.")
-	endif ()
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include
@@ -181,22 +170,46 @@ else ()
 		)
 	if ( LEVELDB_ID )
 		message(STATUS "Found LevelDB Headers")
+
+		# Check for accessory dev libraries leveldb and miniupnpc
+		find_library( LEVELDB_LS NAMES leveldb
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			/usr/lib/*/
+			)
+		if ( LEVELDB_LS )
+			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
+		else ()
+			message(FATAL_ERROR "Failed to find the LevelDB Library!")
+		endif ()
 	else ()
 		message(FATAL_ERROR "Failed to find the LevelDB headers")
 	endif ()
 
-	# Check for accessory dev libraries leveldb and miniupnpc
-	find_library( LEVELDB_LS NAMES leveldb
-		PATHS
-		/usr/lib
-		/usr/local/lib
-		/opt/local/lib
-		/usr/lib/*/
+	find_path( PYTHON_ID pyconfig.h
+		/usr/include/python2.7
+		/usr/local/include/python2.7
 		)
-	if ( LEVELDB_LS ) 
-		message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
-	else () 
-		message(FATAL_ERROR "Failed to find the LevelDB Library!")
+	if ( PYTHON_ID )
+		message(STATUS "Found Python-2.7 Headers: ${PYTHON_ID}")
+
+		# Check for accessory dev libraries leveldb and miniupnpc
+		find_library( PYTHON_LS NAMES python2.7
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			/usr/lib/*/
+			)
+		if ( PYTHON_LS )
+			message(STATUS "Found Python-2.7 Library: ${PYTHON_LS}")
+		else ()
+			message(FATAL_ERROR "Failed to find the Python-2.7 Library!")
+		endif ()
+	else ()
+		message(FATAL_ERROR "Failed to find the Python-2.7 headers")
 	endif ()
 
 	find_path( MINIUPNPC_ID miniupnpc/miniwget.h
@@ -205,21 +218,21 @@ else ()
 		)
 	if ( MINIUPNPC_ID ) 
 		message(STATUS "Found miniupnpc headers")
-	else () 
-		message(FATAL_ERROR "Failed to find the miniupnpc headers!")
-	endif ()
 
-	find_library( MINIUPNPC_LS NAMES miniupnpc
-		PATHS
-		/usr/lib
-		/usr/local/lib
-		/opt/local/lib
-		/usr/lib/*/
-		)
-	if ( MINIUPNPC_LS ) 
-		message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
+		find_library( MINIUPNPC_LS NAMES miniupnpc
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			/usr/lib/*/
+			)
+		if ( MINIUPNPC_LS )
+			message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
+		else ()
+			message(FATAL_ERROR "Failed to find the miniupnpc library!")
+		endif ()
 	else ()
-		message(FATAL_ERROR "Failed to find the miniupnpc library!")
+		message(FATAL_ERROR "Failed to find the miniupnpc headers!")
 	endif ()
 
 
@@ -269,6 +282,14 @@ else ()
 
 endif()
 
+if (UNIX)
+	if (LANGUAGES)
+		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
+	else()
+		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
+	endif()
+endif()
+
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -281,13 +302,17 @@ add_subdirectory(libethential)
 add_subdirectory(libevmface)
 add_subdirectory(liblll)
 add_subdirectory(libserpent)
+if (PYTHON_LS)
+add_subdirectory(libpyserpent)
+endif ()
+add_subdirectory(lllc)
+add_subdirectory(sc)
 if (NOT LANGUAGES)
 add_subdirectory(secp256k1)
 add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(test)
-add_subdirectory(lllc)
 add_subdirectory(eth)
 if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)

@@ -50,11 +50,9 @@ if (APPLE)
 	set(MACOSX_BUNDLE_GUI_IDENTIFIER "${PROJECT_DOMAIN_SECOND}.${PROJECT_DOMAIN_FIRST}")
 	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTABLE})
 	include(BundleUtilities)
-
-	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
-else ()
-	add_library(${EXECUTABLE} ${RESOURCE_ADDED} ${SRC_LIST})
 endif ()
+
+add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
 
 qt5_use_modules(${EXECUTABLE} Core Gui WebKit WebKitWidgets Widgets Network Quick Qml)
 target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
