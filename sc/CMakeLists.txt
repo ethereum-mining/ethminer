@@ -4,7 +4,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 
-set(EXECUTABLE lllc)
+set(EXECUTABLE sc)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
@@ -24,6 +24,7 @@ else ()
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
+target_link_libraries(${EXECUTABLE} serpent)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} evmface)
 target_link_libraries(${EXECUTABLE} ethential)
@@ -31,3 +32,4 @@ target_link_libraries(${EXECUTABLE} gmp)
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )
 
+cmake_policy(SET CMP0015 NEW)

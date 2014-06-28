@@ -1195,9 +1195,9 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 
 				for (auto const& j: mem)
 					if (j.second)
-						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
+						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << nouppercase << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
 					else
-						contout << std::endl << "XXX    " << std::hex << std::setw(64) << j.first << "";
+						contout << std::endl << "XXX    " << std::hex << nouppercase << std::setw(64) << j.first << "";
 			}
 			else
 				contout << " [SIMPLE]";
@@ -1239,14 +1239,14 @@ std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
 			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
 	}
 	if (_s.code)
-		_out << "$" << std::hex << _s.code.to() << " (" << _s.code.from() << ") ";
+		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
 	for (pair<u256, Diff<u256>> const& i: _s.storage)
 		if (!i.second.from())
-			_out << endl << " +     " << (h256)i.first << ": " << std::hex << i.second.to();
+			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
 		else if (!i.second.to())
-			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << i.second.from() << ")";
+			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
 		else
-			_out << endl << " *     " << (h256)i.first << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
 	return _out;
 }
 

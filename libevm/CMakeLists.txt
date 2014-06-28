@@ -6,15 +6,9 @@ aux_source_directory(. SRC_LIST)
 
 set(EXECUTABLE evm)
 
-if(APPLE)
-	# set(CMAKE_INSTALL_PREFIX ../lib)
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
-else()
-	add_library(${EXECUTABLE} ${SRC_LIST})
-endif()
-if (UNIX)
-    FIND_PACKAGE(Boost 1.53 REQUIRED COMPONENTS thread date_time system filesystem program_options signals serialization chrono unit_test_framework locale)
-endif()
+# set(CMAKE_INSTALL_PREFIX ../lib)
+add_library(${EXECUTABLE} SHARED ${SRC_LIST})
+
 file(GLOB HEADERS "*.h") 
 
 include_directories(..)
