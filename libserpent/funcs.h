@@ -24,6 +24,10 @@
 
 Node compileToLLL(std::string input);
 
-std::string compile(std::string input);
+std::vector<uint8_t> compile(std::string input);
 
 std::vector<Node> prettyCompile(std::string input);
+
+std::string bytesToString(std::vector<uint8_t> input);
+
+std::string bytesToHex(std::vector<uint8_t> input);
