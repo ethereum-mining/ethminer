@@ -3,6 +3,8 @@
 #include <vector>
 #include <map>
 #include <libserpent/funcs.h>
+#include <liblll/Compiler.h>
+#include <libethential/Common.h>
 
 int main(int argv, char** argc) {
     if (argv == 1) {
@@ -45,7 +47,7 @@ int main(int argv, char** argc) {
         std::cout << printAST(buildFragmentTree(parseLLL(input, true))) << "\n";
     }
     else if (command == "compile_lll") {
-        std::cout << binToHex(compileLLL(parseLLL(input, true))) << "\n";
+        std::cout << bytesToHex(eth::compileLLL(input)) << "\n";
     }
     else if (command == "dereference") {
         std::cout << printAST(dereference(parseLLL(input, true)), haveSec) <<"\n";
@@ -54,10 +56,11 @@ int main(int argv, char** argc) {
         std::cout << printTokens(prettyAssemble(parseLLL(input, true))) <<"\n";
     }
     else if (command == "pretty_compile_lll") {
-        std::cout << printTokens(prettyCompileLLL(parseLLL(input, true))) << "\n";
+        std::cout << printTokens(deserialize(bytesToString(
+                        eth::compileLLL(input)))) << "\n";
     }
     else if (command == "pretty_compile") {
-        std::cout << printTokens(prettyCompile(input)) << "\n";
+        std::cout << printTokens(deserialize(bytesToString(compile(input)))) << "\n";
     }
     else if (command == "assemble") {
         std::cout << assemble(parseLLL(input, true)) << "\n";
@@ -72,7 +75,7 @@ int main(int argv, char** argc) {
         std::cout << printTokens(deserialize(hexToBin(input))) << "\n";
     }
     else if (command == "compile") {
-        std::cout << binToHex(compile(input)) << "\n";
+        std::cout << bytesToHex(compile(input)) << "\n";
     }
     else if (command == "encode_datalist") {
         std::vector<Node> tokens = tokenize(input);

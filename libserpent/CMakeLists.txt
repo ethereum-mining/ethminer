@@ -43,4 +43,5 @@ message("Installation path: ${CMAKE_INSTALL_PREFIX}")
 
 install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
+#install( FILES ${CMAKE_CURRENT_BINARY_DIR}/libserpent.so DESTINATION lib )
 
