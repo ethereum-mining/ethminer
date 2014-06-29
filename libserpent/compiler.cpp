@@ -99,6 +99,14 @@ programData opcodeify(Node node, programAux aux=Aux()) {
         aux = sub.aux;
         subs.push_back(sub.code);
     }
+    // Debug
+    if (node.val == "debug") {
+        Node nodelist[] = {
+            subs[0],
+            token("DUP", m), token("POP", m), token("POP", m)
+        };
+        return pd(aux, multiToken(nodelist, 4, m));
+    }
     // Seq of multiple statements
     if (node.val == "seq") {
         return pd(aux, astnode("_", subs, m));
@@ -142,10 +150,10 @@ programData opcodeify(Node node, programAux aux=Aux()) {
         Node nodelist[] = {
             subs[0],
             token("MSIZE", m), token("SWAP", m), token("MSIZE", m),
-            token("ADD", m), token("1", m), token("SWAP", m), token("SUB", m),
-            token("0", m), token("SWAP", m), token("MSTORE8", m)
+            token("ADD", m), 
+            token("0", m), token("SWAP", m), token("MSTORE", m)
         };
-        return pd(aux, multiToken(nodelist, 11, m));
+        return pd(aux, multiToken(nodelist, 8, m));
     }
     // Array literals
     else if (node.val == "array_lit") {

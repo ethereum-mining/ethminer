@@ -15,7 +15,7 @@ int precedence(Node tok) {
     else if (v=="+" || v=="-") return 3;
     else if (v=="<" || v==">" || v=="<=" || v==">=") return 4;
     else if (v=="@<" || v=="@>" || v=="@<=" || v=="@>=") return 4;
-    else if (v=="&" || v=="|" || v=="xor" || v=="==") return 5;
+    else if (v=="&" || v=="|" || v=="xor" || v=="==" || v == "!=") return 5;
     else if (v=="&&" || v=="and") return 6;    
     else if (v=="||" || v=="or") return 7;
     else if (v=="=") return 10;
@@ -93,7 +93,8 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
             }
             int prec = precedence(tok);
             while (stack.size() 
-                  && toktype(stack.back()) == BINARY_OP 
+                  && (toktype(stack.back()) == BINARY_OP 
+                      || toktype(stack.back()) == UNARY_OP)
                   && precedence(stack.back()) <= prec) {
                 oq.push_back(stack.back());
                 stack.pop_back();
@@ -242,7 +243,7 @@ bool bodied(std::string tok) {
 bool childBlocked(std::string tok) {
     return tok == "if" || tok == "elif" || tok == "else"
         || tok == "code" || tok == "shared" || tok == "init"
-        || tok == "while";
+        || tok == "while" || tok == "repeat" || tok == "for";
 }
 
 // Are the two commands meant to continue each other? 

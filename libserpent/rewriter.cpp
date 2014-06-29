@@ -24,7 +24,6 @@ std::string valid[][3] = {
     { "sha3", "1", "2" },
     { "return", "1", "2" },
     { "inset", "1", "1" },
-    { "import", "1", "1" },
     { "array_lit", "0", tt256 },
     { "seq", "0", tt256 },
     { "---END---", "", "" } //Keep this line at the end of the list
@@ -62,6 +61,10 @@ std::string macros[][2] = {
     {
         "(@%= $a $b)",
         "(set $a (@% $a $b))"
+    },
+    {
+        "(!= $a $b)",
+        "(not (eq $a $b))"
     },
     {
         "(if $cond $do (else $else))",
@@ -132,6 +135,10 @@ std::string macros[][2] = {
         "(seq (set $1 $x) (sha3 (ref $1) 32))"
     },
     {
+        "(sha3 $mstart $msize)",
+        "(~sha3 $mstart (mul 32 $msize))"
+    },
+    {
         "(id $0)",
         "$0"
     },
@@ -185,7 +192,7 @@ std::string macros[][2] = {
     },
     {
         "(call $f $inp $inpsz $outsz)",
-        "(seq (set $1 $outsz) (set $2 (alloc (mul 32 (get $1)))) (pop (call (sub (gas) (add 25 (get $1))) $f 0 $inp (mul 32 $inpsz) (ref $2) (mul 32 (get $1)))) (get $2))"
+        "(seq (set $1 $outsz) (set $2 (alloc (mul 32 (get $1)))) (pop (call (sub (gas) (add 25 (get $1))) $f 0 $inp (mul 32 $inpsz) (get $2) (mul 32 (get $1)))) (get $2))"
     },
     {
         "(msg $gas $to $val $inp $inpsz)",
@@ -197,7 +204,7 @@ std::string macros[][2] = {
     },
     {
         "(msg $gas $to $val $inp $inpsz $outsz)",
-        "(seq (set $1 (mul 32 $outsz)) (set $2 (alloc (get $1))) (pop (call $gas $to $val $inp (mul 32 $inpsz) (ref $2) (get $1))) (get $2))"
+        "(seq (set $1 (mul 32 $outsz)) (set $2 (alloc (get $1))) (pop (call $gas $to $val $inp (mul 32 $inpsz) (get $2) (get $1))) (get $2))"
     },
     {
         "(outer (init $init $code))",
@@ -218,14 +225,6 @@ std::string macros[][2] = {
     {
         "(inset $x)",
         "$x"
-    },
-    {
-        "(create $val (import $code))",
-        "(seq (set $1 (msize)) (create $val (get $1) (lll $code (get $1))))"
-    },
-    {
-        "(create (import $x))",
-        "(seq (set $1 (msize)) (create $val (get $1) (lll $code (get $1))))"
     },
     {
         "(create $x)",
@@ -252,9 +251,7 @@ std::string macros[][2] = {
 std::vector<std::vector<Node> > nodeMacros;
 
 std::string synonyms[][2] = {
-    { "|", "or" },
     { "or", "||" },
-    { "&", "and" },
     { "and", "&&" },
     { "elif", "if" },
     { "!", "not" },
@@ -289,7 +286,7 @@ matchResult match(Node p, Node n) {
     matchResult o;
     o.success = false;
     if (p.type == TOKEN) {
-        if (p.val == n.val) o.success = true;
+        if (p.val == n.val && n.type == TOKEN) o.success = true;
         else if (p.val[0] == '$') {
             o.success = true;
             o.map[p.val.substr(1)] = n;
