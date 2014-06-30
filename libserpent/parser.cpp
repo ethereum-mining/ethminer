@@ -71,11 +71,8 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
             if (prevtyp != ALPHANUM && prevtyp != RPAREN) {
                 oq.push_back(token("id", tok.metadata));
             }
-            Node fun = oq.back();
-            oq.pop_back();
-            oq.push_back(tok);
-            oq.push_back(fun);
             stack.push_back(tok);
+            oq.push_back(tok);
         }
         // If rparen, keep moving from stack to output queue until lparen
         else if (toktyp == RPAREN) {
@@ -83,7 +80,9 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
                 oq.push_back(stack.back());
                 stack.pop_back();
             }
-            if (stack.size()) stack.pop_back();
+            if (stack.size()) {
+                stack.pop_back();
+            }
             oq.push_back(tok);
         }
         // If binary op, keep popping from stack while higher bedmas precedence
@@ -149,7 +148,7 @@ Node treefy(std::vector<Node> stream) {
             oq.push_back(astnode(tok.val, args2, tok.metadata));
         }
         // If rparen, keep grabbing until we get to an lparen
-        else if (toktype(tok) == RPAREN) {
+        else if (typ == RPAREN) {
             std::vector<Node> args;
             while (1) {
                 args.push_back(oq.back());
@@ -158,8 +157,13 @@ Node treefy(std::vector<Node> stream) {
                 if (toktype(oq.back()) == LPAREN) break;
             }
             oq.pop_back();
+            args.push_back(oq.back());
+            oq.pop_back();
             // We represent a[b] as (access a b)
-            if (tok.val == "]") args.push_back(token("access", tok.metadata));
+            if (tok.val == "]")
+                 args.push_back(token("access", tok.metadata));
+            if (args.back().type == ASTNODE)
+                 args.push_back(token("fun", tok.metadata));
             std::string fun = args.back().val;
             args.pop_back();
             // We represent [1,2,3] as (array_lit 1 2 3)
@@ -202,11 +206,11 @@ Node treefy(std::vector<Node> stream) {
             oq.back().args.pop_back();
             oq.back().args.push_back(parseSerpent(root + filename));
         }
-        // Useful for debugging
-        // for (int i = 0; i < oq.size(); i++) {
-        //     std::cerr << printSimple(oq[i]) << " ";
-        // }
-        // std::cerr << "\n";
+        //Useful for debugging
+        //for (int i = 0; i < oq.size(); i++) {
+        //    std::cerr << printSimple(oq[i]) << " ";
+        //}
+        //std::cerr << " <-\n";
     }
     // Output must have one argument
     if (oq.size() == 0) {
