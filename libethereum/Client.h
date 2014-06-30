@@ -140,14 +140,13 @@ public:
 	BlockChain const& blockChain() const { return m_bc; }
 
 	// [NEW API]
-/*
-	u256 balanceAt(Address _a, unsigned _age = 1) const;
-	u256 countAt(Address _a, unsigned _age = 1) const;
-	u256 stateAt(Address _a, u256 _l, unsigned _age = 1) const;
-	bytes codeAt(Address _a, unsigned _age = 1) const;
 
-	Transactions transactions(Addresses const& _from, Addresses const& _to, std::vector<std::pair<u256, u256>> const& _stateAlterations, Addresses const& _altered, unsigned _ageFrom = 0, unsigned _ageTo, unsigned _max) const;
-*/
+	u256 balanceAt(Address _a, int _block = -1) const;
+	u256 countAt(Address _a, int _block = -1) const;
+	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
+	bytes codeAt(Address _a, int _block = -1) const;
+	Transactions transactions(Addresses const& _from, Addresses const& _to, std::vector<std::pair<u256, u256>> const& _stateAlterations, Addresses const& _altered, int _blockFrom = 0, int _blockTo = -1, unsigned _max = 10) const;
+
 	// Misc stuff:
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }

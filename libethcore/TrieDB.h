@@ -42,7 +42,7 @@ extern const h256 c_shaNull;
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
- * This version uses an LDB backend
+ * This version uses an database backend.
  * Usage:
  * @code
  * GenericTrieDB<MyDB> t(&myDB);
@@ -153,6 +153,7 @@ public:
 	std::string at(bytesConstRef _key) const;
 	void insert(bytesConstRef _key, bytesConstRef _value);
 	void remove(bytesConstRef _key);
+	void contains(bytesConstRef _key) { return !at(_key).empty(); }
 
 	class iterator
 	{
@@ -274,6 +275,7 @@ public:
 
 	std::string operator[](KeyType _k) const { return at(_k); }
 
+	bool contains(KeyType _k) const { return GenericTrieDB<DB>::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 	std::string at(KeyType _k) const { return GenericTrieDB<DB>::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 	void insert(KeyType _k, bytesConstRef _value) { GenericTrieDB<DB>::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
 	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
