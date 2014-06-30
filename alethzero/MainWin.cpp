@@ -118,7 +118,7 @@ Main::Main(QWidget *parent) :
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-#if ETH_DEBUG
+#if 0&&ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
 #else
     int pocnumber = QString(eth::EthVersion).section('.', 1, 1).toInt();
@@ -985,7 +985,7 @@ void Main::on_data_textChanged()
 			{
 				try
 				{
-					m_data = eth::asBytes(compile(src));
+					m_data = compile(src);
 					for (auto& i: errors)
 						i = "(LLL " + i + ")";
 				}
