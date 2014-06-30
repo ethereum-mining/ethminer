@@ -10,7 +10,7 @@ int main(int argv, char** argc) {
     if (argv == 1) {
         std::cerr << "Must provide a command and arguments! Try parse, rewrite, compile, assemble\n";
         return 0;
-    }
+	}
     std::string flag = "";
     std::string command = argc[1];
     std::string input;

@@ -18,8 +18,8 @@ struct VecToList
         for(size_t i = 0; i < vec.size(); i++)
             (*l).append(vec[i]);
 
-        return l->ptr();
-    }
+		return l->ptr();
+	}
 };
 
 // python list to std::vector converter
