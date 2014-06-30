@@ -1,4 +1,5 @@
 cmake_policy(SET CMP0015 NEW)
+cmake_policy(SET CMP0022 NEW)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
@@ -15,7 +16,6 @@ include_directories(..)
 
 target_link_libraries(${EXECUTABLE} ethential)
 target_link_libraries(${EXECUTABLE} gmp)
-
 
 if(${TARGET_PLATFORM} STREQUAL "w64")
 	include_directories(/usr/x86_64-w64-mingw32/include/cryptopp)

@@ -77,6 +77,9 @@ private:
 	unsigned m_protocolVersion;
 };
 
+/**
+ * @brief Main API hub for interfacing with Ethereum.
+ */
 class Client
 {
 public:
@@ -114,15 +117,20 @@ public:
 	/// Calls @a _f when a transaction is mined that involves @a _dest and once per change.
 //	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
 
-	// Informational stuff:
-
-	/// Locks/unlocks the state/blockChain/transactionQueue for access.
-	void lock();
-	void unlock();
+	// Informational stuff
 
 	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
 	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
 	bool peekChanged() const { return m_changed; }
+
+	/// Get a map containing each of the pending transactions.
+	Transactions pending() const { return m_postMine.pending(); }
+
+	// [OLD API]:
+
+	/// Locks/unlocks the state/blockChain/transactionQueue for access.
+	void lock();
+	void unlock();
 
 	/// Get the object representing the current state of Ethereum.
 	State const& state() const { return m_preMine; }
@@ -130,8 +138,16 @@ public:
 	State const& postState() const { return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
-	/// Get a map containing each of the pending transactions.
-	Transactions pending() const { return m_postMine.pending(); }
+
+	// [NEW API]
+
+	u256 balanceAt(Address _a, int _block = -1) const;
+	u256 countAt(Address _a, int _block = -1) const;
+	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
+	bytes codeAt(Address _a, int _block = -1) const;
+	Transactions transactions(Addresses const& _from, Addresses const& _to, std::vector<std::pair<u256, u256>> const& _stateAlterations, Addresses const& _altered, int _blockFrom = 0, int _blockTo = -1, unsigned _max = 10) const;
+
+	// Misc stuff:
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
