@@ -29,56 +29,61 @@
 namespace eth
 {
 
-// TODO: Document
+/**
+ * @brief Externalality interface for the Virtual Machine providing access to world state.
+ */
 class ExtVM: public ExtVMFace
 {
 public:
+	/// Full constructor.
 	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code):
 		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}
 
-	u256 store(u256 _n)
-	{
-		return m_s.storage(myAddress, _n);
-	}
-	void setStore(u256 _n, u256 _v)
-	{
-		m_s.setStorage(myAddress, _n, _v);
-	}
+	/// Read storage location.
+	u256 store(u256 _n) { return m_s.storage(myAddress, _n); }
 
+	/// Write a value in storage.
+	void setStore(u256 _n, u256 _v) { m_s.setStorage(myAddress, _n, _v); }
+
+	/// Create a new contract.
 	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code)
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
-
 		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin);
 	}
 
+	/// Create a new message call.
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
 		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin);
 	}
 
+	/// Read address's balance.
 	u256 balance(Address _a) { return m_s.balance(_a); }
+
+	/// Subtract amount from account's balance.
 	void subBalance(u256 _a) { m_s.subBalance(myAddress, _a); }
+
+	/// Determine account's TX count.
 	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
+
+	/// Suicide the associated contract to the given address.
 	void suicide(Address _a)
 	{
 		m_s.addBalance(_a, m_s.balance(myAddress));
 		m_s.m_cache[myAddress].kill();
 	}
 
-	void revert()
-	{
-		m_s.m_cache = m_origCache;
-	}
+	/// Revert any changes made (by any of the other calls).
+	void revert() { m_s.m_cache = m_origCache; }
 
 private:
-	State& m_s;
-	std::map<Address, AddressState> m_origCache;
-	std::map<u256, u256>* m_store;
+	State& m_s;										///< A reference to the base state.
+	std::map<Address, AddressState> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
 };
 
 }
