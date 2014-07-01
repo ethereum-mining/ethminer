@@ -7,6 +7,8 @@ from setuptools.command.install import install
 from distutils.command.build import build
 from subprocess import call
 
+# Setup.py for languages only
+
 
 class build_me(build):
     def run(self):
