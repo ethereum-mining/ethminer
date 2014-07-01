@@ -229,4 +229,8 @@ void Executive::finalize()
 	u256 feesEarned = gasSpentInEth;
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
+
+	// Suicides...
+	for (auto a: m_ext->suicides)
+		m_s.m_cache[a].kill();
 }

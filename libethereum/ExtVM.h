@@ -30,7 +30,7 @@ namespace eth
 {
 
 /**
- * @brief Externalality interface for the Virtual Machine providing access to world state.
+ * @brief Externality interface for the Virtual Machine providing access to world state.
  */
 class ExtVM: public ExtVMFace
 {
@@ -53,13 +53,13 @@ public:
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
-		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin);
+		return m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides);
 	}
 
 	/// Create a new message call.
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
-		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin);
+		return m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides);
 	}
 
 	/// Read address's balance.
@@ -75,7 +75,7 @@ public:
 	void suicide(Address _a)
 	{
 		m_s.addBalance(_a, m_s.balance(myAddress));
-		m_s.m_cache[myAddress].kill();
+		ExtVMFace::suicide(_a);
 	}
 
 	/// Revert any changes made (by any of the other calls).
