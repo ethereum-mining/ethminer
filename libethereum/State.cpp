@@ -1004,7 +1004,7 @@ u256 State::execute(bytesConstRef _rlp)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1022,6 +1022,9 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 		{
 			auto out = vm.go(evm);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
+			if (o_suicides)
+				for (auto i: evm.suicides)
+					o_suicides->insert(i);
 		}
 		catch (OutOfGas const& /*_e*/)
 		{
@@ -1052,7 +1055,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1064,7 +1067,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	// Set up new account...
 	m_cache[newAddress] = AddressState(0, 0, h256(), h256());
 
-	// Execute _init.
+	// Execute init code.
 	VM vm(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code);
 	bool revert = false;
@@ -1073,6 +1076,9 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	try
 	{
 		out = vm.go(evm);
+		if (o_suicides)
+			for (auto i: evm.suicides)
+				o_suicides->insert(i);
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -1096,7 +1102,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	if (revert)
 		evm.revert();
 
-	// Set code as long as we didn't suicide.
+	// Set code.
 	if (addressInUse(newAddress))
 		m_cache[newAddress].setCode(out);
 

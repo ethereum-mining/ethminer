@@ -350,7 +350,7 @@ Node array_lit_transform(Node node) {
     o2.push_back(astnode("alloc", o1, node.metadata));
     std::vector<Node> o3;
     o3.push_back(astnode("set", o2, node.metadata));
-    for (int i = 0; i < node.args.size(); i++) {
+	for (unsigned i = 0; i < node.args.size(); i++) {
         // (mstore (add (get symb) i*32) v)
         std::vector<Node> o5;
         o5.push_back(token(symb, node.metadata));

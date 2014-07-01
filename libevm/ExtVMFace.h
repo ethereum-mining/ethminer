@@ -59,7 +59,7 @@ public:
 	u256 txCount(Address) { return 0; }
 
 	/// Suicide the associated contract to the given address.
-	void suicide(Address) {}
+	void suicide(Address _a) { suicides.insert(_a); }
 
 	/// Create a new (contract) account.
 	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
@@ -79,6 +79,7 @@ public:
 	bytesConstRef code;			///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
+	std::set<Address> suicides;	///< Any accounts that have suicided.
 };
 
 }
