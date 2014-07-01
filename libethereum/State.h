@@ -289,12 +289,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address());
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address());
+	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
