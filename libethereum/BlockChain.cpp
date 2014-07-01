@@ -74,7 +74,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 		for (auto i: vector<string>({
             "51ba59315b3a95761d0863b05ccc7a7f54703d99",
 			"e6716f9544a56c530d868e4bfbacb172315bdead",
-			"1e12515ce3e0f817a4ddef9ca55788a1d66bd2df",
+			"b9c015918bdaba24b4ff057a92a3873d6eb201be",
 			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
 			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
 			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
