@@ -93,7 +93,7 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
+Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
