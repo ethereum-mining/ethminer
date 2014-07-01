@@ -339,6 +339,35 @@ Node subst(Node pattern,
     }
 }
 
+// array_lit transform
+
+Node array_lit_transform(Node node) {
+    std::vector<Node> o1;
+    o1.push_back(token(intToDecimal(node.args.size() * 32), node.metadata));
+    std::vector<Node> o2;
+    std::string symb = "_temp"+mkUniqueToken()+"_0";
+    o2.push_back(token(symb, node.metadata));
+    o2.push_back(astnode("alloc", o1, node.metadata));
+    std::vector<Node> o3;
+    o3.push_back(astnode("set", o2, node.metadata));
+    for (int i = 0; i < node.args.size(); i++) {
+        // (mstore (add (get symb) i*32) v)
+        std::vector<Node> o5;
+        o5.push_back(token(symb, node.metadata));
+        std::vector<Node> o6;
+        o6.push_back(astnode("get", o5, node.metadata));
+        o6.push_back(token(intToDecimal(i * 32), node.metadata));
+        std::vector<Node> o7;
+        o7.push_back(astnode("add", o6));
+        o7.push_back(node.args[i]);
+        o3.push_back(astnode("mstore", o7, node.metadata));
+    }
+    std::vector<Node> o8;
+    o8.push_back(token(symb, node.metadata));
+    o3.push_back(astnode("get", o8));
+    return astnode("seq", o3, node.metadata);
+}
+
 // Recursively applies rewrite rules
 Node apply_rules(Node node) {
     // If the rewrite rules have not yet been parsed, parse them
@@ -371,6 +400,9 @@ Node apply_rules(Node node) {
             node = subst(pattern2, mr.map, prefix, node.metadata);
         }
     }
+    // Array_lit special instruction
+    if (node.val == "array_lit")
+        node = array_lit_transform(node);
     if (node.type == ASTNODE && node.val != "ref" && node.val != "get") {
 		unsigned i = 0;
         if (node.val == "set") i = 1;
