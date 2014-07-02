@@ -231,6 +231,7 @@ void Executive::finalize()
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Suicides...
-	for (auto a: m_ext->suicides)
-		m_s.m_cache[a].kill();
+	if (m_ext)
+		for (auto a: m_ext->suicides)
+			m_s.m_cache[a].kill();
 }
