@@ -109,49 +109,46 @@ else ()
 	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
 
-if (${TARGET_PLATFORM} STREQUAL "w64")
-else ()
+if(${TARGET_PLATFORM} STREQUAL "w64")
+else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
 	find_path(ID cryptlib.h
-		/usr/include/cryptopp
-		/usr/include/crypto++
-		/usr/local/include/cryptopp
-		/usr/local/include/crypto++
-		/opt/local/include/cryptopp
-		/opt/local/include/crypto++
-		)
-	find_library(LS NAMES cryptoppeth cryptopp
-		PATHS
-		/usr/lib
-		/usr/local/lib
-		/opt/local/lib
-		)
+		../cryptopp/src
+		../../cryptopp/src)
+	if(ID)
+		set(LS ${ID}/../target/build/release/libcryptopp.so)
+	else()
+		find_path(ID cryptlib.h
+			/usr/include/cryptopp
+			/usr/include/crypto++
+			/usr/local/include/cryptopp
+			/usr/local/include/crypto++
+			/opt/local/include/cryptopp
+			/opt/local/include/crypto++
+			)
+		find_library(LS NAMES cryptoppeth cryptopp
+			PATHS
+			/usr/lib
+			/usr/local/lib
+			/opt/local/lib
+			)
+	endif()
 
-	if(ID AND LS)
+	if (ID AND LS)
 		message(STATUS "Found Crypto++: ${ID}, ${LS}")
 		set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
 		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
 			file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
 			string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
 			if(${_CRYPTOPP_VERSION} LESS 562)
-				message(STATUS "System Crypto++ version found is smaller than 5.6.2.")
+				message(STATUS "Crypto++ version found is smaller than 5.6.2.")
 			else()
 				set(CRYPTOPP_INCLUDE_DIR ${ID} CACHE FILEPATH "" FORCE)
 				set(CRYPTOPP_LIBRARIES ${LS} CACHE FILEPATH "" FORCE)
 				set(CRYPTOPP_FOUND TRUE)
-				message(STATUS "System Crypto++ found and version greater or equal to 5.6.2")
+				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
-	endif()
-
-	if(NOT CRYPTOPP_FOUND)
-		set(CRYPTOPP_INCLUDE_DIR "../cryptopp562" CACHE FILEPATH "" FORCE)
-		find_library(LSLOC NAMES cryptoppeth cryptopp
-			PATHS ../cryptopp562
-			NO_DEFAULT_PATH
-			)
-		set(CRYPTOPP_LIBRARIES ${LSLOC} CACHE FILEPATH "" FORCE)
-		message(STATUS "System Crypto++ not found, broken or too old. We use ${LSLOC}")
 	endif()
 
 	# Not really worth caching. We want to reevaluate anyway.

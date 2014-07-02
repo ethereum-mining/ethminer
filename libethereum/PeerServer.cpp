@@ -213,14 +213,21 @@ void PeerServer::populateAddresses()
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
 			// TODO: Make exception safe when no internet.
-			auto it = r.resolve({host, "30303"});
-			bi::tcp::endpoint ep = it->endpoint();
-			bi::address ad = ep.address();
-			m_addresses.push_back(ad.to_v4());
-			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-			if (!isLocal)
-				m_peerAddresses.push_back(ad.to_v4());
-			clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			try
+			{
+				auto it = r.resolve({host, "30303"});
+				bi::tcp::endpoint ep = it->endpoint();
+				bi::address ad = ep.address();
+				m_addresses.push_back(ad.to_v4());
+				bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+				if (!isLocal)
+					m_peerAddresses.push_back(ad.to_v4());
+				clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			}
+			catch (...)
+			{
+				clog(NetNote) << "Couldn't resolve: " << host;
+			}
 		}
 	}
 
