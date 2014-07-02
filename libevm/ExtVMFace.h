@@ -58,8 +58,8 @@ public:
 	/// Determine account's TX count.
 	u256 txCount(Address) { return 0; }
 
-	/// Suicide the associated contract to the given address.
-	void suicide(Address _a) { suicides.insert(_a); }
+	/// Suicide the associated contract and give proceeds to the given address.
+	void suicide(Address) { suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
 	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
