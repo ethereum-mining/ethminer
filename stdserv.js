@@ -52,8 +52,7 @@ eth.transact(eth.key, '0', config, "0".pad(32) + nameReg.pad(32), 10000, eth.gas
 
 var gavCoinCode = eth.lll("{
   [[ (caller) ]]: 0x1000000
-  [0] 'GavCoin
-  (call (- (gas) 100) " + nameReg + " 0 0 7 0 0)
+  (call (- (gas) 100) " + nameReg + " 0 0 (lit 0 'GavCoin) 0 0)
   (returnlll {
     (when (!= (calldatasize) 64) (stop))
     [fromBal] @@(caller)

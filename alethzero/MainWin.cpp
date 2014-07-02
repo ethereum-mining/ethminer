@@ -803,6 +803,7 @@ void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
 	eth::ClientGuard g(m_client.get());
+	debugFinished();
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -876,7 +877,6 @@ void Main::on_blocks_currentItemChanged()
 			Transaction t = st.pending()[txi];
 			auto r = t.rlp();
 
-			debugFinished();
 			bool done = m_currentExecution->setup(&r);
 			if (!done)
 			{
