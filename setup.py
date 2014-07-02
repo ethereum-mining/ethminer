@@ -14,8 +14,10 @@ class build_me(build):
     def run(self):
         build.run(self)
         # if os.uname()[0] == 'Linux' and os.geteuid() == 0:
+        #     call(['sudo', 'apt-get', 'install', 'build-essential'])
+        #     call(['sudo', 'apt-get', 'install', 'g++-4.8'])
         #     call(['sudo', 'apt-get', 'install', 'cmake'])
-        #     call(['sudo', 'apt-get', 'install', 'libboost-dev'])
+        #     call(['sudo', 'apt-get', 'install', 'libboost-all-dev'])
         call(['mkdir', 'build'])
         os.chdir('build')
         call(['cmake', '..', '-DLANGUAGES=1'])
@@ -43,7 +45,7 @@ def read(fname):
 
 setup(
     name='ethereum-serpent',
-    version='1.4.6',
+    version='1.4.11',
     description='Serpent compiler',
     maintainer='Vitalik Buterin',
     maintainer_email='v@buterin.com',
