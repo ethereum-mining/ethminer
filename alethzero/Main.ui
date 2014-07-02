@@ -1289,7 +1289,7 @@ font-size: 14pt</string>
           <string notr="true">background: white;
 border: 0;
 font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New;
-font-size: 12pt</string>
+font-size: 14pt</string>
          </property>
          <property name="inputMask">
           <string/>

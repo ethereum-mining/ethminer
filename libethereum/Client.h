@@ -77,6 +77,27 @@ private:
 	unsigned m_protocolVersion;
 };
 
+class TransactionFilter
+{
+public:
+	TransactionFilter(int _blockFrom = 0, int _blockTo = -1, unsigned _max = 10): m_blockFrom(_blockFrom), m_blockTo(_blockTo), m_max(_max) {}
+
+	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
+	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
+	TransactionFilter stateAltered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
+	TransactionFilter stateAltered(Address _a) { m_altered.insert(_a); return *this; }
+	TransactionFilter withMax(unsigned _m) { m_max = _m; return *this; }
+
+private:
+	std::set<Address> m_from;
+	std::set<Address> m_to;
+	std::set<std::pair<Address, u256>> m_stateAltered;
+	std::set<Address> m_altered;
+	int m_blockFrom;
+	int m_blockTo;
+	unsigned m_max;
+};
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -145,7 +166,7 @@ public:
 	u256 countAt(Address _a, int _block = -1) const;
 	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
 	bytes codeAt(Address _a, int _block = -1) const;
-	Transactions transactions(Addresses const& _from, Addresses const& _to, std::vector<std::pair<u256, u256>> const& _stateAlterations, Addresses const& _altered, int _blockFrom = 0, int _blockTo = -1, unsigned _max = 10) const;
+	Transactions transactions(TransactionFilter const& _f) const;
 
 	// Misc stuff:
 
@@ -194,6 +215,9 @@ public:
 
 private:
 	void work();
+
+	/// Return the actual block number of the block with the given int-number (positive/zero is the same, -(1 << 31) is next to be mined, < 0 is negative age, thus -1 is most recently mined, 0 is genesis.
+	unsigned blockNumber(int _b) const;
 
 	std::string m_clientVersion;		///< Our end-application client's name/version.
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
