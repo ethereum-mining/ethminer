@@ -339,9 +339,9 @@ QString QEthereum::storageAt(QString _a, QString _p) const
 	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
 }
 
-u256 QEthereum::balanceAt(Address _a) const
+double QEthereum::txCountAt(QString _a) const
 {
-	return client()->postState().balance(_a);
+	return (double)client()->postState().transactionsFrom(toAddress(_a));
 }
 
 bool QEthereum::isContractAt(QString _a) const
@@ -349,9 +349,39 @@ bool QEthereum::isContractAt(QString _a) const
 	return client()->postState().addressHasCode(toAddress(_a));
 }
 
+u256 QEthereum::balanceAt(Address _a) const
+{
+	return client()->postState().balance(_a);
+}
+
+double QEthereum::txCountAt(Address _a) const
+{
+	return (double)client()->postState().transactionsFrom(_a);
+}
+
 bool QEthereum::isContractAt(Address _a) const
 {
 	return client()->postState().addressHasCode(_a);
+}
+
+QString QEthereum::balanceAt(QString _a, int _block) const
+{
+	return toQJS(client()->balanceAt(toAddress(_a), _block));
+}
+
+QString QEthereum::stateAt(QString _a, QString _p, int _block) const
+{
+	return toQJS(client()->stateAt(toAddress(_a), toU256(_p), _block));
+}
+
+QString QEthereum::codeAt(QString _a, int _block) const
+{
+	return ::fromBinary(client()->codeAt(toAddress(_a), _block));
+}
+
+double QEthereum::countAt(QString _a, int _block) const
+{
+	return (double)(uint64_t)client()->countAt(toAddress(_a), _block);
 }
 
 bool QEthereum::isMining() const
@@ -378,16 +408,6 @@ void QEthereum::setListening(bool _l)
 		client()->startNetwork();
 	else
 		client()->stopNetwork();
-}
-
-double QEthereum::txCountAt(QString _a) const
-{
-	return (double)client()->postState().transactionsFrom(toAddress(_a));
-}
-
-double QEthereum::txCountAt(Address _a) const
-{
-	return (double)client()->postState().transactionsFrom(_a);
 }
 
 unsigned QEthereum::peerCount() const

@@ -322,6 +322,15 @@ eth::uint BlockChain::number(h256 _hash) const
 	return details(_hash).number;
 }
 
+h256 BlockChain::numberHash(unsigned _n) const
+{
+	if (!_n)
+		return genesisHash();
+	h256 ret = currentHash();
+	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
+	return ret;
+}
+
 BlockDetails const& BlockChain::details(h256 _h) const
 {
 	BlockDetailsHash::const_iterator it;

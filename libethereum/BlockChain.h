@@ -105,6 +105,9 @@ public:
 	/// Get the hash of the genesis block.
 	h256 genesisHash() const { return m_genesisHash; }
 
+	/// Get the hash of a block of a given number.
+	h256 numberHash(unsigned _n) const;
+
 	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
 	void pushInterest(Address _a) { m_interest[_a]++; }
 	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }

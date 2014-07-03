@@ -98,6 +98,8 @@ private:
 	unsigned m_max;
 };
 
+static const int GenesisBlock = INT_MIN;
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -216,8 +218,11 @@ public:
 private:
 	void work();
 
-	/// Return the actual block number of the block with the given int-number (positive/zero is the same, -(1 << 31) is next to be mined, < 0 is negative age, thus -1 is most recently mined, 0 is genesis.
-	unsigned blockNumber(int _b) const;
+	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
+	unsigned numberOf(int _b) const;
+
+	State asOf(int _h) const;
+	State asOf(unsigned _h) const;
 
 	std::string m_clientVersion;		///< Our end-application client's name/version.
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
