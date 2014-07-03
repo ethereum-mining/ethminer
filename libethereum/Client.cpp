@@ -327,8 +327,73 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+bool TransactionFilter::matches(State const& _s, unsigned _i) const
+{
+	Transaction t = _s.pending()[_i];
+	if (!m_to.empty() && !m_to.count(t.receiveAddress))
+		return false;
+	if (!m_from.empty() && !m_from.count(t.sender()))
+		return false;
+	if (m_stateAltered.empty() && m_altered.empty())
+		return true;
+	StateDiff d = _s.pendingDiff(_i);
+	if (!m_stateAltered.empty())
+	{
+		for (auto const& s: m_stateAltered)
+			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
+				goto OK;
+		return false;
+		OK:;
+	}
+	if (!m_altered.empty())
+	{
+		for (auto const& s: m_altered)
+			if (d.accounts.count(s))
+				goto OK2;
+		return false;
+		OK2:;
+	}
+	return true;
+}
+
 Transactions Client::transactions(TransactionFilter const& _f) const
 {
 	Transactions ret;
+	unsigned begin = numberOf(_f.latest());
+	unsigned end = min(begin, numberOf(_f.earliest()));
+	unsigned m = _f.max();
+	unsigned s = _f.skip();
+
+	// Handle pending transactions differently as they're not on the block chain.
+	if (_f.latest() == 0)
+	{
+		for (unsigned i = m_postMine.pending().size(); i--;)
+			if (_f.matches(m_postMine, i))
+			{
+				if (s)
+					s--;
+				else
+					ret.insert(ret.begin(), m_postMine.pending()[i]);
+			}
+		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
+		if (_f.earliest() == 0)
+			return ret;
+	}
+
+	auto h = m_bc.numberHash(begin);
+	for (unsigned n = begin; ret.size() != m; n--, h = m_bc.details(h).parent)
+	{
+		State st(m_stateDB, m_bc, h);
+		for (unsigned i = st.pending().size(); i--;)
+			if (_f.matches(st, i))
+			{
+				if (s)
+					s--;
+				else
+					ret.insert(ret.begin(), st.pending()[i]);
+			}
+		if (n == end)
+			break;
+	}
 	return ret;
 }

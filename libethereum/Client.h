@@ -77,28 +77,38 @@ private:
 	unsigned m_protocolVersion;
 };
 
+static const int GenesisBlock = INT_MIN;
+
 class TransactionFilter
 {
 public:
-	TransactionFilter(int _blockFrom = 0, int _blockTo = -1, unsigned _max = 10): m_blockFrom(_blockFrom), m_blockTo(_blockTo), m_max(_max) {}
+	TransactionFilter(int _earliest = GenesisBlock, int _latest = 0, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+
+	int earliest() const { return m_earliest; }
+	int latest() const { return m_latest; }
+	unsigned max() const { return m_max; }
+	unsigned skip() const { return m_skip; }
+	bool matches(State const& _s, unsigned _i) const;
 
 	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
 	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
 	TransactionFilter stateAltered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
 	TransactionFilter stateAltered(Address _a) { m_altered.insert(_a); return *this; }
 	TransactionFilter withMax(unsigned _m) { m_max = _m; return *this; }
+	TransactionFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
+	TransactionFilter withEarliest(int _e) { m_earliest = _e; return *this; }
+	TransactionFilter withLatest(int _e) { m_latest = _e; return *this; }
 
 private:
 	std::set<Address> m_from;
 	std::set<Address> m_to;
 	std::set<std::pair<Address, u256>> m_stateAltered;
 	std::set<Address> m_altered;
-	int m_blockFrom;
-	int m_blockTo;
+	int m_earliest;
+	int m_latest;
 	unsigned m_max;
+	unsigned m_skip;
 };
-
-static const int GenesisBlock = INT_MIN;
 
 /**
  * @brief Main API hub for interfacing with Ethereum.

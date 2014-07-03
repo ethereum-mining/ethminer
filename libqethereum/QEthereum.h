@@ -402,6 +402,12 @@ public:
 	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p, int _block) const;
 	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a, int _block) const;
 
+	/*TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
+	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
+	TransactionFilter stateAltered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
+	TransactionFilter stateAltered(Address _a) { m_altered.insert(_a); return *this; }*/
+	Q_INVOKABLE QString getTransactions(QString _attribs) const;
+
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
 	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
 

@@ -252,6 +252,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
 	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
 	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
+	_e->evaluateJavaScript("eth.transactions = function(a) { return eval(eth.getTransactions(a)); }");
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
 	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
@@ -382,6 +383,36 @@ QString QEthereum::codeAt(QString _a, int _block) const
 double QEthereum::countAt(QString _a, int _block) const
 {
 	return (double)(uint64_t)client()->countAt(toAddress(_a), _block);
+}
+
+QString QEthereum::getTransactions(QString _a) const
+{
+	eth::TransactionFilter filter;
+
+	QJsonObject f = QJsonDocument::fromJson(_a.toUtf8()).object();
+	if (f.contains("earliest"))
+		filter.withEarliest(f["earliest"].toInt());
+	if (f.contains("latest"))
+		filter.withLatest(f["latest"].toInt());
+	if (f.contains("max"))
+		filter.withMax(f["max"].toInt());
+	if (f.contains("skip"))
+		filter.withSkip(f["skip"].toInt());
+
+	QJsonArray ret;
+	for (Transaction const& t: m_client->transactions(filter))
+	{
+		QJsonObject v;
+		v["data"] = ::fromBinary(t.data);
+		v["gas"] = toQJS(t.gas);
+		v["gasPrice"] = toQJS(t.gasPrice);
+		v["nonce"] = toQJS(t.nonce);
+		v["to"] = toQJS(t.receiveAddress);
+		v["value"] = toQJS(t.value);
+		v["sender"] = toQJS(t.sender());
+		ret.append(v);
+	}
+	return QString::fromUtf8(QJsonDocument(ret).toJson());
 }
 
 bool QEthereum::isMining() const
