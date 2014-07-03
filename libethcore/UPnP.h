@@ -24,6 +24,7 @@
 
 #include <set>
 #include <string>
+#include <memory>
 
 struct UPNPUrls;
 struct IGDdatas;
@@ -45,8 +46,8 @@ public:
 
 	std::set<int> m_reg;
 	bool m_ok;
-	std::unique_ptr<struct UPNPUrls> m_urls;
-	std::unique_ptr<struct IGDdatas> m_data;
+	std::shared_ptr<struct UPNPUrls> m_urls;
+	std::shared_ptr<struct IGDdatas> m_data;
 };
 
 }

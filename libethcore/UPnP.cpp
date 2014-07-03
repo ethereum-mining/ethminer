@@ -20,22 +20,24 @@
  * @date 2014
  */
 
-#if !ETH_LANGUAGES
+#include "UPnP.h"
 
 #include <stdio.h>
 #include <string.h>
+#if ETH_MINIUPNPC
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
+#endif
 #include <libethential/Exceptions.h>
 #include <libethential/Common.h>
 #include <libethential/Log.h>
-#include "UPnP.h"
 using namespace std;
 using namespace eth;
 
 UPnP::UPnP()
 {
+#if ETH_MINIUPNPC
 	m_urls.reset(new UPNPUrls);
 	m_data.reset(new IGDdatas);
 
@@ -81,6 +83,7 @@ UPnP::UPnP()
 		freeUPNPDevlist(devlist);
 	}
 	else
+#endif
 	{
 		cnote << "UPnP device not found.";
 		throw NoUPnPDevice();
@@ -96,15 +99,20 @@ UPnP::~UPnP()
 
 string UPnP::externalIP()
 {
+#if ETH_MINIUPNPC
 	char addr[16];
 	if (!UPNP_GetExternalIPAddress(m_urls->controlURL, m_data->first.servicetype, addr))
 		return addr;
 	else
+#endif
 		return "0.0.0.0";
 }
 
-int UPnP::addRedirect(char const* addr, int port)
+int UPnP::addRedirect(char const* _addr, int _port)
 {
+	(void)_addr;
+	(void)_port;
+#if ETH_MINIUPNPC
 	if (m_urls->controlURL[0] == '\0')
 	{
 		cwarn << "UPnP::addRedirect() called without proper initialisation?";
@@ -113,21 +121,21 @@ int UPnP::addRedirect(char const* addr, int port)
 
 	// Try direct mapping first (port external, port internal).
 	char port_str[16];
-	sprintf(port_str, "%d", port);
-	if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, port_str, addr, "ethereum", "TCP", NULL, NULL))
-		return port;
+	sprintf(port_str, "%d", _port);
+	if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+		return _port;
 
 	// Failed - now try (random external, port internal) and cycle up to 10 times.
 	for (uint i = 0; i < 10; ++i)
 	{
-		port = rand() % 65535 - 1024 + 1024;
-		sprintf(port_str, "%d", port);
-		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, NULL, port_str, addr, "ethereum", "TCP", NULL, NULL))
-			return port;
+		_port = rand() % 65535 - 1024 + 1024;
+		sprintf(port_str, "%d", _port);
+		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, NULL, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+			return _port;
 	}
 
 	// Failed. Try asking the router to give us a free external port.
-	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, NULL, addr, "ethereum", "TCP", NULL, NULL))
+	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, NULL, _addr, "ethereum", "TCP", NULL, NULL))
 		// Failed. Exit.
 		return 0;
 
@@ -152,22 +160,24 @@ int UPnP::addRedirect(char const* addr, int port)
 		}
 	}
 	cerr << "ERROR: Mapped port not found." << endl;
+#endif
 	return 0;
 }
 
-void UPnP::removeRedirect(int port)
+void UPnP::removeRedirect(int _port)
 {
+	(void)_port;
+#if ETH_MINIUPNPC
 	char port_str[16];
 //		int t;
-	printf("TB : upnp_rem_redir (%d)\n", port);
+	printf("TB : upnp_rem_redir (%d)\n", _port);
 	if (m_urls->controlURL[0] == '\0')
 	{
 		printf("TB : the init was not done !\n");
 		return;
 	}
-	sprintf(port_str, "%d", port);
+	sprintf(port_str, "%d", _port);
 	UPNP_DeletePortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, "TCP", NULL);
-	m_reg.erase(port);
-}
-
+	m_reg.erase(_port);
 #endif
+}

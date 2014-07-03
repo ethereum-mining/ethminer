@@ -1,4 +1,6 @@
+#if ETH_QTQML
 #include <QtQml/QtQml>
+#endif
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libethcore/FileSystem.h>

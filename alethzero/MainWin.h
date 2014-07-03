@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <QtQml/QJSValue>
+//#include <QtQml/QJSValue>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>

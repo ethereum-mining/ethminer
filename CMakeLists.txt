@@ -46,6 +46,13 @@ if ("${TARGET_PLATFORM}" STREQUAL "linux")
 	set(CMAKE_THREAD_LIBS_INIT pthread)
 endif ()
 
+# Initialize CXXFLAGS.
+set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -DSHAREDLIB")
+set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
+
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
@@ -70,8 +77,11 @@ if ("${TARGET_PLATFORM}" STREQUAL "w64")
 
 	set(CMAKE_INSTALL_PREFIX	/usr/x86_64-w64-mingw32)
 	set(ETH_BUILD_PLATFORM "windows")
+	set(ETH_STATIC 1)
 else ()
 	set(ETH_BUILD_PLATFORM ${CMAKE_SYSTEM_NAME})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	set(ETH_SHARED 1)
 endif()
 
 if (CMAKE_COMPILER_IS_MINGW)
@@ -86,13 +96,8 @@ else ()
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 endif ()
 
-# Initialize CXXFLAGS.
-set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC -DSHAREDLIB")
-set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
 
+message("CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 #add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
 #add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
 
@@ -110,15 +115,19 @@ else ()
 endif ()
 
 if(${TARGET_PLATFORM} STREQUAL "w64")
+#	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
+	set(LEVELDB_LS leveldb)
+	set(CRYPTOPP_LS cryptopp)
+	set(CRYPTOPP_ID /usr/x86_64-w64-mingw32/include/cryptopp)
 else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
-	find_path(ID cryptlib.h
+	find_path(CRYPTOPP_ID cryptlib.h
 		../cryptopp/src
 		../../cryptopp/src)
-	if(ID)
-		set(LS ${ID}/../target/build/release/libcryptopp.so)
+	if(CRYPTOPP_ID)
+		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)
 	else()
-		find_path(ID cryptlib.h
+		find_path(CRYPTOPP_ID cryptlib.h
 			/usr/include/cryptopp
 			/usr/include/crypto++
 			/usr/local/include/cryptopp
@@ -126,7 +135,7 @@ else()
 			/opt/local/include/cryptopp
 			/opt/local/include/crypto++
 			)
-		find_library(LS NAMES cryptoppeth cryptopp
+		find_library(CRYPTOPP_LS NAMES cryptoppeth cryptopp
 			PATHS
 			/usr/lib
 			/usr/local/lib
@@ -134,32 +143,24 @@ else()
 			)
 	endif()
 
-	if (ID AND LS)
-		message(STATUS "Found Crypto++: ${ID}, ${LS}")
-		set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
+	if (CRYPTOPP_ID AND CRYPTOPP_LS)
+		message(STATUS "Found Crypto++: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
+		set(_CRYPTOPP_VERSION_HEADER ${CRYPTOPP_ID}/config.h)
 		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
 			file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
 			string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
 			if(${_CRYPTOPP_VERSION} LESS 562)
+				set(CRYPTOPP_ID CACHE FILEPATH "" FORCE)
+				set(CRYPTOPP_LS CACHE FILEPATH "" FORCE)
 				message(STATUS "Crypto++ version found is smaller than 5.6.2.")
 			else()
-				set(CRYPTOPP_INCLUDE_DIR ${ID} CACHE FILEPATH "" FORCE)
-				set(CRYPTOPP_LIBRARIES ${LS} CACHE FILEPATH "" FORCE)
-				set(CRYPTOPP_FOUND TRUE)
 				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
 	endif()
 
 	# Not really worth caching. We want to reevaluate anyway.
-	mark_as_advanced(CRYPTOPP_INCLUDE_DIR CRYPTOPP_LIBRARIES)
-
-	# Always "found", given last block.
-	include_directories(${CRYPTOPP_INCLUDE_DIR})
-
-	if (NOT APPLE)
-		link_directories(${CRYPTOPP_LIBRARIES})
-	endif()
+	mark_as_advanced(CRYPTOPP_ID CRYPTOPP_LS)
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include
@@ -178,6 +179,7 @@ else()
 			)
 		if ( LEVELDB_LS )
 			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
+			add_definitions(-DETH_LEVELDB)
 		else ()
 			message(FATAL_ERROR "Failed to find the LevelDB Library!")
 		endif ()
@@ -202,6 +204,7 @@ else()
 			)
 		if ( PYTHON_LS )
 			message(STATUS "Found Python-2.7 Library: ${PYTHON_LS}")
+			add_definitions(-DETH_PYTHON)
 		else ()
 			message(FATAL_ERROR "Failed to find the Python-2.7 Library!")
 		endif ()
@@ -225,11 +228,12 @@ else()
 			)
 		if ( MINIUPNPC_LS )
 			message(STATUS "Found miniupnpc library: ${MINIUPNPC_LS}")
+			add_definitions(-DETH_MINIUPNPC)
 		else ()
-			message(FATAL_ERROR "Failed to find the miniupnpc library!")
+			message(STATUS "Failed to find the miniupnpc library!")
 		endif ()
 	else ()
-		message(FATAL_ERROR "Failed to find the miniupnpc headers!")
+		message(STATUS "Failed to find the miniupnpc headers!")
 	endif ()
 
 
@@ -248,6 +252,7 @@ else()
 			)
 		if ( JSONRPC_LS )
 			message(STATUS "Found jsonrpc library: ${JSONRPC_LS}")
+		add_definitions(-DETH_JSONRPC)
 		else ()
 			message(STATUS "Failed to find the jsonrpc library!")
 		endif ()
@@ -270,6 +275,7 @@ else()
 			)
 		if ( READLINE_LS )
 			message(STATUS "Found readline library: ${READLINE_LS}")
+			add_definitions(-DETH_READLINE)
 		else ()
 			message(STATUS "Failed to find the readline library!")
 		endif ()
@@ -277,15 +283,30 @@ else()
 		message(STATUS "Failed to find the readline headers!")
 	endif ()
 
-endif()
-
-if (UNIX)
 	if (LANGUAGES)
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
 	else()
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
 	endif()
+
+	set(QTQML 1)
 endif()
+
+include_directories(${CRYPTOPP_ID})
+include_directories(${PYTHON_ID})
+include_directories(${MINIUPNPC_ID})
+include_directories(${LEVELDB_ID})
+include_directories(${READLINE_ID})
+include_directories(${JSONRPC_ID})
+
+#	if (NOT APPLE)
+#		link_directories(${CRYPTOPP_LS})
+#		link_directories(${LEVELDB_LS})
+#		link_directories(${MINIUPNPC_LS})
+#		link_directories(${PYTHON_LS})
+#		link_directories(${READLINE_LS})
+#		link_directories(${JSONRPC_LS})
+#	endif()
 
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
@@ -311,19 +332,24 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(test)
 add_subdirectory(eth)
-if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)
 endif ()
-if (NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
+if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
 	add_subdirectory(neth)
 endif ()
+if(QTQML)
+add_definitions(-DETH_QTQML)
+endif()
 
-if (NOT HEADLESS)
+if(NOT HEADLESS)
 	add_subdirectory(libqethereum)
 	add_subdirectory(alethzero)
+if(QTQML)
 	add_subdirectory(walleth)
-endif ()
-endif ()
+endif()
+endif()
+endif()
 
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
