@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QtCore/QAbstractListModel>
+#if ETH_QTQML
 #include <QtQml/QtQml>
+#endif
 #include <libethential/CommonIO.h>
 #include <libethcore/CommonEth.h>
 

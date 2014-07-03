@@ -24,7 +24,6 @@ elseif (UNIX)
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
 endif ()
 
-
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5Qml REQUIRED)
@@ -52,10 +51,15 @@ if (APPLE)
 	include(BundleUtilities)
 endif ()
 
-add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
+if(ETH_STATIC)
+	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST})
+else()
+	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
+endif()
 
+include_directories(/)
 qt5_use_modules(${EXECUTABLE} Core Gui WebKit WebKitWidgets Widgets Network Quick Qml)
-target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${CRYPTOPP_LS})
 
 if (APPLE)
 	if (${ADDFRAMEWORKS})

@@ -212,7 +212,6 @@ void PeerServer::populateAddresses()
 			char host[NI_MAXHOST];
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
-			// TODO: Make exception safe when no internet.
 			try
 			{
 				auto it = r.resolve({host, "30303"});

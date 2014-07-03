@@ -14,18 +14,11 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
-add_definitions(-DETH_PYTHON)
-include_directories(${PYTHON_ID})
-target_link_libraries(${EXECUTABLE} ${PYTHON_LS})
-
 target_link_libraries(${EXECUTABLE} serpent)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} evmface)
 target_link_libraries(${EXECUTABLE} ethential)
-target_link_libraries(${EXECUTABLE} gmp)
-target_link_libraries(${EXECUTABLE} gmp)
-
-#g++ $(CXXFLAGS) -shared $(PLATFORM_OPTS) $(TARGET).o -L$(BOOST_LIB) -lboost_python -L/usr/lib/python$(PYTHON_VERSION)/config -lpython$(PYTHON_VERSION) $(COMMON_OBJS) -o $(TARGET).so
+target_link_libraries(${EXECUTABLE} ${PYTHON_LS})
 
 if(${TARGET_PLATFORM} STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_python_win32-mt-s)
