@@ -353,9 +353,14 @@ inline QString toDecimal(QString const& _s)
 	return QString::fromStdString(eth::toString(toU256(_s)));
 }
 
+inline QString fromBinary(eth::bytes const& _s)
+{
+	return QString::fromStdString("0x" + eth::toHex(_s));
+}
+
 inline QString fromBinary(QString const& _s)
 {
-	return QString::fromStdString("0x" + eth::toHex(asBytes(_s)));
+	return fromBinary(asBytes(_s));
 }
 
 class QEthereum: public QObject
@@ -385,10 +390,17 @@ public:
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
 	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
 
+	// [OLD API] - Don't use this.
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
 	Q_INVOKABLE QString/*eth::u256*/ storageAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;
 	Q_INVOKABLE double txCountAt(QString/*eth::Address*/ _a) const;
 	Q_INVOKABLE bool isContractAt(QString/*eth::Address*/ _a) const;
+
+	// [NEW API] - Use this instead.
+	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
+	Q_INVOKABLE double countAt(QString/*eth::Address*/ _a, int _block) const;
+	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p, int _block) const;
+	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a, int _block) const;
 
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
 	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);

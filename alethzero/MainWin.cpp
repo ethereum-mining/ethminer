@@ -789,6 +789,7 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
+	changed();
 }
 
 void Main::on_inject_triggered()

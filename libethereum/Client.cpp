@@ -286,3 +286,49 @@ void Client::unlock()
 {
 	m_lock.unlock();
 }
+
+unsigned Client::numberOf(int _n) const
+{
+	if (_n > 0)
+		return _n;
+	else if (_n == GenesisBlock)
+		return 0;
+	else
+		return m_bc.details().number + 1 + _n;
+}
+
+State Client::asOf(int _h) const
+{
+	if (_h == 0)
+		return m_postMine;
+	else if (_h == -1)
+		return m_preMine;
+	else
+		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
+}
+
+u256 Client::balanceAt(Address _a, int _block) const
+{
+	return asOf(_block).balance(_a);
+}
+
+u256 Client::countAt(Address _a, int _block) const
+{
+	return asOf(_block).transactionsFrom(_a);
+}
+
+u256 Client::stateAt(Address _a, u256 _l, int _block) const
+{
+	return asOf(_block).storage(_a, _l);
+}
+
+bytes Client::codeAt(Address _a, int _block) const
+{
+	return asOf(_block).code(_a);
+}
+
+Transactions Client::transactions(TransactionFilter const& _f) const
+{
+	Transactions ret;
+	return ret;
+}
