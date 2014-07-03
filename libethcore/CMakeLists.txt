@@ -17,9 +17,11 @@ include_directories(..)
 
 target_link_libraries(${EXECUTABLE} ethential)
 target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} gmp)
+if(MINIUPNPC_LS)
+target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
+endif()
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 
 if(${TARGET_PLATFORM} STREQUAL "w64")
