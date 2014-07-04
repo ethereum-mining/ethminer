@@ -880,7 +880,8 @@ void Main::on_blocks_currentItemChanged()
 			Transaction t = st.pending()[txi];
 			auto r = t.rlp();
 
-			if (bool done = m_currentExecution->setup(&r))
+			bool done = m_currentExecution->setup(&r);
+			if (!done)
 			{
 				auto startGas = m_currentExecution->vm().gas();
 				for (; !done; done = m_currentExecution->go(1))
@@ -1217,7 +1218,8 @@ void Main::on_debug_clicked()
 			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 			t.sign(s);
 			auto r = t.rlp();
-			if (bool done = m_currentExecution->setup(&r))
+			bool done = m_currentExecution->setup(&r);
+			if (!done)
 			{
 				auto startGas = m_currentExecution->vm().gas();
 				for (; !done; done = m_currentExecution->go(1))
