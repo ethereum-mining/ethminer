@@ -1183,7 +1183,6 @@ void Main::on_send_clicked()
 	for (auto i: m_myKeys)
 		if (m_client->postState().balance(i.address()) >= totalReq)
 		{
-			m_client->unlock();
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
