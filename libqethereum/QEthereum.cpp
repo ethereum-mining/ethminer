@@ -252,7 +252,7 @@ void QEthereum::setup(QWebFrame* _e)
 	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
 	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
 	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
-	_e->evaluateJavaScript("eth.transactions = function(a) { return eval(eth.getTransactions(a)); }");
+	_e->evaluateJavaScript("eth.transactions = function(a) { return JSON.parse(eth.getTransactions(JSON.stringify(a))); }");
 	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
 	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
 	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
@@ -398,18 +398,52 @@ QString QEthereum::getTransactions(QString _a) const
 		filter.withMax(f["max"].toInt());
 	if (f.contains("skip"))
 		filter.withSkip(f["skip"].toInt());
+	if (f.contains("from"))
+	{
+		if (f["from"].isArray())
+			for (auto i: f["from"].toArray())
+				filter.from(toAddress(i.toString()));
+		else
+			filter.from(toAddress(f["from"].toString()));
+	}
+	if (f.contains("to"))
+	{
+		if (f["to"].isArray())
+			for (auto i: f["to"].toArray())
+				filter.to(toAddress(i.toString()));
+		else
+			filter.to(toAddress(f["to"].toString()));
+	}
+	if (f.contains("altered"))
+	{
+		if (f["altered"].isArray())
+			for (auto i: f["altered"].toArray())
+				if (i.isObject())
+					filter.altered(toAddress(i.toObject()["id"].toString()), toU256(i.toObject()["at"].toString()));
+				else
+					filter.altered(toAddress(i.toString()));
+		else
+			if (f["altered"].isObject())
+				filter.altered(toAddress(f["altered"].toObject()["id"].toString()), toU256(f["altered"].toObject()["at"].toString()));
+			else
+				filter.altered(toAddress(f["altered"].toString()));
+	}
 
 	QJsonArray ret;
-	for (Transaction const& t: m_client->transactions(filter))
+	for (eth::PastTransaction const& t: m_client->transactions(filter))
 	{
 		QJsonObject v;
 		v["data"] = ::fromBinary(t.data);
 		v["gas"] = toQJS(t.gas);
 		v["gasPrice"] = toQJS(t.gasPrice);
-		v["nonce"] = toQJS(t.nonce);
+		v["nonce"] = (int)t.nonce;
 		v["to"] = toQJS(t.receiveAddress);
 		v["value"] = toQJS(t.value);
-		v["sender"] = toQJS(t.sender());
+		v["from"] = toQJS(t.sender());
+		v["timestamp"] = (int)t.timestamp;
+		v["block"] = toQJS(t.block);
+		v["index"] = (int)t.index;
+		v["age"] = (int)t.age;
 		ret.append(v);
 	}
 	return QString::fromUtf8(QJsonDocument(ret).toJson());

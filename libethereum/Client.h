@@ -49,11 +49,11 @@ class Client;
 class ClientGuard
 {
 public:
-	inline ClientGuard(Client* _c);
+	inline ClientGuard(Client const* _c);
 	inline ~ClientGuard();
 
 private:
-	Client* m_client;
+	Client const* m_client;
 };
 
 enum ClientWorkState
@@ -92,8 +92,8 @@ public:
 
 	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
 	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
-	TransactionFilter stateAltered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
-	TransactionFilter stateAltered(Address _a) { m_altered.insert(_a); return *this; }
+	TransactionFilter altered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
+	TransactionFilter altered(Address _a) { m_altered.insert(_a); return *this; }
 	TransactionFilter withMax(unsigned _m) { m_max = _m; return *this; }
 	TransactionFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
 	TransactionFilter withEarliest(int _e) { m_earliest = _e; return *this; }
@@ -109,6 +109,17 @@ private:
 	unsigned m_max;
 	unsigned m_skip;
 };
+
+struct PastTransaction: public Transaction
+{
+	PastTransaction(Transaction const& _t, h256 _b, u256 _i, u256 _ts, int _age): Transaction(_t), block(_b), index(_i), timestamp(_ts), age(_age) {}
+	h256 block;
+	u256 index;
+	u256 timestamp;
+	int age;
+};
+
+typedef std::vector<PastTransaction> PastTransactions;
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -162,8 +173,8 @@ public:
 	// [OLD API]:
 
 	/// Locks/unlocks the state/blockChain/transactionQueue for access.
-	void lock();
-	void unlock();
+	void lock() const;
+	void unlock() const;
 
 	/// Get the object representing the current state of Ethereum.
 	State const& state() const { return m_preMine; }
@@ -178,7 +189,7 @@ public:
 	u256 countAt(Address _a, int _block = -1) const;
 	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
 	bytes codeAt(Address _a, int _block = -1) const;
-	Transactions transactions(TransactionFilter const& _f) const;
+	PastTransactions transactions(TransactionFilter const& _f) const;
 
 	// Misc stuff:
 
@@ -245,7 +256,7 @@ private:
 	
 	std::unique_ptr<std::thread> m_work;///< The work thread.
 	
-	std::recursive_mutex m_lock;
+	mutable std::recursive_mutex m_lock;
 	std::atomic<ClientWorkState> m_workState;
 	bool m_paranoia = false;
 	bool m_doMine = false;				///< Are we supposed to be mining?
@@ -256,7 +267,7 @@ private:
 	mutable bool m_changed;
 };
 
-inline ClientGuard::ClientGuard(Client* _c): m_client(_c)
+inline ClientGuard::ClientGuard(Client const* _c): m_client(_c)
 {
 	m_client->lock();
 }

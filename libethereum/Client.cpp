@@ -277,12 +277,12 @@ void Client::work()
 	m_changed = m_changed || changed;
 }
 
-void Client::lock()
+void Client::lock() const
 {
 	m_lock.lock();
 }
 
-void Client::unlock()
+void Client::unlock() const
 {
 	m_lock.unlock();
 }
@@ -309,21 +309,25 @@ State Client::asOf(int _h) const
 
 u256 Client::balanceAt(Address _a, int _block) const
 {
+	ClientGuard l(this);
 	return asOf(_block).balance(_a);
 }
 
 u256 Client::countAt(Address _a, int _block) const
 {
+	ClientGuard l(this);
 	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 Client::stateAt(Address _a, u256 _l, int _block) const
 {
+	ClientGuard l(this);
 	return asOf(_block).storage(_a, _l);
 }
 
 bytes Client::codeAt(Address _a, int _block) const
 {
+	ClientGuard l(this);
 	return asOf(_block).code(_a);
 }
 
@@ -337,28 +341,28 @@ bool TransactionFilter::matches(State const& _s, unsigned _i) const
 	if (m_stateAltered.empty() && m_altered.empty())
 		return true;
 	StateDiff d = _s.pendingDiff(_i);
-	if (!m_stateAltered.empty())
-	{
-		for (auto const& s: m_stateAltered)
-			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
-				goto OK;
-		return false;
-		OK:;
-	}
 	if (!m_altered.empty())
 	{
 		for (auto const& s: m_altered)
 			if (d.accounts.count(s))
-				goto OK2;
+				return true;
 		return false;
-		OK2:;
+	}
+	if (!m_stateAltered.empty())
+	{
+		for (auto const& s: m_stateAltered)
+			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
+				return true;
+		return false;
 	}
 	return true;
 }
 
-Transactions Client::transactions(TransactionFilter const& _f) const
+PastTransactions Client::transactions(TransactionFilter const& _f) const
 {
-	Transactions ret;
+	ClientGuard l(this);
+
+	PastTransactions ret;
 	unsigned begin = numberOf(_f.latest());
 	unsigned end = min(begin, numberOf(_f.earliest()));
 	unsigned m = _f.max();
@@ -373,25 +377,34 @@ Transactions Client::transactions(TransactionFilter const& _f) const
 				if (s)
 					s--;
 				else
-					ret.insert(ret.begin(), m_postMine.pending()[i]);
+					ret.insert(ret.begin(), PastTransaction(m_postMine.pending()[i], h256(), i, time(0), 0));
 			}
 		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
 		if (_f.earliest() == 0)
 			return ret;
 	}
 
+	auto cn = m_bc.number();
 	auto h = m_bc.numberHash(begin);
 	for (unsigned n = begin; ret.size() != m; n--, h = m_bc.details(h).parent)
 	{
-		State st(m_stateDB, m_bc, h);
-		for (unsigned i = st.pending().size(); i--;)
-			if (_f.matches(st, i))
-			{
-				if (s)
-					s--;
-				else
-					ret.insert(ret.begin(), st.pending()[i]);
-			}
+		try
+		{
+			State st(m_stateDB, m_bc, h);
+			for (unsigned i = st.pending().size(); i--;)
+				if (_f.matches(st, i))
+				{
+					if (s)
+						s--;
+					else
+						ret.insert(ret.begin(), PastTransaction(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
+				}
+		}
+		catch (...)
+		{
+			// Gaa. bad state. not good at all. bury head in sand for now.
+		}
+
 		if (n == end)
 			break;
 	}
