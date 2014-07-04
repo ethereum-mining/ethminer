@@ -4,7 +4,6 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 include_directories(${LEVELDB_ID})
-include_directories(${JSONRPC_ID})
 
 link_directories(../libethcore)
 link_directories(../libethereum)
