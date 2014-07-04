@@ -122,9 +122,8 @@ if(${TARGET_PLATFORM} STREQUAL "w64")
 else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
 	find_path(CRYPTOPP_ID cryptlib.h
-		../Xcryptopp/src
-		../../Xcryptopp/src)
-	message(${CRYPTOPP_ID})
+		../cryptopp/src
+		../../cryptopp/src)
 	if(NOT ${CRYPTOPP_ID} STREQUAL "CRYPTOPP_ID-NOTFOUND")
 		message("Local cryptopp OK.")
 		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)

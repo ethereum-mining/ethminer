@@ -1216,15 +1216,17 @@ void Main::on_debug_clicked()
 			t.sign(s);
 			auto r = t.rlp();
 
-			m_currentExecution->setup(&r);
+			bool ok = m_currentExecution->setup(&r);
 			m_pcWarp.clear();
 			m_history.clear();
-			bool ok = true;
-			auto gasBegin = m_currentExecution->vm().gas();
-			while (ok)
+			if (ok)
 			{
-				m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), gasBegin - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
-				ok = !m_currentExecution->go(1);
+				auto gasBegin = m_currentExecution->vm().gas();
+				while (ok)
+				{
+					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), gasBegin - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
+					ok = !m_currentExecution->go(1);
+				}
 			}
 			initDebugger();
 			m_currentExecution.reset();
