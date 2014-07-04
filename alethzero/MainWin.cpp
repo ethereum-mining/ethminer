@@ -789,7 +789,8 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-	m_ethereum->setAccounts(m_myKeys);
+	if (m_ethereum)
+		m_ethereum->setAccounts(myKeys);
 }
 
 void Main::on_inject_triggered()
