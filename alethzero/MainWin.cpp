@@ -188,6 +188,7 @@ Main::Main(QWidget *parent) :
 			s.setValue("splashMessage", false);
 		}
 	}
+	m_pcWarp.clear();
 }
 
 Main::~Main()
@@ -879,8 +880,7 @@ void Main::on_blocks_currentItemChanged()
 			Transaction t = st.pending()[txi];
 			auto r = t.rlp();
 
-			bool done = m_currentExecution->setup(&r);
-			if (!done)
+			if (bool done = m_currentExecution->setup(&r))
 			{
 				auto startGas = m_currentExecution->vm().gas();
 				for (; !done; done = m_currentExecution->go(1))
@@ -969,6 +969,7 @@ void Main::on_destination_currentTextChanged()
 
 void Main::on_data_textChanged()
 {
+	m_pcWarp.clear();
 	if (isCreation())
 	{
 		string src = ui->data->toPlainText().toStdString();
@@ -1176,13 +1177,13 @@ void Main::on_mine_triggered()
 
 void Main::on_send_clicked()
 {
-	debugFinished();
 	u256 totalReq = value() + fee();
 	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
 		if (m_client->postState().balance(i.address()) >= totalReq)
 		{
 			m_client->unlock();
+			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
 				m_client->transact(s, value(), m_data, ui->gas->value(), gasPrice());
@@ -1216,22 +1217,15 @@ void Main::on_debug_clicked()
 			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 			t.sign(s);
 			auto r = t.rlp();
-
-			bool ok = m_currentExecution->setup(&r);
-			m_pcWarp.clear();
-			m_history.clear();
-			if (ok)
+			if (bool done = m_currentExecution->setup(&r))
 			{
-				auto gasBegin = m_currentExecution->vm().gas();
-				while (ok)
-				{
-					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), gasBegin - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
-					ok = !m_currentExecution->go(1);
-				}
+				auto startGas = m_currentExecution->vm().gas();
+				for (; !done; done = m_currentExecution->go(1))
+					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), startGas - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
+				initDebugger();
+				updateDebugger();
 			}
-			initDebugger();
 			m_currentExecution.reset();
-			updateDebugger();
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
@@ -1276,41 +1270,43 @@ void Main::debugFinished()
 void Main::initDebugger()
 {
 //	ui->send->setEnabled(false);
-	ui->debugStep->setEnabled(true);
-	ui->debugStepback->setEnabled(true);
-	ui->debugPanel->setEnabled(true);
-	ui->debugCode->setEnabled(false);
-	ui->debugTimeline->setMinimum(0);
-	ui->debugTimeline->setMaximum(m_history.size() - 1);
-	ui->debugTimeline->setValue(0);
-
-	QListWidget* dc = ui->debugCode;
-	dc->clear();
-	if (m_currentExecution)
+	if (m_history.size())
 	{
-		for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
+		ui->debugStep->setEnabled(true);
+		ui->debugStepback->setEnabled(true);
+		ui->debugPanel->setEnabled(true);
+		ui->debugCode->setEnabled(false);
+		ui->debugTimeline->setMinimum(0);
+		ui->debugTimeline->setMaximum(m_history.size() - 1);
+		ui->debugTimeline->setValue(0);
+
+		QListWidget* dc = ui->debugCode;
+		dc->clear();
+		if (m_currentExecution)
 		{
-			byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
-			try
+			for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
 			{
-				QString s = c_instructionInfo.at((Instruction)b).name;
-				m_pcWarp[i] = dc->count();
-				ostringstream out;
-				out << hex << setw(4) << setfill('0') << i;
-				if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+				byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
+				try
 				{
-					unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-					s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
-					i += bc;
+					QString s = c_instructionInfo.at((Instruction)b).name;
+					m_pcWarp[i] = dc->count();
+					ostringstream out;
+					out << hex << setw(4) << setfill('0') << i;
+					if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+					{
+						unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+						s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
+						i += bc;
+					}
+					dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
 				}
-				dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-			}
-			catch (...)
-			{
-				break;	// probably hit data segment
+				catch (...)
+				{
+					break;	// probably hit data segment
+				}
 			}
 		}
-
 	}
 }
 
@@ -1321,23 +1317,26 @@ void Main::on_debugTimeline_valueChanged()
 
 void Main::updateDebugger()
 {
-	QListWidget* ds = ui->debugStack;
-	ds->clear();
+	if (m_currentExecution)
+	{
+		QListWidget* ds = ui->debugStack;
+		ds->clear();
 
-	WorldState const& ws = m_history[ui->debugTimeline->value()];
+		WorldState const& ws = m_history[ui->debugTimeline->value()];
 
-	for (auto i: ws.stack)
-		ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
-	ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
-	ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
-	ostringstream ss;
-	ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
-	ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+		for (auto i: ws.stack)
+			ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
+		ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
+		ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
+		ostringstream ss;
+		ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
+		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 
-	stringstream s;
-	for (auto const& i: ws.storage)
-		s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-	ui->debugStorage->setHtml(QString::fromStdString(s.str()));
+		stringstream s;
+		for (auto const& i: ws.storage)
+			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+		ui->debugStorage->setHtml(QString::fromStdString(s.str()));
+	}
 }
 
 // extra bits needed to link on VS
