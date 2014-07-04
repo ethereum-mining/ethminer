@@ -806,7 +806,6 @@ void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
 	eth::ClientGuard g(m_client.get());
-	debugFinished();
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
