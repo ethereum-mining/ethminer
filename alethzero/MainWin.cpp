@@ -1319,7 +1319,7 @@ void Main::on_debugTimeline_valueChanged()
 
 void Main::updateDebugger()
 {
-	if (m_currentExecution)
+	if (m_history.size())
 	{
 		QListWidget* ds = ui->debugStack;
 		ds->clear();
