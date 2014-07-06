@@ -236,6 +236,9 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
+	/// Clears pending transactions. Just for debug use.
+	void clearPending() { ClientGuard l(this); m_postMine = m_preMine; changed(); }
+
 private:
 	void work();
 

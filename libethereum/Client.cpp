@@ -386,7 +386,7 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 
 	auto cn = m_bc.number();
 	auto h = m_bc.numberHash(begin);
-	for (unsigned n = begin; ret.size() != m; n--, h = m_bc.details(h).parent)
+	for (unsigned n = begin; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
 	{
 		try
 		{
