@@ -1347,7 +1347,7 @@ void Main::updateDebugger()
 		ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
 		ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
 		ostringstream ss;
-		ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: 0x" << ws.gas;
+		ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: " << dec << ws.gas << "  |  (- " << dec << ws.gasUsed << ")";
 		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 
 		stringstream s;

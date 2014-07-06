@@ -760,6 +760,7 @@ MineInfo State::mine(uint _msTimeout)
 
 void State::completeMine()
 {
+	cdebug << "Completing mine!";
 	// Got it!
 
 	// Commit to disk.
@@ -774,6 +775,12 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(m_currentBytes);
 	cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
+
+	// Quickly reset the transactions.
+	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
+	m_transactions.clear();
+	m_transactionSet.clear();
+	m_lastTx = m_db;
 }
 
 bool State::addressInUse(Address _id) const
