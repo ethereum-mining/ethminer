@@ -267,6 +267,7 @@ void Client::work()
 		{
 			// Import block.
 			lock_guard<recursive_mutex> l(m_lock);
+			m_postMine.completeMine();
 			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 			m_changed = true;
 		}

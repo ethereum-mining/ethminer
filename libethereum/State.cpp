@@ -750,28 +750,30 @@ MineInfo State::mine(uint _msTimeout)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	MineInfo ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
-	if (ret.completed)
-	{
-		// Got it!
+	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
 
-		// Commit to disk.
-		m_db.commit();
-
-		// Compile block:
-		RLPStream ret;
-		ret.appendList(3);
-		m_currentBlock.fillStream(ret, true);
-		ret.appendRaw(m_currentTxs);
-		ret.appendRaw(m_currentUncles);
-		ret.swapOut(m_currentBytes);
-		m_currentBlock.hash = sha3(m_currentBytes);
-		cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
-	}
-	else
+	if (!ret.completed)
 		m_currentBytes.clear();
 
 	return ret;
+}
+
+void State::completeMine()
+{
+	// Got it!
+
+	// Commit to disk.
+	m_db.commit();
+
+	// Compile block:
+	RLPStream ret;
+	ret.appendList(3);
+	m_currentBlock.fillStream(ret, true);
+	ret.appendRaw(m_currentTxs);
+	ret.appendRaw(m_currentUncles);
+	ret.swapOut(m_currentBytes);
+	m_currentBlock.hash = sha3(m_currentBytes);
+	cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
 }
 
 bool State::addressInUse(Address _id) const
@@ -943,9 +945,18 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-// TODO: kill temp nodes automatically in TrieDB
+// TODO: run this often.
+// POSSIBLE RACE CONDITION: check if mining clears intermediate nodes in trie before clearing pending.
+// HOW DID TRIE NODES GO BUT PENDING STAY?
+void State::checkPendingInTrie() const
+{
+	bool x = true;
+
+
+	assert(x);
+}
+
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
-// TODO: TransactionReceipt trie should be MemoryDB and built as necessary
 
 u256 State::execute(bytesConstRef _rlp)
 {
