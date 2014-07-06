@@ -167,6 +167,7 @@
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
+    <addaction name="clearPending"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1442,6 +1443,11 @@ font-size: 14pt</string>
    </property>
    <property name="shortcut">
     <string>Shift+F10</string>
+   </property>
+  </action>
+  <action name="clearPending">
+   <property name="text">
+    <string>&amp;Clear Pending</string>
    </property>
   </action>
  </widget>

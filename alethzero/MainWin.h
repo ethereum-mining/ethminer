@@ -114,6 +114,7 @@ private slots:
 	void on_showAllAccounts_triggered() { refresh(true); }
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
+	void on_clearPending_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();

@@ -197,6 +197,11 @@ Main::~Main()
 	writeSettings();
 }
 
+void Main::on_clearPending_triggered()
+{
+	m_client->clearPending();
+}
+
 void Main::load(QString _s)
 {
 	QFile fin(_s);
