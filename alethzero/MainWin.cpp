@@ -900,6 +900,7 @@ void Main::on_blocks_currentItemChanged()
 			bool done = m_currentExecution->setup(&r);
 			if (!done)
 			{
+				debugFinished();
 				auto startGas = m_currentExecution->vm().gas();
 				for (; !done; done = m_currentExecution->go(1))
 					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), startGas - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
