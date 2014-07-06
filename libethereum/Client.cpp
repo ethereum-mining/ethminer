@@ -371,7 +371,7 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 	// Handle pending transactions differently as they're not on the block chain.
 	if (_f.latest() == 0)
 	{
-		for (unsigned i = m_postMine.pending().size(); i--;)
+		for (unsigned i = m_postMine.pending().size(); i-- && ret.size() != m;)
 			if (_f.matches(m_postMine, i))
 			{
 				if (s)
@@ -391,7 +391,7 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 		try
 		{
 			State st(m_stateDB, m_bc, h);
-			for (unsigned i = st.pending().size(); i--;)
+			for (unsigned i = st.pending().size(); i-- && ret.size() != m;)
 				if (_f.matches(st, i))
 				{
 					if (s)

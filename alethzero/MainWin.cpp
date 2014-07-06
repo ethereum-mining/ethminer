@@ -274,6 +274,18 @@ void Main::eval(QString const& _js)
 	ui->jsConsole->setHtml(s);
 }
 
+QString fromRaw(eth::h256 _n)
+{
+	if (_n)
+	{
+		std::string s((char const*)_n.data(), 32);
+		if (s.find_first_of('\0') != string::npos)
+			s.resize(s.find_first_of('\0'));
+		return QString::fromStdString(s);
+	}
+	return QString();
+}
+
 QString Main::pretty(eth::Address _a) const
 {
 	h256 n;
@@ -284,14 +296,7 @@ QString Main::pretty(eth::Address _a) const
 	if (!n)
 		n = state().storage(m_nameReg, (u160)(_a));
 
-	if (n)
-	{
-		std::string s((char const*)n.data(), 32);
-		if (s.find_first_of('\0') != string::npos)
-			s.resize(s.find_first_of('\0'));
-		return QString::fromStdString(s);
-	}
-	return QString();
+	return fromRaw(n);
 }
 
 QString Main::render(eth::Address _a) const
@@ -494,7 +499,7 @@ void Main::updateBlockCount()
 {
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
+	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion));
 }
 
 void Main::on_blockChainFilter_textChanged()
@@ -659,8 +664,11 @@ void Main::refresh(bool _override)
 		m_keysChanged = false;
 		ui->ourAccounts->clear();
 		u256 totalBalance = 0;
-		u256 totalGavCoinBalance = 0;
-		Address gavCoin = fromString("GavCoin");
+		map<Address, pair<QString, u256>> altCoins;
+		Address coinsAddr = right160(st.storage(c_config, 1));
+		for (unsigned i = 0; i < st.storage(coinsAddr, 0); ++i)
+			altCoins[right160(st.storage(coinsAddr, st.storage(coinsAddr, i + 1)))] = make_pair(fromRaw(st.storage(coinsAddr, i + 1)), 0);
+//		u256 totalGavCoinBalance = 0;
 		for (auto i: m_myKeys)
 		{
 			u256 b = st.balance(i.address());
@@ -668,10 +676,15 @@ void Main::refresh(bool _override)
 				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 			totalBalance += b;
 
-			totalGavCoinBalance += st.storage(gavCoin, (u160)i.address());
+			for (auto& c: altCoins)
+				c.second.second += (u256)st.storage(c.first, (u160)i.address());
 		}
 
-		ui->balance->setText(QString::fromStdString(toString(totalGavCoinBalance) + " GAV | " + formatBalance(totalBalance)));
+		QString b;
+		for (auto const& c: altCoins)
+			if (c.second.second)
+				b += QString::fromStdString(toString(c.second.second)) + " " + c.second.first.toUpper() + " | ";
+		ui->balance->setText(b + QString::fromStdString(formatBalance(totalBalance)));
 	}
 }
 
@@ -1019,7 +1032,7 @@ void Main::on_data_textChanged()
 		QString s = ui->data->toPlainText();
 		while (s.size())
 		{
-			QRegExp r("(@|\\$)?\"(.*)\"(.*)");
+			QRegExp r("(@|\\$)?\"([^\"]*)\"(.*)");
 			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(.*)");
 			if (r.exactMatch(s))
 			{
