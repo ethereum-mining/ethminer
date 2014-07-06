@@ -136,10 +136,7 @@ else()
 	find_path(CRYPTOPP_ID cryptlib.h
 		../cryptopp/src
 		../../cryptopp/src)
-	if(NOT "${CRYPTOPP_ID}" STREQUAL "CRYPTOPP_ID-NOTFOUND")
-		message("Local cryptopp OK.")
-		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)
-	else()
+	if(CRYPTOPP_ID STREQUAL "CRYPTOPP_ID-NOTFOUND")
 		message("Trying system cryptopp...")
 		find_path(CRYPTOPP_ID cryptlib.h
 			/usr/include/cryptopp
@@ -155,9 +152,14 @@ else()
 			/usr/local/lib
 			/opt/local/lib
 			)
+	else()
+		message("Local cryptopp OK.")
+		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)
 	endif()
 
-	if (CRYPTOPP_ID AND CRYPTOPP_LS)
+	if (CRYPTOPP_LS STREQUAL "CRYPTOPP_LS-NOTFOUND")
+		message(FATAL_ERROR "Couldn't find Crypto++ version >= 5.6.2.")
+	else()
 		message(STATUS "Found Crypto++: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
 		set(_CRYPTOPP_VERSION_HEADER ${CRYPTOPP_ID}/config.h)
 		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
@@ -171,9 +173,6 @@ else()
 				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
-	else()
-		message(FATAL_ERROR "Couldn't find Crypto++ version >= 5.6.2.")
-
 	endif()
 
 	# Not really worth caching. We want to reevaluate anyway.
