@@ -240,6 +240,18 @@ QEthereum::~QEthereum()
 {
 }
 
+void QEthereum::setAccounts(QList<eth::KeyPair> _l)
+{
+	cnote << "WAS:";
+	for (auto i: m_accounts)
+		cnote << i.sec();
+	cnote << "NOW:";
+	for (auto i: _l)
+		cnote << i.sec();
+	m_accounts = _l;
+	changed();
+}
+
 void QEthereum::setup(QWebFrame* _e)
 {
 	// disconnect
