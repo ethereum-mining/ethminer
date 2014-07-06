@@ -362,9 +362,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				m_currentBlock.populate(b);
-				m_currentBlock.verifyInternals(b);
-				enact(b, BlockInfo());
+				enact(b);
 				cleanup(true);
 			}
 		}
@@ -391,7 +389,6 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 		biGrandParent.populate(_bc.block(biParent.parentHash));
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
-	m_currentBlock = _bi;
 	m_previousBlock = biParent;
 	return enact(_block, biGrandParent);
 }
@@ -507,11 +504,11 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
+u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
-#if !RELEASE
+#if !ETH_RELEASE
 	BlockInfo bi(_block);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
@@ -520,6 +517,10 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
 
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
 		throw InvalidParentHash();
+
+	// Populate m_currentBlock with the correct values.
+	m_currentBlock.populate(_block, _checkNonce);
+	m_currentBlock.verifyInternals(_block);
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
@@ -540,7 +541,7 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent)
 			// Invalid state root
 			cnote << m_state.root() << "\n" << m_state;
 			cnote << *this;
-			cnote << "INVALID: " << hex << tr[1].toInt<u256>();
+			cnote << "INVALID: " << tr[1].toHash<h256>();
 			throw InvalidTransactionStateRoot();
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
@@ -653,9 +654,9 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	try
 	{
 		cnote << "PARANOIA root:" << s.rootHash();
-		s.m_currentBlock.populate(&block.out(), false);	// don't check nonce for this since we haven't mined it yet.
-		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), BlockInfo());
+//		s.m_currentBlock.populate(&block.out(), false);
+//		s.m_currentBlock.verifyInternals(&block.out());
+		s.enact(&block.out(), BlockInfo(), false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
