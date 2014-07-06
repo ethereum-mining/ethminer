@@ -26,8 +26,8 @@
 #include <utility>
 #include <functional>
 
-#include <QBrush>
-#include <QRect>
+#include <QtGui/QBrush>
+#include <QtCore/QRect>
 
 class QPainter;
 

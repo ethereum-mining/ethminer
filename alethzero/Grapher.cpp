@@ -18,7 +18,7 @@
  * along with Noted.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QPainter>
+#include <QtGui/QPainter>
 
 #include "GraphParameters.h"
 #include "Grapher.h"
