@@ -171,6 +171,9 @@ else()
 				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
+	else()
+		message(FATAL_ERROR "Couldn't find Crypto++ version >= 5.6.2.")
+
 	endif()
 
 	# Not really worth caching. We want to reevaluate anyway.
