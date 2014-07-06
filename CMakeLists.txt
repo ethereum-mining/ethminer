@@ -182,7 +182,9 @@ else()
 		/usr/include
 		/usr/local/include
 		)
-	if ( LEVELDB_ID )
+	if ( LEVELDB_ID STREQUAL "LEVELDB_ID-NOTFOUND" )
+		message(FATAL_ERROR "Failed to find the LevelDB headers")
+	else ()
 		message(STATUS "Found LevelDB Headers")
 
 		# Check for accessory dev libraries leveldb and miniupnpc
@@ -193,21 +195,21 @@ else()
 			/opt/local/lib
 			/usr/lib/*/
 			)
-		if ( LEVELDB_LS )
+		if ( LEVELDB_LS STREQUAL "LEVELDB_LS-NOTFOUND" )
+			message(FATAL_ERROR "Failed to find the LevelDB Library!")
+		else ()
 			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
 			add_definitions(-DETH_LEVELDB)
-		else ()
-			message(FATAL_ERROR "Failed to find the LevelDB Library!")
 		endif ()
-	else ()
-		message(FATAL_ERROR "Failed to find the LevelDB headers")
 	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
 		/usr/include/python2.7
 		/usr/local/include/python2.7
 		)
-	if ( PYTHON_ID )
+	if ( PYTHON_ID STREQUAL "PYTHON_ID-NOTFOUND" )
+		message(STATUS "Failed to find the Python-2.7 headers")
+	else ()
 		message(STATUS "Found Python-2.7 Headers: ${PYTHON_ID}")
 
 		# Check for accessory dev libraries leveldb and miniupnpc
@@ -218,14 +220,14 @@ else()
 			/opt/local/lib
 			/usr/lib/*/
 			)
-		if ( PYTHON_LS )
+		if ( PYTHON_LS STREQUAL "PYTHON_LS-NOTFOUND" )
+			message(STATUS "Failed to find the Python-2.7 Library!")
+			set(PYTHON_ID)
+			set(PYTHON_LS)
+		else ()
 			message(STATUS "Found Python-2.7 Library: ${PYTHON_LS}")
 			add_definitions(-DETH_PYTHON)
-		else ()
-			message(FATAL_ERROR "Failed to find the Python-2.7 Library!")
 		endif ()
-	else ()
-		message(FATAL_ERROR "Failed to find the Python-2.7 headers")
 	endif ()
 
 	find_path( MINIUPNPC_ID miniupnpc/miniwget.h
@@ -251,7 +253,6 @@ else()
 	else ()
 		message(STATUS "Failed to find the miniupnpc headers!")
 	endif ()
-
 
 	find_path( JSONRPC_ID jsonrpc/rpc.h
 		/usr/include
