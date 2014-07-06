@@ -149,10 +149,25 @@ public:
 	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
+	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns a non-empty byte array containing the block if it got lucky. In this case, call blockData()
-	/// to get the block if you need it later.
+	/// @returns Information on the mining.
 	MineInfo mine(uint _msTimeout = 1000);
+
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * // lock
+	 * commitToMine(blockchain);
+	 * // unlock
+	 * MineInfo info;
+	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * // lock
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -309,6 +324,7 @@ private:
 
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
+	void checkPendingInTrie() const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
