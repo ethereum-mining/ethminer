@@ -26,15 +26,27 @@ endif ()
 
 if (PARANOIA)
 	add_definitions(-DETH_PARANOIA)
+else()
+	set(PARANOIA 0)
 endif ()
 
 if (VMTRACE)
 	add_definitions(-DETH_VMTRACE)
+else()
+	set(VMTRACE 0)
 endif ()
 
 if (LANGUAGES)
 	add_definitions(-DETH_LANGUAGES)
+else()
+	set(LANGUAGES 0)
 endif ()
+
+if (NOT HEADLESS)
+	set(HEADLESS 0)
+endif()
+
+message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
 
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
