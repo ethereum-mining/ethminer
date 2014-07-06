@@ -114,7 +114,7 @@ else ()
 	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
 
-if(${TARGET_PLATFORM} STREQUAL "w64")
+if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
 	set(LEVELDB_LS leveldb)
 	set(CRYPTOPP_LS cryptopp)
@@ -124,7 +124,7 @@ else()
 	find_path(CRYPTOPP_ID cryptlib.h
 		../cryptopp/src
 		../../cryptopp/src)
-	if(NOT ${CRYPTOPP_ID} STREQUAL "CRYPTOPP_ID-NOTFOUND")
+	if(NOT "${CRYPTOPP_ID}" STREQUAL "CRYPTOPP_ID-NOTFOUND")
 		message("Local cryptopp OK.")
 		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)
 	else()

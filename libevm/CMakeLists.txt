@@ -28,7 +28,7 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 
-if(${TARGET_PLATFORM} STREQUAL "w64")
+if("${TARGET_PLATFORM}" STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_system-mt-s)
 	target_link_libraries(${EXECUTABLE} boost_filesystem-mt-s)
 	target_link_libraries(${EXECUTABLE} boost_thread_win32-mt-s)

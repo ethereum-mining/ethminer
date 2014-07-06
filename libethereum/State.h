@@ -283,7 +283,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _grandParent is passed, it will be used to check the uncles.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo());
+	u256 enact(bytesConstRef _block, BlockInfo const& _grandParent = BlockInfo(), bool _checkNonce = true);
 
 	// Two priviledged entry points for transaction processing used by the VM (these don't get added to the Transaction lists):
 	// We assume all instrinsic fees are paid up before this point.
