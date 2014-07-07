@@ -952,22 +952,11 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-// TODO: run this often.
-// POSSIBLE RACE CONDITION: check if mining clears intermediate nodes in trie before clearing pending.
-// HOW DID TRIE NODES GO BUT PENDING STAY?
-void State::checkPendingInTrie() const
-{
-	bool x = true;
-
-
-	assert(x);
-}
-
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
 
 u256 State::execute(bytesConstRef _rlp)
 {
-#ifndef RELEASE
+#ifndef ETH_RELEASE
 	commit();	// get an updated hash
 #endif
 

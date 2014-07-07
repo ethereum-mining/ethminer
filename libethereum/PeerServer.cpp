@@ -430,6 +430,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 			if (m_incomingBlocks.size())
 				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
+					cdebug << "Importing new block";
 					try
 					{
 						_bc.import(*it, _o);

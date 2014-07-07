@@ -53,6 +53,8 @@ public:
 	static bool verify(h256 const& _root, h256 const& _nonce, u256 const& _difficulty) { return (bigint)(u256)eval(_root, _nonce) <= (bigint(1) << 256) / _difficulty; }
 
 	MineInfo mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
+
+	h256 m_last;
 };
 
 #else
