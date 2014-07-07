@@ -39,8 +39,8 @@ namespace eth
 MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
 {
 	MineInfo ret{0.f, 1e99, 0, false};
-	static std::mt19937_64 s_eng((time(0)));
-	u256 s = h256::random(s_eng);
+	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
+	u256 s = (m_last = h256::random(s_eng));
 
 	bigint d = (bigint(1) << 256) / _difficulty;
 	ret.requirement = log2((double)d);

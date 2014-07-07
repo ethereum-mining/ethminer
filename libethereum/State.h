@@ -324,7 +324,6 @@ private:
 
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
-	void checkPendingInTrie() const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.

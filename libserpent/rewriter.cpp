@@ -398,6 +398,7 @@ Node apply_rules(Node node) {
         if (mr.success) {
             Node pattern2 = nodeMacros[pos][1];
             node = subst(pattern2, mr.map, prefix, node.metadata);
+            pos = 0;
         }
     }
     // Array_lit special instruction
@@ -405,12 +406,16 @@ Node apply_rules(Node node) {
         node = array_lit_transform(node);
     if (node.type == ASTNODE && node.val != "ref" && node.val != "get") {
 		unsigned i = 0;
-        if (node.val == "set") i = 1;
+        if (node.val == "set") {
+            node.args[0].val = "'" + node.args[0].val;
+            i = 1;
+        }
         for (i = i; i < node.args.size(); i++) {
             node.args[i] = apply_rules(node.args[i]);
         }
     }
     else if (node.type == TOKEN && !isNumberLike(node)) {
+        node.val = "'" + node.val;
         std::vector<Node> args;
         args.push_back(node);
         node = astnode("get", args, node.metadata);

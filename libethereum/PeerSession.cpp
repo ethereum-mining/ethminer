@@ -229,6 +229,7 @@ bool PeerSession::interpret(RLP const& _r)
 			auto h = sha3(_r[i].data());
 			if (!m_server->m_chain->details(h))
 			{
+				cdebug << "Pushing new block";
 				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
 				m_knownBlocks.insert(h);
 				used++;
