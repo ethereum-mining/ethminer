@@ -34,10 +34,26 @@ class State;
 
 struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
 
+struct Manifest;
+using Manifests = std::vector<Manifest>;
+
+/**
+ * @brief A record of the state-interaction of a transaction/call/create.
+ */
+struct Manifest
+{
+	Address from;
+	Address to;
+	u256s altered;
+	bytes input;
+	bytes output;
+	Manifests internal;
+};
+
 class Executive
 {
 public:
-	Executive(State& _s): m_s(_s) {}
+	Executive(State& _s, Manifest* o_ms = nullptr): m_s(_s), m_ms(o_ms) {}
 	~Executive();
 
 	bool setup(bytesConstRef _transaction);
@@ -62,6 +78,7 @@ private:
 	State& m_s;
 	ExtVM* m_ext = nullptr;	// TODO: make safe.
 	VM* m_vm = nullptr;
+	Manifest* m_ms = nullptr;
 	bytesConstRef m_out;
 	Address m_newAddress;
 

@@ -94,6 +94,13 @@ bool Executive::setup(bytesConstRef _rlp)
 //	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
 	m_s.subBalance(m_sender, cost);
 
+	if (m_ms)
+	{
+		m_ms->from = m_sender;
+		m_ms->to = m_t.receiveAddress;
+		m_ms->input = m_t.data;
+	}
+
 	if (m_t.isCreation())
 		return create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
 	else
@@ -109,7 +116,7 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	{
 		m_vm = new VM(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
+		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
 		m_endGas = _gas;
@@ -129,7 +136,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
 	return _init.empty();
 }
 
@@ -229,6 +236,9 @@ void Executive::finalize()
 	u256 feesEarned = gasSpentInEth;
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
+
+	if (m_ms)
+		m_ms->output = m_out.toBytes();
 
 	// Suicides...
 	if (m_ext)

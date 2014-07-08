@@ -284,6 +284,7 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 void BlockChain::checkConsistency()
 {
+	lock_guard<mutex> l(m_lock);
 	m_details.clear();
 	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
@@ -302,19 +303,23 @@ void BlockChain::checkConsistency()
 	delete it;
 }
 
-bytesConstRef BlockChain::block(h256 _hash) const
+bytes BlockChain::block(h256 _hash) const
 {
 	if (_hash == m_genesisHash)
-		return &m_genesisBlock;
+		return m_genesisBlock;
+
+	lock_guard<mutex> l(m_lock);
+
+	auto it = m_cache.find(_hash);
+	if (it != m_cache.end())
+		return it->second;
 
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
-	{
-		lock_guard<mutex> l(m_lock);
-		swap(m_cache[_hash], d);
-		return bytesConstRef(&m_cache[_hash]);
-	}
+	m_cache[_hash].resize(d.size());
+	memcpy(m_cache[_hash].data(), d.data(), d.size());
+	return m_cache[_hash];
 }
 
 eth::uint BlockChain::number(h256 _hash) const
@@ -331,29 +336,24 @@ h256 BlockChain::numberHash(unsigned _n) const
 	return ret;
 }
 
-BlockDetails const& BlockChain::details(h256 _h) const
+BlockDetails BlockChain::details(h256 _h) const
 {
-	BlockDetailsHash::const_iterator it;
-	bool fetchRequired;
+	lock_guard<mutex> l(m_lock);
+
+	BlockDetailsHash::const_iterator it = m_details.find(_h);
+	if (it != m_details.end())
+		return it->second;
+
+	std::string s;
+	m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
+	if (s.empty())
 	{
-		lock_guard<mutex> l(m_lock);
-		it = m_details.find(_h);
-		fetchRequired = (it == m_details.end());
-	}
-	if (fetchRequired)
-	{
-		std::string s;
-		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
-		if (s.empty())
-		{
 //			cout << "Not found in DB: " << _h << endl;
-			return NullBlockDetails;
-		}
-		{
-			lock_guard<mutex> l(m_lock);
-			bool ok;
-			tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
-		}
+		return NullBlockDetails;
+	}
+	{
+		bool ok;
+		tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
 	}
 	return it->second;
 }

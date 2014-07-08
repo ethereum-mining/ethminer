@@ -71,6 +71,7 @@ std::map<Address, AddressState> const& genesisState();
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @todo Make thread-safe.
+ * @todo Make not memory hog.
  */
 class BlockChain
 {
@@ -90,12 +91,12 @@ public:
 	void import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the number of the last block of the longest chain.
-	BlockDetails const& details(h256 _hash) const;
-	BlockDetails const& details() const { return details(currentHash()); }
+	BlockDetails details(h256 _hash) const;
+	BlockDetails details() const { return details(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
-	bytesConstRef block(h256 _hash) const;
-	bytesConstRef block() const { return block(currentHash()); }
+	bytes block(h256 _hash) const;
+	bytes block() const { return block(currentHash()); }
 
 	uint number(h256 _hash) const;
 	uint number() const { return number(currentHash()); }
@@ -121,7 +122,7 @@ private:
 
 	/// Get fully populated from disk DB.
 	mutable BlockDetailsHash m_details;
-	mutable std::map<h256, std::string> m_cache;
+	mutable std::map<h256, bytes> m_cache;
 	mutable std::mutex m_lock;
 
 	/// The queue of transactions that have happened that we're interested in.

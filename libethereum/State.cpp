@@ -104,7 +104,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_ourAddress = bi.coinbaseAddress;
 
 	sync(_bc, bi.parentHash, bip);
-	enact(b);
+	enact(&b);
 }
 
 State::State(State const& _s):
@@ -362,7 +362,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				enact(b);
+				enact(&b);
 				cleanup(true);
 			}
 		}
@@ -954,7 +954,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
 
-u256 State::execute(bytesConstRef _rlp)
+u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest* o_ms)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -967,7 +967,7 @@ u256 State::execute(bytesConstRef _rlp)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this);
+	Executive e(*this, o_ms);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -984,6 +984,15 @@ u256 State::execute(bytesConstRef _rlp)
 	ctrace << "Ready for commit;";
 	ctrace << old.diff(*this);
 #endif
+
+	if (o_output)
+		*o_output = e.out().toBytes();
+
+	if (!_commit)
+	{
+		m_cache.clear();
+		return e.gasUsed();
+	}
 
 	commit();
 
@@ -1012,7 +1021,7 @@ u256 State::execute(bytesConstRef _rlp)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1020,10 +1029,17 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
+	if (o_ms)
+	{
+		o_ms->from = _senderAddress;
+		o_ms->to = _receiveAddress;
+		o_ms->input = _data.toBytes();
+	}
+
 	if (addressHasCode(_receiveAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress));
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms);
 		bool revert = false;
 
 		try
@@ -1033,6 +1049,8 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 			if (o_suicides)
 				for (auto i: evm.suicides)
 					o_suicides->insert(i);
+			if (o_ms)
+				o_ms->output = out.toBytes();
 		}
 		catch (OutOfGas const& /*_e*/)
 		{
@@ -1063,10 +1081,17 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms)
 {
 	if (!_origin)
 		_origin = _sender;
+
+	if (o_ms)
+	{
+		o_ms->from = _sender;
+		o_ms->to = Address();
+		o_ms->input = _code.toBytes();
+	}
 
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 	while (addressInUse(newAddress))
@@ -1077,13 +1102,15 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 
 	// Execute init code.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms);
 	bool revert = false;
 	bytesConstRef out;
 
 	try
 	{
 		out = vm.go(evm);
+		if (o_ms)
+			o_ms->output = out.toBytes();
 		if (o_suicides)
 			for (auto i: evm.suicides)
 				o_suicides->insert(i);
@@ -1105,6 +1132,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		clog(StateChat) << "std::exception in VM: " << _e.what();
 	}
+
+	// TODO: CHECK: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
 
 	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)
