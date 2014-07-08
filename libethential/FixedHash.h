@@ -137,6 +137,15 @@ public:
 		}
 	};
 
+	inline FixedHash<32> bloom() const
+	{
+		FixedHash<32> ret;
+		for (auto i: m_data)
+			ret[i / 8] |= 1 << (i % 8);
+		return ret;
+	}
+
+
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };

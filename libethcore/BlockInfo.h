@@ -70,6 +70,7 @@ public:
 	h256 nonce;
 
 	BlockInfo();
+	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
 	explicit BlockInfo(bytesConstRef _block);
 
 	static BlockInfo fromHeader(bytesConstRef _block);
@@ -96,6 +97,7 @@ public:
 
 	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
 	void populate(bytesConstRef _block, bool _checkNonce = true);
+	void populate(bytes const& _block, bool _checkNonce = true) { populate(&_block, _checkNonce); }
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 	void populateFromParent(BlockInfo const& parent);
