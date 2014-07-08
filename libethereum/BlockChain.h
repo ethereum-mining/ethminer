@@ -70,6 +70,7 @@ std::map<Address, AddressState> const& genesisState();
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
+ * @todo Make thread-safe.
  */
 class BlockChain
 {

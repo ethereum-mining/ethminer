@@ -143,7 +143,7 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _value;
@@ -158,7 +158,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _endowment;
@@ -174,7 +174,7 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
-	lock_guard<recursive_mutex> l(m_lock);
+	ClientGuard l(this);
 	m_tq.attemptImport(_rlp);
 	m_changed = true;
 }
@@ -188,9 +188,9 @@ void Client::work()
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net)
 	{
-		m_net->process();
+		ClientGuard l(this);
+		m_net->process();	// must be in guard for now since it uses the blockchain. TODO: make BlockChain thread-safe.
 
-		lock_guard<recursive_mutex> l(m_lock);
 		if (m_net->sync(m_bc, m_tq, m_stateDB))
 			changed = true;
 	}
@@ -203,7 +203,7 @@ void Client::work()
 	//   all blocks.
 	// Resynchronise state with block chain & trans
 	{
-		lock_guard<recursive_mutex> l(m_lock);
+		ClientGuard l(this);
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
@@ -227,7 +227,7 @@ void Client::work()
 			m_mineProgress.best = (double)-1;
 			m_mineProgress.hashes = 0;
 			m_mineProgress.ms = 0;
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
 			if (m_paranoia)
 			{
 				if (m_postMine.amIJustParanoid(m_bc))
@@ -259,14 +259,14 @@ void Client::work()
 		m_mineProgress.ms += 100;
 		m_mineProgress.hashes += mineInfo.hashes;
 		{
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
 			m_mineHistory.push_back(mineInfo);
 		}
 
 		if (mineInfo.completed)
 		{
 			// Import block.
-			lock_guard<recursive_mutex> l(m_lock);
+			ClientGuard l(this);
 			m_postMine.completeMine();
 			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 			m_changed = true;
@@ -295,7 +295,7 @@ unsigned Client::numberOf(int _n) const
 	else if (_n == GenesisBlock)
 		return 0;
 	else
-		return m_bc.details().number + 1 + _n;
+		return m_bc.details().number + max<int>(-m_bc.details().number, 1 + _n);
 }
 
 State Client::asOf(int _h) const
