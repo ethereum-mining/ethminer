@@ -171,6 +171,9 @@
     <ProjectReference Include="LibQEthereum.vcxproj">
       <Project>{df3c5b07-a1a2-4f16-b37f-a27333622cdd}</Project>
     </ProjectReference>
+    <ProjectReference Include="LibSerpent.vcxproj">
+      <Project>{f174e81a-2a66-4693-b917-11bb42d3658c}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\alethzero\Grapher.cpp" />

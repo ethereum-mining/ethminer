@@ -104,7 +104,7 @@ void MiningView::paintEvent(QPaintEvent*)
 	Grapher g;
 	QPainter p(this);
 
-	g.init(&p, make_pair(0.f, max<float>(m_duration * 0.1f, m_values.size() * 0.1f)), make_pair(0, 255.f - (m_progress.requirement - 4)), s, id, sL);
+	g.init(&p, make_pair(0.f, max((float)m_duration * 0.1f, (float)m_values.size() * 0.1f)), make_pair(0.0f, 255.f - ((float)m_progress.requirement - 4.0f)), s, id, sL);
 	g.drawAxes();
 	g.setDataTransform(0.1f, 0, -1.0f, 255.f);
 
