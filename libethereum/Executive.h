@@ -32,8 +32,6 @@ class VM;
 class ExtVM;
 class State;
 
-struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
-
 struct Manifest;
 using Manifests = std::vector<Manifest>;
 

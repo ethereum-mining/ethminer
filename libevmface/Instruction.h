@@ -89,7 +89,7 @@ enum class Instruction: uint8_t
 	JUMP,
 	JUMPI,
 	PC,
-	MEMSIZE,
+	MSIZE,
 	GAS,
 
 	PUSH1 = 0x60,
