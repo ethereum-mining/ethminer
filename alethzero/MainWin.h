@@ -52,6 +52,7 @@ struct WorldState
 	unsigned newMemSize;
 	eth::u256 gas;
 	eth::h256 code;
+	eth::h256 callData;
 	eth::u256s stack;
 	eth::bytes memory;
 	eth::bigint gasCost;
@@ -177,7 +178,8 @@ private:
 
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
-	eth::h256 m_inDebug;
+	eth::h256 m_lastCode;
+	eth::h256 m_lastData;
 	std::vector<WorldState const*> m_lastLevels;
 
 	QMap<unsigned, unsigned> m_pcWarp;
