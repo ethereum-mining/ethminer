@@ -32,7 +32,12 @@
     <ClCompile Include="..\libethential\Common.cpp" />
     <ClCompile Include="..\libethential\CommonData.cpp" />
     <ClCompile Include="..\libethential\CommonIO.cpp" />
-    <ClCompile Include="..\libethential\FixedHash.cpp" />
+    <ClCompile Include="..\libethential\FixedHash.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\libethential\Log.cpp" />
     <ClCompile Include="..\libethential\RLP.cpp" />
     <ClCompile Include="..\libethereum\AddressState.cpp" />
