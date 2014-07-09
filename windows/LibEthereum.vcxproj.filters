@@ -49,44 +49,56 @@
     <ClCompile Include="..\libethcore\Dagger.cpp">
       <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethcore\Instruction.cpp">
+    <ClCompile Include="..\libevm\ExtVMFace.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevm\FeeStructure.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevm\VM.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\Common.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\CommonData.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\CommonIO.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\FixedHash.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\Log.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethential\RLP.cpp">
+      <Filter>libethential</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmface\Instruction.cpp">
+      <Filter>libevmface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethcore\FileSystem.cpp">
       <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\Common.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\MemoryDB.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\CommonData.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\OverlayDB.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\CommonIO.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\SHA3.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\FileSystem.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\TrieCommon.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\FixedHash.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\TrieDB.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethsupport\Log.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\MemoryDB.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\OverlayDB.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\RLP.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\TrieCommon.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\TrieDB.cpp">
-      <Filter>libethsupport</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethsupport\UPnP.cpp">
-      <Filter>libethsupport</Filter>
+    <ClCompile Include="..\libethcore\UPnP.cpp">
+      <Filter>libethcore</Filter>
     </ClCompile>
     <ClCompile Include="..\liblll\Assembly.cpp">
       <Filter>liblll</Filter>
@@ -102,15 +114,6 @@
     </ClCompile>
     <ClCompile Include="..\liblll\Parser.cpp">
       <Filter>liblll</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libevm\ExtVMFace.cpp">
-      <Filter>libevm</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libevm\FeeStructure.cpp">
-      <Filter>libevm</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libevm\VM.cpp">
-      <Filter>libevm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -165,53 +168,77 @@
     <ClInclude Include="..\libethcore\Exceptions.h">
       <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethcore\Instruction.h">
+    <ClInclude Include="..\libevm\ExtVMFace.h">
+      <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\FeeStructure.h">
+      <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\VM.h">
+      <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\All.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\Common.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\CommonData.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\CommonIO.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\Exceptions.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\FixedHash.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\Log.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\RLP.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethential\vector_ref.h">
+      <Filter>libethential</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\All.h">
+      <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmface\Instruction.h">
+      <Filter>libevmface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\All.h">
       <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\Common.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\CryptoHeaders.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\CommonData.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\FileSystem.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\CommonIO.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\MemoryDB.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\CryptoHeaders.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\OverlayDB.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\Exceptions.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\SHA3.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\FileSystem.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\TrieCommon.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\FixedHash.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\TrieDB.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\Log.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\libethcore\UPnP.h">
+      <Filter>libethcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethsupport\MemoryDB.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\OverlayDB.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\RLP.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\TrieCommon.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\TrieDB.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\UPnP.h">
-      <Filter>libethsupport</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethsupport\vector_ref.h">
-      <Filter>libethsupport</Filter>
+    <ClInclude Include="..\liblll\All.h">
+      <Filter>liblll</Filter>
     </ClInclude>
     <ClInclude Include="..\liblll\Assembly.h">
       <Filter>liblll</Filter>
@@ -231,15 +258,6 @@
     <ClInclude Include="..\liblll\Parser.h">
       <Filter>liblll</Filter>
     </ClInclude>
-    <ClInclude Include="..\libevm\ExtVMFace.h">
-      <Filter>libevm</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libevm\FeeStructure.h">
-      <Filter>libevm</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libevm\VM.h">
-      <Filter>libevm</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -251,14 +269,17 @@
     <Filter Include="libethcore">
       <UniqueIdentifier>{b246b3d7-af02-4125-a254-2b377214c288}</UniqueIdentifier>
     </Filter>
-    <Filter Include="libethsupport">
-      <UniqueIdentifier>{5f2cd0c1-a3e9-497e-83c4-e56d6c0f835f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="liblll">
-      <UniqueIdentifier>{0186fc6c-68b3-4cbc-90f2-e01193d853b2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="libevm">
       <UniqueIdentifier>{37c37803-1515-47c1-b7e6-3879f4429ab3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libevmface">
+      <UniqueIdentifier>{ed9ad1b3-700c-47f9-8548-a90b5ef179ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libethential">
+      <UniqueIdentifier>{35c32f6c-3f19-4603-8084-1b88ec9ae498}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="liblll">
+      <UniqueIdentifier>{e6332606-e0ca-48aa-8a6b-303971ba7a93}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
