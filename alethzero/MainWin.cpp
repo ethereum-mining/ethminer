@@ -569,7 +569,9 @@ void Main::refreshBlockChain()
 				blockItem->setSelected(true);
 		}
 		int n = 0;
-		for (auto const& i: RLP(bc.block(h))[1])
+		auto b = bc.block(h);
+		cdebug << RLP(b);
+		for (auto const& i: RLP(b)[1])
 		{
 			Transaction t(i[0].data());
 			if (bm || transactionMatch(filter, t))

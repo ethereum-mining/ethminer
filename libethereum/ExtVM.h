@@ -53,9 +53,10 @@ public:
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
-		m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, &(m_ms->internal.back()));
-		if (!m_ms->internal.back().from)
+		if (m_ms)
+			m_ms->internal.resize(m_ms->internal.size() + 1);
+		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr);
+		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
 	}
@@ -63,9 +64,10 @@ public:
 	/// Create a new message call.
 	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out)
 	{
-		m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, &(m_ms->internal.back()));
-		if (!m_ms->internal.back().from)
+		if (m_ms)
+			m_ms->internal.resize(m_ms->internal.size() + 1);
+		auto ret = m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr);
+		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
 	}
