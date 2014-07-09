@@ -44,11 +44,13 @@ struct BlockDetails
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	uint number;
+	uint number;			// TODO: remove?
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
+	// TODO: add trace bloom
 };
+// TODO: DB for full traces.
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
 
@@ -71,7 +73,7 @@ std::map<Address, AddressState> const& genesisState();
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @todo Make thread-safe.
- * @todo Make not memory hog.
+ * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
 {
@@ -123,7 +125,7 @@ private:
 	/// Get fully populated from disk DB.
 	mutable BlockDetailsHash m_details;
 	mutable std::map<h256, bytes> m_cache;
-	mutable std::mutex m_lock;
+	mutable std::recursive_mutex m_lock;
 
 	/// The queue of transactions that have happened that we're interested in.
 	std::map<Address, int> m_interest;

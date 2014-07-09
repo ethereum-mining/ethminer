@@ -246,7 +246,7 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #endif
 		// All ok - insert into DB
 		{
-			lock_guard<mutex> l(m_lock);
+			lock_guard<recursive_mutex> l(m_lock);
 			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
@@ -284,7 +284,7 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 void BlockChain::checkConsistency()
 {
-	lock_guard<mutex> l(m_lock);
+	lock_guard<recursive_mutex> l(m_lock);
 	m_details.clear();
 	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
@@ -308,7 +308,7 @@ bytes BlockChain::block(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return m_genesisBlock;
 
-	lock_guard<mutex> l(m_lock);
+	lock_guard<recursive_mutex> l(m_lock);
 
 	auto it = m_cache.find(_hash);
 	if (it != m_cache.end())
@@ -338,7 +338,7 @@ h256 BlockChain::numberHash(unsigned _n) const
 
 BlockDetails BlockChain::details(h256 _h) const
 {
-	lock_guard<mutex> l(m_lock);
+	lock_guard<recursive_mutex> l(m_lock);
 
 	BlockDetailsHash::const_iterator it = m_details.find(_h);
 	if (it != m_details.end())
