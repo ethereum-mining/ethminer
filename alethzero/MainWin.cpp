@@ -27,6 +27,7 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
+#include <boost/algorithm/string.hpp>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libethcore/Dagger.h>
@@ -284,8 +285,16 @@ QString fromRaw(eth::h256 _n)
 	if (_n)
 	{
 		std::string s((char const*)_n.data(), 32);
-		if (s.find_first_of('\0') != string::npos)
+		auto l = s.find_first_of('\0');
+		if (l != string::npos)
+		{
+			if (s.find_first_not_of('\0', l) != string::npos)
+				return QString();
 			s.resize(s.find_first_of('\0'));
+		}
+		for (auto i: s)
+			if (i < 32)
+				return QString();
 		return QString::fromStdString(s);
 	}
 	return QString();
@@ -916,7 +925,9 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 		vector<WorldState const*> levels;
 		m_codes.clear();
 		bytesConstRef lastExtCode;
+		bytesConstRef lastData;
 		h256 lastHash;
+		h256 lastDataHash;
 		auto onOp = [&](uint64_t steps, Instruction inst, unsigned newMemSize, eth::bigint gasCost, void* voidVM, void const* voidExt)
 		{
 			eth::VM& vm = *(eth::VM*)voidVM;
@@ -928,11 +939,18 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 				if (!m_codes.count(lastHash))
 					m_codes[lastHash] = ext.code.toBytes();
 			}
+			if (ext.data != lastData)
+			{
+				lastData = ext.data;
+				lastDataHash = sha3(lastData);
+				if (!m_codes.count(lastDataHash))
+					m_codes[lastDataHash] = ext.data.toBytes();
+			}
 			if (levels.size() < ext.level)
 				levels.push_back(&m_history.back());
 			else
 				levels.resize(ext.level);
-			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 		};
 		m_currentExecution->go(onOp);
 		initDebugger();
@@ -1243,28 +1261,28 @@ void Main::on_debug_clicked()
 	debugFinished();
 	try
 	{
-	u256 totalReq = value() + fee();
-	eth::ClientGuard l(&*m_client);
-	for (auto i: m_myKeys)
-		if (m_client->state().balance(i.address()) >= totalReq)
-		{
-			Secret s = i.secret();
-			m_executiveState = state();
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-			Transaction t;
-			t.nonce = m_executiveState.transactionsFrom(toAddress(s));
-			t.value = value();
-			t.gasPrice = gasPrice();
-			t.gas = ui->gas->value();
-			t.data = m_data;
-			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
-			t.sign(s);
-			auto r = t.rlp();
-			populateDebugger(&r);
-			m_currentExecution.reset();
-			return;
-		}
-	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+		u256 totalReq = value() + fee();
+		eth::ClientGuard l(&*m_client);
+		for (auto i: m_myKeys)
+			if (m_client->state().balance(i.address()) >= totalReq)
+			{
+				Secret s = i.secret();
+				m_executiveState = state();
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+				Transaction t;
+				t.nonce = m_executiveState.transactionsFrom(toAddress(s));
+				t.value = value();
+				t.gasPrice = gasPrice();
+				t.gas = ui->gas->value();
+				t.data = m_data;
+				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
+				t.sign(s);
+				auto r = t.rlp();
+				populateDebugger(&r);
+				m_currentExecution.reset();
+				return;
+			}
+		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
 	}
 	catch (eth::Exception const& _e)
 	{
@@ -1292,9 +1310,11 @@ void Main::on_debugStepback_triggered()
 
 void Main::on_dumpTrace_triggered()
 {
-	for (auto i: m_history)
-	{
-	}
+	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
+	ofstream f(fn.toStdString());
+	if (f.is_open())
+		for (WorldState const& ws: m_history)
+			f << ws.cur << " " << hex << (int)ws.curPC << " " << hex << (int)(byte)ws.inst << " " << hex << (uint64_t)ws.gas << endl;
 }
 
 void Main::on_callStack_currentItemChanged()
@@ -1308,7 +1328,7 @@ void Main::debugFinished()
 	m_pcWarp.clear();
 	m_history.clear();
 	m_lastLevels.clear();
-	m_inDebug = h256();
+	m_lastCode = h256();
 	ui->callStack->clear();
 	ui->debugCode->clear();
 	ui->debugStack->clear();
@@ -1369,7 +1389,7 @@ void Main::updateDebugger()
 
 		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
 
-		if (ws.code != m_inDebug)
+		if (ws.code != m_lastCode)
 		{
 			bytes const& code = m_codes[ws.code];
 			QListWidget* dc = ui->debugCode;
@@ -1397,11 +1417,29 @@ void Main::updateDebugger()
 					break;	// probably hit data segment
 				}
 			}
-			m_inDebug = ws.code;
+			m_lastCode = ws.code;
+		}
+
+		if (ws.callData != m_lastData)
+		{
+			m_lastData = ws.callData;
+			assert(m_codes.count(ws.callData));
+			ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
 		}
 
 		for (auto i: ws.stack)
-			ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
+		{
+			ostringstream s;
+			if (i >> 32 == 0)
+				s << hex << "0x" << (unsigned)i;
+			else if (i >> 200 == 0)
+				s << "0x" << (h160)right160(i);
+			else if (fromRaw((h256)i).size())
+				s << "\"" << fromRaw((h256)i).toStdString() << "\"";
+			else
+				s << "0x" << (h256)i;
+			ds->insertItem(0, QString::fromStdString(s.str()));
+		}
 		ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
 		assert(m_codes.count(ws.code));
 		assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
