@@ -21,7 +21,13 @@
 
 #pragma once
 
+#define ETH_VMTRACE 1
+
 #include <unordered_map>
+#if ETH_VMTRACE
+#include <sstream>
+#include <libethential/Log.h>
+#endif
 #include <libethential/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libevmface/Instruction.h>
@@ -67,7 +73,7 @@ public:
 	void reset(u256 _gas = 0);
 
 	template <class Ext>
-	bytesConstRef go(Ext& _ext, uint64_t _steps = (uint64_t)-1);
+	bytesConstRef go(Ext& _ext, uint64_t _steps = (uint64_t)-1, std::map<u256, u256> const* _storage = nullptr);
 
 	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
@@ -84,14 +90,36 @@ private:
 	u256s m_stack;
 };
 
+struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
+
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
+template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps, std::map<u256, u256> const* _storage)
 {
 	u256 nextPC = m_curPC + 1;
+	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
 	{
+		// TRACE
+#if ETH_VMTRACE
+		{
+			std::ostringstream o;
+			o << std::endl << "    STACK" << std::endl;
+			for (auto i: stack())
+				o << (h256)i << std::endl;
+			o << "    MEMORY" << std::endl << memDump(memory());
+			if (_storage)
+			{
+				o << "    STORAGE" << std::endl;
+				for (auto const& i: *_storage)
+					o << std::showbase << std::hex << i.first << ": " << i.second << std::endl;
+			}
+			eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+			eth::LogOutputStream<VMTraceChannel, false>(false) << std::dec << " | #" << (osteps - _steps) << " | " << std::hex << std::setw(4) << std::setfill('0') << curPC() << " : " << c_instructionInfo.at((Instruction)_ext.getCode(curPC())).name << " | " << std::dec << gas() << " ]";
+		}
+#endif
+
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
@@ -516,7 +544,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps)
 		case Instruction::PC:
 			m_stack.push_back(m_curPC);
 			break;
-		case Instruction::MEMSIZE:
+		case Instruction::MSIZE:
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:

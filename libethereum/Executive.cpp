@@ -26,7 +26,7 @@
 using namespace std;
 using namespace eth;
 
-#define EVM_TRACE 1
+#define ETH_VMTRACE 1
 
 Executive::~Executive()
 {
@@ -148,6 +148,7 @@ bool Executive::go(uint64_t _steps)
 		try
 		{
 #if ETH_VMTRACE
+			/*
 			if (_steps == (uint64_t)0 - 1)
 				for (uint64_t s = 0;; ++s)
 				{
@@ -171,7 +172,9 @@ bool Executive::go(uint64_t _steps)
 					catch (StepsDone const&) {}
 				}
 			else
-				m_out = m_vm->go(*m_ext, _steps);
+				m_out = m_vm->go(*m_ext, _steps);*/
+			auto s = state().storage(m_ext->myAddress);
+			m_out = m_vm->go(*m_ext, _steps, &s);
 #else
 			m_out = m_vm->go(*m_ext, _steps);
 #endif
