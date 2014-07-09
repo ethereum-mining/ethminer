@@ -54,7 +54,7 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
     std::vector<Node> oq;
     std::vector<Node> stack;
     Node prev, tok;
-    int prevtyp, toktyp;
+    int prevtyp, toktyp = 0;
     
     while (iq.size()) {
         prev = tok;
