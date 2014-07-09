@@ -21,13 +21,7 @@
 
 #pragma once
 
-#define ETH_VMTRACE 1
-
 #include <unordered_map>
-#if ETH_VMTRACE
-#include <sstream>
-#include <libethential/Log.h>
-#endif
 #include <libethential/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libevmface/Instruction.h>
@@ -73,7 +67,7 @@ public:
 	void reset(u256 _gas = 0);
 
 	template <class Ext>
-	bytesConstRef go(Ext& _ext, uint64_t _steps = (uint64_t)-1, std::map<u256, u256> const* _storage = nullptr);
+	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
 	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
@@ -90,36 +84,15 @@ private:
 	u256s m_stack;
 };
 
-struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
-
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps, std::map<u256, u256> const* _storage)
+template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
 	{
-		// TRACE
-#if ETH_VMTRACE
-		{
-			std::ostringstream o;
-			o << std::endl << "    STACK" << std::endl;
-			for (auto i: stack())
-				o << (h256)i << std::endl;
-			o << "    MEMORY" << std::endl << memDump(memory());
-			if (_storage)
-			{
-				o << "    STORAGE" << std::endl;
-				for (auto const& i: *_storage)
-					o << std::showbase << std::hex << i.first << ": " << i.second << std::endl;
-			}
-			eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-			eth::LogOutputStream<VMTraceChannel, false>(false) << std::dec << " | #" << (osteps - _steps) << " | " << std::hex << std::setw(4) << std::setfill('0') << curPC() << " : " << c_instructionInfo.at((Instruction)_ext.getCode(curPC())).name << " | " << std::dec << gas() << " ]";
-		}
-#endif
-
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
@@ -208,6 +181,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps, 
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+
+		if (_onOp)
+			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : 0, runGas, this, &_ext);
 
 		if (m_gas < runGas)
 		{
@@ -564,7 +540,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps, 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
 				_ext.subBalance(endowment);
-				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize)));
+				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
 			else
 				m_stack.push_back(0);
@@ -593,7 +569,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, uint64_t _steps, 
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize)));
+				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp));
 			}
 			else
 				m_stack.push_back(0);

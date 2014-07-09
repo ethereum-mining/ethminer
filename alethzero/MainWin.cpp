@@ -898,21 +898,45 @@ void Main::on_blocks_currentItemChanged()
 			Transaction t = st.pending()[txi];
 			auto r = t.rlp();
 
-			bool done = m_currentExecution->setup(&r);
-			if (!done)
-			{
-				debugFinished();
-				auto startGas = m_currentExecution->vm().gas();
-				for (; !done; done = m_currentExecution->go(1))
-					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), startGas - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
-				initDebugger();
-				updateDebugger();
-			}
+			populateDebugger(&r);
 			m_currentExecution.reset();
 		}
 
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
+	}
+}
+
+void Main::populateDebugger(eth::bytesConstRef _r)
+{
+	bool done = m_currentExecution->setup(_r);
+	if (!done)
+	{
+		debugFinished();
+		vector<WorldState const*> levels;
+		m_codes.clear();
+		bytesConstRef lastExtCode;
+		h256 lastHash;
+		auto onOp = [&](uint64_t steps, Instruction inst, unsigned newMemSize, eth::bigint gasCost, void* voidVM, void const* voidExt)
+		{
+			eth::VM& vm = *(eth::VM*)voidVM;
+			eth::ExtVM const& ext = *(eth::ExtVM const*)voidExt;
+			if (ext.code != lastExtCode)
+			{
+				lastExtCode = ext.code;
+				lastHash = sha3(lastExtCode);
+				if (!m_codes.count(lastHash))
+					m_codes[lastHash] = ext.code.toBytes();
+			}
+			if (levels.size() < ext.level)
+				levels.push_back(&m_history.back());
+			else
+				levels.resize(ext.level);
+			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+		};
+		m_currentExecution->go(onOp);
+		initDebugger();
+		updateDebugger();
 	}
 }
 
@@ -1236,15 +1260,7 @@ void Main::on_debug_clicked()
 			t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 			t.sign(s);
 			auto r = t.rlp();
-			bool done = m_currentExecution->setup(&r);
-			if (!done)
-			{
-				auto startGas = m_currentExecution->vm().gas();
-				for (; !done; done = m_currentExecution->go(1))
-					m_history.append(WorldState({m_currentExecution->vm().curPC(), m_currentExecution->vm().gas(), startGas - m_currentExecution->vm().gas(), m_currentExecution->vm().stack(), m_currentExecution->vm().memory(), m_currentExecution->state().storage(m_currentExecution->ext().myAddress)}));
-				initDebugger();
-				updateDebugger();
-			}
+			populateDebugger(&r);
 			m_currentExecution.reset();
 			return;
 		}
@@ -1265,17 +1281,35 @@ void Main::on_create_triggered()
 void Main::on_debugStep_triggered()
 {
 	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
+	ui->callStack->setCurrentRow(0);
 }
 
 void Main::on_debugStepback_triggered()
 {
 	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
+	ui->callStack->setCurrentRow(0);
+}
+
+void Main::on_dumpTrace_triggered()
+{
+	for (auto i: m_history)
+	{
+	}
+}
+
+void Main::on_callStack_currentItemChanged()
+{
+	updateDebugger();
 }
 
 void Main::debugFinished()
 {
+	m_codes.clear();
 	m_pcWarp.clear();
 	m_history.clear();
+	m_lastLevels.clear();
+	m_inDebug = h256();
+	ui->callStack->clear();
 	ui->debugCode->clear();
 	ui->debugStack->clear();
 	ui->debugMemory->setHtml("");
@@ -1283,6 +1317,7 @@ void Main::debugFinished()
 	ui->debugStateInfo->setText("");
 //	ui->send->setEnabled(true);
 	ui->debugStep->setEnabled(false);
+	ui->dumpTrace->setEnabled(false);
 	ui->debugStepback->setEnabled(false);
 	ui->debugPanel->setEnabled(false);
 }
@@ -1293,40 +1328,13 @@ void Main::initDebugger()
 	if (m_history.size())
 	{
 		ui->debugStep->setEnabled(true);
+		ui->dumpTrace->setEnabled(true);
 		ui->debugStepback->setEnabled(true);
 		ui->debugPanel->setEnabled(true);
 		ui->debugCode->setEnabled(false);
 		ui->debugTimeline->setMinimum(0);
 		ui->debugTimeline->setMaximum(m_history.size() - 1);
 		ui->debugTimeline->setValue(0);
-
-		QListWidget* dc = ui->debugCode;
-		dc->clear();
-		if (m_currentExecution)
-		{
-			for (unsigned i = 0; i <= m_currentExecution->ext().code.size(); ++i)
-			{
-				byte b = i < m_currentExecution->ext().code.size() ? m_currentExecution->ext().code[i] : 0;
-				try
-				{
-					QString s = c_instructionInfo.at((Instruction)b).name;
-					m_pcWarp[i] = dc->count();
-					ostringstream out;
-					out << hex << setw(4) << setfill('0') << i;
-					if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
-					{
-						unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-						s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&m_currentExecution->ext().code[i + 1], bc)));
-						i += bc;
-					}
-					dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-				}
-				catch (...)
-				{
-					break;	// probably hit data segment
-				}
-			}
-		}
 	}
 }
 
@@ -1342,14 +1350,67 @@ void Main::updateDebugger()
 		QListWidget* ds = ui->debugStack;
 		ds->clear();
 
-		WorldState const& ws = m_history[ui->debugTimeline->value()];
+		WorldState const& nws = m_history[ui->debugTimeline->value()];
+
+		if (m_lastLevels != nws.levels || !ui->callStack->count())
+		{
+			m_lastLevels = nws.levels;
+			ui->callStack->clear();
+			for (unsigned i = 0; i <= nws.levels.size(); ++i)
+			{
+				WorldState const& s = i ? *nws.levels[nws.levels.size() - i] : nws;
+				ostringstream out;
+				out << s.cur.abridged();
+				if (i)
+					out << " @0x" << hex << s.curPC;
+				ui->callStack->addItem(QString::fromStdString(out.str()));
+			}
+		}
+
+		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
+
+		if (ws.code != m_inDebug)
+		{
+			bytes const& code = m_codes[ws.code];
+			QListWidget* dc = ui->debugCode;
+			dc->clear();
+			m_pcWarp.clear();
+			for (unsigned i = 0; i <= code.size(); ++i)
+			{
+				byte b = i < code.size() ? code[i] : 0;
+				try
+				{
+					QString s = c_instructionInfo.at((Instruction)b).name;
+					ostringstream out;
+					out << hex << setw(4) << setfill('0') << i;
+					m_pcWarp[i] = dc->count();
+					if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+					{
+						unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+						s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
+						i += bc;
+					}
+					dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
+				}
+				catch (...)
+				{
+					break;	// probably hit data segment
+				}
+			}
+			m_inDebug = ws.code;
+		}
 
 		for (auto i: ws.stack)
 			ds->insertItem(0, QString::fromStdString(toHex(((h256)i).asArray())));
 		ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
-		ui->debugCode->setCurrentRow(m_pcWarp[(unsigned)ws.curPC]);
+		assert(m_codes.count(ws.code));
+		assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
+		int l = m_pcWarp[(unsigned)ws.curPC];
+		ui->debugCode->setCurrentRow(max(0, l - 5));
+		ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
+		ui->debugCode->setCurrentRow(l);
 		ostringstream ss;
-		ss << hex << "PC: 0x" << ws.curPC << "  |  GAS: " << dec << ws.gas << "  |  (- " << dec << ws.gasUsed << ")";
+		ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 
 		stringstream s;

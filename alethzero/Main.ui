@@ -163,6 +163,7 @@
     </property>
     <addaction name="debugStep"/>
     <addaction name="debugStepback"/>
+    <addaction name="dumpTrace"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
@@ -518,10 +519,23 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QPlainTextEdit" name="data"/>
+       <widget class="QPlainTextEdit" name="data">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
+        </property>
+       </widget>
        <widget class="QTextEdit" name="code">
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
         </property>
        </widget>
       </widget>
@@ -930,6 +944,21 @@
      <bool>false</bool>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
      <item>
       <widget class="QSplitter" name="splitter_6">
        <property name="orientation">
@@ -941,6 +970,12 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
         </property>
        </widget>
        <widget class="QSplitter" name="splitter_4">
@@ -954,11 +989,23 @@
          <enum>Qt::Vertical</enum>
         </property>
         <widget class="QListWidget" name="debugStack">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>
          </property>
         </widget>
         <widget class="QTextEdit" name="debugMemory">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
          <property name="readOnly">
           <bool>true</bool>
          </property>
@@ -967,6 +1014,12 @@
          </property>
         </widget>
         <widget class="QTextEdit" name="debugStorage">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
          <property name="readOnly">
           <bool>true</bool>
          </property>
@@ -974,6 +1027,19 @@
           <set>Qt::NoTextInteraction</set>
          </property>
         </widget>
+       </widget>
+       <widget class="QListWidget" name="callStack">
+        <property name="font">
+         <font>
+          <family>Ubuntu Mono</family>
+         </font>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
+        </property>
        </widget>
       </widget>
      </item>
@@ -1448,6 +1514,14 @@ font-size: 14pt</string>
   <action name="clearPending">
    <property name="text">
     <string>&amp;Clear Pending</string>
+   </property>
+  </action>
+  <action name="dumpTrace">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Dump Standard Trace</string>
    </property>
   </action>
  </widget>

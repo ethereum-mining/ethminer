@@ -1021,7 +1021,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest*
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms)
+bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1039,12 +1039,12 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	if (addressHasCode(_receiveAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms);
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms, _level);
 		bool revert = false;
 
 		try
 		{
-			auto out = vm.go(evm);
+			auto out = vm.go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 			if (o_suicides)
 				for (auto i: evm.suicides)
@@ -1081,7 +1081,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1102,13 +1102,13 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 
 	// Execute init code.
 	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;
 
 	try
 	{
-		out = vm.go(evm);
+		out = vm.go(evm, _onOp);
 		if (o_ms)
 			o_ms->output = out.toBytes();
 		if (o_suicides)
