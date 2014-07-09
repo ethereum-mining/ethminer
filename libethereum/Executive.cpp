@@ -140,44 +140,34 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	return _init.empty();
 }
 
-bool Executive::go(uint64_t _steps)
+OnOpFunc Executive::simpleTrace()
+{
+	return [](uint64_t steps, Instruction inst, unsigned newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	{
+		ExtVM const& ext = *(ExtVM const*)voidExt;
+		VM& vm = *(VM*)voidVM;
+
+		ostringstream o;
+		o << endl << "    STACK" << endl;
+		for (auto i: vm.stack())
+			o << (h256)i << endl;
+		o << "    MEMORY" << endl << memDump(vm.memory());
+		o << "    STORAGE" << endl;
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			o << showbase << hex << i.first << ": " << i.second << endl;
+		eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << c_instructionInfo.at(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+	};
+}
+
+bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
 	{
 		bool revert = false;
 		try
 		{
-#if ETH_VMTRACE
-			/*
-			if (_steps == (uint64_t)0 - 1)
-				for (uint64_t s = 0;; ++s)
-				{
-					ostringstream o;
-					o << endl << "    STACK" << endl;
-					for (auto i: vm().stack())
-						o << (h256)i << endl;
-					o << "    MEMORY" << endl << memDump(vm().memory());
-					o << "    STORAGE" << endl;
-					for (auto const& i: state().storage(ext().myAddress))
-						o << showbase << hex << i.first << ": " << i.second << endl;
-					eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-					eth::LogOutputStream<VMTraceChannel, false>(false) << dec << " | #" << s << " | " << hex << setw(4) << setfill('0') << vm().curPC() << " : " << c_instructionInfo.at((Instruction)ext().getCode(vm().curPC())).name << " | " << dec << vm().gas() << " ]";
-					if (s >= _steps)
-						break;
-					try
-					{
-						m_out = m_vm->go(*m_ext, 1);
-						break;
-					}
-					catch (StepsDone const&) {}
-				}
-			else
-				m_out = m_vm->go(*m_ext, _steps);*/
-			auto s = state().storage(m_ext->myAddress);
-			m_out = m_vm->go(*m_ext, _steps, &s);
-#else
-			m_out = m_vm->go(*m_ext, _steps);
-#endif
+			m_out = m_vm->go(*m_ext, _onOp);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)

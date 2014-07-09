@@ -22,6 +22,7 @@
 #pragma once
 
 #include <libethential/Common.h>
+#include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
@@ -81,5 +82,7 @@ public:
 	BlockInfo currentBlock;		///< The current block's information.
 	std::set<Address> suicides;	///< Any accounts that have suicided.
 };
+
+typedef std::function<void(uint64_t /*steps*/, Instruction /*instr*/, unsigned /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)> OnOpFunc;
 
 }

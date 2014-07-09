@@ -21,7 +21,8 @@
 
 #pragma once
 
-//#include <QtQml/QJSValue>
+
+#include <map>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
@@ -44,12 +45,18 @@ class QQuickView;
 
 struct WorldState
 {
+	uint64_t steps;
+	eth::Address cur;
 	eth::u256 curPC;
+	eth::Instruction inst;
+	unsigned newMemSize;
 	eth::u256 gas;
-	eth::u256 gasUsed;
+	eth::h256 code;
 	eth::u256s stack;
 	eth::bytes memory;
+	eth::bigint gasCost;
 	std::map<eth::u256, eth::u256> storage;
+	std::vector<WorldState const*> levels;
 };
 
 class Main : public QMainWindow
@@ -115,6 +122,8 @@ private slots:
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
 	void on_clearPending_triggered();
+	void on_dumpTrace_triggered();
+	void on_callStack_currentItemChanged();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
@@ -129,6 +138,7 @@ private:
 
 	QString pretty(eth::Address _a) const;
 
+	void populateDebugger(eth::bytesConstRef r);
 	void initDebugger();
 	void updateDebugger();
 	void debugFinished();
@@ -167,9 +177,12 @@ private:
 
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
+	eth::h256 m_inDebug;
+	std::vector<WorldState const*> m_lastLevels;
 
 	QMap<unsigned, unsigned> m_pcWarp;
 	QList<WorldState> m_history;
+	std::map<eth::u256, eth::bytes> m_codes;	// and pcWarps
 
 	QNetworkAccessManager m_webCtrl;
 
