@@ -570,7 +570,6 @@ void Main::refreshBlockChain()
 		}
 		int n = 0;
 		auto b = bc.block(h);
-		cdebug << RLP(b);
 		for (auto const& i: RLP(b)[1])
 		{
 			Transaction t(i[0].data());
