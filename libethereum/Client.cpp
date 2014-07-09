@@ -295,7 +295,7 @@ unsigned Client::numberOf(int _n) const
 	else if (_n == GenesisBlock)
 		return 0;
 	else
-		return m_bc.details().number + max<int>(-m_bc.details().number, 1 + _n);
+		return m_bc.details().number + max(-(int)m_bc.details().number, 1 + _n);
 }
 
 State Client::asOf(int _h) const
