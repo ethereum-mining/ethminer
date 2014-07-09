@@ -124,6 +124,8 @@ private slots:
 	void on_blockChainFilter_textChanged();
 	void on_clearPending_triggered();
 	void on_dumpTrace_triggered();
+	void on_debugStepInto_triggered();
+	void on_debugStepOut_triggered();
 	void on_callStack_currentItemChanged();
 
 	void refresh(bool _override = false);

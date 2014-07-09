@@ -162,6 +162,8 @@
      <string>Deb&amp;ug</string>
     </property>
     <addaction name="debugStep"/>
+    <addaction name="debugStepInto"/>
+    <addaction name="debugStepOut"/>
     <addaction name="debugStepback"/>
     <addaction name="dumpTrace"/>
     <addaction name="separator"/>
@@ -1445,7 +1447,7 @@ font-size: 14pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>&amp;Single Step</string>
+    <string>&amp;Step Over</string>
    </property>
    <property name="shortcut">
     <string>F10</string>
@@ -1513,7 +1515,7 @@ font-size: 14pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Single Step &amp;Backwards</string>
+    <string>Step &amp;Backwards</string>
    </property>
    <property name="shortcut">
     <string>Shift+F10</string>
@@ -1530,6 +1532,28 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;Dump Standard Trace</string>
+   </property>
+  </action>
+  <action name="debugStepInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Into</string>
+   </property>
+   <property name="shortcut">
+    <string>F11</string>
+   </property>
+  </action>
+  <action name="debugStepOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Out</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+F11</string>
    </property>
   </action>
  </widget>
