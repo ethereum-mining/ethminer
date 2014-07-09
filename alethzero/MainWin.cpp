@@ -1298,8 +1298,31 @@ void Main::on_create_triggered()
 
 void Main::on_debugStep_triggered()
 {
+	if (ui->debugTimeline->value() < m_history.size() && (m_history[ui->debugTimeline->value()].inst == Instruction::CALL || m_history[ui->debugTimeline->value()].inst == Instruction::CREATE))
+	{
+		on_debugStepInto_triggered();
+		on_debugStepOut_triggered();
+	}
+	else
+		on_debugStepInto_triggered();
+}
+
+void Main::on_debugStepInto_triggered()
+{
 	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
 	ui->callStack->setCurrentRow(0);
+}
+
+void Main::on_debugStepOut_triggered()
+{
+	if (ui->debugTimeline->value() < m_history.size())
+	{
+		auto ls = m_history[ui->debugTimeline->value()].levels.size();
+		auto l = ui->debugTimeline->value();
+		for (; l < m_history.size() && m_history[l].levels.size() >= ls; ++l) {}
+		ui->debugTimeline->setValue(l);
+		ui->callStack->setCurrentRow(0);
+	}
 }
 
 void Main::on_debugStepback_triggered()
@@ -1337,6 +1360,8 @@ void Main::debugFinished()
 	ui->debugStateInfo->setText("");
 //	ui->send->setEnabled(true);
 	ui->debugStep->setEnabled(false);
+	ui->debugStepInto->setEnabled(false);
+	ui->debugStepOut->setEnabled(false);
 	ui->dumpTrace->setEnabled(false);
 	ui->debugStepback->setEnabled(false);
 	ui->debugPanel->setEnabled(false);
@@ -1349,11 +1374,13 @@ void Main::initDebugger()
 	{
 		ui->debugStep->setEnabled(true);
 		ui->dumpTrace->setEnabled(true);
+		ui->debugStepInto->setEnabled(true);
+		ui->debugStepOut->setEnabled(true);
 		ui->debugStepback->setEnabled(true);
 		ui->debugPanel->setEnabled(true);
 		ui->debugCode->setEnabled(false);
 		ui->debugTimeline->setMinimum(0);
-		ui->debugTimeline->setMaximum(m_history.size() - 1);
+		ui->debugTimeline->setMaximum(m_history.size());
 		ui->debugTimeline->setValue(0);
 	}
 }
@@ -1363,6 +1390,20 @@ void Main::on_debugTimeline_valueChanged()
 	updateDebugger();
 }
 
+QString prettyU256(eth::u256 _n)
+{
+	ostringstream s;
+	if (_n >> 32 == 0)
+		s << hex << "0x" << (unsigned)_n;
+	else if (_n >> 200 == 0)
+		s << "0x" << (h160)right160(_n);
+	else if (fromRaw((h256)_n).size())
+		s << "\"" << fromRaw((h256)_n).toStdString() << "\"";
+	else
+		s << "0x" << (h256)_n;
+	return QString::fromStdString(s.str());
+}
+
 void Main::updateDebugger()
 {
 	if (m_history.size())
@@ -1370,91 +1411,114 @@ void Main::updateDebugger()
 		QListWidget* ds = ui->debugStack;
 		ds->clear();
 
-		WorldState const& nws = m_history[ui->debugTimeline->value()];
-
-		if (m_lastLevels != nws.levels || !ui->callStack->count())
-		{
-			m_lastLevels = nws.levels;
-			ui->callStack->clear();
-			for (unsigned i = 0; i <= nws.levels.size(); ++i)
-			{
-				WorldState const& s = i ? *nws.levels[nws.levels.size() - i] : nws;
-				ostringstream out;
-				out << s.cur.abridged();
-				if (i)
-					out << " @0x" << hex << s.curPC;
-				ui->callStack->addItem(QString::fromStdString(out.str()));
-			}
-		}
-
+		WorldState const& nws = m_history[min((int)m_history.size() - 1, ui->debugTimeline->value())];
 		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
 
-		if (ws.code != m_lastCode)
+		if (ui->debugTimeline->value() >= m_history.size())
 		{
-			bytes const& code = m_codes[ws.code];
-			QListWidget* dc = ui->debugCode;
-			dc->clear();
-			m_pcWarp.clear();
-			for (unsigned i = 0; i <= code.size(); ++i)
+			if (ws.gasCost > ws.gas)
+				ui->debugMemory->setHtml("<h3>OUT-OF-GAS</h3>");
+			else if (ws.inst == Instruction::RETURN && ws.stack.size() >= 2)
 			{
-				byte b = i < code.size() ? code[i] : 0;
-				try
+				unsigned from = (unsigned)ws.stack.back();
+				unsigned size = (unsigned)ws.stack[ws.stack.size() - 2];
+				unsigned o = 0;
+				bytes out(size, 0);
+				for (; o < size && from + o < ws.memory.size(); ++o)
+					out[o] = ws.memory[from + o];
+				ui->debugMemory->setHtml("<h3>RETURN</h3>" + QString::fromStdString(eth::memDump(out, 16, true)));
+			}
+			else if (ws.inst == Instruction::STOP)
+				ui->debugMemory->setHtml("<h3>STOP</h3>");
+			else if (ws.inst == Instruction::SUICIDE && ws.stack.size() >= 1)
+				ui->debugMemory->setHtml("<h3>SUICIDE</h3>0x" + QString::fromStdString(toString(right160(ws.stack.back()))));
+			else
+				ui->debugMemory->setHtml("<h3>EXCEPTION</h3>");
+
+			ostringstream ss;
+			ss << dec << "EXIT  |  GAS: " << dec << max<eth::bigint>(0, (eth::bigint)ws.gas - ws.gasCost);
+			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+			ui->debugStorage->setHtml("");
+			ui->debugCallData->setHtml("");
+			m_lastData = h256();
+			ui->callStack->clear();
+			m_lastLevels.clear();
+			ui->debugCode->clear();
+			m_lastCode = h256();
+		}
+		else
+		{
+			if (m_lastLevels != nws.levels || !ui->callStack->count())
+			{
+				m_lastLevels = nws.levels;
+				ui->callStack->clear();
+				for (unsigned i = 0; i <= nws.levels.size(); ++i)
 				{
-					QString s = c_instructionInfo.at((Instruction)b).name;
+					WorldState const& s = i ? *nws.levels[nws.levels.size() - i] : nws;
 					ostringstream out;
-					out << hex << setw(4) << setfill('0') << i;
-					m_pcWarp[i] = dc->count();
-					if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
-					{
-						unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-						s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
-						i += bc;
-					}
-					dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-				}
-				catch (...)
-				{
-					break;	// probably hit data segment
+					out << s.cur.abridged();
+					if (i)
+						out << " @0x" << hex << s.curPC;
+					ui->callStack->addItem(QString::fromStdString(out.str()));
 				}
 			}
-			m_lastCode = ws.code;
-		}
 
-		if (ws.callData != m_lastData)
-		{
-			m_lastData = ws.callData;
-			assert(m_codes.count(ws.callData));
-			ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
-		}
+			if (ws.code != m_lastCode)
+			{
+				bytes const& code = m_codes[ws.code];
+				QListWidget* dc = ui->debugCode;
+				dc->clear();
+				m_pcWarp.clear();
+				for (unsigned i = 0; i <= code.size(); ++i)
+				{
+					byte b = i < code.size() ? code[i] : 0;
+					try
+					{
+						QString s = c_instructionInfo.at((Instruction)b).name;
+						ostringstream out;
+						out << hex << setw(4) << setfill('0') << i;
+						m_pcWarp[i] = dc->count();
+						if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
+						{
+							unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+							s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
+							i += bc;
+						}
+						dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
+					}
+					catch (...)
+					{
+						break;	// probably hit data segment
+					}
+				}
+				m_lastCode = ws.code;
+			}
 
-		for (auto i: ws.stack)
-		{
-			ostringstream s;
-			if (i >> 32 == 0)
-				s << hex << "0x" << (unsigned)i;
-			else if (i >> 200 == 0)
-				s << "0x" << (h160)right160(i);
-			else if (fromRaw((h256)i).size())
-				s << "\"" << fromRaw((h256)i).toStdString() << "\"";
-			else
-				s << "0x" << (h256)i;
-			ds->insertItem(0, QString::fromStdString(s.str()));
-		}
-		ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
-		assert(m_codes.count(ws.code));
-		assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
-		int l = m_pcWarp[(unsigned)ws.curPC];
-		ui->debugCode->setCurrentRow(max(0, l - 5));
-		ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
-		ui->debugCode->setCurrentRow(l);
-		ostringstream ss;
-		ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
-		ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+			if (ws.callData != m_lastData)
+			{
+				m_lastData = ws.callData;
+				assert(m_codes.count(ws.callData));
+				ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
+			}
 
-		stringstream s;
-		for (auto const& i: ws.storage)
-			s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
-		ui->debugStorage->setHtml(QString::fromStdString(s.str()));
+			for (auto i: ws.stack)
+				ds->insertItem(0, prettyU256(i));
+			ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
+			assert(m_codes.count(ws.code));
+			assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
+			int l = m_pcWarp[(unsigned)ws.curPC];
+			ui->debugCode->setCurrentRow(max(0, l - 5));
+			ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
+			ui->debugCode->setCurrentRow(l);
+
+			ostringstream ss;
+			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
+			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
+			stringstream s;
+			for (auto const& i: ws.storage)
+				s << "@" << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second).toStdString() << "<br/>";
+			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
+		}
 	}
 }
 
