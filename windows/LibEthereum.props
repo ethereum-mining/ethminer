@@ -11,14 +11,14 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <DisableSpecificWarnings>4068;4100;4127;4258;4244;4267;4505;4512;4706;4714</DisableSpecificWarnings>
-      <WarningLevel>Level4</WarningLevel>
+      <DisableSpecificWarnings>4068;4244;4267</DisableSpecificWarnings>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>include/$(ProjectName);$(IntDir);..;../libethcore;../libethereum;../libethsupport;$(BoostDir);../../leveldb/include;../../cryptopp;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include/$(ProjectName);$(IntDir);../../cryptopp;..;../libethcore;../libethereum;../libethsupport;$(BoostDir);../../leveldb/include;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ETH_BUILD_PLATFORM=Windows/VS2013;ETH_BUILD_TYPE=$(Configuration)-$(Platform);STATICLIB;LEVELDB_PLATFORM_WINDOWS;USE_NUM_BOOST;USE_FIELD_10X26;USE_FIELD_INV_BUILTIN;_WIN32_WINNT=0x0501;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(BoostDir)/stage/$(Platform)</AdditionalLibraryDirectories>

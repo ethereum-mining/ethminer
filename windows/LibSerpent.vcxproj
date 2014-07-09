@@ -19,101 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\libethcore\BlockInfo.cpp" />
-    <ClCompile Include="..\libethcore\CommonEth.cpp" />
-    <ClCompile Include="..\libethcore\Dagger.cpp" />
-    <ClCompile Include="..\libethcore\FileSystem.cpp" />
-    <ClCompile Include="..\libethcore\MemoryDB.cpp" />
-    <ClCompile Include="..\libethcore\OverlayDB.cpp" />
-    <ClCompile Include="..\libethcore\SHA3.cpp" />
-    <ClCompile Include="..\libethcore\TrieCommon.cpp" />
-    <ClCompile Include="..\libethcore\TrieDB.cpp" />
-    <ClCompile Include="..\libethcore\UPnP.cpp" />
-    <ClCompile Include="..\libethential\Common.cpp" />
-    <ClCompile Include="..\libethential\CommonData.cpp" />
-    <ClCompile Include="..\libethential\CommonIO.cpp" />
-    <ClCompile Include="..\libethential\FixedHash.cpp" />
-    <ClCompile Include="..\libethential\Log.cpp" />
-    <ClCompile Include="..\libethential\RLP.cpp" />
-    <ClCompile Include="..\libethereum\AddressState.cpp" />
-    <ClCompile Include="..\libethereum\BlockChain.cpp" />
-    <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\Defaults.cpp" />
-    <ClCompile Include="..\libethereum\Executive.cpp" />
-    <ClCompile Include="..\libethereum\ExtVM.cpp" />
-    <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
-    <ClCompile Include="..\libethereum\PeerServer.cpp" />
-    <ClCompile Include="..\libethereum\PeerSession.cpp" />
-    <ClCompile Include="..\libethereum\State.cpp" />
-    <ClCompile Include="..\libethereum\Transaction.cpp" />
-    <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libevmface\Instruction.cpp" />
-    <ClCompile Include="..\libevm\ExtVMFace.cpp" />
-    <ClCompile Include="..\libevm\FeeStructure.cpp" />
-    <ClCompile Include="..\libevm\VM.cpp" />
-    <ClCompile Include="..\liblll\Assembly.cpp" />
-    <ClCompile Include="..\liblll\CodeFragment.cpp" />
-    <ClCompile Include="..\liblll\Compiler.cpp" />
-    <ClCompile Include="..\liblll\CompilerState.cpp" />
-    <ClCompile Include="..\liblll\Parser.cpp" />
-    <ClCompile Include="stdafx.cpp">
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\libethcore\All.h" />
-    <ClInclude Include="..\libethcore\BlockInfo.h" />
-    <ClInclude Include="..\libethcore\CommonEth.h" />
-    <ClInclude Include="..\libethcore\CryptoHeaders.h" />
-    <ClInclude Include="..\libethcore\Dagger.h" />
-    <ClInclude Include="..\libethcore\Exceptions.h" />
-    <ClInclude Include="..\libethcore\FileSystem.h" />
-    <ClInclude Include="..\libethcore\MemoryDB.h" />
-    <ClInclude Include="..\libethcore\OverlayDB.h" />
-    <ClInclude Include="..\libethcore\SHA3.h" />
-    <ClInclude Include="..\libethcore\TrieCommon.h" />
-    <ClInclude Include="..\libethcore\TrieDB.h" />
-    <ClInclude Include="..\libethcore\UPnP.h" />
-    <ClInclude Include="..\libethential\All.h" />
-    <ClInclude Include="..\libethential\Common.h" />
-    <ClInclude Include="..\libethential\CommonData.h" />
-    <ClInclude Include="..\libethential\CommonIO.h" />
-    <ClInclude Include="..\libethential\Exceptions.h" />
-    <ClInclude Include="..\libethential\FixedHash.h" />
-    <ClInclude Include="..\libethential\Log.h" />
-    <ClInclude Include="..\libethential\RLP.h" />
-    <ClInclude Include="..\libethential\vector_ref.h" />
-    <ClInclude Include="..\libethereum\AddressState.h" />
-    <ClInclude Include="..\libethereum\BlockChain.h" />
-    <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\Defaults.h" />
-    <ClInclude Include="..\libethereum\Executive.h" />
-    <ClInclude Include="..\libethereum\ExtVM.h" />
-    <ClInclude Include="..\libethereum\PeerNetwork.h" />
-    <ClInclude Include="..\libethereum\PeerServer.h" />
-    <ClInclude Include="..\libethereum\PeerSession.h" />
-    <ClInclude Include="..\libethereum\State.h" />
-    <ClInclude Include="..\libethereum\Transaction.h" />
-    <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libevmface\Instruction.h" />
-    <ClInclude Include="..\libevm\All.h" />
-    <ClInclude Include="..\libevm\ExtVMFace.h" />
-    <ClInclude Include="..\libevm\FeeStructure.h" />
-    <ClInclude Include="..\libevm\VM.h" />
-    <ClInclude Include="..\liblll\All.h" />
-    <ClInclude Include="..\liblll\Assembly.h" />
-    <ClInclude Include="..\liblll\CodeFragment.h" />
-    <ClInclude Include="..\liblll\Compiler.h" />
-    <ClInclude Include="..\liblll\CompilerState.h" />
-    <ClInclude Include="..\liblll\Exceptions.h" />
-    <ClInclude Include="..\liblll\Parser.h" />
-    <ClInclude Include="stdafx.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="LibCryptoPP.vcxproj">
       <Project>{1cc213a4-3482-4211-b47b-172e90dac7de}</Project>
     </ProjectReference>
@@ -127,10 +32,39 @@
       <Project>{1e1175bb-c4a9-41d8-b2d1-9022f71d3cea}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\libserpent\All.h" />
+    <ClInclude Include="..\libserpent\bignum.h" />
+    <ClInclude Include="..\libserpent\compiler.h" />
+    <ClInclude Include="..\libserpent\funcs.h" />
+    <ClInclude Include="..\libserpent\lllparser.h" />
+    <ClInclude Include="..\libserpent\opcodes.h" />
+    <ClInclude Include="..\libserpent\parser.h" />
+    <ClInclude Include="..\libserpent\rewriter.h" />
+    <ClInclude Include="..\libserpent\tokenize.h" />
+    <ClInclude Include="..\libserpent\util.h" />
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\libserpent\bignum.cpp" />
+    <ClCompile Include="..\libserpent\compiler.cpp" />
+    <ClCompile Include="..\libserpent\funcs.cpp" />
+    <ClCompile Include="..\libserpent\lllparser.cpp" />
+    <ClCompile Include="..\libserpent\parser.cpp" />
+    <ClCompile Include="..\libserpent\rewriter.cpp" />
+    <ClCompile Include="..\libserpent\tokenize.cpp" />
+    <ClCompile Include="..\libserpent\util.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{826E68CB-D3EE-4A8A-B540-59A8C3F38D4F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>LibEthereum</RootNamespace>
+    <RootNamespace>LibSerpent</RootNamespace>
+    <ProjectGuid>{F174E81A-2A66-4693-B917-11BB42D3658C}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
