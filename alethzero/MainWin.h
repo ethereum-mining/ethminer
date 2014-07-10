@@ -140,6 +140,7 @@ private:
 	void updateBlockCount();
 
 	QString pretty(eth::Address _a) const;
+	QString prettyU256(eth::u256 _n) const;
 
 	void populateDebugger(eth::bytesConstRef r);
 	void initDebugger();
