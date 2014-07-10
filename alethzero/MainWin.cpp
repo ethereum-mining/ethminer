@@ -1390,15 +1390,22 @@ void Main::on_debugTimeline_valueChanged()
 	updateDebugger();
 }
 
-QString prettyU256(eth::u256 _n)
+QString Main::prettyU256(eth::u256 _n) const
 {
 	ostringstream s;
 	if (_n >> 32 == 0)
 		s << hex << "0x" << (unsigned)_n;
 	else if (_n >> 200 == 0)
-		s << "0x" << (h160)right160(_n);
+	{
+		Address a = right160(_n);
+		QString n = pretty(a);
+		if (n.isNull())
+			s << "0x" << a;
+		else
+			s << "<b>" << n.toHtmlEscaped().toStdString() << "</b> (" << a.abridged() << ")";
+	}
 	else if (fromRaw((h256)_n).size())
-		s << "\"" << fromRaw((h256)_n).toStdString() << "\"";
+		return "\"" + fromRaw((h256)_n).toHtmlEscaped() + "\"";
 	else
 		s << "0x" << (h256)_n;
 	return QString::fromStdString(s.str());
@@ -1458,7 +1465,7 @@ void Main::updateDebugger()
 					ostringstream out;
 					out << s.cur.abridged();
 					if (i)
-						out << " @0x" << hex << s.curPC;
+						out << " " << c_instructionInfo.at(s.inst).name << " @0x" << hex << s.curPC;
 					ui->callStack->addItem(QString::fromStdString(out.str()));
 				}
 			}

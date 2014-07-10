@@ -891,7 +891,7 @@ map<u256, u256> State::storage(Address _id) const
 		// Then merge cached storage over the top.
 		for (auto const& i: it->second.storage())
 			if (i.second)
-				ret.insert(i);
+				ret[i.first] = i.second;
 			else
 				ret.erase(i.first);
 	}
