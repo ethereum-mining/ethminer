@@ -729,9 +729,9 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 		}
 		if (ad.code)
 		{
-			s << "<br/>" << indent << "Code " << std::hex << ad.code.to();
+			s << "<br/>" << indent << "Code " << std::hex << ad.code.to().size() << " bytes";
 			if (ad.code.from().size())
-				 s << " (" << ad.code.from() << ")";
+				 s << " (" << ad.code.from().size() << " bytes)";
 		}
 
 		for (pair<u256, eth::Diff<u256>> const& i: ad.storage)
@@ -745,19 +745,20 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 				s << " * ";
 			s << "  </code>";
 
-			if (i.first > u256(1) << 246)
+			s << prettyU256(i.first).toStdString();
+/*			if (i.first > u256(1) << 246)
 				s << (h256)i.first;
 			else if (i.first > u160(1) << 150)
 				s << (h160)(u160)i.first;
 			else
 				s << std::hex << i.first;
-
+*/
 			if (!i.second.from())
-				s << ": " << std::hex << i.second.to();
+				s << ": " << prettyU256(i.second.to()).toHtmlEscaped().toStdString();
 			else if (!i.second.to())
-				s << " (" << std::hex << i.second.from() << ")";
+				s << " (" << prettyU256(i.second.from()).toHtmlEscaped().toStdString() << ")";
 			else
-				s << ": " << std::hex << i.second.to() << " (" << i.second.from() << ")";
+				s << ": " << prettyU256(i.second.to()).toStdString() << " (" << prettyU256(i.second.from()).toStdString() << ")";
 		}
 	}
 	return s.str();
@@ -858,7 +859,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "&nbsp;&emsp;&nbsp;Minimum gas price: <b>" << formatBalance(info.minGasPrice) << "</b>";
-			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toStdString() << "</b> " << info.coinbaseAddress;
+			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
@@ -876,11 +877,11 @@ void Main::on_blocks_currentItemChanged()
 			h256 th = sha3(rlpList(ss, tx.nonce));
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
-			s << "<br/>From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
+			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
 			if (tx.isCreation())
-				s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
+				s << "<br/>Creates: <b>" << pretty(right160(th)).toHtmlEscaped().toStdString() << "</b> " << right160(th);
 			else
-				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
+				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toHtmlEscaped().toStdString() << "</b> " << tx.receiveAddress;
 			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
@@ -973,7 +974,7 @@ void Main::on_contracts_currentItemChanged()
 		{
 			auto storage = state().storage(h);
 			for (auto const& i: storage)
-				s << "@" << showbase << hex << i.first << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << i.second << "<br/>";
+				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
 			s << "<h4>Body Code</h4>" << disassemble(state().code(h));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
@@ -1504,8 +1505,13 @@ void Main::updateDebugger()
 			if (ws.callData != m_lastData)
 			{
 				m_lastData = ws.callData;
-				assert(m_codes.count(ws.callData));
-				ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
+				if (ws.callData)
+				{
+					assert(m_codes.count(ws.callData));
+					ui->debugCallData->setHtml(QString::fromStdString(eth::memDump(m_codes[ws.callData], 16, true)));
+				}
+				else
+					ui->debugCallData->setHtml("");
 			}
 
 			for (auto i: ws.stack)
