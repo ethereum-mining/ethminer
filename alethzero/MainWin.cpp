@@ -1338,7 +1338,7 @@ void Main::on_dumpTrace_triggered()
 	ofstream f(fn.toStdString());
 	if (f.is_open())
 		for (WorldState const& ws: m_history)
-			f << ws.cur << " " << hex << (int)ws.curPC << " " << hex << (int)(byte)ws.inst << " " << hex << (uint64_t)ws.gas << endl;
+			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
 void Main::on_callStack_currentItemChanged()
