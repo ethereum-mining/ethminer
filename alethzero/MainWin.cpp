@@ -280,17 +280,22 @@ void Main::eval(QString const& _js)
 	ui->jsConsole->setHtml(s);
 }
 
-QString fromRaw(eth::h256 _n)
+QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
 {
 	if (_n)
 	{
 		std::string s((char const*)_n.data(), 32);
 		auto l = s.find_first_of('\0');
+		if (!l)
+			return QString();
 		if (l != string::npos)
 		{
-			if (s.find_first_not_of('\0', l) != string::npos)
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == string::npos || (_inc && p == 31)))
 				return QString();
-			s.resize(s.find_first_of('\0'));
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
 		}
 		for (auto i: s)
 			if (i < 32)
@@ -425,7 +430,7 @@ void Main::readSettings()
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("NameReg", "").toString());
-	ui->urlEdit->setText(s.value("url", "http://gavwood.com/gavcoin.html").toString());
+	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
 
@@ -754,9 +759,9 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 				s << std::hex << i.first;
 */
 			if (!i.second.from())
-				s << ": " << prettyU256(i.second.to()).toHtmlEscaped().toStdString();
+				s << ": " << prettyU256(i.second.to()).toStdString();
 			else if (!i.second.to())
-				s << " (" << prettyU256(i.second.from()).toHtmlEscaped().toStdString() << ")";
+				s << " (" << prettyU256(i.second.from()).toStdString() << ")";
 			else
 				s << ": " << prettyU256(i.second.to()).toStdString() << " (" << prettyU256(i.second.from()).toStdString() << ")";
 		}
@@ -1338,7 +1343,12 @@ void Main::on_dumpTrace_triggered()
 	ofstream f(fn.toStdString());
 	if (f.is_open())
 		for (WorldState const& ws: m_history)
+		{
+			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
+				for (auto i: ws.storage)
+					f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
 			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+		}
 }
 
 void Main::on_callStack_currentItemChanged()
@@ -1393,22 +1403,26 @@ void Main::on_debugTimeline_valueChanged()
 
 QString Main::prettyU256(eth::u256 _n) const
 {
+	unsigned inc = 0;
+	QString raw;
 	ostringstream s;
-	if (_n >> 32 == 0)
-		s << hex << "0x" << (unsigned)_n;
+	if (!(_n >> 64))
+		s << "<span style=\"color: #448\">0x</span><span style=\"color: #008\">" << (uint64_t)_n << "</span>";
+	else if (!~(_n >> 64))
+		s << "<span style=\"color: #448\">0x</span><span style=\"color: #008\">" << (int64_t)_n << "</span>";
 	else if (_n >> 200 == 0)
 	{
 		Address a = right160(_n);
 		QString n = pretty(a);
 		if (n.isNull())
-			s << "0x" << a;
+			s << "<span style=\"color: #844\">0x</span><span style=\"color: #800\">" << a << "</span>";
 		else
-			s << "<b>" << n.toHtmlEscaped().toStdString() << "</b> (" << a.abridged() << ")";
+			s << "<span style=\"font-weight: bold; color: #800\">" << n.toHtmlEscaped().toStdString() << "</span> (<span style=\"color: #844\">0x</span><span style=\"color: #800\">" << a.abridged() << "</span>)";
 	}
-	else if (fromRaw((h256)_n).size())
-		return "\"" + fromRaw((h256)_n).toHtmlEscaped() + "\"";
+	else if ((raw = fromRaw((h256)_n, &inc)).size())
+		return "<span style=\"color: #484\">\"</span><span style=\"color: #080\">" + raw.toHtmlEscaped() + "</span><span style=\"color: #484\">\"" + (inc ? " + " + QString::number(inc) : "") + "</span>";
 	else
-		s << "0x" << (h256)_n;
+		s << "<span style=\"color: #466\">0x</span><span style=\"color: #044\">" << (h256)_n << "</span>";
 	return QString::fromStdString(s.str());
 }
 
@@ -1416,9 +1430,6 @@ void Main::updateDebugger()
 {
 	if (m_history.size())
 	{
-		QListWidget* ds = ui->debugStack;
-		ds->clear();
-
 		WorldState const& nws = m_history[min((int)m_history.size() - 1, ui->debugTimeline->value())];
 		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
 
@@ -1453,6 +1464,7 @@ void Main::updateDebugger()
 			m_lastLevels.clear();
 			ui->debugCode->clear();
 			m_lastCode = h256();
+			ui->debugStack->setHtml("");
 		}
 		else
 		{
@@ -1514,8 +1526,10 @@ void Main::updateDebugger()
 					ui->debugCallData->setHtml("");
 			}
 
+			QString stack;
 			for (auto i: ws.stack)
-				ds->insertItem(0, prettyU256(i));
+				stack.prepend("<div>" + prettyU256(i) + "</div>");
+			ui->debugStack->setHtml(stack);
 			ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
 			assert(m_codes.count(ws.code));
 			assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
