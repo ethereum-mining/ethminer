@@ -1306,8 +1306,10 @@ void Main::on_debugStep_triggered()
 {
 	if (ui->debugTimeline->value() < m_history.size() && (m_history[ui->debugTimeline->value()].inst == Instruction::CALL || m_history[ui->debugTimeline->value()].inst == Instruction::CREATE))
 	{
+		auto l = m_history[ui->debugTimeline->value()].levels.size();
 		on_debugStepInto_triggered();
-		on_debugStepOut_triggered();
+		if (m_history[ui->debugTimeline->value()].levels.size() > l)
+			on_debugStepOut_triggered();
 	}
 	else
 		on_debugStepInto_triggered();
@@ -1344,10 +1346,10 @@ void Main::on_dumpTrace_triggered()
 	if (f.is_open())
 		for (WorldState const& ws: m_history)
 		{
-			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
+/*			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
 				for (auto i: ws.storage)
 					f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
-			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+*/			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
 }
 
@@ -1532,11 +1534,16 @@ void Main::updateDebugger()
 			ui->debugStack->setHtml(stack);
 			ui->debugMemory->setHtml(QString::fromStdString(eth::memDump(ws.memory, 16, true)));
 			assert(m_codes.count(ws.code));
-			assert(m_codes[ws.code].size() > (unsigned)ws.curPC);
-			int l = m_pcWarp[(unsigned)ws.curPC];
-			ui->debugCode->setCurrentRow(max(0, l - 5));
-			ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
-			ui->debugCode->setCurrentRow(l);
+
+			if (m_codes[ws.code].size() >= (unsigned)ws.curPC)
+			{
+				int l = m_pcWarp[(unsigned)ws.curPC];
+				ui->debugCode->setCurrentRow(max(0, l - 5));
+				ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
+				ui->debugCode->setCurrentRow(l);
+			}
+			else
+				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
 
 			ostringstream ss;
 			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
