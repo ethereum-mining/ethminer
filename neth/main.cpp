@@ -117,6 +117,7 @@ void interactiveHelp()
         << "    send  Execute a given transaction with current secret." << endl
         << "    contract  Create a new contract with current secret." << endl
         << "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+        << "    reset  Resets ncurses windows" << endl
         << "    exit  Exits the application." << endl;
 }
 
@@ -817,6 +818,15 @@ int main(int argc, char** argv)
 				ofs.open(outFile, ofstream::binary);
 				ofs.write(s.str().c_str(), s.str().length());
 				ofs.close();
+			}
+		}
+		else if (cmd == "reset")
+		{
+			vector<WINDOW*> ws { consolewin, blockswin, pendingwin, peerswin, contractswin, addswin, mainwin };
+			for (auto &w: ws)
+			{
+				wclear(w);
+				wrefresh(w);
 			}
 		}
 		else if (cmd == "help")
