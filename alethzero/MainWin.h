@@ -110,7 +110,7 @@ private slots:
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_returnPressed();
 	void on_debugStep_triggered();
-	void on_debugStepback_triggered();
+	void on_debugStepBack_triggered();
 	void on_debug_clicked();
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
@@ -124,9 +124,13 @@ private slots:
 	void on_blockChainFilter_textChanged();
 	void on_clearPending_triggered();
 	void on_dumpTrace_triggered();
+	void on_dumpTraceStorage_triggered();
 	void on_debugStepInto_triggered();
 	void on_debugStepOut_triggered();
+	void on_debugStepBackOut_triggered();
+	void on_debugStepBackInto_triggered();
 	void on_callStack_currentItemChanged();
+	void on_debugCurrent_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();
@@ -149,6 +153,8 @@ private:
 	QString render(eth::Address _a) const;
 	eth::Address fromString(QString const& _a) const;
 	std::string renderDiff(eth::StateDiff const& _d) const;
+
+	void alterDebugStateGroup(bool _enable) const;
 
 	eth::State const& state() const;
 

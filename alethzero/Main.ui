@@ -161,16 +161,26 @@
     <property name="title">
      <string>Deb&amp;ug</string>
     </property>
+    <widget class="QMenu" name="menuDump_Trace">
+     <property name="title">
+      <string>&amp;Dump Trace</string>
+     </property>
+     <addaction name="dumpTrace"/>
+     <addaction name="dumpTraceStorage"/>
+    </widget>
     <addaction name="debugStep"/>
     <addaction name="debugStepInto"/>
     <addaction name="debugStepOut"/>
-    <addaction name="debugStepback"/>
-    <addaction name="dumpTrace"/>
+    <addaction name="debugStepBack"/>
+    <addaction name="debugStepBackInto"/>
+    <addaction name="debugStepBackOut"/>
+    <addaction name="menuDump_Trace"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="clearPending"/>
+    <addaction name="debugCurrent"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1527,15 +1537,15 @@ font-size: 14pt</string>
     <string>&amp;Load Javascript...</string>
    </property>
   </action>
-  <action name="debugStepback">
+  <action name="debugStepBack">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Step &amp;Backwards</string>
+    <string>Step Over &amp;Backwards</string>
    </property>
    <property name="shortcut">
-    <string>Shift+F10</string>
+    <string>Ctrl+F10</string>
    </property>
   </action>
   <action name="clearPending">
@@ -1543,12 +1553,12 @@ font-size: 14pt</string>
     <string>&amp;Clear Pending</string>
    </property>
   </action>
-  <action name="dumpTrace">
+  <action name="dumpTraceStorage">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>&amp;Dump Standard Trace</string>
+    <string>Standard with &amp;Storage...</string>
    </property>
   </action>
   <action name="debugStepInto">
@@ -1571,6 +1581,44 @@ font-size: 14pt</string>
    </property>
    <property name="shortcut">
     <string>Shift+F11</string>
+   </property>
+  </action>
+  <action name="dumpTrace">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>S&amp;tandard...</string>
+   </property>
+  </action>
+  <action name="debugStepBackInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Into Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F11</string>
+   </property>
+  </action>
+  <action name="debugStepBackOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Out Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+F11</string>
+   </property>
+  </action>
+  <action name="debugCurrent">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debu&amp;g Current Transaction</string>
    </property>
   </action>
  </widget>
