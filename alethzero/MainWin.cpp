@@ -840,6 +840,8 @@ void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
 	ui->debugCurrent->setEnabled(false);
+	ui->debugDumpState->setEnabled(false);
+	ui->debugDumpStatePre->setEnabled(false);
 	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
@@ -910,11 +912,10 @@ void Main::on_blocks_currentItemChanged()
 			eth::State before = st.fromPending(txi);
 			eth::State after = st.fromPending(txi + 1);
 			s << renderDiff(before.diff(after));
-//			cerr << "State dump *********************************" << endl << after << "*********************************************" << endl;
-
 			ui->debugCurrent->setEnabled(true);
+			ui->debugDumpState->setEnabled(true);
+			ui->debugDumpStatePre->setEnabled(true);
 		}
-
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
 	}
@@ -941,6 +942,34 @@ void Main::on_debugCurrent_triggered()
 			m_currentExecution.reset();
 		}
 	}
+}
+
+void Main::on_debugDumpState_triggered(int _add)
+{
+	eth::ClientGuard g(m_client.get());
+	if (auto item = ui->blocks->currentItem())
+	{
+		auto hba = item->data(Qt::UserRole).toByteArray();
+		assert(hba.size() == 32);
+		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
+
+		if (!item->data(Qt::UserRole + 1).isNull())
+		{
+			QString fn = QFileDialog::getSaveFileName(this, "Select file to output state dump");
+			ofstream f(fn.toStdString());
+			if (f.is_open())
+			{
+				eth::State st(m_client->state().db(), m_client->blockChain(), h);
+				unsigned txi = item->data(Qt::UserRole + 1).toInt();
+				f << st.fromPending(txi + _add) << endl;
+			}
+		}
+	}
+}
+
+void Main::on_debugDumpStatePre_triggered()
+{
+	on_debugDumpState_triggered(0);
 }
 
 void Main::populateDebugger(eth::bytesConstRef _r)
