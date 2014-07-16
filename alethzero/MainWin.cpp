@@ -839,6 +839,7 @@ void Main::on_inject_triggered()
 void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
+	ui->debugCurrent->setEnabled(false);
 	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
@@ -906,19 +907,39 @@ void Main::on_blocks_currentItemChanged()
 					s << eth::memDump(tx.data, 16, true);
 			}
 			auto st = eth::State(m_client->state().db(), m_client->blockChain(), h);
-			s << renderDiff(st.pendingDiff(txi));
+			eth::State before = st.fromPending(txi);
+			eth::State after = st.fromPending(txi + 1);
+			s << renderDiff(before.diff(after));
+//			cerr << "State dump *********************************" << endl << after << "*********************************************" << endl;
 
-			m_executiveState = st.fromPending(txi);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-			Transaction t = st.pending()[txi];
-			auto r = t.rlp();
-
-			populateDebugger(&r);
-			m_currentExecution.reset();
+			ui->debugCurrent->setEnabled(true);
 		}
 
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
+	}
+}
+
+void Main::on_debugCurrent_triggered()
+{
+	eth::ClientGuard g(m_client.get());
+	if (auto item = ui->blocks->currentItem())
+	{
+		auto hba = item->data(Qt::UserRole).toByteArray();
+		assert(hba.size() == 32);
+		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
+
+		if (!item->data(Qt::UserRole + 1).isNull())
+		{
+			eth::State st(m_client->state().db(), m_client->blockChain(), h);
+			unsigned txi = item->data(Qt::UserRole + 1).toInt();
+			m_executiveState = st.fromPending(txi);
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			Transaction t = st.pending()[txi];
+			auto r = t.rlp();
+			populateDebugger(&r);
+			m_currentExecution.reset();
+		}
 	}
 }
 
@@ -1304,9 +1325,9 @@ void Main::on_create_triggered()
 
 void Main::on_debugStep_triggered()
 {
-	if (ui->debugTimeline->value() < m_history.size() && (m_history[ui->debugTimeline->value()].inst == Instruction::CALL || m_history[ui->debugTimeline->value()].inst == Instruction::CREATE))
+	auto l = m_history[ui->debugTimeline->value()].levels.size();
+	if (ui->debugTimeline->value() < m_history.size() && m_history[ui->debugTimeline->value() + 1].levels.size() > l)
 	{
-		auto l = m_history[ui->debugTimeline->value()].levels.size();
 		on_debugStepInto_triggered();
 		if (m_history[ui->debugTimeline->value()].levels.size() > l)
 			on_debugStepOut_triggered();
@@ -1333,10 +1354,35 @@ void Main::on_debugStepOut_triggered()
 	}
 }
 
-void Main::on_debugStepback_triggered()
+void Main::on_debugStepBackInto_triggered()
 {
 	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
 	ui->callStack->setCurrentRow(0);
+}
+
+void Main::on_debugStepBack_triggered()
+{
+	auto l = m_history[ui->debugTimeline->value()].levels.size();
+	if (ui->debugTimeline->value() > 0 && m_history[ui->debugTimeline->value() - 1].levels.size() > l)
+	{
+		on_debugStepBackInto_triggered();
+		if (m_history[ui->debugTimeline->value()].levels.size() > l)
+			on_debugStepBackOut_triggered();
+	}
+	else
+		on_debugStepBackInto_triggered();
+}
+
+void Main::on_debugStepBackOut_triggered()
+{
+	if (ui->debugTimeline->value() > 0)
+	{
+		auto ls = m_history[ui->debugTimeline->value()].levels.size();
+		int l = ui->debugTimeline->value();
+		for (; l > 0 && m_history[l].levels.size() >= ls; --l) {}
+		ui->debugTimeline->setValue(l);
+		ui->callStack->setCurrentRow(0);
+	}
 }
 
 void Main::on_dumpTrace_triggered()
@@ -1345,17 +1391,39 @@ void Main::on_dumpTrace_triggered()
 	ofstream f(fn.toStdString());
 	if (f.is_open())
 		for (WorldState const& ws: m_history)
+			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+}
+
+void Main::on_dumpTraceStorage_triggered()
+{
+	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
+	ofstream f(fn.toStdString());
+	if (f.is_open())
+		for (WorldState const& ws: m_history)
 		{
-/*			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
+			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
 				for (auto i: ws.storage)
 					f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
-*/			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
 }
 
 void Main::on_callStack_currentItemChanged()
 {
 	updateDebugger();
+}
+
+void Main::alterDebugStateGroup(bool _enable) const
+{
+	ui->debugStep->setEnabled(_enable);
+	ui->debugStepInto->setEnabled(_enable);
+	ui->debugStepOut->setEnabled(_enable);
+	ui->debugStepBackInto->setEnabled(_enable);
+	ui->debugStepBackOut->setEnabled(_enable);
+	ui->dumpTrace->setEnabled(_enable);
+	ui->dumpTraceStorage->setEnabled(_enable);
+	ui->debugStepBack->setEnabled(_enable);
+	ui->debugPanel->setEnabled(_enable);
 }
 
 void Main::debugFinished()
@@ -1371,13 +1439,8 @@ void Main::debugFinished()
 	ui->debugMemory->setHtml("");
 	ui->debugStorage->setHtml("");
 	ui->debugStateInfo->setText("");
+	alterDebugStateGroup(false);
 //	ui->send->setEnabled(true);
-	ui->debugStep->setEnabled(false);
-	ui->debugStepInto->setEnabled(false);
-	ui->debugStepOut->setEnabled(false);
-	ui->dumpTrace->setEnabled(false);
-	ui->debugStepback->setEnabled(false);
-	ui->debugPanel->setEnabled(false);
 }
 
 void Main::initDebugger()
@@ -1385,12 +1448,7 @@ void Main::initDebugger()
 //	ui->send->setEnabled(false);
 	if (m_history.size())
 	{
-		ui->debugStep->setEnabled(true);
-		ui->dumpTrace->setEnabled(true);
-		ui->debugStepInto->setEnabled(true);
-		ui->debugStepOut->setEnabled(true);
-		ui->debugStepback->setEnabled(true);
-		ui->debugPanel->setEnabled(true);
+		alterDebugStateGroup(true);
 		ui->debugCode->setEnabled(false);
 		ui->debugTimeline->setMinimum(0);
 		ui->debugTimeline->setMaximum(m_history.size());
