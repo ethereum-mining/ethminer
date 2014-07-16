@@ -131,6 +131,8 @@ private slots:
 	void on_debugStepBackInto_triggered();
 	void on_callStack_currentItemChanged();
 	void on_debugCurrent_triggered();
+	void on_debugDumpState_triggered(int _add = 1);
+	void on_debugDumpStatePre_triggered();
 
 	void refresh(bool _override = false);
 	void refreshNetwork();

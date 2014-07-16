@@ -168,6 +168,10 @@
      <addaction name="dumpTrace"/>
      <addaction name="dumpTraceStorage"/>
     </widget>
+    <addaction name="debugCurrent"/>
+    <addaction name="debugDumpState"/>
+    <addaction name="debugDumpStatePre"/>
+    <addaction name="separator"/>
     <addaction name="debugStep"/>
     <addaction name="debugStepInto"/>
     <addaction name="debugStepOut"/>
@@ -180,7 +184,6 @@
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="clearPending"/>
-    <addaction name="debugCurrent"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1619,6 +1622,22 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Debu&amp;g Current Transaction</string>
+   </property>
+  </action>
+  <action name="debugDumpState">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (post)</string>
+   </property>
+  </action>
+  <action name="debugDumpStatePre">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (pre)</string>
    </property>
   </action>
  </widget>
