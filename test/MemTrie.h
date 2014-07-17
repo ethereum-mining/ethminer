@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <Common.h>
-#include <FixedHash.h>
+#include <libethential/Common.h>
+#include <libethential/FixedHash.h>
 
 namespace eth
 {

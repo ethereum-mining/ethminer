@@ -22,10 +22,9 @@
 #include "PeerSession.h"
 
 #include <chrono>
-#include "Exceptions.h"
-#include "Common.h"
+#include <libethential/Common.h>
+#include <libethcore/Exceptions.h>
 #include "BlockChain.h"
-#include "BlockInfo.h"
 #include "PeerServer.h"
 using namespace std;
 using namespace eth;
@@ -108,8 +107,9 @@ bool PeerSession::interpret(RLP const& _r)
 
 		// Grab their block chain off them.
 		{
-			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << m_server->m_chain->details(m_server->m_latestBlockSent).number;
-			uint count = std::min(c_maxHashes, m_server->m_chain->details(m_server->m_latestBlockSent).number + 1);
+			uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
+			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
+			uint count = std::min(c_maxHashes, n + 1);
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;
@@ -145,35 +145,35 @@ bool PeerSession::interpret(RLP const& _r)
 	}
 	case PingPacket:
 	{
-//		clogS(NetMessageSummary) << "Ping";
+        clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
 		sealAndSend(prep(s).appendList(1) << PongPacket);
 		break;
 	}
 	case PongPacket:
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-//		clogS(NetMessageSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_lastPing).count() << " ms";
+        clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 		break;
 	case GetPeersPacket:
 	{
-		clogS(NetMessageSummary) << "GetPeers";
+        clogS(NetTriviaSummary) << "GetPeers";
 		auto peers = m_server->potentialPeers();
 		RLPStream s;
 		prep(s).appendList(peers.size() + 1);
 		s << PeersPacket;
 		for (auto i: peers)
 		{
-			clogS(NetMessageDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
-			s.appendList(3) << i.second.address().to_v4().to_bytes() << i.second.port() << i.first;
+            clogS(NetTriviaDetail) << "Sending peer " << toHex(i.first.ref().cropped(0, 4)) << i.second;
+			s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
 		}
 		sealAndSend(s);
 		break;
 	}
 	case PeersPacket:
-		clogS(NetMessageSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+        clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			bi::address_v4 peerAddress(_r[i][0].toArray<byte, 4>());
+			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			Public id = _r[i][2].toHash<Public>();
 			if (isPrivateAddress(peerAddress))
@@ -203,7 +203,7 @@ bool PeerSession::interpret(RLP const& _r)
 					goto CONTINUE;
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			m_server->m_freePeers.push_back(id);
-			clogS(NetMessageDetail) << "New peer: " << ep << "(" << id << ")";
+            clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
 			CONTINUE:;
 		}
 		break;
@@ -229,6 +229,7 @@ bool PeerSession::interpret(RLP const& _r)
 			auto h = sha3(_r[i].data());
 			if (!m_server->m_chain->details(h))
 			{
+				cdebug << "Pushing new block";
 				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
 				m_knownBlocks.insert(h);
 				used++;
@@ -282,15 +283,15 @@ bool PeerSession::interpret(RLP const& _r)
 
 			if (m_server->m_chain->details(parent))
 			{
-				latestNumber = m_server->m_chain->details(latest).number;
-				parentNumber = m_server->m_chain->details(parent).number;
+				latestNumber = m_server->m_chain->number(latest);
+				parentNumber = m_server->m_chain->number(parent);
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
 				clogS(NetAllDetail) << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber;
 				clogS(NetAllDetail) << latest << " - " << parent;
 
 				prep(s);
 				s.appendList(1 + count) << BlocksPacket;
-				uint endNumber = m_server->m_chain->details(parent).number;
+				uint endNumber = m_server->m_chain->number(parent);
 				uint startNumber = endNumber + count;
 				clogS(NetAllDetail) << "Sending " << dec << count << " blocks from " << startNumber << " to " << endNumber;
 
@@ -346,7 +347,7 @@ bool PeerSession::interpret(RLP const& _r)
 		}
 		else
 		{
-			uint count = std::min(c_maxHashes, m_server->m_chain->details(noGood).number);
+			uint count = std::min(c_maxHashes, m_server->m_chain->number(noGood));
 			RLPStream s;
 			prep(s).appendList(2 + count);
 			s << GetChainPacket;

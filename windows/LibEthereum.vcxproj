@@ -19,47 +19,48 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\libethereum\AddressState.cpp">
+    <ClCompile Include="..\libethcore\BlockInfo.cpp" />
+    <ClCompile Include="..\libethcore\CommonEth.cpp" />
+    <ClCompile Include="..\libethcore\Dagger.cpp" />
+    <ClCompile Include="..\libethcore\FileSystem.cpp" />
+    <ClCompile Include="..\libethcore\MemoryDB.cpp" />
+    <ClCompile Include="..\libethcore\OverlayDB.cpp" />
+    <ClCompile Include="..\libethcore\SHA3.cpp" />
+    <ClCompile Include="..\libethcore\TrieCommon.cpp" />
+    <ClCompile Include="..\libethcore\TrieDB.cpp" />
+    <ClCompile Include="..\libethcore\UPnP.cpp" />
+    <ClCompile Include="..\libethential\Common.cpp" />
+    <ClCompile Include="..\libethential\CommonData.cpp" />
+    <ClCompile Include="..\libethential\CommonIO.cpp" />
+    <ClCompile Include="..\libethential\FixedHash.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\libethential\Log.cpp" />
+    <ClCompile Include="..\libethential\RLP.cpp" />
+    <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
-    <ClCompile Include="..\libethereum\BlockInfo.cpp" />
     <ClCompile Include="..\libethereum\Client.cpp" />
-    <ClCompile Include="..\libethereum\Common.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\libethereum\CommonData.cpp" />
-    <ClCompile Include="..\libethereum\CommonEth.cpp" />
-    <ClCompile Include="..\libethereum\CommonIO.cpp" />
-    <ClCompile Include="..\libethereum\Dagger.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
-    <ClCompile Include="..\libethereum\FeeStructure.cpp" />
-    <ClCompile Include="..\libethereum\FileSystem.cpp" />
-    <ClCompile Include="..\libethereum\FixedHash.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\libethereum\Instruction.cpp" />
-    <ClCompile Include="..\libethereum\Log.cpp" />
+    <ClCompile Include="..\libethereum\Executive.cpp" />
+    <ClCompile Include="..\libethereum\ExtVM.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
-    <ClCompile Include="..\libethereum\RLP.cpp" />
     <ClCompile Include="..\libethereum\State.cpp" />
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
-    <ClCompile Include="..\libethereum\TrieCommon.cpp" />
-    <ClCompile Include="..\libethereum\TrieDB.cpp" />
-    <ClCompile Include="..\libethereum\UPnP.cpp" />
-    <ClCompile Include="..\libethereum\VM.cpp" />
+    <ClCompile Include="..\libevmface\Instruction.cpp" />
+    <ClCompile Include="..\libevm\ExtVMFace.cpp" />
+    <ClCompile Include="..\libevm\FeeStructure.cpp" />
+    <ClCompile Include="..\libevm\VM.cpp" />
+    <ClCompile Include="..\liblll\Assembly.cpp" />
+    <ClCompile Include="..\liblll\CodeFragment.cpp" />
+    <ClCompile Include="..\liblll\Compiler.cpp" />
+    <ClCompile Include="..\liblll\CompilerState.cpp" />
+    <ClCompile Include="..\liblll\Parser.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -69,36 +70,52 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libethcore\All.h" />
+    <ClInclude Include="..\libethcore\BlockInfo.h" />
+    <ClInclude Include="..\libethcore\CommonEth.h" />
+    <ClInclude Include="..\libethcore\CryptoHeaders.h" />
+    <ClInclude Include="..\libethcore\Dagger.h" />
+    <ClInclude Include="..\libethcore\Exceptions.h" />
+    <ClInclude Include="..\libethcore\FileSystem.h" />
+    <ClInclude Include="..\libethcore\MemoryDB.h" />
+    <ClInclude Include="..\libethcore\OverlayDB.h" />
+    <ClInclude Include="..\libethcore\SHA3.h" />
+    <ClInclude Include="..\libethcore\TrieCommon.h" />
+    <ClInclude Include="..\libethcore\TrieDB.h" />
+    <ClInclude Include="..\libethcore\UPnP.h" />
+    <ClInclude Include="..\libethential\All.h" />
+    <ClInclude Include="..\libethential\Common.h" />
+    <ClInclude Include="..\libethential\CommonData.h" />
+    <ClInclude Include="..\libethential\CommonIO.h" />
+    <ClInclude Include="..\libethential\Exceptions.h" />
+    <ClInclude Include="..\libethential\FixedHash.h" />
+    <ClInclude Include="..\libethential\Log.h" />
+    <ClInclude Include="..\libethential\RLP.h" />
+    <ClInclude Include="..\libethential\vector_ref.h" />
     <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
-    <ClInclude Include="..\libethereum\BlockInfo.h" />
     <ClInclude Include="..\libethereum\Client.h" />
-    <ClInclude Include="..\libethereum\Common.h" />
-    <ClInclude Include="..\libethereum\CommonData.h" />
-    <ClInclude Include="..\libethereum\CommonEth.h" />
-    <ClInclude Include="..\libethereum\CommonIO.h" />
-    <ClInclude Include="..\libethereum\CryptoHeaders.h" />
-    <ClInclude Include="..\libethereum\Dagger.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
-    <ClInclude Include="..\libethereum\Exceptions.h" />
-    <ClInclude Include="..\libethereum\ExtVMFace.h" />
-    <ClInclude Include="..\libethereum\FeeStructure.h" />
-    <ClInclude Include="..\libethereum\FileSystem.h" />
-    <ClInclude Include="..\libethereum\FixedHash.h" />
-    <ClInclude Include="..\libethereum\Instruction.h" />
-    <ClInclude Include="..\libethereum\Log.h" />
+    <ClInclude Include="..\libethereum\Executive.h" />
+    <ClInclude Include="..\libethereum\ExtVM.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />
-    <ClInclude Include="..\libethereum\RLP.h" />
     <ClInclude Include="..\libethereum\State.h" />
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
-    <ClInclude Include="..\libethereum\TrieCommon.h" />
-    <ClInclude Include="..\libethereum\TrieDB.h" />
-    <ClInclude Include="..\libethereum\UPnP.h" />
-    <ClInclude Include="..\libethereum\vector_ref.h" />
-    <ClInclude Include="..\libethereum\VM.h" />
+    <ClInclude Include="..\libevmface\Instruction.h" />
+    <ClInclude Include="..\libevm\All.h" />
+    <ClInclude Include="..\libevm\ExtVMFace.h" />
+    <ClInclude Include="..\libevm\FeeStructure.h" />
+    <ClInclude Include="..\libevm\VM.h" />
+    <ClInclude Include="..\liblll\All.h" />
+    <ClInclude Include="..\liblll\Assembly.h" />
+    <ClInclude Include="..\liblll\CodeFragment.h" />
+    <ClInclude Include="..\liblll\Compiler.h" />
+    <ClInclude Include="..\liblll\CompilerState.h" />
+    <ClInclude Include="..\liblll\Exceptions.h" />
+    <ClInclude Include="..\liblll\Parser.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
@@ -134,13 +151,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -149,18 +164,22 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Debug.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Debug.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Release.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
+    <Import Project="LibEthereum_Release.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
@@ -172,7 +191,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -186,7 +205,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <PrecompiledHeader>Use</PrecompiledHeader>
     </ClCompile>
@@ -204,7 +223,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -222,7 +241,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>

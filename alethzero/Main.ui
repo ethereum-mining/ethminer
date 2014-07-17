@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1504</width>
-    <height>798</height>
+    <width>1711</width>
+    <height>1138</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -59,6 +59,54 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QLabel" name="mineStatus">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="tab_3">
+         <attribute name="title">
+          <string>Tab 1</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>4</number>
+          </property>
+          <property name="topMargin">
+           <number>4</number>
+          </property>
+          <property name="rightMargin">
+           <number>4</number>
+          </property>
+          <property name="bottomMargin">
+           <number>4</number>
+          </property>
+          <item>
+           <widget class="QLineEdit" name="urlEdit"/>
+          </item>
+          <item>
+           <widget class="QWebView" name="webView" native="true">
+            <property name="url" stdset="0">
+             <url>
+              <string>about:blank</string>
+             </url>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
@@ -68,8 +116,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1504</width>
-     <height>20</height>
+     <width>1711</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -83,6 +131,7 @@
      <string>&amp;Network</string>
     </property>
     <addaction name="upnp"/>
+    <addaction name="usePast"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -91,8 +140,16 @@
      <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
-    <addaction name="create"/>
     <addaction name="preview"/>
+    <addaction name="separator"/>
+    <addaction name="create"/>
+    <addaction name="importKey"/>
+    <addaction name="exportKey"/>
+    <addaction name="separator"/>
+    <addaction name="showAll"/>
+    <addaction name="showAllAccounts"/>
+    <addaction name="separator"/>
+    <addaction name="loadJS"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -100,9 +157,38 @@
     </property>
     <addaction name="about"/>
    </widget>
+   <widget class="QMenu" name="menu_Debug">
+    <property name="title">
+     <string>Deb&amp;ug</string>
+    </property>
+    <widget class="QMenu" name="menuDump_Trace">
+     <property name="title">
+      <string>&amp;Dump Trace</string>
+     </property>
+     <addaction name="dumpTrace"/>
+     <addaction name="dumpTraceStorage"/>
+    </widget>
+    <addaction name="debugCurrent"/>
+    <addaction name="debugDumpState"/>
+    <addaction name="debugDumpStatePre"/>
+    <addaction name="separator"/>
+    <addaction name="debugStep"/>
+    <addaction name="debugStepInto"/>
+    <addaction name="debugStepOut"/>
+    <addaction name="debugStepBack"/>
+    <addaction name="debugStepBackInto"/>
+    <addaction name="debugStepBackOut"/>
+    <addaction name="menuDump_Trace"/>
+    <addaction name="separator"/>
+    <addaction name="paranoia"/>
+    <addaction name="killBlockchain"/>
+    <addaction name="inject"/>
+    <addaction name="clearPending"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menu_Debug"/>
    <addaction name="menu_Help"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -111,7 +197,7 @@
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
    <property name="windowTitle">
-    <string>All Accounts</string>
+    <string>Accounts</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -260,7 +346,10 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QHBoxLayout" name="horizontalLayout_6">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <property name="spacing">
+      <number>2</number>
+     </property>
      <property name="leftMargin">
       <number>0</number>
      </property>
@@ -290,20 +379,40 @@
       </widget>
      </item>
      <item>
-      <widget class="QSlider" name="verbosity">
-       <property name="maximum">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>1</number>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="tickPosition">
-        <enum>QSlider::TicksBothSides</enum>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_5">
+       <item>
+        <widget class="QSlider" name="verbosity">
+         <property name="maximum">
+          <number>20</number>
+         </property>
+         <property name="value">
+          <number>1</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="tickPosition">
+          <enum>QSlider::TicksBothSides</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="verbosityLabel">
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>20</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </widget>
@@ -319,7 +428,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -336,13 +445,26 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="transactionQueue">
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
+      <widget class="QSplitter" name="splitter_7">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
-       </property>
+       <widget class="QListWidget" name="transactionQueue">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
+       <widget class="QTextBrowser" name="pendingInfo">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+       </widget>
       </widget>
      </item>
     </layout>
@@ -362,6 +484,7 @@
    <addaction name="connect"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
+   <addaction name="paranoia"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
    <property name="sizePolicy">
@@ -372,8 +495,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>442</width>
-     <height>360</height>
+     <width>510</width>
+     <height>386</height>
     </size>
    </property>
    <property name="features">
@@ -406,29 +529,39 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label5_2">
-       <property name="text">
-        <string>&amp;Amount</string>
+     <item row="5" column="0" colspan="4">
+      <widget class="QSplitter" name="splitter_5">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
-       <property name="buddy">
-        <cstring>value</cstring>
-       </property>
+       <widget class="QPlainTextEdit" name="data">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
+        </property>
+       </widget>
+       <widget class="QTextEdit" name="code">
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="lineWidth">
+         <number>0</number>
+        </property>
+       </widget>
       </widget>
      </item>
-     <item row="3" column="3">
-      <widget class="QComboBox" name="gasPriceUnits"/>
-     </item>
-     <item row="2" column="1" colspan="2">
-      <widget class="QSpinBox" name="value">
-       <property name="suffix">
-        <string/>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>&amp;Gas</string>
        </property>
-       <property name="maximum">
-        <number>430000000</number>
-       </property>
-       <property name="value">
-        <number>0</number>
+       <property name="buddy">
+        <cstring>gas</cstring>
        </property>
       </widget>
      </item>
@@ -445,32 +578,6 @@
        </property>
        <property name="buddy">
         <cstring>destination</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0" colspan="4">
-      <widget class="QSplitter" name="splitter_5">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <widget class="QPlainTextEdit" name="data"/>
-       <widget class="QTextEdit" name="code">
-        <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
-        </property>
-       </widget>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="QSpinBox" name="gasPrice">
-       <property name="prefix">
-        <string>@ </string>
-       </property>
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>430000000</number>
        </property>
       </widget>
      </item>
@@ -493,13 +600,55 @@
      <item row="2" column="3">
       <widget class="QComboBox" name="valueUnits"/>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_6">
+     <item row="3" column="3">
+      <widget class="QComboBox" name="gasPriceUnits"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QSpinBox" name="gasPrice">
+       <property name="prefix">
+        <string>@ </string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>430000000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="3">
+      <widget class="QLineEdit" name="calculatedName">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1" colspan="2">
+      <widget class="QSpinBox" name="value">
+       <property name="suffix">
+        <string/>
+       </property>
+       <property name="maximum">
+        <number>430000000</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label5_2">
        <property name="text">
-        <string>&amp;Gas</string>
+        <string>&amp;Amount</string>
        </property>
        <property name="buddy">
-        <cstring>gas</cstring>
+        <cstring>value</cstring>
        </property>
       </widget>
      </item>
@@ -519,14 +668,26 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="1" colspan="3">
+      <widget class="QComboBox" name="destination">
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+       <item>
+        <property name="text">
+         <string>(Create Contract)</string>
+        </property>
+       </item>
+      </widget>
+     </item>
      <item row="6" column="3">
       <widget class="QPushButton" name="send">
        <property name="text">
-        <string>&amp;Send</string>
+        <string>&amp;Execute</string>
        </property>
       </widget>
      </item>
-     <item row="6" column="0" colspan="3">
+     <item row="6" column="0" colspan="2">
       <widget class="QLabel" name="total">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
@@ -539,29 +700,10 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1" colspan="3">
-      <widget class="QLineEdit" name="calculatedName">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="placeholderText">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1" colspan="3">
-      <widget class="QLineEdit" name="destination">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="placeholderText">
-        <string>(Create Contract)</string>
+     <item row="6" column="2">
+      <widget class="QPushButton" name="debug">
+       <property name="text">
+        <string>De&amp;bug</string>
        </property>
       </widget>
      </item>
@@ -698,7 +840,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_8">
-    <layout class="QHBoxLayout" name="horizontalLayout_8">
+    <layout class="QVBoxLayout" name="verticalLayout_7">
      <property name="leftMargin">
       <number>0</number>
      </property>
@@ -711,6 +853,19 @@
      <property name="bottomMargin">
       <number>0</number>
      </property>
+     <item>
+      <widget class="QLineEdit" name="blockChainFilter">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="placeholderText">
+        <string>Filter...</string>
+       </property>
+       <property name="clearButtonEnabled">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QSplitter" name="splitter_2">
        <property name="orientation">
@@ -789,9 +944,482 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_9">
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Debugger</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="debugPanel">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QSplitter" name="splitter_6">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <widget class="QSplitter" name="splitter_42">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <widget class="QListWidget" name="debugCode">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+        </widget>
+        <widget class="QListWidget" name="callStack">
+         <property name="font">
+          <font>
+           <family>Ubuntu Mono</family>
+          </font>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <widget class="QTextEdit" name="debugStack">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugMemory">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugStorage">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="debugCallData">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="debugStateInfo">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="debugTimeline">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_10">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Mining</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_10">
+    <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="MiningView" name="miningView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_11">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Javascript Console</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_11">
+    <layout class="QVBoxLayout" name="verticalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QWebView" name="jsConsole" native="true">
+       <property name="url" stdset="0">
+        <url>
+         <string>about:blank</string>
+        </url>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_9">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="minimumSize">
+          <size>
+           <width>14</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="palette">
+          <palette>
+           <active>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </active>
+           <inactive>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </inactive>
+           <disabled>
+            <colorrole role="WindowText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Button">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Text">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="ButtonText">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>51</red>
+               <green>85</green>
+               <blue>221</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Base">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+            <colorrole role="Window">
+             <brush brushstyle="SolidPattern">
+              <color alpha="255">
+               <red>255</red>
+               <green>255</green>
+               <blue>255</blue>
+              </color>
+             </brush>
+            </colorrole>
+           </disabled>
+          </palette>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: white;
+color: #35d;
+font-weight: bold;
+font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New;
+font-size: 14pt</string>
+         </property>
+         <property name="text">
+          <string>&gt;</string>
+         </property>
+         <property name="margin">
+          <number>0</number>
+         </property>
+         <property name="buddy">
+          <cstring>jsInput</cstring>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="jsInput">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background: white;
+border: 0;
+font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New;
+font-size: 14pt</string>
+         </property>
+         <property name="inputMask">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="frame">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
    </property>
   </action>
   <action name="upnp">
@@ -844,8 +1472,189 @@
     <string>&amp;Preview</string>
    </property>
   </action>
+  <action name="debugStep">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Step Over</string>
+   </property>
+   <property name="shortcut">
+    <string>F10</string>
+   </property>
+  </action>
+  <action name="paranoia">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mining &amp;Paranoia</string>
+   </property>
+  </action>
+  <action name="killBlockchain">
+   <property name="text">
+    <string>&amp;Kill Blockchain</string>
+   </property>
+  </action>
+  <action name="importKey">
+   <property name="text">
+    <string>&amp;Import Key...</string>
+   </property>
+  </action>
+  <action name="exportKey">
+   <property name="text">
+    <string>&amp;Export Selected Key...</string>
+   </property>
+  </action>
+  <action name="inject">
+   <property name="text">
+    <string>&amp;Inject Transaction</string>
+   </property>
+  </action>
+  <action name="showAll">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Ancient &amp;Blocks</string>
+   </property>
+  </action>
+  <action name="showAllAccounts">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Anonymous &amp;Accounts</string>
+   </property>
+  </action>
+  <action name="usePast">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use &amp;Past Peers</string>
+   </property>
+  </action>
+  <action name="loadJS">
+   <property name="text">
+    <string>&amp;Load Javascript...</string>
+   </property>
+  </action>
+  <action name="debugStepBack">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Over &amp;Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F10</string>
+   </property>
+  </action>
+  <action name="clearPending">
+   <property name="text">
+    <string>&amp;Clear Pending</string>
+   </property>
+  </action>
+  <action name="dumpTraceStorage">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Standard with &amp;Storage...</string>
+   </property>
+  </action>
+  <action name="debugStepInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Into</string>
+   </property>
+   <property name="shortcut">
+    <string>F11</string>
+   </property>
+  </action>
+  <action name="debugStepOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step &amp;Out</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+F11</string>
+   </property>
+  </action>
+  <action name="dumpTrace">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>S&amp;tandard...</string>
+   </property>
+  </action>
+  <action name="debugStepBackInto">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Into Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F11</string>
+   </property>
+  </action>
+  <action name="debugStepBackOut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Step Out Backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+F11</string>
+   </property>
+  </action>
+  <action name="debugCurrent">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debu&amp;g Current Transaction</string>
+   </property>
+  </action>
+  <action name="debugDumpState">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (post)</string>
+   </property>
+  </action>
+  <action name="debugDumpStatePre">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>D&amp;ump Current Transaction State (pre)</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QWebView</class>
+   <extends>QWidget</extends>
+   <header>QtWebKitWidgets/QWebView</header>
+  </customwidget>
+  <customwidget>
+   <class>MiningView</class>
+   <extends>QWidget</extends>
+   <header>MiningView.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>destination</tabstop>
   <tabstop>calculatedName</tabstop>
@@ -859,8 +1668,15 @@
   <tabstop>idealPeers</tabstop>
   <tabstop>port</tabstop>
   <tabstop>clientName</tabstop>
-  <tabstop>nameReg</tabstop>
   <tabstop>verbosity</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>urlEdit</tabstop>
+  <tabstop>webView</tabstop>
+  <tabstop>nameReg</tabstop>
+  <tabstop>debugCode</tabstop>
+  <tabstop>debugStack</tabstop>
+  <tabstop>debugMemory</tabstop>
+  <tabstop>debugStorage</tabstop>
  </tabstops>
  <resources/>
  <connections/>

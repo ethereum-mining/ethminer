@@ -22,8 +22,9 @@
 #pragma once
 
 #include <mutex>
-#include "CommonEth.h"
-#include "Log.h"
+#include <libethential/Log.h>
+#include <libethcore/CommonEth.h>
+#include <libethcore/BlockInfo.h>
 #include "AddressState.h"
 namespace ldb = leveldb;
 
@@ -43,27 +44,36 @@ struct BlockDetails
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	uint number;
+	uint number;			// TODO: remove?
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
+	// TODO: add trace bloom
 };
+// TODO: DB for full traces.
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
 
 static const BlockDetails NullBlockDetails;
 static const h256s NullH256s;
 
-class Overlay;
+class State;
+class OverlayDB;
 
 class AlreadyHaveBlock: public std::exception {};
 class UnknownParent: public std::exception {};
+class FutureTime: public std::exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 
+// TODO: Move all this Genesis stuff into Genesis.h/.cpp
+std::map<Address, AddressState> const& genesisState();
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
+ * @todo Make thread-safe.
+ * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
 {
@@ -77,18 +87,21 @@ public:
 	void process();
 
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block, Overlay const& _stateDB);
+	bool attemptImport(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Import block into disk-backed DB
-	void import(bytes const& _block, Overlay const& _stateDB);
+	void import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the number of the last block of the longest chain.
-	BlockDetails const& details(h256 _hash) const;
-	BlockDetails const& details() const { return details(currentHash()); }
+	BlockDetails details(h256 _hash) const;
+	BlockDetails details() const { return details(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
-	bytesConstRef block(h256 _hash) const;
-	bytesConstRef block() const { return block(currentHash()); }
+	bytes block(h256 _hash) const;
+	bytes block() const { return block(currentHash()); }
+
+	uint number(h256 _hash) const;
+	uint number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { return m_lastBlockHash; }
@@ -96,17 +109,23 @@ public:
 	/// Get the hash of the genesis block.
 	h256 genesisHash() const { return m_genesisHash; }
 
+	/// Get the hash of a block of a given number.
+	h256 numberHash(unsigned _n) const;
+
 	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
 	void pushInterest(Address _a) { m_interest[_a]++; }
 	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
+
+	static BlockInfo const& genesis() { if (!s_genesis) { auto gb = createGenesisBlock(); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
+	static bytes createGenesisBlock();
 
 private:
 	void checkConsistency();
 
 	/// Get fully populated from disk DB.
 	mutable BlockDetailsHash m_details;
-	mutable std::map<h256, std::string> m_cache;
-	mutable std::mutex m_lock;
+	mutable std::map<h256, bytes> m_cache;
+	mutable std::recursive_mutex m_lock;
 
 	/// The queue of transactions that have happened that we're interested in.
 	std::map<Address, int> m_interest;
@@ -124,6 +143,8 @@ private:
 	ldb::WriteOptions m_writeOptions;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
+
+	static BlockInfo* s_genesis;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);

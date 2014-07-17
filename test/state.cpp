@@ -21,10 +21,10 @@
  */
 
 #include <boost/filesystem/operations.hpp>
-#include <secp256k1.h>
-#include <BlockChain.h>
-#include <State.h>
-#include <Defaults.h>
+#include <secp256k1/secp256k1.h>
+#include <libethereum/BlockChain.h>
+#include <libethereum/State.h>
+#include <libethereum/Defaults.h>
 using namespace std;
 using namespace eth;
 
@@ -38,7 +38,7 @@ int stateTest()
 
 	Defaults::setDBPath(boost::filesystem::temp_directory_path().string());
 
-	Overlay stateDB = State::openDB();
+	OverlayDB stateDB = State::openDB();
 	BlockChain bc;
 	State s(myMiner.address(), stateDB);
 
@@ -51,7 +51,8 @@ int stateTest()
 
 	// Mine to get some ether!
 	s.commitToMine(bc);
-	while (s.mine(100).completed) {}
+	while (!s.mine(100).completed) {}
+	s.completeMine();
 	bc.attemptImport(s.blockData(), stateDB);
 
 	cout << bc;
@@ -77,7 +78,8 @@ int stateTest()
 
 	// Mine to get some ether and set in stone.
 	s.commitToMine(bc);
-	while (s.mine(100).completed) {}
+	while (!s.mine(100).completed) {}
+	s.completeMine();
 	bc.attemptImport(s.blockData(), stateDB);
 
 	cout << bc;

@@ -9,12 +9,15 @@
     <ClCompile Include="WinMain.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
-    <ClCompile Include="qt_plugin_import.cpp" />
+    <ClCompile Include="..\alethzero\Grapher.cpp" />
+    <ClCompile Include="..\alethzero\MiningView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+    <ClInclude Include="..\alethzero\Grapher.h" />
+    <ClInclude Include="..\alethzero\GraphParameters.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -27,5 +30,6 @@
     <CustomBuild Include="BuildInfo.lua">
       <Filter>Windows</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\alethzero\MiningView.h" />
   </ItemGroup>
 </Project>

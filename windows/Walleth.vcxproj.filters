@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="..\walleth\main.cpp" />
     <ClCompile Include="..\walleth\MainWin.cpp" />
-    <ClCompile Include="qt_plugin_import.cpp" />
     <ClCompile Include="stdafx.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
@@ -17,6 +16,7 @@
     <CustomBuild Include="BuildInfo.lua">
       <Filter>Windows</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\walleth\Resources.qrc" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -27,5 +27,8 @@
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\walleth\Simple.qml" />
   </ItemGroup>
 </Project>

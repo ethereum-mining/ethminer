@@ -22,13 +22,13 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include "Common.h"
-#include "RLP.h"
-#include "Exceptions.h"
-#include "Dagger.h"
-#include "BlockInfo.h"
+#include <libethential/Common.h>
+#include <libethential/RLP.h>
+#include <libethcore/FileSystem.h>
+#include <libethcore/Exceptions.h>
+#include <libethcore/Dagger.h>
+#include <libethcore/BlockInfo.h>
 #include "State.h"
-#include "FileSystem.h"
 #include "Defaults.h"
 using namespace std;
 using namespace eth;
@@ -37,6 +37,7 @@ using namespace eth;
 
 namespace eth
 {
+
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.m_lastBlockHash);
@@ -65,6 +66,48 @@ bytes BlockDetails::rlp() const
 	return rlpList(number, totalDifficulty, parent, children);
 }
 
+std::map<Address, AddressState> const& eth::genesisState()
+{
+	static std::map<Address, AddressState> s_ret;
+	if (s_ret.empty())
+		// Initialise.
+		for (auto i: vector<string>({
+            "51ba59315b3a95761d0863b05ccc7a7f54703d99",
+			"e6716f9544a56c530d868e4bfbacb172315bdead",
+			"b9c015918bdaba24b4ff057a92a3873d6eb201be",
+			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
+			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
+			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
+			"6c386a4b26f73c802f34673f7248bb118f97424a",
+			"e4157b34ea9615cfbde6b4fda419828124b70c78"
+		}))
+			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
+	return s_ret;
+}
+
+BlockInfo* BlockChain::s_genesis = nullptr;
+
+bytes BlockChain::createGenesisBlock()
+{
+	RLPStream block(3);
+	auto sha3EmptyList = sha3(RLPEmptyList);
+
+	h256 stateRoot;
+	{
+		MemoryDB db;
+		TrieDB<Address, MemoryDB> state(&db);
+		state.init();
+		eth::commit(genesisState(), db, state);
+		stateRoot = state.root();
+	}
+
+	block.appendList(13) << h256() << sha3EmptyList << h160();
+	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
+	block.appendRaw(RLPEmptyList);
+	block.appendRaw(RLPEmptyList);
+	return block.out();
+}
+
 BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -84,8 +127,8 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	assert(m_detailsDB);
 
 	// Initialise with the genesis as the last block on the longest chain.
-	m_genesisHash = BlockInfo::genesis().hash;
-	m_genesisBlock = BlockInfo::createGenesisBlock();
+	m_genesisHash = BlockChain::genesis().hash;
+	m_genesisBlock = BlockChain::createGenesisBlock();
 
 	if (!details(m_genesisHash))
 	{
@@ -102,11 +145,14 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	m_detailsDB->Get(m_readOptions, ldb::Slice("best"), &l);
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
-	cout << "Opened blockchain db. Latest: " << m_lastBlockHash << endl;
+	cnote << "Opened blockchain DB. Latest: " << m_lastBlockHash;
 }
 
 BlockChain::~BlockChain()
 {
+	cnote << "Closing blockchain DB";
+	delete m_detailsDB;
+	delete m_db;
 }
 
 template <class T, class V>
@@ -118,7 +164,7 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
+bool BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
 {
 #if ETH_CATCH
 	try
@@ -136,14 +182,16 @@ bool BlockChain::attemptImport(bytes const& _block, Overlay const& _stateDB)
 }
 
 
-void BlockChain::import(bytes const& _block, Overlay const& _db)
+void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
-	BlockInfo bi(&_block);
+	BlockInfo bi;
+
 #if ETH_CATCH
 	try
 #endif
 	{
+		bi.populate(&_block);
 		bi.verifyInternals(&_block);
 	}
 #if ETH_CATCH
@@ -158,7 +206,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	// Check block doesn't already exist first!
 	if (details(newHash))
 	{
-		clog(BlockChainChat) << newHash << ": Not new.";
+		clog(BlockChainNote) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
 
@@ -166,9 +214,17 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		clog(BlockChainChat) << newHash << ": Unknown parent " << bi.parentHash;
+		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
+	}
+
+	// Check it's not crazy
+	if (bi.timestamp > (u256)time(0))
+	{
+		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
+		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		throw FutureTime();
 	}
 
 	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
@@ -178,19 +234,11 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 	try
 #endif
 	{
-		// Check family:
-		BlockInfo biParent(block(bi.parentHash));
-		bi.verifyParent(biParent);
-
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
-		State s(bi.coinbaseAddress, _db);
-		s.sync(*this, bi.parentHash);
-
 		// Get total difficulty increase and update state, checking it.
-		BlockInfo biGrandParent;
-		if (pd.number)
-			biGrandParent.populate(block(pd.parent));
-		auto tdIncrease = s.playback(&_block, bi, biParent, biGrandParent, true);
+		State s(bi.coinbaseAddress, _db);
+		auto tdIncrease = s.enactOn(&_block, bi, *this);
+		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
 
 #if ETH_PARANOIA
@@ -198,7 +246,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 #endif
 		// All ok - insert into DB
 		{
-			lock_guard<mutex> l(m_lock);
+			lock_guard<recursive_mutex> l(m_lock);
 			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
@@ -236,6 +284,7 @@ void BlockChain::import(bytes const& _block, Overlay const& _db)
 
 void BlockChain::checkConsistency()
 {
+	lock_guard<recursive_mutex> l(m_lock);
 	m_details.clear();
 	ldb::Iterator* it = m_detailsDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
@@ -254,44 +303,57 @@ void BlockChain::checkConsistency()
 	delete it;
 }
 
-bytesConstRef BlockChain::block(h256 _hash) const
+bytes BlockChain::block(h256 _hash) const
 {
 	if (_hash == m_genesisHash)
-		return &m_genesisBlock;
+		return m_genesisBlock;
+
+	lock_guard<recursive_mutex> l(m_lock);
+
+	auto it = m_cache.find(_hash);
+	if (it != m_cache.end())
+		return it->second;
 
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
-	{
-		lock_guard<mutex> l(m_lock);
-		swap(m_cache[_hash], d);
-		return bytesConstRef(&m_cache[_hash]);
-	}
+	m_cache[_hash].resize(d.size());
+	memcpy(m_cache[_hash].data(), d.data(), d.size());
+	return m_cache[_hash];
 }
 
-BlockDetails const& BlockChain::details(h256 _h) const
+eth::uint BlockChain::number(h256 _hash) const
 {
-	BlockDetailsHash::const_iterator it;
-	bool fetchRequired;
+	return details(_hash).number;
+}
+
+h256 BlockChain::numberHash(unsigned _n) const
+{
+	if (!_n)
+		return genesisHash();
+	h256 ret = currentHash();
+	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
+	return ret;
+}
+
+BlockDetails BlockChain::details(h256 _h) const
+{
+	lock_guard<recursive_mutex> l(m_lock);
+
+	BlockDetailsHash::const_iterator it = m_details.find(_h);
+	if (it != m_details.end())
+		return it->second;
+
+	std::string s;
+	m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
+	if (s.empty())
 	{
-		lock_guard<mutex> l(m_lock);
-		it = m_details.find(_h);
-		fetchRequired = (it == m_details.end());
-	}
-	if (fetchRequired)
-	{
-		std::string s;
-		m_detailsDB->Get(m_readOptions, ldb::Slice((char const*)&_h, 32), &s);
-		if (s.empty())
-		{
 //			cout << "Not found in DB: " << _h << endl;
-			return NullBlockDetails;
-		}
-		{
-			lock_guard<mutex> l(m_lock);
-			bool ok;
-			tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
-		}
+		return NullBlockDetails;
+	}
+	{
+		bool ok;
+		tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
 	}
 	return it->second;
 }

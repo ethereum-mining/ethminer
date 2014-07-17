@@ -9,7 +9,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
-link_directories(../libethereum)
 
 # Find Qt5 for Apple and update src_list for windows
 if (APPLE)
@@ -18,13 +17,19 @@ if (APPLE)
 
 	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
 	include_directories(/usr/local/opt/qt5/include /usr/local/include)
-elseif (${TARGET_PLATFORM} STREQUAL "w64")
+elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
+	include_directories(/usr/x86_64-w64-mingw32/include /usr/x86_64-w64-mingw32/include/QtCore /usr/x86_64-w64-mingw32/include/QtGui /usr/x86_64-w64-mingw32/include/QtQuick /usr/x86_64-w64-mingw32/include/QtQml /usr/x86_64-w64-mingw32/include/QtNetwork /usr/x86_64-w64-mingw32/include/QtWidgets /usr/x86_64-w64-mingw32/include/QtWebKit /usr/x86_64-w64-mingw32/include/QtWebKitWidgets)
 elseif (UNIX)
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake") 
 endif ()
 
 
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Gui REQUIRED)
+find_package(Qt5Quick REQUIRED)
+find_package(Qt5Qml REQUIRED)
+find_package(Qt5Network REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5WebKit REQUIRED)
 find_package(Qt5WebKitWidgets REQUIRED)
@@ -53,8 +58,8 @@ else ()
 	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST})
 endif ()
 
-qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network WebKit WebKitWidgets)
-target_link_libraries(${EXECUTEABLE} ethereum secp256k1 ${CRYPTOPP_LIBRARIES})
+qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
+target_link_libraries(${EXECUTEABLE} qethereum ethereum evm ethcore secp256k1 gmp ${CRYPTOPP_LS} serpent lll evmface ethential)
 
 if (APPLE)
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
@@ -65,7 +70,7 @@ if (APPLE)
 	# will not be set but defaults to release.
 	set(generator_lowercase "${CMAKE_GENERATOR}")
 	string(TOLOWER "${CMAKE_GENERATOR}" generator_lowercase)
-	if (generator_lowercase STREQUAL "xcode")
+	if ("${generator_lowercase}" STREQUAL "xcode")
 		# TODO: Not sure how to resolve this. Possibly \${TARGET_BUILD_DIR}
 		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}/Debug")
 	else ()
@@ -78,7 +83,7 @@ if (APPLE)
 	install(CODE "
 		include(BundleUtilities)
 		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
+                fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
 		" COMPONENT RUNTIME )
 	
 	add_custom_target(addframeworks ALL
@@ -87,7 +92,7 @@ if (APPLE)
 		DEPENDS ${PROJECT_NAME}
 	)
 
-elseif (${TARGET_PLATFORM} STREQUAL "w64")
+elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport -static-libgcc -static-libstdc++ -static")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s -Wl,-subsystem,windows -mthreads -L/usr/x86_64-w64-mingw32/plugins/platforms")
 	target_link_libraries(${EXECUTEABLE} gcc)
@@ -95,7 +100,6 @@ elseif (${TARGET_PLATFORM} STREQUAL "w64")
 	target_link_libraries(${EXECUTEABLE} boost_system-mt-s)
 	target_link_libraries(${EXECUTEABLE} boost_filesystem-mt-s)
 	target_link_libraries(${EXECUTEABLE} boost_thread_win32-mt-s)
-#	target_link_libraries(${EXECUTEABLE} ssl)
 	target_link_libraries(${EXECUTEABLE} crypt32)
 	target_link_libraries(${EXECUTEABLE} Qt5PlatformSupport)
 	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)

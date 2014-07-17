@@ -22,13 +22,15 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <Client.h>
-#include <BlockChain.h>
-#include <PeerServer.h>
+#include <libethereum/Client.h>
+#include <libethereum/BlockChain.h>
+#include <libethereum/PeerServer.h>
 #include "TestHelper.h"
 using namespace std;
 using namespace eth;
 
+// Disabled since tests shouldn't block (not the worst offender, but timeout should be reduced anyway).
+/*
 BOOST_AUTO_TEST_CASE(listen_port_busy)
 {
 	short port = 20000;
@@ -49,3 +51,4 @@ BOOST_AUTO_TEST_CASE(listen_port_busy)
 	BOOST_REQUIRE(c1.peerServer()->listenPort() != 0);
 	BOOST_REQUIRE(c1.peerServer()->listenPort() != port);
 }
+*/

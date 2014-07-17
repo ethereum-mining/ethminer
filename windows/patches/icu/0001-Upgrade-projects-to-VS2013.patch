@@ -1,0 +1,2279 @@
+From f0d00332540713c5d3e3981a5a29dc0ae226d999 Mon Sep 17 00:00:00 2001
+From: Tim Hughes <tim@twistedfury.com>
+Date: Mon, 21 Apr 2014 12:54:15 +0100
+Subject: [PATCH 1/3] Upgrade projects to VS2013 .
+
+Signed-off-by: Tim Hughes <tim@twistedfury.com>
+---
+ source/common/common.vcxproj           |  42 ++-
+ source/extra/uconv/uconv.vcxproj       |   8 +-
+ source/i18n/i18n.vcxproj               |  48 +--
+ source/i18n/i18n.vcxproj.filters       |   3 +-
+ source/io/io.vcxproj                   |   8 +-
+ source/layout/layout.vcxproj           |   8 +-
+ source/layoutex/layoutex.vcxproj       |   8 +-
+ source/samples/cal/cal.vcxproj         | 528 +++++++++++++++++----------------
+ source/samples/date/date.vcxproj       |   8 +-
+ source/stubdata/stubdata.vcxproj       |  42 ++-
+ source/test/cintltst/cintltst.vcxproj  |   8 +-
+ source/test/intltest/intltest.vcxproj  |  38 +--
+ source/test/iotest/iotest.vcxproj      |   8 +-
+ source/test/letest/letest.vcxproj      |   8 +-
+ source/tools/ctestfw/ctestfw.vcxproj   |   8 +-
+ source/tools/genbrk/genbrk.vcxproj     |   8 +-
+ source/tools/genccode/genccode.vcxproj |   8 +-
+ source/tools/gencfu/gencfu.vcxproj     |   8 +-
+ source/tools/gencmn/gencmn.vcxproj     |   8 +-
+ source/tools/gencnval/gencnval.vcxproj |   8 +-
+ source/tools/gendict/gendict.vcxproj   |   8 +-
+ source/tools/gennorm2/gennorm2.vcxproj |   8 +-
+ source/tools/genrb/derb.vcxproj        |   8 +-
+ source/tools/genrb/genrb.vcxproj       |   8 +-
+ source/tools/gensprep/gensprep.vcxproj |   8 +-
+ source/tools/gentest/gentest.vcxproj   |   8 +-
+ source/tools/icuinfo/icuinfo.vcxproj   |   8 +-
+ source/tools/icuinfo/testplug.vcxproj  |   8 +-
+ source/tools/icupkg/icupkg.vcxproj     |   8 +-
+ source/tools/makeconv/makeconv.vcxproj |   8 +-
+ source/tools/pkgdata/pkgdata.vcxproj   |   8 +-
+ source/tools/toolutil/toolutil.vcxproj |  10 +-
+ 32 files changed, 531 insertions(+), 380 deletions(-)
+
+diff --git a/source/common/common.vcxproj b/source/common/common.vcxproj
+index ef0dfc1..0b1eab3 100644
+--- a/source/common/common.vcxproj
++++ b/source/common/common.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -65,17 +69,33 @@
+   <PropertyGroup>
+     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\..\..\lib\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">x86\$(Configuration)</IntDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\..\..\lib\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">x86\$(Configuration)</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">x64\$(Configuration)</IntDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">x64\$(Configuration)</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <TargetName>icuuc52d</TargetName>
++    <OutDir>..\..\bin</OutDir>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <TargetName>icuuc52</TargetName>
++    <OutDir>..\..\bin</OutDir>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
++    <TargetName>icuuc52d</TargetName>
++    <OutDir>..\..\bin64</OutDir>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
++    <TargetName>icuuc52</TargetName>
++    <OutDir>..\..\bin64</OutDir>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+     <Midl>
+@@ -104,7 +124,6 @@
+       <Culture>0x0409</Culture>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin\icuuc52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\..\..\lib\icuuc.pdb</ProgramDatabaseFile>
+       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+@@ -135,7 +154,6 @@
+       <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
+       <ObjectFileName>.\x86\Debug/</ObjectFileName>
+       <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+       <WarningLevel>Level3</WarningLevel>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+@@ -145,7 +163,6 @@
+       <Culture>0x0409</Culture>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin\icuuc52d.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <ProgramDatabaseFile>.\..\..\lib\icuucd.pdb</ProgramDatabaseFile>
+@@ -183,7 +200,6 @@
+       <Culture>0x0409</Culture>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin64\icuuc52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\..\..\lib64\icuuc.pdb</ProgramDatabaseFile>
+       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+@@ -212,7 +228,6 @@
+       <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
+       <ObjectFileName>.\x64\Debug/</ObjectFileName>
+       <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+       <WarningLevel>Level3</WarningLevel>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+@@ -222,7 +237,6 @@
+       <Culture>0x0409</Culture>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin64\icuuc52d.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <ProgramDatabaseFile>.\..\..\lib64\icuucd.pdb</ProgramDatabaseFile>
+@@ -1751,4 +1765,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/extra/uconv/uconv.vcxproj b/source/extra/uconv/uconv.vcxproj
+index 3ff795c..1e9829f 100644
+--- a/source/extra/uconv/uconv.vcxproj
++++ b/source/extra/uconv/uconv.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -292,4 +296,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/i18n/i18n.vcxproj b/source/i18n/i18n.vcxproj
+index 3c1eebb..3f216cc 100644
+--- a/source/i18n/i18n.vcxproj
++++ b/source/i18n/i18n.vcxproj
+@@ -1,5 +1,5 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -64,18 +68,30 @@
+   <PropertyGroup Label="UserMacros" />
+   <PropertyGroup>
+     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\..\..\lib\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\bin</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">x86\$(Configuration)</IntDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\..\..\lib\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\bin</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">x86\$(Configuration)</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\bin64</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">x64\$(Configuration)</IntDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\bin64</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">x64\$(Configuration)</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <TargetName>icuin52d</TargetName>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <TargetName>icuin52</TargetName>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
++    <TargetName>icuin52d</TargetName>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
++    <TargetName>icuin52</TargetName>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+     <Midl>
+@@ -107,7 +123,6 @@
+       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin\icuin52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\..\..\lib\icuin.pdb</ProgramDatabaseFile>
+       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+@@ -139,7 +154,6 @@
+       <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
+       <ObjectFileName>.\x86\Debug/</ObjectFileName>
+       <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+       <WarningLevel>Level3</WarningLevel>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+@@ -151,7 +165,6 @@
+       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin\icuin52d.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <ProgramDatabaseFile>.\..\..\lib\icuind.pdb</ProgramDatabaseFile>
+@@ -192,7 +205,6 @@
+       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin64\icuin52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\..\..\lib64\icuin.pdb</ProgramDatabaseFile>
+       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+@@ -222,7 +234,6 @@
+       <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
+       <ObjectFileName>.\x64\Debug/</ObjectFileName>
+       <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+       <WarningLevel>Level3</WarningLevel>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+@@ -234,7 +245,6 @@
+       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+     </ResourceCompile>
+     <Link>
+-      <OutputFile>..\..\bin64\icuin52d.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <ProgramDatabaseFile>.\..\..\lib64\icuind.pdb</ProgramDatabaseFile>
+@@ -1625,4 +1635,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/i18n/i18n.vcxproj.filters b/source/i18n/i18n.vcxproj.filters
+index da3b9aa..554a235 100644
+--- a/source/i18n/i18n.vcxproj.filters
++++ b/source/i18n/i18n.vcxproj.filters
+@@ -1050,5 +1050,6 @@
+     <CustomBuild Include="unicode\uregion.h">
+       <Filter>misc</Filter>
+     </CustomBuild>
++    <CustomBuild Include="unicode\uformattable.h" />
+   </ItemGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/io/io.vcxproj b/source/io/io.vcxproj
+index 8944e2a..7b5e178 100644
+--- a/source/io/io.vcxproj
++++ b/source/io/io.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -319,4 +323,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/layout/layout.vcxproj b/source/layout/layout.vcxproj
+index d80eb54..90a5e42 100644
+--- a/source/layout/layout.vcxproj
++++ b/source/layout/layout.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -576,4 +580,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/layoutex/layoutex.vcxproj b/source/layoutex/layoutex.vcxproj
+index dac4cfe..f2c8dd8 100644
+--- a/source/layoutex/layoutex.vcxproj
++++ b/source/layoutex/layoutex.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,21 +27,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -327,4 +331,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/samples/cal/cal.vcxproj b/source/samples/cal/cal.vcxproj
+index 13dae70..947e173 100644
+--- a/source/samples/cal/cal.vcxproj
++++ b/source/samples/cal/cal.vcxproj
+@@ -1,264 +1,268 @@
+-﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+-  <ItemGroup Label="ProjectConfigurations">
+-    <ProjectConfiguration Include="Debug|Win32">
+-      <Configuration>Debug</Configuration>
+-      <Platform>Win32</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Debug|x64">
+-      <Configuration>Debug</Configuration>
+-      <Platform>x64</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Release|Win32">
+-      <Configuration>Release</Configuration>
+-      <Platform>Win32</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Release|x64">
+-      <Configuration>Release</Configuration>
+-      <Platform>x64</Platform>
+-    </ProjectConfiguration>
+-  </ItemGroup>
+-  <PropertyGroup Label="Globals">
+-    <ProjectGuid>{F7659D77-09CF-4FE9-ACEE-927287AA9509}</ProjectGuid>
+-  </PropertyGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseOfMfc>false</UseOfMfc>
+-    <CharacterSet>MultiByte</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseOfMfc>false</UseOfMfc>
+-    <CharacterSet>MultiByte</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseOfMfc>false</UseOfMfc>
+-    <CharacterSet>MultiByte</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseOfMfc>false</UseOfMfc>
+-    <CharacterSet>MultiByte</CharacterSet>
+-  </PropertyGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+-  <ImportGroup Label="ExtensionSettings">
+-  </ImportGroup>
+-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+-  </ImportGroup>
+-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+-  </ImportGroup>
+-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+-  </ImportGroup>
+-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+-  </ImportGroup>
+-  <PropertyGroup Label="UserMacros" />
+-  <PropertyGroup>
+-    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
+-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+-  </PropertyGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+-    <Midl>
+-      <TypeLibraryName>.\x86\Release/cal.tlb</TypeLibraryName>
+-    </Midl>
+-    <ClCompile>
+-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+-      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <PreprocessorDefinitions>WIN32;NDEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <StringPooling>true</StringPooling>
+-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+-      <FunctionLevelLinking>true</FunctionLevelLinking>
+-      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+-      <PrecompiledHeader>
+-      </PrecompiledHeader>
+-      <PrecompiledHeaderOutputFile>.\x86\Release/cal.pch</PrecompiledHeaderOutputFile>
+-      <AssemblerListingLocation>.\x86\Release/</AssemblerListingLocation>
+-      <ObjectFileName>.\x86\Release/</ObjectFileName>
+-      <ProgramDataBaseFileName>.\x86\Release/</ProgramDataBaseFileName>
+-      <WarningLevel>Level3</WarningLevel>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <CompileAs>Default</CompileAs>
+-    </ClCompile>
+-    <ResourceCompile>
+-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <Culture>0x0409</Culture>
+-    </ResourceCompile>
+-    <Link>
+-      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+-      <OutputFile>.\x86\Release/cal.exe</OutputFile>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <AdditionalLibraryDirectories>../../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+-      <ProgramDatabaseFile>.\x86\Release/cal.pdb</ProgramDatabaseFile>
+-      <SubSystem>Console</SubSystem>
+-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+-      <DataExecutionPrevention>
+-      </DataExecutionPrevention>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+-    <Midl>
+-      <TargetEnvironment>X64</TargetEnvironment>
+-      <TypeLibraryName>.\x64\Release/cal.tlb</TypeLibraryName>
+-    </Midl>
+-    <ClCompile>
+-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+-      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <PreprocessorDefinitions>WIN64;WIN32;NDEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <StringPooling>true</StringPooling>
+-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+-      <FunctionLevelLinking>true</FunctionLevelLinking>
+-      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+-      <PrecompiledHeader>
+-      </PrecompiledHeader>
+-      <PrecompiledHeaderOutputFile>.\x64\Release/cal.pch</PrecompiledHeaderOutputFile>
+-      <AssemblerListingLocation>.\x64\Release/</AssemblerListingLocation>
+-      <ObjectFileName>.\x64\Release/</ObjectFileName>
+-      <ProgramDataBaseFileName>.\x64\Release/</ProgramDataBaseFileName>
+-      <WarningLevel>Level3</WarningLevel>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <CompileAs>Default</CompileAs>
+-    </ClCompile>
+-    <ResourceCompile>
+-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <Culture>0x0409</Culture>
+-    </ResourceCompile>
+-    <Link>
+-      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+-      <OutputFile>.\x64\Release/cal.exe</OutputFile>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <AdditionalLibraryDirectories>../../../lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+-      <ProgramDatabaseFile>.\x64\Release/cal.pdb</ProgramDatabaseFile>
+-      <SubSystem>Console</SubSystem>
+-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+-      <DataExecutionPrevention>
+-      </DataExecutionPrevention>
+-      <TargetMachine>MachineX64</TargetMachine>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+-    <Midl>
+-      <TypeLibraryName>.\x86\Debug/cal.tlb</TypeLibraryName>
+-    </Midl>
+-    <ClCompile>
+-      <Optimization>Disabled</Optimization>
+-      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+-      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+-      <PrecompiledHeader>
+-      </PrecompiledHeader>
+-      <PrecompiledHeaderOutputFile>.\x86\Debug/cal.pch</PrecompiledHeaderOutputFile>
+-      <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
+-      <ObjectFileName>.\x86\Debug/</ObjectFileName>
+-      <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+-      <WarningLevel>Level3</WarningLevel>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+-      <CompileAs>Default</CompileAs>
+-    </ClCompile>
+-    <ResourceCompile>
+-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <Culture>0x0409</Culture>
+-    </ResourceCompile>
+-    <Link>
+-      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+-      <OutputFile>.\x86\Debug/cal.exe</OutputFile>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <AdditionalLibraryDirectories>../../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-      <ProgramDatabaseFile>.\x86\Debug/cal.pdb</ProgramDatabaseFile>
+-      <SubSystem>Console</SubSystem>
+-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+-      <DataExecutionPrevention>
+-      </DataExecutionPrevention>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+-    <Midl>
+-      <TargetEnvironment>X64</TargetEnvironment>
+-      <TypeLibraryName>.\x64\Debug/cal.tlb</TypeLibraryName>
+-    </Midl>
+-    <ClCompile>
+-      <Optimization>Disabled</Optimization>
+-      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <PreprocessorDefinitions>WIN64;WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+-      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+-      <PrecompiledHeader>
+-      </PrecompiledHeader>
+-      <PrecompiledHeaderOutputFile>.\x64\Debug/cal.pch</PrecompiledHeaderOutputFile>
+-      <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
+-      <ObjectFileName>.\x64\Debug/</ObjectFileName>
+-      <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
+-      <BrowseInformation>true</BrowseInformation>
+-      <WarningLevel>Level3</WarningLevel>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+-      <CompileAs>Default</CompileAs>
+-    </ClCompile>
+-    <ResourceCompile>
+-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <Culture>0x0409</Culture>
+-    </ResourceCompile>
+-    <Link>
+-      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+-      <OutputFile>.\x64\Debug/cal.exe</OutputFile>
+-      <SuppressStartupBanner>true</SuppressStartupBanner>
+-      <AdditionalLibraryDirectories>../../../lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-      <ProgramDatabaseFile>.\x64\Debug/cal.pdb</ProgramDatabaseFile>
+-      <SubSystem>Console</SubSystem>
+-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+-      <DataExecutionPrevention>
+-      </DataExecutionPrevention>
+-      <TargetMachine>MachineX64</TargetMachine>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemGroup>
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <ItemGroup Label="ProjectConfigurations">
++    <ProjectConfiguration Include="Debug|Win32">
++      <Configuration>Debug</Configuration>
++      <Platform>Win32</Platform>
++    </ProjectConfiguration>
++    <ProjectConfiguration Include="Debug|x64">
++      <Configuration>Debug</Configuration>
++      <Platform>x64</Platform>
++    </ProjectConfiguration>
++    <ProjectConfiguration Include="Release|Win32">
++      <Configuration>Release</Configuration>
++      <Platform>Win32</Platform>
++    </ProjectConfiguration>
++    <ProjectConfiguration Include="Release|x64">
++      <Configuration>Release</Configuration>
++      <Platform>x64</Platform>
++    </ProjectConfiguration>
++  </ItemGroup>
++  <PropertyGroup Label="Globals">
++    <ProjectGuid>{F7659D77-09CF-4FE9-ACEE-927287AA9509}</ProjectGuid>
++  </PropertyGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
++    <ConfigurationType>Application</ConfigurationType>
++    <UseOfMfc>false</UseOfMfc>
++    <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
++    <ConfigurationType>Application</ConfigurationType>
++    <UseOfMfc>false</UseOfMfc>
++    <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
++    <ConfigurationType>Application</ConfigurationType>
++    <UseOfMfc>false</UseOfMfc>
++    <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
++    <ConfigurationType>Application</ConfigurationType>
++    <UseOfMfc>false</UseOfMfc>
++    <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
++  </PropertyGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
++  <ImportGroup Label="ExtensionSettings">
++  </ImportGroup>
++  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
++  </ImportGroup>
++  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
++  </ImportGroup>
++  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
++  </ImportGroup>
++  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
++    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
++    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
++  </ImportGroup>
++  <PropertyGroup Label="UserMacros" />
++  <PropertyGroup>
++    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
++    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
++    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
++  </PropertyGroup>
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <Midl>
++      <TypeLibraryName>.\x86\Release/cal.tlb</TypeLibraryName>
++    </Midl>
++    <ClCompile>
++      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
++      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions>WIN32;NDEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <StringPooling>true</StringPooling>
++      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
++      <FunctionLevelLinking>true</FunctionLevelLinking>
++      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
++      <PrecompiledHeader>
++      </PrecompiledHeader>
++      <PrecompiledHeaderOutputFile>.\x86\Release/cal.pch</PrecompiledHeaderOutputFile>
++      <AssemblerListingLocation>.\x86\Release/</AssemblerListingLocation>
++      <ObjectFileName>.\x86\Release/</ObjectFileName>
++      <ProgramDataBaseFileName>.\x86\Release/</ProgramDataBaseFileName>
++      <WarningLevel>Level3</WarningLevel>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <CompileAs>Default</CompileAs>
++    </ClCompile>
++    <ResourceCompile>
++      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <Culture>0x0409</Culture>
++    </ResourceCompile>
++    <Link>
++      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <OutputFile>.\x86\Release/cal.exe</OutputFile>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <AdditionalLibraryDirectories>../../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
++      <ProgramDatabaseFile>.\x86\Release/cal.pdb</ProgramDatabaseFile>
++      <SubSystem>Console</SubSystem>
++      <RandomizedBaseAddress>false</RandomizedBaseAddress>
++      <DataExecutionPrevention>
++      </DataExecutionPrevention>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
++    <Midl>
++      <TargetEnvironment>X64</TargetEnvironment>
++      <TypeLibraryName>.\x64\Release/cal.tlb</TypeLibraryName>
++    </Midl>
++    <ClCompile>
++      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
++      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions>WIN64;WIN32;NDEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <StringPooling>true</StringPooling>
++      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
++      <FunctionLevelLinking>true</FunctionLevelLinking>
++      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
++      <PrecompiledHeader>
++      </PrecompiledHeader>
++      <PrecompiledHeaderOutputFile>.\x64\Release/cal.pch</PrecompiledHeaderOutputFile>
++      <AssemblerListingLocation>.\x64\Release/</AssemblerListingLocation>
++      <ObjectFileName>.\x64\Release/</ObjectFileName>
++      <ProgramDataBaseFileName>.\x64\Release/</ProgramDataBaseFileName>
++      <WarningLevel>Level3</WarningLevel>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <CompileAs>Default</CompileAs>
++    </ClCompile>
++    <ResourceCompile>
++      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <Culture>0x0409</Culture>
++    </ResourceCompile>
++    <Link>
++      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <OutputFile>.\x64\Release/cal.exe</OutputFile>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <AdditionalLibraryDirectories>../../../lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
++      <ProgramDatabaseFile>.\x64\Release/cal.pdb</ProgramDatabaseFile>
++      <SubSystem>Console</SubSystem>
++      <RandomizedBaseAddress>false</RandomizedBaseAddress>
++      <DataExecutionPrevention>
++      </DataExecutionPrevention>
++      <TargetMachine>MachineX64</TargetMachine>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <Midl>
++      <TypeLibraryName>.\x86\Debug/cal.tlb</TypeLibraryName>
++    </Midl>
++    <ClCompile>
++      <Optimization>Disabled</Optimization>
++      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
++      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
++      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
++      <PrecompiledHeader>
++      </PrecompiledHeader>
++      <PrecompiledHeaderOutputFile>.\x86\Debug/cal.pch</PrecompiledHeaderOutputFile>
++      <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
++      <ObjectFileName>.\x86\Debug/</ObjectFileName>
++      <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
++      <BrowseInformation>true</BrowseInformation>
++      <WarningLevel>Level3</WarningLevel>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
++      <CompileAs>Default</CompileAs>
++    </ClCompile>
++    <ResourceCompile>
++      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <Culture>0x0409</Culture>
++    </ResourceCompile>
++    <Link>
++      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <OutputFile>.\x86\Debug/cal.exe</OutputFile>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <AdditionalLibraryDirectories>../../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
++      <GenerateDebugInformation>true</GenerateDebugInformation>
++      <ProgramDatabaseFile>.\x86\Debug/cal.pdb</ProgramDatabaseFile>
++      <SubSystem>Console</SubSystem>
++      <RandomizedBaseAddress>false</RandomizedBaseAddress>
++      <DataExecutionPrevention>
++      </DataExecutionPrevention>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
++    <Midl>
++      <TargetEnvironment>X64</TargetEnvironment>
++      <TypeLibraryName>.\x64\Debug/cal.tlb</TypeLibraryName>
++    </Midl>
++    <ClCompile>
++      <Optimization>Disabled</Optimization>
++      <AdditionalIncludeDirectories>..\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions>WIN64;WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
++      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
++      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
++      <PrecompiledHeader>
++      </PrecompiledHeader>
++      <PrecompiledHeaderOutputFile>.\x64\Debug/cal.pch</PrecompiledHeaderOutputFile>
++      <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
++      <ObjectFileName>.\x64\Debug/</ObjectFileName>
++      <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
++      <BrowseInformation>true</BrowseInformation>
++      <WarningLevel>Level3</WarningLevel>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
++      <CompileAs>Default</CompileAs>
++    </ClCompile>
++    <ResourceCompile>
++      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <Culture>0x0409</Culture>
++    </ResourceCompile>
++    <Link>
++      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <OutputFile>.\x64\Debug/cal.exe</OutputFile>
++      <SuppressStartupBanner>true</SuppressStartupBanner>
++      <AdditionalLibraryDirectories>../../../lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
++      <GenerateDebugInformation>true</GenerateDebugInformation>
++      <ProgramDatabaseFile>.\x64\Debug/cal.pdb</ProgramDatabaseFile>
++      <SubSystem>Console</SubSystem>
++      <RandomizedBaseAddress>false</RandomizedBaseAddress>
++      <DataExecutionPrevention>
++      </DataExecutionPrevention>
++      <TargetMachine>MachineX64</TargetMachine>
++    </Link>
++  </ItemDefinitionGroup>
++  <ItemGroup>
+     <ClCompile Include="cal.c">
+-	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
+-    </ClCompile>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
++    </ClCompile>
+     <ClCompile Include="uprint.c">
+-	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
+-    </ClCompile>
+-  </ItemGroup>
+-  <ItemGroup>
+-    <ClInclude Include="uprint.h" />
+-  </ItemGroup>
+-  <ItemGroup>
+-    <ProjectReference Include="..\..\common\common.vcxproj">
+-      <Project>{73c0a65b-d1f2-4de1-b3a6-15dad2c23f3d}</Project>
+-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+-    </ProjectReference>
+-    <ProjectReference Include="..\..\i18n\i18n.vcxproj">
+-      <Project>{0178b127-6269-407d-b112-93877bb62776}</Project>
+-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+-    </ProjectReference>
+-  </ItemGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+-  <ImportGroup Label="ExtensionTargets">
+-  </ImportGroup>
+-</Project>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
++    </ClCompile>
++  </ItemGroup>
++  <ItemGroup>
++    <ClInclude Include="uprint.h" />
++  </ItemGroup>
++  <ItemGroup>
++    <ProjectReference Include="..\..\common\common.vcxproj">
++      <Project>{73c0a65b-d1f2-4de1-b3a6-15dad2c23f3d}</Project>
++      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
++    </ProjectReference>
++    <ProjectReference Include="..\..\i18n\i18n.vcxproj">
++      <Project>{0178b127-6269-407d-b112-93877bb62776}</Project>
++      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
++    </ProjectReference>
++  </ItemGroup>
++  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
++  <ImportGroup Label="ExtensionTargets">
++  </ImportGroup>
++</Project>
+\ No newline at end of file
+diff --git a/source/samples/date/date.vcxproj b/source/samples/date/date.vcxproj
+index 0632b3f..38d70a9 100644
+--- a/source/samples/date/date.vcxproj
++++ b/source/samples/date/date.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/stubdata/stubdata.vcxproj b/source/stubdata/stubdata.vcxproj
+index ed4ca6b..541f19f 100644
+--- a/source/stubdata/stubdata.vcxproj
++++ b/source/stubdata/stubdata.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -64,21 +68,35 @@
+   <PropertyGroup Label="UserMacros" />
+   <PropertyGroup>
+     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\bin</OutDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateManifest>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\bin</OutDir>
+     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</GenerateManifest>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\bin64</OutDir>
+     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateManifest>
+-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
++    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\bin64</OutDir>
+     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GenerateManifest>
+   </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
++    <TargetName>icudt52d</TargetName>
++    <IntDir>x86\$(Configuration)</IntDir>
++    <LinkIncremental>false</LinkIncremental>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
++    <TargetName>icudt52d</TargetName>
++    <IntDir>x64\$(Configuration)</IntDir>
++    <LinkIncremental>false</LinkIncremental>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
++    <TargetName>icudt52</TargetName>
++    <IntDir>x86\$(Configuration)</IntDir>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
++    <TargetName>icudt52</TargetName>
++    <IntDir>x64\$(Configuration)</IntDir>
++  </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+     <Midl>
+       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+@@ -113,7 +131,6 @@
+       <Command>echo "File with stubdata build time, used as a dependency to trigger fresh data build, since stubdata dll will overwrite the real one." &gt; "$(ProjectDir)stubdatabuilt.txt"</Command>
+     </PreLinkEvent>
+     <Link>
+-      <OutputFile>..\..\bin\icudt52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+       <ProgramDatabaseFile>.\x86\Release\icudt.pdb</ProgramDatabaseFile>
+@@ -160,7 +177,6 @@
+       <Command>echo "File with stubdata build time, used as a dependency to trigger fresh data build, since stubdata dll will overwrite the real one." &gt; "$(ProjectDir)stubdatabuilt.txt"</Command>
+     </PreLinkEvent>
+     <Link>
+-      <OutputFile>..\..\bin\icudt52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\x86\Debug/icudt.pdb</ProgramDatabaseFile>
+       <NoEntryPoint>true</NoEntryPoint>
+@@ -207,7 +223,6 @@
+       <Command>echo "File with stubdata build time, used as a dependency to trigger fresh data build, since stubdata dll will overwrite the real one." &gt; "$(ProjectDir)stubdatabuilt.txt"</Command>
+     </PreLinkEvent>
+     <Link>
+-      <OutputFile>..\..\bin64\icudt52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+       <ProgramDatabaseFile>.\x64\Release\icudt.pdb</ProgramDatabaseFile>
+@@ -252,7 +267,6 @@
+       <Command>echo "File with stubdata build time, used as a dependency to trigger fresh data build, since stubdata dll will overwrite the real one." &gt; "$(ProjectDir)stubdatabuilt.txt"</Command>
+     </PreLinkEvent>
+     <Link>
+-      <OutputFile>..\..\bin64\icudt52.dll</OutputFile>
+       <SuppressStartupBanner>true</SuppressStartupBanner>
+       <ProgramDatabaseFile>.\x64\Debug/icudt.pdb</ProgramDatabaseFile>
+       <NoEntryPoint>true</NoEntryPoint>
+@@ -277,4 +291,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/test/cintltst/cintltst.vcxproj b/source/test/cintltst/cintltst.vcxproj
+index 17529b6..f04da0c 100644
+--- a/source/test/cintltst/cintltst.vcxproj
++++ b/source/test/cintltst/cintltst.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -373,4 +377,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/test/intltest/intltest.vcxproj b/source/test/intltest/intltest.vcxproj
+index 8a6698e..9ee9bc7 100644
+--- a/source/test/intltest/intltest.vcxproj
++++ b/source/test/intltest/intltest.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,21 +27,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -229,7 +233,7 @@
+     <ClCompile Include="ucharstrietest.cpp" />
+     <ClCompile Include="itrbbi.cpp" />
+     <ClCompile Include="rbbiapts.cpp">
+-        <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="rbbitst.cpp" />
+     <ClCompile Include="itspoof.cpp" />
+@@ -260,7 +264,7 @@
+     <ClCompile Include="uvectest.cpp" />
+     <ClCompile Include="v32test.cpp" />
+     <ClCompile Include="simplethread.cpp">
+-	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="strtest.cpp">
+       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
+@@ -276,7 +280,7 @@
+     </ClCompile>
+     <ClCompile Include="tsputil.cpp" />
+     <ClCompile Include="uobjtest.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="astrotst.cpp" />
+     <ClCompile Include="calcasts.cpp" />
+@@ -284,7 +288,7 @@
+     <ClCompile Include="calregts.cpp" />
+     <ClCompile Include="caltest.cpp" />
+     <ClCompile Include="caltztst.cpp">
+-	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="compactdecimalformattest.cpp" />
+     <ClCompile Include="dadrcal.cpp" />
+@@ -326,13 +330,13 @@
+     <ClCompile Include="tufmtts.cpp" />
+     <ClCompile Include="tzbdtest.cpp" />
+     <ClCompile Include="tzfmttst.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="tzoffloc.cpp" />
+     <ClCompile Include="tzregts.cpp" />
+     <ClCompile Include="tzrulets.cpp" />
+     <ClCompile Include="tztest.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="windttst.cpp">
+       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
+@@ -351,7 +355,7 @@
+     <ClCompile Include="nptrans.cpp" />
+     <ClCompile Include="punyref.c" />
+     <ClCompile Include="testidn.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="testidna.cpp" />
+     <ClCompile Include="uts46test.cpp" />
+@@ -360,35 +364,35 @@
+     <ClCompile Include="restest.cpp" />
+     <ClCompile Include="restsnew.cpp" />
+     <ClCompile Include="intltest.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="itmajor.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="itutil.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="testutil.cpp" />
+     <ClCompile Include="textfile.cpp" />
+     <ClCompile Include="tokiter.cpp" />
+     <ClCompile Include="winutil.cpp">
+-	   <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="canittst.cpp" />
+     <ClCompile Include="normconf.cpp" />
+     <ClCompile Include="tstnorm.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="tstnrapi.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="ucdtest.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="usettest.cpp" />
+     <ClCompile Include="regextst.cpp" />
+     <ClCompile Include="icusvtst.cpp">
+-	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="citrtest.cpp" />
+     <ClCompile Include="reptest.cpp" />
+@@ -561,4 +565,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/test/iotest/iotest.vcxproj b/source/test/iotest/iotest.vcxproj
+index 0d39d29..5172208 100644
+--- a/source/test/iotest/iotest.vcxproj
++++ b/source/test/iotest/iotest.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -259,4 +263,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/test/letest/letest.vcxproj b/source/test/letest/letest.vcxproj
+index a71d629..be01399 100644
+--- a/source/test/letest/letest.vcxproj
++++ b/source/test/letest/letest.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -274,4 +278,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/ctestfw/ctestfw.vcxproj b/source/tools/ctestfw/ctestfw.vcxproj
+index 7dbdc9f..9281a1b 100644
+--- a/source/tools/ctestfw/ctestfw.vcxproj
++++ b/source/tools/ctestfw/ctestfw.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -280,4 +284,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/genbrk/genbrk.vcxproj b/source/tools/genbrk/genbrk.vcxproj
+index 73e5372..8ae2620 100644
+--- a/source/tools/genbrk/genbrk.vcxproj
++++ b/source/tools/genbrk/genbrk.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/genccode/genccode.vcxproj b/source/tools/genccode/genccode.vcxproj
+index f6fd59d..e1bb8fb 100644
+--- a/source/tools/genccode/genccode.vcxproj
++++ b/source/tools/genccode/genccode.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -251,4 +255,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gencfu/gencfu.vcxproj b/source/tools/gencfu/gencfu.vcxproj
+index 18c63a6..315ca7b 100644
+--- a/source/tools/gencfu/gencfu.vcxproj
++++ b/source/tools/gencfu/gencfu.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,20 +27,24 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -238,4 +242,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gencmn/gencmn.vcxproj b/source/tools/gencmn/gencmn.vcxproj
+index 6c83ef4..91f0a64 100644
+--- a/source/tools/gencmn/gencmn.vcxproj
++++ b/source/tools/gencmn/gencmn.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gencnval/gencnval.vcxproj b/source/tools/gencnval/gencnval.vcxproj
+index ca12c12..474f1a2 100644
+--- a/source/tools/gencnval/gencnval.vcxproj
++++ b/source/tools/gencnval/gencnval.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gendict/gendict.vcxproj b/source/tools/gendict/gendict.vcxproj
+index 6852b44..968f817 100644
+--- a/source/tools/gendict/gendict.vcxproj
++++ b/source/tools/gendict/gendict.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gennorm2/gennorm2.vcxproj b/source/tools/gennorm2/gennorm2.vcxproj
+index 4245a0b..bf60570 100644
+--- a/source/tools/gennorm2/gennorm2.vcxproj
++++ b/source/tools/gennorm2/gennorm2.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,20 +27,24 @@
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <CharacterSet>Unicode</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <CharacterSet>Unicode</CharacterSet>
+     <WholeProgramOptimization>true</WholeProgramOptimization>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <CharacterSet>Unicode</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <CharacterSet>Unicode</CharacterSet>
+     <WholeProgramOptimization>true</WholeProgramOptimization>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -263,4 +267,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/genrb/derb.vcxproj b/source/tools/genrb/derb.vcxproj
+index b2e27e6..9c14c94 100644
+--- a/source/tools/genrb/derb.vcxproj
++++ b/source/tools/genrb/derb.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -278,4 +282,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/genrb/genrb.vcxproj b/source/tools/genrb/genrb.vcxproj
+index b7f48ef..ad02f5b 100644
+--- a/source/tools/genrb/genrb.vcxproj
++++ b/source/tools/genrb/genrb.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -278,4 +282,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gensprep/gensprep.vcxproj b/source/tools/gensprep/gensprep.vcxproj
+index 533b546..fad1e63 100644
+--- a/source/tools/gensprep/gensprep.vcxproj
++++ b/source/tools/gensprep/gensprep.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -257,4 +261,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/gentest/gentest.vcxproj b/source/tools/gentest/gentest.vcxproj
+index f8fb903..96a8b15 100644
+--- a/source/tools/gentest/gentest.vcxproj
++++ b/source/tools/gentest/gentest.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,21 +27,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -244,4 +248,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/icuinfo/icuinfo.vcxproj b/source/tools/icuinfo/icuinfo.vcxproj
+index 6da52ed..864b5e7 100644
+--- a/source/tools/icuinfo/icuinfo.vcxproj
++++ b/source/tools/icuinfo/icuinfo.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -28,21 +28,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -256,4 +260,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/icuinfo/testplug.vcxproj b/source/tools/icuinfo/testplug.vcxproj
+index edf6858..cc5a0ec 100644
+--- a/source/tools/icuinfo/testplug.vcxproj
++++ b/source/tools/icuinfo/testplug.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -255,4 +259,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/icupkg/icupkg.vcxproj b/source/tools/icupkg/icupkg.vcxproj
+index b3c762c..606276d 100644
+--- a/source/tools/icupkg/icupkg.vcxproj
++++ b/source/tools/icupkg/icupkg.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -27,21 +27,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -244,4 +248,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/makeconv/makeconv.vcxproj b/source/tools/makeconv/makeconv.vcxproj
+index 110dee9..3d302d3 100644
+--- a/source/tools/makeconv/makeconv.vcxproj
++++ b/source/tools/makeconv/makeconv.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -260,4 +264,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/pkgdata/pkgdata.vcxproj b/source/tools/pkgdata/pkgdata.vcxproj
+index 18fa39d..b2d72bd 100644
+--- a/source/tools/pkgdata/pkgdata.vcxproj
++++ b/source/tools/pkgdata/pkgdata.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>Application</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -271,4 +275,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/source/tools/toolutil/toolutil.vcxproj b/source/tools/toolutil/toolutil.vcxproj
+index 8cb1277..5574582 100644
+--- a/source/tools/toolutil/toolutil.vcxproj
++++ b/source/tools/toolutil/toolutil.vcxproj
+@@ -1,5 +1,5 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemGroup Label="ProjectConfigurations">
+     <ProjectConfiguration Include="Debug|Win32">
+       <Configuration>Debug</Configuration>
+@@ -26,21 +26,25 @@
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+     <ConfigurationType>DynamicLibrary</ConfigurationType>
+     <UseOfMfc>false</UseOfMfc>
+     <CharacterSet>MultiByte</CharacterSet>
++    <PlatformToolset>v120</PlatformToolset>
+   </PropertyGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+   <ImportGroup Label="ExtensionSettings">
+@@ -267,7 +271,7 @@
+     <ClCompile Include="pkgitems.cpp" />
+     <ClCompile Include="ppucd.cpp" />
+     <ClCompile Include="swapimpl.cpp">
+-    	    <DisableLanguageExtensions>false</DisableLanguageExtensions>
++      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+     </ClCompile>
+     <ClCompile Include="toolutil.cpp">
+       <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
+@@ -328,4 +332,4 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+-- 
+1.9.0.msysgit.0
+
