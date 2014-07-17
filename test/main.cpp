@@ -20,9 +20,11 @@
  * Main test functions.
  */
 
-#include <boost/test/unit_test.hpp>
+#include <libethcore/TrieDB.h>
+#include "TrieHash.h"
+#include "MemTrie.h"
 
-// TODO: utilise the shared testdata.
+#include <boost/test/unit_test.hpp>
 
 int trieTest();
 int rlpTest();
@@ -33,7 +35,9 @@ int vmTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
-#include <BlockInfo.h>
+#include <libethential/Log.h>
+#include <libethcore/BlockInfo.h>
+using namespace std;
 using namespace eth;
 
 BOOST_AUTO_TEST_CASE(basic_tests)
@@ -44,15 +48,10 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 	std::cout << toHex(s.out()) << std::endl;
 	std::cout << sha3(s.out()) << std::endl;*/
 
-	int r = 0;
-	r += hexPrefixTest();
-	r += rlpTest();
-	r += trieTest();
-	r += vmTest();
-	r += cryptoTest();	// TODO: Put in tests repo.
+//	int r = 0;
 //	r += daggerTest();
 //	r += stateTest();
 //	r += peerTest(argc, argv);
-	BOOST_REQUIRE(!r);
+//	BOOST_REQUIRE(!r);
 }
 

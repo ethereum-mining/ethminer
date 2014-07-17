@@ -27,8 +27,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
-#include "Common.h"
-#include "Log.h"
+#include <libethential/Common.h>
+#include <libethential/Log.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -37,7 +37,7 @@ namespace eth
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
-class Overlay;
+class OverlayDB;
 class BlockChain;
 class TransactionQueue;
 class PeerServer;
@@ -47,6 +47,8 @@ struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } 
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 3; };
+struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 4; };
+struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
 struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 6; };
 struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 8; };
 struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 9; };

@@ -1,0 +1,26 @@
+From fca4313ae7ac54ebb5a6f3b46451306223b53aeb Mon Sep 17 00:00:00 2001
+From: Tim Hughes <tim@twistedfury.com>
+Date: Mon, 21 Apr 2014 13:33:29 +0100
+Subject: [PATCH 2/3] Qt requires U_CHARSET_IS_UTF8 1
+
+Signed-off-by: Tim Hughes <tim@twistedfury.com>
+---
+ source/common/unicode/platform.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/source/common/unicode/platform.h b/source/common/unicode/platform.h
+index 1b2ab30..cca7039 100644
+--- a/source/common/unicode/platform.h
++++ b/source/common/unicode/platform.h
+@@ -543,7 +543,7 @@
+ #elif U_PLATFORM == U_PF_ANDROID || U_PLATFORM_IS_DARWIN_BASED
+ #   define U_CHARSET_IS_UTF8 1
+ #else
+-#   define U_CHARSET_IS_UTF8 0
++#   define U_CHARSET_IS_UTF8 1
+ #endif
+ 
+ /** @} */
+-- 
+1.9.0.msysgit.0
+

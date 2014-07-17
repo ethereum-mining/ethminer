@@ -19,6 +19,15 @@ ipch
 *.opensdf
 *.suo
 
+#Xcode stuff
+build_xc
+
 *.user
 *.user.*
 *~
+
+build.*/
+
+*.pyc
+
+.DS_Store

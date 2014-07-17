@@ -27,8 +27,8 @@
 #include <memory>
 #include <utility>
 #include <thread>
+#include <libethcore/CommonEth.h>
 #include "PeerNetwork.h"
-#include "CommonEth.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -57,7 +57,7 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	bool sync(BlockChain& _bc, TransactionQueue&, Overlay& _o);
+	bool sync(BlockChain& _bc, TransactionQueue&, OverlayDB& _o);
 	bool sync();
 
 	/// Conduct I/O, polling, syncing, whatever.
@@ -71,7 +71,7 @@ public:
 	void setMode(NodeMode _m) { m_mode = _m; }
 
 	/// Get peer information.
-	std::vector<PeerInfo> peers() const;
+    std::vector<PeerInfo> peers(bool _updatePing = false) const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
 	size_t peerCount() const { return m_peers.size(); }

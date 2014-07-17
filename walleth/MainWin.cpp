@@ -7,10 +7,10 @@
 #include <QtWidgets/QInputDialog>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <libethereum/Dagger.h>
+#include <libethcore/FileSystem.h>
+#include <libethcore/Dagger.h>
+#include <libevmface/Instruction.h>
 #include <libethereum/Client.h>
-#include <libethereum/Instruction.h>
-#include <libethereum/FileSystem.h>
 #include <libethereum/PeerServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
@@ -38,8 +38,6 @@ using eth::Transaction;
 
 // functions
 using eth::toHex;
-using eth::assemble;
-using eth::compileLisp;
 using eth::disassemble;
 using eth::formatBalance;
 using eth::fromHex;
@@ -54,136 +52,6 @@ using eth::g_logPost;
 using eth::g_logVerbosity;
 using eth::c_instructionInfo;
 
-// Horrible global for the mainwindow. Needed for the QEthereums to find the Main window which acts as multiplexer for now.
-// Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
-Main* g_main = nullptr;
-
-QEthereum::QEthereum(QObject* _p): QObject(_p)
-{
-	connect(g_main, SIGNAL(changed()), SIGNAL(changed()));
-}
-
-QEthereum::~QEthereum()
-{
-}
-
-Client* QEthereum::client() const
-{
-	return g_main->client();
-}
-
-Address QEthereum::coinbase() const
-{
-	return client()->address();
-}
-
-void QEthereum::setCoinbase(Address _a)
-{
-	if (client()->address() != _a)
-	{
-		client()->setAddress(_a);
-		changed();
-	}
-}
-
-QAccount::QAccount(QObject*)
-{
-}
-
-QAccount::~QAccount()
-{
-}
-
-void QAccount::setEthereum(QEthereum* _eth)
-{
-	if (m_eth == _eth)
-		return;
-	if (m_eth)
-		disconnect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	m_eth = _eth;
-	if (m_eth)
-		connect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	ethChanged();
-	changed();
-}
-
-u256 QAccount::balance() const
-{
-	if (m_eth)
-		return m_eth->balanceAt(m_address);
-	return 0;
-}
-
-double QAccount::txCount() const
-{
-	if (m_eth)
-		return m_eth->txCountAt(m_address);
-	return 0;
-}
-
-bool QAccount::isContract() const
-{
-	if (m_eth)
-		return m_eth->isContractAt(m_address);
-	return 0;
-}
-
-u256 QEthereum::balanceAt(Address _a) const
-{
-	return client()->postState().balance(_a);
-}
-
-bool QEthereum::isContractAt(Address _a) const
-{
-	return client()->postState().isContractAddress(_a);
-}
-
-bool QEthereum::isMining() const
-{
-	return client()->isMining();
-}
-
-bool QEthereum::isListening() const
-{
-	return client()->haveNetwork();
-}
-
-void QEthereum::setMining(bool _l)
-{
-	if (_l)
-		client()->startMining();
-	else
-		client()->stopMining();
-}
-
-void QEthereum::setListening(bool _l)
-{
-	if (_l)
-		client()->startNetwork();
-	else
-		client()->stopNetwork();
-}
-
-double QEthereum::txCountAt(Address _a) const
-{
-	return (double)client()->postState().transactionsFrom(_a);
-}
-
-unsigned QEthereum::peerCount() const
-{
-	return (unsigned)client()->peerCount();
-}
-
-void QEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _code, QByteArray _init)
-{
-	client()->transact(_secret, _amount, bytes(_code.data(), _code.data() + _code.size()), bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
-}
-
-void QEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
-{
-	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
-}
-
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
@@ -192,21 +60,23 @@ Main::Main(QWidget *parent) :
 	ui->setupUi(this);
 	setWindowIcon(QIcon(":/Ethereum.png"));
 
-	g_main = this;
+	g_qmlMain = this;
 
 	m_client.reset(new Client("Walleth", Address(), eth::getDataDir() + "/Walleth"));
+
+	g_qmlClient = m_client.get();
 
 	qRegisterMetaType<eth::u256>("eth::u256");
 	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
 	qRegisterMetaType<eth::Secret>("eth::Secret");
 	qRegisterMetaType<eth::Address>("eth::Address");
-	qRegisterMetaType<QAccount*>("QAccount*");
-	qRegisterMetaType<QEthereum*>("QEthereum*");
+	qRegisterMetaType<QmlAccount*>("QmlAccount*");
+	qRegisterMetaType<QmlEthereum*>("QmlEthereum*");
 
-	qmlRegisterType<QEthereum>("org.ethereum", 1, 0, "Ethereum");
-	qmlRegisterType<QAccount>("org.ethereum", 1, 0, "Account");
-	qmlRegisterSingletonType<U256Helper>("org.ethereum", 1, 0, "Balance", QEthereum::constructU256Helper);
-	qmlRegisterSingletonType<KeyHelper>("org.ethereum", 1, 0, "Key", QEthereum::constructKeyHelper);
+	qmlRegisterType<QmlEthereum>("org.ethereum", 1, 0, "Ethereum");
+	qmlRegisterType<QmlAccount>("org.ethereum", 1, 0, "Account");
+	qmlRegisterSingletonType<QmlU256Helper>("org.ethereum", 1, 0, "Balance", QmlEthereum::constructU256Helper);
+	qmlRegisterSingletonType<QmlKeyHelper>("org.ethereum", 1, 0, "Key", QmlEthereum::constructKeyHelper);
 
 	/*
 	ui->librariesView->setModel(m_libraryMan);
@@ -245,7 +115,7 @@ Main::Main(QWidget *parent) :
 			on_net_triggered(true);
 		}
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1) + ".txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(eth::EthVersion).section('.', 1, 1) + ".txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -270,7 +140,7 @@ void Main::timerEvent(QTimerEvent *)
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Walleth PoC-" + QString(ETH_QUOTED(ETH_VERSION)).section('.', 1, 1), "Walleth/v" ETH_QUOTED(ETH_VERSION) "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) " - " ETH_QUOTED(ETH_COMMIT_HASH) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
+    QMessageBox::about(this, "About Walleth PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Walleth/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) " - " ETH_QUOTED(ETH_COMMIT_HASH) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
 }
 
 void Main::writeSettings()
@@ -362,7 +232,7 @@ void Main::refresh()
 
 void Main::on_net_triggered(bool _auto)
 {
-	string n = "Walleth/v" ETH_QUOTED(ETH_VERSION);
+    string n = string("Walleth/v") + eth::EthVersion;
 	if (m_clientName.size())
 		n += "/" + m_clientName.toStdString();
 	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
@@ -424,25 +294,8 @@ void Main::on_create_triggered()
 #include\
 "moc_MainWin.cpp"
 
-// specify library dependencies, it's easier to do here than in the project since we can control the "d" debug suffix
-#ifdef _DEBUG
-#define QTLIB(x) x"d.lib"
-#else 
-#define QTLIB(x) x".lib"
-#endif
-
-#pragma comment(lib, QTLIB("Qt5PlatformSupport"))
-#pragma comment(lib, QTLIB("Qt5Core"))
-#pragma comment(lib, QTLIB("Qt5GUI"))
-#pragma comment(lib, QTLIB("Qt5Widgets"))
-#pragma comment(lib, QTLIB("Qt5Network"))
-#pragma comment(lib, QTLIB("Qt5Quick"))
-#pragma comment(lib, QTLIB("Qt5Declarative"))
-#pragma comment(lib, QTLIB("Qt5Qml"))
-#pragma comment(lib, QTLIB("qwindows"))
-#pragma comment(lib, "Imm32.lib")
-#pragma comment(lib, "opengl32.lib")
-#pragma comment(lib, "winmm.lib")
-
+// include qrc content
+#include\
+"qrc_Resources.cpp"
 
 #endif

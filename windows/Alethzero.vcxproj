@@ -38,13 +38,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -53,24 +51,26 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Debug.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Debug.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="CopyBinary.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Release.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibEthereum.props" />
-    <Import Project="CopyBinary.props" />
-    <Import Project="UseQt.props" />
+    <Import Project="LibEthereum_Release.props" />
+    <Import Project="LibQEthereum.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -88,7 +88,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -97,13 +97,17 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
@@ -111,6 +115,10 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -119,7 +127,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -131,6 +139,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -139,7 +151,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -150,16 +162,24 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\windows\LibEthereum.vcxproj">
-      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    <ProjectReference Include="LibQEthereum.vcxproj">
+      <Project>{df3c5b07-a1a2-4f16-b37f-a27333622cdd}</Project>
+    </ProjectReference>
+    <ProjectReference Include="LibSerpent.vcxproj">
+      <Project>{f174e81a-2a66-4693-b917-11bb42d3658c}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\alethzero\Grapher.cpp" />
     <ClCompile Include="..\alethzero\main.cpp" />
     <ClCompile Include="..\alethzero\MainWin.cpp" />
-    <ClCompile Include="qt_plugin_import.cpp" />
+    <ClCompile Include="..\alethzero\MiningView.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -186,6 +206,26 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+    </CustomBuild>
+    <ClInclude Include="..\alethzero\Grapher.h" />
+    <ClInclude Include="..\alethzero\GraphParameters.h" />
+    <CustomBuild Include="..\alethzero\MiningView.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
     </CustomBuild>
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
@@ -234,4 +274,19 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <CopyToOutDir Include="$(CopyDlls)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyToOutDir)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
+  </Target>
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);FinalCopy</BuildDependsOn>
+  </PropertyGroup>
+  <Target Name="FinalCopy" DependsOnTargets="AfterBuild" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <CopyToBinDir Include="$(OutDir)\**\*.dll;$(OutDir)\*.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CopyToBinDir)" DestinationFiles="@(CopyToBinDir->'..\..\_binaries\$(Platform)\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
 </Project>

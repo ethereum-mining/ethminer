@@ -34,12 +34,11 @@
 #include <set>
 #include <chrono>
 #include <thread>
-#include "Exceptions.h"
-#include "Common.h"
+#include <libethential/Common.h>
+#include <libethcore/UPnP.h>
+#include <libethcore/Exceptions.h>
 #include "BlockChain.h"
-#include "BlockInfo.h"
 #include "TransactionQueue.h"
-#include "UPnP.h"
 #include "PeerSession.h"
 using namespace std;
 using namespace eth;
@@ -115,7 +114,7 @@ PeerServer::~PeerServer()
 
 unsigned PeerServer::protocolVersion()
 {
-	return 11;
+	return c_protocolVersion;
 }
 
 void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
@@ -213,15 +212,21 @@ void PeerServer::populateAddresses()
 			char host[NI_MAXHOST];
 			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
 				continue;
-			// TODO: Make exception safe when no internet.
-			auto it = r.resolve({host, "30303"});
-			bi::tcp::endpoint ep = it->endpoint();
-			bi::address ad = ep.address();
-			m_addresses.push_back(ad.to_v4());
-			bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
-			if (!isLocal)
-				m_peerAddresses.push_back(ad.to_v4());
-			clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			try
+			{
+				auto it = r.resolve({host, "30303"});
+				bi::tcp::endpoint ep = it->endpoint();
+				bi::address ad = ep.address();
+				m_addresses.push_back(ad.to_v4());
+				bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+				if (!isLocal)
+					m_peerAddresses.push_back(ad.to_v4());
+				clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			}
+			catch (...)
+			{
+				clog(NetNote) << "Couldn't resolve: " << host;
+			}
 		}
 	}
 
@@ -353,7 +358,7 @@ bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 	return false;
 }
 
-bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
+bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
 	bool ret = ensureInitialised(_bc, _tq);
 
@@ -363,7 +368,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	if (m_mode == NodeMode::Full)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-			if (_tq.import(*it))
+			if (_tq.import(&*it))
 			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
 			else
 				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
@@ -425,6 +430,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 			if (m_incomingBlocks.size())
 				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
+					cdebug << "Importing new block";
 					try
 					{
 						_bc.import(*it, _o);
@@ -515,9 +521,10 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, Overlay& _o)
 	return ret;
 }
 
-std::vector<PeerInfo> PeerServer::peers() const
+std::vector<PeerInfo> PeerServer::peers(bool _updatePing) const
 {
-	const_cast<PeerServer*>(this)->pingAll();
+    if (_updatePing)
+        const_cast<PeerServer*>(this)->pingAll();
 	this_thread::sleep_for(chrono::milliseconds(200));
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
