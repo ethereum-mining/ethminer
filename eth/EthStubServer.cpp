@@ -178,7 +178,7 @@ Json::Value EthStubServer::blockJson(const std::string& _hash)
 	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
 	
 	auto bi = BlockInfo(b);
-	res["number"] = to_string(bc.details(bc.currentHash()).number);
+	res["number"] = boost::lexical_cast<string>(bi.number);
 	res["hash"] = boost::lexical_cast<string>(bi.hash);
 	res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
 	res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
