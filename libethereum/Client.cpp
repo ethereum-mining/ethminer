@@ -145,6 +145,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 {
 	ClientGuard l(this);
 	Transaction t;
+	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _value;
 	t.gasPrice = _gasPrice;

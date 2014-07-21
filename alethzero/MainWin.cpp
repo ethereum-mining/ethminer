@@ -1423,6 +1423,24 @@ void Main::on_dumpTrace_triggered()
 			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
+void Main::on_dumpTracePretty_triggered()
+{
+	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
+	ofstream f(fn.toStdString());
+	if (f.is_open())
+		for (WorldState const& ws: m_history)
+		{
+			f << endl << "    STACK" << endl;
+			for (auto i: ws.stack)
+				f << (h256)i << endl;
+			f << "    MEMORY" << endl << eth::memDump(ws.memory);
+			f << "    STORAGE" << endl;
+			for (auto const& i: ws.storage)
+				f << showbase << hex << i.first << ": " << i.second << endl;
+			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << c_instructionInfo.at(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
+		}
+}
+
 void Main::on_dumpTraceStorage_triggered()
 {
 	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
@@ -1451,6 +1469,7 @@ void Main::alterDebugStateGroup(bool _enable) const
 	ui->debugStepBackOut->setEnabled(_enable);
 	ui->dumpTrace->setEnabled(_enable);
 	ui->dumpTraceStorage->setEnabled(_enable);
+	ui->dumpTracePretty->setEnabled(_enable);
 	ui->debugStepBack->setEnabled(_enable);
 	ui->debugPanel->setEnabled(_enable);
 }

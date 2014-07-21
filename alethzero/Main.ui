@@ -167,6 +167,7 @@
      </property>
      <addaction name="dumpTrace"/>
      <addaction name="dumpTraceStorage"/>
+     <addaction name="dumpTracePretty"/>
     </widget>
     <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
@@ -1638,6 +1639,14 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>D&amp;ump Current Transaction State (pre)</string>
+   </property>
+  </action>
+  <action name="dumpTracePretty">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Pretty...</string>
    </property>
   </action>
  </widget>

@@ -45,6 +45,8 @@ struct VMTraceChannel: public LogChannel { static const char* name() { return "E
  */
 struct Manifest
 {
+	h256 bloom() const { h256 ret = from.bloom() | to.bloom(); for (auto const& i: internal) ret |= i.bloom(); for (auto const& i: altered) ret |= h256(i).bloom(); return ret; }
+
 	Address from;
 	Address to;
 	u256s altered;
