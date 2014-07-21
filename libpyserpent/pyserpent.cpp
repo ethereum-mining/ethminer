@@ -1,5 +1,5 @@
 #include <Python.h>
-#include <libserpent/structmember.h>
+#include "structmember.h"
 
 #include <stdlib.h>
 #include <stdio.h>
