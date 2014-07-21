@@ -21,6 +21,10 @@
 
 #pragma once
 
+#ifdef Q_MOC_RUN
+#define BOOST_MPL_IF_HPP_INCLUDED
+#endif
+
 #include <list>
 #include <QtWidgets/QWidget>
 #include <libethereum/Client.h>
