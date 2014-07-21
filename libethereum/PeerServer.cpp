@@ -323,25 +323,6 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerServer::sync()
-{
-	bool ret = false;
-	if (isInitialised())
-		for (auto i = m_peers.begin(); i != m_peers.end();)
-		{
-			auto p = i->second.lock();
-			if (p && p->m_socket.is_open() &&
-					(p->m_disconnect == chrono::steady_clock::time_point::max() || chrono::steady_clock::now() - p->m_disconnect < chrono::seconds(1)))	// kill old peers that should be disconnected.
-				++i;
-			else
-			{
-				i = m_peers.erase(i);
-				ret = true;
-			}
-		}
-	return ret;
-}
-
 bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 {
 	if (m_latestBlockSent == h256())
@@ -361,10 +342,7 @@ bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
 	bool ret = ensureInitialised(_bc, _tq);
-
-	if (sync())
-		ret = true;
-
+	
 	if (m_mode == NodeMode::Full)
 	{
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
