@@ -1119,7 +1119,7 @@ void Main::on_data_textChanged()
 			{
 				try
 				{
-					m_data = compile(src);
+					m_data = eth::asBytes(::compile(src));
 					for (auto& i: errors)
 						i = "(LLL " + i + ")";
 				}
