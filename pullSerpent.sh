@@ -7,5 +7,5 @@ cp bignum.* compiler.* funcs.* lllparser.* opcodes.h parser.* rewriter.* tokeniz
 cp cmdline.* "$opwd/sc/"
 cp pyserpent.* "$opwd/libpyserpent/"
 cd "$opwd"
-perl -i -p -e 's:include "(.*)":include <libserpent/$1>:gc' sc/* libpyserpent/*
+perl -i -p -e 's:include "funcs.h":include <libserpent/funcs.h>:gc' sc/* libpyserpent/*
 
