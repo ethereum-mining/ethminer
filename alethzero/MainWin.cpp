@@ -146,22 +146,21 @@ Main::Main(QWidget *parent) :
 
 	m_client.reset(new Client("AlethZero"));
 	m_client->start();
-	m_ethereum.reset(new QEthereum(this, this->m_client.get(), this->owned()));
-	
-	shared_ptr<Main>qmain(this);
-	shared_ptr<QEthereum>qeth(m_ethereum.get());
-	connect(ui->webView, &QWebView::loadStarted, [qmain, qeth]()
-	{
-		Main::Main *self = qmain.get();
-		QEthereum *eth = new QEthereum(self, self->m_client.get(), self->owned());
-		connect(self, SIGNAL(changed()), eth, SIGNAL(changed()));
 
-		QWebFrame* f = self->ui->webView->page()->mainFrame();
+	connect(ui->webView, &QWebView::loadStarted, [this]()
+	{
+		QEthereum *eth = new QEthereum(this, this->m_client.get(), this->owned());
+		this->m_ethereum = eth;
+		connect(this, SIGNAL(changed()), this->m_ethereum, SIGNAL(changed()));
+
+		QWebFrame* f = this->ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, eth, self]()
+		eth->setup(f);
+		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, eth, this]()
 		{
 			f->disconnect();
-			f->addToJavaScriptWindowObject("env", self, QWebFrame::QtOwnership);
+			f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
 			f->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership);
 			f->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
 			f->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
