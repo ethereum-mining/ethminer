@@ -63,7 +63,9 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
 	m_changed = true;
+}
 
+void Client::start() {
 	static const char* c_threadName = "eth";
 
 	m_work.reset(new thread([&](){

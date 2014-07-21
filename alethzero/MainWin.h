@@ -201,5 +201,5 @@ private:
 
 	QList<QPair<QString, QString>> m_consoleHistory;
 
-	QEthereum* m_ethereum;
+	std::unique_ptr<QEthereum> m_ethereum;
 };
