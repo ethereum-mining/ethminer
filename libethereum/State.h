@@ -47,7 +47,9 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 
 struct TransactionReceipt
 {
-	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed): transaction(_t), stateRoot(_root), gasUsed(_gasUsed) {}
+	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms) {}
+
+//	Manifest const& changes() const { return changes; }
 
 	void fillStream(RLPStream& _s) const
 	{
@@ -59,6 +61,7 @@ struct TransactionReceipt
 	Transaction transaction;
 	h256 stateRoot;
 	u256 gasUsed;
+	Manifest changes;
 };
 
 enum class ExistDiff { Same, New, Dead };
@@ -184,8 +187,8 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr) { return execute(&_rlp, o_output, _commit, o_ms); }
-	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true, Manifest* o_ms = nullptr);
+	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(&_rlp, o_output, _commit); }
+	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
@@ -238,6 +241,12 @@ public:
 
 	/// Get the list of pending transactions.
 	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
+
+	/// Get the list of pending transactions.
+	Manifest changesFromPending(unsigned _i) const { return m_transactions[_i].changes; }
+
+	/// Get the bloom filter of all changes happened in the block. Only good once commitToMine() is called.
+	u256 bloom() const { return m_bloom; }
 
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
@@ -331,6 +340,7 @@ private:
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 //	GenericTrieDB<OverlayDB> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 	OverlayDB m_lastTx;
+	h256 m_bloom;								///< Bloom filter of changed addresses/locations in the block.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
