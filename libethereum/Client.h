@@ -130,6 +130,9 @@ public:
 	/// Constructor.
 	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
 
+	// Start client. Boost require threads are started outside constructor.
+	void start();
+
 	/// Destructor.
 	~Client();
 

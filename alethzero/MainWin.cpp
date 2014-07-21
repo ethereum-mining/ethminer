@@ -84,10 +84,6 @@ using eth::g_logPost;
 using eth::g_logVerbosity;
 using eth::c_instructionInfo;
 
-// Horrible global for the mainwindow. Needed for the QEthereums to find the Main window which acts as multiplexer for now.
-// Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
-Main* g_main = nullptr;
-
 static void initUnits(QComboBox* _b)
 {
 	for (auto n = (::uint)units().size(); n-- != 0; )
@@ -100,24 +96,9 @@ Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main)
 {
-	g_main = this;
-
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
-	m_client.reset(new Client("AlethZero"));
-
-	m_refresh = new QTimer(this);
-	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
-	m_refresh->start(100);
-	m_refreshNetwork = new QTimer(this);
-	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
-	m_refreshNetwork->start(1000);
-	m_refreshMining = new QTimer(this);
-	connect(m_refreshMining, SIGNAL(timeout()), SLOT(refreshMining()));
-	m_refreshMining->start(200);
-
-	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 #if 0&&ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
@@ -147,7 +128,6 @@ Main::Main(QWidget *parent) :
 	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
 
 	ui->configDock->close();
-
 	on_verbosity_valueChanged();
 	initUnits(ui->gasPriceUnits);
 	initUnits(ui->valueUnits);
@@ -160,26 +140,42 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
+	
+	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
+	
 
-	connect(ui->webView, &QWebView::titleChanged, [=]()
+	m_client.reset(new Client("AlethZero"));
+	m_client->start();
+
+	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		ui->tabWidget->setTabText(0, ui->webView->title());
-	});
+		QEthereum *eth = new QEthereum(this, this->m_client.get(), this->owned());
+		this->m_ethereum = eth;
+		connect(this, SIGNAL(changed()), this->m_ethereum, SIGNAL(changed()));
 
+		QWebFrame* f = this->ui->webView->page()->mainFrame();
+		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		eth->setup(f);
+		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE);
+	});
+	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		this->changed();
 	});
-
-	QWebFrame* f = ui->webView->page()->currentFrame();
-	connect(f, &QWebFrame::javaScriptWindowObjectCleared, [=](){
-		auto qe = new QEthereum(this, m_client.get(), owned());
-		qe->setup(f);
-		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+	
+	connect(ui->webView, &QWebView::titleChanged, [=]()
+	{
+		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
-
+	
 	readSettings();
 	refresh();
+
+	m_refresh = new QTimer(this);
+	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
+	m_refresh->start(100);
 
 	{
 		QSettings s("ethereum", "alethzero");
@@ -618,6 +614,23 @@ void Main::refreshBlockChain()
 
 void Main::refresh(bool _override)
 {
+	// 7/18, Alex: aggregating timers, prelude to better threading?
+	// Runs much faster on slower dual-core processors
+	static int interval = 100;
+	
+	// refresh mining every 200ms
+	if(interval / 100 % 2 == 0)
+		refreshMining();
+
+	// refresh peer list every 1000ms, reset counter
+	if(interval == 1000)
+	{
+		interval = 0;
+		refreshNetwork();
+	} else
+		interval += 100;
+	
+	
 	eth::ClientGuard g(m_client.get());
 	auto const& st = state();
 
@@ -625,7 +638,7 @@ void Main::refresh(bool _override)
 	if (c || _override)
 	{
 		changed();
-
+		
 		updateBlockCount();
 
 		auto acs = st.addresses();
@@ -1106,7 +1119,7 @@ void Main::on_data_textChanged()
 			{
 				try
 				{
-					m_data = compile(src);
+					m_data = eth::asBytes(::compile(src));
 					for (auto& i: errors)
 						i = "(LLL " + i + ")";
 				}
@@ -1189,6 +1202,7 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	m_client.reset();
 	m_client.reset(new Client("AlethZero", Address(), string(), true));
+	m_client->start();
 	readSettings();
 }
 
@@ -1423,6 +1437,24 @@ void Main::on_dumpTrace_triggered()
 			f << ws.cur << " " << hex << toHex(eth::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
+void Main::on_dumpTracePretty_triggered()
+{
+	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
+	ofstream f(fn.toStdString());
+	if (f.is_open())
+		for (WorldState const& ws: m_history)
+		{
+			f << endl << "    STACK" << endl;
+			for (auto i: ws.stack)
+				f << (h256)i << endl;
+			f << "    MEMORY" << endl << eth::memDump(ws.memory);
+			f << "    STORAGE" << endl;
+			for (auto const& i: ws.storage)
+				f << showbase << hex << i.first << ": " << i.second << endl;
+			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << c_instructionInfo.at(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
+		}
+}
+
 void Main::on_dumpTraceStorage_triggered()
 {
 	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
@@ -1451,6 +1483,7 @@ void Main::alterDebugStateGroup(bool _enable) const
 	ui->debugStepBackOut->setEnabled(_enable);
 	ui->dumpTrace->setEnabled(_enable);
 	ui->dumpTraceStorage->setEnabled(_enable);
+	ui->dumpTracePretty->setEnabled(_enable);
 	ui->debugStepBack->setEnabled(_enable);
 	ui->debugPanel->setEnabled(_enable);
 }

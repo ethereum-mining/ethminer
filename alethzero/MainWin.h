@@ -125,6 +125,7 @@ private slots:
 	void on_clearPending_triggered();
 	void on_dumpTrace_triggered();
 	void on_dumpTraceStorage_triggered();
+	void on_dumpTracePretty_triggered();
 	void on_debugStepInto_triggered();
 	void on_debugStepOut_triggered();
 	void on_debugStepBackOut_triggered();

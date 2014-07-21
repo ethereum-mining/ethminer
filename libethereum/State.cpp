@@ -708,25 +708,28 @@ void State::commitToMine(BlockChain const& _bc)
 		uncles.appendList(0);
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionManifest(&tm);
-	transactionManifest.init();
+	GenericTrieDB<MemoryDB> transactionReceipts(&tm);
+	transactionReceipts.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
+	m_bloom = h256();
+
 	for (unsigned i = 0; i < m_transactions.size(); ++i)
 	{
+		m_bloom |= m_transactions[i].changes.bloom();
 		RLPStream k;
 		k << i;
 		RLPStream v;
 		m_transactions[i].fillStream(v);
-		transactionManifest.insert(&k.out(), &v.out());
+		transactionReceipts.insert(&k.out(), &v.out());
 		txs.appendRaw(v.out());
 	}
 
 	txs.swapOut(m_currentTxs);
 	uncles.swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionManifest.root();
+	m_currentBlock.transactionsRoot = transactionReceipts.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
@@ -954,7 +957,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
 
-u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest* o_ms)
+u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -967,7 +970,9 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest*
 	auto h = rootHash();
 #endif
 
-	Executive e(*this, o_ms);
+	Manifest ms;
+
+	Executive e(*this, &ms);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1016,7 +1021,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit, Manifest*
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed()));
+	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed(), ms));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
