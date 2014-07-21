@@ -86,8 +86,7 @@ programData opcodeify(Node node, programAux aux=Aux()) {
         Node code = astnode("____CODE", o, m);
         Node nodelist[] = {
             token("$begincode"+symb+".endcode"+symb, m), token("DUP", m),
-            sub.code,
-            token("$begincode"+symb, m), token("CODECOPY", m),
+            token("$begincode"+symb, m), sub.code, token("CODECOPY", m),
             token("$endcode"+symb, m), token("JUMP", m),
             token("~begincode"+symb, m), code, token("~endcode"+symb, m)
         };

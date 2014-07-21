@@ -22,7 +22,7 @@ int chartype(char c) {
 }
 
 // "y = f(45,124)/3" -> [ "y", "f", "(", "45", ",", "124", ")", "/", "3"]
-std::vector<Node> tokenize(std::string inp, Metadata metadata) {
+std::vector<Node> tokenize(std::string inp, Metadata metadata, bool lispMode) {
     int curtype = SPACE;
 	unsigned pos = 0;
     int lastNewline = 0;
@@ -33,6 +33,9 @@ std::vector<Node> tokenize(std::string inp, Metadata metadata) {
     inp += " ";
     while (pos < inp.length()) {
         int headtype = chartype(inp[pos]);
+        if (lispMode) {
+            if (inp[pos] == '\'') headtype = ALPHANUM;
+        }
         // Are we inside a quote?
         if (curtype == SQUOTE || curtype == DQUOTE) {
             // Close quote

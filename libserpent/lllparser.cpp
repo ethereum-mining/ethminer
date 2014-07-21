@@ -66,5 +66,5 @@ Node parseLLL(std::string s, bool allowFileRead) {
         file = s;
         input = get_file_contents(s);
     }
-    return parseLLLTokenStream(tokenize(s, Metadata(file, 0, 0)));
+    return parseLLLTokenStream(tokenize(s, Metadata(file, 0, 0), true));
 }

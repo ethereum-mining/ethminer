@@ -376,7 +376,7 @@ public:
 	void setup(QWebFrame* _e);
 	void teardown(QWebFrame* _e);
 
-	void setAccounts(QList<eth::KeyPair> _l);
+	void setAccounts(QList<eth::KeyPair> _l) { m_accounts = _l; this->changed(); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
@@ -449,3 +449,23 @@ private:
 	eth::Client* m_client;
 	QList<eth::KeyPair> m_accounts;
 };
+
+#define QETH_INSTALL_JS_NAMESPACE [f, eth, this]() \
+{ \
+	f->disconnect(); \
+	f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership); \
+	f->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
+	f->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }"); \
+	f->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }"); \
+	 \
+	f->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
+	f->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }"); \
+	f->evaluateJavaScript("eth.transactions = function(a) { return JSON.parse(eth.getTransactions(JSON.stringify(a))); }"); \
+	f->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }"); \
+	f->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }"); \
+	f->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }"); \
+	f->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }"); \
+	f->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }"); \
+	f->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }"); \
+}
+
