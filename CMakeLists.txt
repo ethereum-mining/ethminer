@@ -1,50 +1,36 @@
+# cmake global
 project(ethereum)
 cmake_minimum_required(VERSION 2.8.9)
-
 set(CMAKE_AUTOMOC ON)
-
 cmake_policy(SET CMP0015 NEW)
 
-set(HEADLESS CACHE BOOL 0)
-set(LANGUAGES CACHE BOOL 0)
+# user defined, defaults
+# Normally, set(...CACHE...) creates cache variables, but does not modify them.
 
-if ("x${PARANOIA}" STREQUAL "x")
-    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		set(PARANOIA CACHE BOOL 1)
-    else ()
-		set(PARANOIA CACHE BOOL 0)
-    endif ()
-endif ()
-
-if ("x${VMTRACE}" STREQUAL "x")
-    if ("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		set(VMTRACE CACHE BOOL 1)
-    else ()
-		set(VMTRACE CACHE BOOL 0)
-    endif ()
-endif ()
-
-if (PARANOIA)
-	add_definitions(-DETH_PARANOIA)
-else()
-	set(PARANOIA 0)
-endif ()
-
-if (VMTRACE)
-	add_definitions(-DETH_VMTRACE)
-else()
-	set(VMTRACE 0)
-endif ()
+set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
+set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
+set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
+set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 
 if (LANGUAGES)
 	add_definitions(-DETH_LANGUAGES)
-else()
-	set(LANGUAGES 0)
 endif ()
 
-if (NOT HEADLESS)
-	set(HEADLESS 0)
-endif()
+if (PARANOIA)
+	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+		add_definitions(-DETH_PARANOIA)
+	else ()
+		message(FATAL_ERROR "Paranoia requires debug.")
+	endif ()
+endif ()
+
+if (VMTRACE)
+	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+		add_definitions(-DETH_VMTRACE)
+	else ()
+		message(FATAL_ERROR "VM tracing requires debug.")
+	endif ()
+endif ()
 
 message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
 
@@ -58,13 +44,19 @@ if ("${TARGET_PLATFORM}" STREQUAL "linux")
 	set(CMAKE_THREAD_LIBS_INIT pthread)
 endif ()
 
-# Initialize CXXFLAGS.
+# Set default build type to Release w/debug info
+# if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+#    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+# endif()
+
+# Initialize CXXFLAGS
 set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -DSHAREDLIB")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
 
+# Windows 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SYSTEM_NAME Windows)
 
@@ -96,6 +88,7 @@ else ()
 	set(ETH_SHARED 1)
 endif()
 
+# Set build platform; to be written to BuildInfo.h
 if (CMAKE_COMPILER_IS_MINGW)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 elseif (CMAKE_COMPILER_IS_MSYS)
@@ -104,16 +97,17 @@ elseif (CMAKE_COMPILER_IS_GNUCXX)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
 elseif (CMAKE_COMPILER_IS_MSVC)
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
 else ()
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 endif ()
-
 
 message("CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 #add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
 #add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
 
-# Compiler-specific C++11 activation.
+# C++11 check and activation
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	execute_process(
 		COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -133,50 +127,42 @@ if("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CRYPTOPP_ID /usr/x86_64-w64-mingw32/include/cryptopp)
 else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
-	find_path(CRYPTOPP_ID cryptlib.h
+	find_path(ID cryptlib.h
 		../cryptopp/src
-		../../cryptopp/src)
-	if(CRYPTOPP_ID STREQUAL "CRYPTOPP_ID-NOTFOUND")
-		message("Trying system cryptopp...")
-		find_path(CRYPTOPP_ID cryptlib.h
-			/usr/include/cryptopp
-			/usr/include/crypto++
-			/usr/local/include/cryptopp
-			/usr/local/include/crypto++
-			/opt/local/include/cryptopp
-			/opt/local/include/crypto++
-			)
-		find_library(CRYPTOPP_LS NAMES cryptoppeth cryptopp
-			PATHS
-			/usr/lib
-			/usr/local/lib
-			/opt/local/lib
-			)
-	else()
-		message("Local cryptopp OK.")
-		set(CRYPTOPP_LS ${CRYPTOPP_ID}/../target/build/release/libcryptopp.so)
-	endif()
+		../../cryptopp/src
+		/usr/include/cryptopp
+		/usr/include/crypto++
+		/usr/local/include/cryptopp
+		/usr/local/include/crypto++
+		/opt/local/include/cryptopp
+		/opt/local/include/crypto++
+		)
+	find_library(LS NAMES cryptoppeth cryptopp
+		../cryptopp/src/../target/build/release
+		../../cryptopp/src/../target/build/release
+		PATHS
+		/usr/lib
+		/usr/local/lib
+		/opt/local/lib
+		)
 
-	if (CRYPTOPP_LS STREQUAL "CRYPTOPP_LS-NOTFOUND")
-		message(FATAL_ERROR "Couldn't find Crypto++ version >= 5.6.2.")
-	else()
-		message(STATUS "Found Crypto++: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
-		set(_CRYPTOPP_VERSION_HEADER ${CRYPTOPP_ID}/config.h)
+	if (ID AND LS)
+		message(STATUS "Found Crypto++: ${ID}, ${LS}")
+		set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
 		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
 			file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
 			string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
 			if(${_CRYPTOPP_VERSION} LESS 562)
-				set(CRYPTOPP_ID CACHE FILEPATH "" FORCE)
-				set(CRYPTOPP_LS CACHE FILEPATH "" FORCE)
-				message(STATUS "Crypto++ version found is smaller than 5.6.2.")
+				message(FATAL_ERROR "Crypto++ version found is smaller than 5.6.2.")
 			else()
+				set(CRYPTOPP_ID ${ID} CACHE FILEPATH "")
+				set(CRYPTOPP_LS ${LS} CACHE FILEPATH "")
 				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
 			endif()
 		endif()
+  else()
+    message(STATUS "Crypto++ Not Found: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
 	endif()
-
-	# Not really worth caching. We want to reevaluate anyway.
-	mark_as_advanced(CRYPTOPP_ID CRYPTOPP_LS)
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include
@@ -310,40 +296,32 @@ else()
 endif()
 
 if(CRYPTOPP_ID)
-include_directories(${CRYPTOPP_ID})
+	include_directories(${CRYPTOPP_ID})
 endif()
 if(PYTHON_ID)
-include_directories(${PYTHON_ID})
+	include_directories(${PYTHON_ID})
 endif()
 if(MINIUPNPC_ID)
-include_directories(${MINIUPNPC_ID})
+	include_directories(${MINIUPNPC_ID})
 endif()
 if(LEVELDB_ID)
-include_directories(${LEVELDB_ID})
+	include_directories(${LEVELDB_ID})
 endif()
 if(READLINE_ID)
-include_directories(${READLINE_ID})
+	include_directories(${READLINE_ID})
 endif()
 if(JSONRPC_ID)
 	include_directories(${JSONRPC_ID})
 endif()
 
-#	if (NOT APPLE)
-#		link_directories(${CRYPTOPP_LS})
-#		link_directories(${LEVELDB_LS})
-#		link_directories(${MINIUPNPC_LS})
-#		link_directories(${PYTHON_LS})
-#		link_directories(${READLINE_LS})
-#		link_directories(${JSONRPC_LS})
-#	endif()
-
 # Generate header file containing useful build information
 add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+endif()
 
 add_subdirectory(libethential)
 add_subdirectory(libevmface)
@@ -357,34 +335,40 @@ endif()
 add_subdirectory(lllc)
 add_subdirectory(sc)
 if (NOT LANGUAGES)
-add_subdirectory(secp256k1)
-add_subdirectory(libethcore)
-add_subdirectory(libevm)
-add_subdirectory(libethereum)
-add_subdirectory(test)
-add_subdirectory(eth)
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-	add_subdirectory(exp)
-endif ()
-if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
-	add_subdirectory(neth)
-endif ()
-if(QTQML)
-add_definitions(-DETH_QTQML)
+	add_subdirectory(secp256k1)
+	add_subdirectory(libethcore)
+	add_subdirectory(libevm)
+	add_subdirectory(libethereum)
+	add_subdirectory(test)
+	add_subdirectory(eth)
+	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+		add_subdirectory(exp)
+	endif ()
+	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
+		add_subdirectory(neth)
+	endif ()
+	if(QTQML)
+		add_definitions(-DETH_QTQML)
+	endif()
+
+	if(NOT HEADLESS)
+		if ("${TARGET_PLATFORM}" STREQUAL "w64")
+			cmake_policy(SET CMP0020 NEW)
+		endif ()
+		
+		add_subdirectory(libqethereum)
+		add_subdirectory(alethzero)
+		if(QTQML)
+			add_subdirectory(walleth)
+		endif()
+	endif()
 endif()
 
-if(NOT HEADLESS)
-	add_subdirectory(libqethereum)
-	add_subdirectory(alethzero)
-if(QTQML)
-	add_subdirectory(walleth)
-endif()
-endif()
-endif()
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(SRC_LIST BuildInfo.h)
 
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
-#unset(HEADLESS CACHE)
 #unset(TARGET_PLATFORM CACHE)
 

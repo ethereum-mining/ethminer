@@ -63,7 +63,8 @@ Main::Main(QWidget *parent) :
 	g_qmlMain = this;
 
 	m_client.reset(new Client("Walleth", Address(), eth::getDataDir() + "/Walleth"));
-
+	m_client->start();
+	
 	g_qmlClient = m_client.get();
 
 	qRegisterMetaType<eth::u256>("eth::u256");
