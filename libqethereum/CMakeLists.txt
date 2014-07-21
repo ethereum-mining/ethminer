@@ -79,18 +79,11 @@ if (APPLE)
 		set(binary_build_dir "${CMAKE_CURRENT_BINARY_DIR}")
 	endif ()
 
-	set(APPS ${binary_build_dir}/${EXECUTABLE}.app)
-
-	# This tool and the next will automatically looked at the linked libraries in order to determine what dependencies are required. Thus, target_link_libaries only needs to add ethereum and secp256k1 (above)
-	install(CODE "
-		include(BundleUtilities)
-		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APPS}\" \"${BUNDLELIBS}\" \"../libethereum ../secp256k1\")
-		" COMPONENT RUNTIME )
+  set(APPS ${binary_build_dir}/${EXECUTABLE})
 
 	if (${ADDFRAMEWORKS})	
 		add_custom_target(addframeworks ALL
-			COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTABLE}.app
+			COMMAND /usr/local/opt/qt5/bin/macdeployqt ${binary_build_dir}/${EXECUTABLE}
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 			DEPENDS ${PROJECT_NAME}
 		)
