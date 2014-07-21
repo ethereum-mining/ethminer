@@ -18,6 +18,7 @@ int precedence(Node tok) {
     else if (v=="&" || v=="|" || v=="xor" || v=="==" || v == "!=") return 5;
     else if (v=="&&" || v=="and") return 6;    
     else if (v=="||" || v=="or") return 7;
+    else if (v==":") return 8;
     else if (v=="=") return 10;
     else if (v=="+=" || v=="-=" || v=="*=" || v=="/=" || v=="%=") return 10;
     else if (v=="@/=" || v=="@%=") return 10;
@@ -28,10 +29,9 @@ int precedence(Node tok) {
 int toktype(Node tok) {
     if (tok.type == ASTNODE) return COMPOUND;
     std::string v = tok.val;
-    if (v == "(" || v == "[") return LPAREN;
-    else if (v == ")" || v == "]") return RPAREN;
+    if (v == "(" || v == "[" || v == "{") return LPAREN;
+    else if (v == ")" || v == "]" || v == "}") return RPAREN;
     else if (v == ",") return COMMA;
-    else if (v == ":") return COLON;
     else if (v == "!" || v == "not") return UNARY_OP;
     else if (precedence(tok) >= 0) return BINARY_OP;
     if (tok.val[0] != '"' && tok.val[0] != '\'') {
@@ -54,7 +54,7 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
     std::vector<Node> oq;
     std::vector<Node> stack;
     Node prev, tok;
-    int prevtyp, toktyp = 0;
+    int prevtyp = 0, toktyp = 0;
     
     while (iq.size()) {
         prev = tok;
@@ -100,13 +100,12 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
             }
             stack.push_back(tok);
         }
-        // Comma and colon mean finish evaluating the argument
-        else if (toktyp == COMMA || toktyp == COLON) {
+        // Comma means finish evaluating the argument
+        else if (toktyp == COMMA) {
             while (stack.size() && toktype(stack.back()) != LPAREN) {
                 oq.push_back(stack.back());
                 stack.pop_back();
             }
-            if (toktyp == COLON) oq.push_back(tok);
         }
     }
     while (stack.size()) {
@@ -151,10 +150,10 @@ Node treefy(std::vector<Node> stream) {
         else if (typ == RPAREN) {
             std::vector<Node> args;
             while (1) {
+                if (toktype(oq.back()) == LPAREN) break;
                 args.push_back(oq.back());
                 oq.pop_back();
                 if (!oq.size()) err("Bracket without matching", tok.metadata);
-                if (toktype(oq.back()) == LPAREN) break;
             }
             oq.pop_back();
             args.push_back(oq.back());
@@ -180,7 +179,7 @@ Node treefy(std::vector<Node> stream) {
             // into 2 ( id 3 5 * ) +, effectively putting "id" as a dummy
             // function where the algo was expecting a function to call the
             // thing inside the brackets. This reverses that step
-			if (fun == "id" && args2.size()) {
+			if (fun == "id" && args2.size() == 1) {
                 oq.push_back(args2[0]);
             }
             else {

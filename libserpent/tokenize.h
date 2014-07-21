@@ -9,6 +9,8 @@
 
 int chartype(char c);
 
-std::vector<Node> tokenize(std::string inp, Metadata meta=Metadata());
+std::vector<Node> tokenize(std::string inp,
+                           Metadata meta=Metadata(),
+                           bool lispMode=false);
 
 #endif

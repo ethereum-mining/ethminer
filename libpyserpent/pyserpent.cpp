@@ -1,132 +1,155 @@
-#include <boost/python.hpp>
-#include <boost/python/stl_iterator.hpp>
 #include <Python.h>
+#include <libserpent/structmember.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <iostream>
 #include <libserpent/funcs.h>
 
-// Provide a python wrapper for the C++ functions
-
-using namespace boost::python;
-
-//std::vector to python list converter
-//http://stackoverflow.com/questions/5314319/how-to-export-stdvector
-template<class T>
-struct VecToList
-{
-    static PyObject* convert(const std::vector<T>& vec)
-    {
-        boost::python::list* l = new boost::python::list();
-        for(size_t i = 0; i < vec.size(); i++)
-            (*l).append(vec[i]);
-
-		return l->ptr();
-	}
-};
-
-// python list to std::vector converter
-//http://code.activestate.com/lists/python-cplusplus-sig/16463/
-template<typename T>
-struct Vector_from_python_list
-{
-
-    Vector_from_python_list()
-    {
-      using namespace boost::python;
-      using namespace boost::python::converter;
-      registry::push_back(&Vector_from_python_list<T>::convertible,
-              &Vector_from_python_list<T>::construct,
-              type_id<std::vector<T> 
->());
-
+#define PYMETHOD(name, FROM, method, TO) \
+    static PyObject * name(PyObject *self, PyObject *args) { \
+        FROM(med) \
+        return TO(method(med)); \
     }
- 
-    // Determine if obj_ptr can be converted in a std::vector<T>
-    static void* convertible(PyObject* obj_ptr)
-    {
-      if (!PyList_Check(obj_ptr)){
-    return 0;
-      }
-      return obj_ptr;
-    }
- 
-    // Convert obj_ptr into a std::vector<T>
-    static void construct(
-    PyObject* obj_ptr,
-    boost::python::converter::rvalue_from_python_stage1_data* data)
-    {
-      using namespace boost::python;
-      // Extract the character data from the python string
-      //      const char* value = PyString_AsString(obj_ptr);
-      list l(handle<>(borrowed(obj_ptr)));
 
-      // // Verify that obj_ptr is a string (should be ensured by convertible())
-      // assert(value);
- 
-      // Grab pointer to memory into which to construct the new std::vector<T>
-      void* storage = (
-        (boost::python::converter::rvalue_from_python_storage<std::vector<T> 
->*)
+#define FROMSTR(v) \
+    const char *command; \
+    int len; \
+    if (!PyArg_ParseTuple(args, "s#", &command, &len)) \
+        return NULL; \
+    std::string v = std::string(command, len); \
 
-        data)->storage.bytes;
- 
-      // in-place construct the new std::vector<T> using the character data
-      // extraced from the python object
-      std::vector<T>& v = *(new (storage) std::vector<T>());
- 
-      // populate the vector from list contains !!!
-      int le = len(l);
-      v.resize(le);
-      for(int i = 0;i!=le;++i){
-    v[i] = extract<T>(l[i]);
-      }
+#define FROMNODE(v) \
+    PyObject *node; \
+    if (!PyArg_ParseTuple(args, "O", &node)) \
+        return NULL; \
+    Node v = cppifyNode(node);
 
-      // Stash the memory chunk pointer for later use by boost.python
-      data->convertible = storage;
-    }
-};
+#define FROMLIST(v) \
+    PyObject *node; \
+    if (!PyArg_ParseTuple(args, "O", &node)) \
+        return NULL; \
+    std::vector<Node> v = cppifyNodeList(node);
 
-std::string printMetadata(Metadata m) { 
-    return "["+m.file+" "+intToDecimal(m.ln)+" "+intToDecimal(m.ch)+"]";
+// Convert metadata into python wrapper form [file, ln, ch]
+PyObject* pyifyMetadata(Metadata m) {
+    PyObject* a = PyList_New(0);
+    PyList_Append(a, Py_BuildValue("s#", m.file.c_str(), m.file.length()));
+    PyList_Append(a, Py_BuildValue("i", m.ln));
+    PyList_Append(a, Py_BuildValue("i", m.ch));
+    return a;
 }
 
-BOOST_PYTHON_FUNCTION_OVERLOADS(tokenize_overloads, tokenize, 1, 2);
-BOOST_PYTHON_FUNCTION_OVERLOADS(printast_overloads, printAST, 1, 2);
-BOOST_PYTHON_FUNCTION_OVERLOADS(parselll_overloads, parseLLL, 1, 2);
-//BOOST_PYTHON_FUNCTION_OVERLOADS(metadata_overloads, Metadata, 0, 3);
-BOOST_PYTHON_MODULE(pyserpent)
+// Convert node into python wrapper form 
+// [token=0/astnode=1, val, metadata, args]
+PyObject* pyifyNode(Node n) {
+    PyObject* a = PyList_New(0);
+    PyList_Append(a, Py_BuildValue("i", n.type == ASTNODE));
+    PyList_Append(a, Py_BuildValue("s#", n.val.c_str(), n.val.length()));
+    PyList_Append(a, pyifyMetadata(n.metadata));
+    for (unsigned i = 0; i < n.args.size(); i++)
+        PyList_Append(a, pyifyNode(n.args[i]));
+    return a;
+}
+
+// Convert string into python wrapper form
+PyObject* pyifyString(std::string s) {
+    return Py_BuildValue("s#", s.c_str(), s.length());
+}
+
+// Convert list of nodes into python wrapper form
+PyObject* pyifyNodeList(std::vector<Node> n) {
+    PyObject* a = PyList_New(0);
+    for (unsigned i = 0; i < n.size(); i++)
+        PyList_Append(a, pyifyNode(n[i]));
+    return a;
+}
+
+// Convert pyobject int into normal form
+int cppifyInt(PyObject* o) {
+    int out;
+    if (!PyArg_Parse(o, "i", &out))
+        err("Argument should be integer", Metadata());
+    return out;
+}
+
+// Convert pyobject string into normal form
+std::string cppifyString(PyObject* o) {
+    const char *command;
+    if (!PyArg_Parse(o, "s", &command))
+        err("Argument should be string", Metadata());
+    return std::string(command);
+}
+
+// Convert metadata from python wrapper form
+Metadata cppifyMetadata(PyObject* o) {
+    std::string file = cppifyString(PyList_GetItem(o, 0));
+    int ln = cppifyInt(PyList_GetItem(o, 1));
+    int ch = cppifyInt(PyList_GetItem(o, 2));
+    return Metadata(file, ln, ch);
+}
+
+// Convert node from python wrapper form
+Node cppifyNode(PyObject* o) {
+    Node n;
+    int isAstNode = cppifyInt(PyList_GetItem(o, 0));
+    n.type = isAstNode ? ASTNODE : TOKEN;
+    n.val = cppifyString(PyList_GetItem(o, 1));
+    n.metadata = cppifyMetadata(PyList_GetItem(o, 2));
+    std::vector<Node> args;
+    for (int i = 3; i < PyList_Size(o); i++) {
+        args.push_back(cppifyNode(PyList_GetItem(o, i)));
+    }
+    n.args = args;
+    return n;
+}
+
+//Convert list of nodes into normal form
+std::vector<Node> cppifyNodeList(PyObject* o) {
+    std::vector<Node> out;
+    for (int i = 0; i < PyList_Size(o); i++) {
+        out.push_back(cppifyNode(PyList_GetItem(o,i)));
+    }
+    return out;
+}
+
+PYMETHOD(ps_compile, FROMSTR, compile, pyifyString)
+PYMETHOD(ps_compile_to_lll, FROMSTR, compileToLLL, pyifyNode)
+PYMETHOD(ps_compile_lll, FROMNODE, compileLLL, pyifyString)
+PYMETHOD(ps_parse, FROMSTR, parseSerpent, pyifyNode)
+PYMETHOD(ps_rewrite, FROMNODE, rewrite, pyifyNode)
+PYMETHOD(ps_pretty_compile, FROMSTR, prettyCompile, pyifyNodeList)
+PYMETHOD(ps_pretty_compile_lll, FROMNODE, prettyCompileLLL, pyifyNodeList)
+PYMETHOD(ps_serialize, FROMLIST, serialize, pyifyString)
+PYMETHOD(ps_deserialize, FROMSTR, deserialize, pyifyNodeList)
+PYMETHOD(ps_parse_lll, FROMSTR, parseLLL, pyifyNode)
+
+
+static PyMethodDef PyextMethods[] = {
+    {"compile",  ps_compile, METH_VARARGS,
+        "Compile code."},
+    {"compile_to_lll",  ps_parse,  METH_VARARGS,
+        "Compile code to LLL."},
+    {"compile_lll",  ps_compile_lll, METH_VARARGS,
+        "Compile LLL to EVM."},
+    {"parse",  ps_parse, METH_VARARGS,
+        "Parse serpent"},
+    {"rewrite",  ps_rewrite, METH_VARARGS,
+        "Rewrite parsed serpent to LLL"},
+    {"pretty_compile",  ps_pretty_compile, METH_VARARGS,
+        "Compile to EVM opcodes"},
+    {"pretty_compile_lll",  ps_pretty_compile_lll, METH_VARARGS,
+        "Compile LLL to EVM opcodes"},
+    {"serialize",  ps_serialize, METH_VARARGS,
+        "Convert EVM opcodes to bin"},
+    {"deserialize",  ps_deserialize, METH_VARARGS,
+        "Convert EVM bin to opcodes"},
+    {"parse_lll",  ps_parse_lll, METH_VARARGS,
+        "Parse LLL"},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+PyMODINIT_FUNC initpyext(void)
 {
-    def("tokenize", tokenize, tokenize_overloads());
-    def("parse", parseSerpent);
-    def("parseLLL", parseLLL, parselll_overloads());
-    def("rewrite", rewrite);
-    def("compile_to_lll", compileToLLL);
-    def("encode_datalist", encodeDatalist);
-    def("decode_datalist", decodeDatalist);
-    def("compile_lll", compileLLL);
-    def("assemble", assemble);
-    def("deserialize", deserialize);
-    def("dereference", dereference);
-    def("flatten", flatten);
-    def("serialize", serialize);
-    def("compile", compile);
-    def("pretty_compile", prettyCompile);
-    def("pretty_assemble", prettyAssemble);
-    //class_<Node>("Node",init<>())
-    to_python_converter<std::vector<Node,class std::allocator<Node> >,
-                         VecToList<Node> >();
-    to_python_converter<std::vector<std::string,class std::allocator<std::string> >,
-                         VecToList<std::string> >();
-    Vector_from_python_list<Node>();
-    Vector_from_python_list<std::string>();
-    class_<Metadata>("Metadata",init<>())
-        .def(init<std::string, int, int>())
-        .def("__str__", printMetadata)
-        .def("__repr__", printMetadata)
-    ;
-    class_<Node>("Node",init<>())
-        .def(init<>())
-        .def("__str__", printAST, printast_overloads())
-        .def("__repr__", printAST, printast_overloads())
-    ;
-    //class_<Node>("Vector",init<>())
-    //    .def(init<>());
+     PyObject *m = Py_InitModule( "pyext", PyextMethods );
 }
