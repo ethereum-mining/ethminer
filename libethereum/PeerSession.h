@@ -62,7 +62,11 @@ private:
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
+	void writeImpl(bytes& _buffer);
+	void write();
 	PeerServer* m_server;
+	boost::asio::strand m_strand;
+	std::deque<bytes> m_writeq;
 
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
