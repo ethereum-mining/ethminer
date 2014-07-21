@@ -376,7 +376,7 @@ public:
 	void setup(QWebFrame* _e);
 	void teardown(QWebFrame* _e);
 
-	void setAccounts(QList<eth::KeyPair> _l);
+	void setAccounts(QList<eth::KeyPair> _l) { m_accounts = _l; this->changed(); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }

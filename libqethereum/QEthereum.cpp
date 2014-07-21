@@ -233,44 +233,17 @@ QString unpadded(QString _s)
 
 QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
 {
-	connect(_p, SIGNAL(changed()), SIGNAL(changed()));
+	// required to prevent crash on osx when performing addto/evaluatejavascript calls
+	this->moveToThread(_p->thread());
 }
 
 QEthereum::~QEthereum()
 {
 }
 
-void QEthereum::setAccounts(QList<eth::KeyPair> _l)
-{
-	cnote << "WAS:";
-	for (auto i: m_accounts)
-		cnote << i.sec();
-	cnote << "NOW:";
-	for (auto i: _l)
-		cnote << i.sec();
-	m_accounts = _l;
-	changed();
-}
-
 void QEthereum::setup(QWebFrame* _e)
 {
-	// disconnect
-	disconnect(SIGNAL(changed()));
-	_e->addToJavaScriptWindowObject("eth", this, QWebFrame::ScriptOwnership);
-/*	_e->addToJavaScriptWindowObject("u256", new U256Helper, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("key", new KeyHelper, QWebFrame::ScriptOwnership);
-	_e->addToJavaScriptWindowObject("bytes", new  BytesHelper, QWebFrame::ScriptOwnership);*/
-	_e->evaluateJavaScript("eth.newBlock = function(f) { eth.changed.connect(f) }");
-	_e->evaluateJavaScript("eth.watch = function(a, s, f) { eth.changed.connect(f ? f : s) }");
-	_e->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }");
-	_e->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }");
-	_e->evaluateJavaScript("eth.transactions = function(a) { return JSON.parse(eth.getTransactions(JSON.stringify(a))); }");
-	_e->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }");
-	_e->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }");
-	_e->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }");
-	_e->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }");
-	_e->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }");
-	_e->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }");
+	// Alex: JS codes moved to mainwin until qtwebkit bugs are resolved (#245)
 }
 
 void QEthereum::teardown(QWebFrame*)
