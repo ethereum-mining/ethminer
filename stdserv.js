@@ -119,8 +119,11 @@ var gavCoinCode = eth.lll("
 
 	(set 'n @@0x42)
 	(when (&& (|| (= $0 'mine) (! (calldatasize))) (> (number) @n)) {
-		[[(coinbase)]] (+ @@(coinbase) 1024)
-		[[0x42]] (+ @n 1)
+		(set 'b (- (number) @n))
+		[[(coinbase)]] (+ @@(coinbase) (* 1000 @b))
+		[[(caller)]] (+ @@(caller) (* 1000 @b))
+		[[0x42]] (number)
+		(return @b)
 	})
 
 	(return @@ $0)

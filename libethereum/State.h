@@ -248,6 +248,9 @@ public:
 	/// Get the bloom filter of all changes happened in the block.
 	h256 bloom() const;
 
+	/// Get the bloom filter of a particular transaction that happened in the block.
+	h256 bloom(unsigned _i) const { return m_transactions[_i].changes.bloom(); }
+
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
 	/// If (_i == pending().size()) returns the final state of the block, prior to rewards.

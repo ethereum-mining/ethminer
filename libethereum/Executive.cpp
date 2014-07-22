@@ -98,6 +98,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	{
 		m_ms->from = m_sender;
 		m_ms->to = m_t.receiveAddress;
+		m_ms->value = m_t.value;
 		m_ms->input = m_t.data;
 	}
 

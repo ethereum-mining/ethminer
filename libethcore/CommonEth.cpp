@@ -30,6 +30,7 @@ using namespace eth;
 //#define ETH_ADDRESS_DEBUG 1
 
 const unsigned eth::c_protocolVersion = 23;
+const unsigned eth::c_databaseVersion = 1;
 
 static const vector<pair<u256, string>> g_units =
 {

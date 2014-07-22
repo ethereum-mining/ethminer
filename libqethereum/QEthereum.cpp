@@ -415,19 +415,20 @@ QString QEthereum::getTransactions(QString _a) const
 	}
 
 	QJsonArray ret;
-	for (eth::PastTransaction const& t: m_client->transactions(filter))
+	for (eth::PastMessage const& t: m_client->transactions(filter))
 	{
 		QJsonObject v;
-		v["data"] = ::fromBinary(t.data);
-		v["gas"] = toQJS(t.gas);
-		v["gasPrice"] = toQJS(t.gasPrice);
-		v["nonce"] = (int)t.nonce;
-		v["to"] = toQJS(t.receiveAddress);
-		v["value"] = toQJS(t.value);
-		v["from"] = toQJS(t.sender());
+		v["input"] = ::fromBinary(t.input);
+		v["output"] = ::fromBinary(t.output);
+		v["to"] = toQJS(t.to);
+		v["from"] = toQJS(t.from);
+		v["origin"] = toQJS(t.origin);
 		v["timestamp"] = (int)t.timestamp;
 		v["block"] = toQJS(t.block);
-		v["index"] = (int)t.index;
+		QJsonArray path;
+		for (int i: t.path)
+			path.append(i);
+		v["path"] = path;
 		v["age"] = (int)t.age;
 		ret.append(v);
 	}

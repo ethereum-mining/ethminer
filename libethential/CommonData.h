@@ -204,4 +204,23 @@ inline std::vector<_T> operator+(std::vector<typename std::enable_if<std::is_pod
 	return ret += _b;
 }
 
+/// Concatenate two vectors of elements. _T must be POD.
+template <class _T>
+inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<!std::is_pod<_T>::value, _T>::type>& _a, std::vector<_T> const& _b)
+{
+	_a.reserve(_a.size() + _b.size());
+	for (auto& i: _b)
+		_a.push_back(i);
+	return _a;
+
+}
+
+/// Concatenate two vectors of elements. _T must be POD.
+template <class _T>
+inline std::vector<_T> operator+(std::vector<typename std::enable_if<!std::is_pod<_T>::value, _T>::type> const& _a, std::vector<_T> const& _b)
+{
+	std::vector<_T> ret(_a);
+	return ret += _b;
+}
+
 }

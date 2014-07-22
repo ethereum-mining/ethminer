@@ -30,11 +30,10 @@
 using namespace std;
 using namespace eth;
 
-VersionChecker::VersionChecker(string const& _dbPath, unsigned _protocolVersion):
-	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath()),
-	m_protocolVersion(_protocolVersion)
+VersionChecker::VersionChecker(string const& _dbPath):
+	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
-	m_ok = RLP(contents(m_path + "/protocol")).toInt<unsigned>(RLP::LaisezFaire) == _protocolVersion;
+	m_ok = RLP(contents(m_path + "/protocol")).toInt<unsigned>(RLP::LaisezFaire) == c_protocolVersion && RLP(contents(m_path + "/database")).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
 }
 
 void VersionChecker::setOk()
@@ -46,13 +45,14 @@ void VersionChecker::setOk()
 			boost::filesystem::create_directory(m_path);
 		}
 		catch (...) {}
-		writeFile(m_path + "/protocol", rlp(m_protocolVersion));
+		writeFile(m_path + "/protocol", rlp(c_protocolVersion));
+		writeFile(m_path + "/database", rlp(c_databaseVersion));
 	}
 }
 
 Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
 	m_clientVersion(_clientVersion),
-	m_vc(_dbPath, PeerServer::protocolVersion()),
+	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
@@ -92,6 +92,7 @@ Client::~Client()
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
+	ClientGuard l(this);
 	if (m_net.get())
 		return;
 	try
@@ -112,16 +113,19 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 std::vector<PeerInfo> Client::peers()
 {
+	ClientGuard l(this);
 	return m_net ? m_net->peers() : std::vector<PeerInfo>();
 }
 
 size_t Client::peerCount() const
 {
+	ClientGuard l(this);
 	return m_net ? m_net->peerCount() : 0;
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
+	ClientGuard l(this);
 	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
@@ -129,6 +133,7 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 
 void Client::stopNetwork()
 {
+	ClientGuard l(this);
 	m_net.reset(nullptr);
 }
 
@@ -399,11 +404,58 @@ bool TransactionFilter::matches(State const& _s, unsigned _i) const
 	return true;
 }
 
-PastTransactions Client::transactions(TransactionFilter const& _f) const
+PastMessages TransactionFilter::matches(Manifest const& _m, unsigned _i) const
+{
+	PastMessages ret;
+	matches(_m, vector<unsigned>(1, _i), _m.from, PastMessages(), ret);
+	return ret;
+}
+
+bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const
+{
+	bool ret;
+
+	if ((m_from.empty() || m_from.count(_m.from)) && (m_to.empty() || m_to.count(_m.to)))
+		_limbo.push_back(PastMessage(_m, _p, _o));
+
+	// Handle limbos, by checking against all addresses in alteration.
+	bool alters = m_altered.empty() && m_stateAltered.empty();
+	alters = alters || m_altered.count(_m.from) || m_altered.count(_m.to);
+
+	if (!alters)
+		for (auto const& i: _m.altered)
+			if (m_altered.count(_m.to) || m_stateAltered.count(make_pair(_m.to, i)))
+			{
+				alters = true;
+				break;
+			}
+	// If we do alter stuff,
+	if (alters)
+	{
+		o_ret += _limbo;
+		_limbo.clear();
+		ret = true;
+	}
+
+	_p.push_back(0);
+	for (auto const& m: _m.internal)
+	{
+		if (matches(m, _p, _o, _limbo, o_ret))
+		{
+			_limbo.clear();
+			ret = true;
+		}
+		_p.back()++;
+	}
+
+	return ret;
+}
+
+PastMessages Client::transactions(TransactionFilter const& _f) const
 {
 	ClientGuard l(this);
 
-	PastTransactions ret;
+	PastMessages ret;
 	unsigned begin = numberOf(_f.latest());
 	unsigned end = min(begin, numberOf(_f.earliest()));
 	unsigned m = _f.max();
@@ -412,14 +464,30 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 	// Handle pending transactions differently as they're not on the block chain.
 	if (_f.latest() == 0)
 	{
-		for (unsigned i = m_postMine.pending().size(); i-- && ret.size() != m;)
+		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
+		{
+			// Might have a transaction that contains a matching message.
+			Manifest const& ms = m_postMine.changesFromPending(i);
+			PastMessages pm = _f.matches(ms, i);
+			if (pm.size())
+			{
+				auto ts = time(0);
+				for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
+					if (s)
+						s--;
+					else
+						// Have a transaction that contains a matching message.
+						ret.insert(ret.begin(), pm[j].polish(h256(), ts, 0));
+			}
+		}
+/*		for (unsigned i = m_postMine.pending().size(); i-- && ret.size() != m;)
 			if (_f.matches(m_postMine, i))
 			{
 				if (s)
 					s--;
 				else
-					ret.insert(ret.begin(), PastTransaction(m_postMine.pending()[i], h256(), i, time(0), 0));
-			}
+					ret.insert(ret.begin(), PastMessage(m_postMine.pending()[i], h256(), i, time(0), 0));
+			}*/
 		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
 		if (_f.earliest() == 0)
 			return ret;
@@ -433,9 +501,35 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
 	{
 		auto d = m_bc.details(h);
+		int total = 0;
 		if (_f.matches(d.bloom))
 		{
-			try
+			// Might have a block that contains a transaction that contains a matching message.
+			auto bs = m_bc.blooms(h).blooms;
+			Manifests ms;
+			for (unsigned i = 0; i < bs.size(); ++i)
+				if (_f.matches(bs[i]))
+				{
+					// Might have a transaction that contains a matching message.
+					if (ms.empty())
+						ms = m_bc.traces(h).traces;
+					Manifest const& changes = ms[i];
+					PastMessages pm = _f.matches(changes, i);
+					if (pm.size())
+					{
+						total += pm.size();
+						auto ts = BlockInfo(m_bc.block(h)).timestamp;
+						for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
+							if (s)
+								s--;
+							else
+								// Have a transaction that contains a matching message.
+								ret.insert(ret.begin(), pm[j].polish(h, ts, cn - n + 2));
+					}
+				}
+			if (!total)
+				falsePos++;
+/*			try
 			{
 				State st(m_stateDB, m_bc, h);
 				unsigned os = s;
@@ -445,7 +539,7 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 						if (s)
 							s--;
 						else
-							ret.insert(ret.begin(), PastTransaction(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
+							ret.insert(ret.begin(), PastMessage(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
 					}
 				if (os - s == st.pending().size())
 					falsePos++;
@@ -454,6 +548,7 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 			{
 				// Gaa. bad state. not good at all. bury head in sand for now.
 			}
+*/
 		}
 		else
 			skipped++;
