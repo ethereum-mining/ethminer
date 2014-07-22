@@ -898,7 +898,7 @@ int main(int argc, char** argv)
 					toString(formatBalance(t.value)) %
 					toString((unsigned)t.nonce);
 			mvwaddnstr(pendingwin, y++, x, s.c_str(), qwidth);
-			if (y > qheight - 4)
+			if (y > height * 1 / 5 - 4)
 				break;
 		}
 
@@ -922,16 +922,20 @@ int main(int argc, char** argv)
 				if (cc > qheight - 2)
 					break;
 			}
-			else {
+		}
+		for (auto const& i: acs)
+		{
+			auto r = i.first;
+			if (!st.addressHasCode(r)) {
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
 					toString(r) %
 					pretty(r, st) %
 					toString(formatBalance(i.second)) %
 					toString((unsigned)st.transactionsFrom(i.first));
 				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
+				if (y > height * 3 / 5 - 4)
+					break;
 			}
-			if (y > height * 2 / 5 - 2)
-				break;
 		}
 
 		// Peers
