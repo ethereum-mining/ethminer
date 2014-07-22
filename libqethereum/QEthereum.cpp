@@ -241,7 +241,7 @@ QEthereum::~QEthereum()
 {
 }
 
-void QEthereum::setup(QWebFrame* _e)
+void QEthereum::setup(QWebFrame*)
 {
 	// Alex: JS codes moved to mainwin until qtwebkit bugs are resolved (#245)
 }

@@ -37,7 +37,7 @@ class RLPStream;
 struct BlockDetails
 {
 	BlockDetails(): number(0), totalDifficulty(0) {}
-	BlockDetails(uint _n, u256 _tD, h256 _p, h256s _c): number(_n), totalDifficulty(_tD), parent(_p), children(_c) {}
+	BlockDetails(uint _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
 	BlockDetails(RLP const& _r);
 	bytes rlp() const;
 
@@ -48,7 +48,7 @@ struct BlockDetails
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
-	// TODO: add trace bloom
+	h256 bloom;
 };
 // TODO: DB for full traces.
 

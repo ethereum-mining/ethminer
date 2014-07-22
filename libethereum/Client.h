@@ -88,6 +88,7 @@ public:
 	int latest() const { return m_latest; }
 	unsigned max() const { return m_max; }
 	unsigned skip() const { return m_skip; }
+	bool matches(h256 _bloom) const;
 	bool matches(State const& _s, unsigned _i) const;
 
 	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
