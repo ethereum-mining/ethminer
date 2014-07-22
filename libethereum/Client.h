@@ -66,7 +66,7 @@ enum ClientWorkState
 class VersionChecker
 {
 public:
-	VersionChecker(std::string const& _dbPath, unsigned _protocolVersion);
+	VersionChecker(std::string const& _dbPath);
 
 	void setOk();
 	bool ok() const { return m_ok; }
@@ -74,10 +74,30 @@ public:
 private:
 	bool m_ok;
 	std::string m_path;
-	unsigned m_protocolVersion;
 };
 
 static const int GenesisBlock = INT_MIN;
+
+struct PastMessage
+{
+	PastMessage(Manifest const& _m, std::vector<unsigned> _path, Address _o): to(_m.to), from(_m.from), value(_m.value), input(_m.input), output(_m.output), path(_path), origin(_o) {}
+
+	PastMessage& polish(h256 _b, u256 _ts, int _a) { block = _b; timestamp = _ts; age = _a; return *this; }
+
+	Address to;					///< The receiving address of the transaction. Address() in the case of a creation.
+	Address from;				///< The receiving address of the transaction. Address() in the case of a creation.
+	u256 value;					///< The value associated with the call.
+	bytes input;				///< The data associated with the message, or the initialiser if it's a creation transaction.
+	bytes output;				///< The data returned by the message, or the body code if it's a creation transaction.
+
+	std::vector<unsigned> path;	///< Call path into the block transaction. size() is always > 0. First item is the transaction index in the block.
+	Address origin;				///< Originating sender of the transaction.
+	h256 block;					///< Block hash.
+	u256 timestamp;			///< Block timestamp.
+	int age;					///< Transaction age.
+};
+
+typedef std::vector<PastMessage> PastMessages;
 
 class TransactionFilter
 {
@@ -88,7 +108,9 @@ public:
 	int latest() const { return m_latest; }
 	unsigned max() const { return m_max; }
 	unsigned skip() const { return m_skip; }
+	bool matches(h256 _bloom) const;
 	bool matches(State const& _s, unsigned _i) const;
+	PastMessages matches(Manifest const& _m, unsigned _i) const;
 
 	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
 	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
@@ -100,6 +122,8 @@ public:
 	TransactionFilter withLatest(int _e) { m_latest = _e; return *this; }
 
 private:
+	bool matches(Manifest const& _m, std::vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const;
+
 	std::set<Address> m_from;
 	std::set<Address> m_to;
 	std::set<std::pair<Address, u256>> m_stateAltered;
@@ -109,17 +133,6 @@ private:
 	unsigned m_max;
 	unsigned m_skip;
 };
-
-struct PastTransaction: public Transaction
-{
-	PastTransaction(Transaction const& _t, h256 _b, u256 _i, u256 _ts, int _age): Transaction(_t), block(_b), index(_i), timestamp(_ts), age(_age) {}
-	h256 block;
-	u256 index;
-	u256 timestamp;
-	int age;
-};
-
-typedef std::vector<PastTransaction> PastTransactions;
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -192,7 +205,7 @@ public:
 	u256 countAt(Address _a, int _block = -1) const;
 	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
 	bytes codeAt(Address _a, int _block = -1) const;
-	PastTransactions transactions(TransactionFilter const& _f) const;
+	PastMessages transactions(TransactionFilter const& _f) const;
 
 	// Misc stuff:
 

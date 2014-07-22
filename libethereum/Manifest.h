@@ -14,19 +14,40 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Manifest.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace eth;
+#include <libethential/RLP.h>
+#include <libethcore/CommonEth.h>
 
 namespace eth
 {
 
-char const* EthVersion = "0.6.0";
+struct Manifest;
+using Manifests = std::vector<Manifest>;
+
+/**
+ * @brief A record of the state-interaction of a transaction/call/create.
+ */
+struct Manifest
+{
+	Manifest() {}
+	Manifest(bytesConstRef _r);
+	void streamOut(RLPStream& _s) const;
+
+	h256 bloom() const { h256 ret = from.bloom() | to.bloom(); for (auto const& i: internal) ret |= i.bloom(); for (auto const& i: altered) ret |= h256(i).bloom(); return ret; }
+
+	Address from;
+	Address to;
+	u256 value;
+	u256s altered;
+	bytes input;
+	bytes output;
+	Manifests internal;
+};
 
 }

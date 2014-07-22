@@ -235,9 +235,8 @@ bool PeerSession::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = sha3(_r[i].data());
-			if (!m_server->m_chain->details(h))
+			if (m_server->noteBlock(h, _r[i].data()))
 			{
-				m_server->m_incomingBlocks.push_back(_r[i].data().toBytes());
 				m_knownBlocks.insert(h);
 				used++;
 			}
@@ -290,11 +289,11 @@ bool PeerSession::interpret(RLP const& _r)
 
 			// try to find parent in our blockchain
 			// todo: add some delta() fn to blockchain
-			BlockDetails f_parent = m_server->m_chain->details(parent);
-			if (f_parent)
+			BlockDetails fParent = m_server->m_chain->details(parent);
+			if (fParent)
 			{
 				latestNumber = m_server->m_chain->number(latest);
-				parentNumber = f_parent.number;
+				parentNumber = fParent.number;
 				uint count = min<uint>(latestNumber - parentNumber, baseCount);
 				clogS(NetAllDetail) << "Requires " << dec << (latestNumber - parentNumber) << " blocks from " << latestNumber << " to " << parentNumber;
 				clogS(NetAllDetail) << latest << " - " << parent;

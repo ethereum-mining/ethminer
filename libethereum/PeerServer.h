@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <map>
 #include <vector>
 #include <set>
@@ -85,6 +86,10 @@ public:
 	void restorePeers(bytesConstRef _b);
 
 private:
+	/// Session wants to pass us a block that we might not have.
+	/// @returns true if we didn't have it.
+	bool noteBlock(h256 _hash, bytesConstRef _data);
+
 	void seal(bytes& _b);
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
@@ -116,6 +121,7 @@ private:
 
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
+	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_unknownParentBlocks;
 	std::vector<Public> m_freePeers;
 	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
