@@ -418,6 +418,7 @@ QString QEthereum::getTransactions(QString _a) const
 	for (eth::PastMessage const& t: m_client->transactions(filter))
 	{
 		QJsonObject v;
+		v["data"] = ::fromBinary(t.input);
 		v["input"] = ::fromBinary(t.input);
 		v["output"] = ::fromBinary(t.output);
 		v["to"] = toQJS(t.to);
