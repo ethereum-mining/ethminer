@@ -245,8 +245,8 @@ public:
 	/// Get the list of pending transactions.
 	Manifest changesFromPending(unsigned _i) const { return m_transactions[_i].changes; }
 
-	/// Get the bloom filter of all changes happened in the block. Only good once commitToMine() is called.
-	u256 bloom() const { return m_bloom; }
+	/// Get the bloom filter of all changes happened in the block.
+	h256 bloom() const;
 
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
@@ -276,12 +276,7 @@ public:
 	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
 
 	/// Execute all transactions within a given block.
-	/// @warning We must already have been sync()ed with said block.
 	/// @returns the additional total difficulty.
-	/// If the @a _grandParent is passed, it will check the validity of each of the uncles.
-	/// @throws if there are any validation errors.
-	u256 playback(bytesConstRef _block, BlockInfo const& _bi, BlockInfo const& _parent, BlockInfo const& _grandParent = BlockInfo());
-
 	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
 
 	/// Returns back to a pristine state after having done a playback.
@@ -340,7 +335,6 @@ private:
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 //	GenericTrieDB<OverlayDB> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 	OverlayDB m_lastTx;
-	h256 m_bloom;								///< Bloom filter of changed addresses/locations in the block.
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 

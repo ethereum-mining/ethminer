@@ -335,8 +335,45 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+bool TransactionFilter::matches(h256 _bloom) const
+{
+	auto have = [=](Address const& a) { return _bloom.contains(a.bloom()); };
+	if (m_from.size())
+	{
+		for (auto i: m_from)
+			if (have(i))
+				goto OK1;
+		return false;
+	}
+	OK1:
+	if (m_to.size())
+	{
+		for (auto i: m_to)
+			if (have(i))
+				goto OK2;
+		return false;
+	}
+	OK2:
+	if (m_stateAltered.size() || m_altered.size())
+	{
+		for (auto i: m_altered)
+			if (have(i))
+				goto OK3;
+		for (auto i: m_stateAltered)
+			if (have(i.first) && _bloom.contains(h256(i.second).bloom()))
+				goto OK3;
+		return false;
+	}
+	OK3:
+	return true;
+}
+
 bool TransactionFilter::matches(State const& _s, unsigned _i) const
 {
+	h256 b = _s.changesFromPending(_i).bloom();
+	if (!matches(b))
+		return false;
+
 	Transaction t = _s.pending()[_i];
 	if (!m_to.empty() && !m_to.count(t.receiveAddress))
 		return false;
@@ -388,29 +425,42 @@ PastTransactions Client::transactions(TransactionFilter const& _f) const
 			return ret;
 	}
 
+	unsigned skipped = 0;
+	unsigned falsePos = 0;
 	auto cn = m_bc.number();
 	auto h = m_bc.numberHash(begin);
-	for (unsigned n = begin; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
+	unsigned n = begin;
+	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
 	{
-		try
+		auto d = m_bc.details(h);
+		if (_f.matches(d.bloom))
 		{
-			State st(m_stateDB, m_bc, h);
-			for (unsigned i = st.pending().size(); i-- && ret.size() != m;)
-				if (_f.matches(st, i))
-				{
-					if (s)
-						s--;
-					else
-						ret.insert(ret.begin(), PastTransaction(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
-				}
+			try
+			{
+				State st(m_stateDB, m_bc, h);
+				unsigned os = s;
+				for (unsigned i = st.pending().size(); i-- && ret.size() != m;)
+					if (_f.matches(st, i))
+					{
+						if (s)
+							s--;
+						else
+							ret.insert(ret.begin(), PastTransaction(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
+					}
+				if (os - s == st.pending().size())
+					falsePos++;
+			}
+			catch (...)
+			{
+				// Gaa. bad state. not good at all. bury head in sand for now.
+			}
 		}
-		catch (...)
-		{
-			// Gaa. bad state. not good at all. bury head in sand for now.
-		}
+		else
+			skipped++;
 
 		if (n == end)
 			break;
 	}
+	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
 	return ret;
 }

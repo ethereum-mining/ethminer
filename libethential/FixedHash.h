@@ -50,8 +50,14 @@ public:
 	/// Method to convert from a string.
 	enum ConstructFromStringType { FromHex, FromBinary };
 
+	/// Method to convert from a string.
+	enum ConstructFromHashType { AlignLeft, AlignRight };
+
 	/// Construct an empty hash.
 	FixedHash() { m_data.fill(0); }
+
+	/// Construct from another hash, filling with zeroes or cropping as necessary.
+	template <unsigned M> FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
 
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -84,6 +90,9 @@ public:
 	FixedHash& operator&=(FixedHash const& _c) { for (auto i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash& operator~() { for (auto i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+
+	/// @returns true if all bytes in @a _c are set in this object.
+	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
 
 	/// @returns a particular byte from the hash.
 	byte& operator[](unsigned _i) { return m_data[_i]; }
