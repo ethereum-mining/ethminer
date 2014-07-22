@@ -107,7 +107,7 @@ Main::Main(QWidget *parent) :
 	if (pocnumber == 5)
         m_servers.push_back("54.72.69.180:30303");
 	else if (pocnumber == 6)
-		m_servers.push_back("54.72.31.55:30303");
+		m_servers.push_back("54.72.69.180:30303"/*"54.72.31.55:30303"*/);
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
@@ -143,7 +143,6 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->blockCount);
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-	
 
 	m_client.reset(new Client("AlethZero"));
 	m_client->start();
