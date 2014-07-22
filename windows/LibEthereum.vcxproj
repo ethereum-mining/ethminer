@@ -46,6 +46,7 @@
     <ClCompile Include="..\libethereum\Defaults.cpp" />
     <ClCompile Include="..\libethereum\Executive.cpp" />
     <ClCompile Include="..\libethereum\ExtVM.cpp" />
+    <ClCompile Include="..\libethereum\Manifest.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
@@ -98,6 +99,7 @@
     <ClInclude Include="..\libethereum\Defaults.h" />
     <ClInclude Include="..\libethereum\Executive.h" />
     <ClInclude Include="..\libethereum\ExtVM.h" />
+    <ClInclude Include="..\libethereum\Manifest.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />
