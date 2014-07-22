@@ -417,6 +417,7 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
     Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+    c.start();
 	cout << credits();
 
 	std::ostringstream ccout;
@@ -853,14 +854,23 @@ int main(int argc, char** argv)
 			string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
 			mvwaddnstr(blockswin, y++, x, s.c_str(), qwidth);
 
-			for (auto const& i: RLP(bc.block(h))[1])
+			auto b = bc.block(h);
+			for (auto const& i: RLP(b)[1])
 			{
 				Transaction t(i[0].data());
-				string ss;
-				ss = t.receiveAddress ?
-					"  " + toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]":
-					"  " + toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + " [" + toString((unsigned)t.nonce) + "]";
-				mvwaddnstr(blockswin, y++, x, ss.c_str(), qwidth - 2);
+				auto s = t.receiveAddress ?
+					boost::format("  %1% %2%> %3%: %4% [%5%]") %
+						toString(t.safeSender()) %
+						(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+						toString(t.receiveAddress) %
+						toString(formatBalance(t.value)) %
+						toString((unsigned)t.nonce) :
+					boost::format("  %1% +> %2%: %3% [%4%]") %
+						toString(t.safeSender()) %
+						toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
+						toString(formatBalance(t.value)) %
+						toString((unsigned)t.nonce);
+				mvwaddnstr(blockswin, y++, x, s.str().c_str(), qwidth - 2);
 				if (y > qheight - 2)
 					break;
 			}
@@ -874,12 +884,20 @@ int main(int argc, char** argv)
 		auto aps = c.pending();
 		for (auto const& t: aps)
 		{
-			string ss;
 			if (t.receiveAddress)
-				ss = toString(toHex(t.safeSender().asArray())) + " " + (st.addressHasCode(t.receiveAddress) ? '*' : '-') + "> " + toString(t.receiveAddress) + ": " + toString(formatBalance(t.value)) + " " + " [" + toString((unsigned)t.nonce) + "]";
+				auto s = boost::format("%1% %2%> %3%: %4% [%5%]") %
+					toString(t.safeSender()) %
+					(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+					toString(t.receiveAddress) %
+					toString(formatBalance(t.value)) %
+					toString((unsigned)t.nonce);
 			else
-				ss = toString(toHex(t.safeSender().asArray())) + " +> " + toString(right160(t.sha3())) + ": " + toString(formatBalance(t.value)) + "[" + toString((unsigned)t.nonce) + "]";
-			mvwaddnstr(pendingwin, y++, x, ss.c_str(), qwidth);
+				auto s = boost::format("%1% +> %2%: %3% [%4%]") %
+					toString(t.safeSender()) %
+					toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
+					toString(formatBalance(t.value)) %
+					toString((unsigned)t.nonce);
+			mvwaddnstr(pendingwin, y++, x, s.c_str(), qwidth);
 			if (y > qheight - 4)
 				break;
 		}
@@ -893,17 +911,24 @@ int main(int argc, char** argv)
 		{
 			auto r = i.first;
 
-			string ss;
-			ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-			mvwaddnstr(addswin, y++, x, ss.c_str(), width / 2 - 4);
-			scrollok(addswin, true);
-
 			if (st.addressHasCode(r))
 			{
-				ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
-				mvwaddnstr(contractswin, cc++, x, ss.c_str(), qwidth);
+				auto s = boost::format("%1%%2% : %3% [%4%]") %
+					toString(r) %
+					pretty(r, st) %
+					toString(formatBalance(i.second)) %
+					toString((unsigned)st.transactionsFrom(i.first));
+				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
 				if (cc > qheight - 2)
 					break;
+			}
+			else {
+				auto s = boost::format("%1%%2% : %3% [%4%]") %
+					toString(r) %
+					pretty(r, st) %
+					toString(formatBalance(i.second)) %
+					toString((unsigned)st.transactionsFrom(i.first));
+				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
 			}
 			if (y > height * 2 / 5 - 2)
 				break;
