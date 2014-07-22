@@ -25,6 +25,7 @@
 #include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
+#include "Manifest.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
 
@@ -50,11 +51,34 @@ struct BlockDetails
 	h256s children;
 	h256 bloom;
 };
-// TODO: DB for full traces.
+
+struct BlockBlooms
+{
+	BlockBlooms() {}
+	BlockBlooms(RLP const& _r) { blooms = _r.toVector<h256>(); }
+	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
+
+	h256s blooms;
+};
+
+struct BlockTraces
+{
+	BlockTraces() {}
+	BlockTraces(RLP const& _r) { for (auto const& i: _r) traces.emplace_back(i.data()); }
+	bytes rlp() const { RLPStream s(traces.size()); for (auto const& i: traces) i.streamOut(s); return s.out(); }
+
+	Manifests traces;
+};
+
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
+typedef std::map<h256, BlockBlooms> BlockBloomsHash;
+typedef std::map<h256, BlockTraces> BlockTracesHash;
 
 static const BlockDetails NullBlockDetails;
+static const BlockBlooms NullBlockBlooms;
+static const BlockTraces NullBlockTraces;
+
 static const h256s NullH256s;
 
 class State;
@@ -92,9 +116,17 @@ public:
 	/// Import block into disk-backed DB
 	void import(bytes const& _block, OverlayDB const& _stateDB);
 
-	/// Get the number of the last block of the longest chain.
+	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const;
 	BlockDetails details() const { return details(currentHash()); }
+
+	/// Get the transactions' bloom filters of a block (or the most recent mined if none given). Thread-safe.
+	BlockBlooms blooms(h256 _hash) const;
+	BlockBlooms blooms() const { return blooms(currentHash()); }
+
+	/// Get the transactions' trace manifests of a block (or the most recent mined if none given). Thread-safe.
+	BlockTraces traces(h256 _hash) const;
+	BlockTraces traces() const { return traces(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
 	bytes block(h256 _hash) const;
@@ -124,6 +156,9 @@ private:
 
 	/// Get fully populated from disk DB.
 	mutable BlockDetailsHash m_details;
+	mutable BlockBloomsHash m_blooms;
+	mutable BlockTracesHash m_traces;
+
 	mutable std::map<h256, bytes> m_cache;
 	mutable std::recursive_mutex m_lock;
 
@@ -132,7 +167,7 @@ private:
 	std::vector<std::pair<Address, AddressState>> m_interestQueue;
 
 	ldb::DB* m_db;
-	ldb::DB* m_detailsDB;
+	ldb::DB* m_extrasDB;
 
 	/// Hash of the last (valid) block on the longest chain.
 	h256 m_lastBlockHash;
