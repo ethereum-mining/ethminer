@@ -14,19 +14,32 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Manifest.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
-
+#include "Manifest.h"
 using namespace std;
 using namespace eth;
 
-namespace eth
+Manifest::Manifest(bytesConstRef _r)
 {
+	RLP r(_r);
+	from = r[0].toHash<Address>();
+	to = r[1].toHash<Address>();
+	value = r[2].toInt<u256>();
+	altered = r[3].toVector<u256>();
+	input = r[4].toBytes();
+	output = r[5].toBytes();
+	for (auto const& i: r[6])
+		internal.emplace_back(i.data());
+}
 
-char const* EthVersion = "0.6.0";
-
+void Manifest::streamOut(RLPStream& _s) const
+{
+	_s.appendList(7) << from << to << value << altered << input << output;
+	_s.appendList(internal.size());
+	for (auto const& i: internal)
+		i.streamOut(_s);
 }

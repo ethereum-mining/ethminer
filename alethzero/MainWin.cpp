@@ -126,6 +126,7 @@ Main::Main(QWidget *parent) :
     cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
 	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
+	cerr << "Client database version: " << eth::c_databaseVersion << endl;
 
 	ui->configDock->close();
 	on_verbosity_valueChanged();
@@ -514,7 +515,7 @@ void Main::updateBlockCount()
 {
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion));
+	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
 }
 
 void Main::on_blockChainFilter_textChanged()
@@ -883,6 +884,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
+			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			s << "<br/>Pre: <b>" << BlockInfo(m_client->blockChain().block(info.parentHash)).stateRoot << "</b>";

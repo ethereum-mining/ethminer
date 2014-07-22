@@ -672,6 +672,14 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	return false;
 }
 
+h256 State::bloom() const
+{
+	h256 ret;
+	for (auto const& i: m_transactions)
+		ret |= i.changes.bloom();
+	return ret;
+}
+
 // @returns the block that represents the difference between m_previousBlock and m_currentBlock.
 // (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
@@ -713,11 +721,9 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
-	m_bloom = h256();
 
 	for (unsigned i = 0; i < m_transactions.size(); ++i)
 	{
-		m_bloom |= m_transactions[i].changes.bloom();
 		RLPStream k;
 		k << i;
 		RLPStream v;
@@ -1038,6 +1044,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	{
 		o_ms->from = _senderAddress;
 		o_ms->to = _receiveAddress;
+		o_ms->value = _value;
 		o_ms->input = _data.toBytes();
 	}
 
@@ -1095,6 +1102,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		o_ms->from = _sender;
 		o_ms->to = Address();
+		o_ms->value = _endowment;
 		o_ms->input = _code.toBytes();
 	}
 

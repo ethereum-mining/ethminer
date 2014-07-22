@@ -339,6 +339,17 @@ bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
 	return false;
 }
 
+bool PeerServer::noteBlock(h256 _hash, bytesConstRef _data)
+{
+	if (!m_chain->details(_hash))
+	{
+		lock_guard<recursive_mutex> l(m_incomingLock);
+		m_incomingBlocks.push_back(_data.toBytes());
+		return true;
+	}
+	return false;
+}
+
 bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
 	bool ret = ensureInitialised(_bc, _tq);
@@ -404,7 +415,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 		for (int accepted = 1, n = 0; accepted; ++n)
 		{
 			accepted = 0;
-
+			lock_guard<recursive_mutex> l(m_incomingLock);
 			if (m_incomingBlocks.size())
 				for (auto it = prev(m_incomingBlocks.end());; --it)
 				{
