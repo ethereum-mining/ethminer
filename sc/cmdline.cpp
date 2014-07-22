@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <string>
 #include <libserpent/funcs.h>
 
 int main(int argv, char** argc) {
