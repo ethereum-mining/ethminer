@@ -50,16 +50,12 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi
 
 PeerSession::~PeerSession()
 {
-	m_strand.post([=]()
+	try
 	{
-		if (!m_writeQueue.empty())
-			m_writeQueue.clear();
-		
-		try {
-			if (m_socket.is_open())
-				m_socket.close();
-		}catch (...){}
-	});
+		if (m_socket.is_open())
+			m_socket.close();
+	}
+	catch (...){}
 }
 
 bi::tcp::endpoint PeerSession::endpoint() const

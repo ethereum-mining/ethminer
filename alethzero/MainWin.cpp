@@ -1266,7 +1266,7 @@ void Main::on_net_triggered()
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
 		if (m_peers.size() && ui->usePast->isChecked())
 			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
