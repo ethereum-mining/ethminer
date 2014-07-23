@@ -196,7 +196,7 @@ inline ldb::Slice toSlice(h256 _h, unsigned _sub = 0)
 #endif
 }
 
-void BlockChain::import(bytes const& _block, OverlayDB const& _db)
+h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
@@ -295,9 +295,11 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 //	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
+	h256s ret;
 	// This might be the new best block...
 	if (td > details(m_lastBlockHash).totalDifficulty)
 	{
+		ret = treeRoute(m_lastBlockHash, newHash);
 		m_lastBlockHash = newHash;
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings.";
@@ -306,6 +308,40 @@ void BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(m_lastBlockHash).totalDifficulty << ", TD:" << td << ")";
 	}
+	return ret;
+}
+
+h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common) const
+{
+	h256s ret;
+	h256s back;
+	unsigned fn = details(_from).number;
+	unsigned tn = details(_to).number;
+	while (fn > tn)
+	{
+		ret.push_back(_from);
+		_from = details(_from).parent;
+		fn--;
+	}
+	while (fn < tn)
+	{
+		back.push_back(_to);
+		_to = details(_to).parent;
+		tn--;
+	}
+	while (_from != _to)
+	{
+		_from = details(_from).parent;
+		_to = details(_to).parent;
+		ret.push_back(_from);
+		back.push_back(_to);
+	}
+	if (o_common)
+		*o_common = _from;
+	ret.reserve(ret.size() + back.size());
+	for (auto it = back.cbegin(); it != back.cend(); ++it)
+		ret.push_back(*it);
+	return ret;
 }
 
 void BlockChain::checkConsistency()

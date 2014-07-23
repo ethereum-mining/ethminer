@@ -485,6 +485,7 @@
    <addaction name="connect"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
+   <addaction name="refresh"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
    <property name="sizePolicy">
@@ -1635,6 +1636,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;Pretty...</string>
+   </property>
+  </action>
+  <action name="refresh">
+   <property name="text">
+    <string>&amp;Refresh</string>
    </property>
   </action>
  </widget>
