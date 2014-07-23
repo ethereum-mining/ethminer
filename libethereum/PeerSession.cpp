@@ -52,8 +52,8 @@ PeerSession::~PeerSession()
 {
 	m_strand.post([=]()
 	{
-		if (!m_writeq.empty())
-			m_writeq.clear();
+		if (!m_writeQueue.empty())
+			m_writeQueue.clear();
 		
 		try {
 			if (m_socket.is_open())
@@ -395,19 +395,6 @@ RLPStream& PeerSession::prep(RLPStream& _s)
 	return _s.appendRaw(bytes(8, 0));
 }
 
-void PeerServer::seal(bytes& _b)
-{
-	_b[0] = 0x22;
-	_b[1] = 0x40;
-	_b[2] = 0x08;
-	_b[3] = 0x91;
-	uint32_t len = (uint32_t)_b.size() - 8;
-	_b[4] = (len >> 24) & 0xff;
-	_b[5] = (len >> 16) & 0xff;
-	_b[6] = (len >> 8) & 0xff;
-	_b[7] = len & 0xff;
-}
-
 void PeerSession::sealAndSend(RLPStream& _s)
 {
 	bytes b;
@@ -459,31 +446,32 @@ void PeerSession::send(bytesConstRef _msg)
 
 void PeerSession::writeImpl(bytes& _buffer)
 {
-	m_writeq.push_back(_buffer);
-	if (m_writeq.size() > 1)
+	m_writeQueue.push_back(_buffer);
+	if (m_writeQueue.size() > 1)
 		return;
 
-	this->write();
+	write();
 }
 
 void PeerSession::write()
 {
-	if (m_writeq.empty())
+	if (m_writeQueue.empty())
 		return;
 	
-	const bytes& bytes = m_writeq[0];
+	const bytes& bytes = m_writeQueue[0];
 	if (m_socket.is_open())
 		ba::async_write(m_socket, ba::buffer(bytes), m_strand.wrap([this](boost::system::error_code ec, std::size_t /*length*/)
 		{
-			// must check que, as write callback can occur following dropped()
-			if (!m_writeq.empty())
-				this->m_writeq.pop_front();
+			// must check queue, as write callback can occur following dropped()
+			if (!m_writeQueue.empty())
+				m_writeQueue.pop_front();
 			
 			if (ec)
 			{
 				cwarn << "Error sending: " << ec.message();
-				this->dropped();
-			} else
+				dropped();
+			}
+			else
 				m_strand.post(boost::bind(&PeerSession::write, this));
 		}));
 }
@@ -491,21 +479,30 @@ void PeerSession::write()
 void PeerSession::dropped()
 {
 	if (m_socket.is_open())
-		try {
+		try
+		{
 			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
 			m_socket.close();
-		}catch (...){}
-	
+		}
+		catch (...) {}
+
 	// block future writes by running in strand and clearing queue
 	m_strand.post([=]()
 	{
-		m_writeq.clear();
-		for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
-			if (i->second.lock().get() == this)
+		m_writeQueue.clear();
+		if (!m_willBeDeleted)	// Don't want two deleters on the queue at once!
+		{
+			m_willBeDeleted = true;
+			m_strand.post([=]()
 			{
-				m_server->m_peers.erase(i);
-				break;
-			}
+				for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
+					if (i->second.lock().get() == this)
+					{
+						m_server->m_peers.erase(i);
+						break;
+					}
+			});
+		}
 	});
 }
 
@@ -568,10 +565,7 @@ void PeerSession::doRead()
 				while (m_incoming.size() > 8)
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
-					{
 						doRead();
-
-					}
 					else
 					{
 						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));

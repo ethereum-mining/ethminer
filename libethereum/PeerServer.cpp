@@ -117,6 +117,19 @@ unsigned PeerServer::protocolVersion()
 	return c_protocolVersion;
 }
 
+void PeerServer::seal(bytes& _b)
+{
+	_b[0] = 0x22;
+	_b[1] = 0x40;
+	_b[2] = 0x08;
+	_b[3] = 0x91;
+	uint32_t len = (uint32_t)_b.size() - 8;
+	_b[4] = (len >> 24) & 0xff;
+	_b[5] = (len >> 16) & 0xff;
+	_b[6] = (len >> 8) & 0xff;
+	_b[7] = len & 0xff;
+}
+
 void PeerServer::determinePublic(string const& _publicAddress, bool _upnp)
 {
 	if (_upnp)
