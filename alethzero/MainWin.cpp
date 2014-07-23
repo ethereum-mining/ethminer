@@ -104,10 +104,10 @@ Main::Main(QWidget *parent) :
 	m_servers.append("192.168.0.10:30301");
 #else
     int pocnumber = QString(eth::EthVersion).section('.', 1, 1).toInt();
-	if (pocnumber == 4)
-		m_servers.push_back("54.72.31.55:30303");
-	else if (pocnumber == 5)
+	if (pocnumber == 5)
         m_servers.push_back("54.72.69.180:30303");
+	else if (pocnumber == 6)
+		m_servers.push_back("54.72.69.180:30303"/*"54.72.31.55:30303"*/);
 	else
 	{
 		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
@@ -143,7 +143,6 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->blockCount);
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-	
 
 	m_client.reset(new Client("AlethZero"));
 	m_client->start();
@@ -373,6 +372,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
@@ -419,6 +419,7 @@ void Main::readSettings()
 	m_client->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
+	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
@@ -1267,7 +1268,7 @@ void Main::on_net_triggered()
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
 		if (m_peers.size() && ui->usePast->isChecked())
 			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}

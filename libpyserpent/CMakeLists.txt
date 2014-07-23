@@ -7,9 +7,6 @@ set(EXECUTABLE pyserpent)
 # set(CMAKE_INSTALL_PREFIX ../lib)
 add_library(${EXECUTABLE} SHARED ${SRC_LIST})
 
-if (UNIX)
-	FIND_PACKAGE(Boost 1.53 REQUIRED COMPONENTS python)
-endif()
 file(GLOB HEADERS "*.h") 
 
 include_directories(..)
@@ -21,7 +18,6 @@ target_link_libraries(${EXECUTABLE} ethential)
 target_link_libraries(${EXECUTABLE} ${PYTHON_LS})
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
-	target_link_libraries(${EXECUTABLE} boost_python_win32-mt-s)
 	target_link_libraries(${EXECUTABLE} boost_thread_win32-mt-s)
 	target_link_libraries(${EXECUTABLE} iphlpapi)
 	target_link_libraries(${EXECUTABLE} ws2_32)
