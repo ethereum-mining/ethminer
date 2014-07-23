@@ -454,28 +454,24 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-bool State::sync(TransactionQueue& _tq, bool* _changed)
+h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	bool ret = false;
+	h256s ret;
 	auto ts = _tq.transactions();
-	vector<pair<h256, bytes>> futures;
 
 	for (int goodTxs = 1; goodTxs;)
 	{
 		goodTxs = 0;
 		for (auto const& i: ts)
-		{
 			if (!m_transactionSet.count(i.first))
 			{
 				// don't have it yet! Execute it now.
 				try
 				{
-					ret = true;
 					uncommitToMine();
 					execute(i.second);
-					if (_changed)
-						*_changed = true;
+					ret.push_back(m_transactions.back().changes.bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 				}
@@ -485,8 +481,8 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 					{
 						// too old
 						_tq.drop(i.first);
-						if (_changed)
-							*_changed = true;
+						if (o_transactionQueueChanged)
+							*o_transactionQueueChanged = true;
 					}
 					else
 						_tq.setFuture(i);
@@ -495,11 +491,10 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					if (_changed)
-						*_changed = true;
+					if (o_transactionQueueChanged)
+						*o_transactionQueueChanged = true;
 				}
 			}
-		}
 	}
 	return ret;
 }

@@ -164,6 +164,10 @@ public:
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
+	template <class T, class U> explicit operator std::pair<T, U>() const { return toPair<T, U>(); }
+	template <class T> explicit operator std::vector<T>() const { return toVector<T>(); }
+	template <class T> explicit operator std::set<T>() const { return toSet<T>(); }
+	template <class T, size_t N> explicit operator std::array<T, N>() const { return toArray<T, N>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
 	bytes toBytes() const { if (!isData()) return bytes(); return bytes(payload().data(), payload().data() + length()); }
@@ -175,6 +179,8 @@ public:
 	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
 
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
+	template <class T> std::set<T> toSet() const { std::set<T> ret; if (isList()) { for (auto const& i: *this) ret.insert((T)i); } return ret; }
+	template <class T, class U> std::pair<T, U> toPair() const { std::pair<T, U> ret; if (isList()) { ret.first = (T)((*this)[0]); ret.second = (U)((*this)[1]); } return ret; }
 	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
@@ -285,8 +291,10 @@ public:
 
 	/// Appends a sequence of data to the stream as a list.
 	template <class _T> RLPStream& append(std::vector<_T> const& _s) { return appendVector(_s); }
-	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class _T> RLPStream& appendVector(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T> RLPStream& append(std::set<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class T, class U> RLPStream& append(std::pair<T, U> const& _s) { appendList(2); append(_s.first); append(_s.second); return *this; }
 
 	/// Appends a list.
 	RLPStream& appendList(uint _items);

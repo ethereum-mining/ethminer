@@ -463,7 +463,7 @@ void PeerSession::writeImpl(bytes& _buffer)
 	if (m_writeq.size() > 1)
 		return;
 
-	this->write();
+	write();
 }
 
 void PeerSession::write()
@@ -477,12 +477,12 @@ void PeerSession::write()
 		{
 			// must check que, as write callback can occur following dropped()
 			if (!m_writeq.empty())
-				this->m_writeq.pop_front();
+				m_writeq.pop_front();
 			
 			if (ec)
 			{
 				cwarn << "Error sending: " << ec.message();
-				this->dropped();
+				dropped();
 			} else
 				m_strand.post(boost::bind(&PeerSession::write, this));
 		}));

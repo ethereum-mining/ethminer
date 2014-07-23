@@ -350,9 +350,11 @@ bool PeerServer::noteBlock(h256 _hash, bytesConstRef _data)
 	return false;
 }
 
-bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
+h256Set PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 {
-	bool ret = ensureInitialised(_bc, _tq);
+	h256Set ret;
+
+	bool netChange = ensureInitialised(_bc, _tq);
 	
 	if (m_mode == NodeMode::Full)
 	{
@@ -421,10 +423,11 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 				{
 					try
 					{
-						_bc.import(*it, _o);
+						for (auto h: _bc.import(*it, _o))
+							ret.insert(h);
 						it = m_incomingBlocks.erase(it);
 						++accepted;
-						ret = true;
+						netChange = true;
 					}
 					catch (UnknownParent)
 					{
@@ -506,6 +509,7 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 			worst->disconnect(TooManyPeers);
 		}
 
+	(void)netChange;
 	return ret;
 }
 

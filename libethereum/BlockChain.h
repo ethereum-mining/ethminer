@@ -114,7 +114,8 @@ public:
 	bool attemptImport(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Import block into disk-backed DB
-	void import(bytes const& _block, OverlayDB const& _stateDB);
+	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
+	h256s import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const;
@@ -144,12 +145,28 @@ public:
 	/// Get the hash of a block of a given number.
 	h256 numberHash(unsigned _n) const;
 
-	std::vector<std::pair<Address, AddressState>> interestQueue() { std::vector<std::pair<Address, AddressState>> ret; swap(ret, m_interestQueue); return ret; }
-	void pushInterest(Address _a) { m_interest[_a]++; }
-	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
-
+	/// @returns the genesis block header.
 	static BlockInfo const& genesis() { if (!s_genesis) { auto gb = createGenesisBlock(); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
+
+	/// @returns the genesis block as its RLP-encoded byte array.
+	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
 	static bytes createGenesisBlock();
+
+	/** @returns the hash of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
+	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent.
+	 *
+	 * If non-null, the h256 at @a o_common is set to the latest common ancestor of both blocks.
+	 *
+	 * e.g. if the block tree is 3a -> 2a -> 1a -> g and 2b -> 1b -> g (g is genesis, *a, *b are competing chains),
+	 * then:
+	 * @code
+	 * treeRoute(3a, 2b) == { 3a, 2a, 1a, 1b, 2b }; // *o_common == g
+	 * treeRoute(2a, 1a) == { 2a, 1a }; // *o_common == 1a
+	 * treeRoute(1a, 2a) == { 1a, 2a }; // *o_common == 1a
+	 * treeRoute(1b, 2a) == { 1b, 1a, 2a }; // *o_common == g
+	 * @endcode
+	 */
+	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr) const;
 
 private:
 	void checkConsistency();
@@ -161,10 +178,6 @@ private:
 
 	mutable std::map<h256, bytes> m_cache;
 	mutable std::recursive_mutex m_lock;
-
-	/// The queue of transactions that have happened that we're interested in.
-	std::map<Address, int> m_interest;
-	std::vector<std::pair<Address, AddressState>> m_interestQueue;
 
 	ldb::DB* m_db;
 	ldb::DB* m_extrasDB;

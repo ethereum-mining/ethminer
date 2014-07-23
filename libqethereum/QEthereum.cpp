@@ -1,6 +1,3 @@
-#if ETH_QTQML
-#include <QtQml/QtQml>
-#endif
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libethcore/FileSystem.h>
@@ -47,143 +44,6 @@ using eth::g_logPost;
 using eth::g_logVerbosity;
 using eth::c_instructionInfo;
 
-// Horrible global for the mainwindow. Needed for the QmlEthereums to find the Main window which acts as multiplexer for now.
-// Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
-eth::Client* g_qmlClient;
-QObject* g_qmlMain;
-
-QmlAccount::QmlAccount(QObject*)
-{
-}
-
-QmlAccount::~QmlAccount()
-{
-}
-
-void QmlAccount::setEthereum(QmlEthereum* _eth)
-{
-	if (m_eth == _eth)
-		return;
-	if (m_eth)
-		disconnect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	m_eth = _eth;
-	if (m_eth)
-		connect(m_eth, SIGNAL(changed()), this, SIGNAL(changed()));
-	ethChanged();
-	changed();
-}
-
-eth::u256 QmlAccount::balance() const
-{
-	if (m_eth)
-		return m_eth->balanceAt(m_address);
-	return u256(0);
-}
-
-double QmlAccount::txCount() const
-{
-	if (m_eth)
-		return m_eth->txCountAt(m_address);
-	return 0;
-}
-
-bool QmlAccount::isContract() const
-{
-	if (m_eth)
-		return m_eth->isContractAt(m_address);
-	return 0;
-}
-
-QmlEthereum::QmlEthereum(QObject* _p): QObject(_p)
-{
-	connect(g_qmlMain, SIGNAL(changed()), SIGNAL(changed()));
-}
-
-QmlEthereum::~QmlEthereum()
-{
-}
-
-Client* QmlEthereum::client() const
-{
-	return g_qmlClient;
-}
-
-Address QmlEthereum::coinbase() const
-{
-	return client()->address();
-}
-
-void QmlEthereum::setCoinbase(Address _a)
-{
-	if (client()->address() != _a)
-	{
-		client()->setAddress(_a);
-		changed();
-	}
-}
-
-u256 QmlEthereum::balanceAt(Address _a) const
-{
-	return client()->postState().balance(_a);
-}
-
-bool QmlEthereum::isContractAt(Address _a) const
-{
-	return client()->postState().addressHasCode(_a);
-}
-
-bool QmlEthereum::isMining() const
-{
-	return client()->isMining();
-}
-
-bool QmlEthereum::isListening() const
-{
-	return client()->haveNetwork();
-}
-
-void QmlEthereum::setMining(bool _l)
-{
-	if (_l)
-		client()->startMining();
-	else
-		client()->stopMining();
-}
-
-void QmlEthereum::setListening(bool _l)
-{
-	if (_l)
-		client()->startNetwork();
-	else
-		client()->stopNetwork();
-}
-
-double QmlEthereum::txCountAt(Address _a) const
-{
-	return (double)client()->postState().transactionsFrom(_a);
-}
-
-unsigned QmlEthereum::peerCount() const
-{
-	return (unsigned)client()->peerCount();
-}
-
-void QmlEthereum::transact(Secret _secret, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _init)
-{
-	client()->transact(_secret, _amount, bytes(_init.data(), _init.data() + _init.size()), _gas, _gasPrice);
-}
-
-void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _gasPrice, u256 _gas, QByteArray _data)
-{
-	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 eth::bytes toBytes(QString const& _s)
 {
 	if (_s.startsWith("0x"))
@@ -209,11 +69,6 @@ QString padded(QString const& _s, unsigned _l, unsigned _r)
 
 //"0xff".bin().unbin()
 
-QString QEthereum::secretToAddress(QString _s) const
-{
-	return toQJS(KeyPair(toSecret(_s)).address());
-}
-
 QString padded(QString const& _s, unsigned _l)
 {
 	if (_s.startsWith("0x") || !_s.contains(QRegExp("[^0-9]")))
@@ -234,11 +89,24 @@ QString unpadded(QString _s)
 QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
 {
 	// required to prevent crash on osx when performing addto/evaluatejavascript calls
-	this->moveToThread(_p->thread());
+	moveToThread(_p->thread());
 }
 
 QEthereum::~QEthereum()
 {
+	clearWatches();
+}
+
+void QEthereum::clearWatches()
+{
+	for (auto i: m_watches)
+		m_client->uninstallWatch(i);
+	m_watches.clear();
+}
+
+QString QEthereum::secretToAddress(QString _s) const
+{
+	return toQJS(KeyPair(toSecret(_s)).address());
 }
 
 void QEthereum::setup(QWebFrame*)
@@ -310,7 +178,7 @@ void QEthereum::setCoinbase(QString _a)
 	if (client()->address() != toAddress(_a))
 	{
 		client()->setAddress(toAddress(_a));
-		changed();
+		coinbaseChanged();
 	}
 }
 
@@ -370,11 +238,11 @@ double QEthereum::countAt(QString _a, int _block) const
 	return (double)(uint64_t)client()->countAt(toAddress(_a), _block);
 }
 
-QString QEthereum::getTransactions(QString _a) const
+static eth::TransactionFilter toTransactionFilter(QString _json)
 {
 	eth::TransactionFilter filter;
 
-	QJsonObject f = QJsonDocument::fromJson(_a.toUtf8()).object();
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	if (f.contains("earliest"))
 		filter.withEarliest(f["earliest"].toInt());
 	if (f.contains("latest"))
@@ -413,12 +281,15 @@ QString QEthereum::getTransactions(QString _a) const
 			else
 				filter.altered(toAddress(f["altered"].toString()));
 	}
+	return filter;
+}
 
-	QJsonArray ret;
-	for (eth::PastMessage const& t: m_client->transactions(filter))
+static QString toJson(eth::PastMessages const& _pms)
+{
+	QJsonArray jsonArray;
+	for (eth::PastMessage const& t: _pms)
 	{
 		QJsonObject v;
-		v["data"] = ::fromBinary(t.input);
 		v["input"] = ::fromBinary(t.input);
 		v["output"] = ::fromBinary(t.output);
 		v["to"] = toQJS(t.to);
@@ -430,10 +301,15 @@ QString QEthereum::getTransactions(QString _a) const
 		for (int i: t.path)
 			path.append(i);
 		v["path"] = path;
-		v["age"] = (int)t.age;
-		ret.append(v);
+		v["number"] = (int)t.number;
+		jsonArray.append(v);
 	}
-	return QString::fromUtf8(QJsonDocument(ret).toJson());
+	return QString::fromUtf8(QJsonDocument(jsonArray).toJson());
+}
+
+QString QEthereum::getTransactions(QString _json) const
+{
+	return toJson(m_client->transactions(toTransactionFilter(_json)));
 }
 
 bool QEthereum::isMining() const
@@ -469,19 +345,48 @@ unsigned QEthereum::peerCount() const
 
 QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
 {
-	client()->changed();
 	auto ret = toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
-	while (!client()->peekChanged())
-		this_thread::sleep_for(chrono::milliseconds(10));
+	client()->flushTransactions();
 	return ret;
 }
 
 void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice)
 {
-	client()->changed();
 	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
-	while (!client()->peekChanged())
-		this_thread::sleep_for(chrono::milliseconds(10));
+	client()->flushTransactions();
+}
+
+unsigned QEthereum::newWatch(QString _json)
+{
+	unsigned ret;
+	if (_json == "chainChanged")
+		ret = m_client->installWatch(eth::NewBlockFilter);
+	else if (_json == "pendingChanged")
+		ret = m_client->installWatch(eth::NewPendingFilter);
+	else
+		ret = m_client->installWatch(toTransactionFilter(_json));
+	m_watches.push_back(ret);
+	return ret;
+}
+
+QString QEthereum::watchTransactions(unsigned _w)
+{
+	return toJson(m_client->transactions(_w));
+}
+
+void QEthereum::killWatch(unsigned _w)
+{
+	m_client->uninstallWatch(_w);
+	std::remove(m_watches.begin(), m_watches.end(), _w);
+}
+
+void QEthereum::poll()
+{
+	if (!m_client)
+		return;
+	for (auto w: m_watches)
+		if (m_client->checkWatch(w))
+			emit watchChanged(w);
 }
 
 // extra bits needed to link on VS
