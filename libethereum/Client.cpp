@@ -556,6 +556,6 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 		if (n == end)
 			break;
 	}
-	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
+//	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
 	return ret;
 }
