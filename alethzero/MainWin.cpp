@@ -372,6 +372,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
@@ -418,6 +419,7 @@ void Main::readSettings()
 	m_client->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
+	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
