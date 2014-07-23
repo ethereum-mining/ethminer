@@ -647,6 +647,7 @@ void Main::refreshAll()
 	refreshBlockCount();
 	refreshPending();
 	refreshAccounts();
+	refreshBalances();
 }
 
 void Main::refreshPending()

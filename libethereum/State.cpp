@@ -281,7 +281,10 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		// populate basic info.
 		string stateBack = m_state.at(_a);
 		if (stateBack.empty() && !_forceCreate)
+		{
+			cdebug << m_state;
 			return;
+		}
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
