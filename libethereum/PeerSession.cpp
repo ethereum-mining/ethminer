@@ -37,7 +37,6 @@ static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we as
 
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
-	m_strand(_socket.get_io_service()),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
 	m_listenPort(_peerPort),
@@ -50,6 +49,7 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi
 
 PeerSession::~PeerSession()
 {
+	// Read-chain finished for one reason or another.
 	try
 	{
 		if (m_socket.is_open())
@@ -424,7 +424,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	}
 
 	bytes buffer = bytes(std::move(_msg));
-	m_strand.post(boost::bind(&PeerSession::writeImpl, this, buffer));
+	writeImpl(buffer);
 }
 
 void PeerSession::send(bytesConstRef _msg)
@@ -437,43 +437,51 @@ void PeerSession::send(bytesConstRef _msg)
 	}
 
 	bytes buffer = bytes(_msg.toBytes());
-	m_strand.post(boost::bind(&PeerSession::writeImpl, this, buffer));
+	writeImpl(buffer);
 }
 
 void PeerSession::writeImpl(bytes& _buffer)
 {
-	m_writeQueue.push_back(_buffer);
-	if (m_writeQueue.size() > 1)
+//	cerr << (void*)this << " writeImpl" << endl;
+	if (!m_socket.is_open())
 		return;
 
-	write();
+	lock_guard<recursive_mutex> l(m_writeLock);
+	m_writeQueue.push_back(_buffer);
+	if (m_writeQueue.size() == 1)
+		write();
 }
 
 void PeerSession::write()
 {
+//	cerr << (void*)this << " write" << endl;
+	lock_guard<recursive_mutex> l(m_writeLock);
 	if (m_writeQueue.empty())
 		return;
 	
 	const bytes& bytes = m_writeQueue[0];
-	if (m_socket.is_open())
-		ba::async_write(m_socket, ba::buffer(bytes), m_strand.wrap([this](boost::system::error_code ec, std::size_t /*length*/)
+	auto self(shared_from_this());
+	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
+	{
+//		cerr << (void*)this << " write.callback" << endl;
+
+		// must check queue, as write callback can occur following dropped()
+		if (ec)
 		{
-			// must check queue, as write callback can occur following dropped()
-			if (!m_writeQueue.empty())
-				m_writeQueue.pop_front();
-			
-			if (ec)
-			{
-				cwarn << "Error sending: " << ec.message();
-				dropped();
-			}
-			else
-				m_strand.post(boost::bind(&PeerSession::write, this));
-		}));
+			cwarn << "Error sending: " << ec.message();
+			dropped();
+		}
+		else
+		{
+			m_writeQueue.pop_front();
+			write();
+		}
+	});
 }
 
 void PeerSession::dropped()
 {
+//	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
 		try
 		{
@@ -482,24 +490,13 @@ void PeerSession::dropped()
 		}
 		catch (...) {}
 
-	// block future writes by running in strand and clearing queue
-	m_strand.post([=]()
-	{
-		m_writeQueue.clear();
-		if (!m_willBeDeleted)	// Don't want two deleters on the queue at once!
+	// Remove from peer server
+	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
+		if (i->second.lock().get() == this)
 		{
-			m_willBeDeleted = true;
-			m_strand.post([=]()
-			{
-				for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
-					if (i->second.lock().get() == this)
-					{
-						m_server->m_peers.erase(i);
-						break;
-					}
-			});
+			m_server->m_peers.erase(i);
+			break;
 		}
-	});
 }
 
 void PeerSession::disconnect(int _reason)
@@ -548,7 +545,7 @@ void PeerSession::doRead()
 			cwarn << "Error reading: " << ec.message();
 			dropped();
 		}
-		else if(ec && length == 0)
+		else if (ec && length == 0)
 		{
 			return;
 		}

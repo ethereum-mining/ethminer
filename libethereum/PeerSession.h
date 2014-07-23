@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <array>
 #include <set>
 #include <memory>
@@ -65,7 +66,8 @@ private:
 	void writeImpl(bytes& _buffer);
 	void write();
 	PeerServer* m_server;
-	boost::asio::strand m_strand;
+
+	std::recursive_mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
 
 	bi::tcp::socket m_socket;
