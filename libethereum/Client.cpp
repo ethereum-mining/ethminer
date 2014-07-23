@@ -69,11 +69,12 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
 	m_postMine(_us, m_stateDB),
-	m_workState(Active)
+	m_workState(Deleted)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
+	work(true);
 }
 
 void Client::ensureWorking()
@@ -84,6 +85,7 @@ void Client::ensureWorking()
 		m_work.reset(new thread([&]()
 		{
 			setThreadName(c_threadName);
+			m_workState.store(Active, std::memory_order_release);
 			while (m_workState.load(std::memory_order_acquire) != Deleting)
 				work();
 			m_workState.store(Deleted, std::memory_order_release);
@@ -97,11 +99,14 @@ void Client::ensureWorking()
 
 Client::~Client()
 {
-	if (m_workState.load(std::memory_order_acquire) == Active)
-		m_workState.store(Deleting, std::memory_order_release);
-	while (m_workState.load(std::memory_order_acquire) != Deleted)
-		this_thread::sleep_for(chrono::milliseconds(10));
-	m_work->join();
+	if (m_work)
+	{
+		if (m_workState.load(std::memory_order_acquire) == Active)
+			m_workState.store(Deleting, std::memory_order_release);
+		while (m_workState.load(std::memory_order_acquire) != Deleted)
+			this_thread::sleep_for(chrono::milliseconds(10));
+		m_work->join();
+	}
 }
 
 void Client::flushTransactions()
@@ -247,6 +252,8 @@ void Client::stopMining()
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
+	ensureWorking();
+
 	ClientGuard l(this);
 	Transaction t;
 	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
@@ -263,6 +270,8 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
+	ensureWorking();
+
 	ClientGuard l(this);
 	Transaction t;
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
@@ -279,6 +288,8 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
+	ensureWorking();
+
 	ClientGuard l(this);
 	m_tq.attemptImport(_rlp);
 }
