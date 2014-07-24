@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <array>
 #include <set>
 #include <memory>
@@ -65,8 +66,9 @@ private:
 	void writeImpl(bytes& _buffer);
 	void write();
 	PeerServer* m_server;
-	boost::asio::strand m_strand;
-	std::deque<bytes> m_writeq;
+
+	std::recursive_mutex m_writeLock;
+	std::deque<bytes> m_writeQueue;
 
 	bi::tcp::socket m_socket;
 	std::array<byte, 65536> m_data;
@@ -89,6 +91,8 @@ private:
 
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
+
+	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };
 
 }

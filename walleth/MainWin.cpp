@@ -239,10 +239,10 @@ void Main::on_net_triggered(bool _auto)
 		if (_auto)
 		{
 			QString s = m_servers[rand() % m_servers.size()];
-			client()->startNetwork(m_port, s.section(':', 0, 0).toStdString(), s.section(':', 1).toInt(), NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
+			client()->startNetwork(m_port, s.section(':', 0, 0).toStdString(), s.section(':', 1).toInt(), NodeMode::Full, m_idealPeers, "", ui->upnp->isChecked());
 		}
 		else
-			client()->startNetwork(m_port, string(), 0, NodeMode::Full, m_idealPeers, std::string(), ui->upnp->isChecked());
+			client()->startNetwork(m_port, string(), 0, NodeMode::Full, m_idealPeers, "", ui->upnp->isChecked());
 		if (m_peers.size())
 			client()->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
