@@ -111,7 +111,7 @@ public:
 	void process();
 
 	/// Attempt to import the given block.
-	bool attemptImport(bytes const& _block, OverlayDB const& _stateDB);
+	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.

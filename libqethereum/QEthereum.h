@@ -91,12 +91,10 @@ public:
 	virtual ~QEthereum();
 
 	eth::Client* client() const;
+	void setClient(eth::Client* _c) { m_client = _c; }
 
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
-
-	void setup(QWebFrame* _e);
-	void teardown(QWebFrame* _e);
 
 	void setAccounts(QList<eth::KeyPair> _l) { m_accounts = _l; keysChanged(); }
 

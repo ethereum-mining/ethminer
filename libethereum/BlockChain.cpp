@@ -165,19 +165,18 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-bool BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
 {
 #if ETH_CATCH
 	try
 #endif
 	{
-		import(_block, _stateDB);
-		return true;
+		return import(_block, _stateDB);
 	}
 #if ETH_CATCH
 	catch (...)
 	{
-		return false;
+		return h256s();
 	}
 #endif
 }
@@ -302,7 +301,9 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		ret = treeRoute(m_lastBlockHash, newHash);
 		m_lastBlockHash = newHash;
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings.";
+		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
+		for (auto r: ret)
+			clog(BlockChainNote) << r;
 	}
 	else
 	{
