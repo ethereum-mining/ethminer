@@ -31,9 +31,9 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 64;		///< Maximum number of blocks Blocks will ever send. BUG: if this gets too big (e.g. 2048) stuff starts going wrong.
-static const eth::uint c_maxBlocksAsk = 256;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const eth::uint c_maxHashes = 4096;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 2048;		///< Maximum number of blocks Blocks will ever send.
+static const eth::uint c_maxBlocksAsk = 512;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
