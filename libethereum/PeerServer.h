@@ -58,7 +58,7 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	h256Set sync(BlockChain& _bc, TransactionQueue&, OverlayDB& _o);
+	h256Set sync(BlockChain& _bc, TransactionQueue&, OverlayDB& _o, unsigned _max);
 
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.

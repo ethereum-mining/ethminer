@@ -131,7 +131,7 @@ unsigned Client::installWatch(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 	m_watches[ret] = Watch(_h);
-	cdebug << "Install watch" << ret << _h;
+	cwatch << "+++" << ret << _h;
 	return ret;
 }
 
@@ -149,7 +149,7 @@ unsigned Client::installWatch(TransactionFilter const& _f)
 
 void Client::uninstallWatch(unsigned _i)
 {
-	cdebug << "Uninstall watch" << _i;
+	cwatch << "XXX" << _i;
 
 	lock_guard<mutex> l(m_filterLock);
 
@@ -189,7 +189,7 @@ void Client::noteChanged(h256Set const& _filters)
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
 		{
-			cdebug << "Watch activated" << i.first << i.second.id;
+			cwatch << "!!!" << i.first << i.second.id;
 			i.second.changes++;
 		}
 }
@@ -262,7 +262,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 
 	ClientGuard l(this);
 	Transaction t;
-	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
 	t.value = _value;
 	t.gasPrice = _gasPrice;
@@ -302,6 +302,7 @@ void Client::inject(bytesConstRef _rlp)
 
 void Client::work(bool _justQueue)
 {
+	cdebug << ">>> WORK";
 	h256Set changeds;
 
 	// Process network events.
@@ -309,11 +310,14 @@ void Client::work(bool _justQueue)
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	if (m_net && !_justQueue)
 	{
+		cdebug << "--- WORK: LOCK";
 		ClientGuard l(this);
+		cdebug << "--- WORK: NETWORK";
 		m_net->process();	// must be in guard for now since it uses the blockchain.
 
-		// TODO: return h256Set as block hashes, once for each block that has come in/gone out.
-		h256Set newBlocks = m_net->sync(m_bc, m_tq, m_stateDB);
+		// returns h256Set as block hashes, once for each block that has come in/gone out.
+		cdebug << "--- WORK: TQ <== NET ==> CHAIN";
+		h256Set newBlocks = m_net->sync(m_bc, m_tq, m_stateDB, 100);
 		if (newBlocks.size())
 		{
 			for (auto i: newBlocks)
@@ -353,6 +357,7 @@ void Client::work(bool _justQueue)
 
 		if (m_doMine)
 		{
+			cdebug << "--- WORK: MINE";
 			m_restartMining = false;
 
 			// Mine for a while.
@@ -368,7 +373,9 @@ void Client::work(bool _justQueue)
 			if (mineInfo.completed)
 			{
 				// Import block.
+				cdebug << "--- WORK: COMPLETE MINE%";
 				m_postMine.completeMine();
+				cdebug << "--- WORK: CHAIN <== postSTATE";
 				h256s hs = m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 				if (hs.size())
 				{
@@ -380,7 +387,10 @@ void Client::work(bool _justQueue)
 			}
 		}
 		else
+		{
+			cdebug << "--- WORK: SLEEP";
 			this_thread::sleep_for(chrono::milliseconds(100));
+		}
 	}
 
 	// Synchronise state to block chain.
@@ -392,6 +402,7 @@ void Client::work(bool _justQueue)
 	// Resynchronise state with block chain & trans
 	{
 		ClientGuard l(this);
+		cdebug << "--- WORK: preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
@@ -402,6 +413,7 @@ void Client::work(bool _justQueue)
 		}
 
 		// returns h256s as blooms, once for each transaction.
+		cdebug << "--- WORK: postSTATE <== TQ";
 		h256s newPendingBlooms = m_postMine.sync(m_tq);
 		if (newPendingBlooms.size())
 		{
@@ -415,7 +427,9 @@ void Client::work(bool _justQueue)
 		}
 	}
 
+	cdebug << "--- WORK: noteChanged" << changeds.size() << "items";
 	noteChanged(changeds);
+	cdebug << "<<< WORK";
 }
 
 void Client::lock() const

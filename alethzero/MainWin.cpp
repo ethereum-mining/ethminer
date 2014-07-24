@@ -124,7 +124,15 @@ Main::Main(QWidget *parent) :
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
+	g_logPost = [=](std::string const& s, char const* c)
+	{
+		simpleDebugOut(s, c);
+		m_logLock.lock();
+		m_logHistory.append(QString::fromStdString(s) + "\n");
+		m_logChanged = true;
+		m_logLock.unlock();
+//		ui->log->addItem(QString::fromStdString(s));
+	};
 
 #if 0&&ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
@@ -279,7 +287,7 @@ void Main::installBalancesWatch()
 
 void Main::onNameRegChange()
 {
-	cdebug << "NameReg changed!";
+	cwatch << "NameReg changed!";
 
 	// update any namereg-dependent stuff - for now force a full update.
 	refreshAll();
@@ -287,7 +295,7 @@ void Main::onNameRegChange()
 
 void Main::onCurrenciesChange()
 {
-	cdebug << "Currencies changed!";
+	cwatch << "Currencies changed!";
 	installBalancesWatch();
 
 	// TODO: update any currency-dependent stuff?
@@ -295,14 +303,14 @@ void Main::onCurrenciesChange()
 
 void Main::onBalancesChange()
 {
-	cdebug << "Our balances changed!";
+	cwatch << "Our balances changed!";
 
 	refreshBalances();
 }
 
 void Main::onNewBlock()
 {
-	cdebug << "Blockchain changed!";
+	cwatch << "Blockchain changed!";
 
 	// update blockchain dependent views.
 	refreshBlockCount();
@@ -312,7 +320,7 @@ void Main::onNewBlock()
 
 void Main::onNewPending()
 {
-	cdebug << "Pending transactions changed!";
+	cwatch << "Pending transactions changed!";
 
 	// update any pending-transaction dependent views.
 	refreshPending();
@@ -608,6 +616,7 @@ void Main::refreshMining()
 
 void Main::refreshBalances()
 {
+	cwatch << "refreshBalances()";
 	// update all the balance-dependent stuff.
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
@@ -660,7 +669,7 @@ void Main::refreshAll()
 
 void Main::refreshPending()
 {
-	cdebug << "refreshPending()";
+	cwatch << "refreshPending()";
 	ui->transactionQueue->clear();
 	for (Transaction const& t: m_client->pending())
 	{
@@ -682,7 +691,7 @@ void Main::refreshPending()
 
 void Main::refreshAccounts()
 {
-	cdebug << "refreshAccounts()";
+	cwatch << "refreshAccounts()";
 	ui->accounts->clear();
 	ui->contracts->clear();
 	for (auto n = 0; n < 2; ++n)
@@ -703,7 +712,7 @@ void Main::refreshAccounts()
 
 void Main::refreshDestination()
 {
-	cdebug << "refreshDestination()";
+	cwatch << "refreshDestination()";
 	QString s;
 	for (auto i: m_client->addresses())
 		if ((s = pretty(i)).size())
@@ -717,7 +726,7 @@ void Main::refreshDestination()
 
 void Main::refreshBlockCount()
 {
-	cdebug << "refreshBlockCount()";
+	cwatch << "refreshBlockCount()";
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
@@ -750,7 +759,7 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 
 void Main::refreshBlockChain()
 {
-	cdebug << "refreshBlockChain()";
+	cwatch << "refreshBlockChain()";
 	eth::ClientGuard g(m_client.get());
 	auto const& st = state();
 
@@ -833,6 +842,15 @@ void Main::timerEvent(QTimerEvent*)
 	// refresh mining every 200ms
 	if (interval / 100 % 2 == 0)
 		refreshMining();
+
+	if (m_logChanged)
+	{
+		m_logLock.lock();
+		m_logChanged = false;
+		ui->log->appendPlainText(m_logHistory);
+		m_logHistory.clear();
+		m_logLock.unlock();
+	}
 
 	// refresh peer list every 1000ms, reset counter
 	if (interval == 1000)
@@ -1198,7 +1216,8 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::on_log_doubleClicked()
 {
-	qApp->clipboard()->setText(ui->log->currentItem()->text());
+	ui->log->setPlainText("");
+	m_logHistory.clear();
 }
 
 void Main::on_accounts_doubleClicked()

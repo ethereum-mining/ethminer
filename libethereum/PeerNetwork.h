@@ -46,12 +46,13 @@ class PeerSession;
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 3; };
-struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 4; };
-struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
-struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 6; };
-struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 8; };
-struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 9; };
+struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 4; };
+struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
+struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
+struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
+struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 15; };
+struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 18; };
+struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 19; };
 
 enum PacketType
 {

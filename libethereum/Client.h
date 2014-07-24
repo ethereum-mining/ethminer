@@ -157,6 +157,9 @@ struct Watch
 	unsigned changes = 1;
 };
 
+struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 6; };
+#define cwatch eth::LogOutputStream<eth::WatchChannel, true>()
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */

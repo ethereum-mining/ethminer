@@ -268,7 +268,7 @@ void PeerServer::ensureAccepting()
 {
 	if (m_accepting == false)
 	{
-		clog(NetNote) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
+		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
 		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
 		{
@@ -276,7 +276,7 @@ void PeerServer::ensureAccepting()
 				try
 				{
 					try {
-						clog(NetNote) << "Accepted connection from " << m_socket.remote_endpoint();
+						clog(NetConnect) << "Accepted connection from " << m_socket.remote_endpoint();
 					} catch (...){}
 					bi::address remoteAddress = m_socket.remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
@@ -303,19 +303,19 @@ void PeerServer::connect(std::string const& _addr, unsigned short _port) noexcep
 	catch (exception const& e)
 	{
 		// Couldn't connect
-		clog(NetNote) << "Bad host " << _addr << " (" << e.what() << ")";
+		clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
 	}
 }
 
 void PeerServer::connect(bi::tcp::endpoint const& _ep)
 {
-	clog(NetNote) << "Attempting connection to " << _ep;
+	clog(NetConnect) << "Attempting connection to " << _ep;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetNote) << "Connection refused to " << _ep << " (" << ec.message() << ")";
+			clog(NetConnect) << "Connection refused to " << _ep << " (" << ec.message() << ")";
 			for (auto i = m_incomingPeers.begin(); i != m_incomingPeers.end(); ++i)
 				if (i->second.first == _ep && i->second.second < 3)
 				{
@@ -323,13 +323,13 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 					goto OK;
 				}
 			// for-else
-			clog(NetNote) << "Giving up.";
+			clog(NetConnect) << "Giving up.";
 			OK:;
 		}
 		else
 		{
 			auto p = make_shared<PeerSession>(this, std::move(*s), m_networkId, _ep.address(), _ep.port());
-			clog(NetNote) << "Connected to " << _ep;
+			clog(NetConnect) << "Connected to " << _ep;
 			p->start();
 		}
 		delete s;
@@ -363,7 +363,7 @@ bool PeerServer::noteBlock(h256 _hash, bytesConstRef _data)
 	return false;
 }
 
-h256Set PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
+h256Set PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o, unsigned _max)
 {
 	h256Set ret;
 
@@ -427,12 +427,13 @@ h256Set PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 		}
 		m_latestBlockSent = h;
 
-		for (int accepted = 1, n = 0; accepted; ++n)
+		unsigned totalAccepted = 0;
+		for (int accepted = 1, n = 0; accepted && totalAccepted < _max; ++n)
 		{
 			accepted = 0;
 			lock_guard<recursive_mutex> l(m_incomingLock);
 			if (m_incomingBlocks.size())
-				for (auto it = prev(m_incomingBlocks.end());; --it)
+				for (auto it = prev(m_incomingBlocks.end()); totalAccepted < _max; --it)
 				{
 					try
 					{
@@ -440,6 +441,7 @@ h256Set PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 							ret.insert(h);
 						it = m_incomingBlocks.erase(it);
 						++accepted;
+						++totalAccepted;
 						netChange = true;
 					}
 					catch (UnknownParent)
