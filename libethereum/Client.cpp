@@ -166,7 +166,7 @@ void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if (numberOf(i.second.filter.earliest()) == m_postMine.info().number && i.second.filter.matches(_bloom))
+		if (numberOf(i.second.filter.latest()) == m_postMine.info().number && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
 }
 
@@ -176,7 +176,7 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if (numberOf(i.second.filter.earliest()) >= d.number && i.second.filter.matches(d.bloom))
+		if (numberOf(i.second.filter.latest()) >= d.number && i.second.filter.matches(d.bloom))
 			o_changed.insert(i.first);
 }
 
@@ -304,7 +304,7 @@ void Client::work(bool _justQueue)
 	if (m_net && !_justQueue)
 	{
 		ClientGuard l(this);
-		m_net->process();	// must be in guard for now since it uses the blockchain. TODO: make BlockChain thread-safe.
+		m_net->process();	// must be in guard for now since it uses the blockchain.
 
 		// TODO: return h256Set as block hashes, once for each block that has come in/gone out.
 		h256Set newBlocks = m_net->sync(m_bc, m_tq, m_stateDB);
@@ -313,6 +313,7 @@ void Client::work(bool _justQueue)
 			for (auto i: newBlocks)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(NewBlockFilter);
+			changeds.insert(NewPendingFilter);	// if there's a new block, then we've probably reset the pending transactions.
 		}
 	}
 

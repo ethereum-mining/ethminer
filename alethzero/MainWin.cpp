@@ -913,7 +913,7 @@ void Main::on_transactionQueue_currentItemChanged()
 
 	stringstream s;
 	int i = ui->transactionQueue->currentRow();
-	if (i >= 0)
+	if (i >= 0 && i < (int)m_client->postState().pending().size())
 	{
 		Transaction tx(m_client->postState().pending()[i]);
 		auto ss = tx.safeSender();
