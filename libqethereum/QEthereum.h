@@ -92,6 +92,9 @@ public:
 
 	eth::Client* client() const;
 
+	/// Call when the client() is going to be deleted to make this object useless but safe.
+	void clientDieing();
+
 	void setup(QWebFrame* _e);
 	void teardown(QWebFrame* _e);
 
@@ -186,8 +189,8 @@ private:
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); return { w: ww, uninstall: function() { eth.killWatch(w) }, changed: function(f) { eth.watchChanged.connect(function(nw) { if (nw == this.w) f() }) }, transactions: function() { return JSON.parse(eth.watchTransactions(w)) } }; }"); \
-	frame->evaluateJavaScript("eth.watch = function(a) { return makeWatch(JSON.stringify(a)); }"); \
+	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { env.note('check:' + nw + ' vs ' + ww); if (nw == ww) f() }); }; ret.transactions = function() { return JSON.parse(eth.watchTransactions(this.w)) }; return ret; }"); \
+	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.watchChain = function() { return eth.makeWatch('chainChanged') }"); \
 	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
 	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \

@@ -97,11 +97,18 @@ QEthereum::~QEthereum()
 	clearWatches();
 }
 
+void QEthereum::clientDieing()
+{
+	clearWatches();
+	m_client = nullptr;
+}
+
 void QEthereum::clearWatches()
 {
-	for (auto i: m_watches)
-		m_client->uninstallWatch(i);
-	m_watches.clear();
+	if (m_client)
+		for (auto i: m_watches)
+			m_client->uninstallWatch(i);
+		m_watches.clear();
 }
 
 QString QEthereum::secretToAddress(QString _s) const
@@ -135,12 +142,12 @@ QString QEthereum::sha3(QString _s) const
 
 QString QEthereum::coinbase() const
 {
-	return toQJS(client()->address());
+	return m_client ? toQJS(client()->address()) : "";
 }
 
 QString QEthereum::number() const
 {
-	return QString::number(client()->blockChain().number() + 1);
+	return m_client ? QString::number(client()->blockChain().number() + 1) : "";
 }
 
 QString QEthereum::account() const
@@ -175,7 +182,7 @@ QStringList QEthereum::keys() const
 
 void QEthereum::setCoinbase(QString _a)
 {
-	if (client()->address() != toAddress(_a))
+	if (m_client && client()->address() != toAddress(_a))
 	{
 		client()->setAddress(toAddress(_a));
 		coinbaseChanged();
@@ -184,58 +191,75 @@ void QEthereum::setCoinbase(QString _a)
 
 QString QEthereum::balanceAt(QString _a) const
 {
-	return toQJS(client()->postState().balance(toAddress(_a)));
+	return m_client ? toQJS(client()->postState().balance(toAddress(_a))) : "";
 }
 
 QString QEthereum::storageAt(QString _a, QString _p) const
 {
+	if (!m_client)
+		return "";
 	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
 }
 
 double QEthereum::txCountAt(QString _a) const
 {
+	if (!m_client)
+		return 0.0;
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return (double)client()->postState().transactionsFrom(toAddress(_a));
 }
 
 bool QEthereum::isContractAt(QString _a) const
 {
+	if (!m_client)
+		return false;
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return client()->postState().addressHasCode(toAddress(_a));
 }
 
 u256 QEthereum::balanceAt(Address _a) const
 {
+	if (!m_client)
+		return 0;
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return client()->postState().balance(_a);
 }
 
 double QEthereum::txCountAt(Address _a) const
 {
+	if (!m_client)
+		return 0.0;
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return (double)client()->postState().transactionsFrom(_a);
 }
 
 bool QEthereum::isContractAt(Address _a) const
 {
+	if (!m_client)
+		return false;
+	eth::ClientGuard l(const_cast<Client*>(m_client));
 	return client()->postState().addressHasCode(_a);
 }
 
 QString QEthereum::balanceAt(QString _a, int _block) const
 {
-	return toQJS(client()->balanceAt(toAddress(_a), _block));
+	return m_client ? toQJS(client()->balanceAt(toAddress(_a), _block)) : "";
 }
 
 QString QEthereum::stateAt(QString _a, QString _p, int _block) const
 {
-	return toQJS(client()->stateAt(toAddress(_a), toU256(_p), _block));
+	return m_client ? toQJS(client()->stateAt(toAddress(_a), toU256(_p), _block)) : "";
 }
 
 QString QEthereum::codeAt(QString _a, int _block) const
 {
-	return ::fromBinary(client()->codeAt(toAddress(_a), _block));
+	return m_client ? ::fromBinary(client()->codeAt(toAddress(_a), _block)) : "";
 }
 
 double QEthereum::countAt(QString _a, int _block) const
 {
-	return (double)(uint64_t)client()->countAt(toAddress(_a), _block);
+	return m_client ? (double)(uint64_t)client()->countAt(toAddress(_a), _block) : 0;
 }
 
 static eth::TransactionFilter toTransactionFilter(QString _json)
@@ -309,29 +333,34 @@ static QString toJson(eth::PastMessages const& _pms)
 
 QString QEthereum::getTransactions(QString _json) const
 {
-	return toJson(m_client->transactions(toTransactionFilter(_json)));
+	return m_client ? toJson(m_client->transactions(toTransactionFilter(_json))) : "";
 }
 
 bool QEthereum::isMining() const
 {
-	return client()->isMining();
+	return m_client ? client()->isMining() : false;
 }
 
 bool QEthereum::isListening() const
 {
-	return client()->haveNetwork();
+	return m_client ? client()->haveNetwork() : false;
 }
 
 void QEthereum::setMining(bool _l)
 {
-	if (_l)
-		client()->startMining();
-	else
-		client()->stopMining();
+	if (m_client)
+	{
+		if (_l)
+			client()->startMining();
+		else
+			client()->stopMining();
+	}
 }
 
 void QEthereum::setListening(bool _l)
 {
+	if (!m_client)
+		return;
 	if (_l)
 		client()->startNetwork();
 	else
@@ -340,11 +369,13 @@ void QEthereum::setListening(bool _l)
 
 unsigned QEthereum::peerCount() const
 {
-	return (unsigned)client()->peerCount();
+	return m_client ? (unsigned)client()->peerCount() : 0;
 }
 
 QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
 {
+	if (!m_client)
+		return "";
 	auto ret = toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
 	client()->flushTransactions();
 	return ret;
@@ -352,12 +383,16 @@ QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QSt
 
 void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice)
 {
+	if (!m_client)
+		return;
 	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
 	client()->flushTransactions();
 }
 
 unsigned QEthereum::newWatch(QString _json)
 {
+	if (!m_client)
+		return (unsigned)-1;
 	unsigned ret;
 	if (_json == "chainChanged")
 		ret = m_client->installWatch(eth::NewBlockFilter);
@@ -371,11 +406,15 @@ unsigned QEthereum::newWatch(QString _json)
 
 QString QEthereum::watchTransactions(unsigned _w)
 {
+	if (!m_client)
+		return "";
 	return toJson(m_client->transactions(_w));
 }
 
 void QEthereum::killWatch(unsigned _w)
 {
+	if (!m_client)
+		return;
 	m_client->uninstallWatch(_w);
 	std::remove(m_watches.begin(), m_watches.end(), _w);
 }

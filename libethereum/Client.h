@@ -102,7 +102,7 @@ typedef std::vector<PastMessage> PastMessages;
 class TransactionFilter
 {
 public:
-	TransactionFilter(int _earliest = GenesisBlock, int _latest = 0, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+	TransactionFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
 
 	void fillStream(RLPStream& _s) const;
 	h256 sha3() const;
@@ -131,8 +131,8 @@ private:
 	std::set<Address> m_to;
 	std::set<std::pair<Address, u256>> m_stateAltered;
 	std::set<Address> m_altered;
-	int m_earliest;
-	int m_latest;
+	int m_earliest = 0;
+	int m_latest = -1;
 	unsigned m_max;
 	unsigned m_skip;
 };
