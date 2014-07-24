@@ -153,20 +153,20 @@ void Client::uninstallWatch(unsigned _i)
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
 		return;
+	auto id = it->second.id;
+	m_watches.erase(it);
 
-	auto fit = m_filters.find(it->second.id);
+	auto fit = m_filters.find(id);
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
 			m_filters.erase(fit);
-
-	m_watches.erase(it);
 }
 
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if (numberOf(i.second.filter.latest()) == m_postMine.info().number && i.second.filter.matches(_bloom))
+		if ((unsigned)i.second.filter.latest() >= m_postMine.info().number && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
 }
 
@@ -176,7 +176,7 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if (numberOf(i.second.filter.latest()) >= d.number && i.second.filter.matches(d.bloom))
+		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
 			o_changed.insert(i.first);
 }
 
@@ -587,13 +587,13 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 	ClientGuard l(this);
 
 	PastMessages ret;
-	unsigned begin = numberOf(_f.latest());
-	unsigned end = min(begin, numberOf(_f.earliest()));
+	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
+	unsigned end = min(begin, (unsigned)_f.earliest());
 	unsigned m = _f.max();
 	unsigned s = _f.skip();
 
 	// Handle pending transactions differently as they're not on the block chain.
-	if (_f.latest() == 0)
+	if (begin == m_bc.number())
 	{
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		{
@@ -608,19 +608,15 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 						s--;
 					else
 						// Have a transaction that contains a matching message.
-						ret.insert(ret.begin(), pm[j].polish(h256(), ts, 0));
+						ret.insert(ret.begin(), pm[j].polish(h256(), ts, m_bc.number() + 1));
 			}
 		}
-		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
-		if (_f.earliest() == 0)
-			return ret;
 	}
 
 #if ETH_DEBUG
 	unsigned skipped = 0;
 	unsigned falsePos = 0;
 #endif
-	auto cn = m_bc.number();
 	auto h = m_bc.numberHash(begin);
 	unsigned n = begin;
 	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
@@ -653,7 +649,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 								s--;
 							else
 								// Have a transaction that contains a matching message.
-								ret.insert(ret.begin(), pm[j].polish(h, ts, cn - n + 2));
+								ret.insert(ret.begin(), pm[j].polish(h, ts, n));
 					}
 				}
 #if ETH_DEBUG

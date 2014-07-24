@@ -212,6 +212,10 @@ Main::Main(QWidget *parent) :
 
 Main::~Main()
 {
+	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
+	// *after* the client is dead.
+	m_ethereum->clientDieing();
+
 	g_logPost = simpleDebugOut;
 	writeSettings();
 }
@@ -379,7 +383,8 @@ void Main::eval(QString const& _js)
 {
 	if (_js.trimmed().isEmpty())
 		return;
-	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
+	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
+	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(__RET)");
 	QString s;
 	if (ev.isNull())
 		s = "<span style=\"color: #888\">null</span>";
@@ -387,6 +392,8 @@ void Main::eval(QString const& _js)
 		s = "<span style=\"color: #444\">\"</span><span style=\"color: #c00\">" + ev.toString().toHtmlEscaped() + "</span><span style=\"color: #444\">\"</span>";
 	else if (ev.type() == QVariant::Int || ev.type() == QVariant::Double)
 		s = "<span style=\"color: #00c\">" + ev.toString().toHtmlEscaped() + "</span>";
+	else if (jsonEv.type() == QVariant::String)
+		s = "<span style=\"color: #840\">" + jsonEv.toString().toHtmlEscaped() + "</span>";
 	else
 		s = "<span style=\"color: #888\">unknown type</span>";
 	m_consoleHistory.push_back(qMakePair(_js, s));
