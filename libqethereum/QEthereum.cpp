@@ -108,21 +108,12 @@ void QEthereum::clearWatches()
 	if (m_client)
 		for (auto i: m_watches)
 			m_client->uninstallWatch(i);
-		m_watches.clear();
+	m_watches.clear();
 }
 
 QString QEthereum::secretToAddress(QString _s) const
 {
 	return toQJS(KeyPair(toSecret(_s)).address());
-}
-
-void QEthereum::setup(QWebFrame*)
-{
-	// Alex: JS codes moved to mainwin until qtwebkit bugs are resolved (#245)
-}
-
-void QEthereum::teardown(QWebFrame*)
-{
 }
 
 Client* QEthereum::client() const

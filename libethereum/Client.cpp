@@ -131,6 +131,7 @@ unsigned Client::installWatch(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 	m_watches[ret] = Watch(_h);
+	cdebug << "Install watch" << ret << _h;
 	return ret;
 }
 
@@ -148,6 +149,8 @@ unsigned Client::installWatch(TransactionFilter const& _f)
 
 void Client::uninstallWatch(unsigned _i)
 {
+	cdebug << "Uninstall watch" << _i;
+
 	lock_guard<mutex> l(m_filterLock);
 
 	auto it = m_watches.find(_i);
@@ -185,7 +188,10 @@ void Client::noteChanged(h256Set const& _filters)
 	lock_guard<mutex> l(m_filterLock);
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
+		{
+			cdebug << "Watch activated" << i.first << i.second.id;
 			i.second.changes++;
+		}
 }
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
@@ -313,43 +319,10 @@ void Client::work(bool _justQueue)
 			for (auto i: newBlocks)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(NewBlockFilter);
-			changeds.insert(NewPendingFilter);	// if there's a new block, then we've probably reset the pending transactions.
 		}
 	}
 
-	// Synchronise state to block chain.
-	// This should remove any transactions on our queue that are included within our state.
-	// It also guarantees that the state reflects the longest (valid!) chain on the block chain.
-	//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
-	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
-	//   all blocks.
-	// Resynchronise state with block chain & trans
-	{
-		ClientGuard l(this);
-		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
-		{
-			if (m_doMine)
-				cnote << "New block on chain: Restarting mining operation.";
-			m_restartMining = true;	// need to re-commit to mine.
-			m_postMine = m_preMine;
-		}
-
-		// returns h256s as blooms, once for each transaction.
-		h256s newPendingBlooms = m_postMine.sync(m_tq);
-		if (newPendingBlooms.size())
-		{
-			for (auto i: newPendingBlooms)
-				appendFromNewPending(i, changeds);
-			changeds.insert(NewPendingFilter);
-
-			if (m_doMine)
-				cnote << "Additional transaction ready: Restarting mining operation.";
-			m_restartMining = true;
-		}
-	}
-
-	noteChanged(changeds);
-
+	// Do some mining.
 	if (!_justQueue)
 	{
 		if (m_doMine)
@@ -390,22 +363,59 @@ void Client::work(bool _justQueue)
 			m_mineProgress.requirement = mineInfo.requirement;
 			m_mineProgress.ms += 100;
 			m_mineProgress.hashes += mineInfo.hashes;
-			{
-				ClientGuard l(this);
-				m_mineHistory.push_back(mineInfo);
-			}
-
+			ClientGuard l(this);
+			m_mineHistory.push_back(mineInfo);
 			if (mineInfo.completed)
 			{
 				// Import block.
-				ClientGuard l(this);
 				m_postMine.completeMine();
-				m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
+				h256s hs = m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
+				if (hs.size())
+				{
+					for (auto h: hs)
+						appendFromNewBlock(h, changeds);
+					changeds.insert(NewBlockFilter);
+					//changeds.insert(NewPendingFilter);	// if we mined the new block, then we've probably reset the pending transactions.
+				}
 			}
 		}
 		else
 			this_thread::sleep_for(chrono::milliseconds(100));
 	}
+
+	// Synchronise state to block chain.
+	// This should remove any transactions on our queue that are included within our state.
+	// It also guarantees that the state reflects the longest (valid!) chain on the block chain.
+	//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
+	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
+	//   all blocks.
+	// Resynchronise state with block chain & trans
+	{
+		ClientGuard l(this);
+		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
+		{
+			if (m_doMine)
+				cnote << "New block on chain: Restarting mining operation.";
+			m_restartMining = true;	// need to re-commit to mine.
+			m_postMine = m_preMine;
+			changeds.insert(NewPendingFilter);
+		}
+
+		// returns h256s as blooms, once for each transaction.
+		h256s newPendingBlooms = m_postMine.sync(m_tq);
+		if (newPendingBlooms.size())
+		{
+			for (auto i: newPendingBlooms)
+				appendFromNewPending(i, changeds);
+			changeds.insert(NewPendingFilter);
+
+			if (m_doMine)
+				cnote << "Additional transaction ready: Restarting mining operation.";
+			m_restartMining = true;
+		}
+	}
+
+	noteChanged(changeds);
 }
 
 void Client::lock() const

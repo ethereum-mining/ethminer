@@ -179,7 +179,6 @@ Main::Main(QWidget *parent) :
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		m_ethereum->setup(f);
 		auto qeth = m_ethereum;
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
 	});
@@ -1333,7 +1332,10 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	m_client.reset();
 	m_client.reset(new Client("AlethZero", Address(), string(), true));
+	m_ethereum->setClient(m_client.get());
 	readSettings();
+	installWatches();
+	refreshAll();
 }
 
 bool Main::isCreation() const
