@@ -448,12 +448,12 @@ int main(int argc, char** argv)
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else if (ssize < 40)
 					{
 						if (ssize > 0)
@@ -515,7 +515,7 @@ int main(int argc, char** argv)
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else 
 					{
@@ -550,7 +550,7 @@ int main(int argc, char** argv)
 					bytes init;
 					cnote << "Init:";
 					cnote << sinit;
-					cnote << "Code size: " << size;
+					cnote << "Code size:" << size;
 					if (size < 1)
 						cwarn << "No code submitted";
 					else
@@ -567,9 +567,9 @@ int main(int argc, char** argv)
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else
 						c.transact(us.secret(), endowment, init, gas, gasPrice);
 				} 
@@ -588,17 +588,26 @@ int main(int argc, char** argv)
 					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
-					auto mem = c.state().storage(h);
 
-					for (auto const& i: mem)
-						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-					s << endl << disassemble(c.state().code(h));
+					try
+					{
+						auto storage = c.state().storage(h);
+						for (auto const& i: storage)
+							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+						s << endl << disassemble(c.state().code(h)) << endl;
 
-					string outFile = getDataDir() + "/" + rechex + ".evm";
-					ofstream ofs;
-					ofs.open(outFile, ofstream::binary);
-					ofs.write(s.str().c_str(), s.str().length());
-					ofs.close();
+						string outFile = getDataDir() + "/" + rechex + ".evm";
+						ofstream ofs;
+						ofs.open(outFile, ofstream::binary);
+						ofs.write(s.str().c_str(), s.str().length());
+						ofs.close();
+
+						cnote << "Saved" << rechex << "to" << outFile;
+					}
+					catch (eth::InvalidTrie)
+					{
+						cwarn << "Corrupted trie.";
+					}
 				}
 			}
 			else if (cmd == "setSecret")
