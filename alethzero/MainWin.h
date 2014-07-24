@@ -229,6 +229,9 @@ private:
 	QNetworkAccessManager m_webCtrl;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
+	QMutex m_logLock;
+	QString m_logHistory;
+	bool m_logChanged = true;
 
 	QEthereum* m_ethereum = nullptr;
 };

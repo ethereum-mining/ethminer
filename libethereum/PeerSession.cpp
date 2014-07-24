@@ -31,9 +31,9 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-static const eth::uint c_maxHashes = 128;		///< Maximum number of hashes GetChain will ever send.
-static const eth::uint c_maxBlocks = 32;		///< Maximum number of blocks Blocks will ever send.
-static const eth::uint c_maxBlocksAsk = 32;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const eth::uint c_maxHashes = 4096;		///< Maximum number of hashes GetChain will ever send.
+static const eth::uint c_maxBlocks = 2048;		///< Maximum number of blocks Blocks will ever send.
+static const eth::uint c_maxBlocksAsk = 512;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
@@ -111,24 +111,9 @@ bool PeerSession::interpret(RLP const& _r)
 
 		m_server->m_peers[m_id] = shared_from_this();
 
-		// Grab their block chain off them.
+		// Grab trsansactions off them.
 		{
-			uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
-			clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
-			uint count = std::min(c_maxHashes, n + 1);
 			RLPStream s;
-			prep(s).appendList(2 + count);
-			s << GetChainPacket;
-			auto h = m_server->m_latestBlockSent;
-			for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
-			{
-				clogS(NetAllDetail) << "   " << i << ":" << h;
-				s << h;
-			}
-
-			s << c_maxBlocksAsk;
-			sealAndSend(s);
-			s.clear();
 			prep(s).appendList(1);
 			s << GetTransactionsPacket;
 			sealAndSend(s);
@@ -240,16 +225,27 @@ bool PeerSession::interpret(RLP const& _r)
 			}
 		}
 		m_rating += used;
-		if (g_logVerbosity >= 3)
+		unsigned knownParents = 0;
+		unsigned unknownParents = 0;
+		if (g_logVerbosity >= 2)
+		{
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
 				auto h = sha3(_r[i].data());
 				BlockInfo bi(_r[i].data());
 				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
+				{
+					unknownParents++;
 					clogS(NetMessageDetail) << "Unknown parent " << bi.parentHash << " of block " << h;
+				}
 				else
+				{
+					knownParents++;
 					clogS(NetMessageDetail) << "Known parent " << bi.parentHash << " of block " << h;
+				}
 			}
+		}
+		clogS(NetMessageSummary) << dec << knownParents << " known parents, " << unknownParents << "unknown, " << used << "used.";
 		if (used)	// we received some - check if there's any more
 		{
 			RLPStream s;
@@ -259,6 +255,8 @@ bool PeerSession::interpret(RLP const& _r)
 			s << c_maxBlocksAsk;
 			sealAndSend(s);
 		}
+		else
+			clogS(NetMessageSummary) << "Peer sent all blocks in chain.";
 		break;
 	}
 	case GetChainPacket:
@@ -316,6 +314,9 @@ bool PeerSession::interpret(RLP const& _r)
 					clogS(NetAllDetail) << "   " << dec << i << " " << h;
 					s.appendRaw(m_server->m_chain->block(h));
 				}
+
+				if (!count)
+					clogS(NetMessageSummary) << "Sent peer all we have.";
 				clogS(NetAllDetail) << "Parent: " << h;
 			}
 			else if (parent != parents.back())
@@ -487,7 +488,7 @@ void PeerSession::dropped()
 	if (m_socket.is_open())
 		try
 		{
-			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
+			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint();
 			m_socket.close();
 		}
 		catch (...) {}
@@ -503,7 +504,7 @@ void PeerSession::dropped()
 
 void PeerSession::disconnect(int _reason)
 {
-	clogS(NetNote) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
+	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
 	if (m_socket.is_open())
 	{
 		if (m_disconnect == chrono::steady_clock::time_point::max())
@@ -529,6 +530,25 @@ void PeerSession::start()
 	ping();
 
 	doRead();
+}
+
+void PeerSession::startInitialSync()
+{
+	uint n = m_server->m_chain->number(m_server->m_latestBlockSent);
+	clogS(NetAllDetail) << "Want chain. Latest:" << m_server->m_latestBlockSent << ", number:" << n;
+	uint count = std::min(c_maxHashes, n + 1);
+	RLPStream s;
+	prep(s).appendList(2 + count);
+	s << GetChainPacket;
+	auto h = m_server->m_latestBlockSent;
+	for (uint i = 0; i < count; ++i, h = m_server->m_chain->details(h).parent)
+	{
+		clogS(NetAllDetail) << "   " << i << ":" << h;
+		s << h;
+	}
+
+	s << c_maxBlocksAsk;
+	sealAndSend(s);
 }
 
 void PeerSession::doRead()

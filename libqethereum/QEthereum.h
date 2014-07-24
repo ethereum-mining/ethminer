@@ -187,7 +187,7 @@ private:
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { env.note('check:' + nw + ' vs ' + ww); if (nw == ww) f() }); }; ret.transactions = function() { return JSON.parse(eth.watchTransactions(this.w)) }; return ret; }"); \
+	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.transactions = function() { return JSON.parse(eth.watchTransactions(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.watchChain = function() { return eth.makeWatch('chainChanged') }"); \
 	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
