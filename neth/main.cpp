@@ -890,23 +890,21 @@ int main(int argc, char** argv)
 
 		// Pending
 		y = 1;
-		auto aps = c.pending();
-		for (auto const& t: aps)
+		for (Transaction const& t: c.pending())
 		{
-			if (t.receiveAddress)
-				auto s = boost::format("%1% %2%> %3%: %4% [%5%]") %
+			auto s = t.receiveAddress ?
+				boost::format("%1% %2%> %3%: %4% [%5%]") %
 					toString(t.safeSender()) %
 					(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
 					toString(t.receiveAddress) %
 					toString(formatBalance(t.value)) %
-					toString((unsigned)t.nonce);
-			else
-				auto s = boost::format("%1% +> %2%: %3% [%4%]") %
+					toString((unsigned)t.nonce) :
+				boost::format("%1% +> %2%: %3% [%4%]") %
 					toString(t.safeSender()) %
 					toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
 					toString(formatBalance(t.value)) %
 					toString((unsigned)t.nonce);
-			mvwaddnstr(pendingwin, y++, x, s.c_str(), qwidth);
+			mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
 			if (y > height * 1 / 5 - 4)
 				break;
 		}
