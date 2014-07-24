@@ -469,6 +469,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
@@ -515,6 +516,7 @@ void Main::readSettings()
 	m_client->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
+	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
@@ -1386,7 +1388,7 @@ void Main::on_net_triggered()
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), std::string(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
 		if (m_peers.size() && ui->usePast->isChecked())
 			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
