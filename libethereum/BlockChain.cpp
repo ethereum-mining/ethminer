@@ -40,7 +40,7 @@ namespace eth
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 {
-	string cmp = toBigEndianString(_bc.m_lastBlockHash);
+	string cmp = toBigEndianString(_bc.currentHash());
 	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
@@ -87,6 +87,21 @@ std::map<Address, AddressState> const& eth::genesisState()
 }
 
 BlockInfo* BlockChain::s_genesis = nullptr;
+boost::shared_mutex BlockChain::x_genesis;
+
+ldb::Slice eth::toSlice(h256 _h, unsigned _sub)
+{
+#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
+	static thread_local h256 h = _h ^ h256(u256(_sub));
+	return ldb::Slice((char const*)&h, 32);
+#else
+	static boost::thread_specific_ptr<h256> t_h;
+	if (!t_h.get())
+		t_h.reset(new h256);
+	*t_h = _h ^ h256(u256(_sub));
+	return ldb::Slice((char const*)t_h.get(), 32);
+#endif
+}
 
 bytes BlockChain::createGenesisBlock()
 {
@@ -144,9 +159,10 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
 	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
+
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
-	cnote << "Opened blockchain DB. Latest: " << m_lastBlockHash;
+	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
 
 BlockChain::~BlockChain()
@@ -178,20 +194,6 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
 	{
 		return h256s();
 	}
-#endif
-}
-
-inline ldb::Slice toSlice(h256 _h, unsigned _sub = 0)
-{
-#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
-	static thread_local h256 h = _h ^ h256(u256(_sub));
-	return ldb::Slice((char const*)&h, 32);
-#else
-	static boost::thread_specific_ptr<h256> t_h;
-	if (!t_h.get())
-		t_h.reset(new h256);
-	*t_h = _h ^ h256(u256(_sub));
-	return ldb::Slice((char const*)t_h.get(), 32);
 #endif
 }
 
@@ -267,10 +269,16 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #endif
 		// All ok - insert into DB
 		{
-			lock_guard<recursive_mutex> l(m_lock);
+			WriteGuard l(x_details);
 			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {}, b);
 			m_details[bi.parentHash].children.push_back(newHash);
+		}
+		{
+			WriteGuard l(x_blooms);
 			m_blooms[newHash] = bb;
+		}
+		{
+			WriteGuard l(x_traces);
 			m_traces[newHash] = bt;
 		}
 
@@ -296,10 +304,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 	h256s ret;
 	// This might be the new best block...
-	if (td > details(m_lastBlockHash).totalDifficulty)
+	h256 last = currentHash();
+	if (td > details(last).totalDifficulty)
 	{
-		ret = treeRoute(m_lastBlockHash, newHash);
-		m_lastBlockHash = newHash;
+		ret = treeRoute(last, newHash);
+		{
+			WriteGuard l(x_lastBlockHash);
+			m_lastBlockHash = newHash;
+		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
 		for (auto r: ret)
@@ -307,7 +319,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(m_lastBlockHash).totalDifficulty << ", TD:" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << ", TD:" << td << ")";
 	}
 	return ret;
 }
@@ -347,7 +359,6 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common) const
 
 void BlockChain::checkConsistency()
 {
-	lock_guard<recursive_mutex> l(m_lock);
 	m_details.clear();
 	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
@@ -371,15 +382,17 @@ bytes BlockChain::block(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return m_genesisBlock;
 
-	lock_guard<recursive_mutex> l(m_lock);
-
-	auto it = m_cache.find(_hash);
-	if (it != m_cache.end())
-		return it->second;
+	{
+		ReadGuard l(x_cache);
+		auto it = m_cache.find(_hash);
+		if (it != m_cache.end())
+			return it->second;
+	}
 
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
+	WriteGuard l(x_cache);
 	m_cache[_hash].resize(d.size());
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
 
@@ -389,11 +402,6 @@ bytes BlockChain::block(h256 _hash) const
 	return m_cache[_hash];
 }
 
-eth::uint BlockChain::number(h256 _hash) const
-{
-	return details(_hash).number;
-}
-
 h256 BlockChain::numberHash(unsigned _n) const
 {
 	if (!_n)
@@ -401,70 +409,4 @@ h256 BlockChain::numberHash(unsigned _n) const
 	h256 ret = currentHash();
 	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
 	return ret;
-}
-
-BlockDetails BlockChain::details(h256 _h) const
-{
-	lock_guard<recursive_mutex> l(m_lock);
-
-	BlockDetailsHash::const_iterator it = m_details.find(_h);
-	if (it != m_details.end())
-		return it->second;
-
-	std::string s;
-	m_extrasDB->Get(m_readOptions, toSlice(_h), &s);
-	if (s.empty())
-	{
-//			cout << "Not found in DB: " << _h << endl;
-		return NullBlockDetails;
-	}
-	{
-		bool ok;
-		tie(it, ok) = m_details.insert(std::make_pair(_h, BlockDetails(RLP(s))));
-	}
-	return it->second;
-}
-
-BlockBlooms BlockChain::blooms(h256 _h) const
-{
-	lock_guard<recursive_mutex> l(m_lock);
-
-	BlockBloomsHash::const_iterator it = m_blooms.find(_h);
-	if (it != m_blooms.end())
-		return it->second;
-
-	std::string s;
-	m_extrasDB->Get(m_readOptions, toSlice(_h, 1), &s);
-	if (s.empty())
-	{
-//			cout << "Not found in DB: " << _h << endl;
-		return NullBlockBlooms;
-	}
-	{
-		bool ok;
-		tie(it, ok) = m_blooms.insert(std::make_pair(_h, BlockBlooms(RLP(s))));
-	}
-	return it->second;
-}
-
-BlockTraces BlockChain::traces(h256 _h) const
-{
-	lock_guard<recursive_mutex> l(m_lock);
-
-	BlockTracesHash::const_iterator it = m_traces.find(_h);
-	if (it != m_traces.end())
-		return it->second;
-
-	std::string s;
-	m_extrasDB->Get(m_readOptions, toSlice(_h, 2), &s);
-	if (s.empty())
-	{
-//			cout << "Not found in DB: " << _h << endl;
-		return NullBlockTraces;
-	}
-	{
-		bool ok;
-		tie(it, ok) = m_traces.insert(std::make_pair(_h, BlockTraces(RLP(s))));
-	}
-	return it->second;
 }
