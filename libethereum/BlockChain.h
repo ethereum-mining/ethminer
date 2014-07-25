@@ -22,63 +22,16 @@
 #pragma once
 
 #include <mutex>
-#include <boost/thread.hpp>
 #include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
-#include "Manifest.h"
+#include "Guards.h"
+#include "BlockDetails.h"
 #include "AddressState.h"
 namespace ldb = leveldb;
 
 namespace eth
 {
-
-class RLP;
-class RLPStream;
-
-struct BlockDetails
-{
-	BlockDetails(): number(0), totalDifficulty(0) {}
-	BlockDetails(uint _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
-	BlockDetails(RLP const& _r);
-	bytes rlp() const;
-
-	bool isNull() const { return !totalDifficulty; }
-	explicit operator bool() const { return !isNull(); }
-
-	uint number;			// TODO: remove?
-	u256 totalDifficulty;
-	h256 parent;
-	h256s children;
-	h256 bloom;
-};
-
-struct BlockBlooms
-{
-	BlockBlooms() {}
-	BlockBlooms(RLP const& _r) { blooms = _r.toVector<h256>(); }
-	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
-
-	h256s blooms;
-};
-
-struct BlockTraces
-{
-	BlockTraces() {}
-	BlockTraces(RLP const& _r) { for (auto const& i: _r) traces.emplace_back(i.data()); }
-	bytes rlp() const { RLPStream s(traces.size()); for (auto const& i: traces) i.streamOut(s); return s.out(); }
-
-	Manifests traces;
-};
-
-
-typedef std::map<h256, BlockDetails> BlockDetailsHash;
-typedef std::map<h256, BlockBlooms> BlockBloomsHash;
-typedef std::map<h256, BlockTraces> BlockTracesHash;
-
-static const BlockDetails NullBlockDetails;
-static const BlockBlooms NullBlockBlooms;
-static const BlockTraces NullBlockTraces;
 
 static const h256s NullH256s;
 
@@ -95,16 +48,11 @@ struct BlockChainNote: public LogChannel { static const char* name() { return "=
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, AddressState> const& genesisState();
 
-using ReadGuard = boost::shared_lock<boost::shared_mutex>;
-using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
-using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
-using WriteGuard = boost::unique_lock<boost::shared_mutex>;
-
 ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
- * @todo Make thread-safe.
+ * @threadsafe
  * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
