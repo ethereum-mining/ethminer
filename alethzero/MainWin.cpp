@@ -391,7 +391,7 @@ void Main::eval(QString const& _js)
 	if (_js.trimmed().isEmpty())
 		return;
 	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
-	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(__RET)");
+	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(___RET)");
 	QString s;
 	if (ev.isNull())
 		s = "<span style=\"color: #888\">null</span>";
