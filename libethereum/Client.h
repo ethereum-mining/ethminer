@@ -82,7 +82,7 @@ struct PastMessage
 {
 	PastMessage(Manifest const& _m, std::vector<unsigned> _path, Address _o): to(_m.to), from(_m.from), value(_m.value), input(_m.input), output(_m.output), path(_path), origin(_o) {}
 
-	PastMessage& polish(h256 _b, u256 _ts, int _a) { block = _b; timestamp = _ts; age = _a; return *this; }
+	PastMessage& polish(h256 _b, u256 _ts, unsigned _n) { block = _b; timestamp = _ts; number = _n; return *this; }
 
 	Address to;					///< The receiving address of the transaction. Address() in the case of a creation.
 	Address from;				///< The receiving address of the transaction. Address() in the case of a creation.
@@ -93,8 +93,8 @@ struct PastMessage
 	std::vector<unsigned> path;	///< Call path into the block transaction. size() is always > 0. First item is the transaction index in the block.
 	Address origin;				///< Originating sender of the transaction.
 	h256 block;					///< Block hash.
-	u256 timestamp;			///< Block timestamp.
-	int age;					///< Transaction age.
+	u256 timestamp;				///< Block timestamp.
+	unsigned number;			///< Block number.
 };
 
 typedef std::vector<PastMessage> PastMessages;
@@ -102,7 +102,10 @@ typedef std::vector<PastMessage> PastMessages;
 class TransactionFilter
 {
 public:
-	TransactionFilter(int _earliest = GenesisBlock, int _latest = 0, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+	TransactionFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+
+	void fillStream(RLPStream& _s) const;
+	h256 sha3() const;
 
 	int earliest() const { return m_earliest; }
 	int latest() const { return m_latest; }
@@ -128,11 +131,34 @@ private:
 	std::set<Address> m_to;
 	std::set<std::pair<Address, u256>> m_stateAltered;
 	std::set<Address> m_altered;
-	int m_earliest;
-	int m_latest;
+	int m_earliest = 0;
+	int m_latest = -1;
 	unsigned m_max;
 	unsigned m_skip;
 };
+
+struct InstalledFilter
+{
+	InstalledFilter(TransactionFilter const& _f): filter(_f) {}
+
+	TransactionFilter filter;
+	unsigned refCount = 1;
+};
+
+static const h256 NewPendingFilter = u256(0);
+static const h256 NewBlockFilter = u256(1);
+
+struct Watch
+{
+	Watch() {}
+	explicit Watch(h256 _id): id(_id) {}
+
+	h256 id;
+	unsigned changes = 1;
+};
+
+struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 6; };
+#define cwatch eth::LogOutputStream<eth::WatchChannel, true>()
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -142,9 +168,6 @@ class Client
 public:
 	/// Constructor.
 	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
-
-	// Start client. Boost require threads are started outside constructor.
-	void start();
 
 	/// Destructor.
 	~Client();
@@ -156,35 +179,16 @@ public:
 	/// @returns the new contract's address (assuming it all goes through).
 	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
+	/// Blocks until all pending transactions have been processed.
+	void flushTransactions();
+
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	void inject(bytesConstRef _rlp);
 
 	/// Makes the given call. Nothing is recorded into the state. TODO
 //	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
 
-	/// Requires transactions involving this address be queued for inspection.
-	void setInterest(Address _dest);
-
-	/// @returns incoming minable transactions that we wanted to be notified of. Clears the queue.
-	Transactions pendingQueue() { ClientGuard g(this); return m_tq.interestQueue(); }
-
-	/// @returns alterations in state of a mined block that we wanted to be notified of. Clears the queue.
-	std::vector<std::pair<Address, AddressState>> minedQueue() { ClientGuard g(this); return m_bc.interestQueue(); }
-
-	// Not yet - probably best as using some sort of signals implementation.
-	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
-//	void onPending(Address _dest, function<void(Transaction)> const& _f);
-
-	/// Calls @a _f when a transaction is mined that involves @a _dest and once per change.
-//	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
-
 	// Informational stuff
-
-	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
-	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
-	bool peekChanged() const { return m_changed; }
-
-	/// Get a map containing each of the pending transactions.
-	Transactions pending() const { return m_postMine.pending(); }
 
 	// [OLD API]:
 
@@ -201,11 +205,34 @@ public:
 
 	// [NEW API]
 
-	u256 balanceAt(Address _a, int _block = -1) const;
-	u256 countAt(Address _a, int _block = -1) const;
-	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
-	bytes codeAt(Address _a, int _block = -1) const;
-	PastMessages transactions(TransactionFilter const& _f) const;
+	void setDefault(int _block) { m_default = _block; }
+
+	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
+	u256 countAt(Address _a) const { return countAt(_a, m_default); }
+	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
+	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
+
+	u256 balanceAt(Address _a, int _block) const;
+	u256 countAt(Address _a, int _block) const;
+	u256 stateAt(Address _a, u256 _l, int _block) const;
+	bytes codeAt(Address _a, int _block) const;
+	PastMessages transactions(TransactionFilter const& _filter) const;
+	PastMessages transactions(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return transactions(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	unsigned installWatch(TransactionFilter const& _filter);
+	unsigned installWatch(h256 _filterId);
+	void uninstallWatch(unsigned _watchId);
+	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return 0; } }
+	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+
+	// [EXTRA API]:
+
+	/// Get a map containing each of the pending transactions.
+	/// @TODO: Remove in favour of transactions().
+	Transactions pending() const { return m_postMine.pending(); }
+
+	/// Get a list of all active addresses.
+	std::vector<Address> addresses() const { return addresses(m_default); }
+	std::vector<Address> addresses(int _block) const;
 
 	// Misc stuff:
 
@@ -225,9 +252,9 @@ public:
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Is the network subsystem up?
-	bool haveNetwork() { return !!m_net; }
-	/// Get access to the peer server object. This will be null if the network isn't online.
-	PeerServer* peerServer() const { return m_net.get(); }
+	bool haveNetwork() { Guard l(x_net); return !!m_net; }
+	/// Get access to the peer server object. This will be null if the network isn't online. DANGEROUS! DO NOT USE!
+	PeerServer* peerServer() const { Guard l(x_net); return m_net.get(); }
 
 	// Mining stuff:
 
@@ -253,10 +280,27 @@ public:
 	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
 	/// Clears pending transactions. Just for debug use.
-	void clearPending() { ClientGuard l(this); m_postMine = m_preMine; changed(); }
+	void clearPending();
 
 private:
-	void work();
+	/// Ensure the worker thread is running. Needed for networking & mining.
+	void ensureWorking();
+
+	/// Do some work. Handles networking and mining.
+	/// @param _justQueue If true will only processing the transaction queues.
+	void work(bool _justQueue = false);
+
+	/// Collate the changed filters for the bloom filter of the given pending transaction.
+	/// Insert any filters that are activated into @a o_changed.
+	void appendFromNewPending(h256 _pendingTransactionBloom, h256Set& o_changed) const;
+
+	/// Collate the changed filters for the hash of the given block.
+	/// Insert any filters that are activated into @a o_changed.
+	void appendFromNewBlock(h256 _blockHash, h256Set& o_changed) const;
+
+	/// Record that the set of filters @a _filters have changed.
+	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
+	void noteChanged(h256Set const& _filters);
 
 	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
 	unsigned numberOf(int _b) const;
@@ -267,10 +311,13 @@ private:
 	std::string m_clientVersion;		///< Our end-application client's name/version.
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;					///< Maintains block database.
-	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
-	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	TransactionQueue m_tq;				///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	BlockQueue m_bq;					///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	OverlayDB m_stateDB;				///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;					///< The present state of the client.
 	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+
+	mutable std::mutex x_net;			///< Lock for the network.
 	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
 	std::unique_ptr<std::thread> m_work;///< The work thread.
@@ -283,7 +330,11 @@ private:
 	std::list<MineInfo> m_mineHistory;
 	mutable bool m_restartMining = false;
 
-	mutable bool m_changed;
+	mutable std::mutex m_filterLock;
+	std::map<h256, InstalledFilter> m_filters;
+	std::map<unsigned, Watch> m_watches;
+
+	int m_default = -1;
 };
 
 inline ClientGuard::ClientGuard(Client const* _c): m_client(_c)

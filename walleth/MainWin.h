@@ -6,7 +6,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libethcore/CommonEth.h>
-#include <libqethereum/QEthereum.h>
+#include <libqethereum/QmlEthereum.h>
 
 namespace Ui {
 class Main;
@@ -42,9 +42,6 @@ private slots:
 
 	void refresh();
 	void refreshNetwork();
-
-signals:
-	void changed();
 
 protected:
 	virtual void timerEvent(QTimerEvent *);

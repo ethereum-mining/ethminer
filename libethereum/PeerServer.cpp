@@ -39,6 +39,7 @@
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
+#include "BlockQueue.h"
 #include "PeerSession.h"
 using namespace std;
 using namespace eth;
@@ -106,9 +107,34 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 
 PeerServer::~PeerServer()
 {
-	for (auto const& i: m_peers)
-		if (auto p = i.second.lock())
-			p->disconnect(ClientQuit);
+	disconnectPeers();
+}
+
+void PeerServer::registerPeer(std::shared_ptr<PeerSession> _s)
+{
+	Guard l(x_peers);
+	m_peers[_s->m_id] = _s;
+}
+
+void PeerServer::disconnectPeers()
+{
+	for (unsigned n = 0;; n = 0)
+	{
+		{
+			Guard l(x_peers);
+			for (auto i: m_peers)
+				if (auto p = i.second.lock())
+				{
+					p->disconnect(ClientQuit);
+					n++;
+				}
+		}
+		if (!n)
+			break;
+		m_ioService.poll();
+		usleep(100000);
+	}
+
 	delete m_upnp;
 }
 
@@ -252,6 +278,7 @@ std::map<Public, bi::tcp::endpoint> PeerServer::potentialPeers()
 	std::map<Public, bi::tcp::endpoint> ret;
 	if (!m_public.address().is_unspecified())
 		ret.insert(make_pair(m_key.pub(), m_public));
+	Guard l(x_peers);
 	for (auto i: m_peers)
 		if (auto j = i.second.lock())
 		{
@@ -268,7 +295,7 @@ void PeerServer::ensureAccepting()
 {
 	if (m_accepting == false)
 	{
-		clog(NetNote) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
+		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
 		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
 		{
@@ -276,7 +303,7 @@ void PeerServer::ensureAccepting()
 				try
 				{
 					try {
-						clog(NetNote) << "Accepted connection from " << m_socket.remote_endpoint();
+						clog(NetConnect) << "Accepted connection from " << m_socket.remote_endpoint();
 					} catch (...){}
 					bi::address remoteAddress = m_socket.remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
@@ -288,7 +315,7 @@ void PeerServer::ensureAccepting()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			m_accepting = false;
-			if (ec.value() != 1 && (m_mode == NodeMode::PeerServer || m_peers.size() < m_idealPeerCount * 2))
+			if (ec.value() != 1 && (m_mode == NodeMode::PeerServer || peerCount() < m_idealPeerCount * 2))
 				ensureAccepting();
 		});
 	}
@@ -303,19 +330,19 @@ void PeerServer::connect(std::string const& _addr, unsigned short _port) noexcep
 	catch (exception const& e)
 	{
 		// Couldn't connect
-		clog(NetNote) << "Bad host " << _addr << " (" << e.what() << ")";
+		clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
 	}
 }
 
 void PeerServer::connect(bi::tcp::endpoint const& _ep)
 {
-	clog(NetNote) << "Attempting connection to " << _ep;
+	clog(NetConnect) << "Attempting connection to " << _ep;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetNote) << "Connection refused to " << _ep << " (" << ec.message() << ")";
+			clog(NetConnect) << "Connection refused to " << _ep << " (" << ec.message() << ")";
 			for (auto i = m_incomingPeers.begin(); i != m_incomingPeers.end(); ++i)
 				if (i->second.first == _ep && i->second.second < 3)
 				{
@@ -323,25 +350,25 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 					goto OK;
 				}
 			// for-else
-			clog(NetNote) << "Giving up.";
+			clog(NetConnect) << "Giving up.";
 			OK:;
 		}
 		else
 		{
 			auto p = make_shared<PeerSession>(this, std::move(*s), m_networkId, _ep.address(), _ep.port());
-			clog(NetNote) << "Connected to " << _ep;
+			clog(NetConnect) << "Connected to " << _ep;
 			p->start();
 		}
 		delete s;
 	});
 }
 
-bool PeerServer::ensureInitialised(BlockChain& _bc, TransactionQueue& _tq)
+bool PeerServer::ensureInitialised(TransactionQueue& _tq)
 {
 	if (m_latestBlockSent == h256())
 	{
 		// First time - just initialise.
-		m_latestBlockSent = _bc.currentHash();
+		m_latestBlockSent = m_chain->currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
 		for (auto const& i: _tq.transactions())
@@ -363,141 +390,141 @@ bool PeerServer::noteBlock(h256 _hash, bytesConstRef _data)
 	return false;
 }
 
-bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
+bool PeerServer::sync(TransactionQueue& _tq, BlockQueue& _bq)
 {
-	bool ret = ensureInitialised(_bc, _tq);
+	bool netChange = ensureInitialised(_tq);
 	
 	if (m_mode == NodeMode::Full)
 	{
-		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-			if (_tq.import(&*it))
-			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
-			else
-				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-		m_incomingTransactions.clear();
+		auto h = m_chain->currentHash();
 
-		auto h = _bc.currentHash();
-		bool resendAll = (h != m_latestBlockSent);
-
-		// Send any new transactions.
-		for (auto j: m_peers)
-			if (auto p = j.second.lock())
-			{
-				bytes b;
-				uint n = 0;
-				for (auto const& i: _tq.transactions())
-					if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
-					{
-						b += i.second;
-						++n;
-						m_transactionsSent.insert(i.first);
-					}
-				if (n)
-				{
-					RLPStream ts;
-					PeerSession::prep(ts);
-					ts.appendList(n + 1) << TransactionsPacket;
-					ts.appendRaw(b, n).swapOut(b);
-					seal(b);
-					p->send(&b);
-				}
-				p->m_knownTransactions.clear();
-				p->m_requireTransactions = false;
-			}
-
-		// Send any new blocks.
-		if (h != m_latestBlockSent)
-		{
-			// TODO: find where they diverge and send complete new branch.
-			RLPStream ts;
-			PeerSession::prep(ts);
-			ts.appendList(2) << BlocksPacket;
-			bytes b;
-			ts.appendRaw(_bc.block(_bc.currentHash())).swapOut(b);
-			seal(b);
-			for (auto j: m_peers)
-				if (auto p = j.second.lock())
-				{
-					if (!p->m_knownBlocks.count(_bc.currentHash()))
-						p->send(&b);
-					p->m_knownBlocks.clear();
-				}
-		}
-		m_latestBlockSent = h;
-
-		for (int accepted = 1, n = 0; accepted; ++n)
-		{
-			accepted = 0;
-			lock_guard<recursive_mutex> l(m_incomingLock);
-			if (m_incomingBlocks.size())
-				for (auto it = prev(m_incomingBlocks.end());; --it)
-				{
-					try
-					{
-						_bc.import(*it, _o);
-						it = m_incomingBlocks.erase(it);
-						++accepted;
-						ret = true;
-					}
-					catch (UnknownParent)
-					{
-						// Don't (yet) know its parent. Leave it for later.
-						m_unknownParentBlocks.push_back(*it);
-						it = m_incomingBlocks.erase(it);
-					}
-					catch (...)
-					{
-						// Some other error - erase it.
-						it = m_incomingBlocks.erase(it);
-					}
-
-					if (it == m_incomingBlocks.begin())
-						break;
-				}
-			if (!n && accepted)
-			{
-				for (auto i: m_unknownParentBlocks)
-					m_incomingBlocks.push_back(i);
-				m_unknownParentBlocks.clear();
-			}
-		}
+		maintainTransactions(_tq, h);
+		maintainBlocks(_bq, h);
 
 		// Connect to additional peers
-		while (m_peers.size() < m_idealPeerCount)
-		{
-			if (m_freePeers.empty())
-			{
-				if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
-				{
-					RLPStream s;
-					bytes b;
-					(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
-					seal(b);
-					for (auto const& i: m_peers)
-						if (auto p = i.second.lock())
-							if (p->isOpen())
-								p->send(&b);
-					m_lastPeersRequest = chrono::steady_clock::now();
-				}
-
-
-				if (!m_accepting)
-					ensureAccepting();
-
-				break;
-			}
-
-			auto x = time(0) % m_freePeers.size();
-			m_incomingPeers[m_freePeers[x]].second++;
-			connect(m_incomingPeers[m_freePeers[x]].first);
-			m_freePeers.erase(m_freePeers.begin() + x);
-		}
+		growPeers();
 	}
 
 	// platform for consensus of social contract.
 	// restricts your freedom but does so fairly. and that's the value proposition.
 	// guarantees that everyone else respect the rules of the system. (i.e. obeys laws).
 
+	prunePeers();
+
+	return netChange;
+}
+
+void PeerServer::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
+{
+	bool resendAll = (_currentHash != m_latestBlockSent);
+
+	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
+		if (_tq.import(&*it))
+		{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
+		else
+			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
+	m_incomingTransactions.clear();
+
+	// Send any new transactions.
+	Guard l(x_peers);
+	for (auto j: m_peers)
+		if (auto p = j.second.lock())
+		{
+			bytes b;
+			uint n = 0;
+			for (auto const& i: _tq.transactions())
+				if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
+				{
+					b += i.second;
+					++n;
+					m_transactionsSent.insert(i.first);
+				}
+			if (n)
+			{
+				RLPStream ts;
+				PeerSession::prep(ts);
+				ts.appendList(n + 1) << TransactionsPacket;
+				ts.appendRaw(b, n).swapOut(b);
+				seal(b);
+				p->send(&b);
+			}
+			p->m_knownTransactions.clear();
+			p->m_requireTransactions = false;
+		}
+}
+
+void PeerServer::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
+{
+	// Import new blocks
+	{
+		lock_guard<recursive_mutex> l(m_incomingLock);
+		for (auto it = m_incomingBlocks.rbegin(); it != m_incomingBlocks.rend(); ++it)
+			if (_bq.import(&*it, *m_chain))
+			{}
+			else{} // TODO: don't forward it.
+		m_incomingBlocks.clear();
+	}
+
+	// Send any new blocks.
+	if (_currentHash != m_latestBlockSent)
+	{
+		// TODO: find where they diverge and send complete new branch.
+		RLPStream ts;
+		PeerSession::prep(ts);
+		ts.appendList(2) << BlocksPacket;
+		bytes b;
+		ts.appendRaw(m_chain->block()).swapOut(b);
+		seal(b);
+
+		Guard l(x_peers);
+		for (auto j: m_peers)
+			if (auto p = j.second.lock())
+			{
+				if (!p->m_knownBlocks.count(_currentHash))
+					p->send(&b);
+				p->m_knownBlocks.clear();
+			}
+	}
+	m_latestBlockSent = _currentHash;
+}
+
+void PeerServer::growPeers()
+{
+	Guard l(x_peers);
+	while (m_peers.size() < m_idealPeerCount)
+	{
+		if (m_freePeers.empty())
+		{
+			if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+			{
+				RLPStream s;
+				bytes b;
+				(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
+				seal(b);
+				for (auto const& i: m_peers)
+					if (auto p = i.second.lock())
+						if (p->isOpen())
+							p->send(&b);
+				m_lastPeersRequest = chrono::steady_clock::now();
+			}
+
+
+			if (!m_accepting)
+				ensureAccepting();
+
+			break;
+		}
+
+		auto x = time(0) % m_freePeers.size();
+		m_incomingPeers[m_freePeers[x]].second++;
+		connect(m_incomingPeers[m_freePeers[x]].first);
+		m_freePeers.erase(m_freePeers.begin() + x);
+	}
+}
+
+void PeerServer::prunePeers()
+{
+	Guard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
 	for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
 		while (m_peers.size() > m_idealPeerCount)
@@ -519,11 +546,17 @@ bool PeerServer::sync(BlockChain& _bc, TransactionQueue& _tq, OverlayDB& _o)
 			worst->disconnect(TooManyPeers);
 		}
 
-	return ret;
+	// Remove dead peers from list.
+	for (auto i = m_peers.begin(); i != m_peers.end();)
+		if (i->second.lock().get())
+			++i;
+		else
+			i = m_peers.erase(i);
 }
 
 std::vector<PeerInfo> PeerServer::peers(bool _updatePing) const
 {
+	Guard l(x_peers);
     if (_updatePing)
         const_cast<PeerServer*>(this)->pingAll();
 	this_thread::sleep_for(chrono::milliseconds(200));
@@ -537,6 +570,7 @@ std::vector<PeerInfo> PeerServer::peers(bool _updatePing) const
 
 void PeerServer::pingAll()
 {
+	Guard l(x_peers);
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
@@ -544,6 +578,7 @@ void PeerServer::pingAll()
 
 bytes PeerServer::savePeers() const
 {
+	Guard l(x_peers);
 	RLPStream ret;
 	int n = 0;
 	for (auto& i: m_peers)

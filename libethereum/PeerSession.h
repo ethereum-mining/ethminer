@@ -51,6 +51,8 @@ public:
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 private:
+	void startInitialSync();
+
 	void dropped();
 	void doRead();
 	void doWrite(std::size_t length);

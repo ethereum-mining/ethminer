@@ -90,6 +90,32 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
+static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
+{
+	if (_n)
+	{
+		std::string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return QString();
+		if (l != string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == string::npos || (_inc && p == 31)))
+				return QString();
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return QString();
+		return QString::fromStdString(s);
+	}
+	return QString();
+}
+
+
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
 Main::Main(QWidget *parent) :
@@ -98,7 +124,15 @@ Main::Main(QWidget *parent) :
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	g_logPost = [=](std::string const& s, char const* c) { simpleDebugOut(s, c); ui->log->addItem(QString::fromStdString(s)); };
+	g_logPost = [=](std::string const& s, char const* c)
+	{
+		simpleDebugOut(s, c);
+		m_logLock.lock();
+		m_logHistory.append(QString::fromStdString(s) + "\n");
+		m_logChanged = true;
+		m_logLock.unlock();
+//		ui->log->addItem(QString::fromStdString(s));
+	};
 
 #if 0&&ETH_DEBUG
 	m_servers.append("192.168.0.10:30301");
@@ -145,24 +179,21 @@ Main::Main(QWidget *parent) :
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_client.reset(new Client("AlethZero"));
-	m_client->start();
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		QEthereum *eth = new QEthereum(this, this->m_client.get(), this->owned());
-		this->m_ethereum = eth;
-		connect(this, SIGNAL(changed()), this->m_ethereum, SIGNAL(changed()));
+		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
+		m_ethereum = new QEthereum(this, m_client.get(), owned());
 
-		QWebFrame* f = this->ui->webView->page()->mainFrame();
+		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		eth->setup(f);
-		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE);
+		auto qeth = m_ethereum;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		this->changed();
+		m_ethereum->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -171,11 +202,10 @@ Main::Main(QWidget *parent) :
 	});
 	
 	readSettings();
-	refresh();
 
-	m_refresh = new QTimer(this);
-	connect(m_refresh, SIGNAL(timeout()), SLOT(refresh()));
-	m_refresh->start(100);
+	installWatches();
+
+	startTimer(100);
 
 	{
 		QSettings s("ethereum", "alethzero");
@@ -185,13 +215,116 @@ Main::Main(QWidget *parent) :
 			s.setValue("splashMessage", false);
 		}
 	}
-	m_pcWarp.clear();
 }
 
 Main::~Main()
 {
+	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
+	// *after* the client is dead.
+	m_ethereum->clientDieing();
+
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+void Main::onKeysChanged()
+{
+	installBalancesWatch();
+}
+
+unsigned Main::installWatch(eth::TransactionFilter const& _tf, std::function<void()> const& _f)
+{
+	auto ret = m_client->installWatch(_tf);
+	m_handlers[ret] = _f;
+	return ret;
+}
+
+unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
+{
+	auto ret = m_client->installWatch(_tf);
+	m_handlers[ret] = _f;
+	return ret;
+}
+
+void Main::installWatches()
+{
+	installWatch(eth::TransactionFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+	installWatch(eth::TransactionFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(eth::NewPendingFilter, [=](){ onNewPending(); });
+	installWatch(eth::NewBlockFilter, [=](){ onNewBlock(); });
+}
+
+void Main::installNameRegWatch()
+{
+	m_client->uninstallWatch(m_nameRegFilter);
+	m_nameRegFilter = installWatch(eth::TransactionFilter().altered((u160)state().storage(c_config, 0)), [=](){ onNameRegChange(); });
+}
+
+void Main::installCurrenciesWatch()
+{
+	m_client->uninstallWatch(m_currenciesFilter);
+	m_currenciesFilter = installWatch(eth::TransactionFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+}
+
+void Main::installBalancesWatch()
+{
+	eth::TransactionFilter tf;
+
+	vector<Address> altCoins;
+	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
+	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
+		altCoins.push_back(right160(m_client->stateAt(coinsAddr, i + 1)));
+	for (auto i: m_myKeys)
+	{
+		tf.altered(i.address());
+		for (auto c: altCoins)
+			tf.altered(c, (u160)i.address());
+	}
+
+	m_client->uninstallWatch(m_balancesFilter);
+	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
+}
+
+void Main::onNameRegChange()
+{
+	cwatch << "NameReg changed!";
+
+	// update any namereg-dependent stuff - for now force a full update.
+	refreshAll();
+}
+
+void Main::onCurrenciesChange()
+{
+	cwatch << "Currencies changed!";
+	installBalancesWatch();
+
+	// TODO: update any currency-dependent stuff?
+}
+
+void Main::onBalancesChange()
+{
+	cwatch << "Our balances changed!";
+
+	refreshBalances();
+}
+
+void Main::onNewBlock()
+{
+	cwatch << "Blockchain changed!";
+
+	// update blockchain dependent views.
+	refreshBlockCount();
+	refreshBlockChain();
+	refreshAccounts();
+}
+
+void Main::onNewPending()
+{
+	cwatch << "Pending transactions changed!";
+
+	// update any pending-transaction dependent views.
+	refreshPending();
+	refreshAccounts();
 }
 
 void Main::on_clearPending_triggered()
@@ -257,7 +390,8 @@ void Main::eval(QString const& _js)
 {
 	if (_js.trimmed().isEmpty())
 		return;
-	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
+	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
+	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(___RET)");
 	QString s;
 	if (ev.isNull())
 		s = "<span style=\"color: #888\">null</span>";
@@ -265,6 +399,8 @@ void Main::eval(QString const& _js)
 		s = "<span style=\"color: #444\">\"</span><span style=\"color: #c00\">" + ev.toString().toHtmlEscaped() + "</span><span style=\"color: #444\">\"</span>";
 	else if (ev.type() == QVariant::Int || ev.type() == QVariant::Double)
 		s = "<span style=\"color: #00c\">" + ev.toString().toHtmlEscaped() + "</span>";
+	else if (jsonEv.type() == QVariant::String)
+		s = "<span style=\"color: #840\">" + jsonEv.toString().toHtmlEscaped() + "</span>";
 	else
 		s = "<span style=\"color: #888\">unknown type</span>";
 	m_consoleHistory.push_back(qMakePair(_js, s));
@@ -276,40 +412,15 @@ void Main::eval(QString const& _js)
 	ui->jsConsole->setHtml(s);
 }
 
-QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
-{
-	if (_n)
-	{
-		std::string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return QString();
-		if (l != string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == string::npos || (_inc && p == 31)))
-				return QString();
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return QString();
-		return QString::fromStdString(s);
-	}
-	return QString();
-}
-
 QString Main::pretty(eth::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)state().storage(c_config, 0))
-		n = state().storage(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
+		n = m_client->stateAt(nameReg, (u160)(_a));
 
 	if (!n)
-		n = state().storage(m_nameReg, (u160)(_a));
+		n = m_client->stateAt(m_nameReg, (u160)(_a));
 
 	return fromRaw(n);
 }
@@ -472,10 +583,16 @@ void Main::on_nameReg_textChanged()
 	if (s.size() == 40)
 	{
 		m_nameReg = Address(fromHex(s));
-		refresh(true);
+		refreshAll();
 	}
 	else
 		m_nameReg = Address();
+}
+
+void Main::on_preview_triggered()
+{
+	m_client->setDefault(ui->preview->isChecked() ? 0 : -1);
+	refreshAll();
 }
 
 void Main::refreshMining()
@@ -497,6 +614,34 @@ void Main::refreshMining()
 */
 }
 
+void Main::refreshBalances()
+{
+	cwatch << "refreshBalances()";
+	// update all the balance-dependent stuff.
+	ui->ourAccounts->clear();
+	u256 totalBalance = 0;
+	map<Address, pair<QString, u256>> altCoins;
+	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
+	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
+		altCoins[right160(m_client->stateAt(coinsAddr, m_client->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(m_client->stateAt(coinsAddr, i + 1)), 0);
+	for (auto i: m_myKeys)
+	{
+		u256 b = m_client->balanceAt(i.address());
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->countAt(i.address())), ui->ourAccounts))
+			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
+		totalBalance += b;
+
+		for (auto& c: altCoins)
+			c.second.second += (u256)m_client->stateAt(c.first, (u160)i.address());
+	}
+
+	QString b;
+	for (auto const& c: altCoins)
+		if (c.second.second)
+			b += QString::fromStdString(toString(c.second.second)) + " " + c.second.first.toUpper() + " | ";
+	ui->balance->setText(b + QString::fromStdString(formatBalance(totalBalance)));
+}
+
 void Main::refreshNetwork()
 {
 	auto ps = m_client->peers();
@@ -512,24 +657,79 @@ eth::State const& Main::state() const
 	return ui->preview->isChecked() ? m_client->postState() : m_client->state();
 }
 
-void Main::updateBlockCount()
+void Main::refreshAll()
 {
+	refreshDestination();
+	refreshBlockChain();
+	refreshBlockCount();
+	refreshPending();
+	refreshAccounts();
+	refreshBalances();
+}
+
+void Main::refreshPending()
+{
+	cwatch << "refreshPending()";
+	ui->transactionQueue->clear();
+	for (Transaction const& t: m_client->pending())
+	{
+		QString s = t.receiveAddress ?
+			QString("%2 %5> %3: %1 [%4]")
+				.arg(formatBalance(t.value).c_str())
+				.arg(render(t.safeSender()))
+				.arg(render(t.receiveAddress))
+				.arg((unsigned)t.nonce)
+				.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
+			QString("%2 +> %3: %1 [%4]")
+				.arg(formatBalance(t.value).c_str())
+				.arg(render(t.safeSender()))
+				.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
+				.arg((unsigned)t.nonce);
+		ui->transactionQueue->addItem(s);
+	}
+}
+
+void Main::refreshAccounts()
+{
+	cwatch << "refreshAccounts()";
+	ui->accounts->clear();
+	ui->contracts->clear();
+	for (auto n = 0; n < 2; ++n)
+		for (auto i: m_client->addresses())
+		{
+			auto r = render(i);
+			if (r.contains('(') == !n)
+			{
+				if (n == 0 || ui->showAllAccounts->isChecked())
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->accounts))
+						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
+				if (m_client->codeAt(i).size())
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->contracts))
+						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
+			}
+		}
+}
+
+void Main::refreshDestination()
+{
+	cwatch << "refreshDestination()";
+	QString s;
+	for (auto i: m_client->addresses())
+		if ((s = pretty(i)).size())
+			// A namereg address
+			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
+				ui->destination->addItem(s);
+	for (int i = 0; i < ui->destination->count(); ++i)
+		if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
+			ui->destination->removeItem(i--);
+}
+
+void Main::refreshBlockCount()
+{
+	cwatch << "refreshBlockCount()";
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
 	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
-}
-
-void Main::on_blockChainFilter_textChanged()
-{
-	static QTimer* s_delayed = nullptr;
-	if (!s_delayed)
-	{
-		s_delayed = new QTimer(this);
-		s_delayed->setSingleShot(true);
-		connect(s_delayed, SIGNAL(timeout()), SLOT(refreshBlockChain()));
-	}
-	s_delayed->stop();
-	s_delayed->start(200);
 }
 
 static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
@@ -559,6 +759,7 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 
 void Main::refreshBlockChain()
 {
+	cwatch << "refreshBlockChain()";
 	eth::ClientGuard g(m_client.get());
 	auto const& st = state();
 
@@ -614,113 +815,58 @@ void Main::refreshBlockChain()
 		ui->blocks->setCurrentRow(0);
 }
 
-void Main::refresh(bool _override)
+void Main::on_blockChainFilter_textChanged()
+{
+	static QTimer* s_delayed = nullptr;
+	if (!s_delayed)
+	{
+		s_delayed = new QTimer(this);
+		s_delayed->setSingleShot(true);
+		connect(s_delayed, SIGNAL(timeout()), SLOT(refreshBlockChain()));
+	}
+	s_delayed->stop();
+	s_delayed->start(200);
+}
+
+void Main::on_refresh_triggered()
+{
+	refreshAll();
+}
+
+void Main::timerEvent(QTimerEvent*)
 {
 	// 7/18, Alex: aggregating timers, prelude to better threading?
 	// Runs much faster on slower dual-core processors
 	static int interval = 100;
 	
 	// refresh mining every 200ms
-	if(interval / 100 % 2 == 0)
+	if (interval / 100 % 2 == 0)
 		refreshMining();
 
+	if (m_logChanged)
+	{
+		m_logLock.lock();
+		m_logChanged = false;
+		ui->log->appendPlainText(m_logHistory);
+		m_logHistory.clear();
+		m_logLock.unlock();
+	}
+
 	// refresh peer list every 1000ms, reset counter
-	if(interval == 1000)
+	if (interval == 1000)
 	{
 		interval = 0;
 		refreshNetwork();
-	} else
+	}
+	else
 		interval += 100;
 	
-	
-	eth::ClientGuard g(m_client.get());
-	auto const& st = state();
+	if (m_ethereum)
+		m_ethereum->poll();
 
-	bool c = m_client->changed();
-	if (c || _override)
-	{
-		changed();
-		
-		updateBlockCount();
-
-		auto acs = st.addresses();
-		ui->accounts->clear();
-		ui->contracts->clear();
-		for (auto n = 0; n < 2; ++n)
-			for (auto i: acs)
-			{
-				auto r = render(i.first);
-				if (r.contains('(') == !n)
-				{
-					if (n == 0 || ui->showAllAccounts->isChecked())
-						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)state().transactionsFrom(i.first)), ui->accounts))
-							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-					if (st.addressHasCode(i.first))
-						(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(i.second).c_str()).arg(r).arg((unsigned)st.transactionsFrom(i.first)), ui->contracts))
-							->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-
-					if (r.contains('('))
-					{
-						// A namereg address
-						QString s = pretty(i.first);
-						if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
-							ui->destination->addItem(s);
-					}
-				}
-			}
-
-		for (int i = 0; i < ui->destination->count(); ++i)
-			if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
-				ui->destination->removeItem(i--);
-
-		ui->transactionQueue->clear();
-		for (Transaction const& t: m_client->pending())
-		{
-			QString s = t.receiveAddress ?
-				QString("%2 %5> %3: %1 [%4]")
-					.arg(formatBalance(t.value).c_str())
-					.arg(render(t.safeSender()))
-					.arg(render(t.receiveAddress))
-					.arg((unsigned)t.nonce)
-					.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
-				QString("%2 +> %3: %1 [%4]")
-					.arg(formatBalance(t.value).c_str())
-					.arg(render(t.safeSender()))
-					.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
-					.arg((unsigned)t.nonce);
-			ui->transactionQueue->addItem(s);
-		}
-
-		refreshBlockChain();
-	}
-
-	if (c || m_keysChanged || _override)
-	{
-		m_keysChanged = false;
-		ui->ourAccounts->clear();
-		u256 totalBalance = 0;
-		map<Address, pair<QString, u256>> altCoins;
-		Address coinsAddr = right160(st.storage(c_config, 1));
-		for (unsigned i = 0; i < st.storage(coinsAddr, 0); ++i)
-			altCoins[right160(st.storage(coinsAddr, st.storage(coinsAddr, i + 1)))] = make_pair(fromRaw(st.storage(coinsAddr, i + 1)), 0);
-//		u256 totalGavCoinBalance = 0;
-		for (auto i: m_myKeys)
-		{
-			u256 b = st.balance(i.address());
-			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)st.transactionsFrom(i.address())), ui->ourAccounts))
-				->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
-			totalBalance += b;
-
-			for (auto& c: altCoins)
-				c.second.second += (u256)st.storage(c.first, (u160)i.address());
-		}
-
-		QString b;
-		for (auto const& c: altCoins)
-			if (c.second.second)
-				b += QString::fromStdString(toString(c.second.second)) + " " + c.second.first.toUpper() + " | ";
-		ui->balance->setText(b + QString::fromStdString(formatBalance(totalBalance)));
-	}
+	for (auto const& i: m_handlers)
+		if (m_client->checkWatch(i.first))
+			i.second();
 }
 
 string Main::renderDiff(eth::StateDiff const& _d) const
@@ -791,7 +937,7 @@ void Main::on_transactionQueue_currentItemChanged()
 
 	stringstream s;
 	int i = ui->transactionQueue->currentRow();
-	if (i >= 0)
+	if (i >= 0 && i < (int)m_client->postState().pending().size())
 	{
 		Transaction tx(m_client->postState().pending()[i]);
 		auto ss = tx.safeSender();
@@ -848,7 +994,6 @@ void Main::on_inject_triggered()
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
 	bytes b = fromHex(s.toStdString());
 	m_client->inject(&b);
-	refresh();
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -1071,7 +1216,8 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::on_log_doubleClicked()
 {
-	qApp->clipboard()->setText(ui->log->currentItem()->text());
+	ui->log->setPlainText("");
+	m_logHistory.clear();
 }
 
 void Main::on_accounts_doubleClicked()
@@ -1205,8 +1351,10 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	m_client.reset();
 	m_client.reset(new Client("AlethZero", Address(), string(), true));
-	m_client->start();
+	m_ethereum->setClient(m_client.get());
 	readSettings();
+	installWatches();
+	refreshAll();
 }
 
 bool Main::isCreation() const
@@ -1323,7 +1471,6 @@ void Main::on_send_clicked()
 				m_client->transact(s, value(), m_data, ui->gas->value(), gasPrice());
 			else
 				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
-			refresh();
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
