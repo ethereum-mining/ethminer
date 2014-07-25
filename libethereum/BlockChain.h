@@ -22,6 +22,7 @@
 #pragma once
 
 #include <mutex>
+#include <boost/thread.hpp>
 #include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
@@ -94,6 +95,13 @@ struct BlockChainNote: public LogChannel { static const char* name() { return "=
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, AddressState> const& genesisState();
 
+using ReadGuard = boost::shared_lock<boost::shared_mutex>;
+using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
+using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
+using WriteGuard = boost::unique_lock<boost::shared_mutex>;
+
+ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @todo Make thread-safe.
@@ -118,35 +126,36 @@ public:
 	h256s import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockDetails details(h256 _hash) const;
+	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
 	BlockDetails details() const { return details(currentHash()); }
 
 	/// Get the transactions' bloom filters of a block (or the most recent mined if none given). Thread-safe.
-	BlockBlooms blooms(h256 _hash) const;
+	BlockBlooms blooms(h256 _hash) const { return queryExtras<BlockBlooms, 1>(_hash, m_blooms, x_blooms, NullBlockBlooms); }
 	BlockBlooms blooms() const { return blooms(currentHash()); }
 
 	/// Get the transactions' trace manifests of a block (or the most recent mined if none given). Thread-safe.
-	BlockTraces traces(h256 _hash) const;
+	BlockTraces traces(h256 _hash) const { return queryExtras<BlockTraces, 2>(_hash, m_traces, x_traces, NullBlockTraces); }
 	BlockTraces traces() const { return traces(currentHash()); }
 
-	/// Get a given block (RLP format). Thread-safe.
+	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 _hash) const;
 	bytes block() const { return block(currentHash()); }
 
-	uint number(h256 _hash) const;
+	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
+	uint number(h256 _hash) const { return details(_hash).number; }
 	uint number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
-	h256 currentHash() const { return m_lastBlockHash; }
+	h256 currentHash() const { ReadGuard l(x_lastBlockHash); return m_lastBlockHash; }
 
-	/// Get the hash of the genesis block.
+	/// Get the hash of the genesis block. Thread-safe.
 	h256 genesisHash() const { return m_genesisHash; }
 
-	/// Get the hash of a block of a given number.
+	/// Get the hash of a block of a given number. Slow; try not to use it too much.
 	h256 numberHash(unsigned _n) const;
 
 	/// @returns the genesis block header.
-	static BlockInfo const& genesis() { if (!s_genesis) { auto gb = createGenesisBlock(); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
+	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
 
 	/// @returns the genesis block as its RLP-encoded byte array.
 	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
@@ -169,21 +178,49 @@ public:
 	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr) const;
 
 private:
+	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
+	{
+		{
+			ReadGuard l(_x);
+			auto it = _m.find(_h);
+			if (it != _m.end())
+				return it->second;
+		}
+
+		std::string s;
+		m_extrasDB->Get(m_readOptions, toSlice(_h, N), &s);
+		if (s.empty())
+		{
+	//			cout << "Not found in DB: " << _h << endl;
+			return _n;
+		}
+
+		WriteGuard l(_x);
+		auto ret = _m.insert(std::make_pair(_h, T(RLP(s))));
+		return ret.first->second;
+	}
+
 	void checkConsistency();
 
-	/// Get fully populated from disk DB.
+	/// The caches of the disk DB and their locks.
+	mutable boost::shared_mutex x_details;
 	mutable BlockDetailsHash m_details;
+	mutable boost::shared_mutex x_blooms;
 	mutable BlockBloomsHash m_blooms;
+	mutable boost::shared_mutex x_traces;
 	mutable BlockTracesHash m_traces;
-
+	mutable boost::shared_mutex x_cache;
 	mutable std::map<h256, bytes> m_cache;
-	mutable std::recursive_mutex m_lock;
 
+	/// The disk DBs. Thread-safe, so no need for locks.
 	ldb::DB* m_db;
 	ldb::DB* m_extrasDB;
 
 	/// Hash of the last (valid) block on the longest chain.
+	mutable boost::shared_mutex x_lastBlockHash;
 	h256 m_lastBlockHash;
+
+	/// Genesis block info.
 	h256 m_genesisHash;
 	bytes m_genesisBlock;
 
@@ -192,6 +229,8 @@ private:
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 
+	/// Static genesis info and its lock.
+	static boost::shared_mutex x_genesis;
 	static BlockInfo* s_genesis;
 };
 
