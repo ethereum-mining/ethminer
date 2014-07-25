@@ -86,15 +86,13 @@ bool PeerSession::interpret(RLP const& _r)
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
-		if (m_server->m_peers.count(m_id))
-			if (auto l = m_server->m_peers[m_id].lock())
-				if (l.get() != this && l->isOpen())
-				{
-					// Already connected.
-					cwarn << "Already have peer id" << m_id.abridged() << "at" << l->endpoint() << "rather than" << endpoint();
-					disconnect(DuplicatePeer);
-					return false;
-				}
+		if (m_server->havePeer(m_id))
+		{
+			// Already connected.
+			cwarn << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
+			disconnect(DuplicatePeer);
+			return false;
+		}
 
 		if (m_protocolVersion != PeerServer::protocolVersion() || m_networkId != m_server->networkId() || !m_id)
 		{
@@ -109,7 +107,8 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 
-		m_server->m_peers[m_id] = shared_from_this();
+		m_server->registerPeer(shared_from_this());
+		startInitialSync();
 
 		// Grab trsansactions off them.
 		{
@@ -173,7 +172,7 @@ bool PeerSession::interpret(RLP const& _r)
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << toHex(id.ref().cropped(0, 4)) << ")";
 
 			// check that it's not us or one we already know:
-			if (id && (m_server->m_key.pub() == id || m_server->m_peers.count(id) || m_server->m_incomingPeers.count(id)))
+			if (id && (m_server->m_key.pub() == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
 				goto CONTINUE;
 
 			// check that we're not already connected to addr:
@@ -182,13 +181,6 @@ bool PeerSession::interpret(RLP const& _r)
 			for (auto i: m_server->m_addresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
-			for (auto i: m_server->m_peers)
-				if (shared_ptr<PeerSession> p = i.second.lock())
-				{
-					clogS(NetAllDetail) << "   ...against " << p->endpoint();
-					if (p->m_socket.is_open() && p->endpoint() == ep)
-						goto CONTINUE;
-				}
 			for (auto i: m_server->m_incomingPeers)
 				if (i.second.first == ep)
 					goto CONTINUE;
@@ -492,14 +484,6 @@ void PeerSession::dropped()
 			m_socket.close();
 		}
 		catch (...) {}
-
-	// Remove from peer server
-	for (auto i = m_server->m_peers.begin(); i != m_server->m_peers.end(); ++i)
-		if (i->second.lock().get() == this)
-		{
-			m_server->m_peers.erase(i);
-			break;
-		}
 }
 
 void PeerSession::disconnect(int _reason)

@@ -198,40 +198,43 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 {
 	ensureWorking();
 
-	ClientGuard l(this);
-	if (m_net.get())
-		return;
-	try
 	{
-		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
-	}
-	catch (std::exception const&)
-	{
-		// Probably already have the port open.
-		cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+		Guard l(x_net);
+		if (m_net.get())
+			return;
+		try
+		{
+			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+		}
+		catch (std::exception const&)
+		{
+			// Probably already have the port open.
+			cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+		}
+
+		m_net->setIdealPeerCount(_peers);
 	}
 
-	m_net->setIdealPeerCount(_peers);
 	if (_seedHost.size())
 		connect(_seedHost, _port);
 }
 
 std::vector<PeerInfo> Client::peers()
 {
-	ClientGuard l(this);
+	Guard l(x_net);
 	return m_net ? m_net->peers() : std::vector<PeerInfo>();
 }
 
 size_t Client::peerCount() const
 {
-	ClientGuard l(this);
+	Guard l(x_net);
 	return m_net ? m_net->peerCount() : 0;
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
-	ClientGuard l(this);
+	Guard l(x_net);
 	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
@@ -239,7 +242,7 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 
 void Client::stopNetwork()
 {
-	ClientGuard l(this);
+	Guard l(x_net);
 	m_net.reset(nullptr);
 }
 
@@ -308,27 +311,26 @@ void Client::work(bool _justQueue)
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	if (m_net && !_justQueue)
 	{
-		cdebug << "--- WORK: LOCK";
-		ClientGuard l(this);
-		cdebug << "--- WORK: NETWORK";
-		m_net->process();	// must be in guard for now since it uses the blockchain.
-
-		// returns h256Set as block hashes, once for each block that has come in/gone out.
-		cdebug << "--- WORK: TQ <== NET ==> CHAIN";
-		h256Set newBlocks = m_net->sync(m_bc, m_tq, m_stateDB, 100);
-		if (newBlocks.size())
+		Guard l(x_net);
+		if (m_net && !_justQueue)
 		{
-			for (auto i: newBlocks)
-				appendFromNewBlock(i, changeds);
-			changeds.insert(NewBlockFilter);
+			cdebug << "--- WORK: NETWORK";
+			m_net->process();	// must be in guard for now since it uses the blockchain.
+
+			// returns h256Set as block hashes, once for each block that has come in/gone out.
+			cdebug << "--- WORK: NET <==> TQ ; CHAIN ==> NET ==> BQ";
+			m_net->sync(m_tq, m_bq);
+
+			cdebug << "--- TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
 		}
 	}
 
 	// Do some mining.
 	if (!_justQueue)
 	{
+
+		// TODO: Separate "Miner" object.
 		if (m_doMine)
 		{
 			if (m_restartMining)
@@ -402,6 +404,21 @@ void Client::work(bool _justQueue)
 	// Resynchronise state with block chain & trans
 	{
 		ClientGuard l(this);
+
+		cdebug << "--- WORK: BQ ==> CHAIN ==> STATE";
+		OverlayDB db = m_stateDB;
+		m_lock.unlock();
+		h256s newBlocks = m_bc.sync(m_bq, db, 100);
+		if (newBlocks.size())
+		{
+			for (auto i: newBlocks)
+				appendFromNewBlock(i, changeds);
+			changeds.insert(NewBlockFilter);
+		}
+		m_lock.lock();
+		if (newBlocks.size())
+			m_stateDB = db;
+
 		cdebug << "--- WORK: preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
