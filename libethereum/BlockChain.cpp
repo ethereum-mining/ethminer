@@ -35,10 +35,7 @@ using namespace eth;
 
 #define ETH_CATCH 1
 
-namespace eth
-{
-
-std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
+std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
 	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
@@ -50,21 +47,6 @@ std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc)
 		}
 	delete it;
 	return _out;
-}
-}
-
-BlockDetails::BlockDetails(RLP const& _r)
-{
-	number = _r[0].toInt<uint>();
-	totalDifficulty = _r[1].toInt<u256>();
-	parent = _r[2].toHash<h256>();
-	children = _r[3].toVector<h256>();
-	bloom = _r[4].toHash<h256>();
-}
-
-bytes BlockDetails::rlp() const
-{
-	return rlpList(number, totalDifficulty, parent, children, bloom);
 }
 
 std::map<Address, AddressState> const& eth::genesisState()
