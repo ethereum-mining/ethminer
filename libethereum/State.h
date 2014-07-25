@@ -138,6 +138,8 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
+	BlockInfo const& info() const { return m_currentBlock; }
+
 	/// @brief Checks that mining the current object will result in a valid block.
 	/// Effectively attempts to import the serialised block.
 	/// @returns true if all is ok. If it's false, worry.
@@ -178,10 +180,10 @@ public:
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	/// @returns true if we uncommitted from mining during the operation.
-	/// @a o_changed boolean pointer, the value of which will be set to true if the state changed and the pointer
-	/// is non-null
-	bool sync(TransactionQueue& _tq, bool* o_changed = nullptr);
+	/// @returns a list of bloom filters one for each transaction placed from the queue into the state.
+	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
+	/// changed and the pointer is non-null
+	h256s sync(TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 

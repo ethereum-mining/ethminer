@@ -39,6 +39,7 @@ class Main;
 namespace eth {
 class Client;
 class State;
+class TransactionFilter;
 }
 
 class QQuickView;
@@ -78,6 +79,8 @@ public slots:
 	void debug(QString _entry);
 	void warn(QString _entry);
 
+	void onKeysChanged();
+
 private slots:
 	void eval(QString const& _js);
 
@@ -106,7 +109,7 @@ private slots:
 	void on_about_triggered();
 	void on_paranoia_triggered();
 	void on_nameReg_textChanged();
-	void on_preview_triggered() { refresh(true); }
+	void on_preview_triggered();
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_returnPressed();
 	void on_debugStep_triggered();
@@ -118,8 +121,8 @@ private slots:
 	void on_importKey_triggered();
 	void on_exportKey_triggered();
 	void on_inject_triggered();
-	void on_showAll_triggered() { refresh(true); }
-	void on_showAllAccounts_triggered() { refresh(true); }
+	void on_showAll_triggered() { refreshBlockChain(); }
+	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
 	void on_clearPending_triggered();
@@ -134,18 +137,12 @@ private slots:
 	void on_debugCurrent_triggered();
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
-
-	void refresh(bool _override = false);
-	void refreshNetwork();
-	void refreshMining();
-	void refreshBlockChain();
+	void on_refresh_triggered();
 
 signals:
-	void changed();	// TODO: manifest
+	void poll();
 
 private:
-	void updateBlockCount();
-
 	QString pretty(eth::Address _a) const;
 	QString prettyU256(eth::u256 _n) const;
 
@@ -171,13 +168,44 @@ private:
 	eth::u256 value() const;
 	eth::u256 gasPrice() const;
 
+	unsigned installWatch(eth::TransactionFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(eth::h256 _tf, std::function<void()> const& _f);
+
+	void onNewPending();
+	void onNewBlock();
+	void onNameRegChange();
+	void onCurrenciesChange();
+	void onBalancesChange();
+
+	void installWatches();
+	void installCurrenciesWatch();
+	void installNameRegWatch();
+	void installBalancesWatch();
+
+	virtual void timerEvent(QTimerEvent*);
+
+	void refreshNetwork();
+	void refreshMining();
+
+	void refreshAll();
+	void refreshPending();
+	void refreshAccounts();
+	void refreshDestination();
+	void refreshBlockChain();
+	void refreshBlockCount();
+	void refreshBalances();
+
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<eth::Client> m_client;
+	std::map<unsigned, std::function<void()>> m_handlers;
+	unsigned m_nameRegFilter = (unsigned)-1;
+	unsigned m_currenciesFilter = (unsigned)-1;
+	unsigned m_balancesFilter = (unsigned)-1;
 
 	QByteArray m_peers;
 	QMutex m_guiLock;
-	QTimer* m_refresh;
+	QTimer* m_ticker;
 	QTimer* m_refreshNetwork;
 	QTimer* m_refreshMining;
 	QStringList m_servers;
@@ -201,6 +229,9 @@ private:
 	QNetworkAccessManager m_webCtrl;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
+	QMutex m_logLock;
+	QString m_logHistory;
+	bool m_logChanged = true;
 
-	QEthereum* m_ethereum;
+	QEthereum* m_ethereum = nullptr;
 };

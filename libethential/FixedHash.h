@@ -163,7 +163,7 @@ private:
 /// Fast equality operator for h256.
 template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
 {
-	const uint64_t* hash1 = (const uint64_t*)this->data();
+	const uint64_t* hash1 = (const uint64_t*)data();
 	const uint64_t* hash2 = (const uint64_t*)_other.data();
 	return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
 }

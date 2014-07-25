@@ -72,14 +72,15 @@ std::string EthStubServer::balanceAt(std::string const& _a)
 
 Json::Value EthStubServer::check(Json::Value const& _as)
 {
-	if (m_client.changed())
+	// TODO
+//	if (m_client.changed())
 		return _as;
-	else
+/*	else
 	{
 		Json::Value ret;
 		ret.resize(0);
 		return ret;
-	}
+	}*/
 }
 
 std::string EthStubServer::create(const std::string& _bCode, const std::string& _sec, const std::string& _xEndowment, const std::string& _xGas, const std::string& _xGasPrice)

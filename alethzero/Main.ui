@@ -377,18 +377,20 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="log">
+      <widget class="QPlainTextEdit" name="log">
        <property name="font">
         <font>
-         <family>Monospace</family>
-         <pointsize>12</pointsize>
+         <family>Ubuntu Mono</family>
         </font>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
        </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Plain</enum>
+       </property>
+       <property name="lineWidth">
+        <number>0</number>
        </property>
       </widget>
      </item>
@@ -498,6 +500,7 @@
    <addaction name="connect"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
+   <addaction name="refresh"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
    <property name="sizePolicy">
@@ -1648,6 +1651,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;Pretty...</string>
+   </property>
+  </action>
+  <action name="refresh">
+   <property name="text">
+    <string>&amp;Refresh</string>
    </property>
   </action>
  </widget>

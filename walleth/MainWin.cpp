@@ -63,7 +63,6 @@ Main::Main(QWidget *parent) :
 	g_qmlMain = this;
 
 	m_client.reset(new Client("Walleth", Address(), eth::getDataDir() + "/Walleth"));
-	m_client->start();
 	
 	g_qmlClient = m_client.get();
 
@@ -105,8 +104,6 @@ Main::Main(QWidget *parent) :
 	connect(m_refreshNetwork, SIGNAL(timeout()), SLOT(refreshNetwork()));
 	m_refreshNetwork->start(1000);
 
-	connect(this, SIGNAL(changed()), SLOT(refresh()));
-
 	connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
 	{
 		m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
@@ -135,8 +132,7 @@ Main::~Main()
 
 void Main::timerEvent(QTimerEvent *)
 {
-	if (m_client->changed())
-		changed();
+
 }
 
 void Main::on_about_triggered()

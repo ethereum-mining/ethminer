@@ -417,7 +417,6 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
     Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-    c.start();
 	cout << credits();
 
 	std::ostringstream ccout;

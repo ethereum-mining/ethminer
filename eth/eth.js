@@ -75,19 +75,19 @@ window.eth = (function ethScope() {
 				p[s.order[j]] = (s.order[j][0] === "b") ? a[j].unbin() : a[j]
 			return p
 		};
-        if (m == "create" || m == "transact")
-            ret[m] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
+		if (m == "create" || m == "transact")
+			ret[m] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
 		else
 		{
 			ret[am] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
 			if (s.params)
 				ret[m] = function() { return reqSync(m, getParams(arguments)) }
-            else
+			else
 				Object.defineProperty(ret, m, {
 					get: function() { return reqSync(m, {}); },
 					set: function(v) {}
-			})
-        }
+				})
+		}
 	})(spec[si]);
 
 	ret.check = function(force) {

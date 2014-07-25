@@ -21,8 +21,10 @@
 
 #pragma once
 
+#include <boost/thread.hpp>
 #include <libethential/Common.h>
-#include "Transaction.h"
+#include "libethcore/CommonEth.h"
+#include "Guards.h"
 
 namespace eth
 {
@@ -31,28 +33,28 @@ class BlockChain;
 
 /**
  * @brief A queue of Transactions, each stored as RLP.
+ * @threadsafe
  */
 class TransactionQueue
 {
 public:
-	bool attemptImport(bytesConstRef _block) { try { import(_block); return true; } catch (...) { return false; } }
-	bool attemptImport(bytes const& _block) { try { import(&_block); return true; } catch (...) { return false; } }
-	bool import(bytesConstRef _block);
-	void drop(h256 _txHash) { m_data.erase(_txHash); }
-	std::map<h256, bytes> const& transactions() const { return m_data; }
+	bool attemptImport(bytesConstRef _tx) { try { import(_tx); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _tx) { return attemptImport(&_tx); }
+	bool import(bytesConstRef _tx);
+
+	void drop(h256 _txHash);
+
+	std::map<h256, bytes> transactions() const { ReadGuard l(m_lock); return m_current; }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_future.size()); }
 
 	void setFuture(std::pair<h256, bytes> const& _t);
 	void noteGood(std::pair<h256, bytes> const& _t);
 
-	Transactions interestQueue() { Transactions ret; swap(ret, m_interestQueue); return ret; }
-	void pushInterest(Address _a) { m_interest[_a]++; }
-	void popInterest(Address _a) { if (m_interest[_a] > 1) m_interest[_a]--; else if (m_interest[_a]) m_interest.erase(_a); }
-
 private:
-	std::map<h256, bytes> m_data;		///< Map of SHA3(tx) to tx.
-	Transactions m_interestQueue;
-	std::map<Address, int> m_interest;
-	std::multimap<Address, std::pair<h256, bytes>> m_future;		///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
+	mutable boost::shared_mutex m_lock;							///< General lock.
+	std::set<h256> m_known;										///< Hashes of transactions in both sets.
+	std::map<h256, bytes> m_current;							///< Map of SHA3(tx) to tx.
+	std::multimap<Address, std::pair<h256, bytes>> m_future;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
 };
 
 }
