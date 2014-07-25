@@ -31,9 +31,7 @@ bool TransactionQueue::import(bytesConstRef _block)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_block);
-
-	UpgradableGuard l(x_data);
-	if (m_data.count(h))
+	if (m_known.count(h))
 		return false;
 
 	try
@@ -44,8 +42,7 @@ bool TransactionQueue::import(bytesConstRef _block)
 		auto s = t.sender();
 
 		// If valid, append to blocks.
-		UpgradeGuard ul(l);
-		m_data[h] = _block.toBytes();
+		m_current[h] = _block.toBytes();
 	}
 	catch (InvalidTransactionFormat const& _e)
 	{
@@ -63,20 +60,36 @@ bool TransactionQueue::import(bytesConstRef _block)
 
 void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
 {
-	UpgradableGuard l(x_data);
-	if (m_data.count(_t.first))
+	if (m_current.count(_t.first))
 	{
-		UpgradeGuard ul(l);
-		m_data.erase(_t.first);
+		m_current.erase(_t.first);
 		m_future.insert(make_pair(Transaction(_t.second).sender(), _t));
 	}
 }
 
 void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 {
-	WriteGuard l(x_data);
 	auto r = m_future.equal_range(Transaction(_t.second).sender());
 	for (auto it = r.first; it != r.second; ++it)
-		m_data.insert(_t);
+		m_current.insert(it->second);
 	m_future.erase(r.first, r.second);
+}
+
+void TransactionQueue::drop(h256 _txHash)
+{
+	WriteGuard l(m_lock);
+	if (!m_known.erase(_txHash))
+		return;
+
+	if (m_current.count(_txHash))
+		m_current.erase(_txHash);
+	else
+	{
+		for (auto i = m_future.begin(); i != m_future.end(); ++i)
+			if (i->second.first == _txHash)
+			{
+				m_future.erase(i);
+				break;
+			}
+	}
 }

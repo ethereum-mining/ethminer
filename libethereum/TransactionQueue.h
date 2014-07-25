@@ -38,21 +38,22 @@ class BlockChain;
 class TransactionQueue
 {
 public:
-	bool attemptImport(bytesConstRef _tx) { try { import(_block); return true; } catch (...) { return false; } }
-	bool attemptImport(bytes const& _tx) { return attemptImport(&_block); }
+	bool attemptImport(bytesConstRef _tx) { try { import(_tx); return true; } catch (...) { return false; } }
+	bool attemptImport(bytes const& _tx) { return attemptImport(&_tx); }
 	bool import(bytesConstRef _tx);
 
-	void drop(h256 _txHash) { WriteGuard l(x_data); m_data.erase(_txHash); }
+	void drop(h256 _txHash);
 
-	std::map<h256, bytes> transactions() const { ReadGuard l(x_data); return m_data; }
+	std::map<h256, bytes> transactions() const { ReadGuard l(m_lock); return m_current; }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_future.size()); }
 
 	void setFuture(std::pair<h256, bytes> const& _t);
 	void noteGood(std::pair<h256, bytes> const& _t);
 
 private:
-	std::map<h256, bytes> m_data;								///< Map of SHA3(tx) to tx.
-	boost::shared_mutex x_data;
-
+	mutable boost::shared_mutex m_lock;							///< General lock.
+	std::set<h256> m_known;										///< Hashes of transactions in both sets.
+	std::map<h256, bytes> m_current;							///< Map of SHA3(tx) to tx.
 	std::multimap<Address, std::pair<h256, bytes>> m_future;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
 };
 

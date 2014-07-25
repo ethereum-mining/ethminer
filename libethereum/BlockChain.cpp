@@ -163,20 +163,40 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
-h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB)
+h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
-#if ETH_CATCH
+	vector<bytes> blocks;
+	_bq.drain(blocks);
+
+	h256s ret;
+	for (auto const& block: blocks)
+		try
+		{
+			for (auto h: import(block, _stateDB))
+				if (!_max--)
+					break;
+				else
+					ret.push_back(h);
+		}
+		catch (UnknownParent)
+		{
+			cwarn << "Unknown parent of block!!!" << eth::sha3(block).abridged();
+			_bq.import(&block, *this);
+		}
+		catch (...){}
+	return ret;
+}
+
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept
+{
 	try
-#endif
 	{
 		return import(_block, _stateDB);
 	}
-#if ETH_CATCH
 	catch (...)
 	{
 		return h256s();
 	}
-#endif
 }
 
 h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
@@ -220,7 +240,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	if (bi.timestamp > (u256)time(0))
 	{
 		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
-		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
+		// Block has a timestamp in the future. This is no good.
 		throw FutureTime();
 	}
 

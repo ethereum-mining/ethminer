@@ -252,9 +252,9 @@ public:
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Is the network subsystem up?
-	bool haveNetwork() { return !!m_net; }
-	/// Get access to the peer server object. This will be null if the network isn't online.
-	PeerServer* peerServer() const { return m_net.get(); }
+	bool haveNetwork() { Guard l(x_net); return !!m_net; }
+	/// Get access to the peer server object. This will be null if the network isn't online. DANGEROUS! DO NOT USE!
+	PeerServer* peerServer() const { Guard l(x_net); return m_net.get(); }
 
 	// Mining stuff:
 
@@ -311,11 +311,13 @@ private:
 	std::string m_clientVersion;		///< Our end-application client's name/version.
 	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;					///< Maintains block database.
-	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
+	TransactionQueue m_tq;				///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	BlockQueue m_bq;					///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	OverlayDB m_stateDB;				///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;					///< The present state of the client.
 	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
+	mutable std::mutex x_net;			///< Lock for the network.
 	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 	
 	std::unique_ptr<std::thread> m_work;///< The work thread.

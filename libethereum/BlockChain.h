@@ -28,6 +28,7 @@
 #include "Guards.h"
 #include "BlockDetails.h"
 #include "AddressState.h"
+#include "BlockQueue.h"
 namespace ldb = leveldb;
 
 namespace eth
@@ -66,8 +67,12 @@ public:
 	/// To be called from main loop every 100ms or so.
 	void process();
 
-	/// Attempt to import the given block.
-	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB);
+	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
+	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+
+	/// Attempt to import the given block directly into the BlockChain and sync with the state DB.
+	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
+	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.

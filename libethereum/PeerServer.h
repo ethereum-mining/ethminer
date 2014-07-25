@@ -30,12 +30,20 @@
 #include <thread>
 #include <libethcore/CommonEth.h>
 #include "PeerNetwork.h"
+#include "Guards.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
 namespace eth
 {
 
+class TransactionQueue;
+class BlockQueue;
+
+/**
+ * @brief The PeerServer class
+ * @warning None of this is thread-safe. You have been warned.
+ */
 class PeerServer
 {
 	friend class PeerSession;
@@ -48,7 +56,11 @@ public:
 	/// Start server, but don't listen.
 	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m = NodeMode::Full);
 
+	/// Will block on network process events.
 	~PeerServer();
+
+	/// Closes all peers.
+	void disconnectPeers();
 
 	static unsigned protocolVersion();
 	unsigned networkId() { return m_networkId; }
@@ -58,12 +70,14 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	h256Set sync(BlockChain& _bc, TransactionQueue&, OverlayDB& _o, unsigned _max);
+	bool sync(TransactionQueue&, BlockQueue& _bc);
 
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
 	/// This won't touch alter the blockchain.
 	void process() { if (isInitialised()) m_ioService.poll(); }
+
+	bool havePeer(Public _id) const { Guard l(x_peers); return m_peers.count(_id); }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -74,7 +88,7 @@ public:
     std::vector<PeerInfo> peers(bool _updatePing = false) const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	size_t peerCount() const { return m_peers.size(); }
+	size_t peerCount() const { Guard l(x_peers); return m_peers.size(); }
 
 	/// Ping the peers, to update the latency information.
 	void pingAll();
@@ -84,6 +98,8 @@ public:
 
 	bytes savePeers() const;
 	void restorePeers(bytesConstRef _b);
+
+	void registerPeer(std::shared_ptr<PeerSession> _s);
 
 private:
 	/// Session wants to pass us a block that we might not have.
@@ -95,10 +111,15 @@ private:
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	void ensureAccepting();
 
+	void growPeers();
+	void prunePeers();
+	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
+	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
+
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return m_latestBlockSent; }
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
-	bool ensureInitialised(BlockChain& _bc, TransactionQueue& _tq);
+	bool ensureInitialised(TransactionQueue& _tq);
 
 	std::map<Public, bi::tcp::endpoint> potentialPeers();
 
@@ -117,14 +138,15 @@ private:
 	KeyPair m_key;
 
 	unsigned m_networkId;
+
+	mutable std::mutex x_peers;
 	std::map<Public, std::weak_ptr<PeerSession>> m_peers;
 
+	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
-	mutable std::recursive_mutex m_incomingLock;
-	std::vector<bytes> m_unknownParentBlocks;
-	std::vector<Public> m_freePeers;
 	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
+	std::vector<Public> m_freePeers;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;

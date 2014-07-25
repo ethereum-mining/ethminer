@@ -21,11 +21,14 @@
 
 #pragma once
 
+#include <mutex>
 #include <boost/thread.hpp>
 
 namespace eth
 {
 
+using Guard = std::lock_guard<std::mutex>;
+using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
 using ReadGuard = boost::shared_lock<boost::shared_mutex>;
 using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
 using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
