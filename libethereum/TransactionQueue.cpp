@@ -27,22 +27,22 @@
 using namespace std;
 using namespace eth;
 
-bool TransactionQueue::import(bytesConstRef _block)
+bool TransactionQueue::import(bytesConstRef _transactionRLP)
 {
 	// Check if we already know this transaction.
-	h256 h = sha3(_block);
+	h256 h = sha3(_transactionRLP);
 	if (m_known.count(h))
 		return false;
 
 	try
 	{
-		// Check validity of _block as a transaction. To do this we just deserialise and attempt to determine the sender. If it doesn't work, the signature is bad.
+		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
+		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-		Transaction t(_block);
-		auto s = t.sender();
+		Transaction t(_transactionRLP, true);
 
 		// If valid, append to blocks.
-		m_current[h] = _block.toBytes();
+		m_current[h] = _transactionRLP.toBytes();
 	}
 	catch (InvalidTransactionFormat const& _e)
 	{
