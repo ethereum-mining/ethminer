@@ -38,8 +38,8 @@ struct Signature
 struct Transaction
 {
 	Transaction() {}
-	Transaction(bytesConstRef _rlp);
-	Transaction(bytes const& _rlp): Transaction(&_rlp) {}
+	Transaction(bytesConstRef _rlp, bool _checkSender = false);
+	Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
 
 	bool operator==(Transaction const& _c) const { return receiveAddress == _c.receiveAddress && value == _c.value && data == _c.data; }
 	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
@@ -55,8 +55,8 @@ struct Transaction
 	Signature vrs;		///< The signature of the transaction. Encodes the sender.
 
 	Address safeSender() const noexcept;	///< Like sender() but will never throw.
-	Address sender() const;	///< Determine the sender of the transaction from the signature (and hash).
-	void sign(Secret _priv);	///< Sign the transaction.
+	Address sender() const;					///< Determine the sender of the transaction from the signature (and hash).
+	void sign(Secret _priv);				///< Sign the transaction.
 
 	bool isCreation() const { return !receiveAddress; }
 
@@ -67,6 +67,9 @@ struct Transaction
 	std::string rlpString(bool _sig = true) const { return asString(rlp(_sig)); }
 	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3(s.out()); }
 	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return eth::sha3Bytes(s.out()); }
+
+private:
+	mutable Address m_sender;
 };
 
 using Transactions = std::vector<Transaction>;

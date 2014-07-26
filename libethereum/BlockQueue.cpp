@@ -85,18 +85,20 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	return true;
 }
 
-void BlockQueue::noteReadyWithoutWriteGuard(h256 _b)
+void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 {
-	auto r = m_future.equal_range(_b);
-	h256s good;
-	for (auto it = r.first; it != r.second; ++it)
+	h256s goodQueue(1, _good);
+	while (goodQueue.size())
 	{
-		m_futureSet.erase(it->second.first);
-		m_ready.push_back(it->second.second);
-		m_readySet.erase(it->second.first);
-		good.push_back(it->second.first);
+		auto r = m_future.equal_range(goodQueue.back());
+		goodQueue.pop_back();
+		for (auto it = r.first; it != r.second; ++it)
+		{
+			m_futureSet.erase(it->second.first);
+			m_ready.push_back(it->second.second);
+			m_readySet.erase(it->second.first);
+			goodQueue.push_back(it->second.first);
+		}
+		m_future.erase(r.first, r.second);
 	}
-	m_future.erase(r.first, r.second);
-	for (auto g: good)
-		noteReadyWithoutWriteGuard(g);
 }
