@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\libqethereum\QEthereum.cpp" />
+    <ClCompile Include="..\libqethereum\QmlEthereum.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -53,6 +54,24 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <CustomBuild Include="..\libqethereum\QmlEthereum.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+    </CustomBuild>
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
