@@ -10,11 +10,13 @@
       <Filter>Windows</Filter>
     </ClCompile>
     <ClCompile Include="..\libqethereum\QEthereum.cpp" />
+    <ClCompile Include="..\libqethereum\QmlEthereum.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
     </ClInclude>
+    <ClInclude Include="..\libqethereum\QmlEthereum.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\libqethereum\QEthereum.h" />
