@@ -298,7 +298,7 @@ int nc_window_streambuf::sync()
 }
 
 vector<string> form_dialog(vector<string> _sfields, vector<string> _lfields, vector<string> _bfields, int _cols, int _rows, string _post_form);
-bytes parse_data(string _args);
+bytes parseData(string _args);
 
 
 int main(int argc, char** argv)
@@ -655,7 +655,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = parse_data(sdata);
+				bytes data = parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -1223,7 +1223,7 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 	return vs;
 }
 
-bytes parse_data(string _args)
+bytes parseData(string _args)
 {
 	bytes m_data;
 	stringstream args(_args);

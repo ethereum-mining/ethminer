@@ -169,7 +169,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-bytes parse_data(string _args);
+bytes parseData(string _args);
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -309,9 +309,16 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
+		string logbuf;
 		string l;
 		while (true)
 		{
+			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
+			cout << logbuf << "Press Enter" << flush;
+			std::getline(cin, l);
+			logbuf.clear();
+			g_logPost = [&](std::string const& a, char const*) { logbuf += a + "\n"; };
+
 #if ETH_READLINE
 			if (l.size())
 				add_history(l.c_str());
@@ -434,7 +441,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = parse_data(sdata);
+					bytes data = parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -695,7 +702,7 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-bytes parse_data(string _args)
+bytes parseData(string _args)
 {
 	bytes m_data;
 	stringstream args(_args);
