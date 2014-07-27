@@ -692,7 +692,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 								s--;
 							else
 								// Have a transaction that contains a matching message.
-								ret.insert(ret.begin(), pm[j].polish(h, ts, n));
+								ret.push_back(pm[j].polish(h, ts, n));
 					}
 				}
 #if ETH_DEBUG
