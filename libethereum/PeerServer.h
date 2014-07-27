@@ -77,7 +77,7 @@ public:
 	/// This won't touch alter the blockchain.
 	void process() { if (isInitialised()) m_ioService.poll(); }
 
-	bool havePeer(Public _id) const { Guard l(x_peers); return m_peers.count(_id); }
+	bool havePeer(Public _id) const { Guard l(x_peers); return m_peers.count(_id) != 0; }
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }

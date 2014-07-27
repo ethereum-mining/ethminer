@@ -170,6 +170,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 
 	h256s ret;
 	for (auto const& block: blocks)
+	{
 		try
 		{
 			for (auto h: import(block, _stateDB))
@@ -184,6 +185,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 			_bq.import(&block, *this);
 		}
 		catch (...){}
+	}
 	return ret;
 }
 

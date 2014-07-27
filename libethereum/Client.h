@@ -221,8 +221,8 @@ public:
 	unsigned installWatch(TransactionFilter const& _filter);
 	unsigned installWatch(h256 _filterId);
 	void uninstallWatch(unsigned _watchId);
-	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return 0; } }
-	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
+	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
 	// [EXTRA API]:
 
