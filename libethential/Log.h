@@ -39,7 +39,7 @@ public:
 };
 
 /// A simple log-output function that prints log messages to stdout.
-void simpleDebugOut(std::string const&, char const* );
+void simpleDebugOut(std::string const&, char const*);
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;

@@ -307,7 +307,7 @@ void Client::inject(bytesConstRef _rlp)
 
 void Client::work(bool _justQueue)
 {
-	cdebug << ">>> WORK";
+	cworkin << "WORK";
 	h256Set changeds;
 
 	// Process network events.
@@ -317,14 +317,14 @@ void Client::work(bool _justQueue)
 		Guard l(x_net);
 		if (m_net && !_justQueue)
 		{
-			cdebug << "--- WORK: NETWORK";
+			cwork << "NETWORK";
 			m_net->process();	// must be in guard for now since it uses the blockchain.
 
 			// returns h256Set as block hashes, once for each block that has come in/gone out.
-			cdebug << "--- WORK: NET <==> TQ ; CHAIN ==> NET ==> BQ";
+			cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
 			m_net->sync(m_tq, m_bq);
 
-			cdebug << "--- TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
 		}
 	}
 
@@ -361,7 +361,7 @@ void Client::work(bool _justQueue)
 
 		if (m_doMine)
 		{
-			cdebug << "--- WORK: MINE";
+			cwork << "MINE";
 			m_restartMining = false;
 
 			// Mine for a while.
@@ -377,9 +377,9 @@ void Client::work(bool _justQueue)
 			if (mineInfo.completed)
 			{
 				// Import block.
-				cdebug << "--- WORK: COMPLETE MINE%";
+				cwork << "COMPLETE MINE";
 				m_postMine.completeMine();
-				cdebug << "--- WORK: CHAIN <== postSTATE";
+				cwork << "CHAIN <== postSTATE";
 				h256s hs = m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
 				if (hs.size())
 				{
@@ -392,7 +392,7 @@ void Client::work(bool _justQueue)
 		}
 		else
 		{
-			cdebug << "--- WORK: SLEEP";
+			cwork << "SLEEP";
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
@@ -407,7 +407,7 @@ void Client::work(bool _justQueue)
 	{
 		ClientGuard l(this);
 
-		cdebug << "--- WORK: BQ ==> CHAIN ==> STATE";
+		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		m_lock.unlock();
 		h256s newBlocks = m_bc.sync(m_bq, db, 100);
@@ -421,7 +421,7 @@ void Client::work(bool _justQueue)
 		if (newBlocks.size())
 			m_stateDB = db;
 
-		cdebug << "--- WORK: preSTATE <== CHAIN";
+		cwork << "preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (m_doMine)
@@ -432,7 +432,7 @@ void Client::work(bool _justQueue)
 		}
 
 		// returns h256s as blooms, once for each transaction.
-		cdebug << "--- WORK: postSTATE <== TQ";
+		cwork << "postSTATE <== TQ";
 		h256s newPendingBlooms = m_postMine.sync(m_tq);
 		if (newPendingBlooms.size())
 		{
@@ -446,9 +446,9 @@ void Client::work(bool _justQueue)
 		}
 	}
 
-	cdebug << "--- WORK: noteChanged" << changeds.size() << "items";
+	cwork << "noteChanged" << changeds.size() << "items";
 	noteChanged(changeds);
-	cdebug << "<<< WORK";
+	cworkout << "WORK";
 }
 
 void Client::lock() const

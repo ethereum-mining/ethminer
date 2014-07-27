@@ -138,6 +138,136 @@ eth.create(eth.key, '0', gavCoinCode, 10000, eth.gasPrice, function(a) { gavCoin
 env.note('Register GavCoin...')
 eth.transact(eth.key, '0', config, "2".pad(32) + gavCoin.pad(32), 10000, eth.gasPrice);
 
+var exchangeCode = eth.lll("
+{
+
+; init
+[0] 'register
+[32] 'Exchange
+(msg allgas 0x50441127ea5b9dfd835a9aba4e1dc9c1257b58ca 0 0 64)
+
+(def 'min (a b) (if (< a b) a b))
+
+(def 'head (list) @@ list)
+(def 'next (item) @@ item)
+(def 'inc (itemref) [itemref]: (next @itemref))
+(def 'rateof (item) @@ (+ item 1))
+(def 'idof (item) @@ (+ item 2))
+(def 'wantof (item) @@ (+ item 3))
+(def 'newitem (rate who want) {
+	(set 'pos (sha3pair rate who))
+	[[ (+ @pos 1) ]] rate
+	[[ (+ @pos 2) ]] who
+	[[ (+ @pos 3) ]] want
+	@pos
+})
+(def 'stitchitem (parent pos) {
+	[[ pos ]] @@ parent
+	[[ parent ]] pos
+})
+(def 'addwant (item, amount) [[ (+ item 3) ]] (+ @@ (+ item 3) amount))
+(def 'deductwant (item, amount) [[ (+ item 3) ]] (- @@ (+ item 3) amount))
+
+(def 'xfer (contract to amount)
+	(if contract {
+		[0] 'send
+		[32] to
+		[64] amount
+		(msg allgas contract 0 0 96)
+	}
+		(send to amount)
+	)
+)
+
+
+(returnlll {
+	(when (= $0 'new) {
+		(set 'offer $32)
+		(set 'xoffer (if @offer $64 (callvalue)))
+		(set 'want $96)
+		(set 'xwant $128)
+		(set 'rate (/ (* @xoffer (exp 2 128)) @xwant))
+		(set 'irate (/ (* @xwant (exp 2 128)) @xoffer))
+
+		(unless (&& @rate @irate @xoffer @xwant) (stop))
+
+		(when @offer {
+			(set 'arg1 'send)
+			(set 'arg2 (address))
+			(set 'arg3 @xoffer)
+			(set 'arg4 'origin)
+			(unless (msg allgas @offer 0 arg1 128) (stop))
+		})
+		(set 'list (sha3pair @offer @want))
+		(set 'ilist (sha3pair @want @offer))
+
+		(set 'last @ilist)
+		(set 'item @@ @last)
+		
+		(for {} (&& @item (>= (rateof @item) @irate)) {} {
+			(set 'offerA (min @xoffer (wantof @item)))
+			(set 'wantA (/ (* @offerA (rateof @item)) (exp 2 128)))	; CHECK!
+
+			(set 'xoffer (- @xoffer @offerA))
+			(set 'xwant (- @xwant @wantA))
+
+			(deductwant @item @offerA)
+
+			(xfer @offer (idof @item) @offerA)
+			(xfer @want (caller) @wantA)
+
+			(unless @xoffer (stop))
+
+			(set 'item @@ @item)
+			[[ @last ]] @item
+		})
+
+		(set 'last @list)
+		(set 'item @@ @last)
+		
+		(set 'newpos (newitem @rate (caller) @xwant))
+
+		(for {} (&& @item (!= @item @newpos) (>= (rateof @item) @rate)) { (set 'last @item) (inc item) } {})
+		(if (= @item @newpos)
+			(addwant @item @wantx)
+			(stitchitem @last @newpos)
+		)
+		(stop)
+	})
+	(when (= $0 'delete) {
+		(set 'offer $32)
+		(set 'want $64)
+		(set 'list (sha3pair @offer @want))
+		(set 'last @list)
+		(set 'item @@ @last)
+		(for {} (&& @item (!= (idof @item) (caller))) { (set 'last @item) (inc item) } {})
+		(when @item {
+			(set 'xoffer (/ (* (wantof @item) (rateof @item)) (exp 2 128)))
+			[[ @last ]] @@ @item
+			(xfer @offer (caller) @xoffer)
+		})
+		(stop)
+	})
+	(when (= $0 'price) {
+		(set 'offer $32)
+		(set 'want $96)
+		(set 'item (head (sha3pair @offer @want)))
+		(return (if @item (rateof @list) 0))
+	})
+})
+}
+");
+
+var exchange;
+env.note('Create Exchange...')
+eth.create(eth.key, '0', exchangeCode, 10000, eth.gasPrice, function(a) { exchange = a; });
+
+env.note('Register Exchange...')
+eth.transact(eth.key, '0', config, "2".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+
+
+
+
 env.note('Register my name...')
 eth.transact(eth.key, '0', nameReg, "register".pad(32) + "Gav".pad(32), 10000, eth.gasPrice);
 

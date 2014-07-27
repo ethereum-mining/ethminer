@@ -19,7 +19,10 @@
  * @date 2014
  */
 
+#include <ctime>
 #include "FixedHash.h"
 
 using namespace std;
 using namespace eth;
+
+std::mt19937_64 eth::s_fixedHashEngine(time(0));

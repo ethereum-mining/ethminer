@@ -31,6 +31,8 @@
 namespace eth
 {
 
+extern std::mt19937_64 s_fixedHashEngine;
+
 /// Fixed-size raw-byte array container type, with an API optimised for storing hashes.
 /// Transparently converts to/from the corresponding arithmetic type; this will
 /// assume the data contained in the hash is big-endian.
@@ -125,7 +127,7 @@ public:
 
 	/// @returns a randomly-valued hash
 	template <class Engine>
-	static FixedHash random(Engine& _eng)
+	static FixedHash random(Engine& _eng = s_fixedHashEngine)
 	{
 		FixedHash ret;
 		for (auto& i: ret.m_data)
@@ -154,11 +156,9 @@ public:
 		return ret;
 	}
 
-
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };
-
 
 /// Fast equality operator for h256.
 template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const
