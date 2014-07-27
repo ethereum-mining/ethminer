@@ -92,10 +92,10 @@ var gavCoinCode = eth.lll("
 (returnlll {
 	(when (&& (= $0 'kill) (= (caller) @@0x69)) (suicide (caller)))
 	(when (= $0 'balance) (return @@$32))
-	(when (= $0 'approved) (return @@ @(sha3 (^ (if (= (calldatasize) 64) (caller) $64) $32))) )
+	(when (= $0 'approved) (return @@ (sha3pair (if (= (calldatasize) 64) (caller) $64) $32)) )
 	
 	(when (= $0 'approve) {
-		[[@(sha3 (^ (caller) $32))]] $32
+		[[(sha3pair (caller) $32)]] $32
 		(stop)
 	})
 
@@ -103,18 +103,18 @@ var gavCoinCode = eth.lll("
 		(set 'fromVar (if (= (calldatasize) 96)
 			(caller)
 			{
-				(when (! @@ @(sha3 (^ $96 $32)) ) (stop))
-				$96
+				(when (! @@ (sha3pair (origin) (caller))) (return 0))
+				(origin)
 			}
 		))
 		(def 'to $32)
 		(def 'value $64)
 		(def 'from (get 'fromVar))
 		(set 'fromBal @@from)
-		(when (< @fromBal value) (stop))
+		(when (< @fromBal value) (return 0))
 		[[ from ]]: (- @fromBal value)
 		[[ to ]]: (+ @@to value)
-		(stop)
+		(return 1)
 	})
 
 	(set 'n @@0x42)

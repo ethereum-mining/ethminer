@@ -1299,8 +1299,9 @@ void Main::on_data_textChanged()
 		QString s = ui->data->toPlainText();
 		while (s.size())
 		{
-			QRegExp r("(@|\\$)?\"([^\"]*)\"(.*)");
-			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(.*)");
+			QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+			QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
+			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
 			if (r.exactMatch(s))
 			{
 				for (auto i: r.cap(2))
@@ -1311,6 +1312,23 @@ void Main::on_data_textChanged()
 				else
 					m_data.push_back(0);
 				s = r.cap(3);
+			}
+			else if (d.exactMatch(s))
+			{
+				u256 v(d.cap(2).toStdString());
+				if (d.cap(6) == "szabo")
+					v *= eth::szabo;
+				else if (d.cap(5) == "finney")
+					v *= eth::finney;
+				else if (d.cap(4) == "ether")
+					v *= eth::ether;
+				bytes bs = eth::toCompactBigEndian(v);
+				if (d.cap(1) != "$")
+					for (auto i = bs.size(); i < 32; ++i)
+						m_data.push_back(0);
+				for (auto b: bs)
+					m_data.push_back(b);
+				s = d.cap(7);
 			}
 			else if (h.exactMatch(s))
 			{
@@ -1679,9 +1697,9 @@ QString Main::prettyU256(eth::u256 _n) const
 	QString raw;
 	ostringstream s;
 	if (!(_n >> 64))
-		s << "<span style=\"color: #448\">0x</span><span style=\"color: #008\">" << (uint64_t)_n << "</span>";
+		s << "<span style=\"color: #008\">" << (uint64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
 	else if (!~(_n >> 64))
-		s << "<span style=\"color: #448\">0x</span><span style=\"color: #008\">" << (int64_t)_n << "</span>";
+		s << "<span style=\"color: #008\">" << (int64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (int64_t)_n << ")</span>";
 	else if (_n >> 200 == 0)
 	{
 		Address a = right160(_n);

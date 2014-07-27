@@ -411,7 +411,7 @@ Node apply_rules(Node node) {
             node.args[0].val = "'" + node.args[0].val;
             i = 1;
         }
-        for (i = i; i < node.args.size(); i++) {
+        for (; i < node.args.size(); i++) {
             node.args[i] = apply_rules(node.args[i]);
         }
     }
