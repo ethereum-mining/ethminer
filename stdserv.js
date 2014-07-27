@@ -146,12 +146,12 @@ var exchangeCode = eth.lll("
 
 (def 'min (a b) (if (< a b) a b))
 
-(def 'head (list) @@ list)
-(def 'next (item) @@ item)
+(def 'head (_list) @@ _list)
+(def 'next (_item) @@ _item)
 (def 'inc (itemref) [itemref]: (next @itemref))
-(def 'rateof (item) @@ (+ item 1))
-(def 'idof (item) @@ (+ item 2))
-(def 'wantof (item) @@ (+ item 3))
+(def 'rateof (_item) @@ (+ _item 1))
+(def 'idof (_item) @@ (+ _item 2))
+(def 'wantof (_item) @@ (+ _item 3))
 (def 'newitem (rate who want) {
 	(set 'pos (sha3pair rate who))
 	[[ (+ @pos 1) ]] rate
@@ -163,8 +163,8 @@ var exchangeCode = eth.lll("
 	[[ pos ]] @@ parent
 	[[ parent ]] pos
 })
-(def 'addwant (item, amount) [[ (+ item 3) ]] (+ @@ (+ item 3) amount))
-(def 'deductwant (item, amount) [[ (+ item 3) ]] (- @@ (+ item 3) amount))
+(def 'addwant (_item amount) [[ (+ _item 3) ]] (+ @@ (+ _item 3) amount))
+(def 'deductwant (_item amount) [[ (+ _item 3) ]] (- @@ (+ _item 3) amount))
 
 (def 'xfer (contract to amount)
 	(if contract {
@@ -177,6 +177,8 @@ var exchangeCode = eth.lll("
 	)
 )
 
+(def 'fpdiv (a b) (/ (+ (/ b 2) (* a (exp 2 128))) b))
+(def 'fpmul (a b) (/ (* a b) (exp 2 128)) )
 
 (returnlll {
 	(when (= $0 'new) {
@@ -184,8 +186,8 @@ var exchangeCode = eth.lll("
 		(set 'xoffer (if @offer $64 (callvalue)))
 		(set 'want $96)
 		(set 'xwant $128)
-		(set 'rate (/ (* @xoffer (exp 2 128)) @xwant))
-		(set 'irate (/ (* @xwant (exp 2 128)) @xoffer))
+		(set 'rate (fpdiv @xoffer @xwant))
+		(set 'irate (fpdiv @xwant @xoffer))
 
 		(unless (&& @rate @irate @xoffer @xwant) (stop))
 
@@ -204,7 +206,7 @@ var exchangeCode = eth.lll("
 		
 		(for {} (&& @item (>= (rateof @item) @irate)) {} {
 			(set 'offerA (min @xoffer (wantof @item)))
-			(set 'wantA (/ (* @offerA (rateof @item)) (exp 2 128)))
+			(set 'wantA (fpmul @offerA (rateof @item)))
 
 			(set 'xoffer (- @xoffer @offerA))
 			(set 'xwant (- @xwant @wantA))
@@ -240,7 +242,7 @@ var exchangeCode = eth.lll("
 		(set 'item @@ @last)
 		(for {} (&& @item (!= (idof @item) (caller))) { (set 'last @item) (inc item) } {})
 		(when @item {
-			(set 'xoffer (/ (* (wantof @item) (rateof @item)) (exp 2 128)))
+			(set 'xoffer (fpmul (wantof @item) (rateof @item)))
 			[[ @last ]] @@ @item
 			(xfer @offer (caller) @xoffer)
 		})
@@ -268,6 +270,21 @@ eth.transact(eth.key, '0', config, "3".pad(32) + exchange.pad(32), 10000, eth.ga
 
 env.note('Register my name...')
 eth.transact(eth.key, '0', nameReg, "register".pad(32) + "Gav".pad(32), 10000, eth.gasPrice);
+
+env.note('Dole out ETH to other address...')
+eth.transact(eth.key, '100000000000000000000', eth.secretToAddress(eth.keys[1]), "", 10000, eth.gasPrice);
+
+env.note('Register my other name...')
+eth.transact(eth.keys[1], '0', nameReg, "register".pad(32) + "Gav Would".pad(32), 10000, eth.gasPrice);
+
+env.note('Approve Exchange...')
+eth.transact(eth.key, '0', gavCoin, "approve".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+
+env.note('Approve Exchange on other address...')
+eth.transact(eth.keys[1], '0', gavCoin, "approve".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+
+env.note('Make offer 5000GAV/5ETH...')
+eth.transact(eth.key, '0', exchange, "new".pad(32) + gavCoin.pad(32) + "5000".pad(32) + "0".pad(32) + "5000000000000000000".pad(32), 10000, eth.gasPrice);
 
 env.note('All done.')
 
