@@ -42,10 +42,13 @@
     <ClCompile Include="..\libethential\RLP.cpp" />
     <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
+    <ClCompile Include="..\libethereum\BlockDetails.cpp" />
+    <ClCompile Include="..\libethereum\BlockQueue.cpp" />
     <ClCompile Include="..\libethereum\Client.cpp" />
     <ClCompile Include="..\libethereum\Defaults.cpp" />
     <ClCompile Include="..\libethereum\Executive.cpp" />
     <ClCompile Include="..\libethereum\ExtVM.cpp" />
+    <ClCompile Include="..\libethereum\Manifest.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
@@ -94,10 +97,13 @@
     <ClInclude Include="..\libethential\vector_ref.h" />
     <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
+    <ClInclude Include="..\libethereum\BlockDetails.h" />
+    <ClInclude Include="..\libethereum\BlockQueue.h" />
     <ClInclude Include="..\libethereum\Client.h" />
     <ClInclude Include="..\libethereum\Defaults.h" />
     <ClInclude Include="..\libethereum\Executive.h" />
     <ClInclude Include="..\libethereum\ExtVM.h" />
+    <ClInclude Include="..\libethereum\Manifest.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />

@@ -17,6 +17,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..;$(QtInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4718;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>ETH_QTQML=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link />
     <PreBuildEvent>
