@@ -140,8 +140,6 @@ eth.transact(eth.key, '0', config, "2".pad(32) + gavCoin.pad(32), 10000, eth.gas
 
 var exchangeCode = eth.lll("
 {
-
-; init
 [0] 'register
 [32] 'Exchange
 (msg allgas 0x50441127ea5b9dfd835a9aba4e1dc9c1257b58ca 0 0 64)
@@ -206,7 +204,7 @@ var exchangeCode = eth.lll("
 		
 		(for {} (&& @item (>= (rateof @item) @irate)) {} {
 			(set 'offerA (min @xoffer (wantof @item)))
-			(set 'wantA (/ (* @offerA (rateof @item)) (exp 2 128)))	; CHECK!
+			(set 'wantA (/ (* @offerA (rateof @item)) (exp 2 128)))
 
 			(set 'xoffer (- @xoffer @offerA))
 			(set 'xwant (- @xwant @wantA))
@@ -263,7 +261,7 @@ env.note('Create Exchange...')
 eth.create(eth.key, '0', exchangeCode, 10000, eth.gasPrice, function(a) { exchange = a; });
 
 env.note('Register Exchange...')
-eth.transact(eth.key, '0', config, "2".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+eth.transact(eth.key, '0', config, "3".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
 
 
 

@@ -410,7 +410,7 @@ void Client::work(bool _justQueue)
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		m_lock.unlock();
-		h256s newBlocks = m_bc.sync(m_bq, db, 100);
+		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		if (newBlocks.size())
 		{
 			for (auto i: newBlocks)
