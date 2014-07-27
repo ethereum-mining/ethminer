@@ -31,6 +31,8 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
+
+	UpgradableGuard l(m_lock);
 	if (m_known.count(h))
 		return false;
 
@@ -41,8 +43,10 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 		Transaction t(_transactionRLP, true);
 
+		UpgradeGuard ul(l);
 		// If valid, append to blocks.
 		m_current[h] = _transactionRLP.toBytes();
+		m_known.insert(h);
 	}
 	catch (InvalidTransactionFormat const& _e)
 	{
@@ -60,6 +64,7 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 
 void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
 {
+	WriteGuard l(m_lock);
 	if (m_current.count(_t.first))
 	{
 		m_current.erase(_t.first);
@@ -69,6 +74,7 @@ void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
 
 void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 {
+	WriteGuard l(m_lock);
 	auto r = m_future.equal_range(Transaction(_t.second).sender());
 	for (auto it = r.first; it != r.second; ++it)
 		m_current.insert(it->second);
@@ -77,9 +83,13 @@ void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 
 void TransactionQueue::drop(h256 _txHash)
 {
-	WriteGuard l(m_lock);
-	if (!m_known.erase(_txHash))
+	UpgradableGuard l(m_lock);
+
+	if (!m_known.count(_txHash))
 		return;
+
+	UpgradeGuard ul(l);
+	m_known.erase(_txHash);
 
 	if (m_current.count(_txHash))
 		m_current.erase(_txHash);

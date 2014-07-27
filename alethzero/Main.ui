@@ -392,6 +392,9 @@
        <property name="lineWidth">
         <number>0</number>
        </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
