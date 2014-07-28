@@ -289,7 +289,7 @@ else()
 	if (LANGUAGES)
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
 	else()
-		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
+		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system regex)
 	endif()
 
 	set(QTQML 1)

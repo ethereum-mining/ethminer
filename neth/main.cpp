@@ -24,7 +24,6 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
@@ -32,11 +31,7 @@
 #endif
 #include <libethcore/FileSystem.h>
 #include <libevmface/Instruction.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/Client.h>
-#include <libethereum/PeerNetwork.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
+#include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <eth/EthStubServer.h>
 #include <eth/EthStubServer.cpp>
@@ -300,8 +295,6 @@ int nc_window_streambuf::sync()
 }
 
 vector<string> form_dialog(vector<string> _sfields, vector<string> _lfields, vector<string> _bfields, int _cols, int _rows, string _post_form);
-bytes parseData(string _args);
-
 
 int main(int argc, char** argv)
 {
@@ -648,7 +641,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = parseData(sdata);
+				bytes data = eth::parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -1200,52 +1193,4 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 			vs.push_back(field_buffer(field[fi], 0));
 
 	return vs;
-}
-
-bytes parseData(string _args)
-{
-	bytes m_data;
-	stringstream args(_args);
-	string arg;
-	static const boost::regex r("\"([^\"]*)\"(.*)");
-	static const boost::regex h("(0x)?(([a-fA-F0-9])+)(.*)");
-
-	while (args >> arg)
-	{
-		if (boost::regex_match(arg, h))
-		{
-			if (boost::starts_with(arg, "0x"))
-			{
-				cnote << "hex: " << arg;
-				bytes bs = fromHex(arg);
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-			else
-			{
-				cnote << "value: " << arg;
-				bytes bs = toBigEndian(u256(arg));
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-		}
-		else if (boost::regex_match(arg, r))
-		{
-			arg = arg.substr(1, arg.length() - 2);
-			int al = arg.length();
-			cnote << "string: " << arg;
-			for (int i = 0; i < al; ++i)
-				m_data.push_back(arg[i]);
-			if (al < 32)
-				for (int i = 0; i < 32 - al; ++i)
-					m_data.push_back(0);
-		}
-	}
-	return m_data;
 }
