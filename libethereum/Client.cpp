@@ -99,14 +99,7 @@ void Client::ensureWorking()
 
 Client::~Client()
 {
-	if (m_work)
-	{
-		if (m_workState.load(std::memory_order_acquire) == Active)
-			m_workState.store(Deleting, std::memory_order_release);
-		while (m_workState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_work->join();
-	}
+	stopNetwork();
 }
 
 void Client::flushTransactions()
@@ -196,6 +189,18 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
+	static const char* c_threadName = "net";
+
+	if (!m_workNet)
+		m_workNet.reset(new thread([&]()
+		{
+			setThreadName(c_threadName);
+			m_workNetState.store(Active, std::memory_order_release);
+			while (m_workNetState.load(std::memory_order_acquire) != Deleting)
+				workNet();
+			m_workNetState.store(Deleted, std::memory_order_release);
+		}));
+
 	ensureWorking();
 
 	{
@@ -242,8 +247,19 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 
 void Client::stopNetwork()
 {
-	Guard l(x_net);
-	m_net.reset(nullptr);
+	{
+		Guard l(x_net);
+		m_net.reset(nullptr);
+	}
+
+	if (m_workNet)
+	{
+		if (m_workNetState.load(std::memory_order_acquire) == Active)
+			m_workNetState.store(Deleting, std::memory_order_release);
+		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
+			this_thread::sleep_for(chrono::milliseconds(10));
+		m_workNet->join();
+	}
 }
 
 void Client::startMining()
@@ -303,28 +319,29 @@ void Client::inject(bytesConstRef _rlp)
 	m_tq.attemptImport(_rlp);
 }
 
+void Client::workNet()
+{
+	// Process network events.
+	// Synchronise block chain with network.
+	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
+	Guard l(x_net);
+	if (m_net)
+	{
+		cwork << "NETWORK";
+		m_net->process();	// must be in guard for now since it uses the blockchain.
+
+		// returns h256Set as block hashes, once for each block that has come in/gone out.
+		cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
+		m_net->sync(m_tq, m_bq);
+
+		cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+	}
+}
+
 void Client::work(bool _justQueue)
 {
 	cworkin << "WORK";
 	h256Set changeds;
-
-	// Process network events.
-	// Synchronise block chain with network.
-	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	{
-		Guard l(x_net);
-		if (m_net && !_justQueue)
-		{
-			cwork << "NETWORK";
-			m_net->process();	// must be in guard for now since it uses the blockchain.
-
-			// returns h256Set as block hashes, once for each block that has come in/gone out.
-			cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
-			m_net->sync(m_tq, m_bq);
-
-			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
-		}
-	}
 
 	// Do some mining.
 	if (!_justQueue)
@@ -407,7 +424,7 @@ void Client::work(bool _justQueue)
 
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
-		m_lock.unlock();
+		x_stateDB.unlock();
 		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		if (newBlocks.size())
 		{
@@ -415,7 +432,7 @@ void Client::work(bool _justQueue)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(NewBlockFilter);
 		}
-		m_lock.lock();
+		x_stateDB.lock();
 		if (newBlocks.size())
 			m_stateDB = db;
 
@@ -451,12 +468,12 @@ void Client::work(bool _justQueue)
 
 void Client::lock() const
 {
-	m_lock.lock();
+	x_stateDB.lock();
 }
 
 void Client::unlock() const
 {
-	m_lock.unlock();
+	x_stateDB.unlock();
 }
 
 unsigned Client::numberOf(int _n) const

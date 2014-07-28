@@ -291,12 +291,15 @@ public:
 	void clearPending();
 
 private:
-	/// Ensure the worker thread is running. Needed for networking & mining.
+	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
 	void ensureWorking();
 
-	/// Do some work. Handles networking and mining.
+	/// Do some work. Handles blockchain maintenance and mining.
 	/// @param _justQueue If true will only processing the transaction queues.
 	void work(bool _justQueue = false);
+
+	/// Do some work on the network.
+	void workNet();
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
@@ -316,24 +319,26 @@ private:
 	State asOf(int _h) const;
 	State asOf(unsigned _h) const;
 
-	std::string m_clientVersion;		///< Our end-application client's name/version.
-	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
-	BlockChain m_bc;					///< Maintains block database.
-	TransactionQueue m_tq;				///< Maintains a list of incoming transactions not yet in a block on the blockchain.
-	BlockQueue m_bq;					///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
-	OverlayDB m_stateDB;				///< Acts as the central point for the state database, so multiple States can share it.
-	State m_preMine;					///< The present state of the client.
-	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	std::string m_clientVersion;			///< Our end-application client's name/version.
+	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
+	BlockChain m_bc;						///< Maintains block database.
+	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	mutable std::recursive_mutex x_stateDB;	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
+	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	State m_preMine;						///< The present state of the client.
+	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
-	mutable std::mutex x_net;			///< Lock for the network.
-	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-	
-	std::unique_ptr<std::thread> m_work;///< The work thread.
-	
-	mutable std::recursive_mutex m_lock;
+	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
+	std::atomic<ClientWorkState> m_workNetState;
+	mutable std::mutex x_net;				///< Lock for the network. // TODO: make network thread-safe.
+	std::unique_ptr<PeerServer> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+
+	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;
+
 	bool m_paranoia = false;
-	bool m_doMine = false;				///< Are we supposed to be mining?
+	bool m_doMine = false;					///< Are we supposed to be mining?
 	MineProgress m_mineProgress;
 	std::list<MineInfo> m_mineHistory;
 	mutable bool m_restartMining = false;
