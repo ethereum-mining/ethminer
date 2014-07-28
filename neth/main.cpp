@@ -24,6 +24,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
@@ -133,10 +134,10 @@ string credits()
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
-	if (pocnumber == 4)
-		m_servers = "54.72.31.55";
-	else
+	if (pocnumber == 5)
 		m_servers = "54.72.69.180";
+	else
+		m_servers = "54.76.56.74";
 
 	ccout << "Type 'netstart 30303' to start networking" << endl;
 	ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -152,6 +153,7 @@ void version()
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+
 string pretty(h160 _a, eth::State _st)
 {
 	string ns;
@@ -945,7 +947,8 @@ int main(int argc, char** argv)
 		// Balance
 		stringstream ssb;
 		u256 balance = c.balanceAt(us.address(), 0);
-		Address gavCoin("0115554959f43bf1d04cd7e3749d00fb0623ce1f");
+		Address coinsAddr = right160(c.stateAt(c_config, 1));
+		Address gavCoin = right160(c.stateAt(coinsAddr, c.stateAt(coinsAddr, 1)));
 		u256 totalGavCoinBalance = c.stateAt(gavCoin, (u160)us.address());
 		ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
@@ -1204,18 +1207,13 @@ bytes parseData(string _args)
 	bytes m_data;
 	stringstream args(_args);
 	string arg;
-	int cc = 0;
+	static const boost::regex r("\"([^\"]*)\"(.*)");
+	static const boost::regex h("(0x)?(([a-fA-F0-9])+)(.*)");
+
 	while (args >> arg)
 	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
+		if (boost::regex_match(arg, h))
 		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
 			if (boost::starts_with(arg, "0x"))
 			{
 				cnote << "hex: " << arg;
@@ -1225,16 +1223,6 @@ bytes parseData(string _args)
 					for (auto i = 0; i < 32 - size; ++i)
 						m_data.push_back(0);
 				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
 			}
 			else
 			{
@@ -1247,10 +1235,17 @@ bytes parseData(string _args)
 				m_data += bs;
 			}
 		}
-		else
+		else if (boost::regex_match(arg, r))
+		{
+			arg = arg.substr(1, arg.length() - 2);
+			int al = arg.length();
+			cnote << "string: " << arg;
 			for (int i = 0; i < al; ++i)
 				m_data.push_back(arg[i]);
-		cc++;
+			if (al < 32)
+				for (int i = 0; i < 32 - al; ++i)
+					m_data.push_back(0);
+		}
 	}
 	return m_data;
 }
