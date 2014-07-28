@@ -100,6 +100,15 @@ void Client::ensureWorking()
 
 Client::~Client()
 {
+	if (m_work)
+	{
+		if (m_workState.load(std::memory_order_acquire) == Active)
+			m_workState.store(Deleting, std::memory_order_release);
+		while (m_workState.load(std::memory_order_acquire) != Deleted)
+			this_thread::sleep_for(chrono::milliseconds(10));
+		m_work->join();
+		m_work.reset(nullptr);
+	}
 	stopNetwork();
 }
 
