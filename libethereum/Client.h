@@ -83,7 +83,7 @@ struct PastMessage
 {
 	PastMessage(Manifest const& _m, std::vector<unsigned> _path, Address _o): to(_m.to), from(_m.from), value(_m.value), input(_m.input), output(_m.output), path(_path), origin(_o) {}
 
-	PastMessage& polish(h256 _b, u256 _ts, unsigned _n) { block = _b; timestamp = _ts; number = _n; return *this; }
+	PastMessage& polish(h256 _b, u256 _ts, unsigned _n, Address _coinbase) { block = _b; timestamp = _ts; number = _n; coinbase = _coinbase; return *this; }
 
 	Address to;					///< The receiving address of the transaction. Address() in the case of a creation.
 	Address from;				///< The receiving address of the transaction. Address() in the case of a creation.
@@ -93,6 +93,7 @@ struct PastMessage
 
 	std::vector<unsigned> path;	///< Call path into the block transaction. size() is always > 0. First item is the transaction index in the block.
 	Address origin;				///< Originating sender of the transaction.
+	Address coinbase;			///< Block coinbase.
 	h256 block;					///< Block hash.
 	u256 timestamp;				///< Block timestamp.
 	unsigned number;			///< Block number.

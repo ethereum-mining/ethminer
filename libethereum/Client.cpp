@@ -649,7 +649,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 						s--;
 					else
 						// Have a transaction that contains a matching message.
-						ret.insert(ret.begin(), pm[j].polish(h256(), ts, m_bc.number() + 1));
+						ret.insert(ret.begin(), pm[j].polish(h256(), ts, m_bc.number() + 1, m_postMine.address()));
 			}
 		}
 	}
@@ -671,6 +671,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 			// Might have a block that contains a transaction that contains a matching message.
 			auto bs = m_bc.blooms(h).blooms;
 			Manifests ms;
+			BlockInfo bi;
 			for (unsigned i = 0; i < bs.size(); ++i)
 				if (_f.matches(bs[i]))
 				{
@@ -684,13 +685,16 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 #if ETH_DEBUG
 						total += pm.size();
 #endif
-						auto ts = BlockInfo(m_bc.block(h)).timestamp;
+						if (!bi)
+							bi.populate(m_bc.block(h));
+						auto ts = bi.timestamp;
+						auto cb = bi.coinbaseAddress;
 						for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
 							if (s)
 								s--;
 							else
 								// Have a transaction that contains a matching message.
-								ret.push_back(pm[j].polish(h, ts, n));
+								ret.push_back(pm[j].polish(h, ts, n, cb));
 					}
 				}
 #if ETH_DEBUG
