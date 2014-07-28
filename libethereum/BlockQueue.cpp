@@ -34,7 +34,8 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	h256 h = sha3(_block);
 
 	UpgradableGuard l(m_lock);
-	if (m_readySet.count(h) || m_futureSet.count(h))
+
+	if (m_readySet.count(h) || m_drainingSet.count(h) || m_futureSet.count(h))
 		// Already know about this one.
 		return false;
 
@@ -65,39 +66,43 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	if (bi.timestamp > (u256)time(0))
 		return false;
 
-	UpgradeGuard ul(l);
-
-	// We now know it.
-	if (!m_readySet.count(bi.parentHash) && !_bc.details(bi.parentHash))
 	{
-		// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-		m_future.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
-		m_futureSet.insert(h);
-		return true;
+		UpgradeGuard ul(l);
+
+		// We now know it.
+		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.details(bi.parentHash))
+		{
+			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
+			m_future.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
+			m_futureSet.insert(h);
+		}
+		else
+		{
+			// If valid, append to blocks.
+			m_ready.push_back(_block.toBytes());
+			m_readySet.insert(h);
+
+			noteReadyWithoutWriteGuard(h);
+		}
 	}
-
-	// If valid, append to blocks.
-	m_ready.push_back(_block.toBytes());
-	m_readySet.insert(h);
-
-	noteReadyWithoutWriteGuard(h);
 
 	return true;
 }
 
 void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 {
-	h256s goodQueue(1, _good);
+	list<h256> goodQueue(1, _good);
 	while (goodQueue.size())
 	{
-		auto r = m_future.equal_range(goodQueue.back());
-		goodQueue.pop_back();
+		auto r = m_future.equal_range(goodQueue.front());
+		goodQueue.pop_front();
 		for (auto it = r.first; it != r.second; ++it)
 		{
-			m_futureSet.erase(it->second.first);
 			m_ready.push_back(it->second.second);
-			m_readySet.erase(it->second.first);
-			goodQueue.push_back(it->second.first);
+			auto newReady = it->second.first;
+			m_futureSet.erase(newReady);
+			m_readySet.insert(newReady);
+			goodQueue.push_back(newReady);
 		}
 		m_future.erase(r.first, r.second);
 	}
