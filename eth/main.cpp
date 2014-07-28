@@ -31,12 +31,7 @@
 #endif
 #include <libethcore/FileSystem.h>
 #include <libevmface/Instruction.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/Client.h>
-#include <libethereum/PeerNetwork.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
-#include <libethcore/CommonEth.h>
+#include <libethereum/All.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -169,7 +164,7 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-bytes parseData(string _args);
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -434,7 +429,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = parseData(sdata);
+					bytes data = eth::parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -681,58 +676,3 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-bytes parseData(string _args)
-{
-	bytes m_data;
-	stringstream args(_args);
-	string arg;
-	int cc = 0;
-	while (args >> arg)
-	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
-		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
-			if (boost::starts_with(arg, "0x"))
-			{
-				cnote << "hex: " << arg;
-				bytes bs = fromHex(arg);
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
-			}
-			else
-			{
-				cnote << "value: " << arg;
-				bytes bs = toBigEndian(u256(arg));
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-		}
-		else
-			for (int i = 0; i < al; ++i)
-				m_data.push_back(arg[i]);
-		cc++;
-	}
-	return m_data;
-}

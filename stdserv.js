@@ -195,7 +195,7 @@ var exchangeCode = eth.lll("
 			(set 'arg1 'send)
 			(set 'arg2 (address))
 			(set 'arg3 @xoffer)
-			(set 'arg4 'origin)
+			(set 'arg4 (caller))
 			(unless (msg allgas @offer 0 arg1 128) (stop))
 		})
 		(set 'list (sha3pair @offer @want))
