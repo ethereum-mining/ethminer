@@ -194,24 +194,23 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 {
 	static const char* c_threadName = "net";
 
-	if (!m_workNet)
-		m_workNet.reset(new thread([&]()
-		{
-			setThreadName(c_threadName);
-			m_workNetState.store(Active, std::memory_order_release);
-			while (m_workNetState.load(std::memory_order_acquire) != Deleting)
-				workNet();
-			m_workNetState.store(Deleted, std::memory_order_release);
-		}));
-
-	ensureWorking();
-
 	{
 		UpgradableGuard l(x_net);
 		if (m_net.get())
 			return;
 		{
 			UpgradeGuard ul(l);
+
+			if (!m_workNet)
+				m_workNet.reset(new thread([&]()
+				{
+					setThreadName(c_threadName);
+					m_workNetState.store(Active, std::memory_order_release);
+					while (m_workNetState.load(std::memory_order_acquire) != Deleting)
+						workNet();
+					m_workNetState.store(Deleted, std::memory_order_release);
+				}));
+
 			try
 			{
 				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
@@ -228,6 +227,28 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 	if (_seedHost.size())
 		connect(_seedHost, _port);
+
+	ensureWorking();
+}
+
+void Client::stopNetwork()
+{
+	UpgradableGuard l(x_net);
+
+	if (m_workNet)
+	{
+		if (m_workNetState.load(std::memory_order_acquire) == Active)
+			m_workNetState.store(Deleting, std::memory_order_release);
+		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
+			this_thread::sleep_for(chrono::milliseconds(10));
+		m_workNet->join();
+	}
+	if (m_net)
+	{
+		UpgradeGuard ul(l);
+		m_net.reset(nullptr);
+		m_workNet.reset(nullptr);
+	}
 }
 
 std::vector<PeerInfo> Client::peers()
@@ -270,23 +291,6 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
-}
-
-void Client::stopNetwork()
-{
-	{
-		WriteGuard l(x_net);
-		m_net.reset(nullptr);
-	}
-
-	if (m_workNet)
-	{
-		if (m_workNetState.load(std::memory_order_acquire) == Active)
-			m_workNetState.store(Deleting, std::memory_order_release);
-		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_workNet->join();
-	}
 }
 
 void Client::startMining()
@@ -354,18 +358,21 @@ void Client::workNet()
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	ReadGuard l(x_net);
-	if (m_net)
 	{
-		cwork << "NETWORK";
-		m_net->process();	// must be in guard for now since it uses the blockchain.
+		ReadGuard l(x_net);
+		if (m_net)
+		{
+			cwork << "NETWORK";
+			m_net->process();	// must be in guard for now since it uses the blockchain.
 
-		// returns h256Set as block hashes, once for each block that has come in/gone out.
-		cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
-		m_net->sync(m_tq, m_bq);
+			// returns h256Set as block hashes, once for each block that has come in/gone out.
+			cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
+			m_net->sync(m_tq, m_bq);
 
-		cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+		}
 	}
+	this_thread::sleep_for(chrono::milliseconds(1));
 }
 
 void Client::work(bool _justQueue)
