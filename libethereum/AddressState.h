@@ -61,7 +61,6 @@ public:
 
 private:
 	bool m_isAlive;
-	bool m_gotCode;
 	u256 m_nonce;
 	u256 m_balance;
 
