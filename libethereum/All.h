@@ -12,3 +12,4 @@
 #include "State.h"
 #include "Transaction.h"
 #include "TransactionQueue.h"
+#include "Utility.h"
