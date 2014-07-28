@@ -311,6 +311,7 @@ static QString toJson(eth::PastMessages const& _pms)
 		v["from"] = toQJS(t.from);
 		v["origin"] = toQJS(t.origin);
 		v["timestamp"] = (int)t.timestamp;
+		v["coinbase"] = toQJS(t.coinbase);
 		v["block"] = toQJS(t.block);
 		QJsonArray path;
 		for (int i: t.path)
