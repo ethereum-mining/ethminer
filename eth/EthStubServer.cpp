@@ -60,14 +60,12 @@ Json::Value EthStubServer::procedures()
 
 std::string EthStubServer::coinbase()
 {
-	ClientGuard g(&m_client);
 	return toJS(m_client.address());
 }
 
 std::string EthStubServer::balanceAt(std::string const& _a)
 {
-	ClientGuard g(&m_client);
-	return toJS(m_client.postState().balance(jsToAddress(_a)));
+	return toJS(m_client.balanceAt(jsToAddress(_a), 0));
 }
 
 Json::Value EthStubServer::check(Json::Value const& _as)
@@ -85,7 +83,6 @@ Json::Value EthStubServer::check(Json::Value const& _as)
 
 std::string EthStubServer::create(const std::string& _bCode, const std::string& _sec, const std::string& _xEndowment, const std::string& _xGas, const std::string& _xGasPrice)
 {
-	ClientGuard g(&m_client);
 	Address ret = m_client.transact(jsToSecret(_sec), jsToU256(_xEndowment), jsToBytes(_bCode), jsToU256(_xGas), jsToU256(_xGasPrice));
 	return toJS(ret);
 }
@@ -102,8 +99,7 @@ std::string EthStubServer::gasPrice()
 
 bool EthStubServer::isContractAt(const std::string& _a)
 {
-	ClientGuard g(&m_client);
-	return m_client.postState().addressHasCode(jsToAddress(_a));
+	return m_client.codeAt(jsToAddress(_a), 0).size();
 }
 
 bool EthStubServer::isListening()
@@ -133,27 +129,23 @@ Json::Value EthStubServer::keys()
 
 int EthStubServer::peerCount()
 {
-	ClientGuard g(&m_client);
 	return m_client.peerCount();
 }
 
 std::string EthStubServer::storageAt(const std::string& _a, const std::string& x)
 {
-	ClientGuard g(&m_client);
-	return toJS(m_client.postState().storage(jsToAddress(_a), jsToU256(x)));
+	return toJS(m_client.stateAt(jsToAddress(_a), jsToU256(x), 0));
 }
 
 Json::Value EthStubServer::transact(const std::string& _aDest, const std::string& _bData, const std::string& _sec, const std::string& _xGas, const std::string& _xGasPrice, const std::string& _xValue)
 {
-	ClientGuard g(&m_client);
 	m_client.transact(jsToSecret(_sec), jsToU256(_xValue), jsToAddress(_aDest), jsToBytes(_bData), jsToU256(_xGas), jsToU256(_xGasPrice));
 	return Json::Value();
 }
 
 std::string EthStubServer::txCountAt(const std::string& _a)
 {
-	ClientGuard g(&m_client);
-	return toJS(m_client.postState().transactionsFrom(jsToAddress(_a)));
+	return toJS(m_client.countAt(jsToAddress(_a), 0));
 }
 
 std::string EthStubServer::secretToAddress(const std::string& _a)
