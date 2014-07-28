@@ -152,8 +152,8 @@ var exchangeCode = eth.lll("
 (def 'rateof (_item) @@ (+ _item 1))
 (def 'idof (_item) @@ (+ _item 2))
 (def 'wantof (_item) @@ (+ _item 3))
-(def 'newitem (rate who want) {
-	(set 'pos (sha3pair rate who))
+(def 'newitem (rate who want list) {
+	(set 'pos (sha3trip rate who list))
 	[[ (+ @pos 1) ]] rate
 	[[ (+ @pos 2) ]] who
 	[[ (+ @pos 3) ]] want
@@ -225,7 +225,7 @@ var exchangeCode = eth.lll("
 		(set 'last @list)
 		(set 'item @@ @last)
 		
-		(set 'newpos (newitem @rate (caller) @xwant))
+		(set 'newpos (newitem @rate (caller) @xwant @list))
 
 		(for {} (&& @item (!= @item @newpos) (>= (rateof @item) @rate)) { (set 'last @item) (inc item) } {})
 		(if (= @item @newpos)
