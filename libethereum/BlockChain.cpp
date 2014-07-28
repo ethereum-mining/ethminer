@@ -186,6 +186,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (...){}
 	}
+	_bq.doneDrain();
 	return ret;
 }
 
