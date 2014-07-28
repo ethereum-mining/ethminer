@@ -27,7 +27,9 @@
 #include <atomic>
 #include <libethential/Common.h>
 #include <libethential/CommonIO.h>
+#include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
+#include "Guards.h"
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -46,16 +48,6 @@ struct MineProgress
 };
 
 class Client;
-
-class ClientGuard
-{
-public:
-	inline ClientGuard(Client const* _c);
-	inline ~ClientGuard();
-
-private:
-	Client const* m_client;
-};
 
 enum ClientWorkState
 {
@@ -198,19 +190,6 @@ public:
 
 	// Informational stuff
 
-	// [OLD API]:
-
-	/// Locks/unlocks the state/blockChain/transactionQueue for access.
-	void lock() const;
-	void unlock() const;
-
-	/// Get the object representing the current state of Ethereum.
-	State const& state() const { return m_preMine; }
-	/// Get the object representing the current state of Ethereum.
-	State const& postState() const { return m_postMine; }
-	/// Get the object representing the current canonical blockchain.
-	BlockChain const& blockChain() const { return m_bc; }
-
 	// [NEW API]
 
 	void setDefault(int _block) { m_default = _block; }
@@ -219,18 +198,22 @@ public:
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
 	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
+	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
 	u256 balanceAt(Address _a, int _block) const;
 	u256 countAt(Address _a, int _block) const;
 	u256 stateAt(Address _a, u256 _l, int _block) const;
 	bytes codeAt(Address _a, int _block) const;
-	PastMessages transactions(TransactionFilter const& _filter) const;
-	PastMessages transactions(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return transactions(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	std::map<u256, u256> storageAt(Address _a, int _block) const;
+
 	unsigned installWatch(TransactionFilter const& _filter);
 	unsigned installWatch(h256 _filterId);
 	void uninstallWatch(unsigned _watchId);
 	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
 	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+
+	PastMessages transactions(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return transactions(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	PastMessages transactions(TransactionFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -238,9 +221,28 @@ public:
 	/// @TODO: Remove in favour of transactions().
 	Transactions pending() const { return m_postMine.pending(); }
 
+	/// Differences between transactions.
+	StateDiff diff(unsigned _txi) const { return diff(_txi, m_default); }
+	StateDiff diff(unsigned _txi, h256 _block) const;
+	StateDiff diff(unsigned _txi, int _block) const;
+
 	/// Get a list of all active addresses.
 	std::vector<Address> addresses() const { return addresses(m_default); }
 	std::vector<Address> addresses(int _block) const;
+
+	/// Get the fee associated for a transaction with the given data.
+	static u256 txGas(uint _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
+
+	// [PRIVATE API - only relevant for base clients, not available in general]
+
+	eth::State state(unsigned _txi, h256 _block) const;
+	eth::State state(h256 _block) const;
+	eth::State state(unsigned _txi) const;
+
+	/// Get the object representing the current state of Ethereum.
+	eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	/// Get the object representing the current canonical blockchain.
+	BlockChain const& blockChain() const { return m_bc; }
 
 	// Misc stuff:
 
@@ -252,6 +254,8 @@ public:
 	std::vector<PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;
+	/// Same as peers().size(), but more efficient.
+	void setIdealPeerCount(size_t _n) const;
 
 	/// Start the network subsystem.
 	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
@@ -260,9 +264,11 @@ public:
 	/// Stop the network subsystem.
 	void stopNetwork();
 	/// Is the network subsystem up?
-	bool haveNetwork() { Guard l(x_net); return !!m_net; }
-	/// Get access to the peer server object. This will be null if the network isn't online. DANGEROUS! DO NOT USE!
-	PeerServer* peerServer() const { Guard l(x_net); return m_net.get(); }
+	bool haveNetwork() { ReadGuard l(x_net); return !!m_net; }
+	/// Save peers
+	bytes savePeers();
+	/// Restore peers
+	void restorePeers(bytesConstRef _saved);
 
 	// Mining stuff:
 
@@ -324,14 +330,14 @@ private:
 	BlockChain m_bc;						///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
-	mutable std::recursive_mutex x_stateDB;	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
+	mutable boost::shared_mutex x_stateDB;	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
 	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
 	std::atomic<ClientWorkState> m_workNetState;
-	mutable std::mutex x_net;				///< Lock for the network. // TODO: make network thread-safe.
+	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
 	std::unique_ptr<PeerServer> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
@@ -349,15 +355,5 @@ private:
 
 	int m_default = -1;
 };
-
-inline ClientGuard::ClientGuard(Client const* _c): m_client(_c)
-{
-	m_client->lock();
-}
-
-inline ClientGuard::~ClientGuard()
-{
-	m_client->unlock();
-}
 
 }

@@ -158,12 +158,9 @@ void Main::writeSettings()
 	s.setValue("idealPeers", m_idealPeers);
 	s.setValue("port", m_port);
 
-	if (client()->peerServer())
-	{
-		bytes d = client()->peerServer()->savePeers();
+	bytes d = client()->savePeers();
+	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
-
-	}
 	s.setValue("peers", m_peers);
 
 	s.setValue("geometry", saveGeometry());
@@ -203,16 +200,8 @@ void Main::refreshNetwork()
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 }
 
-eth::State const& Main::state() const
-{
-	return ui->preview->isChecked() ? client()->postState() : client()->state();
-}
-
 void Main::refresh()
 {
-	eth::ClientGuard l(client());
-	auto const& st = state();
-
 	auto d = client()->blockChain().details();
 	auto diff = BlockInfo(client()->blockChain().block()).difficulty;
 	ui->blockCount->setText(QString("#%1 @%3 T%2").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)));
@@ -221,7 +210,7 @@ void Main::refresh()
 	u256 totalBalance = 0;
 	for (auto i: m_myKeys)
 	{
-		u256 b = st.balance(i.address());
+		u256 b = m_client->balanceAt(i.address());
 		totalBalance += b;
 	}
 	ui->balance->setText(QString::fromStdString(formatBalance(totalBalance)));
@@ -244,7 +233,7 @@ void Main::on_net_triggered(bool _auto)
 		else
 			client()->startNetwork(m_port, string(), 0, NodeMode::Full, m_idealPeers, "", ui->upnp->isChecked());
 		if (m_peers.size())
-			client()->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			client()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
 		client()->stopNetwork();

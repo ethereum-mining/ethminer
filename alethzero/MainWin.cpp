@@ -257,7 +257,7 @@ void Main::installWatches()
 void Main::installNameRegWatch()
 {
 	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(eth::TransactionFilter().altered((u160)state().storage(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(eth::TransactionFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
@@ -446,11 +446,11 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)state().storage(c_config, 0))
-			if (h256 a = state().storage(nameReg, n))
+		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
+			if (h256 a = m_client->stateAt(nameReg, n))
 				return right160(a);
 
-		if (h256 a = state().storage(m_nameReg, n))
+		if (h256 a = m_client->stateAt(m_nameReg, n))
 			return right160(a);
 	}
 	if (_a.size() == 40)
@@ -493,12 +493,9 @@ void Main::writeSettings()
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
 
-	if (m_client->peerServer())
-	{
-		bytes d = m_client->peerServer()->savePeers();
+	bytes d = m_client->savePeers();
+	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
-
-	}
 	s.setValue("peers", m_peers);
 	s.setValue("nameReg", ui->nameReg->text());
 
@@ -597,7 +594,6 @@ void Main::on_preview_triggered()
 
 void Main::refreshMining()
 {
-	eth::ClientGuard g(m_client.get());
 	eth::MineProgress p = m_client->miningProgress();
 	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
@@ -650,11 +646,6 @@ void Main::refreshNetwork()
 	ui->peers->clear();
 	for (PeerInfo const& i: ps)
 		ui->peers->addItem(QString("%3 ms - %1:%2 - %4").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()));
-}
-
-eth::State const& Main::state() const
-{
-	return ui->preview->isChecked() ? m_client->postState() : m_client->state();
 }
 
 void Main::refreshAll()
@@ -760,8 +751,6 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 void Main::refreshBlockChain()
 {
 	cwatch << "refreshBlockChain()";
-	eth::ClientGuard g(m_client.get());
-	auto const& st = state();
 
 	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
 	ui->blocks->clear();
@@ -794,7 +783,7 @@ void Main::refreshBlockChain()
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
-						.arg(st.addressHasCode(t.receiveAddress) ? '*' : '-') :
+						.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
@@ -933,13 +922,12 @@ string Main::renderDiff(eth::StateDiff const& _d) const
 void Main::on_transactionQueue_currentItemChanged()
 {
 	ui->pendingInfo->clear();
-	eth::ClientGuard g(m_client.get());
 
 	stringstream s;
 	int i = ui->transactionQueue->currentRow();
-	if (i >= 0 && i < (int)m_client->postState().pending().size())
+	if (i >= 0 && i < (int)m_client->pending().size())
 	{
-		Transaction tx(m_client->postState().pending()[i]);
+		Transaction tx(m_client->pending()[i]);
 		auto ss = tx.safeSender();
 		h256 th = sha3(rlpList(ss, tx.nonce));
 		s << "<h3>" << th << "</h3>";
@@ -967,7 +955,7 @@ void Main::on_transactionQueue_currentItemChanged()
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 
-		s << renderDiff(m_client->postState().pendingDiff(i));
+		s << renderDiff(m_client->diff(i, 0));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -1002,7 +990,6 @@ void Main::on_blocks_currentItemChanged()
 	ui->debugCurrent->setEnabled(false);
 	ui->debugDumpState->setEnabled(false);
 	ui->debugDumpStatePre->setEnabled(false);
-	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -1069,10 +1056,7 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data.size())
 					s << eth::memDump(tx.data, 16, true);
 			}
-			auto st = eth::State(m_client->state().db(), m_client->blockChain(), h);
-			eth::State before = st.fromPending(txi);
-			eth::State after = st.fromPending(txi + 1);
-			s << renderDiff(before.diff(after));
+			s << renderDiff(m_client->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
 			ui->debugDumpStatePre->setEnabled(true);
@@ -1084,7 +1068,6 @@ void Main::on_blocks_currentItemChanged()
 
 void Main::on_debugCurrent_triggered()
 {
-	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -1093,11 +1076,10 @@ void Main::on_debugCurrent_triggered()
 
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
-			eth::State st(m_client->state().db(), m_client->blockChain(), h);
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = st.fromPending(txi);
+			m_executiveState = m_client->state(txi, h);
 			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-			Transaction t = st.pending()[txi];
+			Transaction t = m_client->pending()[txi];
 			auto r = t.rlp();
 			populateDebugger(&r);
 			m_currentExecution.reset();
@@ -1107,7 +1089,6 @@ void Main::on_debugCurrent_triggered()
 
 void Main::on_debugDumpState_triggered(int _add)
 {
-	eth::ClientGuard g(m_client.get());
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -1120,9 +1101,8 @@ void Main::on_debugDumpState_triggered(int _add)
 			ofstream f(fn.toStdString());
 			if (f.is_open())
 			{
-				eth::State st(m_client->state().db(), m_client->blockChain(), h);
 				unsigned txi = item->data(Qt::UserRole + 1).toInt();
-				f << st.fromPending(txi + _add) << endl;
+				f << m_client->state(txi + _add, h) << endl;
 			}
 		}
 	}
@@ -1178,20 +1158,19 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 void Main::on_contracts_currentItemChanged()
 {
 	ui->contractInfo->clear();
-	eth::ClientGuard l(&*m_client);
 	if (auto item = ui->contracts->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
 		assert(hba.size() == 20);
-		auto h = h160((byte const*)hba.data(), h160::ConstructFromPointer);
+		auto address = h160((byte const*)hba.data(), h160::ConstructFromPointer);
 
 		stringstream s;
 		try
 		{
-			auto storage = state().storage(h);
+			auto storage = m_client->storageAt(address);
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
-			s << "<h4>Body Code</h4>" << disassemble(state().code(h));
+			s << "<h4>Body Code</h4>" << disassemble(m_client->codeAt(address));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
 		catch (eth::InvalidTrie)
@@ -1203,8 +1182,7 @@ void Main::on_contracts_currentItemChanged()
 
 void Main::on_idealPeers_valueChanged()
 {
-	if (m_client->peerServer())
-		m_client->peerServer()->setIdealPeerCount(ui->idealPeers->value());
+	m_client->setIdealPeerCount(ui->idealPeers->value());
 }
 
 void Main::on_ourAccounts_doubleClicked()
@@ -1288,7 +1266,7 @@ void Main::on_data_textChanged()
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
 		ui->code->setHtml(errs + lll + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
-		ui->gas->setMinimum((qint64)state().createGas(m_data.size(), 0));
+		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
@@ -1344,9 +1322,9 @@ void Main::on_data_textChanged()
 				s = s.mid(1);
 		}
 		ui->code->setHtml(QString::fromStdString(eth::memDump(m_data, 8, true)));
-		if (m_client->postState().addressHasCode(fromString(ui->destination->currentText())))
+		if (m_client->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
-			ui->gas->setMinimum((qint64)state().callGas(m_data.size(), 1));
+			ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
 				ui->gas->setValue(m_backupGas);
 			ui->gas->setEnabled(true);
@@ -1355,7 +1333,7 @@ void Main::on_data_textChanged()
 		{
 			if (ui->gas->isEnabled())
 				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)state().callGas(m_data.size()));
+			ui->gas->setValue((qint64)Client::txGas(m_data.size()));
 			ui->gas->setEnabled(false);
 		}
 	}
@@ -1412,7 +1390,7 @@ void Main::updateFee()
 
 	bool ok = false;
 	for (auto i: m_myKeys)
-		if (state().balance(i.address()) >= totalReq)
+		if (m_client->balanceAt(i.address()) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -1436,7 +1414,7 @@ void Main::on_net_triggered()
 	{
 		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
 		if (m_peers.size() && ui->usePast->isChecked())
-			m_client->peerServer()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			m_client->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
 		m_client->stopNetwork();
@@ -1479,9 +1457,8 @@ void Main::on_mine_triggered()
 void Main::on_send_clicked()
 {
 	u256 totalReq = value() + fee();
-	eth::ClientGuard l(&*m_client);
 	for (auto i: m_myKeys)
-		if (m_client->postState().balance(i.address()) >= totalReq)
+		if (m_client->balanceAt(i.address(), 0) >= totalReq)
 		{
 			debugFinished();
 			Secret s = i.secret();
@@ -1500,12 +1477,11 @@ void Main::on_debug_clicked()
 	try
 	{
 		u256 totalReq = value() + fee();
-		eth::ClientGuard l(&*m_client);
 		for (auto i: m_myKeys)
-			if (m_client->state().balance(i.address()) >= totalReq)
+			if (m_client->balanceAt(i.address()) >= totalReq)
 			{
 				Secret s = i.secret();
-				m_executiveState = state();
+				m_executiveState = m_client->postState();
 				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 				Transaction t;
 				t.nonce = m_executiveState.transactionsFrom(toAddress(s));
