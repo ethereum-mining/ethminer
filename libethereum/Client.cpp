@@ -92,6 +92,7 @@ void Client::ensureWorking()
 
 			// Synchronise the state according to the head of the block chain.
 			// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+			WriteGuard l(x_stateDB);
 			m_preMine.sync(m_bc);
 			m_postMine = m_preMine;
 		}));
@@ -99,14 +100,7 @@ void Client::ensureWorking()
 
 Client::~Client()
 {
-	if (m_work)
-	{
-		if (m_workState.load(std::memory_order_acquire) == Active)
-			m_workState.store(Deleting, std::memory_order_release);
-		while (m_workState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_work->join();
-	}
+	stopNetwork();
 }
 
 void Client::flushTransactions()
@@ -116,7 +110,7 @@ void Client::flushTransactions()
 
 void Client::clearPending()
 {
-	ClientGuard l(this);
+	WriteGuard l(x_stateDB);
 	if (!m_postMine.pending().size())
 		return;
 	h256Set changeds;
@@ -168,8 +162,10 @@ void Client::uninstallWatch(unsigned _i)
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
+	ReadGuard sl(x_stateDB);
+
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if ((unsigned)i.second.filter.latest() >= m_postMine.info().number && i.second.filter.matches(_bloom))
+		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
 }
 
@@ -196,54 +192,105 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
 {
-	ensureWorking();
+	static const char* c_threadName = "net";
 
 	{
-		Guard l(x_net);
+		UpgradableGuard l(x_net);
 		if (m_net.get())
 			return;
-		try
 		{
-			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
-		}
-		catch (std::exception const&)
-		{
-			// Probably already have the port open.
-			cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
-		}
+			UpgradeGuard ul(l);
 
+			if (!m_workNet)
+				m_workNet.reset(new thread([&]()
+				{
+					setThreadName(c_threadName);
+					m_workNetState.store(Active, std::memory_order_release);
+					while (m_workNetState.load(std::memory_order_acquire) != Deleting)
+						workNet();
+					m_workNetState.store(Deleted, std::memory_order_release);
+				}));
+
+			try
+			{
+				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+			}
+			catch (std::exception const&)
+			{
+				// Probably already have the port open.
+				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+			}
+		}
 		m_net->setIdealPeerCount(_peers);
 	}
 
 	if (_seedHost.size())
 		connect(_seedHost, _port);
+
+	ensureWorking();
+}
+
+void Client::stopNetwork()
+{
+	UpgradableGuard l(x_net);
+
+	if (m_workNet)
+	{
+		if (m_workNetState.load(std::memory_order_acquire) == Active)
+			m_workNetState.store(Deleting, std::memory_order_release);
+		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
+			this_thread::sleep_for(chrono::milliseconds(10));
+		m_workNet->join();
+	}
+	if (m_net)
+	{
+		UpgradeGuard ul(l);
+		m_net.reset(nullptr);
+		m_workNet.reset(nullptr);
+	}
 }
 
 std::vector<PeerInfo> Client::peers()
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	return m_net ? m_net->peers() : std::vector<PeerInfo>();
 }
 
 size_t Client::peerCount() const
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	return m_net ? m_net->peerCount() : 0;
+}
+
+void Client::setIdealPeerCount(size_t _n) const
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->setIdealPeerCount(_n);
+}
+
+bytes Client::savePeers()
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->savePeers();
+	return bytes();
+}
+
+void Client::restorePeers(bytesConstRef _saved)
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->restorePeers(_saved);
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
-}
-
-void Client::stopNetwork()
-{
-	Guard l(x_net);
-	m_net.reset(nullptr);
 }
 
 void Client::startMining()
@@ -263,10 +310,12 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	Transaction t;
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -281,9 +330,11 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	Transaction t;
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -299,21 +350,17 @@ void Client::inject(bytesConstRef _rlp)
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	m_tq.attemptImport(_rlp);
 }
 
-void Client::work(bool _justQueue)
+void Client::workNet()
 {
-	cworkin << "WORK";
-	h256Set changeds;
-
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
 	{
-		Guard l(x_net);
-		if (m_net && !_justQueue)
+		ReadGuard l(x_net);
+		if (m_net)
 		{
 			cwork << "NETWORK";
 			m_net->process();	// must be in guard for now since it uses the blockchain.
@@ -325,6 +372,13 @@ void Client::work(bool _justQueue)
 			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
 		}
 	}
+	this_thread::sleep_for(chrono::milliseconds(1));
+}
+
+void Client::work(bool _justQueue)
+{
+	cworkin << "WORK";
+	h256Set changeds;
 
 	// Do some mining.
 	if (!_justQueue)
@@ -338,7 +392,7 @@ void Client::work(bool _justQueue)
 				m_mineProgress.best = (double)-1;
 				m_mineProgress.hashes = 0;
 				m_mineProgress.ms = 0;
-				ClientGuard l(this);
+				WriteGuard l(x_stateDB);
 				if (m_paranoia)
 				{
 					if (m_postMine.amIJustParanoid(m_bc))
@@ -370,7 +424,7 @@ void Client::work(bool _justQueue)
 			m_mineProgress.requirement = mineInfo.requirement;
 			m_mineProgress.ms += 100;
 			m_mineProgress.hashes += mineInfo.hashes;
-			ClientGuard l(this);
+			WriteGuard l(x_stateDB);
 			m_mineHistory.push_back(mineInfo);
 			if (mineInfo.completed)
 			{
@@ -403,11 +457,11 @@ void Client::work(bool _justQueue)
 	//   all blocks.
 	// Resynchronise state with block chain & trans
 	{
-		ClientGuard l(this);
+		WriteGuard l(x_stateDB);
 
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
-		m_lock.unlock();
+		x_stateDB.unlock();
 		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		if (newBlocks.size())
 		{
@@ -415,7 +469,7 @@ void Client::work(bool _justQueue)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(NewBlockFilter);
 		}
-		m_lock.lock();
+		x_stateDB.lock();
 		if (newBlocks.size())
 			m_stateDB = db;
 
@@ -449,16 +503,6 @@ void Client::work(bool _justQueue)
 	cworkout << "WORK";
 }
 
-void Client::lock() const
-{
-	m_lock.lock();
-}
-
-void Client::unlock() const
-{
-	m_lock.unlock();
-}
-
 unsigned Client::numberOf(int _n) const
 {
 	if (_n > 0)
@@ -471,6 +515,7 @@ unsigned Client::numberOf(int _n) const
 
 State Client::asOf(int _h) const
 {
+	ReadGuard l(x_stateDB);
 	if (_h == 0)
 		return m_postMine;
 	else if (_h == -1)
@@ -479,9 +524,38 @@ State Client::asOf(int _h) const
 		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
 }
 
+State Client::state(unsigned _txi, h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+}
+
+eth::State Client::state(h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block);
+}
+
+eth::State Client::state(unsigned _txi) const
+{
+	ReadGuard l(x_stateDB);
+	return m_postMine.fromPending(_txi);
+}
+
+StateDiff Client::diff(unsigned _txi, int _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
+StateDiff Client::diff(unsigned _txi, h256 _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
 std::vector<Address> Client::addresses(int _block) const
 {
-	ClientGuard l(this);
 	vector<Address> ret;
 	for (auto const& i: asOf(_block).addresses())
 		ret.push_back(i.first);
@@ -490,25 +564,26 @@ std::vector<Address> Client::addresses(int _block) const
 
 u256 Client::balanceAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).balance(_a);
+}
+
+std::map<u256, u256> Client::storageAt(Address _a, int _block) const
+{
+	return asOf(_block).storage(_a);
 }
 
 u256 Client::countAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 Client::stateAt(Address _a, u256 _l, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).storage(_a, _l);
 }
 
 bytes Client::codeAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).code(_a);
 }
 
@@ -625,8 +700,6 @@ bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address
 
 PastMessages Client::transactions(TransactionFilter const& _f) const
 {
-	ClientGuard l(this);
-
 	PastMessages ret;
 	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
 	unsigned end = min(begin, (unsigned)_f.earliest());
@@ -636,6 +709,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin == m_bc.number())
 	{
+		ReadGuard l(x_stateDB);
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		{
 			// Might have a transaction that contains a matching message.

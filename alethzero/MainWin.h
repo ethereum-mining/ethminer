@@ -156,8 +156,6 @@ private:
 
 	void alterDebugStateGroup(bool _enable) const;
 
-	eth::State const& state() const;
-
 	void updateFee();
 	void readSettings();
 	void writeSettings();
