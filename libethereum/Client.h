@@ -26,6 +26,7 @@
 #include <list>
 #include <atomic>
 #include <libethential/Common.h>
+#include <libethential/CommonIO.h>
 #include <libethcore/Dagger.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"

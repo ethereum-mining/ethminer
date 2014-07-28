@@ -24,8 +24,6 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethential/Common.h>
-#include <libethential/CommonIO.h>
 #include <libethential/Log.h>
 #include "Defaults.h"
 #include "PeerServer.h"
