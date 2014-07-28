@@ -187,50 +187,32 @@ QString QEthereum::balanceAt(QString _a) const
 
 QString QEthereum::storageAt(QString _a, QString _p) const
 {
-	if (!m_client)
-		return "";
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return toQJS(client()->postState().storage(toAddress(_a), toU256(_p)));
+	return m_client ? toQJS(client()->stateAt(toAddress(_a), toU256(_p))) : "";
 }
 
 double QEthereum::txCountAt(QString _a) const
 {
-	if (!m_client)
-		return 0.0;
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return (double)client()->postState().transactionsFrom(toAddress(_a));
+	return m_client ? (double)client()->countAt(toAddress(_a)) : 0.0;
 }
 
 bool QEthereum::isContractAt(QString _a) const
 {
-	if (!m_client)
-		return false;
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return client()->postState().addressHasCode(toAddress(_a));
+	return m_client ? client()->codeAt(toAddress(_a)).size() : false;
 }
 
 u256 QEthereum::balanceAt(Address _a) const
 {
-	if (!m_client)
-		return 0;
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return client()->postState().balance(_a);
+	return m_client ? client()->balanceAt(_a) : 0;
 }
 
 double QEthereum::txCountAt(Address _a) const
 {
-	if (!m_client)
-		return 0.0;
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return (double)client()->postState().transactionsFrom(_a);
+	return m_client ? (double)client()->countAt(_a) : 0.0;
 }
 
 bool QEthereum::isContractAt(Address _a) const
 {
-	if (!m_client)
-		return false;
-	eth::ClientGuard l(const_cast<Client*>(m_client));
-	return client()->postState().addressHasCode(_a);
+	return m_client ? client()->codeAt(_a).size() : false;
 }
 
 QString QEthereum::balanceAt(QString _a, int _block) const

@@ -92,6 +92,7 @@ void Client::ensureWorking()
 
 			// Synchronise the state according to the head of the block chain.
 			// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+			WriteGuard l(x_stateDB);
 			m_preMine.sync(m_bc);
 			m_postMine = m_preMine;
 		}));
@@ -109,7 +110,7 @@ void Client::flushTransactions()
 
 void Client::clearPending()
 {
-	ClientGuard l(this);
+	WriteGuard l(x_stateDB);
 	if (!m_postMine.pending().size())
 		return;
 	h256Set changeds;
@@ -161,8 +162,10 @@ void Client::uninstallWatch(unsigned _i)
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
+	ReadGuard sl(x_stateDB);
+
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if ((unsigned)i.second.filter.latest() >= m_postMine.info().number && i.second.filter.matches(_bloom))
+		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
 }
 
@@ -204,20 +207,22 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 	ensureWorking();
 
 	{
-		Guard l(x_net);
+		UpgradableGuard l(x_net);
 		if (m_net.get())
 			return;
-		try
 		{
-			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+			UpgradeGuard ul(l);
+			try
+			{
+				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+			}
+			catch (std::exception const&)
+			{
+				// Probably already have the port open.
+				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+			}
 		}
-		catch (std::exception const&)
-		{
-			// Probably already have the port open.
-			cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-			m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
-		}
-
 		m_net->setIdealPeerCount(_peers);
 	}
 
@@ -227,19 +232,41 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 std::vector<PeerInfo> Client::peers()
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	return m_net ? m_net->peers() : std::vector<PeerInfo>();
 }
 
 size_t Client::peerCount() const
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	return m_net ? m_net->peerCount() : 0;
+}
+
+void Client::setIdealPeerCount(size_t _n) const
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->setIdealPeerCount(_n);
+}
+
+bytes Client::savePeers()
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->savePeers();
+	return bytes();
+}
+
+void Client::restorePeers(bytesConstRef _saved)
+{
+	ReadGuard l(x_net);
+	if (m_net)
+		return m_net->restorePeers(_saved);
 }
 
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	if (!m_net.get())
 		return;
 	m_net->connect(_seedHost, _port);
@@ -248,7 +275,7 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 void Client::stopNetwork()
 {
 	{
-		Guard l(x_net);
+		WriteGuard l(x_net);
 		m_net.reset(nullptr);
 	}
 
@@ -279,10 +306,12 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	Transaction t;
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -297,9 +326,11 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	Transaction t;
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -315,7 +346,6 @@ void Client::inject(bytesConstRef _rlp)
 {
 	ensureWorking();
 
-	ClientGuard l(this);
 	m_tq.attemptImport(_rlp);
 }
 
@@ -324,7 +354,7 @@ void Client::workNet()
 	// Process network events.
 	// Synchronise block chain with network.
 	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	Guard l(x_net);
+	ReadGuard l(x_net);
 	if (m_net)
 	{
 		cwork << "NETWORK";
@@ -355,7 +385,7 @@ void Client::work(bool _justQueue)
 				m_mineProgress.best = (double)-1;
 				m_mineProgress.hashes = 0;
 				m_mineProgress.ms = 0;
-				ClientGuard l(this);
+				WriteGuard l(x_stateDB);
 				if (m_paranoia)
 				{
 					if (m_postMine.amIJustParanoid(m_bc))
@@ -387,7 +417,7 @@ void Client::work(bool _justQueue)
 			m_mineProgress.requirement = mineInfo.requirement;
 			m_mineProgress.ms += 100;
 			m_mineProgress.hashes += mineInfo.hashes;
-			ClientGuard l(this);
+			WriteGuard l(x_stateDB);
 			m_mineHistory.push_back(mineInfo);
 			if (mineInfo.completed)
 			{
@@ -420,7 +450,7 @@ void Client::work(bool _justQueue)
 	//   all blocks.
 	// Resynchronise state with block chain & trans
 	{
-		ClientGuard l(this);
+		WriteGuard l(x_stateDB);
 
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
@@ -466,16 +496,6 @@ void Client::work(bool _justQueue)
 	cworkout << "WORK";
 }
 
-void Client::lock() const
-{
-	x_stateDB.lock();
-}
-
-void Client::unlock() const
-{
-	x_stateDB.unlock();
-}
-
 unsigned Client::numberOf(int _n) const
 {
 	if (_n > 0)
@@ -488,6 +508,7 @@ unsigned Client::numberOf(int _n) const
 
 State Client::asOf(int _h) const
 {
+	ReadGuard l(x_stateDB);
 	if (_h == 0)
 		return m_postMine;
 	else if (_h == -1)
@@ -496,9 +517,38 @@ State Client::asOf(int _h) const
 		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
 }
 
+State Client::state(unsigned _txi, h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+}
+
+eth::State Client::state(h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block);
+}
+
+eth::State Client::state(unsigned _txi) const
+{
+	ReadGuard l(x_stateDB);
+	return m_postMine.fromPending(_txi);
+}
+
+StateDiff Client::diff(unsigned _txi, int _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
+StateDiff Client::diff(unsigned _txi, h256 _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
 std::vector<Address> Client::addresses(int _block) const
 {
-	ClientGuard l(this);
 	vector<Address> ret;
 	for (auto const& i: asOf(_block).addresses())
 		ret.push_back(i.first);
@@ -507,25 +557,26 @@ std::vector<Address> Client::addresses(int _block) const
 
 u256 Client::balanceAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).balance(_a);
+}
+
+std::map<u256, u256> Client::storageAt(Address _a, int _block) const
+{
+	return asOf(_block).storage(_a);
 }
 
 u256 Client::countAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 Client::stateAt(Address _a, u256 _l, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).storage(_a, _l);
 }
 
 bytes Client::codeAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).code(_a);
 }
 
@@ -642,8 +693,6 @@ bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address
 
 PastMessages Client::transactions(TransactionFilter const& _f) const
 {
-	ClientGuard l(this);
-
 	PastMessages ret;
 	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
 	unsigned end = min(begin, (unsigned)_f.earliest());
@@ -653,6 +702,7 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin == m_bc.number())
 	{
+		ReadGuard l(x_stateDB);
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		{
 			// Might have a transaction that contains a matching message.

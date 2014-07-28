@@ -341,7 +341,6 @@ int main(int argc, char** argv)
 			{
 				eth::uint port;
 				iss >> port;
-				ClientGuard g(&c);
 				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
@@ -349,12 +348,10 @@ int main(int argc, char** argv)
 				string addr;
 				eth::uint port;
 				iss >> addr >> port;
-				ClientGuard g(&c);
 				c.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{
-				ClientGuard g(&c);
 				c.stopNetwork();
 			}
 			else if (cmd == "minestart")
@@ -405,12 +402,10 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "block")
 			{
-				ClientGuard g(&c);
 				cout << "Current block: " << c.blockChain().details().number;
 			}
 			else if (cmd == "peers")
 			{
-				ClientGuard g(&c);
 				for (auto it: c.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
@@ -418,12 +413,10 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "balance")
 			{
-				ClientGuard g(&c);
-				cout << "Current balance: " << formatBalance(c.postState().balance(us.address())) << " = " << c.postState().balance(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance(c.balanceAt(us.address(), 0)) << " = " << c.balanceAt(us.address(), 0) << " wei" << endl;
 			}
 			else if (cmd == "transact")
 			{
-				ClientGuard g(&c);
 				auto const& bc = c.blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
@@ -450,7 +443,7 @@ int main(int argc, char** argv)
 					cnote << ssbd.str();
 					int ssize = sechex.length();
 					int size = hexAddr.length();
-					u256 minGas = (u256)c.state().callGas(data.size(), 0);
+					u256 minGas = (u256)Client::txGas(data.size(), 0);
 					if (size < 40)
 					{
 						if (size > 0)
@@ -477,40 +470,28 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "listContracts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs = c.addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (st.addressHasCode(r))
+					if (c.codeAt(i, 0).size())
 					{
-						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i, 0)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
-				}
 			}
 			else if (cmd == "listAccounts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs = c.addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (!st.addressHasCode(r))
+					if (c.codeAt(i, 0).empty())
 					{
-						ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i, 0)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
-					
-				}
 			}
 			else if (cmd == "send")
 			{
-				ClientGuard g(&c);
 				if (iss.peek() != -1)
 				{
 					string hexAddr;
@@ -529,23 +510,22 @@ int main(int argc, char** argv)
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
-						u256 minGas = (u256)c.state().callGas(0, 0);
+						u256 minGas = (u256)Client::txGas(0, 0);
 						Address dest = h160(fromHex(hexAddr));
 						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 					}
-					
 				} 
 				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
 			}
 			else if (cmd == "contract")
 			{
-				ClientGuard g(&c);
 				auto const& bc = c.blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					u256 endowment;
 					u256 gas;
 					u256 gasPrice;
@@ -569,7 +549,7 @@ int main(int argc, char** argv)
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
-					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					u256 minGas = (u256)Client::txGas(init.size(), 0);
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gasPrice < info.minGasPrice)
@@ -591,16 +571,15 @@ int main(int argc, char** argv)
 					cwarn << "Invalid address length";
 				else
 				{
-					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
 
 					try
 					{
-						auto storage = c.state().storage(h);
+						auto storage = c.storageAt(h, 0);
 						for (auto const& i: storage)
 							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble(c.state().code(h)) << endl;
+						s << endl << disassemble(c.codeAt(h, 0)) << endl;
 
 						string outFile = getDataDir() + "/" + rechex + ".evm";
 						ofstream ofs;

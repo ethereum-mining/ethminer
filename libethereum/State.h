@@ -264,15 +264,6 @@ public:
 	/// @return the difference between this state (origin) and @a _c (destination).
 	StateDiff diff(State const& _c) const;
 
-	/// Get the fee associated for a transaction with the given data.
-	u256 txGas(uint _dataCount, u256 _gas = 0) const { return c_txDataGas * _dataCount + c_txGas + _gas; }
-
-	/// Get the fee associated for a contract created with the given data.
-	u256 createGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
-
-	/// Get the fee associated for a normal transaction.
-	u256 callGas(uint _dataCount, u256 _gas = 0) const { return txGas(_dataCount, _gas); }
-
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
 	bool sync(BlockChain const& _bc);
