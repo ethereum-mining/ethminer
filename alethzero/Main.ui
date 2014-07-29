@@ -184,7 +184,7 @@
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
-    <addaction name="clearPending"/>
+    <addaction name="forceMining"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1559,9 +1559,12 @@ font-size: 14pt</string>
     <string>Ctrl+F10</string>
    </property>
   </action>
-  <action name="clearPending">
+  <action name="forceMining">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>&amp;Clear Pending</string>
+    <string>&amp;Force Mining</string>
    </property>
   </action>
   <action name="dumpTraceStorage">

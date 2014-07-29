@@ -125,7 +125,7 @@ private slots:
 	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
-	void on_clearPending_triggered();
+	void on_forceMining_triggered();
 	void on_dumpTrace_triggered();
 	void on_dumpTraceStorage_triggered();
 	void on_dumpTracePretty_triggered();

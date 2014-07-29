@@ -327,9 +327,9 @@ void Main::onNewPending()
 	refreshAccounts();
 }
 
-void Main::on_clearPending_triggered()
+void Main::on_forceMining_triggered()
 {
-	m_client->clearPending();
+	m_client->setForceMining(ui->forceMining->isChecked());
 }
 
 void Main::load(QString _s)
@@ -485,6 +485,7 @@ void Main::writeSettings()
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
+	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
@@ -529,6 +530,7 @@ void Main::readSettings()
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
+	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
