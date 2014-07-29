@@ -171,8 +171,6 @@ void Client::uninstallWatch(unsigned _i)
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
-	ReadGuard sl(x_stateDB);
-
 	for (pair<h256, InstalledFilter> const& i: m_filters)
 		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
