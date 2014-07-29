@@ -124,6 +124,9 @@
     <ClCompile Include="..\libethereum\Manifest.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\Utility.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -274,6 +277,9 @@
       <Filter>libethereum</Filter>
     </ClInclude>
     <ClInclude Include="..\libethereum\Manifest.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\Utility.h">
       <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>
