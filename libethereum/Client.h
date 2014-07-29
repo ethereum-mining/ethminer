@@ -295,6 +295,9 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
+	bool forceMining() const { return m_forceMining; }
+	void setForceMining(bool _enable) { m_forceMining = _enable; }
+
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
 
@@ -347,9 +350,11 @@ private:
 
 	bool m_paranoia = false;
 	bool m_doMine = false;					///< Are we supposed to be mining?
+	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	MineProgress m_mineProgress;
 	std::list<MineInfo> m_mineHistory;
 	mutable bool m_restartMining = false;
+	mutable unsigned m_pendingCount = 0;
 
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

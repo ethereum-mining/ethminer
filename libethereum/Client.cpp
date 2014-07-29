@@ -388,7 +388,7 @@ void Client::work(bool _justQueue)
 	h256Set changeds;
 
 	// Do some mining.
-	if (!_justQueue)
+	if (!_justQueue && (m_pendingCount || m_forceMining))
 	{
 
 		// TODO: Separate "Miner" object.
@@ -455,6 +455,11 @@ void Client::work(bool _justQueue)
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
+	else
+	{
+		cwork << "SLEEP";
+		this_thread::sleep_for(chrono::milliseconds(100));
+	}
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -503,6 +508,7 @@ void Client::work(bool _justQueue)
 				cnote << "Additional transaction ready: Restarting mining operation.";
 			m_restartMining = true;
 		}
+		m_pendingCount = m_postMine.pending().size();
 	}
 
 	cwork << "noteChanged" << changeds.size() << "items";
