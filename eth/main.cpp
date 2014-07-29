@@ -31,6 +31,7 @@
 #endif
 #include <libethcore/FileSystem.h>
 #include <libevmface/Instruction.h>
+#include <libevm/VM.h>
 #include <libethereum/All.h>
 #if ETH_READLINE
 #include <readline/readline.h>
@@ -68,6 +69,7 @@ void interactiveHelp()
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
+		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
 		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
@@ -76,13 +78,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    listAccounts List the accounts on the network." << endl
-		<< "    listContracts List the contracts on the network." << endl
-		<< "    setSecret <secret> Set the secret to the hex secret key." <<endl
-		<< "    setAddress <addr> Set the coinbase (mining payout) address." <<endl
-		<< "    exportConfig <path> Export the config (.RLP) to the path provided." <<endl
-		<< "    importConfig <path> Import the config (.RLP) from the path provided." <<endl
-		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    listAccounts  List the accounts on the network." << endl
+		<< "    listContracts  List the contracts on the network." << endl
+		<< "    setSecret <secret>  Set the secret to the hex secret key." <<endl
+		<< "    setAddress <addr>  Set the coinbase (mining payout) address." <<endl
+		<< "    exportConfig <path>  Export the config (.RLP) to the path provided." <<endl
+		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
+		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -357,6 +360,12 @@ int main(int argc, char** argv)
 			{
 				c.stopMining();
 			}
+			else if (cmd == "mineforce")
+			{
+				string enable;
+				iss >> enable;
+				c.setForceMining(isTrue(enable));
+			}
 			else if (cmd == "verbosity")
 			{
 				if (iss.peek() != -1)
@@ -397,7 +406,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "block")
 			{
-				cout << "Current block: " << c.blockChain().details().number;
+				cout << "Current block: " << c.blockChain().details().number << endl;
 			}
 			else if (cmd == "peers")
 			{
@@ -556,6 +565,36 @@ int main(int argc, char** argv)
 				} 
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
+			}
+			else if (cmd == "dumptrace")
+			{
+				unsigned block;
+				unsigned index;
+				string filename;
+				string format;
+				iss >> block >> index >> filename >> format;
+				ofstream f;
+				f.open(filename);
+
+				eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
+				Executive e(state);
+				Transaction t = state.pending()[index];
+				state = state.fromPending(index);
+				bytes r = t.rlp();
+				e.setup(&r);
+				e.go([&](uint64_t steps, Instruction instr, unsigned newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+				{
+					eth::VM* vm = (VM*)vvm;
+					eth::ExtVM const* ext = (ExtVM const*)vextVM;
+					f << endl << "    STACK" << endl;
+					for (auto i: vm->stack())
+						f << (h256)i << endl;
+					f << "    MEMORY" << endl << eth::memDump(vm->memory());
+					f << "    STORAGE" << endl;
+					for (auto const& i: ext->state().storage(ext->myAddress))
+						f << showbase << hex << i.first << ": " << i.second << endl;
+					f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << c_instructionInfo.at(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+				});
 			}
 			else if (cmd == "inspect")
 			{

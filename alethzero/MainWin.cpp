@@ -1079,9 +1079,10 @@ void Main::on_debugCurrent_triggered()
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = m_client->state(txi, h);
+			m_executiveState = m_client->state(txi + 1, h);
 			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-			Transaction t = m_client->pending()[txi];
+			Transaction t = m_executiveState.pending()[txi];
+			m_executiveState = m_executiveState.fromPending(txi);
 			auto r = t.rlp();
 			populateDebugger(&r);
 			m_currentExecution.reset();
