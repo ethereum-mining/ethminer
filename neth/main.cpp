@@ -898,6 +898,7 @@ int main(int argc, char** argv)
 			{
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
 					toString(i) %
+					pretty(i, c.postState()) %
 					toString(formatBalance(c.balanceAt(i, 0))) %
 					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
@@ -909,6 +910,7 @@ int main(int argc, char** argv)
 			{
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
 					toString(i) %
+					pretty(i, c.postState()) %
 					toString(formatBalance(c.balanceAt(i, 0))) %
 					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
