@@ -180,39 +180,20 @@ void QEthereum::setCoinbase(QString _a)
 	}
 }
 
+void QEthereum::setDefault(int _block)
+{
+	if (m_client)
+		m_client->setDefault(_block);
+}
+
+int QEthereum::getDefault() const
+{
+	return m_client ? m_client->getDefault() : 0;
+}
+
 QString QEthereum::balanceAt(QString _a) const
 {
-	return m_client ? toQJS(client()->postState().balance(toAddress(_a))) : "";
-}
-
-QString QEthereum::storageAt(QString _a, QString _p) const
-{
-	return m_client ? toQJS(client()->stateAt(toAddress(_a), toU256(_p))) : "";
-}
-
-double QEthereum::txCountAt(QString _a) const
-{
-	return m_client ? (double)client()->countAt(toAddress(_a)) : 0.0;
-}
-
-bool QEthereum::isContractAt(QString _a) const
-{
-	return m_client ? client()->codeAt(toAddress(_a)).size() : false;
-}
-
-u256 QEthereum::balanceAt(Address _a) const
-{
-	return m_client ? client()->balanceAt(_a) : 0;
-}
-
-double QEthereum::txCountAt(Address _a) const
-{
-	return m_client ? (double)client()->countAt(_a) : 0.0;
-}
-
-bool QEthereum::isContractAt(Address _a) const
-{
-	return m_client ? client()->codeAt(_a).size() : false;
+	return m_client ? toQJS(client()->balanceAt(toAddress(_a))) : "";
 }
 
 QString QEthereum::balanceAt(QString _a, int _block) const
@@ -220,9 +201,19 @@ QString QEthereum::balanceAt(QString _a, int _block) const
 	return m_client ? toQJS(client()->balanceAt(toAddress(_a), _block)) : "";
 }
 
+QString QEthereum::stateAt(QString _a, QString _p) const
+{
+	return m_client ? toQJS(client()->stateAt(toAddress(_a), toU256(_p))) : "";
+}
+
 QString QEthereum::stateAt(QString _a, QString _p, int _block) const
 {
 	return m_client ? toQJS(client()->stateAt(toAddress(_a), toU256(_p), _block)) : "";
+}
+
+QString QEthereum::codeAt(QString _a) const
+{
+	return m_client ? ::fromBinary(client()->codeAt(toAddress(_a))) : "";
 }
 
 QString QEthereum::codeAt(QString _a, int _block) const
@@ -230,14 +221,19 @@ QString QEthereum::codeAt(QString _a, int _block) const
 	return m_client ? ::fromBinary(client()->codeAt(toAddress(_a), _block)) : "";
 }
 
+double QEthereum::countAt(QString _a) const
+{
+	return m_client ? (double)(uint64_t)client()->countAt(toAddress(_a)) : 0;
+}
+
 double QEthereum::countAt(QString _a, int _block) const
 {
 	return m_client ? (double)(uint64_t)client()->countAt(toAddress(_a), _block) : 0;
 }
 
-static eth::TransactionFilter toTransactionFilter(QString _json)
+static eth::MessageFilter toMessageFilter(QString _json)
 {
-	eth::TransactionFilter filter;
+	eth::MessageFilter filter;
 
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	if (f.contains("earliest"))
@@ -305,9 +301,9 @@ static QString toJson(eth::PastMessages const& _pms)
 	return QString::fromUtf8(QJsonDocument(jsonArray).toJson());
 }
 
-QString QEthereum::getTransactions(QString _json) const
+QString QEthereum::getMessages(QString _json) const
 {
-	return m_client ? toJson(m_client->transactions(toTransactionFilter(_json))) : "";
+	return m_client ? toJson(m_client->messages(toMessageFilter(_json))) : "";
 }
 
 bool QEthereum::isMining() const
@@ -369,20 +365,20 @@ unsigned QEthereum::newWatch(QString _json)
 		return (unsigned)-1;
 	unsigned ret;
 	if (_json == "chainChanged")
-		ret = m_client->installWatch(eth::NewBlockFilter);
+		ret = m_client->installWatch(eth::ChainChangedFilter);
 	else if (_json == "pendingChanged")
-		ret = m_client->installWatch(eth::NewPendingFilter);
+		ret = m_client->installWatch(eth::PendingChangedFilter);
 	else
-		ret = m_client->installWatch(toTransactionFilter(_json));
+		ret = m_client->installWatch(toMessageFilter(_json));
 	m_watches.push_back(ret);
 	return ret;
 }
 
-QString QEthereum::watchTransactions(unsigned _w)
+QString QEthereum::watchMessages(unsigned _w)
 {
 	if (!m_client)
 		return "";
-	return toJson(m_client->transactions(_w));
+	return toJson(m_client->messages(_w));
 }
 
 void QEthereum::killWatch(unsigned _w)

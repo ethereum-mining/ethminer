@@ -112,24 +112,24 @@ public:
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
 	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
 
-	// [OLD API] - Don't use this.
-	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
-	Q_INVOKABLE QString/*eth::u256*/ storageAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;
-	Q_INVOKABLE double txCountAt(QString/*eth::Address*/ _a) const;
-	Q_INVOKABLE bool isContractAt(QString/*eth::Address*/ _a) const;
-
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
 	Q_INVOKABLE double countAt(QString/*eth::Address*/ _a, int _block) const;
 	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p, int _block) const;
 	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a, int _block) const;
-	Q_INVOKABLE QString/*json*/ getTransactions(QString _attribs/*json*/) const;
+
+	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
+	Q_INVOKABLE double countAt(QString/*eth::Address*/ _a) const;
+	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;
+	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a) const;
+
+	Q_INVOKABLE QString/*json*/ getMessages(QString _attribs/*json*/) const;
 
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
 	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
 
 	Q_INVOKABLE unsigned newWatch(QString _json);
-	Q_INVOKABLE QString watchTransactions(unsigned _w);
+	Q_INVOKABLE QString watchMessages(unsigned _w);
 	Q_INVOKABLE void killWatch(unsigned _w);
 	void clearWatches();
 
@@ -138,11 +138,7 @@ public:
 
 	QString/*eth::Address*/ coinbase() const;
 	QString/*eth::u256*/ gasPrice() const { return toQJS(10 * eth::szabo); }
-
-	QString number() const;
-	eth::u256 balanceAt(eth::Address _a) const;
-	double txCountAt(eth::Address _a) const;
-	bool isContractAt(eth::Address _a) const;
+	int getDefault() const;
 
 	QString/*eth::KeyPair*/ key() const;
 	QStringList/*list of eth::KeyPair*/ keys() const;
@@ -155,6 +151,7 @@ public slots:
 	void setCoinbase(QString/*eth::Address*/);
 	void setMining(bool _l);
 	void setListening(bool _l);
+	void setDefault(int _block);
 
 	/// Check to see if anything has changed, fire off signals if so.
 	/// @note Must be called in the QObject's thread.
@@ -176,6 +173,7 @@ private:
 	Q_PROPERTY(bool mining READ isMining WRITE setMining NOTIFY netChanged)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening NOTIFY netChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
+	Q_PROPERTY(int defaultBlock READ getDefault NOTIFY setDefault)
 
 	eth::Client* m_client;
 	std::vector<unsigned> m_watches;
@@ -187,13 +185,14 @@ private:
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.transactions = function() { return JSON.parse(eth.watchTransactions(this.w)) }; return ret; }"); \
+	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.watchChain = function() { return eth.makeWatch('chainChanged') }"); \
 	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
 	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
 	frame->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }"); \
-	frame->evaluateJavaScript("eth.transactions = function(a) { return JSON.parse(eth.getTransactions(JSON.stringify(a))); }"); \
+	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
+	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }"); \
 	frame->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }"); \
 	frame->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }"); \

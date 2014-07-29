@@ -39,7 +39,7 @@ class Main;
 namespace eth {
 class Client;
 class State;
-class TransactionFilter;
+class MessageFilter;
 }
 
 class QQuickView;
@@ -166,7 +166,7 @@ private:
 	eth::u256 value() const;
 	eth::u256 gasPrice() const;
 
-	unsigned installWatch(eth::TransactionFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(eth::h256 _tf, std::function<void()> const& _f);
 
 	void onNewPending();
