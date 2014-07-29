@@ -531,6 +531,7 @@ void Main::readSettings()
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
+	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
