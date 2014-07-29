@@ -25,6 +25,7 @@
 #include <mutex>
 #include <list>
 #include <atomic>
+#include <boost/utility.hpp>
 #include <libethential/Common.h>
 #include <libethential/CommonIO.h>
 #include <libevm/FeeStructure.h>
@@ -93,10 +94,10 @@ struct PastMessage
 
 typedef std::vector<PastMessage> PastMessages;
 
-class TransactionFilter
+class MessageFilter
 {
 public:
-	TransactionFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+	MessageFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
 
 	void fillStream(RLPStream& _s) const;
 	h256 sha3() const;
@@ -109,14 +110,14 @@ public:
 	bool matches(State const& _s, unsigned _i) const;
 	PastMessages matches(Manifest const& _m, unsigned _i) const;
 
-	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
-	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
-	TransactionFilter altered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
-	TransactionFilter altered(Address _a) { m_altered.insert(_a); return *this; }
-	TransactionFilter withMax(unsigned _m) { m_max = _m; return *this; }
-	TransactionFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
-	TransactionFilter withEarliest(int _e) { m_earliest = _e; return *this; }
-	TransactionFilter withLatest(int _e) { m_latest = _e; return *this; }
+	MessageFilter from(Address _a) { m_from.insert(_a); return *this; }
+	MessageFilter to(Address _a) { m_to.insert(_a); return *this; }
+	MessageFilter altered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
+	MessageFilter altered(Address _a) { m_altered.insert(_a); return *this; }
+	MessageFilter withMax(unsigned _m) { m_max = _m; return *this; }
+	MessageFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
+	MessageFilter withEarliest(int _e) { m_earliest = _e; return *this; }
+	MessageFilter withLatest(int _e) { m_latest = _e; return *this; }
 
 private:
 	bool matches(Manifest const& _m, std::vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const;
@@ -133,19 +134,19 @@ private:
 
 struct InstalledFilter
 {
-	InstalledFilter(TransactionFilter const& _f): filter(_f) {}
+	InstalledFilter(MessageFilter const& _f): filter(_f) {}
 
-	TransactionFilter filter;
+	MessageFilter filter;
 	unsigned refCount = 1;
 };
 
-static const h256 NewPendingFilter = u256(0);
-static const h256 NewBlockFilter = u256(1);
+static const h256 PendingChangedFilter = u256(0);
+static const h256 ChainChangedFilter = u256(1);
 
-struct Watch
+struct ClientWatch
 {
-	Watch() {}
-	explicit Watch(h256 _id): id(_id) {}
+	ClientWatch() {}
+	explicit ClientWatch(h256 _id): id(_id) {}
 
 	h256 id;
 	unsigned changes = 1;
@@ -192,6 +193,7 @@ public:
 
 	// [NEW API]
 
+	int getDefault() const { return m_default; }
 	void setDefault(int _block) { m_default = _block; }
 
 	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
@@ -206,14 +208,14 @@ public:
 	bytes codeAt(Address _a, int _block) const;
 	std::map<u256, u256> storageAt(Address _a, int _block) const;
 
-	unsigned installWatch(TransactionFilter const& _filter);
+	unsigned installWatch(MessageFilter const& _filter);
 	unsigned installWatch(h256 _filterId);
 	void uninstallWatch(unsigned _watchId);
 	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
 	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
-	PastMessages transactions(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return transactions(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
-	PastMessages transactions(TransactionFilter const& _filter) const;
+	PastMessages messages(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return messages(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	PastMessages messages(MessageFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -351,9 +353,48 @@ private:
 
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
-	std::map<unsigned, Watch> m_watches;
+	std::map<unsigned, ClientWatch> m_watches;
 
 	int m_default = -1;
 };
+
+class Watch;
+
+}
+
+namespace std { void swap(eth::Watch& _a, eth::Watch& _b); }
+
+namespace eth
+{
+
+class Watch: public boost::noncopyable
+{
+	friend void std::swap(Watch& _a, Watch& _b);
+
+public:
+	Watch() {}
+	Watch(Client& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Client& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
+
+	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
+	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
+	PastMessages messages() const { return m_c->messages(m_id); }
+
+private:
+	Client* m_c;
+	unsigned m_id;
+};
+
+}
+
+namespace std
+{
+
+inline void swap(eth::Watch& _a, eth::Watch& _b)
+{
+	swap(_a.m_c, _b.m_c);
+	swap(_a.m_id, _b.m_id);
+}
 
 }

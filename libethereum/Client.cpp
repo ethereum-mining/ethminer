@@ -30,12 +30,12 @@
 using namespace std;
 using namespace eth;
 
-void TransactionFilter::fillStream(RLPStream& _s) const
+void MessageFilter::fillStream(RLPStream& _s) const
 {
 	_s.appendList(8) << m_from << m_to << m_stateAltered << m_altered << m_earliest << m_latest << m_max << m_skip;
 }
 
-h256 TransactionFilter::sha3() const
+h256 MessageFilter::sha3() const
 {
 	RLPStream s;
 	fillStream(s);
@@ -125,7 +125,7 @@ void Client::clearPending()
 	h256Set changeds;
 	for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		appendFromNewPending(m_postMine.bloom(i), changeds);
-	changeds.insert(NewPendingFilter);
+	changeds.insert(PendingChangedFilter);
 	m_postMine = m_preMine;
 	noteChanged(changeds);
 }
@@ -133,12 +133,12 @@ void Client::clearPending()
 unsigned Client::installWatch(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-	m_watches[ret] = Watch(_h);
+	m_watches[ret] = ClientWatch(_h);
 	cwatch << "+++" << ret << _h;
 	return ret;
 }
 
-unsigned Client::installWatch(TransactionFilter const& _f)
+unsigned Client::installWatch(MessageFilter const& _f)
 {
 	lock_guard<mutex> l(m_filterLock);
 
@@ -444,8 +444,8 @@ void Client::work(bool _justQueue)
 				{
 					for (auto h: hs)
 						appendFromNewBlock(h, changeds);
-					changeds.insert(NewBlockFilter);
-					//changeds.insert(NewPendingFilter);	// if we mined the new block, then we've probably reset the pending transactions.
+					changeds.insert(ChainChangedFilter);
+					//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
 				}
 			}
 		}
@@ -474,7 +474,7 @@ void Client::work(bool _justQueue)
 		{
 			for (auto i: newBlocks)
 				appendFromNewBlock(i, changeds);
-			changeds.insert(NewBlockFilter);
+			changeds.insert(ChainChangedFilter);
 		}
 		x_stateDB.lock();
 		if (newBlocks.size())
@@ -487,7 +487,7 @@ void Client::work(bool _justQueue)
 				cnote << "New block on chain: Restarting mining operation.";
 			m_restartMining = true;	// need to re-commit to mine.
 			m_postMine = m_preMine;
-			changeds.insert(NewPendingFilter);
+			changeds.insert(PendingChangedFilter);
 		}
 
 		// returns h256s as blooms, once for each transaction.
@@ -497,7 +497,7 @@ void Client::work(bool _justQueue)
 		{
 			for (auto i: newPendingBlooms)
 				appendFromNewPending(i, changeds);
-			changeds.insert(NewPendingFilter);
+			changeds.insert(PendingChangedFilter);
 
 			if (m_doMine)
 				cnote << "Additional transaction ready: Restarting mining operation.";
@@ -594,7 +594,7 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
-bool TransactionFilter::matches(h256 _bloom) const
+bool MessageFilter::matches(h256 _bloom) const
 {
 	auto have = [=](Address const& a) { return _bloom.contains(a.bloom()); };
 	if (m_from.size())
@@ -627,7 +627,7 @@ bool TransactionFilter::matches(h256 _bloom) const
 	return true;
 }
 
-bool TransactionFilter::matches(State const& _s, unsigned _i) const
+bool MessageFilter::matches(State const& _s, unsigned _i) const
 {
 	h256 b = _s.changesFromPending(_i).bloom();
 	if (!matches(b))
@@ -658,14 +658,14 @@ bool TransactionFilter::matches(State const& _s, unsigned _i) const
 	return true;
 }
 
-PastMessages TransactionFilter::matches(Manifest const& _m, unsigned _i) const
+PastMessages MessageFilter::matches(Manifest const& _m, unsigned _i) const
 {
 	PastMessages ret;
 	matches(_m, vector<unsigned>(1, _i), _m.from, PastMessages(), ret);
 	return ret;
 }
 
-bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const
+bool MessageFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const
 {
 	bool ret;
 
@@ -705,7 +705,7 @@ bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address
 	return ret;
 }
 
-PastMessages Client::transactions(TransactionFilter const& _f) const
+PastMessages Client::messages(MessageFilter const& _f) const
 {
 	PastMessages ret;
 	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());

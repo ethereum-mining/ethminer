@@ -232,7 +232,7 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(eth::TransactionFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f)
 {
 	auto ret = m_client->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -248,27 +248,27 @@ unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
 
 void Main::installWatches()
 {
-	installWatch(eth::TransactionFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(eth::TransactionFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
-	installWatch(eth::NewPendingFilter, [=](){ onNewPending(); });
-	installWatch(eth::NewBlockFilter, [=](){ onNewBlock(); });
+	installWatch(eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+	installWatch(eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(eth::PendingChangedFilter, [=](){ onNewPending(); });
+	installWatch(eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
 
 void Main::installNameRegWatch()
 {
 	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(eth::TransactionFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	m_client->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(eth::TransactionFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	eth::TransactionFilter tf;
+	eth::MessageFilter tf;
 
 	vector<Address> altCoins;
 	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
