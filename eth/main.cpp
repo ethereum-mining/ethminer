@@ -579,43 +579,46 @@ int main(int argc, char** argv)
 				f.open(filename);
 
 				eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
-				Executive e(state);
-				Transaction t = state.pending()[index];
-				state = state.fromPending(index);
-				bytes r = t.rlp();
-				e.setup(&r);
+				if (index < state.pending().size())
+				{
+					Executive e(state);
+					Transaction t = state.pending()[index];
+					state = state.fromPending(index);
+					bytes r = t.rlp();
+					e.setup(&r);
 
-				if (format == "pretty")
-					e.go([&](uint64_t steps, Instruction instr, unsigned newMemSize, bigint gasCost, void* vvm, void const* vextVM)
-					{
-						eth::VM* vm = (VM*)vvm;
-						eth::ExtVM const* ext = (ExtVM const*)vextVM;
-						f << endl << "    STACK" << endl;
-						for (auto i: vm->stack())
-							f << (h256)i << endl;
-						f << "    MEMORY" << endl << eth::memDump(vm->memory());
-						f << "    STORAGE" << endl;
-						for (auto const& i: ext->state().storage(ext->myAddress))
-							f << showbase << hex << i.first << ": " << i.second << endl;
-						f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << c_instructionInfo.at(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
-					});
-				else if (format == "standard")
-					e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
-					{
-						eth::VM* vm = (VM*)vvm;
-						eth::ExtVM const* ext = (ExtVM const*)vextVM;
-						f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-					});
-				else if (format == "standard+")
-					e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
-					{
-						eth::VM* vm = (VM*)vvm;
-						eth::ExtVM const* ext = (ExtVM const*)vextVM;
-						if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+					if (format == "pretty")
+						e.go([&](uint64_t steps, Instruction instr, unsigned newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << endl << "    STACK" << endl;
+							for (auto i: vm->stack())
+								f << (h256)i << endl;
+							f << "    MEMORY" << endl << eth::memDump(vm->memory());
+							f << "    STORAGE" << endl;
 							for (auto const& i: ext->state().storage(ext->myAddress))
-								f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
-						f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-					});
+								f << showbase << hex << i.first << ": " << i.second << endl;
+							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << c_instructionInfo.at(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+						});
+					else if (format == "standard")
+						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						});
+					else if (format == "standard+")
+						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						{
+							eth::VM* vm = (VM*)vvm;
+							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
+							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						});
+				}
 			}
 			else if (cmd == "inspect")
 			{
