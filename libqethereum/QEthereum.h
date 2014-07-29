@@ -138,6 +138,7 @@ public:
 
 	QString/*eth::Address*/ coinbase() const;
 	QString/*eth::u256*/ gasPrice() const { return toQJS(10 * eth::szabo); }
+	QString/*eth::u256*/ number() const;
 	int getDefault() const;
 
 	QString/*eth::KeyPair*/ key() const;
@@ -173,7 +174,7 @@ private:
 	Q_PROPERTY(bool mining READ isMining WRITE setMining NOTIFY netChanged)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening NOTIFY netChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
-	Q_PROPERTY(int defaultBlock READ getDefault NOTIFY setDefault)
+	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
 
 	eth::Client* m_client;
 	std::vector<unsigned> m_watches;
