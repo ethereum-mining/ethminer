@@ -504,11 +504,12 @@ void Main::writeSettings()
 	s.setValue("windowState", saveState());
 }
 
-void Main::readSettings()
+void Main::readSettings(bool _skipGeometry)
 {
 	QSettings s("ethereum", "alethzero");
 
-	restoreGeometry(s.value("geometry").toByteArray());
+	if (!_skipGeometry)
+		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
 
 	m_myKeys.clear();
@@ -531,6 +532,7 @@ void Main::readSettings()
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
+	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
@@ -1351,7 +1353,7 @@ void Main::on_killBlockchain_triggered()
 	m_client.reset();
 	m_client.reset(new Client("AlethZero", Address(), string(), true));
 	m_ethereum->setClient(m_client.get());
-	readSettings();
+	readSettings(true);
 	installWatches();
 	refreshAll();
 }

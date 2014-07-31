@@ -32,12 +32,7 @@
     <ClCompile Include="..\libethential\Common.cpp" />
     <ClCompile Include="..\libethential\CommonData.cpp" />
     <ClCompile Include="..\libethential\CommonIO.cpp" />
-    <ClCompile Include="..\libethential\FixedHash.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\libethential\FixedHash.cpp" />
     <ClCompile Include="..\libethential\Log.cpp" />
     <ClCompile Include="..\libethential\RLP.cpp" />
     <ClCompile Include="..\libethereum\AddressState.cpp" />
@@ -55,6 +50,7 @@
     <ClCompile Include="..\libethereum\State.cpp" />
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
+    <ClCompile Include="..\libethereum\Utility.cpp" />
     <ClCompile Include="..\libevmface\Instruction.cpp" />
     <ClCompile Include="..\libevm\ExtVMFace.cpp" />
     <ClCompile Include="..\libevm\FeeStructure.cpp" />
@@ -110,6 +106,7 @@
     <ClInclude Include="..\libethereum\State.h" />
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
+    <ClInclude Include="..\libethereum\Utility.h" />
     <ClInclude Include="..\libevmface\Instruction.h" />
     <ClInclude Include="..\libevm\All.h" />
     <ClInclude Include="..\libevm\ExtVMFace.h" />
