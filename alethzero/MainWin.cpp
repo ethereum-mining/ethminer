@@ -1517,15 +1517,17 @@ void Main::on_create_triggered()
 
 void Main::on_debugStep_triggered()
 {
-	auto l = m_history[ui->debugTimeline->value()].levels.size();
-	if ((ui->debugTimeline->value() + 1) < m_history.size() && m_history[ui->debugTimeline->value() + 1].levels.size() > l)
-	{
-		on_debugStepInto_triggered();
-		if (m_history[ui->debugTimeline->value()].levels.size() > l)
-			on_debugStepOut_triggered();
+	if (ui->debugTimeline->value() < m_history.size()) {
+		auto l = m_history[ui->debugTimeline->value()].levels.size();
+		if ((ui->debugTimeline->value() + 1) < m_history.size() && m_history[ui->debugTimeline->value() + 1].levels.size() > l)
+		{
+			on_debugStepInto_triggered();
+			if (m_history[ui->debugTimeline->value()].levels.size() > l)
+				on_debugStepOut_triggered();
+		}
+		else
+			on_debugStepInto_triggered();
 	}
-	else
-		on_debugStepInto_triggered();
 }
 
 void Main::on_debugStepInto_triggered()
