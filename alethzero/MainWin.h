@@ -157,7 +157,8 @@ private:
 	void alterDebugStateGroup(bool _enable) const;
 
 	void updateFee();
-	void readSettings();
+	void readSettings(bool _skipGeometry);
+	void readSettings() { readSettings(false); }
 	void writeSettings();
 
 	bool isCreation() const;
