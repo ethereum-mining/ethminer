@@ -669,7 +669,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 
 h256 State::bloom() const
 {
-	h256 ret;
+	h256 ret = m_currentBlock.coinbaseAddress.bloom();
 	for (auto const& i: m_transactions)
 		ret |= i.changes.bloom();
 	return ret;
