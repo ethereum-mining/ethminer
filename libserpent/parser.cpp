@@ -150,10 +150,10 @@ Node treefy(std::vector<Node> stream) {
         else if (typ == RPAREN) {
             std::vector<Node> args;
             while (1) {
+                if (!oq.size()) err("Bracket without matching", tok.metadata);
                 if (toktype(oq.back()) == LPAREN) break;
                 args.push_back(oq.back());
                 oq.pop_back();
-                if (!oq.size()) err("Bracket without matching", tok.metadata);
             }
             oq.pop_back();
             args.push_back(oq.back());
