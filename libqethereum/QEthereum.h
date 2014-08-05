@@ -200,8 +200,7 @@ private:
 	frame->evaluateJavaScript("eth.watchChain = function() { return eth.makeWatch('chainChanged') }"); \
 	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
 	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
-	frame->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }"); \
-	frame->evaluateJavaScript("eth.transact = function(a, f) { eth.doTransactJson(JSON.stringify(a)); if (f) f() }"); \
+	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(); } else { eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
 	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
