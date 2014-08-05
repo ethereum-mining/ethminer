@@ -180,14 +180,14 @@ public:
 	/// @returns the new contract's address (assuming it all goes through).
 	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
-	/// Blocks until all pending transactions have been processed.
-	void flushTransactions();
-
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	void inject(bytesConstRef _rlp);
 
-	/// Makes the given call. Nothing is recorded into the state. TODO
-//	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
+	/// Blocks until all pending transactions have been processed.
+	void flushTransactions();
+
+	/// Makes the given call. Nothing is recorded into the state.
+	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	// Informational stuff
 

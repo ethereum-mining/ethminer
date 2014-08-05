@@ -131,6 +131,11 @@ QString QEthereum::sha3(QString _s) const
 	return toQJS(eth::sha3(asBytes(_s)));
 }
 
+QString QEthereum::offset(QString _s, int _i) const
+{
+	return toQJS(toU256(_s) + _i);
+}
+
 QString QEthereum::coinbase() const
 {
 	return m_client ? toQJS(client()->address()) : "";
@@ -277,6 +282,45 @@ static eth::MessageFilter toMessageFilter(QString _json)
 	return filter;
 }
 
+struct TransactionSkeleton
+{
+	Secret from;
+	Address to;
+	u256 value;
+	bytes data;
+	u256 gas;
+	u256 gasPrice;
+};
+
+static TransactionSkeleton toTransaction(QString _json)
+{
+	TransactionSkeleton ret;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("from"))
+		ret.from = toSecret(f["from"].toString());
+	if (f.contains("to"))
+		ret.to = toAddress(f["to"].toString());
+	if (f.contains("value"))
+		ret.value = toU256(f["value"].toString());
+	if (f.contains("gas"))
+		ret.gas = toU256(f["gas"].toString());
+	if (f.contains("gasPrice"))
+		ret.gasPrice = toU256(f["gasPrice"].toString());
+	if (f.contains("data"))
+	{
+		if (f["data"].isString())
+			ret.data = toBytes(f["data"].toString());
+		else if (f["data"].isArray())
+			for (auto i: f["data"].toArray())
+				eth::operator +=(ret.data, toBytes(padded(i.toString(), 32)));
+		else if (f["dataclose"].isArray())
+			for (auto i: f["dataclose"].toArray())
+				eth::operator +=(ret.data, toBytes(toBinary(i.toString())));
+	}
+	return ret;
+}
+
 static QString toJson(eth::PastMessages const& _pms)
 {
 	QJsonArray jsonArray;
@@ -357,6 +401,41 @@ void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QStr
 		return;
 	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
 	client()->flushTransactions();
+}
+
+void QEthereum::doTransact(QString _json)
+{
+	if (!m_client)
+		return;
+	TransactionSkeleton t = toTransaction(_json);
+	if (!t.from && m_accounts.size())
+		t.from = m_accounts[0].secret();
+	if (!t.gasPrice)
+		t.gasPrice = 10 * eth::szabo;
+	if (!t.gas)
+		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
+	if (t.to)
+		client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+	else
+		client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice);
+	client()->flushTransactions();
+}
+
+QString QEthereum::doCall(QString _json)
+{
+	if (!m_client)
+		return QString();
+	TransactionSkeleton t = toTransaction(_json);
+	if (!t.to)
+		return QString();
+	if (!t.from && m_accounts.size())
+		t.from = m_accounts[0].secret();
+	if (!t.gasPrice)
+		t.gasPrice = 10 * eth::szabo;
+	if (!t.gas)
+		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
+	bytes out = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+	return asQString(out);
 }
 
 unsigned QEthereum::newWatch(QString _json)

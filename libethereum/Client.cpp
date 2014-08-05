@@ -333,6 +333,28 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+{
+	State temp;
+	Transaction t;
+//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		temp = m_postMine;
+		t.nonce = temp.transactionsFrom(toAddress(_secret));
+	}
+	t.value = _value;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
+	t.receiveAddress = _dest;
+	t.data = _data;
+	t.sign(_secret);
+	bytes out;
+	u256 gasUsed = temp.execute(t.data, &out, false);
+	(void)gasUsed; // TODO: do something with gasused which it returns.
+	return out;
+}
+
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	ensureWorking();
