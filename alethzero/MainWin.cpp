@@ -1683,7 +1683,7 @@ QString Main::prettyU256(eth::u256 _n) const
 		s << "<span style=\"color: #008\">" << (uint64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
 	else if (!~(_n >> 64))
 		s << "<span style=\"color: #008\">" << (int64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (int64_t)_n << ")</span>";
-	else if (_n >> 200 == 0)
+	else if ((_n >> 200) == 0)
 	{
 		Address a = right160(_n);
 		QString n = pretty(a);

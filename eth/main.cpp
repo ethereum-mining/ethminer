@@ -295,7 +295,11 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-    Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	c.setForceMining(true);
+
 	cout << credits();
 
 	c.setForceMining(forceMining);
@@ -425,7 +429,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "balance")
 			{
-				cout << "Current balance: " << formatBalance(c.balanceAt(us.address(), 0)) << " = " << c.balanceAt(us.address(), 0) << " wei" << endl;
+				cout << "Current balance: " << formatBalance(c.balanceAt(us.address())) << " = " << c.balanceAt(us.address()) << " wei" << endl;
 			}
 			else if (cmd == "transact")
 			{
@@ -487,7 +491,7 @@ int main(int argc, char** argv)
 				for (auto const& i: acs)
 					if (c.codeAt(i, 0).size())
 					{
-						ss = toString(i) + " : " + toString(c.balanceAt(i, 0)) + " [" + toString((unsigned)c.countAt(i)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
 			}
@@ -498,7 +502,7 @@ int main(int argc, char** argv)
 				for (auto const& i: acs)
 					if (c.codeAt(i, 0).empty())
 					{
-						ss = toString(i) + " : " + toString(c.balanceAt(i, 0)) + " [" + toString((unsigned)c.countAt(i)) + "]";
+						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
 						cout << ss << endl;
 					}
 			}
