@@ -413,7 +413,7 @@ void QEthereum::doTransact(QString _json)
 	if (!t.gasPrice)
 		t.gasPrice = 10 * eth::szabo;
 	if (!t.gas)
-		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
 	if (t.to)
 		client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
 	else

@@ -192,6 +192,9 @@ public:
 	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(&_rlp, o_output, _commit); }
 	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
 
+	/// Get the remaining gas limit in this block.
+	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
+
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
 
