@@ -72,6 +72,11 @@ inline QString toDecimal(QString const& _s)
 	return QString::fromStdString(eth::toString(toU256(_s)));
 }
 
+inline double toFixed(QString const& _s)
+{
+	return (double)toU256(_s) / (double)(eth::u256(1) << 128);
+}
+
 inline QString fromBinary(eth::bytes const& _s)
 {
 	return QString::fromStdString("0x" + eth::toHex(_s));
@@ -105,12 +110,14 @@ public:
 	Q_INVOKABLE QString lll(QString _s) const;
 
 	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString offset(QString _s, int _offset) const;
 	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
 	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
 	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
 	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
 	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
 	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
+	Q_INVOKABLE double toFixed(QString _s) const { return ::toFixed(_s); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
@@ -127,6 +134,8 @@ public:
 
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
 	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
+	Q_INVOKABLE void doTransact(QString _json);
+	Q_INVOKABLE QString doCall(QString _json);
 
 	Q_INVOKABLE unsigned newWatch(QString _json);
 	Q_INVOKABLE QString watchMessages(unsigned _w);
@@ -192,6 +201,8 @@ private:
 	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
 	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
 	frame->evaluateJavaScript("eth.transact = function(s, v, t, d, g, p, f) { eth.doTransact(s, v, t, d, g, p); if (f) f() }"); \
+	frame->evaluateJavaScript("eth.transact = function(a, f) { eth.doTransactJson(JSON.stringify(a)); if (f) f() }"); \
+	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }"); \
@@ -199,6 +210,7 @@ private:
 	frame->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }"); \
 	frame->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }"); \
 	frame->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }"); \
+	frame->evaluateJavaScript("String.prototype.fix = function() { return eth.toFixed(this) }"); \
 	frame->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }"); \
 }
 
