@@ -100,7 +100,8 @@ void help()
         << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-        << "    -h,--help  Show this help message and exit." << endl
+		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
@@ -108,7 +109,7 @@ void help()
 #endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-        << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
         << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
@@ -185,6 +186,7 @@ int main(int argc, char** argv)
 #endif
 	string publicIP;
 	bool upnp = true;
+	bool forceMining = false;
 	string clientName;
 
 	// Init defaults
@@ -256,6 +258,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-f" || arg == "--force-mining")
+			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
@@ -293,6 +297,8 @@ int main(int argc, char** argv)
 		clientName += "/";
     Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 	cout << credits();
+
+	c.setForceMining(forceMining);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
