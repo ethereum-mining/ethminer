@@ -1227,10 +1227,12 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 				}
 				if (cache)
 					for (auto const& j: cache->storage())
+					{
 						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
 							mem[j.first] = j.second, delta.insert(j.first);
 						else if (j.second)
 							cached.insert(j.first);
+					}
 				if (delta.size())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
