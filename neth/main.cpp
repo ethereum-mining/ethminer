@@ -411,7 +411,11 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-    Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+
+	c.setForceMining(true);
+
 	cout << credits();
 
 	std::ostringstream ccout;
@@ -591,7 +595,7 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "balance")
 		{
-			u256 balance = c.balanceAt(us.address(), 0);
+			u256 balance = c.balanceAt(us.address());
 			ccout << "Current balance:" << endl;
 			ccout << toString(balance) << endl;
 		}
@@ -899,7 +903,7 @@ int main(int argc, char** argv)
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
 					toString(i) %
 					pretty(i, c.postState()) %
-					toString(formatBalance(c.balanceAt(i, 0))) %
+					toString(formatBalance(c.balanceAt(i))) %
 					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
 				if (cc > qheight - 2)
@@ -911,12 +915,13 @@ int main(int argc, char** argv)
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
 					toString(i) %
 					pretty(i, c.postState()) %
-					toString(formatBalance(c.balanceAt(i, 0))) %
+					toString(formatBalance(c.balanceAt(i))) %
 					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
 				if (y > height * 3 / 5 - 4)
 					break;
 			}
+
 		// Peers
 		y = 1;
 		for (PeerInfo const& i: c.peers())
@@ -941,7 +946,7 @@ int main(int argc, char** argv)
 
 		// Balance
 		stringstream ssb;
-		u256 balance = c.balanceAt(us.address(), 0);
+		u256 balance = c.balanceAt(us.address());
 		Address coinsAddr = right160(c.stateAt(c_config, 1));
 		Address gavCoin = right160(c.stateAt(coinsAddr, c.stateAt(coinsAddr, 1)));
 		u256 totalGavCoinBalance = c.stateAt(gavCoin, (u160)us.address());
