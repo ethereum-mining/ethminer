@@ -235,6 +235,9 @@ public:
 	/// Get the fee associated for a transaction with the given data.
 	static u256 txGas(uint _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
 
+	/// Get the remaining gas limit in this block.
+	u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
+
 	// [PRIVATE API - only relevant for base clients, not available in general]
 
 	eth::State state(unsigned _txi, h256 _block) const;
