@@ -137,7 +137,7 @@ void Main::timerEvent(QTimerEvent *)
 
 void Main::on_about_triggered()
 {
-    QMessageBox::about(this, "About Walleth PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Walleth/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) " - " ETH_QUOTED(ETH_COMMIT_HASH) "\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nTeam Ethereum++ includes: Tim Hughes, Eric Lombrozo, Marko Simovic, Alex Leverington and several others.");
+	QMessageBox::about(this, "About Walleth PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Walleth/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::writeSettings()
