@@ -240,10 +240,11 @@ var exchangeCode = eth.lll("
 	(when (= $0 'delete) {
 		(set 'offer $32)
 		(set 'want $64)
+		(set 'rate $96)
 		(set 'list (sha3pair @offer @want))
 		(set 'last @list)
 		(set 'item @@ @last)
-		(for {} (&& @item (!= (idof @item) (caller))) { (set 'last @item) (inc item) } {})
+		(for {} (&& @item (!= (idof @item) (caller)) (!= (rateof @item) @rate)) { (set 'last @item) (inc item) } {})
 		(when @item {
 			(set 'xoffer (fpmul (wantof @item) (rateof @item)))
 			[[ @last ]] @@ @item

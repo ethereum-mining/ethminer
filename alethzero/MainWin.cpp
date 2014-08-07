@@ -459,6 +459,40 @@ Address Main::fromString(QString const& _a) const
 		return Address();
 }
 
+QString Main::lookup(QString const& _a) const
+{
+	if (!_a.endsWith(".eth"))
+		return _a;
+
+	string sn = _a.mid(0, _a.size() - 4).toStdString();
+	if (sn.size() > 32)
+		sn = sha3(sn, false);
+	h256 n;
+	memcpy(n.data(), sn.data(), sn.size());
+
+/*	string sn2 = _a.toStdString();
+	if (sn2.size() > 32)
+		sn2 = sha3(sn2, false);
+	h256 n2;
+	memcpy(n2.data(), sn2.data(), sn2.size());
+*/
+
+	h256 ret;
+	if (h160 dnsReg = (u160)m_client->stateAt(c_config, 4, 0))
+		ret = m_client->stateAt(dnsReg, n);
+/*	if (!ret)
+		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0, 0))
+			ret = m_client->stateAt(nameReg, n2);
+*/
+	if (ret && !((u256)ret >> 32))
+		return QString("%1.%2.%3.%4").arg((int)ret[28]).arg((int)ret[29]).arg((int)ret[30]).arg((int)ret[31]);
+	// TODO: support IPv6.
+	else if (ret)
+		return fromRaw(ret);
+	else
+		return _a;
+}
+
 void Main::on_about_triggered()
 {
 	QMessageBox::about(this, "About AlethZero PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("AlethZero/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
@@ -575,7 +609,16 @@ void Main::on_exportKey_triggered()
 
 void Main::on_urlEdit_returnPressed()
 {
-	ui->webView->setUrl(ui->urlEdit->text());
+	QString s = ui->urlEdit->text();
+	QRegExp r("([a-z]+://)?([^/]*)(.*)");
+	if (r.exactMatch(s))
+		if (r.cap(2).isEmpty())
+			s = (r.cap(1).isEmpty() ? "file://" : r.cap(1)) + r.cap(3);
+		else
+			s = (r.cap(1).isEmpty() ? "http://" : r.cap(1)) + lookup(r.cap(2)) + r.cap(3);
+	else{}
+	qDebug() << s;
+	ui->webView->setUrl(s);
 }
 
 void Main::on_nameReg_textChanged()
