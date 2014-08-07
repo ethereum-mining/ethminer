@@ -146,6 +146,8 @@ private:
 	QString pretty(eth::Address _a) const;
 	QString prettyU256(eth::u256 _n) const;
 
+	QString lookup(QString const& _n) const;
+
 	void populateDebugger(eth::bytesConstRef r);
 	void initDebugger();
 	void updateDebugger();
