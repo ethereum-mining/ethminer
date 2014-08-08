@@ -190,6 +190,7 @@ else()
 	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
+		${PYTHON_INCLUDE_DIR}
 		/usr/include/python2.7
 		/usr/local/include/python2.7
 		)
