@@ -152,11 +152,11 @@ struct ClientWatch
 	unsigned changes = 1;
 };
 
-struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 6; };
+struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
 #define cwatch eth::LogOutputStream<eth::WatchChannel, true>()
-struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 5; };
-struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 5; };
-struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 5; };
+struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 6; };
+struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 6; };
+struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 6; };
 #define cwork eth::LogOutputStream<eth::WorkChannel, true>()
 #define cworkin eth::LogOutputStream<eth::WorkInChannel, true>()
 #define cworkout eth::LogOutputStream<eth::WorkOutChannel, true>()

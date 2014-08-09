@@ -663,10 +663,18 @@ void Main::refreshBalances()
 	// update all the balance-dependent stuff.
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
-	map<Address, pair<QString, u256>> altCoins;
+	map<Address, tuple<QString, u256, u256>> altCoins;
 	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
 	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
-		altCoins[right160(m_client->stateAt(coinsAddr, m_client->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(m_client->stateAt(coinsAddr, i + 1)), 0);
+	{
+		auto n = m_client->stateAt(coinsAddr, i + 1);
+		auto addr = right160(m_client->stateAt(coinsAddr, n));
+		auto denom = m_client->stateAt(coinsAddr, sha3(h256(n).asBytes()));
+		if (denom == 0)
+			denom = 1;
+		cdebug << n << addr << denom << sha3(h256(n).asBytes());
+		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
+	}
 	for (auto i: m_myKeys)
 	{
 		u256 b = m_client->balanceAt(i.address());
@@ -675,13 +683,17 @@ void Main::refreshBalances()
 		totalBalance += b;
 
 		for (auto& c: altCoins)
-			c.second.second += (u256)m_client->stateAt(c.first, (u160)i.address());
+			get<1>(c.second) += (u256)m_client->stateAt(c.first, (u160)i.address());
 	}
 
 	QString b;
 	for (auto const& c: altCoins)
-		if (c.second.second)
-			b += QString::fromStdString(toString(c.second.second)) + " " + c.second.first.toUpper() + " | ";
+		if (get<1>(c.second))
+		{
+			stringstream s;
+			s << setw(toString(get<2>(c.second) - 1).size()) << setfill('0') << (get<1>(c.second) % get<2>(c.second));
+			b += QString::fromStdString(toString(get<1>(c.second) / get<2>(c.second)) + "." + s.str() + " ") + get<0>(c.second).toUpper() + " | ";
+		}
 	ui->balance->setText(b + QString::fromStdString(formatBalance(totalBalance)));
 }
 

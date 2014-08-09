@@ -409,7 +409,13 @@ void QEthereum::doTransact(QString _json)
 		return;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
-		t.from = m_accounts[0].secret();
+	{
+		auto b = m_accounts.first();
+		for (auto a: m_accounts)
+			if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
+				b = a;
+		t.from = b.secret();
+	}
 	if (!t.gasPrice)
 		t.gasPrice = 10 * eth::szabo;
 	if (!t.gas)

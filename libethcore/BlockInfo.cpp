@@ -176,7 +176,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		throw InvalidDifficulty();
 
 	if (gasLimit != calculateGasLimit(_parent))
-		throw InvalidGasLimit();
+		throw InvalidGasLimit(gasLimit, calculateGasLimit(_parent));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
