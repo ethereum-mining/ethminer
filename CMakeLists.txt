@@ -358,6 +358,7 @@ if (NOT LANGUAGES)
 		
 		add_subdirectory(libqethereum)
 		add_subdirectory(alethzero)
+		add_subdirectory(third)
 		if(QTQML)
 			add_subdirectory(walleth)
 		endif()

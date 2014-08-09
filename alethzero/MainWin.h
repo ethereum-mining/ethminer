@@ -159,8 +159,7 @@ private:
 	void alterDebugStateGroup(bool _enable) const;
 
 	void updateFee();
-	void readSettings(bool _skipGeometry);
-	void readSettings() { readSettings(false); }
+	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
 	bool isCreation() const;
@@ -205,10 +204,6 @@ private:
 	unsigned m_balancesFilter = (unsigned)-1;
 
 	QByteArray m_peers;
-	QMutex m_guiLock;
-	QTimer* m_ticker;
-	QTimer* m_refreshNetwork;
-	QTimer* m_refreshMining;
 	QStringList m_servers;
 	QList<eth::KeyPair> m_myKeys;
 	bool m_keysChanged = false;

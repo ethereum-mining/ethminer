@@ -54,9 +54,20 @@ env.note('NameReg at address ' + nameReg)
 env.note('Register NameReg...')
 eth.transact(eth.key, '0', config, "0".pad(32) + nameReg.pad(32), 10000, eth.gasPrice);
 
-var coinsCode = eth.lll("
+var dnsRegCode = '0x60006000546000600053602001546000600053604001546020604060206020600073661005d2720d855f1d9976f88bb10c1a3398c77f6103e8f17f7265676973746572000000000000000000000000000000000000000000000000600053606001600060200201547f446e735265670000000000000000000000000000000000000000000000000000600053606001600160200201546000600060006000604060606000600053604001536103e8f1327f6f776e65720000000000000000000000000000000000000000000000000000005761011663000000e46000396101166000f20060006000547f72656769737465720000000000000000000000000000000000000000000000006000602002350e0f630000006d596000600160200235560e0f630000006c59600032560e0f0f6300000057596000325657600260200235600160200235576001602002353257007f64657265676973746572000000000000000000000000000000000000000000006000602002350e0f63000000b95960016020023532560e0f63000000b959600032576000600160200235577f6b696c6c000000000000000000000000000000000000000000000000000000006000602002350e0f630000011559327f6f776e6572000000000000000000000000000000000000000000000000000000560e0f63000001155932ff00';
+
+var dnsReg;
+env.note('Create DnsReg...')
+eth.create(eth.key, '0', dnsRegCode, 10000, eth.gasPrice, function(a) { dnsReg = a; })
+
+env.note('DnsReg at address ' + dnsReg)
+
+env.note('Register DnsReg...')
+eth.transact(eth.key, '0', config, "4".pad(32) + dnsReg.pad(32), 10000, eth.gasPrice);
+
+var coinRegCode = eth.lll("
 {
-[0]'register [32]'Coins
+[0]'register [32]'CoinReg
 (msg allgas " + nameReg + " 0 0 64)
 (returnlll {
 	(def 'name $0)
@@ -72,14 +83,14 @@ var coinsCode = eth.lll("
 }
 ");
 
-var coins;
-env.note('Create Coins...')
-eth.create(eth.key, '0', coinsCode, 10000, eth.gasPrice, function(a) { coins = a; })
+var coinReg;
+env.note('Create CoinReg...')
+eth.create(eth.key, '0', coinRegCode, 10000, eth.gasPrice, function(a) { coinReg = a; })
 
-env.note('Coins at address ' + coins)
+env.note('CoinReg at address ' + coinReg)
 
-env.note('Register Coins...')
-eth.transact(eth.key, '0', config, "1".pad(32) + coins.pad(32), 10000, eth.gasPrice);
+env.note('Register CoinReg...')
+eth.transact(eth.key, '0', config, "1".pad(32) + coinReg.pad(32), 10000, eth.gasPrice);
 
 var gavCoinCode = eth.lll("
 {
@@ -89,8 +100,8 @@ var gavCoinCode = eth.lll("
 
 [0]'register [32]'GavCoin
 (msg allgas " + nameReg + " 0 0 64)
-[0]'GAV [32]'1000
-(msg allgas " + coins + " 0 0 64)
+[0]'GAV [32] 1000
+(msg allgas " + coinReg + " 0 0 64)
 
 (returnlll {
 	(when (&& (= $0 'kill) (= (caller) @@0x69)) (suicide (caller)))
