@@ -1018,6 +1018,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
+	ui->pendingInfo->moveCursor(QTextCursor::Start);
 }
 
 void Main::ourAccountsRowsMoved()
@@ -1122,6 +1123,7 @@ void Main::on_blocks_currentItemChanged()
 		}
 
 		ui->info->appendHtml(QString::fromStdString(s.str()));
+		ui->info->moveCursor(QTextCursor::Start);
 	}
 }
 
@@ -1237,6 +1239,7 @@ void Main::on_contracts_currentItemChanged()
 		{
 			ui->contractInfo->appendHtml("Corrupted trie.");
 		}
+		ui->contractInfo->moveCursor(QTextCursor::Start);
 	}
 }
 
