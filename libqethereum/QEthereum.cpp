@@ -53,8 +53,11 @@ eth::bytes toBytes(QString const& _s)
 		// Decimal
 		return eth::toCompactBigEndian(eth::bigint(_s.toStdString()));
 	else
+	{
 		// Binary
+		cwarn << "THIS FUNCTIONALITY IS DEPRECATED. DO NOT ASSUME ASCII/BINARY-STRINGS WILL BE ACCEPTED. USE eth.fromAscii().";
 		return asBytes(_s);
+	}
 }
 
 QString padded(QString const& _s, unsigned _l, unsigned _r)
@@ -127,6 +130,11 @@ QString QEthereum::lll(QString _s) const
 }
 
 QString QEthereum::sha3(QString _s) const
+{
+	return toQJS(eth::sha3(asBytes(_s)));
+}
+
+QString QEthereum::sha3old(QString _s) const
 {
 	return toQJS(eth::sha3(asBytes(_s)));
 }
@@ -449,9 +457,9 @@ unsigned QEthereum::newWatch(QString _json)
 	if (!m_client)
 		return (unsigned)-1;
 	unsigned ret;
-	if (_json == "chainChanged")
+	if (_json == "chain")
 		ret = m_client->installWatch(eth::ChainChangedFilter);
-	else if (_json == "pendingChanged")
+	else if (_json == "pending")
 		ret = m_client->installWatch(eth::PendingChangedFilter);
 	else
 		ret = m_client->installWatch(toMessageFilter(_json));
