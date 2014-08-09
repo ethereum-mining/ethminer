@@ -77,14 +77,20 @@ inline double toFixed(QString const& _s)
 	return (double)toU256(_s) / (double)(eth::u256(1) << 128);
 }
 
-inline QString fromBinary(eth::bytes const& _s)
+inline QString fromFixed(double _s)
 {
+	return toQJS(eth::u256(_s * (double)(eth::u256(1) << 128)));
+}
+
+inline QString fromBinary(eth::bytes _s, unsigned _padding = 32)
+{
+	_s.resize(std::max<unsigned>(_s.size(), _padding));
 	return QString::fromStdString("0x" + eth::toHex(_s));
 }
 
-inline QString fromBinary(QString const& _s)
+inline QString fromBinary(QString const& _s, unsigned _padding = 32)
 {
-	return fromBinary(asBytes(_s));
+	return fromBinary(asBytes(_s), _padding);
 }
 
 class QEthereum: public QObject
@@ -110,14 +116,19 @@ public:
 	Q_INVOKABLE QString lll(QString _s) const;
 
 	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString sha3old(QString _s) const;
 	Q_INVOKABLE QString offset(QString _s, int _offset) const;
+
 	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
 	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
 	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
-	Q_INVOKABLE QString toBinary(QString _s) const { return ::toBinary(_s); }
-	Q_INVOKABLE QString fromBinary(QString _s) const { return ::fromBinary(_s); }
+
+	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
+	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
+	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
 	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
 	Q_INVOKABLE double toFixed(QString _s) const { return ::toFixed(_s); }
+	Q_INVOKABLE QString fromFixed(double _d) const { return ::fromFixed(_d); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
@@ -197,20 +208,20 @@ private:
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.watchChain = function() { return eth.makeWatch('chainChanged') }"); \
-	frame->evaluateJavaScript("eth.watchPending = function() { return eth.makeWatch('pendingChanged') }"); \
-	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(); } else { eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
+	frame->evaluateJavaScript("eth.watchChain = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('chain') INSTEAD.'); return eth.makeWatch('chain') }"); \
+	frame->evaluateJavaScript("eth.watchPending = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('pending') INSTEAD.'); return eth.makeWatch('pending') }"); \
+	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { env.warn('THIS CALL IS DEPRECATED. USE eth.transact INSTEAD.'); var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
+	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(); } else { env.warn('THIS FORM OF THIS CALL IS DEPRECATED.'); eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
 	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-	frame->evaluateJavaScript("String.prototype.pad = function(l, r) { return eth.pad(this, l, r) }"); \
-	frame->evaluateJavaScript("String.prototype.bin = function() { return eth.toBinary(this) }"); \
-	frame->evaluateJavaScript("String.prototype.unbin = function(l) { return eth.fromBinary(this) }"); \
-	frame->evaluateJavaScript("String.prototype.unpad = function(l) { return eth.unpad(this) }"); \
-	frame->evaluateJavaScript("String.prototype.dec = function() { return eth.toDecimal(this) }"); \
-	frame->evaluateJavaScript("String.prototype.fix = function() { return eth.toFixed(this) }"); \
-	frame->evaluateJavaScript("String.prototype.sha3 = function() { return eth.sha3(this) }"); \
+	frame->evaluateJavaScript("String.prototype.pad = function(l, r) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.pad(this, l, r) }"); \
+	frame->evaluateJavaScript("String.prototype.bin = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toAscii(this) }"); \
+	frame->evaluateJavaScript("String.prototype.unbin = function(l) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.fromAscii(this) }"); \
+	frame->evaluateJavaScript("String.prototype.unpad = function(l) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.unpad(this) }"); \
+	frame->evaluateJavaScript("String.prototype.dec = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toDecimal(this) }"); \
+	frame->evaluateJavaScript("String.prototype.fix = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toFixed(this) }"); \
+	frame->evaluateJavaScript("String.prototype.sha3 = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.sha3old(this) }"); \
 }
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
