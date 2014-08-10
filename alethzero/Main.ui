@@ -185,6 +185,7 @@
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="forceMining"/>
+    <addaction name="disableCompilerOptimization"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1665,6 +1666,14 @@ font-size: 14pt</string>
   <action name="refresh">
    <property name="text">
     <string>&amp;Refresh</string>
+   </property>
+  </action>
+  <action name="disableCompilerOptimization">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Disable LLL Compiler Optimization</string>
    </property>
   </action>
  </widget>
