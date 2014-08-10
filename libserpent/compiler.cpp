@@ -55,7 +55,7 @@ programData opcodeify(Node node, programAux aux=Aux()) {
     else if (node.val == "ref" || node.val == "get" || node.val == "set") {
         std::string varname = node.args[0].val;
         if (!aux.vars.count(varname)) {
-            aux.vars[varname] = intToDecimal(aux.vars.size() * 32);
+            aux.vars[varname] = unsignedToDecimal(aux.vars.size() * 32);
         }
         if (varname == "msg.data") aux.calldataUsed = true;
         // Set variable
@@ -165,7 +165,7 @@ programData opcodeify(Node node, programAux aux=Aux()) {
         nodes.push_back(token("MSIZE", m));
         nodes.push_back(token("0", m));
         nodes.push_back(token("MSIZE", m));
-        nodes.push_back(token(intToDecimal(subs.size() * 32 - 1), m));
+        nodes.push_back(token(unsignedToDecimal(subs.size() * 32 - 1), m));
         nodes.push_back(token("ADD", m));
         nodes.push_back(token("MSTORE8", m));
 		for (unsigned i = 0; i < subs.size(); i++) {
@@ -173,7 +173,7 @@ programData opcodeify(Node node, programAux aux=Aux()) {
             nodes.push_back(subs[i]);
             nodes.push_back(token("SWAP", m));
             if (i > 0) {
-                nodes.push_back(token(intToDecimal(i * 32), m));
+                nodes.push_back(token(unsignedToDecimal(i * 32), m));
                 nodes.push_back(token("ADD", m));
             }
             nodes.push_back(token("MSTORE", m));
@@ -201,7 +201,7 @@ Node finalize(programData c) {
     if (c.aux.allocUsed && c.aux.vars.size() > 0) {
         Node nodelist[] = {
             token("0", m), 
-            token(intToDecimal(c.aux.vars.size() * 32 - 1)),
+            token(unsignedToDecimal(c.aux.vars.size() * 32 - 1)),
             token("MSTORE8", m)
         };
         bottom.push_back(multiToken(nodelist, 3, m));
@@ -235,7 +235,7 @@ programAux buildDict(Node program, programAux aux, int labelLength) {
             aux.step += 1 + toByteArr(program.val, m).size();
         }
         else if (program.val[0] == '~') {
-            aux.vars[program.val.substr(1)] = intToDecimal(aux.step);
+            aux.vars[program.val.substr(1)] = unsignedToDecimal(aux.step);
         }
         else if (program.val[0] == '$') {
             aux.step += labelLength + 1;
@@ -271,7 +271,7 @@ Node substDict(Node program, programAux aux, int labelLength) {
     std::vector<Node> inner;
     if (program.type == TOKEN) {
         if (program.val[0] == '$') {
-            std::string tokStr = "PUSH"+intToDecimal(labelLength);
+            std::string tokStr = "PUSH"+unsignedToDecimal(labelLength);
             out.push_back(token(tokStr, m));
             int dotLoc = program.val.find('.');
             if (dotLoc == -1) {
@@ -289,7 +289,7 @@ Node substDict(Node program, programAux aux, int labelLength) {
         else if (program.val[0] == '~') { }
         else if (isNumberLike(program)) {
             inner = toByteArr(program.val, m);
-            out.push_back(token("PUSH"+intToDecimal(inner.size())));
+            out.push_back(token("PUSH"+unsignedToDecimal(inner.size())));
             out.push_back(astnode("_", inner, m));
         }
         else return program;
@@ -333,10 +333,10 @@ std::string serialize(std::vector<Node> codons) {
 	for (unsigned i = 0; i < codons.size(); i++) {
         int v;
         if (isNumberLike(codons[i])) {
-            v = decimalToInt(codons[i].val);
+            v = decimalToUnsigned(codons[i].val);
         }
         else if (codons[i].val.substr(0,4) == "PUSH") {
-            v = 95 + decimalToInt(codons[i].val.substr(4));
+            v = 95 + decimalToUnsigned(codons[i].val.substr(4));
         }
         else {
             v = opcode(codons[i].val);
@@ -355,9 +355,9 @@ std::vector<Node> deserialize(std::string ser) {
         std::string oper = op((int)v);
         if (oper != "" && backCount <= 0) o.push_back(token(oper));
         else if (v >= 96 && v < 128 && backCount <= 0) {
-            o.push_back(token("PUSH"+intToDecimal(v - 95)));
+            o.push_back(token("PUSH"+unsignedToDecimal(v - 95)));
         }
-        else o.push_back(token(intToDecimal(v)));
+        else o.push_back(token(unsignedToDecimal(v)));
         if (v >= 96 && v < 128 && backCount <= 0) {
             backCount = v - 95;
         }
@@ -392,7 +392,7 @@ std::string encodeDatalist(std::vector<std::string> vals) {
 	for (unsigned i = 0; i < vals.size(); i++) {
         std::vector<Node> n = toByteArr(strToNumeric(vals[i]), Metadata(), 32);
 		for (unsigned j = 0; j < n.size(); j++) {
-            int v = decimalToInt(n[j].val);
+            int v = decimalToUnsigned(n[j].val);
             o += (char)v;
         }
     }
@@ -406,7 +406,7 @@ std::vector<std::string> decodeDatalist(std::string ser) {
         std::string o = "0";
 		for (unsigned j = i; j < i + 32; j++) {
             int vj = (int)(unsigned char)ser[j];
-            o = decimalAdd(decimalMul(o, "256"), intToDecimal(vj));
+            o = decimalAdd(decimalMul(o, "256"), unsignedToDecimal(vj));
         }
         out.push_back(o);
     }

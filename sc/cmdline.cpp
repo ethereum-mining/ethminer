@@ -96,7 +96,7 @@ int main(int argv, char** argc) {
     else if (command == "biject") {
         if (argv == 3)
              std::cerr << "Not enough arguments for biject\n";
-        int pos = decimalToInt(secondInput);
+        int pos = decimalToUnsigned(secondInput);
         std::vector<Node> n = prettyCompile(input);
         if (pos >= (int)n.size())
              std::cerr << "Code position too high\n";

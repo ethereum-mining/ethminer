@@ -344,7 +344,7 @@ Node subst(Node pattern,
 
 Node array_lit_transform(Node node) {
     std::vector<Node> o1;
-    o1.push_back(token(intToDecimal(node.args.size() * 32), node.metadata));
+    o1.push_back(token(unsignedToDecimal(node.args.size() * 32), node.metadata));
     std::vector<Node> o2;
     std::string symb = "_temp"+mkUniqueToken()+"_0";
     o2.push_back(token(symb, node.metadata));
@@ -357,7 +357,7 @@ Node array_lit_transform(Node node) {
         o5.push_back(token(symb, node.metadata));
         std::vector<Node> o6;
         o6.push_back(astnode("get", o5, node.metadata));
-        o6.push_back(token(intToDecimal(i * 32), node.metadata));
+        o6.push_back(token(unsignedToDecimal(i * 32), node.metadata));
         std::vector<Node> o7;
         o7.push_back(astnode("add", o6));
         o7.push_back(node.args[i]);
@@ -474,10 +474,10 @@ Node validate(Node inp) {
         int i = 0;
         while(valid[i][0] != "---END---") {
             if (inp.val == valid[i][0]) {
-                if (decimalGt(valid[i][1], intToDecimal(inp.args.size()))) {
+                if (decimalGt(valid[i][1], unsignedToDecimal(inp.args.size()))) {
                     err("Too few arguments for "+inp.val, inp.metadata);   
                 }
-                if (decimalGt(intToDecimal(inp.args.size()), valid[i][2])) {
+                if (decimalGt(unsignedToDecimal(inp.args.size()), valid[i][2])) {
                     err("Too many arguments for "+inp.val, inp.metadata);   
                 }
             }
