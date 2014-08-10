@@ -332,6 +332,12 @@ void Main::on_forceMining_triggered()
 	m_client->setForceMining(ui->forceMining->isChecked());
 }
 
+void Main::on_disableCompilerOptimization_triggered()
+{
+	m_disableCompilerOptimization = ui->disableCompilerOptimization->isChecked();
+	on_data_textChanged();
+}
+
 void Main::load(QString _s)
 {
 	QFile fin(_s);
@@ -1302,9 +1308,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			auto asmcode = eth::compileLLLToAsm(src, false);
-			auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
-			m_data = eth::compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
+			m_data = eth::compileLLL(src, !m_disableCompilerOptimization, &errors);
 			if (errors.size())
 			{
 				try
@@ -1319,7 +1323,14 @@ void Main::on_data_textChanged()
 				}
 			}
 			else
-				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+			{
+				auto asmcode = eth::compileLLLToAsm(src, false);
+				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+				if (!m_disableCompilerOptimization) {
+					asmcode = eth::compileLLLToAsm(src, true);
+					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
+				}
+			}
 		}
 		QString errs;
 		if (errors.size())
