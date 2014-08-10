@@ -60,8 +60,8 @@ std::string printAST(Node ast, bool printMetadata) {
     std::string o = "(";
     if (printMetadata) {
          o += ast.metadata.file + " ";
-         o += intToDecimal(ast.metadata.ln) + " ";
-         o += intToDecimal(ast.metadata.ch) + ": ";
+         o += unsignedToDecimal(ast.metadata.ln) + " ";
+         o += unsignedToDecimal(ast.metadata.ch) + ": ";
     }
     o += ast.val;
     std::vector<std::string> subs;
@@ -132,14 +132,14 @@ std::string strToNumeric(std::string inp) {
     else if ((inp[0] == '"' && inp[inp.length()-1] == '"')
             || (inp[0] == '\'' && inp[inp.length()-1] == '\'')) {
 		for (unsigned i = 1; i < inp.length() - 1; i++) {
-            o = decimalAdd(decimalMul(o,"256"), intToDecimal(inp[i]));
+            o = decimalAdd(decimalMul(o,"256"), unsignedToDecimal((unsigned char)inp[i]));
         }
     }
     else if (inp.substr(0,2) == "0x") {
 		for (unsigned i = 2; i < inp.length(); i++) {
             int dig = std::string("0123456789abcdef").find(inp[i]);
             if (dig < 0) return "";
-            o = decimalAdd(decimalMul(o,"16"), intToDecimal(dig));
+            o = decimalAdd(decimalMul(o,"16"), unsignedToDecimal(dig));
         }
     }
     else {
@@ -188,7 +188,7 @@ int counter = 0;
 //Makes a unique token
 std::string mkUniqueToken() {
     counter++;
-    return intToDecimal(counter);
+    return unsignedToDecimal(counter);
 }
 
 //Does a file exist? http://stackoverflow.com/questions/12774207
@@ -217,7 +217,7 @@ std::string get_file_contents(std::string filename)
 //Report error
 void err(std::string errtext, Metadata met) {
     std::string err = "Error (file \"" + met.file + "\", line " +
-        intToDecimal(met.ln) + ", char " + intToDecimal(met.ch) +
+        unsignedToDecimal(met.ln) + ", char " + unsignedToDecimal(met.ch) +
         "): " + errtext;
     std::cerr << err << "\n";
     throw(err);
