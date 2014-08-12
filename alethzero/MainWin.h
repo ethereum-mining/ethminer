@@ -138,6 +138,7 @@ private slots:
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
 	void on_refresh_triggered();
+    void on_usePrivate_triggered();
 
 signals:
 	void poll();
@@ -206,6 +207,7 @@ private:
 	QByteArray m_peers;
 	QStringList m_servers;
 	QList<eth::KeyPair> m_myKeys;
+    QString m_privateChain = 0;
 	bool m_keysChanged = false;
 	eth::bytes m_data;
 	eth::Address m_nameReg;

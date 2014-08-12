@@ -263,7 +263,7 @@ public:
 	void setIdealPeerCount(size_t _n) const;
 
 	/// Start the network subsystem.
-	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
+	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true, u256 _networkId = 0);
 	/// Connect to a particular peer.
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 	/// Stop the network subsystem.

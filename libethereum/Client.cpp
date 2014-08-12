@@ -197,7 +197,7 @@ void Client::noteChanged(h256Set const& _filters)
 		}
 }
 
-void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
+void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp, u256 _networkId)
 {
 	static const char* c_threadName = "net";
 
@@ -220,7 +220,7 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 			try
 			{
-				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+				m_net.reset(new PeerServer(m_clientVersion, m_bc, _networkId, _listenPort, _mode, _publicIP, _upnp));
 			}
 			catch (std::exception const&)
 			{
