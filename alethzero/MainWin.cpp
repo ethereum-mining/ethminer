@@ -332,9 +332,9 @@ void Main::on_forceMining_triggered()
 	m_client->setForceMining(ui->forceMining->isChecked());
 }
 
-void Main::on_disableCompilerOptimization_triggered()
+void Main::on_optimizeCompiler_triggered()
 {
-	m_disableCompilerOptimization = ui->disableCompilerOptimization->isChecked();
+	m_optimizeCompiler = ui->optimizeCompiler->isChecked();
 	on_data_textChanged();
 }
 
@@ -576,6 +576,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
+	ui->optimizeCompiler->setChecked(m_optimizeCompiler);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
@@ -1308,7 +1309,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			m_data = eth::compileLLL(src, !m_disableCompilerOptimization, &errors);
+			m_data = eth::compileLLL(src, m_optimizeCompiler, &errors);
 			if (errors.size())
 			{
 				try
@@ -1326,7 +1327,8 @@ void Main::on_data_textChanged()
 			{
 				auto asmcode = eth::compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-				if (!m_disableCompilerOptimization) {
+				if (m_optimizeCompiler)
+				{
 					asmcode = eth::compileLLLToAsm(src, true);
 					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
 				}

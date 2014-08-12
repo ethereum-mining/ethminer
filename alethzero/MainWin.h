@@ -138,7 +138,7 @@ private slots:
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
 	void on_refresh_triggered();
-	void on_disableCompilerOptimization_triggered();
+	void on_optimizeCompiler_triggered();
 
 signals:
 	void poll();
@@ -222,7 +222,7 @@ private:
 	QMap<unsigned, unsigned> m_pcWarp;
 	QList<WorldState> m_history;
 	std::map<eth::u256, eth::bytes> m_codes;	// and pcWarps
-	bool m_disableCompilerOptimization = false;
+	bool m_optimizeCompiler = true;
 
 	QNetworkAccessManager m_webCtrl;
 
