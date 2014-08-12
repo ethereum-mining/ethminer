@@ -332,9 +332,9 @@ void Main::on_forceMining_triggered()
 	m_client->setForceMining(ui->forceMining->isChecked());
 }
 
-void Main::on_optimizeCompiler_triggered()
+void Main::on_enableOptimizer_triggered()
 {
-	m_optimizeCompiler = ui->optimizeCompiler->isChecked();
+	m_enableOptimizer = ui->enableOptimizer->isChecked();
 	on_data_textChanged();
 }
 
@@ -529,6 +529,7 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
+	s.setValue("enableOptimizer", m_enableOptimizer);
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -576,7 +577,8 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
-	ui->optimizeCompiler->setChecked(m_optimizeCompiler);
+	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
+	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
@@ -1309,7 +1311,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			m_data = eth::compileLLL(src, m_optimizeCompiler, &errors);
+			m_data = eth::compileLLL(src, m_enableOptimizer, &errors);
 			if (errors.size())
 			{
 				try
@@ -1327,7 +1329,7 @@ void Main::on_data_textChanged()
 			{
 				auto asmcode = eth::compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-				if (m_optimizeCompiler)
+				if (m_enableOptimizer)
 				{
 					asmcode = eth::compileLLLToAsm(src, true);
 					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;

@@ -185,7 +185,7 @@
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="forceMining"/>
-    <addaction name="optimizeCompiler"/>
+    <addaction name="enableOptimizer"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -1668,12 +1668,12 @@ font-size: 14pt</string>
     <string>&amp;Refresh</string>
    </property>
   </action>
-  <action name="optimizeCompiler">
+  <action name="enableOptimizer">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Optimize LLL Compiler</string>
+    <string>&amp;Enable LLL &amp;Optimizer</string>
    </property>
   </action>
  </widget>
