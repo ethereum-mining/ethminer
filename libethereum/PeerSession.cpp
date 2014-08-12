@@ -35,7 +35,7 @@ static const eth::uint c_maxHashes = 4096;		///< Maximum number of hashes GetCha
 static const eth::uint c_maxBlocks = 2048;		///< Maximum number of blocks Blocks will ever send.
 static const eth::uint c_maxBlocksAsk = 512;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, uint _rNId, bi::address _peerAddress, unsigned short _peerPort):
+PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
@@ -78,7 +78,7 @@ bool PeerSession::interpret(RLP const& _r)
 	case HelloPacket:
 	{
 		m_protocolVersion = _r[1].toInt<uint>();
-		m_networkId = _r[2].toInt<uint>();
+		m_networkId = _r[2].toInt<u256>();
 		auto clientVersion = _r[3].toString();
 		m_caps = _r[4].toInt<uint>();
 		m_listenPort = _r[5].toInt<unsigned short>();

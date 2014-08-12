@@ -50,11 +50,11 @@ class PeerServer
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, unsigned short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, u256 _networkId, unsigned short _port, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, listening for connections on a system-assigned port.
-	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, u256 _networkId, NodeMode _m = NodeMode::Full, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
-	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, unsigned int _networkId, NodeMode _m = NodeMode::Full);
+	PeerServer(std::string const& _clientVersion, BlockChain const& _ch, u256 _networkId, NodeMode _m = NodeMode::Full);
 
 	/// Will block on network process events.
 	~PeerServer();
@@ -63,7 +63,7 @@ public:
 	void disconnectPeers();
 
 	static unsigned protocolVersion();
-	unsigned networkId() { return m_networkId; }
+	u256 networkId() { return m_networkId; }
 
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
@@ -137,7 +137,7 @@ private:
 	bi::tcp::endpoint m_public;
 	KeyPair m_key;
 
-	unsigned m_networkId;
+	u256 m_networkId;
 
 	mutable std::mutex x_peers;
 	std::map<Public, std::weak_ptr<PeerSession>> m_peers;

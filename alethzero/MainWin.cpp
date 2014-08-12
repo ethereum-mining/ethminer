@@ -527,6 +527,7 @@ void Main::writeSettings()
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
+	s.setValue("privateChain", m_privateChain);
 
 	bytes d = m_client->savePeers();
 	if (d.size())
@@ -573,7 +574,10 @@ void Main::readSettings(bool _skipGeometry)
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
-	ui->nameReg->setText(s.value("NameReg", "").toString());
+	ui->nameReg->setText(s.value("nameReg", "").toString());
+	m_privateChain = s.value("privateChain", "").toString();
+	ui->usePrivate->setChecked(m_privateChain.size());
+
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -605,6 +609,21 @@ void Main::on_exportKey_triggered()
 		auto k = m_myKeys[ui->ourAccounts->currentRow()];
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + render(k.address()) + " is:\n" + QString::fromStdString(toHex(k.sec().ref())));
 	}
+}
+
+void Main::on_usePrivate_triggered()
+{
+	if (ui->usePrivate->isChecked())
+	{
+		m_privateChain = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)));
+		if (m_privateChain.isEmpty())
+			ui->usePrivate->setChecked(false);
+	}
+	else
+	{
+		m_privateChain.clear();
+	}
+	on_killBlockchain_triggered();
 }
 
 void Main::on_urlEdit_returnPressed()
@@ -779,7 +798,7 @@ void Main::refreshBlockCount()
 	cwatch << "refreshBlockCount()";
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
+	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
 static bool blockMatch(string const& _f, eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
@@ -1475,7 +1494,7 @@ void Main::on_net_triggered()
 	m_client->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked());
+		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
 		if (m_peers.size() && ui->usePast->isChecked())
 			m_client->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
