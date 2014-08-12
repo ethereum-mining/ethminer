@@ -241,9 +241,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		{
 			require(2);
 			auto base = m_stack.back();
-			unsigned expon = (unsigned)m_stack[m_stack.size() - 2];
+			auto expon = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
-			m_stack.back() = boost::multiprecision::pow(base, expon);
+			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
 		case Instruction::NEG:

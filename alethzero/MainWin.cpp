@@ -332,6 +332,12 @@ void Main::on_forceMining_triggered()
 	m_client->setForceMining(ui->forceMining->isChecked());
 }
 
+void Main::on_enableOptimizer_triggered()
+{
+	m_enableOptimizer = ui->enableOptimizer->isChecked();
+	on_data_textChanged();
+}
+
 void Main::load(QString _s)
 {
 	QFile fin(_s);
@@ -523,6 +529,7 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
+	s.setValue("enableOptimizer", m_enableOptimizer);
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -570,6 +577,8 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
+	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
+	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
@@ -1302,9 +1311,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			auto asmcode = eth::compileLLLToAsm(src, false);
-			auto asmcodeopt = eth::compileLLLToAsm(ui->data->toPlainText().toStdString(), true);
-			m_data = eth::compileLLL(ui->data->toPlainText().toStdString(), true, &errors);
+			m_data = eth::compileLLL(src, m_enableOptimizer, &errors);
 			if (errors.size())
 			{
 				try
@@ -1319,7 +1326,15 @@ void Main::on_data_textChanged()
 				}
 			}
 			else
-				lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcodeopt).toHtmlEscaped() + "</pre><h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+			{
+				auto asmcode = eth::compileLLLToAsm(src, false);
+				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
+				if (m_enableOptimizer)
+				{
+					asmcode = eth::compileLLLToAsm(src, true);
+					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
+				}
+			}
 		}
 		QString errs;
 		if (errors.size())
