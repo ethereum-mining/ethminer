@@ -185,6 +185,7 @@
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="forceMining"/>
+    <addaction name="enableOptimizer"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -563,13 +564,16 @@
        </widget>
        <widget class="QTextEdit" name="code">
         <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
+         <enum>Qt::ClickFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
         <property name="lineWidth">
          <number>0</number>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
         </property>
        </widget>
       </widget>
@@ -1662,6 +1666,14 @@ font-size: 14pt</string>
   <action name="refresh">
    <property name="text">
     <string>&amp;Refresh</string>
+   </property>
+  </action>
+  <action name="enableOptimizer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Enable LLL &amp;Optimizer</string>
    </property>
   </action>
  </widget>
