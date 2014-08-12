@@ -139,6 +139,7 @@ private slots:
 	void on_debugDumpStatePre_triggered();
 	void on_refresh_triggered();
     void on_usePrivate_triggered();
+	void on_enableOptimizer_triggered();
 
 signals:
 	void poll();
@@ -223,6 +224,7 @@ private:
 	QMap<unsigned, unsigned> m_pcWarp;
 	QList<WorldState> m_history;
 	std::map<eth::u256, eth::bytes> m_codes;	// and pcWarps
+	bool m_enableOptimizer = true;
 
 	QNetworkAccessManager m_webCtrl;
 
