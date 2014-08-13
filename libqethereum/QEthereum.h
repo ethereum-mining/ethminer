@@ -61,10 +61,11 @@ inline eth::u256 toU256(QString const& _s) { return toInt<32>(_s); }
 
 template <unsigned S> QString toQJS(eth::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
 template <unsigned N> QString toQJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return QString::fromStdString("0x" + eth::toHex(eth::toCompactBigEndian(_n))); }
+inline QString toQJS(eth::bytes const& _n) { return "0x" + QString::fromStdString(eth::toHex(_n)); }
 
 inline QString toBinary(QString const& _s)
 {
-	return asQString(toBytes(_s));
+	return unpadded(asQString(toBytes(_s)));
 }
 
 inline QString toDecimal(QString const& _s)
@@ -116,6 +117,8 @@ public:
 	Q_INVOKABLE QString lll(QString _s) const;
 
 	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
 	Q_INVOKABLE QString sha3old(QString _s) const;
 	Q_INVOKABLE QString offset(QString _s, int _offset) const;
 
@@ -145,7 +148,7 @@ public:
 
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
 	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
-	Q_INVOKABLE void doTransact(QString _json);
+	Q_INVOKABLE QString doTransact(QString _json);
 	Q_INVOKABLE QString doCall(QString _json);
 
 	Q_INVOKABLE unsigned newWatch(QString _json);
@@ -211,7 +214,7 @@ private:
 	frame->evaluateJavaScript("eth.watchChain = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('chain') INSTEAD.'); return eth.makeWatch('chain') }"); \
 	frame->evaluateJavaScript("eth.watchPending = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('pending') INSTEAD.'); return eth.makeWatch('pending') }"); \
 	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { env.warn('THIS CALL IS DEPRECATED. USE eth.transact INSTEAD.'); var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(); } else { env.warn('THIS FORM OF THIS CALL IS DEPRECATED.'); eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
+	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { var r = eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(r); } else { env.warn('THIS FORM OF THIS CALL IS DEPRECATED.'); eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
 	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \

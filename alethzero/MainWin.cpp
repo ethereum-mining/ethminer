@@ -396,7 +396,7 @@ void Main::eval(QString const& _js)
 {
 	if (_js.trimmed().isEmpty())
 		return;
-	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
+	QVariant ev = ui->webView->page()->currentFrame()->evaluateJavaScript((_js.startsWith("{") || _js.startsWith("if ") || _js.startsWith("if(")) ? _js : ("___RET=(" + _js + ")"));
 	QVariant jsonEv = ui->webView->page()->currentFrame()->evaluateJavaScript("JSON.stringify(___RET)");
 	QString s;
 	if (ev.isNull())

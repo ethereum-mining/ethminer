@@ -38,6 +38,7 @@ using eth::simpleDebugOut;
 using eth::toLog2;
 using eth::toString;
 using eth::units;
+using eth::operator +;
 
 // vars
 using eth::g_logPost;
@@ -126,12 +127,22 @@ Client* QEthereum::client() const
 
 QString QEthereum::lll(QString _s) const
 {
-	return asQString(eth::compileLLL(_s.toStdString()));
+	return toQJS(eth::compileLLL(_s.toStdString()));
 }
 
 QString QEthereum::sha3(QString _s) const
 {
-	return toQJS(eth::sha3(asBytes(_s)));
+	return toQJS(eth::sha3(toBytes(_s)));
+}
+
+QString QEthereum::sha3(QString _s1, QString _s2) const
+{
+	return toQJS(eth::sha3(toBytes(_s1) + toBytes(_s2)));
+}
+
+QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
+{
+	return toQJS(eth::sha3(toBytes(_s1) + toBytes(_s2) + toBytes(_s3)));
 }
 
 QString QEthereum::sha3old(QString _s) const
@@ -315,12 +326,17 @@ static TransactionSkeleton toTransaction(QString _json)
 		ret.gas = toU256(f["gas"].toString());
 	if (f.contains("gasPrice"))
 		ret.gasPrice = toU256(f["gasPrice"].toString());
-	if (f.contains("data"))
+	if (f.contains("data") || f.contains("code") || f.contains("dataclose"))
 	{
 		if (f["data"].isString())
 			ret.data = toBytes(f["data"].toString());
+		else if (f["code"].isString())
+			ret.data = toBytes(f["code"].toString());
 		else if (f["data"].isArray())
 			for (auto i: f["data"].toArray())
+				eth::operator +=(ret.data, toBytes(padded(i.toString(), 32)));
+		else if (f["code"].isArray())
+			for (auto i: f["code"].toArray())
 				eth::operator +=(ret.data, toBytes(padded(i.toString(), 32)));
 		else if (f["dataclose"].isArray())
 			for (auto i: f["dataclose"].toArray())
@@ -411,10 +427,11 @@ void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QStr
 	client()->flushTransactions();
 }
 
-void QEthereum::doTransact(QString _json)
+QString QEthereum::doTransact(QString _json)
 {
+	QString ret;
 	if (!m_client)
-		return;
+		return ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
@@ -431,8 +448,9 @@ void QEthereum::doTransact(QString _json)
 	if (t.to)
 		client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
 	else
-		client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice);
+		ret = toQJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
 	client()->flushTransactions();
+	return ret;
 }
 
 QString QEthereum::doCall(QString _json)
