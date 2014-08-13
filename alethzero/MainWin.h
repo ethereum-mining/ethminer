@@ -208,7 +208,7 @@ private:
 	QByteArray m_peers;
 	QStringList m_servers;
 	QList<eth::KeyPair> m_myKeys;
-    QString m_privateChain = 0;
+	QString m_privateChain;
 	bool m_keysChanged = false;
 	eth::bytes m_data;
 	eth::Address m_nameReg;

@@ -12,9 +12,9 @@ var configCode = eth.lll("
   })
 }
 ")
-env.note('Config code: ' + configCode.unbin())
-var config = "0x9ef0f0d81e040012600b0c1abdef7c48f720f88a";
-eth.create(eth.key, '0', configCode, 10000, eth.gasPrice, function(a) { config = a; })
+env.note('Config code: ' + configCode)
+var config;
+eth.transact({ 'code': configCode }, function(a) { config = a; });
 
 env.note('Config at address ' + config)
 
@@ -22,8 +22,8 @@ var nameRegCode = eth.lll("
 {
   [[(address)]] 'NameReg
   [['NameReg]] (address)
-  [[" + config + "]] 'Config
-  [['Config]] " + config + "
+  [[config]] 'Config
+  [['Config]] config
   [[69]] (caller)
   (returnlll {
     (when (= $0 'register) {
@@ -43,32 +43,30 @@ var nameRegCode = eth.lll("
   })
 }
 ");
-env.note('NameReg code: ' + nameRegCode.unbin())
+env.note('NameReg code: ' + nameRegCode)
 
-var nameReg = "0x3face8f2b3ef580265f0f67a57ce0fb78b135613";
+var nameReg;
+
 env.note('Create NameReg...')
-eth.create(eth.key, '0', nameRegCode, 10000, eth.gasPrice, function(a) { nameReg = a; })
-
-env.note('NameReg at address ' + nameReg)
+eth.transact({ 'code': nameRegCode }, function(a) { nameReg = a; });
 
 env.note('Register NameReg...')
-eth.transact(eth.key, '0', config, "0".pad(32) + nameReg.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': config, 'data': ['0', nameReg] });
 
 var dnsRegCode = '0x60006000546000600053602001546000600053604001546020604060206020600073661005d2720d855f1d9976f88bb10c1a3398c77f6103e8f17f7265676973746572000000000000000000000000000000000000000000000000600053606001600060200201547f446e735265670000000000000000000000000000000000000000000000000000600053606001600160200201546000600060006000604060606000600053604001536103e8f1327f6f776e65720000000000000000000000000000000000000000000000000000005761011663000000e46000396101166000f20060006000547f72656769737465720000000000000000000000000000000000000000000000006000602002350e0f630000006d596000600160200235560e0f630000006c59600032560e0f0f6300000057596000325657600260200235600160200235576001602002353257007f64657265676973746572000000000000000000000000000000000000000000006000602002350e0f63000000b95960016020023532560e0f63000000b959600032576000600160200235577f6b696c6c000000000000000000000000000000000000000000000000000000006000602002350e0f630000011559327f6f776e6572000000000000000000000000000000000000000000000000000000560e0f63000001155932ff00';
 
 var dnsReg;
 env.note('Create DnsReg...')
-eth.create(eth.key, '0', dnsRegCode, 10000, eth.gasPrice, function(a) { dnsReg = a; })
+eth.transact({ 'code': dnsRegCode }, function(a) { dnsReg = a; });
 
 env.note('DnsReg at address ' + dnsReg)
 
 env.note('Register DnsReg...')
-eth.transact(eth.key, '0', config, "4".pad(32) + dnsReg.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': config, 'data': ['4', dnsReg] });
 
 var coinRegCode = eth.lll("
 {
-[0]'register [32]'CoinReg
-(msg allgas " + nameReg + " 0 0 64)
+(regname 'CoinReg)
 (returnlll {
 	(def 'name $0)
 	(def 'denom $32)
@@ -85,12 +83,10 @@ var coinRegCode = eth.lll("
 
 var coinReg;
 env.note('Create CoinReg...')
-eth.create(eth.key, '0', coinRegCode, 10000, eth.gasPrice, function(a) { coinReg = a; })
-
-env.note('CoinReg at address ' + coinReg)
+eth.transact({ 'code': coinRegCode }, function(a) { coinReg = a; });
 
 env.note('Register CoinReg...')
-eth.transact(eth.key, '0', config, "1".pad(32) + coinReg.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': config, 'data': ['1', coinReg] });
 
 var gavCoinCode = eth.lll("
 {
@@ -98,10 +94,8 @@ var gavCoinCode = eth.lll("
 [[ 0x69 ]] (caller)
 [[ 0x42 ]] (number)
 
-[0]'register [32]'GavCoin
-(msg allgas " + nameReg + " 0 0 64)
-[0]'GAV [32] 1000
-(msg allgas " + coinReg + " 0 0 64)
+(regname 'GavCoin)
+(regcoin 'GAV)
 
 (returnlll {
 	(when (&& (= $0 'kill) (= (caller) @@0x69)) (suicide (caller)))
@@ -147,16 +141,15 @@ var gavCoinCode = eth.lll("
 
 var gavCoin;
 env.note('Create GavCoin...')
-eth.create(eth.key, '0', gavCoinCode, 10000, eth.gasPrice, function(a) { gavCoin = a; });
+eth.transact({ 'code': gavCoinCode }, function(a) { gavCoin = a; });
 
 env.note('Register GavCoin...')
-eth.transact(eth.key, '0', config, "2".pad(32) + gavCoin.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': config, 'data': ['2', gavCoin] });
+
 
 var exchangeCode = eth.lll("
 {
-[0] 'register
-[32] 'Exchange
-(msg allgas 0x50441127ea5b9dfd835a9aba4e1dc9c1257b58ca 0 0 64)
+(regname 'Exchange)
 
 (def 'min (a b) (if (< a b) a b))
 
@@ -275,31 +268,34 @@ var exchangeCode = eth.lll("
 
 var exchange;
 env.note('Create Exchange...')
-eth.create(eth.key, '0', exchangeCode, 10000, eth.gasPrice, function(a) { exchange = a; });
+eth.transact({ 'code': exchangeCode }, function(a) { exchange = a; });
 
 env.note('Register Exchange...')
-eth.transact(eth.key, '0', config, "3".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': config, 'data': ['3', exchange] });
 
 
 
 
 env.note('Register my name...')
-eth.transact(eth.key, '0', nameReg, "register".pad(32) + "Gav".pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': nameReg, 'data': [ eth.fromAscii('register'), eth.fromAscii('Gav') ] });
 
 env.note('Dole out ETH to other address...')
-eth.transact(eth.key, '100000000000000000000', eth.secretToAddress(eth.keys[1]), "", 10000, eth.gasPrice);
+eth.transact({ 'value': '100000000000000000000', 'to': eth.secretToAddress(eth.keys[1]) });
 
 env.note('Register my other name...')
-eth.transact(eth.keys[1], '0', nameReg, "register".pad(32) + "Gav Would".pad(32), 10000, eth.gasPrice);
+eth.transact({ 'from': eth.keys[1], 'to': nameReg, 'data': [ eth.fromAscii('register'), eth.fromAscii("Gav Would") ] });
 
 env.note('Approve Exchange...')
-eth.transact(eth.key, '0', gavCoin, "approve".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': gavCoin, 'data': [ eth.fromAscii('approve'), exchange ] });
 
 env.note('Approve Exchange on other address...')
-eth.transact(eth.keys[1], '0', gavCoin, "approve".pad(32) + exchange.pad(32), 10000, eth.gasPrice);
+eth.transact({ 'from': eth.keys[1], 'to': gavCoin, 'data': [ eth.fromAscii('approve'), exchange ] });
 
 env.note('Make offer 5000GAV/5ETH...')
-eth.transact(eth.key, '0', exchange, "new".pad(32) + gavCoin.pad(32) + "5000".pad(32) + "0".pad(32) + "5000000000000000000".pad(32), 10000, eth.gasPrice);
+eth.transact({ 'to': exchange, 'data': [eth.fromAscii('new'), gavCoin, '5000', '0', '5000000000000000000'] });
+
+env.note('Register gav.eth...')
+eth.transact({ 'to': dnsReg, 'data': [eth.fromAscii('register'), eth.fromAscii('gav'), eth.fromAscii('opensecrecy.com')] });
 
 env.note('All done.')
 
