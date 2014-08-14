@@ -95,7 +95,7 @@ var gavCoinCode = eth.lll("
 [[ 0x42 ]] (number)
 
 (regname 'GavCoin)
-(regcoin 'GAV)
+(regcoin 'GAV 1000)
 
 (returnlll {
 	(when (&& (= $0 'kill) (= (caller) @@0x69)) (suicide (caller)))

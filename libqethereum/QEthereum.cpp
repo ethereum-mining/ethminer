@@ -137,12 +137,12 @@ QString QEthereum::sha3(QString _s) const
 
 QString QEthereum::sha3(QString _s1, QString _s2) const
 {
-	return toQJS(eth::sha3(toBytes(_s1) + toBytes(_s2)));
+	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
 {
-	return toQJS(eth::sha3(toBytes(_s1) + toBytes(_s2) + toBytes(_s3)));
+	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
 QString QEthereum::sha3old(QString _s) const
@@ -334,13 +334,13 @@ static TransactionSkeleton toTransaction(QString _json)
 			ret.data = toBytes(f["code"].toString());
 		else if (f["data"].isArray())
 			for (auto i: f["data"].toArray())
-				eth::operator +=(ret.data, toBytes(padded(i.toString(), 32)));
+				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["code"].isArray())
 			for (auto i: f["code"].toArray())
-				eth::operator +=(ret.data, toBytes(padded(i.toString(), 32)));
+				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["dataclose"].isArray())
 			for (auto i: f["dataclose"].toArray())
-				eth::operator +=(ret.data, toBytes(toBinary(i.toString())));
+				eth::operator +=(ret.data, toBytes(i.toString()));
 	}
 	return ret;
 }
