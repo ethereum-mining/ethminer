@@ -73,12 +73,12 @@ inline QString toDecimal(QString const& _s)
 	return QString::fromStdString(eth::toString(toU256(_s)));
 }
 
-inline double toFixed(QString const& _s)
+inline double fromFixed(QString const& _s)
 {
 	return (double)toU256(_s) / (double)(eth::u256(1) << 128);
 }
 
-inline QString fromFixed(double _s)
+inline QString toFixed(double _s)
 {
 	return toQJS(eth::u256(_s * (double)(eth::u256(1) << 128)));
 }
@@ -130,8 +130,8 @@ public:
 	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
 	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
 	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
-	Q_INVOKABLE double toFixed(QString _s) const { return ::toFixed(_s); }
-	Q_INVOKABLE QString fromFixed(double _d) const { return ::fromFixed(_d); }
+	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
+	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
