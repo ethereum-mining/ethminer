@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <boost/timer.hpp>
 #include <libevm/VM.h>
 #include "Executive.h"
 #include "State.h"
@@ -84,7 +85,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
-		throw BlockGasLimitReached();
+//		throw BlockGasLimitReached();
 	}
 
 	// Increment associated nonce for sender.
@@ -165,6 +166,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
 	{
+		boost::timer t;
+		auto sgas = m_vm->gas();
 		bool revert = false;
 		try
 		{
@@ -192,6 +195,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "std::exception in VM: " << _e.what();
 		}
+		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 
 		// Write state out only in the case of a non-excepted transaction.
 		if (revert)

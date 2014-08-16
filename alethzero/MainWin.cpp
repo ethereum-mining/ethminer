@@ -700,7 +700,7 @@ void Main::refreshBalances()
 		auto denom = m_client->stateAt(coinsAddr, sha3(h256(n).asBytes()));
 		if (denom == 0)
 			denom = 1;
-		cdebug << n << addr << denom << sha3(h256(n).asBytes());
+//		cdebug << n << addr << denom << sha3(h256(n).asBytes());
 		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
 	}
 	for (auto i: m_myKeys)
