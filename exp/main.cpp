@@ -23,22 +23,13 @@
 #include <libethential/Log.h>
 #include <libethential/Common.h>
 #include <libethential/CommonData.h>
+#include <libevm/VM.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace eth;
 
 int main(int, char**)
 {
-    u256 z = 0;
-    u256 s = 7;
-    u256 ms = z - s;
-    s256 ams = -7;
-    s256 sms = u2s(ms);
-    cnote << sms;
-    cnote << ams;
-    cnote << ms;
-    u256 t = 3;
-    s256 st = u2s(t);
-    cnote << ms << t << (sms % t) << sms << st << (s2u(sms % st) + 70);
+
 	return 0;
 }
