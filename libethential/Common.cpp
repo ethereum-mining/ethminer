@@ -27,6 +27,6 @@ using namespace eth;
 namespace eth
 {
 
-char const* EthVersion = "0.6.2";
+char const* EthVersion = "0.6.3";
 
 }
