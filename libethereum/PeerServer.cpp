@@ -108,6 +108,10 @@ PeerServer::PeerServer(std::string const& _clientVersion, BlockChain const& _ch,
 PeerServer::~PeerServer()
 {
 	disconnectPeers();
+
+	for (auto i: m_peers)
+		if (shared_ptr<PeerSession> p = i.second.lock())
+			p->giveUpOnFetch();
 }
 
 void PeerServer::registerPeer(std::shared_ptr<PeerSession> _s)
@@ -363,13 +367,46 @@ void PeerServer::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
+h256Set PeerServer::neededBlocks()
+{
+	Guard l(x_blocksNeeded);
+	h256Set ret;
+	if (m_blocksNeeded.size())
+	{
+		while (ret.size() < c_maxBlocksAsk && m_blocksNeeded.size())
+		{
+			ret.insert(m_blocksNeeded.back());
+			m_blocksOnWay.insert(m_blocksNeeded.back());
+			m_blocksNeeded.pop_back();
+		}
+	}
+	else
+		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end(); ++i)
+			ret.insert(*i);
+	return ret;
+}
+
+bool PeerServer::havePeer(Public _id) const
+{
+	Guard l(x_peers);
+
+	// Remove dead peers from list.
+	for (auto i = m_peers.begin(); i != m_peers.end();)
+		if (i->second.lock().get())
+			++i;
+		else
+			i = m_peers.erase(i);
+
+	return m_peers.count(_id);
+}
+
 bool PeerServer::ensureInitialised(TransactionQueue& _tq)
 {
 	if (m_latestBlockSent == h256())
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain->currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
+		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
 
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
@@ -381,6 +418,8 @@ bool PeerServer::ensureInitialised(TransactionQueue& _tq)
 
 bool PeerServer::noteBlock(h256 _hash, bytesConstRef _data)
 {
+	Guard l(x_blocksNeeded);
+	m_blocksOnWay.erase(_hash);
 	if (!m_chain->details(_hash))
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
@@ -521,6 +560,28 @@ void PeerServer::growPeers()
 		m_freePeers.erase(m_freePeers.begin() + x);
 	}
 }
+
+void PeerServer::noteHaveChain(std::shared_ptr<PeerSession> const& _from)
+{
+	auto td = _from->m_totalDifficulty;
+
+	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
+		return;
+
+	{
+		Guard l(x_blocksNeeded);
+		m_blocksNeeded = _from->m_neededBlocks;
+	}
+
+	// Looks like it's the best yet for total difficulty. Set to download.
+	{
+		Guard l(x_peers);
+		for (auto const& i: m_peers)
+			if (shared_ptr<PeerSession> p = i.second.lock())
+				p->ensureGettingChain();
+	}
+}
+
 
 void PeerServer::prunePeers()
 {

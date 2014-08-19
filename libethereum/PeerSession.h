@@ -33,6 +33,10 @@
 namespace eth
 {
 
+/**
+ * @brief The PeerSession class
+ * @todo Document fully.
+ */
 class PeerSession: public std::enable_shared_from_this<PeerSession>
 {
 	friend class PeerServer;
@@ -52,6 +56,12 @@ public:
 
 private:
 	void startInitialSync();
+	void getPeers();
+
+	/// Ensure that we are waiting for a bunch of blocks from our peer.
+	void ensureGettingChain();
+
+	void giveUpOnFetch();
 
 	void dropped();
 	void doRead();
@@ -83,6 +93,12 @@ private:
 	u256 m_reqNetworkId;
 	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
 	uint m_caps;
+
+	h256 m_latestHash;						///< Peer's latest block's hash.
+	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
+	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
+
+	h256Set m_askedBlocks;					///< The blocks for which we sent the last GetBlocks for but haven't received a corresponding Blocks.
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;

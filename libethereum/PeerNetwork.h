@@ -37,6 +37,11 @@ namespace eth
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
+static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
+static const eth::uint c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
+static const eth::uint c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
+static const eth::uint c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+
 class OverlayDB;
 class BlockChain;
 class TransactionQueue;
@@ -50,9 +55,9 @@ struct NetConnect: public LogChannel { static const char* name() { return "+N+";
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
 struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
 struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
-struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 15; };
-struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 18; };
-struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 19; };
+struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 13; };
+struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 14; };
+struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 15; };
 
 enum PacketType
 {
@@ -66,7 +71,10 @@ enum PacketType
 	BlocksPacket,
 	GetChainPacket,
 	NotInChainPacket,
-	GetTransactionsPacket
+	GetTransactionsPacket,
+	GetBlockHashesPacket,
+	BlockHashesPacket,
+	GetBlocksPacket,
 };
 
 enum DisconnectReason
