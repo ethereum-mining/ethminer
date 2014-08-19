@@ -37,6 +37,7 @@ namespace bi = boost::asio::ip;
 namespace eth
 {
 
+class RLPStream;
 class TransactionQueue;
 class BlockQueue;
 
@@ -77,11 +78,13 @@ public:
 	/// This won't touch alter the blockchain.
 	void process() { if (isInitialised()) m_ioService.poll(); }
 
-	bool havePeer(Public _id) const { Guard l(x_peers); return m_peers.count(_id) != 0; }
+	/// @returns true iff we have the a peer of the given id.
+	bool havePeer(Public _id) const;
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
+	/// Set the mode of operation on the network.
 	void setMode(NodeMode _m) { m_mode = _m; }
 
 	/// Get peer information.
@@ -96,7 +99,10 @@ public:
 	/// Get the port we're listening on currently.
 	unsigned short listenPort() const { return m_public.port(); }
 
+	/// Serialise the set of known peers.
 	bytes savePeers() const;
+
+	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
 	void registerPeer(std::shared_ptr<PeerSession> _s);
@@ -105,6 +111,10 @@ private:
 	/// Session wants to pass us a block that we might not have.
 	/// @returns true if we didn't have it.
 	bool noteBlock(h256 _hash, bytesConstRef _data);
+	/// Session has finished getting the chain of hashes.
+	void noteHaveChain(std::shared_ptr<PeerSession> const& _who);
+	/// Called when the session has provided us with a new peer we can connect to.
+	void noteNewPeers() {}
 
 	void seal(bytes& _b);
 	void populateAddresses();
@@ -115,6 +125,11 @@ private:
 	void prunePeers();
 	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
 	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
+
+	/// Get a bunch of needed blocks.
+	/// Removes them from our list of needed blocks.
+	/// @returns empty if there's no more blocks left to fetch, otherwise the blocks to fetch.
+	h256Set neededBlocks();
 
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return m_latestBlockSent; }
@@ -140,13 +155,18 @@ private:
 	u256 m_networkId;
 
 	mutable std::mutex x_peers;
-	std::map<Public, std::weak_ptr<PeerSession>> m_peers;
+	mutable std::map<Public, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
 	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
 	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
 	std::vector<Public> m_freePeers;
+
+	mutable std::mutex x_blocksNeeded;
+	u256 m_totalDifficultyOfNeeded;
+	h256s m_blocksNeeded;				/// From latest to earliest.
+	h256Set m_blocksOnWay;
 
 	h256 m_latestBlockSent;
 	std::set<h256> m_transactionsSent;

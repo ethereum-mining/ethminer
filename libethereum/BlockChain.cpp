@@ -402,7 +402,7 @@ bytes BlockChain::block(h256 _hash) const
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
 
 	if (!d.size())
-		cwarn << "Couldn't find requested block:" << _hash;
+		cwarn << "Couldn't find requested block:" << _hash.abridged();
 
 	return m_cache[_hash];
 }
