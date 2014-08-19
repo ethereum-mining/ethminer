@@ -329,7 +329,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	return ret;
 }
 
-h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common) const
+h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
 {
 	h256s ret;
 	h256s back;
@@ -337,20 +337,24 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common) const
 	unsigned tn = details(_to).number;
 	while (fn > tn)
 	{
-		ret.push_back(_from);
+		if (_pre)
+			ret.push_back(_from);
 		_from = details(_from).parent;
 		fn--;
 	}
 	while (fn < tn)
 	{
-		back.push_back(_to);
+		if (_post)
+			back.push_back(_to);
 		_to = details(_to).parent;
 		tn--;
 	}
 	while (_from != _to)
 	{
-		_from = details(_from).parent;
-		_to = details(_to).parent;
+		if (_pre)
+			_from = details(_from).parent;
+		if (_post)
+			_to = details(_to).parent;
 		ret.push_back(_from);
 		back.push_back(_to);
 	}

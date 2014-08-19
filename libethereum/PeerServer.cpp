@@ -507,12 +507,18 @@ void PeerServer::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 	// Send any new blocks.
 	if (_currentHash != m_latestBlockSent)
 	{
-		// TODO: find where they diverge and send complete new branch.
 		RLPStream ts;
 		PeerSession::prep(ts);
-		ts.appendList(2) << BlocksPacket;
+		bytes bs;
+		unsigned c = 0;
+		for (auto h: m_chain->treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
+		{
+			bs += m_chain->block(h);
+			++c;
+		}
+		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
 		bytes b;
-		ts.appendRaw(m_chain->block()).swapOut(b);
+		ts.swapOut(b);
 		seal(b);
 
 		Guard l(x_peers);
