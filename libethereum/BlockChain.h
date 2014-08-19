@@ -128,7 +128,7 @@ public:
 	 * treeRoute(1b, 2a) == { 1b, 1a, 2a }; // *o_common == g
 	 * @endcode
 	 */
-	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr) const;
+	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
 
 private:
 	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
