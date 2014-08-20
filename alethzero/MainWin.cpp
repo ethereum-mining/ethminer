@@ -845,7 +845,7 @@ void Main::refreshBlockChain()
 	string filter = ui->blockChainFilter->text().toLower().toStdString();
 	auto const& bc = m_client->blockChain();
 	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
-	for (auto h = bc.currentHash(); h != bc.genesisHash() && i; h = bc.details(h).parent, --i)
+	for (auto h = bc.currentHash(); h != bc.genesisHash() && bc.details(h) && i; h = bc.details(h).parent, --i)
 	{
 		auto d = bc.details(h);
 		auto bm = blockMatch(filter, d, h, bc);
