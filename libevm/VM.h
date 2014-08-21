@@ -440,39 +440,52 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			require(1);
 			m_stack.pop_back();
 			break;
-		case Instruction::DUP:
-			require(1);
-			m_stack.push_back(m_stack.back());
-			break;
-		/*case Instruction::DUPN:
+		case Instruction::DUP1:
+		case Instruction::DUP2:
+		case Instruction::DUP3:
+		case Instruction::DUP4:
+		case Instruction::DUP5:
+		case Instruction::DUP6:
+		case Instruction::DUP7:
+		case Instruction::DUP8:
+		case Instruction::DUP9:
+		case Instruction::DUP10:
+		case Instruction::DUP11:
+		case Instruction::DUP12:
+		case Instruction::DUP13:
+		case Instruction::DUP14:
+		case Instruction::DUP15:
+		case Instruction::DUP16:
 		{
-			auto s = store(curPC + 1);
-			if (s == 0 || s > stack.size())
-				throw OperandOutOfRange(1, stack.size(), s);
-			stack.push_back(stack[stack.size() - (uint)s]);
-			nextPC = curPC + 2;
-			break;
-		}*/
-		case Instruction::SWAP:
-		{
-			require(2);
-			auto d = m_stack.back();
-			m_stack.back() = m_stack[m_stack.size() - 2];
-			m_stack[m_stack.size() - 2] = d;
+			auto n = 1 + (int)inst - (int)Instruction::DUP1;
+			require(n);
+			m_stack.push_back(m_stack[m_stack.size() - n]);
 			break;
 		}
-		/*case Instruction::SWAPN:
+		case Instruction::SWAP1:
+		case Instruction::SWAP2:
+		case Instruction::SWAP3:
+		case Instruction::SWAP4:
+		case Instruction::SWAP5:
+		case Instruction::SWAP6:
+		case Instruction::SWAP7:
+		case Instruction::SWAP8:
+		case Instruction::SWAP9:
+		case Instruction::SWAP10:
+		case Instruction::SWAP11:
+		case Instruction::SWAP12:
+		case Instruction::SWAP13:
+		case Instruction::SWAP14:
+		case Instruction::SWAP15:
+		case Instruction::SWAP16:
 		{
-			require(1);
-			auto d = stack.back();
-			auto s = store(curPC + 1);
-			if (s == 0 || s > stack.size())
-				throw OperandOutOfRange(1, stack.size(), s);
-			stack.back() = stack[stack.size() - (uint)s];
-			stack[stack.size() - (uint)s] = d;
-			nextPC = curPC + 2;
+			unsigned n = (int)inst - (int)Instruction::SWAP1 + 2;
+			require(n);
+			auto d = m_stack.back();
+			m_stack.back() = m_stack[m_stack.size() - n];
+			m_stack[m_stack.size() - n] = d;
 			break;
-		}*/
+		}
 		case Instruction::MLOAD:
 		{
 			require(1);
@@ -597,6 +610,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
+		case Instruction::NOP1:
+		case Instruction::NOP2:
+			break;
 		default:
 			throw BadInstruction();
 		}
