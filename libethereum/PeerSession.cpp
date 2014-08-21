@@ -221,8 +221,8 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		if (m_server->m_mode == NodeMode::PeerServer)
 			break;
-		unsigned limit = _r[1].toInt<unsigned>();
-		h256 later = _r[2].toHash<h256>();
+		h256 later = _r[1].toHash<h256>();
+		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries, " << later.abridged() << ")";
 
 		unsigned c = min<unsigned>(m_server->m_chain->number(later), limit);
@@ -259,7 +259,7 @@ bool PeerSession::interpret(RLP const& _r)
 		// run through - ask for more.
 		RLPStream s;
 		prep(s).appendList(3);
-		s << GetBlockHashesPacket << c_maxHashesAsk << m_neededBlocks.back();
+		s << GetBlockHashesPacket << m_neededBlocks.back() << c_maxHashesAsk;
 		sealAndSend(s);
 		break;
 	}
@@ -530,7 +530,7 @@ void PeerSession::startInitialSync()
 	// Our chain isn't better - grab theirs.
 	RLPStream s;
 	prep(s).appendList(3);
-	s << GetBlockHashesPacket << c_maxHashesAsk << m_latestHash;
+	s << GetBlockHashesPacket << m_latestHash << c_maxHashesAsk;
 	m_neededBlocks = h256s(1, m_latestHash);
 	sealAndSend(s);
 }
