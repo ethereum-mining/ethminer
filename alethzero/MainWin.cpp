@@ -835,6 +835,11 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 	return false;
 }
 
+void Main::on_turboMining_triggered()
+{
+	m_client->setTurboMining(ui->turboMining->isChecked());
+}
+
 void Main::refreshBlockChain()
 {
 	cwatch << "refreshBlockChain()";
