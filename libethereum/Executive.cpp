@@ -144,7 +144,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, unsigned newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
 	{
 		ExtVM const& ext = *(ExtVM const*)voidExt;
 		VM& vm = *(VM*)voidVM;

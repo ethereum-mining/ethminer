@@ -98,7 +98,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 
 		// FEES...
 		bigint runGas = c_stepGas;
-		unsigned newTempSize = (unsigned)m_temp.size();
+		bigint newTempSize = m_temp.size();
 		switch (inst)
 		{
 		case Instruction::STOP:
@@ -126,32 +126,32 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		// These all operate on memory and therefore potentially expand it:
 		case Instruction::MSTORE:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + 32;
+			newTempSize = m_stack.back() + 32;
 			break;
 		case Instruction::MSTORE8:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + 1;
+			newTempSize = m_stack.back() + 1;
 			break;
 		case Instruction::MLOAD:
 			require(1);
-			newTempSize = (unsigned)m_stack.back() + 32;
+			newTempSize = m_stack.back() + 32;
 			break;
 		case Instruction::RETURN:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 2];
+			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
 			break;
 		case Instruction::SHA3:
 			require(2);
 			runGas = c_sha3Gas;
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 2];
+			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
 			break;
 		case Instruction::CODECOPY:
 			require(3);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
 			break;
 
 		case Instruction::BALANCE:
@@ -160,15 +160,15 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 
 		case Instruction::CALL:
 			require(7);
-			runGas = c_callGas + (unsigned)m_stack[m_stack.size() - 1];
-			newTempSize = std::max((unsigned)m_stack[m_stack.size() - 6] + (unsigned)m_stack[m_stack.size() - 7], (unsigned)m_stack[m_stack.size() - 4] + (unsigned)m_stack[m_stack.size() - 5]);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = std::max(m_stack[m_stack.size() - 6] + m_stack[m_stack.size() - 7], m_stack[m_stack.size() - 4] + m_stack[m_stack.size() - 5]);
 			break;
 
 		case Instruction::CREATE:
 		{
 			require(3);
-			unsigned inOff = (unsigned)m_stack[m_stack.size() - 2];
-			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
+			auto inOff = m_stack[m_stack.size() - 2];
+			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
             runGas = c_createGas;
 			break;
@@ -183,7 +183,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
 
 		if (_onOp)
-			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : 0, runGas, this, &_ext);
+			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
 		if (m_gas < runGas)
 		{
@@ -195,7 +195,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		m_gas = (u256)((bigint)m_gas - runGas);
 
 		if (newTempSize > m_temp.size())
-			m_temp.resize(newTempSize);
+			m_temp.resize((size_t)newTempSize);
 
 		// EXECUTE...
 		switch (inst)
@@ -297,6 +297,18 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		case Instruction::BYTE:
 			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
+			m_stack.pop_back();
+			break;
+		case Instruction::ADDMOD:
+			require(3);
+			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) + bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		case Instruction::MULMOD:
+			require(3);
+			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		case Instruction::SHA3:
@@ -610,9 +622,6 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
-		case Instruction::NOP1:
-		case Instruction::NOP2:
-			break;
 		default:
 			throw BadInstruction();
 		}
