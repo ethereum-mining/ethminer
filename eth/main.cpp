@@ -598,7 +598,7 @@ int main(int argc, char** argv)
 					e.setup(&r);
 
 					if (format == "pretty")
-						e.go([&](uint64_t steps, Instruction instr, unsigned newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+						e.go([&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
 						{
 							eth::VM* vm = (VM*)vvm;
 							eth::ExtVM const* ext = (ExtVM const*)vextVM;
@@ -612,14 +612,14 @@ int main(int argc, char** argv)
 							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << c_instructionInfo.at(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
 						});
 					else if (format == "standard")
-						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						e.go([&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
 						{
 							eth::VM* vm = (VM*)vvm;
 							eth::ExtVM const* ext = (ExtVM const*)vextVM;
 							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 						});
 					else if (format == "standard+")
-						e.go([&](uint64_t, Instruction instr, unsigned, bigint, void* vvm, void const* vextVM)
+						e.go([&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
 						{
 							eth::VM* vm = (VM*)vvm;
 							eth::ExtVM const* ext = (ExtVM const*)vextVM;

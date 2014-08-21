@@ -56,6 +56,8 @@ enum class Instruction: uint8_t
 	OR,
 	XOR,
 	BYTE,
+	ADDMOD,
+	MULMOD,
 
 	SHA3 = 0x20,
 
@@ -79,9 +81,7 @@ enum class Instruction: uint8_t
 	GASLIMIT,
 
 	POP = 0x50,
-	NOP1,
-	NOP2,
-	MLOAD,
+	MLOAD = 0x53,
 	MSTORE,
 	MSTORE8,
 	SLOAD,

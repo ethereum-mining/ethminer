@@ -83,6 +83,6 @@ public:
 	std::set<Address> suicides;	///< Any accounts that have suicided.
 };
 
-typedef std::function<void(uint64_t /*steps*/, Instruction /*instr*/, unsigned /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)> OnOpFunc;
+typedef std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)> OnOpFunc;
 
 }
