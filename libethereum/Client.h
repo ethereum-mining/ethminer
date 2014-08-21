@@ -304,6 +304,9 @@ public:
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
 
+	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
+	bool turboMining() const { return m_turboMining; }
+
 private:
 	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
 	void ensureWorking();
@@ -353,6 +356,7 @@ private:
 
 	bool m_paranoia = false;
 	bool m_doMine = false;					///< Are we supposed to be mining?
+	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	MineProgress m_mineProgress;
 	std::list<MineInfo> m_mineHistory;

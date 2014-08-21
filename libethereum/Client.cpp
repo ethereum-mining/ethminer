@@ -446,7 +446,7 @@ void Client::work(bool _justQueue)
 			m_restartMining = false;
 
 			// Mine for a while.
-			MineInfo mineInfo = m_postMine.mine(100);
+			MineInfo mineInfo = m_postMine.mine(100, m_turboMining);
 
 			m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
 			m_mineProgress.current = mineInfo.best;

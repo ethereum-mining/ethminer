@@ -140,6 +140,7 @@ private slots:
 	void on_refresh_triggered();
     void on_usePrivate_triggered();
 	void on_enableOptimizer_triggered();
+	void on_turboMining_triggered();
 
 signals:
 	void poll();

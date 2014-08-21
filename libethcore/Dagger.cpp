@@ -25,6 +25,7 @@
 #include <chrono>
 #include <array>
 #include <random>
+#include <thread>
 #include <libethcore/CryptoHeaders.h>
 #include <libethential/Common.h>
 #include "Dagger.h"
@@ -36,7 +37,7 @@ namespace eth
 
 #if FAKE_DAGGER
 
-MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
+MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool _continue, bool _turbo)
 {
 	MineInfo ret{0.f, 1e99, 0, false};
 	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
@@ -49,7 +50,10 @@ MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficul
 	//   [--------*-------------------------]
 	//
 	// evaluate until we run out of time
-	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; s++, ret.hashes++)
+	auto startTime = steady_clock::now();
+	if (!_turbo)
+		this_thread::sleep_for(chrono::milliseconds(_msTimeout * 90 / 100));
+	for (; (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; s++, ret.hashes++)
 	{
 		o_solution = (h256)s;
 		auto e = (bigint)(u256)eval(_root, o_solution);
