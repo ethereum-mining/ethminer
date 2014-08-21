@@ -50,7 +50,7 @@ struct WorldState
 	eth::Address cur;
 	eth::u256 curPC;
 	eth::Instruction inst;
-	unsigned newMemSize;
+	eth::bigint newMemSize;
 	eth::u256 gas;
 	eth::h256 code;
 	eth::h256 callData;
