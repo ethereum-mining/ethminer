@@ -1220,7 +1220,7 @@ void Main::populateDebugger(eth::bytesConstRef _r)
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, unsigned newMemSize, eth::bigint gasCost, void* voidVM, void const* voidExt)
+		auto onOp = [&](uint64_t steps, Instruction inst, eth::bigint newMemSize, eth::bigint gasCost, void* voidVM, void const* voidExt)
 		{
 			eth::VM& vm = *(eth::VM*)voidVM;
 			eth::ExtVM const& ext = *(eth::ExtVM const*)voidExt;
