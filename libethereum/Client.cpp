@@ -438,12 +438,12 @@ void Client::work(bool _justQueue)
 				else
 					m_postMine.commitToMine(m_bc);
 			}
+			m_restartMining = false;
 		}
 
 		if (m_doMine)
 		{
 			cwork << "MINE";
-			m_restartMining = false;
 
 			// Mine for a while.
 			MineInfo mineInfo = m_postMine.mine(100, m_turboMining);
