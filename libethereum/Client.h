@@ -286,17 +286,19 @@ public:
 	/// Get the coinbase address.
 	Address address() const { return m_preMine.address(); }
 	/// Start mining.
+	/// NOT thread-safe
 	void startMining();
 	/// Stop mining.
+	/// NOT thread-safe
 	void stopMining();
 	/// Are we mining now?
-	bool isMining() { return m_doMine; }
+	bool isMining() { return !!m_workMine; }
 	/// Register a callback for information concerning mining.
 	/// This callback will be in an arbitrary thread, blocking progress. JUST COPY THE DATA AND GET OUT.
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const { return m_mineProgress; }
+	MineProgress miningProgress() const { Guard l(x_mineProgress); return m_mineProgress; }
 	/// Get and clear the mining history.
-	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
+	std::list<MineInfo> miningHistory() { Guard l(x_mineProgress); auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
 	bool forceMining() const { return m_forceMining; }
 	void setForceMining(bool _enable) { m_forceMining = _enable; }
@@ -313,10 +315,13 @@ private:
 
 	/// Do some work. Handles blockchain maintenance and mining.
 	/// @param _justQueue If true will only processing the transaction queues.
-	void work(bool _justQueue = false);
+	void work();
 
 	/// Do some work on the network.
 	void workNet();
+
+	/// Do some work on the mining.
+	void workMine();
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
@@ -341,7 +346,8 @@ private:
 	BlockChain m_bc;						///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
-	mutable boost::shared_mutex x_stateDB;	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
+	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
+	mutable boost::shared_mutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
@@ -354,13 +360,17 @@ private:
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;
 
+	std::unique_ptr<std::thread> m_workMine;///< The work thread.
+	std::atomic<ClientWorkState> m_workMineState;
+	enum MiningStatus { Preparing, Mining, Mined };
+	MiningStatus m_miningStatus = Preparing;///< TODO: consider mutex/atomic variable.
+	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
 	bool m_paranoia = false;
-	bool m_doMine = false;					///< Are we supposed to be mining?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	mutable std::mutex x_mineProgress;	///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;
 	std::list<MineInfo> m_mineHistory;
-	mutable bool m_restartMining = false;
 	mutable unsigned m_pendingCount = 0;
 
 	mutable std::mutex m_filterLock;
