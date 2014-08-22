@@ -27,7 +27,9 @@
 
 #include <list>
 #include <QtWidgets/QWidget>
+#ifndef Q_MOC_RUN
 #include <libethereum/Client.h>
+#endif
 
 namespace eth
 {
