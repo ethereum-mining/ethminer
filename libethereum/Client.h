@@ -35,18 +35,10 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "PeerNetwork.h"
+#include "Miner.h"
 
 namespace eth
 {
-
-struct MineProgress
-{
-	double requirement;
-	double best;
-	double current;
-	uint hashes;
-	uint ms;
-};
 
 class Client;
 
@@ -164,8 +156,10 @@ struct WorkChannel: public LogChannel { static const char* name() { return "-W-"
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client
+class Client: public MinerHost
 {
+	friend class Miner;
+
 public:
 	/// Constructor.
 	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
@@ -278,7 +272,7 @@ public:
 	// Mining stuff:
 
 	/// Check block validity prior to mining.
-	bool paranoia() const { return m_paranoia; }
+	bool miningParanoia() const { return m_paranoia; }
 	/// Change whether we check block validity prior to mining.
 	void setParanoia(bool _p) { m_paranoia = _p; }
 	/// Set the coinbase address.
@@ -287,18 +281,16 @@ public:
 	Address address() const { return m_preMine.address(); }
 	/// Start mining.
 	/// NOT thread-safe
-	void startMining();
+	void startMining() { m_miner.start(); ensureWorking(); }
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining();
+	void stopMining() { m_miner.stop(); }
 	/// Are we mining now?
-	bool isMining() { return !!m_workMine; }
-	/// Register a callback for information concerning mining.
-	/// This callback will be in an arbitrary thread, blocking progress. JUST COPY THE DATA AND GET OUT.
+	bool isMining() { return m_miner.isRunning(); }
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const { Guard l(x_mineProgress); return m_mineProgress; }
+	MineProgress miningProgress() const { return m_miner.miningProgress(); }
 	/// Get and clear the mining history.
-	std::list<MineInfo> miningHistory() { Guard l(x_mineProgress); auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
+	std::list<MineInfo> miningHistory() { return m_miner.miningHistory(); }
 
 	bool forceMining() const { return m_forceMining; }
 	void setForceMining(bool _enable) { m_forceMining = _enable; }
@@ -320,8 +312,11 @@ private:
 	/// Do some work on the network.
 	void workNet();
 
-	/// Do some work on the mining.
-	void workMine();
+	/// Overrides for being a mining host.
+	virtual void onComplete(State& _s);
+	virtual void setupState(State& _s);
+	virtual bool turbo() const { return m_turboMining; }
+	virtual bool force() const { return m_forceMining; }
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
@@ -360,18 +355,10 @@ private:
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;
 
-	std::unique_ptr<std::thread> m_workMine;///< The work thread.
-	std::atomic<ClientWorkState> m_workMineState;
-	enum MiningStatus { Preparing, Mining, Mined };
-	MiningStatus m_miningStatus = Preparing;///< TODO: consider mutex/atomic variable.
-	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
-	bool m_paranoia = false;
+	Miner m_miner;
+	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
-	mutable std::mutex x_mineProgress;	///< Lock for the mining progress & history.
-	MineProgress m_mineProgress;
-	std::list<MineInfo> m_mineHistory;
-	mutable unsigned m_pendingCount = 0;
 
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

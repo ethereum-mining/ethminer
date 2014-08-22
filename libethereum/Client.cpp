@@ -69,7 +69,7 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
 	m_postMine(_us, m_stateDB),
-	m_workState(Deleted)
+	m_miner(this)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
@@ -127,7 +127,7 @@ void Client::clearPending()
 		appendFromNewPending(m_postMine.bloom(i), changeds);
 	changeds.insert(PendingChangedFilter);
 	m_postMine = m_preMine;
-	m_miningStatus = Preparing;
+	m_miner.restart();
 	noteChanged(changeds);
 }
 
@@ -301,35 +301,35 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 	m_net->connect(_seedHost, _port);
 }
 
-void Client::startMining()
+void Client::onComplete(State& _s)
 {
-	static const char* c_threadName = "miner";
-
-	if (!m_workMine)
-		m_workMine.reset(new thread([&]()
-		{
-			setThreadName(c_threadName);
-			m_workMineState.store(Active, std::memory_order_release);
-			m_miningStatus = Preparing;
-			while (m_workMineState.load(std::memory_order_acquire) != Deleting)
-				workMine();
-			m_workMineState.store(Deleted, std::memory_order_release);
-		}));
-
-	ensureWorking();
+	// Must lock stateDB here since we're actually pushing out to the database.
+	WriteGuard l(x_stateDB);
+	cwork << "COMPLETE MINE";
+	_s.completeMine();
 }
 
-void Client::stopMining()
+void Client::setupState(State& _s)
 {
-	if (m_workMine)
 	{
-		if (m_workMineState.load(std::memory_order_acquire) == Active)
-			m_workMineState.store(Deleting, std::memory_order_release);
-		while (m_workMineState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_workMine->join();
+		ReadGuard l(x_stateDB);
+		cwork << "SETUP MINE";
+		_s = m_postMine;
 	}
-	m_workMine.reset(nullptr);
+	if (m_paranoia)
+	{
+		if (_s.amIJustParanoid(m_bc))
+		{
+			cnote << "I'm just paranoid. Block is fine.";
+			_s.commitToMine(m_bc);
+		}
+		else
+		{
+			cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
+		}
+	}
+	else
+		_s.commitToMine(m_bc);
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
@@ -423,86 +423,19 @@ void Client::workNet()
 	this_thread::sleep_for(chrono::milliseconds(1));
 }
 
-void Client::workMine()
-{
-	// Do some mining.
-	if ((m_pendingCount || m_forceMining) && m_miningStatus != Mined)
-	{
-		// TODO: Separate "Miner" object.
-		if (m_miningStatus == Preparing)
-		{
-			m_miningStatus = Mining;
-
-			{
-				ReadGuard l(x_stateDB);
-				m_mineState = m_postMine;
-			}
-
-			{
-				Guard l(x_mineProgress);
-				m_mineProgress.best = (double)-1;
-				m_mineProgress.hashes = 0;
-				m_mineProgress.ms = 0;
-			}
-
-			if (m_paranoia)
-			{
-				if (m_mineState.amIJustParanoid(m_bc))
-				{
-					cnote << "I'm just paranoid. Block is fine.";
-					m_mineState.commitToMine(m_bc);
-				}
-				else
-				{
-					cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
-				}
-			}
-			else
-				m_mineState.commitToMine(m_bc);
-		}
-
-		cwork << "MINE";
-
-		// Mine for a while.
-		MineInfo mineInfo = m_mineState.mine(100, m_turboMining);
-
-		{
-			Guard l(x_mineProgress);
-			m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
-			m_mineProgress.current = mineInfo.best;
-			m_mineProgress.requirement = mineInfo.requirement;
-			m_mineProgress.ms += 100;
-			m_mineProgress.hashes += mineInfo.hashes;
-			m_mineHistory.push_back(mineInfo);
-		}
-		if (mineInfo.completed)
-		{
-			// Import block.
-			{
-				// Must lock stateDB here since we're actually pushing out to the database.
-				WriteGuard l(x_stateDB);
-				cwork << "COMPLETE MINE";
-				m_mineState.completeMine();
-			}
-			m_miningStatus = Mined;
-		}
-	}
-	else
-	{
-		this_thread::sleep_for(chrono::milliseconds(100));
-	}
-
-}
-
 void Client::work()
 {
 	cworkin << "WORK";
 	h256Set changeds;
 
-	if (m_miningStatus == Mined)
+	if (m_miner.isComplete())
 	{
 		cwork << "CHAIN <== postSTATE";
-		h256s hs = m_bc.attemptImport(m_mineState.blockData(), m_stateDB);
+		h256s hs;
+		{
+			ReadGuard l(x_stateDB);
+			hs = m_bc.attemptImport(m_miner.state().blockData(), m_stateDB);
+		}
 		if (hs.size())
 		{
 			for (auto h: hs)
@@ -510,7 +443,7 @@ void Client::work()
 			changeds.insert(ChainChangedFilter);
 			//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
 		}
-		m_miningStatus = Preparing;
+		m_miner.restart();
 	}
 
 	// Synchronise state to block chain.
@@ -522,7 +455,6 @@ void Client::work()
 	// Resynchronise state with block chain & trans
 	{
 		WriteGuard l(x_stateDB);
-
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
@@ -560,15 +492,16 @@ void Client::work()
 			cnote << "Additional transaction ready: Restarting mining operation.";
 			rsm = true;
 		}
-		m_pendingCount = m_postMine.pending().size();
 
 		if (rsm)
-			m_miningStatus = Preparing;
+			m_miner.restart();
 	}
 
 	cwork << "noteChanged" << changeds.size() << "items";
 	noteChanged(changeds);
 	cworkout << "WORK";
+
+	this_thread::sleep_for(chrono::milliseconds(100));
 }
 
 unsigned Client::numberOf(int _n) const
