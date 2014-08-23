@@ -289,14 +289,6 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 	m_net->connect(_seedHost, _port);
 }
 
-void Client::onComplete(State& _s)
-{
-	// Must lock stateDB here since we're actually pushing out to the database.
-	WriteGuard l(x_stateDB);
-	cwork << "COMPLETE MINE";
-	_s.completeMine();
-}
-
 void Client::setupState(State& _s)
 {
 	{
@@ -318,6 +310,14 @@ void Client::setupState(State& _s)
 	}
 	else
 		_s.commitToMine(m_bc);
+}
+
+void Client::onComplete(State& _s)
+{
+	// Must lock stateDB here since we're actually pushing out to the database.
+	WriteGuard l(x_stateDB);
+	cwork << "COMPLETE MINE";
+	_s.completeMine();
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
@@ -423,7 +423,7 @@ void Client::work()
 		cwork << "CHAIN <== postSTATE";
 		h256s hs;
 		{
-			ReadGuard l(x_stateDB);
+			WriteGuard l(x_stateDB);
 			hs = m_bc.attemptImport(m_miner.state().blockData(), m_stateDB);
 		}
 		if (hs.size())
