@@ -247,7 +247,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		throw FutureTime();
 	}
 
-	clog(BlockChainNote) << "Attempting import of " << newHash << "...";
+	clog(BlockChainNote) << "Attempting import of " << newHash.abridged() << "...";
 
 	u256 td;
 #if ETH_CATCH
@@ -320,7 +320,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
 		for (auto r: ret)
-			clog(BlockChainNote) << r;
+			clog(BlockChainNote) << r.abridged();
 	}
 	else
 	{
