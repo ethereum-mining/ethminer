@@ -35,6 +35,8 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "PeerNetwork.h"
+#include "PastMessage.h"
+#include "MessageFilter.h"
 #include "Miner.h"
 
 namespace eth
@@ -63,66 +65,6 @@ private:
 };
 
 static const int GenesisBlock = INT_MIN;
-
-struct PastMessage
-{
-	PastMessage(Manifest const& _m, std::vector<unsigned> _path, Address _o): to(_m.to), from(_m.from), value(_m.value), input(_m.input), output(_m.output), path(_path), origin(_o) {}
-
-	PastMessage& polish(h256 _b, u256 _ts, unsigned _n, Address _coinbase) { block = _b; timestamp = _ts; number = _n; coinbase = _coinbase; return *this; }
-
-	Address to;					///< The receiving address of the transaction. Address() in the case of a creation.
-	Address from;				///< The receiving address of the transaction. Address() in the case of a creation.
-	u256 value;					///< The value associated with the call.
-	bytes input;				///< The data associated with the message, or the initialiser if it's a creation transaction.
-	bytes output;				///< The data returned by the message, or the body code if it's a creation transaction.
-
-	std::vector<unsigned> path;	///< Call path into the block transaction. size() is always > 0. First item is the transaction index in the block.
-	Address origin;				///< Originating sender of the transaction.
-	Address coinbase;			///< Block coinbase.
-	h256 block;					///< Block hash.
-	u256 timestamp;				///< Block timestamp.
-	unsigned number;			///< Block number.
-};
-
-typedef std::vector<PastMessage> PastMessages;
-
-class MessageFilter
-{
-public:
-	MessageFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
-
-	void fillStream(RLPStream& _s) const;
-	h256 sha3() const;
-
-	int earliest() const { return m_earliest; }
-	int latest() const { return m_latest; }
-	unsigned max() const { return m_max; }
-	unsigned skip() const { return m_skip; }
-	bool matches(h256 _bloom) const;
-	bool matches(State const& _s, unsigned _i) const;
-	PastMessages matches(Manifest const& _m, unsigned _i) const;
-
-	MessageFilter from(Address _a) { m_from.insert(_a); return *this; }
-	MessageFilter to(Address _a) { m_to.insert(_a); return *this; }
-	MessageFilter altered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
-	MessageFilter altered(Address _a) { m_altered.insert(_a); return *this; }
-	MessageFilter withMax(unsigned _m) { m_max = _m; return *this; }
-	MessageFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
-	MessageFilter withEarliest(int _e) { m_earliest = _e; return *this; }
-	MessageFilter withLatest(int _e) { m_latest = _e; return *this; }
-
-private:
-	bool matches(Manifest const& _m, std::vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const;
-
-	std::set<Address> m_from;
-	std::set<Address> m_to;
-	std::set<std::pair<Address, u256>> m_stateAltered;
-	std::set<Address> m_altered;
-	int m_earliest = 0;
-	int m_latest = -1;
-	unsigned m_max;
-	unsigned m_skip;
-};
 
 struct InstalledFilter
 {
