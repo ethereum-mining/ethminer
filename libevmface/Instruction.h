@@ -162,6 +162,7 @@ enum class Instruction: uint8_t
 	CREATE = 0xf0,
 	CALL,
 	RETURN,
+	POST,
 	SUICIDE = 0xff
 };
 

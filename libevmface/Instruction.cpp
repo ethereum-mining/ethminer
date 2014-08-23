@@ -145,6 +145,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CREATE", Instruction::CREATE },
 	{ "CALL", Instruction::CALL },
 	{ "RETURN", Instruction::RETURN },
+	{ "POST", Instruction::POST },
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
@@ -268,6 +269,7 @@ const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1 } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1 } },
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0 } },
+	{ Instruction::POST,		{ "POST",			0, 5, 0 } },
 	{ Instruction::SUICIDE,		{ "SUICIDE",		0, 1, 0} }
 };
 

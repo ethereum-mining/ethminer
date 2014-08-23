@@ -48,7 +48,7 @@ public:
 	bool create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
 	bool go(OnOpFunc const& _onOp = OnOpFunc());
-	void finalize();
+	void finalize(OnOpFunc const& _onOp = OnOpFunc());
 	u256 gasUsed() const;
 
 	static OnOpFunc simpleTrace();

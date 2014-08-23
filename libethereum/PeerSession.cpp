@@ -184,7 +184,7 @@ bool PeerSession::interpret(RLP const& _r)
 			if (isPrivateAddress(peerAddress))
 				goto CONTINUE;
 
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << toHex(id.ref().cropped(0, 4)) << ")";
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
 
 			// check that it's not us or one we already know:
 			if (id && (m_server->m_key.pub() == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))

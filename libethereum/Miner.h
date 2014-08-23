@@ -61,7 +61,7 @@ public:
 
 /**
  * @brief Implements Miner.
- * To begin mining, use start() & stop(). restart() can be used to reset the mining and set up the
+ * To begin mining, use start() & stop(). noteStateChange() can be used to reset the mining and set up the
  * State object according to the host. Use isRunning() to determine if the miner has been start()ed.
  * Use isComplete() to determine if the miner has finished mining.
  *
@@ -69,7 +69,7 @@ public:
  *
  * Information on the mining can be queried through miningProgress() and miningHistory().
  * @threadsafe
- * @todo signal from child->parent thread to wait on exit; refactor redundant dagger/miner stats
+ * @todo Signal Miner to restart once with condition variables.
  */
 class Miner
 {
@@ -86,8 +86,8 @@ public:
 	/// Stop mining.
 	void stop();
 
-	/// Restart mining (and start if not already running).
-	void restart() { start(); m_miningStatus = Preparing; }
+	/// Call to notify Miner of a state change.
+	void noteStateChange() { m_miningStatus = Preparing; }
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
 	bool isRunning() { return !!m_work; }
@@ -109,7 +109,7 @@ private:
 	void work();
 
 	MinerHost* m_host;						///< Our host.
-	unsigned m_id;							///< Our identity;
+	unsigned m_id;							///< Our identity.
 
 	std::mutex x_work;						///< Mutex protecting the creation of the work thread.
 	std::unique_ptr<std::thread> m_work;	///< The work thread.

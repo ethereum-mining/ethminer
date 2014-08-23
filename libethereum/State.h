@@ -307,12 +307,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -332,7 +332,6 @@ private:
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
 	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
-//	GenericTrieDB<OverlayDB> m_transactionManifest;	///< The transactions trie; saved from the last commitToMine, or invalid/empty if commitToMine was never called.
 	OverlayDB m_lastTx;
 
 	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
