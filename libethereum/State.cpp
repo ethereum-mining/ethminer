@@ -767,9 +767,6 @@ void State::completeMine()
 	cdebug << "Completing mine!";
 	// Got it!
 
-	// Commit to disk.
-	m_db.commit();
-
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
