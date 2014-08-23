@@ -390,7 +390,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
 	m_previousBlock = biParent;
-	return enact(_block, biGrandParent);
+	return enact(_block, &_bc);
 }
 
 map<Address, u256> State::addresses() const
@@ -499,7 +499,7 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _checkNonce)
+u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
@@ -558,16 +558,21 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _che
 	// Check uncles & apply their rewards to state.
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
+	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
 	for (auto const& i: RLP(_block)[2])
 	{
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
-
-		if (m_previousBlock.parentHash != uncle.parentHash)
-			throw UncleNotAnUncle();
 		if (nonces.count(uncle.nonce))
 			throw DuplicateUncleNonce();
-		if (_grandParent)
-			uncle.verifyParent(_grandParent);
+		if (_bc)
+		{
+			BlockInfo uncleParent(_bc->block(uncle.parentHash));
+			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)	// TODO: check 6. might be 7 or something...
+				throw UncleTooOld();
+			if (knownUncles.count(uncle.hash))
+				throw UncleInChain();
+			uncle.verifyParent(uncleParent);
+		}
 
 		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
@@ -651,7 +656,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), BlockInfo(), false);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(&block.out(), &_bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -694,6 +699,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	if (m_previousBlock != BlockChain::genesis())
 	{
+		// TODO: find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 		// Find uncles if we're not a direct child of the genesis.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
 		auto us = _bc.details(m_previousBlock.parentHash).children;
@@ -1181,8 +1187,8 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleAddresses)
 	{
-		addBalance(i, m_blockReward * 3 / 4);
-		r += m_blockReward / 8;
+		addBalance(i, m_blockReward * 15 / 16);
+		r += m_blockReward / 32;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }

@@ -20,7 +20,8 @@ class InvalidBlockFormat: public Exception { public: InvalidBlockFormat(int _f, 
 class InvalidBlockHeaderFormat: public Exception { public: InvalidBlockHeaderFormat(int _f, bytesConstRef _d): m_f(_f), m_d(_d.toBytes()) {} int m_f; bytes m_d; virtual std::string description() const { return "Invalid block header format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"; } };
 class InvalidUnclesHash: public Exception {};
 class InvalidUncle: public Exception {};
-class UncleNotAnUncle: public Exception {};
+class UncleTooOld: public Exception {};
+class UncleInChain: public Exception {};
 class DuplicateUncleNonce: public Exception {};
 class InvalidStateRoot: public Exception {};
 class InvalidTransactionsHash: public Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual std::string description() const { return "Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref()); } };
