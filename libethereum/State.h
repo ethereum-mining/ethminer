@@ -386,10 +386,16 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				h256 ch = sha3(i.second.code());
 				_db.insert(ch, &i.second.code());
-				s << ch;
+				if (i.second.code().size())
+					s << ch;
+				else
+					s << "";
 			}
 			else
-				s << i.second.codeHash();
+				if (i.second.codeHash() == EmptySHA3)
+					s << "";
+				else
+					s << i.second.codeHash();
 
 			_state.insert(i.first, &s.out());
 		}
