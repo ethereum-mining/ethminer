@@ -681,7 +681,7 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-	cnote << "Committing to mine on block" << m_previousBlock.hash;
+	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
 #ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
@@ -739,7 +739,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-	cnote << "Post-reward stateRoot:" << m_state.root();
+	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
 //	cnote << m_state;
 //	cnote << *this;
 
@@ -778,7 +778,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(m_currentBytes);
-	cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
+	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.

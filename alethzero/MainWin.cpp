@@ -535,6 +535,7 @@ void Main::writeSettings()
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
+	s.setValue("verbosity", ui->verbosity->value());
 
 	bytes d = m_client->savePeers();
 	if (d.size())
@@ -586,6 +587,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->nameReg->setText(s.value("nameReg", "").toString());
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
+	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -928,7 +930,7 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		m_logLock.lock();
 		m_logChanged = false;
-		ui->log->appendPlainText(m_logHistory);
+		ui->log->appendPlainText(m_logHistory.mid(0, m_logHistory.length() - 1));
 		m_logHistory.clear();
 		m_logLock.unlock();
 	}
