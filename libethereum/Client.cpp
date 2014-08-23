@@ -416,7 +416,7 @@ void Client::work()
 		h256s hs;
 		{
 			WriteGuard l(x_stateDB);
-			hs = m_bc.attemptImport(m_miner.state().blockData(), m_stateDB);
+			hs = m_bc.attemptImport(m_miner.blockData(), m_stateDB);
 		}
 		if (hs.size())
 		{

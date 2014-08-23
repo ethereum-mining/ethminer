@@ -27,15 +27,10 @@
 #include <atomic>
 #include <libethential/Common.h>
 #include <libethcore/CommonEth.h>
-#include <libethcore/Dagger.h>
-#include <libethcore/OverlayDB.h>
 #include "State.h"
 
 namespace eth
 {
-
-class BlockChain;
-class Client;
 
 /**
  * @brief Describes the progress of a mining operation.
@@ -50,7 +45,7 @@ struct MineProgress
 };
 
 /**
- * @brief The MinerHost class.
+ * @brief Class for hosting one or more Miners.
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
@@ -69,6 +64,10 @@ public:
  * To begin mining, use start() & stop(). restart() can be used to reset the mining and set up the
  * State object according to the host. Use isRunning() to determine if the miner has been start()ed.
  * Use isComplete() to determine if the miner has finished mining.
+ *
+ * blockData() can be used to retrieve the complete block, ready for insertion into the BlockChain.
+ *
+ * Information on the mining can be queried through miningProgress() and miningHistory().
  * @threadsafe
  * @todo signal from child->parent thread to wait on exit; refactor redundant dagger/miner stats
  */
@@ -87,7 +86,7 @@ public:
 	/// Stop mining.
 	void stop();
 
-	/// Restart mining.
+	/// Restart mining (and start if not already running).
 	void restart() { start(); m_miningStatus = Preparing; }
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
@@ -97,7 +96,7 @@ public:
 	bool isComplete() const { return m_miningStatus == Mined; }
 
 	/// @returns the internal State object.
-	State& state() { return m_mineState; }
+	bytes const& blockData() { return m_mineState.blockData(); }
 
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { Guard l(x_mineInfo); return m_mineProgress; }
