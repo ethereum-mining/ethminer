@@ -63,7 +63,6 @@ void Miner::work()
 	// Do some mining.
 	if ((m_pendingCount || m_host->force()) && m_miningStatus != Mined)
 	{
-		// TODO: Separate "Miner" object.
 		if (m_miningStatus == Preparing)
 		{
 			m_miningStatus = Mining;
@@ -93,9 +92,12 @@ void Miner::work()
 		}
 		if (mineInfo.completed)
 		{
-			m_host->onComplete(m_mineState);
+			m_mineState.completeMine();
+			m_host->onComplete();
 			m_miningStatus = Mined;
 		}
+		else
+			m_host->onProgressed();
 	}
 	else
 	{

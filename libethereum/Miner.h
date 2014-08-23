@@ -37,30 +37,38 @@ namespace eth
 class BlockChain;
 class Client;
 
+/**
+ * @brief Describes the progress of a mining operation.
+ */
 struct MineProgress
 {
-	double requirement;
-	double best;
-	double current;
-	uint hashes;
-	uint ms;
+	double requirement;	///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
+	double best;		///< The PoW achievement - as the second logarithm of the minimum found hash.
+	double current;		///< The most recent PoW achievement - as the second logarithm of the presently found hash.
+	uint hashes;		///< Total number of hashes computed.
+	uint ms;			///< Total number of milliseconds of mining thus far.
 };
 
+/**
+ * @brief The MinerHost class.
+ * @warning Must be implemented in a threadsafe manner since it will be called from multiple
+ * miner threads.
+ */
 class MinerHost
 {
 public:
 	virtual void setupState(State& _s) = 0;		///< Reset the given State object to the one that should be being mined.
-	virtual void onComplete(State& _s) = 0;		///< Completed the mine!
-	virtual bool turbo() const = 0;
-	virtual bool force() const = 0;
+	virtual void onProgressed() {}				///< Called once some progress has been made.
+	virtual void onComplete() {}				///< Called once a block is found.
+	virtual bool turbo() const = 0;				///< @returns true iff the Miner should mine as fast as possible.
+	virtual bool force() const = 0;				///< @returns true iff the Miner should mine regardless of the number of transactions.
 };
 
 /**
  * @brief Implements Miner.
- * The miner will start a thread when there is work provided by @fn restart().
- * The _progressCb callback is called every ~100ms or when a block is found.
- * @fn completeMine() is to be called once a block is found.
- * If miner is not restarted from _progressCb the thread will terminate.
+ * To begin mining, use start() & stop(). restart() can be used to reset the mining and set up the
+ * State object according to the host. Use isRunning() to determine if the miner has been start()ed.
+ * Use isComplete() to determine if the miner has finished mining.
  * @threadsafe
  * @todo signal from child->parent thread to wait on exit; refactor redundant dagger/miner stats
  */
@@ -80,9 +88,9 @@ public:
 	void stop();
 
 	/// Restart mining.
-	void restart() { m_miningStatus = Preparing; }
+	void restart() { start(); m_miningStatus = Preparing; }
 
-	/// @returns if mining
+	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
 	bool isRunning() { return !!m_work; }
 
 	/// @returns true if mining is complete.
@@ -108,12 +116,12 @@ private:
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	bool m_stop = false;					///< Stop working?
 
-	enum MiningStatus { Preparing, Mining, Mined };
+	enum MiningStatus { Preparing, Mining, Mined, Stopping, Stopped };
 	MiningStatus m_miningStatus = Preparing;///< TODO: consider mutex/atomic variable.
 	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
 	mutable unsigned m_pendingCount = 0;	///< How many pending transactions are there in m_mineState?
 
-	mutable std::mutex x_mineInfo;		///< Lock for the mining progress & history.
+	mutable std::mutex x_mineInfo;			///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;			///< What's our progress?
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
 };

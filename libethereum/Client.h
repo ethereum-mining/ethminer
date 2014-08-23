@@ -255,7 +255,6 @@ private:
 	void workNet();
 
 	/// Overrides for being a mining host.
-	virtual void onComplete(State& _s);
 	virtual void setupState(State& _s);
 	virtual bool turbo() const { return m_turboMining; }
 	virtual bool force() const { return m_forceMining; }
