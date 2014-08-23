@@ -115,7 +115,7 @@ void Client::clearPending()
 		appendFromNewPending(m_postMine.bloom(i), changeds);
 	changeds.insert(PendingChangedFilter);
 	m_postMine = m_preMine;
-	m_miner.restart();
+	m_miner.noteStateChange();
 	noteChanged(changeds);
 }
 
@@ -425,7 +425,7 @@ void Client::work()
 			changeds.insert(ChainChangedFilter);
 			//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
 		}
-		m_miner.restart();
+		m_miner.noteStateChange();
 	}
 
 	// Synchronise state to block chain.
@@ -476,7 +476,7 @@ void Client::work()
 		}
 
 		if (rsm)
-			m_miner.restart();
+			m_miner.noteStateChange();
 	}
 
 	cwork << "noteChanged" << changeds.size() << "items";
