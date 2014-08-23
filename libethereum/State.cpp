@@ -287,7 +287,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		if (state.isNull())
 			s = AddressState(0, 0, h256(), EmptySHA3);
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].isEmpty() ? EmptySHA3 : state[3].toHash<h256>());
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
