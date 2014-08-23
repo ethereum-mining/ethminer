@@ -107,6 +107,11 @@ public:
 	/// Get the hash of a block of a given number. Slow; try not to use it too much.
 	h256 numberHash(unsigned _n) const;
 
+	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
+	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation +5
+	/// togther with all their quoted uncles.
+	h256Set allUnclesFrom(h256 _parent) const;
+
 	/// @returns the genesis block header.
 	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
 

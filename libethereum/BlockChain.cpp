@@ -386,6 +386,20 @@ void BlockChain::checkConsistency()
 	delete it;
 }
 
+h256Set BlockChain::allUnclesFrom(h256 _parent) const
+{
+	// Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
+	h256Set ret;
+	h256 p = _parent;
+	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
+	{
+		ret.insert(sha3(RLP(block(p))[0].data()));
+		for (auto i: RLP(block(p))[2])
+			ret.insert(sha3(i.data()));
+	}
+	return ret;
+}
+
 bytes BlockChain::block(h256 _hash) const
 {
 	if (_hash == m_genesisHash)
