@@ -37,11 +37,12 @@ namespace eth
  */
 struct MineProgress
 {
-	double requirement;	///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
-	double best;		///< The PoW achievement - as the second logarithm of the minimum found hash.
-	double current;		///< The most recent PoW achievement - as the second logarithm of the presently found hash.
-	uint hashes;		///< Total number of hashes computed.
-	uint ms;			///< Total number of milliseconds of mining thus far.
+	void combine(MineProgress const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); current = std::max(current, _m.current); hashes += _m.hashes; ms = std::max(ms, _m.ms); }
+	double requirement = 0;	///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
+	double best = 1e99;		///< The PoW achievement - as the second logarithm of the minimum found hash.
+	double current = 0;		///< The most recent PoW achievement - as the second logarithm of the presently found hash.
+	uint hashes = 0;		///< Total number of hashes computed.
+	uint ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
 /**
@@ -74,11 +75,23 @@ public:
 class Miner
 {
 public:
-	/// Constructor. Starts miner.
+	/// Null constructor.
+	Miner(): m_host(nullptr), m_id(0) {}
+
+	/// Constructor.
 	Miner(MinerHost* _host, unsigned _id = 0);
+
+	/// Move-constructor.
+	Miner(Miner&& _m) { std::swap(m_host, _m.m_host); std::swap(m_id, _m.m_id); }
+
+	/// Move-assignment.
+	Miner& operator=(Miner&& _m) { std::swap(m_host, _m.m_host); std::swap(m_id, _m.m_id); return *this; }
 
 	/// Destructor. Stops miner.
 	~Miner() { stop(); }
+
+	/// Setup its basics.
+	void setup(MinerHost* _host, unsigned _id = 0) { m_host = _host; m_id = _id; }
 
 	/// Start mining.
 	void start();
@@ -108,8 +121,8 @@ private:
 	/// Do some work on the mining.
 	void work();
 
-	MinerHost* m_host;						///< Our host.
-	unsigned m_id;							///< Our identity.
+	MinerHost* m_host = nullptr;			///< Our host.
+	unsigned m_id = 0;						///< Our identity.
 
 	std::mutex x_work;						///< Mutex protecting the creation of the work thread.
 	std::unique_ptr<std::thread> m_work;	///< The work thread.

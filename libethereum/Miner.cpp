@@ -33,6 +33,9 @@ Miner::Miner(MinerHost* _host, unsigned _id):
 
 void Miner::start()
 {
+	if (!m_host)
+		return;
+
 	Guard l(x_work);
 	if (!m_work)
 	{

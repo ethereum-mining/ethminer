@@ -38,10 +38,11 @@ inline uint toLog2(u256 _d)
 
 struct MineInfo
 {
-	double requirement;
-	double best;
-	uint hashes;
-	bool completed;
+	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
+	double requirement = 0;
+	double best = 1e99;
+	uint hashes = 0;
+	bool completed = false;
 };
 
 #if FAKE_DAGGER

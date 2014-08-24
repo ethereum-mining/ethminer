@@ -56,9 +56,9 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(_us, m_stateDB),
-	m_postMine(_us, m_stateDB),
-	m_miner(this)
+	m_postMine(_us, m_stateDB)
 {
+	setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
@@ -115,7 +115,11 @@ void Client::clearPending()
 		appendFromNewPending(m_postMine.bloom(i), changeds);
 	changeds.insert(PendingChangedFilter);
 	m_postMine = m_preMine;
-	m_miner.noteStateChange();
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
+	}
 	noteChanged(changeds);
 }
 
@@ -289,6 +293,46 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 	m_net->connect(_seedHost, _port);
 }
 
+void Client::setMiningThreads(unsigned _threads)
+{
+	stopMining();
+
+	auto t = _threads ? _threads : thread::hardware_concurrency();
+	WriteGuard l(x_miners);
+	m_miners.clear();
+	m_miners.resize(t);
+	unsigned i = 0;
+	for (auto& m: m_miners)
+		m.setup(this, i++);
+}
+
+MineProgress Client::miningProgress() const
+{
+	MineProgress ret;
+	ReadGuard l(x_miners);
+	for (auto& m: m_miners)
+		ret.combine(m.miningProgress());
+	return ret;
+}
+
+std::list<MineInfo> Client::miningHistory()
+{
+	std::list<MineInfo> ret;
+	ReadGuard l(x_miners);
+	if (m_miners.empty())
+		return ret;
+	ret = m_miners[0].miningHistory();
+	for (unsigned i = 1; i < m_miners.size(); ++i)
+	{
+		auto l = m_miners[i].miningHistory();
+		auto ri = ret.begin();
+		auto li = l.begin();
+		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
+			ri->combine(*li);
+	}
+	return ret;
+}
+
 void Client::setupState(State& _s)
 {
 	{
@@ -410,23 +454,26 @@ void Client::work()
 	cworkin << "WORK";
 	h256Set changeds;
 
-	if (m_miner.isComplete())
-	{
-		cwork << "CHAIN <== postSTATE";
-		h256s hs;
+	ReadGuard l(x_miners);
+	for (auto& m: m_miners)
+		if (m.isComplete())
 		{
-			WriteGuard l(x_stateDB);
-			hs = m_bc.attemptImport(m_miner.blockData(), m_stateDB);
+			cwork << "CHAIN <== postSTATE";
+			h256s hs;
+			{
+				WriteGuard l(x_stateDB);
+				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+			}
+			if (hs.size())
+			{
+				for (auto h: hs)
+					appendFromNewBlock(h, changeds);
+				changeds.insert(ChainChangedFilter);
+				//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
+			}
+			for (auto& m: m_miners)
+				m.noteStateChange();
 		}
-		if (hs.size())
-		{
-			for (auto h: hs)
-				appendFromNewBlock(h, changeds);
-			changeds.insert(ChainChangedFilter);
-			//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
-		}
-		m_miner.noteStateChange();
-	}
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -435,6 +482,7 @@ void Client::work()
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
 	// Resynchronise state with block chain & trans
+	bool rsm = false;
 	{
 		WriteGuard l(x_stateDB);
 		cwork << "BQ ==> CHAIN ==> STATE";
@@ -450,8 +498,6 @@ void Client::work()
 		x_stateDB.lock();
 		if (newBlocks.size())
 			m_stateDB = db;
-
-		bool rsm = false;
 
 		cwork << "preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
@@ -474,9 +520,12 @@ void Client::work()
 			cnote << "Additional transaction ready: Restarting mining operation.";
 			rsm = true;
 		}
-
-		if (rsm)
-			m_miner.noteStateChange();
+	}
+	if (rsm)
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
 	}
 
 	cwork << "noteChanged" << changeds.size() << "items";
