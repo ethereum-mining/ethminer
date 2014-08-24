@@ -64,6 +64,11 @@ void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 		_s << nonce;
 }
 
+h256 BlockInfo::headerHash(bytesConstRef _block)
+{
+	return sha3(RLP(_block)[0].data());
+}
+
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
 	int field = 0;
