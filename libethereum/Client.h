@@ -217,31 +217,38 @@ public:
 	bool miningParanoia() const { return m_paranoia; }
 	/// Change whether we check block validity prior to mining.
 	void setParanoia(bool _p) { m_paranoia = _p; }
+	/// Should we force mining to happen, even without transactions?
+	bool forceMining() const { return m_forceMining; }
+	/// Enable/disable forcing of mining to happen, even without transactions.
+	void setForceMining(bool _enable) { m_forceMining = _enable; }
+	/// Are we mining as fast as we can?
+	bool turboMining() const { return m_turboMining; }
+	/// Enable/disable fast mining.
+	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
+
 	/// Set the coinbase address.
 	void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
 	Address address() const { return m_preMine.address(); }
+	/// Stops mining and sets the number of mining threads (0 for automatic).
+	void setMiningThreads(unsigned _threads = 0);
+	/// Get the effective number of mining threads.
+	unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
 	/// Start mining.
-	/// NOT thread-safe
-	void startMining() { m_miner.start(); ensureWorking(); }
+	/// NOT thread-safe - call it & stopMining only from a single thread
+	void startMining() { ensureWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() { m_miner.stop(); }
+	void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
 	/// Are we mining now?
-	bool isMining() { return m_miner.isRunning(); }
+	bool isMining() { ReadGuard l(x_miners); return m_miners.size() && m_miners[0].isRunning(); }
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const { return m_miner.miningProgress(); }
+	MineProgress miningProgress() const;
 	/// Get and clear the mining history.
-	std::list<MineInfo> miningHistory() { return m_miner.miningHistory(); }
-
-	bool forceMining() const { return m_forceMining; }
-	void setForceMining(bool _enable) { m_forceMining = _enable; }
+	std::list<MineInfo> miningHistory();
 
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
-
-	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
-	bool turboMining() const { return m_turboMining; }
 
 private:
 	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
@@ -296,7 +303,8 @@ private:
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;
 
-	Miner m_miner;
+	std::vector<Miner> m_miners;
+	mutable boost::shared_mutex x_miners;
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
