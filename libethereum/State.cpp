@@ -567,9 +567,9 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		if (_bc)
 		{
 			BlockInfo uncleParent(_bc->block(uncle.parentHash));
-			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)	// TODO: check 6. might be 7 or something...
+			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
 				throw UncleTooOld();
-			if (knownUncles.count(uncle.hash))
+			if (knownUncles.count(sha3(i.data())))
 				throw UncleInChain();
 			uncle.verifyParent(uncleParent);
 		}
@@ -699,19 +699,23 @@ void State::commitToMine(BlockChain const& _bc)
 
 	if (m_previousBlock != BlockChain::genesis())
 	{
-		// TODO: find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
-		// Find uncles if we're not a direct child of the genesis.
+		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
-		auto us = _bc.details(m_previousBlock.parentHash).children;
-		assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
-		uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
-		for (auto const& u: us)
-			if (u != m_previousBlock.hash)	// ignore our own parent - it's not an uncle.
-			{
-				BlockInfo ubi(_bc.block(u));
-				ubi.fillStream(uncles, true);
-				uncleAddresses.push_back(ubi.coinbaseAddress);
-			}
+		set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+		auto p = m_previousBlock.parentHash;
+		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash(); ++gen, p = _bc.details(p).parent)
+		{
+			auto us = _bc.details(p).children;
+			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
+			uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
+			for (auto const& u: us)
+				if (!knownUncles.count(BlockInfo::headerHash(_bc.block(u))))	// ignore any uncles/mainline blocks that we know about. We use header-hash for this.
+				{
+					BlockInfo ubi(_bc.block(u));
+					ubi.fillStream(uncles, true);
+					uncleAddresses.push_back(ubi.coinbaseAddress);
+				}
+		}
 	}
 	else
 		uncles.appendList(0);
@@ -1266,56 +1270,5 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
-	return _out;
-}
-
-AccountChange AccountDiff::changeType() const
-{
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
-}
-
-char const* AccountDiff::lead() const
-{
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
-}
-
-std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
-{
-	if (!_s.exist.to())
-		return _out;
-
-	if (_s.nonce)
-	{
-		_out << std::dec << "#" << _s.nonce.to() << " ";
-		if (_s.nonce.from())
-			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
-	}
-	if (_s.balance)
-	{
-		_out << std::dec << _s.balance.to() << " ";
-		if (_s.balance.from())
-			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
-	}
-	if (_s.code)
-		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
-	for (pair<u256, Diff<u256>> const& i: _s.storage)
-		if (!i.second.from())
-			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
-		else if (!i.second.to())
-			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
-		else
-			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
-	return _out;
-}
-
-std::ostream& eth::operator<<(std::ostream& _out, StateDiff const& _s)
-{
-	_out << _s.accounts.size() << " accounts changed:" << endl;
-	for (auto const& i: _s.accounts)
-		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }

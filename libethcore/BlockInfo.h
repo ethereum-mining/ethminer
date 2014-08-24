@@ -73,6 +73,9 @@ public:
 	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
 	explicit BlockInfo(bytesConstRef _block);
 
+	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
+	static h256 headerHash(bytesConstRef _block);
+
 	static BlockInfo fromHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
