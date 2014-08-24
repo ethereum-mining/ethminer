@@ -31,6 +31,7 @@ namespace eth
 
 struct Post
 {
+	Address from;
 	Address to;
 	u256 value;
 	bytes data;
@@ -79,7 +80,7 @@ public:
 	bool call(Address, u256, bytesConstRef, u256*, bytesRef) { return false; }
 
 	/// Post a new message call.
-	void post(Address _to, u256 _value, bytesConstRef _data, u256 _gas) { posts.push_back(Post({_to, _value, _data.toBytes(), _gas})); }
+	void post(Address _to, u256 _value, bytesConstRef _data, u256 _gas) { posts.push_back(Post({myAddress, _to, _value, _data.toBytes(), _gas})); }
 
 	/// Revert any changes made (by any of the other calls).
 	void revert() {}
