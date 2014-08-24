@@ -62,12 +62,12 @@ public:
 		return ret;
 	}
 
-	/// Create a new message call.
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = OnOpFunc())
+	/// Create a new message call. Leave _myAddressOverride at he default to use the present address as caller.
+	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = OnOpFunc(), Address _myAddressOverride = Address())
 	{
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, &posts, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
+		auto ret = m_s.call(_receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, &posts, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
@@ -100,7 +100,7 @@ public:
 		while (posts.size())
 		{
 			Post& p = posts.front();
-			call(p.to, p.value, &p.data, &p.gas, bytesRef(), _onOp);
+			call(p.to, p.value, &p.data, &p.gas, bytesRef(), _onOp, p.from);
 			ret += p.gas;
 			posts.pop_front();
 		}
