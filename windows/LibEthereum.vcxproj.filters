@@ -127,6 +127,15 @@
     <ClCompile Include="..\libethereum\Utility.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\Miner.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\MessageFilter.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\AccountDiff.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -280,6 +289,15 @@
       <Filter>libethereum</Filter>
     </ClInclude>
     <ClInclude Include="..\libethereum\Utility.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\Miner.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\MessageFilter.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\AccountDiff.h">
       <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>

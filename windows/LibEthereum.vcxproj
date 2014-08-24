@@ -35,6 +35,7 @@
     <ClCompile Include="..\libethential\FixedHash.cpp" />
     <ClCompile Include="..\libethential\Log.cpp" />
     <ClCompile Include="..\libethential\RLP.cpp" />
+    <ClCompile Include="..\libethereum\AccountDiff.cpp" />
     <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
     <ClCompile Include="..\libethereum\BlockDetails.cpp" />
@@ -44,6 +45,8 @@
     <ClCompile Include="..\libethereum\Executive.cpp" />
     <ClCompile Include="..\libethereum\ExtVM.cpp" />
     <ClCompile Include="..\libethereum\Manifest.cpp" />
+    <ClCompile Include="..\libethereum\MessageFilter.cpp" />
+    <ClCompile Include="..\libethereum\Miner.cpp" />
     <ClCompile Include="..\libethereum\PeerNetwork.cpp" />
     <ClCompile Include="..\libethereum\PeerServer.cpp" />
     <ClCompile Include="..\libethereum\PeerSession.cpp" />
@@ -91,6 +94,7 @@
     <ClInclude Include="..\libethential\Log.h" />
     <ClInclude Include="..\libethential\RLP.h" />
     <ClInclude Include="..\libethential\vector_ref.h" />
+    <ClInclude Include="..\libethereum\AccountDiff.h" />
     <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
     <ClInclude Include="..\libethereum\BlockDetails.h" />
@@ -100,6 +104,8 @@
     <ClInclude Include="..\libethereum\Executive.h" />
     <ClInclude Include="..\libethereum\ExtVM.h" />
     <ClInclude Include="..\libethereum\Manifest.h" />
+    <ClInclude Include="..\libethereum\MessageFilter.h" />
+    <ClInclude Include="..\libethereum\Miner.h" />
     <ClInclude Include="..\libethereum\PeerNetwork.h" />
     <ClInclude Include="..\libethereum\PeerServer.h" />
     <ClInclude Include="..\libethereum\PeerSession.h" />
