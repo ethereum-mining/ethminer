@@ -119,10 +119,12 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 
 	ldb::Options o;
 	o.create_if_missing = true;
-	auto s = ldb::DB::Open(o, _path + "/blocks", &m_db);
-	assert(m_db);
-	s = ldb::DB::Open(o, _path + "/details", &m_extrasDB);
-	assert(m_extrasDB);
+	ldb::DB::Open(o, _path + "/blocks", &m_db);
+	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+	if (!m_db)
+		throw DatabaseAlreadyOpen();
+	if (!m_extrasDB)
+		throw DatabaseAlreadyOpen();
 
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisHash = BlockChain::genesis().hash;
