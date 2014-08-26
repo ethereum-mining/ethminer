@@ -175,10 +175,8 @@ struct InstructionInfo
 	int ret;			///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
 };
 
-InstructionInfo instructionInfo(Instruction _inst);
-
 /// Information on all the instructions.
-extern const std::map<Instruction, InstructionInfo> c_instructionInfo;
+InstructionInfo instructionInfo(Instruction _inst);
 
 /// Convert from string mnemonic to Instruction type.
 extern const std::map<std::string, Instruction> c_instructions;

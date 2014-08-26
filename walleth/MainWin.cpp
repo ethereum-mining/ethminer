@@ -50,7 +50,6 @@ using eth::units;
 // vars
 using eth::g_logPost;
 using eth::g_logVerbosity;
-using eth::c_instructionInfo;
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),

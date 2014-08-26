@@ -51,7 +51,6 @@ using namespace std;
 using namespace eth;
 using namespace boost::algorithm;
 using eth::Instruction;
-using eth::c_instructionInfo;
 
 bool isTrue(std::string const& _m)
 {

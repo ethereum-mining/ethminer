@@ -43,7 +43,6 @@ using eth::operator +;
 // vars
 using eth::g_logPost;
 using eth::g_logVerbosity;
-using eth::c_instructionInfo;
 
 eth::bytes toBytes(QString const& _s)
 {
