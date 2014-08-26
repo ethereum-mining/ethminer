@@ -38,7 +38,7 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		nonce = rlp[field = 0].toInt<u256>();
 		gasPrice = rlp[field = 1].toInt<u256>();
 		gas = rlp[field = 2].toInt<u256>();
-		receiveAddress = rlp[field = 3].isEmpty() ? Address() : Address();
+		receiveAddress = rlp[field = 3].toHash<Address>();
 		value = rlp[field = 4].toInt<u256>();
 		data = rlp[field = 5].toBytes();
 		vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };

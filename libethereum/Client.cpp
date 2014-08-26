@@ -506,6 +506,7 @@ void Client::work()
 			m_postMine = m_preMine;
 			rsm = true;
 			changeds.insert(PendingChangedFilter);
+			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
 
 		// returns h256s as blooms, once for each transaction.

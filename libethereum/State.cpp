@@ -697,9 +697,10 @@ void State::commitToMine(BlockChain const& _bc)
 
 	m_lastTx = m_db;
 
-	RLPStream uncles;
 	Addresses uncleAddresses;
 
+	RLPStream unclesData;
+	unsigned unclesCount = 0;
 	if (m_previousBlock != BlockChain::genesis())
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
@@ -710,18 +711,16 @@ void State::commitToMine(BlockChain const& _bc)
 		{
 			auto us = _bc.details(p).children;
 			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
-			uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
 			for (auto const& u: us)
 				if (!knownUncles.count(BlockInfo::headerHash(_bc.block(u))))	// ignore any uncles/mainline blocks that we know about. We use header-hash for this.
 				{
 					BlockInfo ubi(_bc.block(u));
-					ubi.fillStream(uncles, true);
+					ubi.fillStream(unclesData, true);
+					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
 		}
 	}
-	else
-		uncles.appendList(0);
 
 	MemoryDB tm;
 	GenericTrieDB<MemoryDB> transactionReceipts(&tm);
@@ -741,7 +740,8 @@ void State::commitToMine(BlockChain const& _bc)
 	}
 
 	txs.swapOut(m_currentTxs);
-	uncles.swapOut(m_currentUncles);
+
+	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
 	m_currentBlock.transactionsRoot = transactionReceipts.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
