@@ -29,7 +29,7 @@
 namespace eth
 {
 
-class Manifest;
+struct Manifest;
 class State;
 
 class MessageFilter
