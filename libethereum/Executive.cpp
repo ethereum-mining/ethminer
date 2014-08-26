@@ -158,7 +158,7 @@ OnOpFunc Executive::simpleTrace()
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << c_instructionInfo.at(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
 	};
 }
 

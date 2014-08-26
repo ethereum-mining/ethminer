@@ -45,7 +45,6 @@ using eth::units;
 // vars
 using eth::g_logPost;
 using eth::g_logVerbosity;
-using eth::c_instructionInfo;
 
 // Horrible global for the mainwindow. Needed for the QmlEthereums to find the Main window which acts as multiplexer for now.
 // Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.

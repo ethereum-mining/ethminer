@@ -81,7 +81,6 @@ using eth::operator<<;
 // vars
 using eth::g_logPost;
 using eth::g_logVerbosity;
-using eth::c_instructionInfo;
 
 static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
 {

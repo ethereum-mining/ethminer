@@ -149,7 +149,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
-const std::map<Instruction, InstructionInfo> eth::c_instructionInfo =
+static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 { //												Add, Args, Ret
 	{ Instruction::STOP,		{ "STOP",			0, 0, 0 } },
 	{ Instruction::ADD,			{ "ADD",			0, 2, 1 } },
