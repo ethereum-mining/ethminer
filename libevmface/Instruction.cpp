@@ -296,3 +296,15 @@ string eth::disassemble(bytes const& _mem)
 	}
 	return ret.str();
 }
+
+InstructionInfo eth::instructionInfo(Instruction _inst)
+{
+	try
+	{
+		return c_instructionInfo.at(_inst);
+	}
+	catch (...)
+	{
+		return InstructionInfo({"<INVALID_INSTRUCTION: " + toString((unsigned)_inst) + ">", 0, 0, 0});
+	}
+}
