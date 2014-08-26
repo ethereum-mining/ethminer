@@ -27,7 +27,7 @@
 using namespace std;
 using namespace eth;
 
-#define ETH_ADDRESS_DEBUG 0
+#define ETH_ADDRESS_DEBUG 1
 
 Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 {
@@ -85,7 +85,7 @@ Address Transaction::sender() const
 		cout << "MSG: " << msg << endl;
 		cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
 		cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-		cout << "ADR: " << ret << endl;
+		cout << "ADR: " << m_sender << endl;
 #endif
 	}
 	return m_sender;

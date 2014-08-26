@@ -169,11 +169,13 @@ enum class Instruction: uint8_t
 /// Information structure for a particular instruction.
 struct InstructionInfo
 {
-	char const* name;	///< The name of the instruction.
+	std::string name;	///< The name of the instruction.
 	int additional;		///< Additional items required in memory for this instructions (only for PUSH).
 	int args;			///< Number of items required on the stack for this instruction (and, for the purposes of ret, the number taken from the stack).
 	int ret;			///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
 };
+
+InstructionInfo instructionInfo(Instruction _inst);
 
 /// Information on all the instructions.
 extern const std::map<Instruction, InstructionInfo> c_instructionInfo;

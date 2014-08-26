@@ -82,7 +82,6 @@ using eth::operator<<;
 // vars
 using eth::g_logPost;
 using eth::g_logVerbosity;
-using eth::c_instructionInfo;
 
 static void initUnits(QComboBox* _b)
 {
@@ -1702,7 +1701,7 @@ void Main::on_dumpTracePretty_triggered()
 			f << "    STORAGE" << endl;
 			for (auto const& i: ws.storage)
 				f << showbase << hex << i.first << ": " << i.second << endl;
-			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << c_instructionInfo.at(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
+			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << eth::instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
 		}
 }
 
@@ -1851,7 +1850,7 @@ void Main::updateDebugger()
 					ostringstream out;
 					out << s.cur.abridged();
 					if (i)
-						out << " " << c_instructionInfo.at(s.inst).name << " @0x" << hex << s.curPC;
+						out << " " << instructionInfo(s.inst).name << " @0x" << hex << s.curPC;
 					ui->callStack->addItem(QString::fromStdString(out.str()));
 				}
 			}
@@ -1867,7 +1866,7 @@ void Main::updateDebugger()
 					byte b = i < code.size() ? code[i] : 0;
 					try
 					{
-						QString s = c_instructionInfo.at((Instruction)b).name;
+						QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 						ostringstream out;
 						out << hex << setw(4) << setfill('0') << i;
 						m_pcWarp[i] = dc->count();
@@ -1917,7 +1916,7 @@ void Main::updateDebugger()
 				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
 
 			ostringstream ss;
-			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << c_instructionInfo.at(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
+			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << eth::instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
 			for (auto const& i: ws.storage)
