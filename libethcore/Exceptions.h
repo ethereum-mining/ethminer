@@ -5,6 +5,8 @@
 namespace eth
 {
 
+class DatabaseAlreadyOpen: public Exception {};
+
 class NotEnoughCash: public Exception {};
 
 class GasPriceTooLow: public Exception {};
