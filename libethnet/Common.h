@@ -14,11 +14,11 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerNetwork.h
+/** @file Common.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
- * Miscellanea required for the PeerServer/PeerSession classes.
+ * Miscellanea required for the PeerHost/PeerSession classes.
  */
 
 #pragma once
@@ -37,15 +37,7 @@ namespace eth
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
-static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
-static const eth::uint c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
-static const eth::uint c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
-static const eth::uint c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
-
-class OverlayDB;
-class BlockChain;
-class TransactionQueue;
-class PeerServer;
+class PeerHost;
 class PeerSession;
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
@@ -65,16 +57,9 @@ enum PacketType
 	DisconnectPacket,
 	PingPacket,
 	PongPacket,
-	GetPeersPacket = 0x10,
+	GetPeersPacket,
 	PeersPacket,
-	TransactionsPacket,
-	BlocksPacket,
-	GetChainPacket,
-	NotInChainPacket,
-	GetTransactionsPacket,
-	GetBlockHashesPacket,
-	BlockHashesPacket,
-	GetBlocksPacket,
+	UserPacket = 0x10
 };
 
 enum DisconnectReason
@@ -85,9 +70,9 @@ enum DisconnectReason
 	UselessPeer,
 	TooManyPeers,
 	DuplicatePeer,
-	WrongGenesis,
 	IncompatibleProtocol,
-	ClientQuit
+	ClientQuit,
+	UserReason = 0x10
 };
 
 /// @returns the string form of the given disconnection reason.
@@ -102,11 +87,5 @@ struct PeerInfo
 };
 
 class UPnP;
-
-enum class NodeMode
-{
-	Full,
-	PeerServer
-};
 
 }

@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerNetwork.cpp
+/** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "PeerNetwork.h"
+#include "Common.h"
 using namespace std;
 using namespace eth;
 
@@ -53,7 +53,6 @@ std::string eth::reasonOf(DisconnectReason _r)
 	case UselessPeer: return "Peer had no use for this node.";
 	case TooManyPeers: return "Peer had too many connections.";
 	case DuplicatePeer: return "Peer was already connected.";
-	case WrongGenesis: return "Disagreement over genesis block.";
 	case IncompatibleProtocol: return "Peer protocol versions are incompatible.";
 	case ClientQuit: return "Peer is exiting.";
 	default: return "Unknown reason.";

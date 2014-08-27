@@ -24,7 +24,7 @@
 #include <boost/thread.hpp>
 #include <libethential/Common.h>
 #include "libethcore/CommonEth.h"
-#include "Guards.h"
+#include <libethential/Guards.h>
 
 namespace eth
 {

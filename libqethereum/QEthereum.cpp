@@ -5,7 +5,7 @@
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
-#include <libethereum/PeerServer.h>
+#include <libethereum/EthereumHost.h>
 #include "QEthereum.h"
 using namespace std;
 
