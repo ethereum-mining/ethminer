@@ -14,24 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerSession.cpp
+/** @file EthereumSession.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "PeerSession.h"
+#include "EthereumSession.h"
 
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
-#include "PeerServer.h"
+#include "EthereumHost.h"
 using namespace std;
 using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort):
+EthereumSession::EthereumSession(EthereumHost* _s, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_reqNetworkId(_rNId),
@@ -43,7 +43,7 @@ PeerSession::PeerSession(PeerServer* _s, bi::tcp::socket _socket, u256 _rNId, bi
 	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0)});
 }
 
-PeerSession::~PeerSession()
+EthereumSession::~EthereumSession()
 {
 	giveUpOnFetch();
 
@@ -56,7 +56,7 @@ PeerSession::~PeerSession()
 	catch (...){}
 }
 
-void PeerSession::giveUpOnFetch()
+void EthereumSession::giveUpOnFetch()
 {
 	if (m_askedBlocks.size())
 	{
@@ -71,7 +71,7 @@ void PeerSession::giveUpOnFetch()
 	}
 }
 
-bi::tcp::endpoint PeerSession::endpoint() const
+bi::tcp::endpoint EthereumSession::endpoint() const
 {
 	if (m_socket.is_open())
 		try
@@ -83,7 +83,7 @@ bi::tcp::endpoint PeerSession::endpoint() const
 	return bi::tcp::endpoint();
 }
 
-bool PeerSession::interpret(RLP const& _r)
+bool EthereumSession::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
 	switch (_r[0].toInt<unsigned>())
@@ -109,7 +109,7 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 
-		if (m_protocolVersion != PeerServer::protocolVersion() || m_networkId != m_server->networkId() || !m_id)
+		if (m_protocolVersion != EthereumHost::protocolVersion() || m_networkId != m_server->networkId() || !m_id)
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
@@ -343,7 +343,7 @@ bool PeerSession::interpret(RLP const& _r)
 	return true;
 }
 
-void PeerSession::ensureGettingChain()
+void EthereumSession::ensureGettingChain()
 {
 	if (!m_askedBlocks.size())
 		m_askedBlocks = m_server->neededBlocks();
@@ -361,25 +361,25 @@ void PeerSession::ensureGettingChain()
 		clogS(NetMessageSummary) << "No blocks left to get.";
 }
 
-void PeerSession::ping()
+void EthereumSession::ping()
 {
 	RLPStream s;
 	sealAndSend(prep(s).appendList(1) << PingPacket);
 	m_ping = std::chrono::steady_clock::now();
 }
 
-void PeerSession::getPeers()
+void EthereumSession::getPeers()
 {
 	RLPStream s;
 	sealAndSend(prep(s).appendList(1) << GetPeersPacket);
 }
 
-RLPStream& PeerSession::prep(RLPStream& _s)
+RLPStream& EthereumSession::prep(RLPStream& _s)
 {
 	return _s.appendRaw(bytes(8, 0));
 }
 
-void PeerSession::sealAndSend(RLPStream& _s)
+void EthereumSession::sealAndSend(RLPStream& _s)
 {
 	bytes b;
 	_s.swapOut(b);
@@ -387,7 +387,7 @@ void PeerSession::sealAndSend(RLPStream& _s)
 	sendDestroy(b);
 }
 
-bool PeerSession::checkPacket(bytesConstRef _msg)
+bool EthereumSession::checkPacket(bytesConstRef _msg)
 {
 	if (_msg.size() < 8)
 		return false;
@@ -402,7 +402,7 @@ bool PeerSession::checkPacket(bytesConstRef _msg)
 	return true;
 }
 
-void PeerSession::sendDestroy(bytes& _msg)
+void EthereumSession::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 
@@ -415,7 +415,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	writeImpl(buffer);
 }
 
-void PeerSession::send(bytesConstRef _msg)
+void EthereumSession::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
 	
@@ -428,7 +428,7 @@ void PeerSession::send(bytesConstRef _msg)
 	writeImpl(buffer);
 }
 
-void PeerSession::writeImpl(bytes& _buffer)
+void EthereumSession::writeImpl(bytes& _buffer)
 {
 //	cerr << (void*)this << " writeImpl" << endl;
 	if (!m_socket.is_open())
@@ -440,7 +440,7 @@ void PeerSession::writeImpl(bytes& _buffer)
 		write();
 }
 
-void PeerSession::write()
+void EthereumSession::write()
 {
 //	cerr << (void*)this << " write" << endl;
 	lock_guard<recursive_mutex> l(m_writeLock);
@@ -467,7 +467,7 @@ void PeerSession::write()
 	});
 }
 
-void PeerSession::dropped()
+void EthereumSession::dropped()
 {
 //	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
@@ -479,7 +479,7 @@ void PeerSession::dropped()
 		catch (...) {}
 }
 
-void PeerSession::disconnect(int _reason)
+void EthereumSession::disconnect(int _reason)
 {
 	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
 	if (m_socket.is_open())
@@ -497,12 +497,12 @@ void PeerSession::disconnect(int _reason)
 	}
 }
 
-void PeerSession::start()
+void EthereumSession::start()
 {
 	RLPStream s;
 	prep(s);
 	s.appendList(9) << HelloPacket
-					<< (uint)PeerServer::protocolVersion()
+					<< (uint)EthereumHost::protocolVersion()
 					<< m_server->networkId()
 					<< m_server->m_clientVersion
 					<< (m_server->m_mode == NodeMode::Full ? 0x07 : m_server->m_mode == NodeMode::PeerServer ? 0x01 : 0)
@@ -517,7 +517,7 @@ void PeerSession::start()
 	doRead();
 }
 
-void PeerSession::startInitialSync()
+void EthereumSession::startInitialSync()
 {
 	h256 c = m_server->m_chain->currentHash();
 	uint n = m_server->m_chain->number();
@@ -535,7 +535,7 @@ void PeerSession::startInitialSync()
 	sealAndSend(s);
 }
 
-void PeerSession::doRead()
+void EthereumSession::doRead()
 {
 	// ignore packets received while waiting to disconnect
 	if (chrono::steady_clock::now() - m_disconnect > chrono::seconds(0))

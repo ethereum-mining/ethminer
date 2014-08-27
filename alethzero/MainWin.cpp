@@ -37,7 +37,7 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
-#include <libethereum/PeerServer.h>
+#include <libethereum/EthereumHost.h>
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
