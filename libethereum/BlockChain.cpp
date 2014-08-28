@@ -333,16 +333,23 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
 {
+	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+	if (!_from || !_to)
+	{
+		return h256s();
+	}
 	h256s ret;
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
+	cdebug << "treeRoute" << fn << "..." << tn;
 	while (fn > tn)
 	{
 		if (_pre)
 			ret.push_back(_from);
 		_from = details(_from).parent;
 		fn--;
+		cdebug << "from:" << fn << _from.abridged();
 	}
 	while (fn < tn)
 	{
@@ -350,15 +357,21 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		_to = details(_to).parent;
 		tn--;
+		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (_from != _to)
 	{
+		assert(_from);
+		assert(_to);
+		_from = details(_from).parent;
+		_to = details(_to).parent;
 		if (_pre)
-			_from = details(_from).parent;
+			ret.push_back(_from);
 		if (_post)
-			_to = details(_to).parent;
-		ret.push_back(_from);
-		back.push_back(_to);
+			back.push_back(_to);
+		fn--;
+		tn--;
+		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
 	if (o_common)
 		*o_common = _from;
