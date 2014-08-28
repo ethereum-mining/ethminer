@@ -30,11 +30,11 @@
 #include <libethential/CommonIO.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include "Guards.h"
+#include <libethential/Guards.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
-#include "PeerNetwork.h"
+#include "CommonNet.h"
 #include "PastMessage.h"
 #include "MessageFilter.h"
 #include "Miner.h"
@@ -298,7 +298,7 @@ private:
 	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
 	std::atomic<ClientWorkState> m_workNetState;
 	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
-	std::unique_ptr<PeerServer> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	std::unique_ptr<EthereumHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;

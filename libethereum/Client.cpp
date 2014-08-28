@@ -26,7 +26,7 @@
 #include <boost/filesystem.hpp>
 #include <libethential/Log.h>
 #include "Defaults.h"
-#include "PeerServer.h"
+#include "EthereumHost.h"
 using namespace std;
 using namespace eth;
 
@@ -213,13 +213,13 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 			try
 			{
-				m_net.reset(new PeerServer(m_clientVersion, m_bc, _networkId, _listenPort, _mode, _publicIP, _upnp));
+				m_net.reset(new EthereumHost(m_clientVersion, m_bc, _networkId, _listenPort, _mode, _publicIP, _upnp));
 			}
 			catch (std::exception const&)
 			{
 				// Probably already have the port open.
 				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-				m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+				m_net.reset(new EthereumHost(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
 			}
 		}
 		m_net->setIdealPeerCount(_peers);

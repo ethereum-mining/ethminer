@@ -25,7 +25,7 @@
 #include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
-#include "Guards.h"
+#include <libethential/Guards.h>
 #include "BlockDetails.h"
 #include "AddressState.h"
 #include "BlockQueue.h"
