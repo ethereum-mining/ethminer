@@ -56,8 +56,19 @@ EthereumSession::~EthereumSession()
 	catch (...){}
 }
 
+string toString(h256s const& _bs)
+{
+	ostringstream out;
+	out << "[ ";
+	for (auto i: _bs)
+		out << i.abridged() << ", ";
+	out << "]";
+	return out.str();
+}
+
 void EthereumSession::giveUpOnFetch()
 {
+	clogS(NetNote) << "GIVE UP FETCH; can't get " << toString(m_askedBlocks);
 	if (m_askedBlocks.size())
 	{
 		Guard l (m_server->x_blocksNeeded);
@@ -329,6 +340,7 @@ bool EthereumSession::interpret(RLP const& _r)
 		}
 		clogS(NetMessageSummary) << dec << knownParents << " known parents, " << unknownParents << "unknown, " << used << "used.";
 		ensureGettingChain();
+		break;
 	}
 	case GetTransactionsPacket:
 	{

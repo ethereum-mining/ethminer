@@ -571,15 +571,27 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 {
 	auto td = _from->m_totalDifficulty;
 
-	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
+	if (_from->m_neededBlocks.empty())
 		return;
 
+	clog(NetNote) << "Hash-chain COMPLETE:" << log2((double)_from->m_totalDifficulty) << "vs" << log2((double)m_chain->details().totalDifficulty) << "," << log2((double)m_totalDifficultyOfNeeded) << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+
+	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
+	{
+		clog(NetNote) << "Difficulty of hashchain LOWER. Ignoring.";
+		return;
+	}
+
+	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue.";
+
+	// Looks like it's the best yet for total difficulty. Set to download.
 	{
 		Guard l(x_blocksNeeded);
 		m_blocksNeeded = _from->m_neededBlocks;
+		m_blocksOnWay.clear();
+		m_totalDifficultyOfNeeded = td;
 	}
 
-	// Looks like it's the best yet for total difficulty. Set to download.
 	{
 		Guard l(x_peers);
 		for (auto const& i: m_peers)
