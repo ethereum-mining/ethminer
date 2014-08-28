@@ -129,7 +129,7 @@ private:
 	/// Get a bunch of needed blocks.
 	/// Removes them from our list of needed blocks.
 	/// @returns empty if there's no more blocks left to fetch, otherwise the blocks to fetch.
-	h256Set neededBlocks();
+	h256Set neededBlocks(h256Set const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
 	virtual bool isInitialised() const { return m_latestBlockSent; }

@@ -60,6 +60,10 @@ private:
 
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
 	void ensureGettingChain();
+	/// Ensure that we are waiting for a bunch of blocks from our peer.
+	void continueGettingChain();
+	/// Now getting a different chain so we need to make sure we restart.
+	void restartGettingChain();
 
 	void giveUpOnFetch();
 
@@ -97,8 +101,10 @@ private:
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
 	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
+	h256Set m_failedBlocks;					///< Blocks that the peer doesn't seem to have.
 
 	h256Set m_askedBlocks;					///< The blocks for which we sent the last GetBlocks for but haven't received a corresponding Blocks.
+	bool m_askedBlocksChanged = true;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
