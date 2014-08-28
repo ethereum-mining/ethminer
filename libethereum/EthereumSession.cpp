@@ -398,7 +398,10 @@ void EthereumSession::continueGettingChain()
 		sealAndSend(s);
 	}
 	else
+	{
 		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have " << m_failedBlocks.size() << "of our needed blocks.";
+		m_server->noteDoneBlocks();
+	}
 }
 
 void EthereumSession::ping()

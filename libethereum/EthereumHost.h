@@ -113,6 +113,8 @@ private:
 	bool noteBlock(h256 _hash, bytesConstRef _data);
 	/// Session has finished getting the chain of hashes.
 	void noteHaveChain(std::shared_ptr<EthereumSession> const& _who);
+	/// Called when the peer can no longer provide us with any needed blocks.
+	void noteDoneBlocks();
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
 
