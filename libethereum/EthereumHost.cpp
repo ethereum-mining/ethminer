@@ -367,22 +367,27 @@ void EthereumHost::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-h256Set EthereumHost::neededBlocks()
+h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
 {
 	Guard l(x_blocksNeeded);
 	h256Set ret;
 	if (m_blocksNeeded.size())
 	{
-		while (ret.size() < c_maxBlocksAsk && m_blocksNeeded.size())
-		{
-			ret.insert(m_blocksNeeded.back());
-			m_blocksOnWay.insert(m_blocksNeeded.back());
-			m_blocksNeeded.pop_back();
-		}
+		int s = m_blocksNeeded.size() - 1;
+		for (; ret.size() < c_maxBlocksAsk && s < m_blocksNeeded.size(); --s)
+			if (!_exclude.count(m_blocksNeeded[s]))
+			{
+				auto it = m_blocksNeeded.begin() + s;
+				ret.insert(*it);
+				m_blocksOnWay.insert(*it);
+				m_blocksNeeded.erase(it);
+			}
 	}
 	else
-		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end(); ++i)
+		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end() && !_exclude.count(*i); ++i)
 			ret.insert(*i);
+
+	clog(NetMessageSummary) << "Asking for" << ret.size() << "blocks that we don't yet have." << m_blocksNeeded.size() << "blocks still needed," << m_blocksOnWay.size() << "blocks on way.";
 	return ret;
 }
 
@@ -574,7 +579,7 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 	if (_from->m_neededBlocks.empty())
 		return;
 
-	clog(NetNote) << "Hash-chain COMPLETE:" << log2((double)_from->m_totalDifficulty) << "vs" << log2((double)m_chain->details().totalDifficulty) << "," << log2((double)m_totalDifficultyOfNeeded) << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain->details().totalDifficulty << "," << m_totalDifficultyOfNeeded << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
 
 	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
 	{
@@ -596,7 +601,7 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 		Guard l(x_peers);
 		for (auto const& i: m_peers)
 			if (shared_ptr<EthereumSession> p = i.second.lock())
-				p->ensureGettingChain();
+				p->restartGettingChain();
 	}
 }
 
