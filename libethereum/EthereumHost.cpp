@@ -383,7 +383,7 @@ h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
 				m_blocksNeeded.erase(it);
 			}
 	}
-	else
+	if (!ret.size())
 		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end() && !_exclude.count(*i); ++i)
 			ret.insert(*i);
 
