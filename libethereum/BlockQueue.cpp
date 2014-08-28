@@ -71,7 +71,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	}
 
 	// Check it's not crazy
-	if (bi.timestamp > (u256)time(0) - 10)
+	if (bi.timestamp > (u256)time(0) + 10)
 	{
 		cnote << "Invalid timestamp.";
 		return false;
