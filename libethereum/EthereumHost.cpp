@@ -374,7 +374,7 @@ h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
 	if (m_blocksNeeded.size())
 	{
 		int s = m_blocksNeeded.size() - 1;
-		for (; ret.size() < c_maxBlocksAsk && s < m_blocksNeeded.size(); --s)
+		for (; ret.size() < c_maxBlocksAsk && s < (int)m_blocksNeeded.size() && s >= 0; --s)
 			if (!_exclude.count(m_blocksNeeded[s]))
 			{
 				auto it = m_blocksNeeded.begin() + s;
