@@ -28,12 +28,12 @@
 #include <boost/utility.hpp>
 #include <libethential/Common.h>
 #include <libethential/CommonIO.h>
+#include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include <libethereum/Guards.h>
 #include <libethereum/PastMessage.h>
 #include <libethereum/MessageFilter.h>
-#include <libethereum/PeerNetwork.h>
+#include <libethereum/CommonNet.h>
 
 namespace eth
 {

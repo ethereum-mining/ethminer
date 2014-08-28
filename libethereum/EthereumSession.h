@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerSession.h
+/** @file EthereumSession.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -28,22 +28,22 @@
 #include <utility>
 #include <libethential/RLP.h>
 #include <libethcore/CommonEth.h>
-#include "PeerNetwork.h"
+#include "CommonNet.h"
 
 namespace eth
 {
 
 /**
- * @brief The PeerSession class
+ * @brief The EthereumSession class
  * @todo Document fully.
  */
-class PeerSession: public std::enable_shared_from_this<PeerSession>
+class EthereumSession: public std::enable_shared_from_this<EthereumSession>
 {
-	friend class PeerServer;
+	friend class EthereumHost;
 
 public:
-	PeerSession(PeerServer* _server, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort = 0);
-	~PeerSession();
+	EthereumSession(EthereumHost* _server, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort = 0);
+	~EthereumSession();
 
 	void start();
 	void disconnect(int _reason);
@@ -77,7 +77,7 @@ private:
 	void send(bytesConstRef _msg);
 	void writeImpl(bytes& _buffer);
 	void write();
-	PeerServer* m_server;
+	EthereumHost* m_server;
 
 	std::recursive_mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
