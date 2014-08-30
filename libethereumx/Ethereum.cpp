@@ -63,63 +63,67 @@ void Ethereum::startServer()
 {
 }
 
-void Client::flushTransactions()
+void Ethereum::flushTransactions()
 {
 }
 
-std::vector<PeerInfo> Client::peers()
+std::vector<PeerInfo> Ethereum::peers()
 {
 	return std::vector<PeerInfo>();
 }
 
-size_t Client::peerCount() const
+size_t Ethereum::peerCount() const
 {
 	return 0;
 }
 
-void Client::connect(std::string const& _seedHost, unsigned short _port)
+void Ethereum::connect(std::string const& _seedHost, unsigned short _port)
 {
 }
 
-void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+void Ethereum::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Ethereum::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	return bytes();
 }
 
-Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address Ethereum::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	return Address();
 }
 
-void Client::inject(bytesConstRef _rlp)
+void Ethereum::inject(bytesConstRef _rlp)
 {
 }
 
-u256 Client::balanceAt(Address _a, int _block) const
+u256 Ethereum::balanceAt(Address _a, int _block) const
 {
 	return u256();
 }
 
-std::map<u256, u256> Client::storageAt(Address _a, int _block) const
+PastMessages Ethereum::messages(MessageFilter const& _filter) const
+{
+}
+
+std::map<u256, u256> Ethereum::storageAt(Address _a, int _block) const
 {
 	return std::map<u256, u256>();
 }
 
-u256 Client::countAt(Address _a, int _block) const
+u256 Ethereum::countAt(Address _a, int _block) const
 {
 	return u256();
 }
 
-u256 Client::stateAt(Address _a, u256 _l, int _block) const
+u256 Ethereum::stateAt(Address _a, u256 _l, int _block) const
 {
 	return u256();
 }
 
-bytes Client::codeAt(Address _a, int _block) const
+bytes Ethereum::codeAt(Address _a, int _block) const
 {
 	return bytes();
 }
