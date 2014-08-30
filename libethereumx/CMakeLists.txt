@@ -17,6 +17,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
+target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} ethcore)
