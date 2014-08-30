@@ -52,13 +52,12 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerHost::PeerHost(std::string const& _clientVersion, u256 _networkId, unsigned short _port, string const& _publicAddress, bool _upnp):
+PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_listenPort(_port),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create()),
-	m_networkId(_networkId)
+	m_key(KeyPair::create())
 {
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
@@ -66,13 +65,12 @@ PeerHost::PeerHost(std::string const& _clientVersion, u256 _networkId, unsigned 
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
 }
 
-PeerHost::PeerHost(std::string const& _clientVersion, u256 _networkId, string const& _publicAddress, bool _upnp):
+PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddress, bool _upnp):
 	m_clientVersion(_clientVersion),
 	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create()),
-	m_networkId(_networkId)
+	m_key(KeyPair::create())
 {
 	m_listenPort = m_acceptor.local_endpoint().port();
 
@@ -83,13 +81,12 @@ PeerHost::PeerHost(std::string const& _clientVersion, u256 _networkId, string co
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
 }
 
-PeerHost::PeerHost(std::string const& _clientVersion, u256 _networkId):
+PeerHost::PeerHost(std::string const& _clientVersion):
 	m_clientVersion(_clientVersion),
 	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create()),
-	m_networkId(_networkId)
+	m_key(KeyPair::create())
 {
 	// populate addresses.
 	populateAddresses();
@@ -101,10 +98,20 @@ PeerHost::~PeerHost()
 	disconnectPeers();
 }
 
+unsigned PeerHost::protocolVersion() const
+{
+	return 0;
+}
+
 void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s)
 {
-	Guard l(x_peers);
-	m_peers[_s->m_id] = _s;
+	{
+		Guard l(x_peers);
+		m_peers[_s->m_id] = _s;
+	}
+	for (auto const& i: _s->m_caps)
+		if (haveCapability(i))
+			_s->m_capabilities.push_back(shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get())));
 }
 
 void PeerHost::disconnectPeers()
@@ -293,7 +300,7 @@ void PeerHost::ensureAccepting()
 					} catch (...){}
 					bi::address remoteAddress = m_socket.remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), m_networkId, remoteAddress);
+					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), remoteAddress);
 					p->start();
 				}
 				catch (std::exception const& _e)
@@ -341,7 +348,7 @@ void PeerHost::connect(bi::tcp::endpoint const& _ep)
 		}
 		else
 		{
-			auto p = make_shared<PeerSession>(this, std::move(*s), m_networkId, _ep.address(), _ep.port());
+			auto p = make_shared<PeerSession>(this, std::move(*s), _ep.address(), _ep.port());
 			clog(NetConnect) << "Connected to " << _ep;
 			p->start();
 		}

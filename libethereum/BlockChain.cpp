@@ -165,6 +165,16 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
+inline string toString(h256s const& _bs)
+{
+	ostringstream out;
+	out << "[ ";
+	for (auto i: _bs)
+		out << i.abridged() << ", ";
+	out << "]";
+	return out.str();
+}
+
 h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 	vector<bytes> blocks;
@@ -183,7 +193,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << eth::sha3(block).abridged();
+			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
 			_bq.import(&block, *this);
 		}
 		catch (...){}
@@ -223,7 +233,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		throw;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
+	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
 	if (details(newHash))
@@ -320,20 +330,18 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_lastBlockHash = newHash;
 		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
-		for (auto r: ret)
-			clog(BlockChainNote) << r.abridged();
+		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << ", TD:" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 	return ret;
 }
 
 h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
 {
-	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
 	{
 		return h256s();
@@ -342,14 +350,14 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-	cdebug << "treeRoute" << fn << "..." << tn;
+//	cdebug << "treeRoute" << fn << "..." << tn;
 	while (fn > tn)
 	{
 		if (_pre)
 			ret.push_back(_from);
 		_from = details(_from).parent;
 		fn--;
-		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from.abridged();
 	}
 	while (fn < tn)
 	{
@@ -357,7 +365,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		_to = details(_to).parent;
 		tn--;
-		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (_from != _to)
 	{
@@ -371,7 +379,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		fn--;
 		tn--;
-		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
 	if (o_common)
 		*o_common = _from;
@@ -408,7 +416,7 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	h256 p = _parent;
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
-		ret.insert(sha3(RLP(block(p))[0].data()));
+		ret.insert(p);		// TODO: check: should this be details(p).parent?
 		for (auto i: RLP(block(p))[2])
 			ret.insert(sha3(i.data()));
 	}

@@ -56,7 +56,7 @@ EthereumSession::~EthereumSession()
 	catch (...){}
 }
 
-string toString(h256s const& _bs)
+inline string toString(h256s const& _bs)
 {
 	ostringstream out;
 	out << "[ ";
@@ -75,6 +75,7 @@ void EthereumSession::giveUpOnFetch()
 		m_server->m_blocksNeeded.reserve(m_server->m_blocksNeeded.size() + m_askedBlocks.size());
 		for (auto i: m_askedBlocks)
 		{
+			m_failedBlocks.insert(i);
 			m_server->m_blocksOnWay.erase(i);
 			m_server->m_blocksNeeded.push_back(i);
 		}
@@ -109,14 +110,21 @@ bool EthereumSession::interpret(RLP const& _r)
 		m_id = _r[6].toHash<h512>();
 		m_totalDifficulty = _r[7].toInt<u256>();
 		m_latestHash = _r[8].toHash<h256>();
+		auto genesisHash = _r[9].toHash<h256>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
 		if (m_server->havePeer(m_id))
 		{
 			// Already connected.
 			cwarn << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
 			disconnect(DuplicatePeer);
+			return false;
+		}
+
+		if (genesisHash != m_server->m_chain->genesisHash())
+		{
+			disconnect(WrongGenesis);
 			return false;
 		}
 
@@ -301,17 +309,17 @@ bool EthereumSession::interpret(RLP const& _r)
 			break;
 		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << " entries)";
 
-		if (_r.itemCount() == 1)
+		if (_r.itemCount() == 1 && !m_askedBlocksChanged)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
 			giveUpOnFetch();
-			break;
 		}
+		m_askedBlocksChanged = false;
 
 		unsigned used = 0;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			auto h = sha3(_r[i].data());
+			auto h = BlockInfo::headerHash(_r[i].data());
 			if (m_server->noteBlock(h, _r[i].data()))
 				used++;
 			m_askedBlocks.erase(h);
@@ -324,7 +332,7 @@ bool EthereumSession::interpret(RLP const& _r)
 		{
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
-				auto h = sha3(_r[i].data());
+				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());
 				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{
@@ -339,7 +347,7 @@ bool EthereumSession::interpret(RLP const& _r)
 			}
 		}
 		clogS(NetMessageSummary) << dec << knownParents << " known parents, " << unknownParents << "unknown, " << used << "used.";
-		ensureGettingChain();
+		continueGettingChain();
 		break;
 	}
 	case GetTransactionsPacket:
@@ -355,10 +363,30 @@ bool EthereumSession::interpret(RLP const& _r)
 	return true;
 }
 
+void EthereumSession::restartGettingChain()
+{
+	if (m_askedBlocks.size())
+	{
+		m_askedBlocksChanged = true;	// So that we continue even if the Ask's reply is empty.
+		m_askedBlocks.clear();			// So that we restart once we get the Ask's reply.
+		m_failedBlocks.clear();
+	}
+	else
+		ensureGettingChain();
+}
+
 void EthereumSession::ensureGettingChain()
 {
+	if (m_askedBlocks.size())
+		return;	// Already asked & waiting for some.
+
+	continueGettingChain();
+}
+
+void EthereumSession::continueGettingChain()
+{
 	if (!m_askedBlocks.size())
-		m_askedBlocks = m_server->neededBlocks();
+		m_askedBlocks = m_server->neededBlocks(m_failedBlocks);
 
 	if (m_askedBlocks.size())
 	{
@@ -370,7 +398,10 @@ void EthereumSession::ensureGettingChain()
 		sealAndSend(s);
 	}
 	else
-		clogS(NetMessageSummary) << "No blocks left to get.";
+	{
+		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have " << m_failedBlocks.size() << "of our needed blocks.";
+		m_server->noteDoneBlocks();
+	}
 }
 
 void EthereumSession::ping()
@@ -513,7 +544,7 @@ void EthereumSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(9) << HelloPacket
+	s.appendList(10) << HelloPacket
 					<< (uint)EthereumHost::protocolVersion()
 					<< m_server->networkId()
 					<< m_server->m_clientVersion
@@ -521,7 +552,8 @@ void EthereumSession::start()
 					<< m_server->m_public.port()
 					<< m_server->m_key.pub()
 					<< m_server->m_chain->details().totalDifficulty
-					<< m_server->m_chain->currentHash();
+					<< m_server->m_chain->currentHash()
+					<< m_server->m_chain->genesisHash();
 	sealAndSend(s);
 	ping();
 	getPeers();

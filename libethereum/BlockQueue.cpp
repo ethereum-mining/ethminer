@@ -31,13 +31,18 @@ using namespace eth;
 bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 {
 	// Check if we already know this block.
-	h256 h = sha3(_block);
+	h256 h = BlockInfo::headerHash(_block);
+
+	cnote << "Queuing block" << h.abridged() << "for import...";
 
 	UpgradableGuard l(m_lock);
 
 	if (m_readySet.count(h) || m_drainingSet.count(h) || m_futureSet.count(h))
+	{
 		// Already know about this one.
+		cnote << "Already known.";
 		return false;
+	}
 
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
@@ -56,15 +61,20 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 		return false;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
 
 	// Check block doesn't already exist first!
-	if (_bc.details(newHash))
+	if (_bc.details(h))
+	{
+		cnote << "Already known in chain.";
 		return false;
+	}
 
 	// Check it's not crazy
-	if (bi.timestamp > (u256)time(0))
+	if (bi.timestamp > (u256)time(0) + 10)
+	{
+		cnote << "Invalid timestamp.";
 		return false;
+	}
 
 	{
 		UpgradeGuard ul(l);
@@ -73,12 +83,14 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.details(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
+//			cnote << "OK - queued for future.";
 			m_future.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_futureSet.insert(h);
 		}
 		else
 		{
 			// If valid, append to blocks.
+//			cnote << "OK - ready for chain insertion.";
 			m_ready.push_back(_block.toBytes());
 			m_readySet.insert(h);
 
