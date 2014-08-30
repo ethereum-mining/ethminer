@@ -42,7 +42,7 @@ class PeerSession: public std::enable_shared_from_this<PeerSession>
 	friend class PeerHost;
 
 public:
-	PeerSession(PeerHost* _server, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort = 0);
+	PeerSession(PeerHost* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
 	virtual ~PeerSession();
 
 	void start();
@@ -55,9 +55,6 @@ public:
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 protected:
-	virtual bool interpret(RLP const& _r);
-	virtual void onNewPeer();
-
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
@@ -71,7 +68,7 @@ private:
 	void write();
 
 	void getPeers();
-	bool preInterpret(RLP const& _r);
+	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
@@ -88,16 +85,16 @@ private:
 
 	bytes m_incoming;
 	uint m_protocolVersion;
-	u256 m_networkId;
-	u256 m_reqNetworkId;
 	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
-	uint m_caps;
+	std::vector<std::string> m_caps;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
 	std::chrono::steady_clock::time_point m_disconnect;
 
 	uint m_rating;
+
+	std::vector<std::shared_ptr<PeerCapability>> m_capabilities;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

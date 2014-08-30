@@ -37,6 +37,7 @@ namespace eth
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
+class RLP;
 class PeerHost;
 class PeerSession;
 
@@ -87,5 +88,56 @@ struct PeerInfo
 };
 
 class UPnP;
+
+class PeerCapability;
+
+class HostCapabilityFace
+{
+public:
+	HostCapabilityFace(PeerHost*) {}
+	virtual ~HostCapabilityFace() {}
+
+	virtual std::string name() const = 0;
+	virtual PeerCapability* newPeerCapability(PeerSession* _s) = 0;
+};
+
+template<class PeerCap>
+class HostCapability: public HostCapabilityFace
+{
+public:
+	HostCapability(PeerHost* _h): m_host(_h) {}
+	virtual ~HostCapability() {}
+
+	static std::string staticName() { return PeerCap::name(); }
+
+	PeerHost* host() const { return m_host; }
+
+protected:
+	virtual std::string name() const { return PeerCap::name(); }
+	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s); }
+
+private:
+	PeerHost* m_host;
+};
+
+class PeerCapability
+{
+	friend class PeerSession;
+
+public:
+	PeerCapability(PeerSession* _s): m_session(_s) {}
+	virtual ~PeerCapability() {}
+
+	/// Must return the capability name.
+	static std::string name() { return ""; }
+
+	PeerSession* session() const { return m_session; }
+
+protected:
+	virtual bool interpret(RLP const&) = 0;
+
+private:
+	PeerSession* m_session;
+};
 
 }
