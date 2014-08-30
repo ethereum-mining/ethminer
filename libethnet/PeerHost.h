@@ -47,11 +47,11 @@ class PeerHost
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerHost(std::string const& _clientVersion, u256 _networkId, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, listening for connections on a system-assigned port.
-	PeerHost(std::string const& _clientVersion, u256 _networkId, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true);
 	/// Start server, but don't listen.
-	PeerHost(std::string const& _clientVersion, u256 _networkId);
+	PeerHost(std::string const& _clientVersion);
 
 	/// Will block on network process events.
 	virtual ~PeerHost();
@@ -59,8 +59,11 @@ public:
 	/// Closes all peers.
 	void disconnectPeers();
 
-	virtual u256 networkId() { return m_networkId; }
-	virtual unsigned protocolVersion() { return 0; }
+	/// Basic peer network protocol version.
+	unsigned protocolVersion() const;
+
+	/// Register a peer-capability; all new peer connections will have this capability.
+	template <class T> void registerCapability() { m_capabilities[T::name()] = std::shared_ptr<HostCapabilityFace>(new T(this)); }
 
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
@@ -97,6 +100,9 @@ public:
 
 	void registerPeer(std::shared_ptr<PeerSession> _s);
 
+	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
+	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
+
 protected:
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
@@ -124,8 +130,6 @@ protected:
 	bi::tcp::endpoint m_public;
 	KeyPair m_key;
 
-	u256 m_networkId;
-
 	mutable std::mutex x_peers;
 	mutable std::map<Public, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
@@ -138,6 +142,8 @@ protected:
 
 	std::vector<bi::address_v4> m_addresses;
 	std::vector<bi::address_v4> m_peerAddresses;
+
+	std::map<std::string, std::shared_ptr<HostCapabilityFace>> m_capabilities;
 
 	bool m_accepting = false;
 };
