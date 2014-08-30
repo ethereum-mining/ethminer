@@ -54,7 +54,6 @@ public:
 
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
-protected:
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);

@@ -41,6 +41,10 @@ class RLPStream;
 class TransactionQueue;
 class BlockQueue;
 
+/**
+ * @brief The PeerHost class
+ * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
+ */
 class PeerHost
 {
 	friend class PeerSession;
@@ -72,7 +76,7 @@ public:
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
 	/// This won't touch alter the blockchain.
-	void process() { if (isInitialised()) m_ioService.poll(); }
+	void process();
 
 	/// @returns true iff we have the a peer of the given id.
 	bool havePeer(Public _id) const;
@@ -107,7 +111,6 @@ protected:
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
 
-	virtual bool isInitialised() const { return true; }
 	void seal(bytes& _b);
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
@@ -133,8 +136,7 @@ protected:
 	mutable std::mutex x_peers;
 	mutable std::map<Public, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
-	mutable std::recursive_mutex m_incomingLock;
-	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
+	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
 	std::vector<Public> m_freePeers;
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;

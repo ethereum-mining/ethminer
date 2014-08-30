@@ -93,12 +93,16 @@ class PeerCapability;
 
 class HostCapabilityFace
 {
+	friend class PeerHost;
+
 public:
 	HostCapabilityFace(PeerHost*) {}
 	virtual ~HostCapabilityFace() {}
 
+protected:
 	virtual std::string name() const = 0;
 	virtual PeerCapability* newPeerCapability(PeerSession* _s) = 0;
+	virtual bool isInitialised() const = 0;
 };
 
 template<class PeerCap>
@@ -113,8 +117,9 @@ public:
 	PeerHost* host() const { return m_host; }
 
 protected:
+	virtual bool isInitialised() const = 0;
 	virtual std::string name() const { return PeerCap::name(); }
-	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s); }
+	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s, this); }
 
 private:
 	PeerHost* m_host;
@@ -125,19 +130,24 @@ class PeerCapability
 	friend class PeerSession;
 
 public:
-	PeerCapability(PeerSession* _s): m_session(_s) {}
+	PeerCapability(PeerSession* _s, HostCapability* _h): m_session(_s), m_host(_h) {}
 	virtual ~PeerCapability() {}
 
 	/// Must return the capability name.
 	static std::string name() { return ""; }
 
 	PeerSession* session() const { return m_session; }
+	HostCapability* hostCapability() const { return m_host; }
 
 protected:
 	virtual bool interpret(RLP const&) = 0;
 
+	void disable(std::string const& _problem);
+
 private:
 	PeerSession* m_session;
+	HostCapability* m_host;
+	bool m_enabled = true;
 };
 
 }

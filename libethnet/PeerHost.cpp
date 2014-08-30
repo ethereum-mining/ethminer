@@ -450,6 +450,16 @@ std::vector<PeerInfo> PeerHost::peers(bool _updatePing) const
 	return ret;
 }
 
+void PeerHost::process()
+{
+	for (auto const& i: m_capabilities)
+		if (!i->isInitialised())
+			return false;
+	growPeers();
+	prunePeers();
+	m_ioService.poll();
+}
+
 void PeerHost::pingAll()
 {
 	Guard l(x_peers);
