@@ -53,6 +53,15 @@ PeerSession::~PeerSession()
 	catch (...){}
 }
 
+void PeerSession::onNewPeer()
+{
+}
+
+bool PeerSession::interpret(RLP const&)
+{
+	return false;
+}
+
 bi::tcp::endpoint PeerSession::endpoint() const
 {
 	if (m_socket.is_open())
