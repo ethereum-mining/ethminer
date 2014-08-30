@@ -172,7 +172,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return timestamp >= _parent.timestamp + 9 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
+		return timestamp >= _parent.timestamp + 5 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
