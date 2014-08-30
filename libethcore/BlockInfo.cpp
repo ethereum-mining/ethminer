@@ -71,6 +71,8 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
+	hash = eth::sha3(_header.data());
+
 	int field = 0;
 	try
 	{
@@ -106,10 +108,9 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 
 void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 {
-	hash = eth::sha3(_block);
-
 	RLP root(_block);
 	RLP header = root[0];
+
 	if (!header.isList())
 		throw InvalidBlockFormat(0, header.data());
 	populateFromHeader(header, _checkNonce);

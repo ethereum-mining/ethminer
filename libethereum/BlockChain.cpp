@@ -193,7 +193,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << eth::sha3(block).abridged();
+			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
 			_bq.import(&block, *this);
 		}
 		catch (...){}
@@ -233,7 +233,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		throw;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
+	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
 	if (details(newHash))
@@ -416,7 +416,7 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	h256 p = _parent;
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
-		ret.insert(sha3(RLP(block(p))[0].data()));
+		ret.insert(p);		// TODO: check: should this be details(p).parent?
 		for (auto i: RLP(block(p))[2])
 			ret.insert(sha3(i.data()));
 	}

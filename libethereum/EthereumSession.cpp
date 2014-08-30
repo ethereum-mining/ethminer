@@ -319,7 +319,7 @@ bool EthereumSession::interpret(RLP const& _r)
 		unsigned used = 0;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			auto h = sha3(_r[i].data());
+			auto h = BlockInfo::headerHash(_r[i].data());
 			if (m_server->noteBlock(h, _r[i].data()))
 				used++;
 			m_askedBlocks.erase(h);
@@ -332,7 +332,7 @@ bool EthereumSession::interpret(RLP const& _r)
 		{
 			for (unsigned i = 1; i < _r.itemCount(); ++i)
 			{
-				auto h = sha3(_r[i].data());
+				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());
 				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{

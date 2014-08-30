@@ -31,7 +31,7 @@ using namespace eth;
 bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 {
 	// Check if we already know this block.
-	h256 h = sha3(_block);
+	h256 h = BlockInfo::headerHash(_block);
 
 	cnote << "Queuing block" << h.abridged() << "for import...";
 
@@ -61,10 +61,9 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 		return false;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
 
 	// Check block doesn't already exist first!
-	if (_bc.details(newHash))
+	if (_bc.details(h))
 	{
 		cnote << "Already known in chain.";
 		return false;
