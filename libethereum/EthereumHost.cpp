@@ -367,22 +367,27 @@ void EthereumHost::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-h256Set EthereumHost::neededBlocks()
+h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
 {
 	Guard l(x_blocksNeeded);
 	h256Set ret;
 	if (m_blocksNeeded.size())
 	{
-		while (ret.size() < c_maxBlocksAsk && m_blocksNeeded.size())
-		{
-			ret.insert(m_blocksNeeded.back());
-			m_blocksOnWay.insert(m_blocksNeeded.back());
-			m_blocksNeeded.pop_back();
-		}
+		int s = m_blocksNeeded.size() - 1;
+		for (; ret.size() < c_maxBlocksAsk && s < (int)m_blocksNeeded.size() && s >= 0; --s)
+			if (!_exclude.count(m_blocksNeeded[s]))
+			{
+				auto it = m_blocksNeeded.begin() + s;
+				ret.insert(*it);
+				m_blocksOnWay.insert(*it);
+				m_blocksNeeded.erase(it);
+			}
 	}
-	else
-		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end(); ++i)
+	if (!ret.size())
+		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end() && !_exclude.count(*i); ++i)
 			ret.insert(*i);
+
+	clog(NetMessageSummary) << "Asking for" << ret.size() << "blocks that we don't yet have." << m_blocksNeeded.size() << "blocks still needed," << m_blocksOnWay.size() << "blocks on way.";
 	return ret;
 }
 
@@ -414,6 +419,17 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 		return true;
 	}
 	return false;
+}
+
+void EthereumHost::noteDoneBlocks()
+{
+	clog(NetNote) << "Peer given up on blocks fetch.";
+	if (m_blocksOnWay.empty())
+	{
+		// Done our chain-get.
+		clog(NetNote) << "No more blocks coming. Missing" << m_blocksNeeded.size() << "blocks.";
+		m_latestBlockSent = m_chain->currentHash();
+	}
 }
 
 bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
@@ -504,8 +520,14 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 		m_incomingBlocks.clear();
 	}
 
-	// Send any new blocks.
-	if (_currentHash != m_latestBlockSent)
+	// If we've finished our initial sync...
+	{
+		Guard l(x_blocksNeeded);
+		if (m_blocksOnWay.size())
+			return;
+	}
+	// ...send any new blocks.
+	if (m_latestBlockSent != _currentHash)
 	{
 		RLPStream ts;
 		EthereumSession::prep(ts);
@@ -516,6 +538,7 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 			bs += m_chain->block(h);
 			++c;
 		}
+		clog(NetNote) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
 		bytes b;
 		ts.swapOut(b);
@@ -529,8 +552,8 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 					p->send(&b);
 				p->m_knownBlocks.clear();
 			}
+		m_latestBlockSent = _currentHash;
 	}
-	m_latestBlockSent = _currentHash;
 }
 
 void EthereumHost::growPeers()
@@ -574,7 +597,7 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 	if (_from->m_neededBlocks.empty())
 		return;
 
-	clog(NetNote) << "Hash-chain COMPLETE:" << log2((double)_from->m_totalDifficulty) << "vs" << log2((double)m_chain->details().totalDifficulty) << "," << log2((double)m_totalDifficultyOfNeeded) << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain->details().totalDifficulty << "," << m_totalDifficultyOfNeeded << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
 
 	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
 	{
@@ -596,7 +619,7 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 		Guard l(x_peers);
 		for (auto const& i: m_peers)
 			if (shared_ptr<EthereumSession> p = i.second.lock())
-				p->ensureGettingChain();
+				p->restartGettingChain();
 	}
 }
 

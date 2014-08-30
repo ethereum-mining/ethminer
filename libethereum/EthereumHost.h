@@ -113,6 +113,8 @@ private:
 	bool noteBlock(h256 _hash, bytesConstRef _data);
 	/// Session has finished getting the chain of hashes.
 	void noteHaveChain(std::shared_ptr<EthereumSession> const& _who);
+	/// Called when the peer can no longer provide us with any needed blocks.
+	void noteDoneBlocks();
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
 
@@ -129,7 +131,7 @@ private:
 	/// Get a bunch of needed blocks.
 	/// Removes them from our list of needed blocks.
 	/// @returns empty if there's no more blocks left to fetch, otherwise the blocks to fetch.
-	h256Set neededBlocks();
+	h256Set neededBlocks(h256Set const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
 	virtual bool isInitialised() const { return m_latestBlockSent; }

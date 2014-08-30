@@ -27,7 +27,7 @@
 using namespace std;
 using namespace eth;
 
-#define ETH_ADDRESS_DEBUG 1
+#define ETH_ADDRESS_DEBUG 0
 
 Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 {

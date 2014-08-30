@@ -25,19 +25,24 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/support_utree.hpp>
-
+#endif
 #include <libethential/Log.h>
 #include <libethential/Common.h>
 #include <libethential/CommonData.h>
+#include <libethential/RLP.h>
+#if 0
 #include <libevm/VM.h>
 #include "BuildInfo.h"
+#endif
 using namespace std;
 using namespace eth;
+#if 0
+#if 0
 namespace qi = boost::spirit::qi;
 namespace px = boost::phoenix;
 namespace sp = boost::spirit;
 
-#if 0
+
 class ASTSymbol: public string
 {
 public:
@@ -291,5 +296,8 @@ int main(int, char**)
 	killBigints(out);
 	cout << endl;
 #endif
+
+	cnote << RLP(fromHex("f837c0c0b4600160003556601359506301000000600035040f6018590060005660805460016080530160005760003560805760203560003557"));
+	cnote << toHex(RLPStream(1).append(bytes(54, 0)).out());
 	return 0;
 }

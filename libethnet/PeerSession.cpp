@@ -30,10 +30,9 @@ using namespace eth;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-PeerSession::PeerSession(PeerHost* _s, bi::tcp::socket _socket, u256 _rNId, bi::address _peerAddress, unsigned short _peerPort):
+PeerSession::PeerSession(PeerHost* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_reqNetworkId(_rNId),
 	m_listenPort(_peerPort),
 	m_rating(0)
 {
@@ -45,6 +44,9 @@ PeerSession::PeerSession(PeerHost* _s, bi::tcp::socket _socket, u256 _rNId, bi::
 PeerSession::~PeerSession()
 {
 	// Read-chain finished for one reason or another.
+	for (auto& i: m_capabilities)
+		i.reset();
+
 	try
 	{
 		if (m_socket.is_open())
@@ -65,7 +67,7 @@ bi::tcp::endpoint PeerSession::endpoint() const
 	return bi::tcp::endpoint();
 }
 
-bool PeerSession::preInterpret(RLP const& _r)
+bool PeerSession::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
 	switch (_r[0].toInt<unsigned>())
@@ -73,13 +75,12 @@ bool PeerSession::preInterpret(RLP const& _r)
 	case HelloPacket:
 	{
 		m_protocolVersion = _r[1].toInt<uint>();
-		m_networkId = _r[2].toInt<u256>();
-		auto clientVersion = _r[3].toString();
-		m_caps = _r[4].toInt<uint>();
-		m_listenPort = _r[5].toInt<unsigned short>();
-		m_id = _r[6].toHash<h512>();
+		auto clientVersion = _r[2].toString();
+		m_caps = _r[3].toVector<string>();
+		m_listenPort = _r[4].toInt<unsigned short>();
+		m_id = _r[5].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "/" << m_networkId << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
 
 		if (m_server->havePeer(m_id))
 		{
@@ -89,7 +90,7 @@ bool PeerSession::preInterpret(RLP const& _r)
 			return false;
 		}
 
-		if (m_protocolVersion != m_server->protocolVersion() || m_networkId != m_server->networkId() || !m_id)
+		if (m_protocolVersion != m_server->protocolVersion() || !m_id)
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
@@ -103,7 +104,6 @@ bool PeerSession::preInterpret(RLP const& _r)
 		}
 
 		m_server->registerPeer(shared_from_this());
-		onNewPeer();
 		break;
 	}
 	case DisconnectPacket:
@@ -179,7 +179,10 @@ bool PeerSession::preInterpret(RLP const& _r)
 		}
 		break;
 	default:
-		return interpret(_r);
+		for (auto const& i: m_capabilities)
+			if (i->interpret(_r))
+				return true;
+		return false;
 	}
 	return true;
 }
@@ -326,8 +329,8 @@ void PeerSession::start()
 	prep(s);
 	s.appendList(9) << HelloPacket
 					<< m_server->protocolVersion()
-					<< m_server->networkId()
 					<< m_server->m_clientVersion
+					<< m_server->caps()
 					<< m_server->m_public.port()
 					<< m_server->m_key.pub();
 	sealAndSend(s);
@@ -390,7 +393,7 @@ void PeerSession::doRead()
 						else
 						{
 							RLP r(data.cropped(8));
-							if (!preInterpret(r))
+							if (!interpret(r))
 							{
 								// error
 								dropped();
