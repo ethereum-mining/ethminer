@@ -24,89 +24,34 @@
 #pragma once
 
 #include <string>
-#include <boost/asio.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethential/Log.h>
-namespace ba = boost::asio;
-namespace bi = boost::asio::ip;
 
 namespace eth
 {
-
-bool isPrivateAddress(bi::address _addressToCheck);
 
 static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
 static const eth::uint c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
 static const eth::uint c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
 static const eth::uint c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
+class UPnP;
 class OverlayDB;
 class BlockChain;
 class TransactionQueue;
 class EthereumHost;
 class EthereumSession;
 
-struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
-struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 4; };
-struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
-struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
-struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
-struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 13; };
-struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 14; };
-struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 15; };
-
 enum PacketType
 {
-	HelloPacket = 0,
-	DisconnectPacket,
-	PingPacket,
-	PongPacket,
-	GetPeersPacket = 0x10,
-	PeersPacket,
-	TransactionsPacket,
-	BlocksPacket,
-	GetChainPacket,
-	NotInChainPacket,
+	StatusPacket = 0x10,
 	GetTransactionsPacket,
+	TransactionsPacket,
 	GetBlockHashesPacket,
 	BlockHashesPacket,
 	GetBlocksPacket,
-};
-
-enum DisconnectReason
-{
-	DisconnectRequested = 0,
-	TCPError,
-	BadProtocol,
-	UselessPeer,
-	TooManyPeers,
-	DuplicatePeer,
-	WrongGenesis,
-	IncompatibleProtocol,
-	ClientQuit
-};
-
-/// @returns the string form of the given disconnection reason.
-std::string reasonOf(DisconnectReason _r);
-
-struct PeerInfo
-{
-	std::string clientVersion;
-	std::string host;
-	unsigned short port;
-	std::chrono::steady_clock::duration lastPing;
-};
-
-class UPnP;
-
-enum class NodeMode
-{
-	Full,
-	PeerServer
+	BlocksPacket,
 };
 
 }

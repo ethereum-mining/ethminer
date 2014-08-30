@@ -59,3 +59,8 @@ std::string eth::reasonOf(DisconnectReason _r)
 	}
 }
 
+void PeerCapability::disable(std::string const& _problem)
+{
+	clogS(NetConnect) << "Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	m_enabled = false;
+}

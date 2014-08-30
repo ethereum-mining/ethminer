@@ -180,7 +180,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	default:
 		for (auto const& i: m_capabilities)
-			if (i->interpret(_r))
+			if (i->m_enabled && i->interpret(_r))
 				return true;
 		return false;
 	}
