@@ -14,24 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthereumSession.cpp
+/** @file EthereumPeer.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "EthereumSession.h"
+#include "EthereumPeer.h"
 
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libethnet/PeerSession.h>
 #include "BlockChain.h"
 #include "EthereumHost.h"
 using namespace std;
 using namespace eth;
 
-#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
+#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->id() << "] "
 
-EthereumPeer::EthereumPeer(PeerSession* _s, HostCapability* _h): PeerCapability(_s, _h)
+EthereumPeer::EthereumPeer(PeerSession* _s, HostCapabilityFace* _h): PeerCapability(_s, _h)
 {
 	sendStatus();
 }
@@ -41,16 +42,21 @@ EthereumPeer::~EthereumPeer()
 	giveUpOnFetch();
 }
 
+EthereumHost* EthereumPeer::host() const
+{
+	return static_cast<EthereumHost*>(PeerCapability::hostCapability());
+}
+
 void EthereumPeer::sendStatus()
 {
 	RLPStream s;
-	m_session->prep(s);
+	prep(s);
 	s.appendList(9) << StatusPacket
-					<< hostCapability()->protocolVersion()
-					<< hostCapability()->networkId()
-					<< hostCapability()->m_chain->details().totalDifficulty
-					<< hostCapability()->m_chain->currentHash()
-					<< hostCapability()->m_chain->genesisHash();
+					<< host()->protocolVersion()
+					<< host()->networkId()
+					<< host()->m_chain->details().totalDifficulty
+					<< host()->m_chain->currentHash()
+					<< host()->m_chain->genesisHash();
 	sealAndSend(s);
 }
 
@@ -64,11 +70,11 @@ void EthereumPeer::startInitialSync()
 		sealAndSend(s);
 	}
 
-	h256 c = m_server->m_chain->currentHash();
-	uint n = m_server->m_chain->number();
-	u256 td = max(m_server->m_chain->details().totalDifficulty, m_server->m_totalDifficultyOfNeeded);
+	h256 c = host()->m_chain->currentHash();
+	uint n = host()->m_chain->number();
+	u256 td = max(host()->m_chain->details().totalDifficulty, host()->m_totalDifficultyOfNeeded);
 
-	clogS(NetAllDetail) << "Initial sync. Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << m_server->m_chain->details().totalDifficulty << "," << m_server->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
+	clogS(NetAllDetail) << "Initial sync. Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain->details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
 	if (td > m_totalDifficulty)
 		return;	// All good - we have the better chain.
 
@@ -97,13 +103,13 @@ void EthereumPeer::giveUpOnFetch()
 	clogS(NetNote) << "GIVE UP FETCH; can't get " << toString(m_askedBlocks);
 	if (m_askedBlocks.size())
 	{
-		Guard l (m_server->x_blocksNeeded);
-		m_server->m_blocksNeeded.reserve(m_server->m_blocksNeeded.size() + m_askedBlocks.size());
+		Guard l (host()->x_blocksNeeded);
+		host()->m_blocksNeeded.reserve(host()->m_blocksNeeded.size() + m_askedBlocks.size());
 		for (auto i: m_askedBlocks)
 		{
 			m_failedBlocks.insert(i);
-			m_server->m_blocksOnWay.erase(i);
-			m_server->m_blocksNeeded.push_back(i);
+			host()->m_blocksOnWay.erase(i);
+			host()->m_blocksNeeded.push_back(i);
 		}
 		m_askedBlocks.clear();
 	}
@@ -123,11 +129,11 @@ bool EthereumPeer::interpret(RLP const& _r)
 
 		clogS(NetMessageSummary) << "Status: " << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
 
-		if (genesisHash != hostCapability()->m_chain->genesisHash())
+		if (genesisHash != host()->m_chain->genesisHash())
 			disable("Invalid genesis hash");
-		if (m_protocolVersion != hostCapability()->protocolVersion())
+		if (m_protocolVersion != host()->protocolVersion())
 			disable("Invalid protocol version.");
-		if (m_networkId != hostCapability()->networkId() || !m_id)
+		if (m_networkId != host()->networkId())
 			disable("Invalid network identifier.");
 
 		startInitialSync();
@@ -140,10 +146,10 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case TransactionsPacket:
 		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_rating += _r.itemCount() - 1;
+		addRating(_r.itemCount() - 1);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_server->m_incomingTransactions.push_back(_r[i].data().toBytes());
+			host()->m_incomingTransactions.push_back(_r[i].data().toBytes());
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
@@ -153,12 +159,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries, " << later.abridged() << ")";
 
-		unsigned c = min<unsigned>(m_server->m_chain->number(later), limit);
+		unsigned c = min<unsigned>(host()->m_chain->number(later), limit);
 
 		RLPStream s;
 		prep(s).appendList(1 + c).append(BlockHashesPacket);
-		h256 p = m_server->m_chain->details(later).parent;
-		for (unsigned i = 0; i < c; ++i, p = m_server->m_chain->details(p).parent)
+		h256 p = host()->m_chain->details(later).parent;
+		for (unsigned i = 0; i < c; ++i, p = host()->m_chain->details(p).parent)
 			s << p;
 		sealAndSend(s);
 		break;
@@ -168,15 +174,15 @@ bool EthereumPeer::interpret(RLP const& _r)
 		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << " entries)";
 		if (_r.itemCount() == 1)
 		{
-			m_server->noteHaveChain(shared_from_this());
+			host()->noteHaveChain(this);
 			return true;
 		}
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = _r[i].toHash<h256>();
-			if (m_server->m_chain->details(h))
+			if (host()->m_chain->details(h))
 			{
-				m_server->noteHaveChain(shared_from_this());
+				host()->noteHaveChain(this);
 				return true;
 			}
 			else
@@ -197,7 +203,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned n = 0;
 		for (unsigned i = 1; i < _r.itemCount() && i <= c_maxBlocks; ++i)
 		{
-			auto b = m_server->m_chain->block(_r[i].toHash<h256>());
+			auto b = host()->m_chain->block(_r[i].toHash<h256>());
 			if (b.size())
 			{
 				rlp += b;
@@ -223,12 +229,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
-			if (m_server->noteBlock(h, _r[i].data()))
+			if (host()->noteBlock(h, _r[i].data()))
 				used++;
 			m_askedBlocks.erase(h);
 			m_knownBlocks.insert(h);
 		}
-		m_rating += used;
+		addRating(used);
 		unsigned knownParents = 0;
 		unsigned unknownParents = 0;
 		if (g_logVerbosity >= NetMessageSummary::verbosity)
@@ -237,7 +243,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			{
 				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());
-				if (!m_server->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
+				if (!host()->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{
 					unknownParents++;
 					clogS(NetAllDetail) << "Unknown parent " << bi.parentHash << " of block " << h;
@@ -282,7 +288,7 @@ void EthereumPeer::ensureGettingChain()
 void EthereumPeer::continueGettingChain()
 {
 	if (!m_askedBlocks.size())
-		m_askedBlocks = m_server->neededBlocks(m_failedBlocks);
+		m_askedBlocks = host()->neededBlocks(m_failedBlocks);
 
 	if (m_askedBlocks.size())
 	{
@@ -296,6 +302,6 @@ void EthereumPeer::continueGettingChain()
 	else
 	{
 		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have " << m_failedBlocks.size() << "of our needed blocks.";
-		m_server->noteDoneBlocks();
+		host()->noteDoneBlocks();
 	}
 }

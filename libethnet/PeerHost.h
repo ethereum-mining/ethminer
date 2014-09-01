@@ -48,6 +48,7 @@ class BlockQueue;
 class PeerHost
 {
 	friend class PeerSession;
+	friend class HostCapabilityFace;
 
 public:
 	/// Start server, listening for connections on the given port.
@@ -67,7 +68,7 @@ public:
 	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> void registerCapability() { m_capabilities[T::name()] = std::shared_ptr<HostCapabilityFace>(new T(this)); }
+	template <class T> void registerCapability(T* _t) { _t->m_host = this; m_capabilities[T::name()] = std::shared_ptr<HostCapabilityFace>(_t); }
 
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
@@ -102,7 +103,7 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
-	void registerPeer(std::shared_ptr<PeerSession> _s);
+	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
 
 	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
 	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }

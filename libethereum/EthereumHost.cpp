@@ -28,26 +28,27 @@
 #include <thread>
 #include <libethential/Common.h>
 #include <libethnet/PeerHost.h>
+#include <libethnet/PeerSession.h>
 #include <libethcore/UPnP.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
-#include "EthereumSession.h"
+#include "EthereumPeer.h"
 using namespace std;
 using namespace eth;
 
 EthereumHost::EthereumHost(BlockChain const& _ch, u256 _networkId):
-	m_chain(&_ch),
-	m_networkId(_networkId)
+	HostCapability<EthereumPeer>(),
+	m_chain		(&_ch),
+	m_networkId	(_networkId)
 {
 }
 
 EthereumHost::~EthereumHost()
 {
-	for (auto i: host()->m_peers)
-		if (shared_ptr<EthereumSession> p = i.second.lock())
-			p->giveUpOnFetch();
+	for (auto const& i: peers())
+		i->cap<EthereumPeer>()->giveUpOnFetch();
 }
 
 h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
@@ -84,7 +85,6 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 
 		for (auto const& i: _tq.transactions())
 			m_transactionsSent.insert(i.first);
-		m_lastPeersRequest = chrono::steady_clock::time_point::min();
 		return true;
 	}
 	return false;
@@ -135,31 +135,30 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 	m_incomingTransactions.clear();
 
 	// Send any new transactions.
-	Guard l(host()->x_peers);
-	for (auto j: host()->m_peers)
-		if (auto p = j.second.lock())
-		{
-			bytes b;
-			uint n = 0;
-			for (auto const& i: _tq.transactions())
-				if ((!m_transactionsSent.count(i.first) && !p->m_knownTransactions.count(i.first)) || p->m_requireTransactions || resendAll)
-				{
-					b += i.second;
-					++n;
-					m_transactionsSent.insert(i.first);
-				}
-			if (n)
+	for (auto const& p: peers())
+	{
+		auto ep = p->cap<EthereumPeer>();
+		bytes b;
+		uint n = 0;
+		for (auto const& i: _tq.transactions())
+			if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
 			{
-				RLPStream ts;
-				EthereumSession::prep(ts);
-				ts.appendList(n + 1) << TransactionsPacket;
-				ts.appendRaw(b, n).swapOut(b);
-				seal(b);
-				p->send(&b);
+				b += i.second;
+				++n;
+				m_transactionsSent.insert(i.first);
 			}
-			p->m_knownTransactions.clear();
-			p->m_requireTransactions = false;
+		if (n)
+		{
+			RLPStream ts;
+			EthereumPeer::prep(ts);
+			ts.appendList(n + 1) << TransactionsPacket;
+			ts.appendRaw(b, n).swapOut(b);
+			seal(b);
+			ep->send(&b);
 		}
+		ep->m_knownTransactions.clear();
+		ep->m_requireTransactions = false;
+	}
 }
 
 void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
@@ -184,7 +183,7 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 	if (m_latestBlockSent != _currentHash)
 	{
 		RLPStream ts;
-		EthereumSession::prep(ts);
+		EthereumPeer::prep(ts);
 		bytes bs;
 		unsigned c = 0;
 		for (auto h: m_chain->treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
@@ -198,19 +197,18 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 		ts.swapOut(b);
 		seal(b);
 
-		Guard l(host()->x_peers);
-		for (auto j: host()->m_peers)
-			if (auto p = j.second.lock())
-			{
-				if (!p->m_knownBlocks.count(_currentHash))
-					p->send(&b);
-				p->m_knownBlocks.clear();
-			}
+		for (auto j: peers())
+		{
+			auto p = j->cap<EthereumPeer>();
+			if (!p->m_knownBlocks.count(_currentHash))
+				p->send(&b);
+			p->m_knownBlocks.clear();
+		}
 		m_latestBlockSent = _currentHash;
 	}
 }
 
-void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
+void EthereumHost::noteHaveChain(EthereumPeer* _from)
 {
 	auto td = _from->m_totalDifficulty;
 
@@ -235,10 +233,6 @@ void EthereumHost::noteHaveChain(std::shared_ptr<EthereumSession> const& _from)
 		m_totalDifficultyOfNeeded = td;
 	}
 
-	{
-		Guard l(host()->x_peers);
-		for (auto const& i: host()->m_peers)
-			if (shared_ptr<EthereumSession> p = i.second.lock())
-				p->restartGettingChain();
-	}
+	for (auto j: peers())
+		j->cap<EthereumPeer>()->restartGettingChain();
 }

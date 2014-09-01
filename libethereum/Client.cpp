@@ -25,6 +25,7 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libethential/Log.h>
+#include <libethnet/PeerHost.h>
 #include "Defaults.h"
 #include "EthereumHost.h"
 using namespace std;
@@ -213,7 +214,9 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 			try
 			{
-				m_net.reset(new EthereumHost(m_clientVersion, m_bc, _networkId, _listenPort, _mode, _publicIP, _upnp));
+				m_net.reset(new PeerHost(m_clientVersion, _listenPort, _publicIP, _upnp));
+				if (_mode == NodeMode::Full)
+					m_net->registerCapability(new EthereumHost(m_bc, _networkId));
 			}
 			catch (std::exception const&)
 			{

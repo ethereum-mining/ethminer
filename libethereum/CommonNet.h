@@ -41,9 +41,9 @@ class OverlayDB;
 class BlockChain;
 class TransactionQueue;
 class EthereumHost;
-class EthereumSession;
+class EthereumPeer;
 
-enum PacketType
+enum
 {
 	StatusPacket = 0x10,
 	GetTransactionsPacket,

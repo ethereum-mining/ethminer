@@ -62,6 +62,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, stri
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
 }
 
@@ -78,6 +79,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddre
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
 }
 
@@ -90,6 +92,7 @@ PeerHost::PeerHost(std::string const& _clientVersion):
 {
 	// populate addresses.
 	populateAddresses();
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
 }
 
@@ -103,15 +106,15 @@ unsigned PeerHost::protocolVersion() const
 	return 0;
 }
 
-void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s)
+void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s, vector<string> const& _caps)
 {
 	{
 		Guard l(x_peers);
 		m_peers[_s->m_id] = _s;
 	}
-	for (auto const& i: _s->m_caps)
+	for (auto const& i: _caps)
 		if (haveCapability(i))
-			_s->m_capabilities.push_back(shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get())));
+			_s->m_capabilities[i] = shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get()));
 }
 
 void PeerHost::disconnectPeers()
@@ -453,8 +456,8 @@ std::vector<PeerInfo> PeerHost::peers(bool _updatePing) const
 void PeerHost::process()
 {
 	for (auto const& i: m_capabilities)
-		if (!i->isInitialised())
-			return false;
+		if (!i.second->isInitialised())
+			return;
 	growPeers();
 	prunePeers();
 	m_ioService.poll();

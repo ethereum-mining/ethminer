@@ -38,6 +38,7 @@ namespace eth
 bool isPrivateAddress(bi::address _addressToCheck);
 
 class RLP;
+class RLPStream;
 class PeerHost;
 class PeerSession;
 
@@ -72,6 +73,7 @@ enum DisconnectReason
 	TooManyPeers,
 	DuplicatePeer,
 	IncompatibleProtocol,
+	InvalidIdentity,
 	ClientQuit,
 	UserReason = 0x10
 };
@@ -94,35 +96,41 @@ class PeerCapability;
 class HostCapabilityFace
 {
 	friend class PeerHost;
+	template <class T> friend class HostCapability;
+	friend class PeerCapability;
 
 public:
-	HostCapabilityFace(PeerHost*) {}
+	HostCapabilityFace() {}
 	virtual ~HostCapabilityFace() {}
+
+	PeerHost* host() const { return m_host; }
+
+	std::vector<std::shared_ptr<PeerSession> > peers() const;
 
 protected:
 	virtual std::string name() const = 0;
 	virtual PeerCapability* newPeerCapability(PeerSession* _s) = 0;
 	virtual bool isInitialised() const = 0;
+
+	void seal(bytes& _b);
+
+private:
+	PeerHost* m_host = nullptr;
 };
 
 template<class PeerCap>
 class HostCapability: public HostCapabilityFace
 {
 public:
-	HostCapability(PeerHost* _h): m_host(_h) {}
+	HostCapability() {}
 	virtual ~HostCapability() {}
 
 	static std::string staticName() { return PeerCap::name(); }
-
-	PeerHost* host() const { return m_host; }
 
 protected:
 	virtual bool isInitialised() const = 0;
 	virtual std::string name() const { return PeerCap::name(); }
 	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s, this); }
-
-private:
-	PeerHost* m_host;
 };
 
 class PeerCapability
@@ -130,23 +138,30 @@ class PeerCapability
 	friend class PeerSession;
 
 public:
-	PeerCapability(PeerSession* _s, HostCapability* _h): m_session(_s), m_host(_h) {}
+	PeerCapability(PeerSession* _s, HostCapabilityFace* _h): m_session(_s), m_host(_h) {}
 	virtual ~PeerCapability() {}
 
 	/// Must return the capability name.
 	static std::string name() { return ""; }
 
 	PeerSession* session() const { return m_session; }
-	HostCapability* hostCapability() const { return m_host; }
+	HostCapabilityFace* hostCapability() const { return m_host; }
 
 protected:
 	virtual bool interpret(RLP const&) = 0;
 
 	void disable(std::string const& _problem);
 
+	static RLPStream& prep(RLPStream& _s);
+	void sealAndSend(RLPStream& _s);
+	void sendDestroy(bytes& _msg);
+	void send(bytesConstRef _msg);
+
+	void addRating(unsigned _r);
+
 private:
 	PeerSession* m_session;
-	HostCapability* m_host;
+	HostCapabilityFace* m_host;
 	bool m_enabled = true;
 };
 

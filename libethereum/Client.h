@@ -28,9 +28,10 @@
 #include <boost/utility.hpp>
 #include <libethential/Common.h>
 #include <libethential/CommonIO.h>
+#include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include <libethential/Guards.h>
+#include <libethnet/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -49,6 +50,12 @@ enum ClientWorkState
 	Active = 0,
 	Deleting,
 	Deleted
+};
+
+enum class NodeMode
+{
+	Peer,
+	Full
 };
 
 class VersionChecker
