@@ -58,7 +58,7 @@ public:
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 	template <class PeerCap>
-	PeerCap* cap() const { try { return static_cast<PeerCap*>(m_capabilities.at(PeerCap::name())); } catch (...) { return nullptr; } }
+	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(PeerCap::name())); } catch (...) { return nullptr; } }
 
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
