@@ -43,7 +43,7 @@ class TransactionQueue;
 class EthereumHost;
 class EthereumPeer;
 
-enum
+enum EthereumPacket
 {
 	StatusPacket = 0x10,
 	GetTransactionsPacket,

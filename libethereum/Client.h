@@ -54,7 +54,7 @@ enum ClientWorkState
 
 enum class NodeMode
 {
-	Peer,
+	PeerServer,
 	Full
 };
 
@@ -305,7 +305,7 @@ private:
 	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
 	std::atomic<ClientWorkState> m_workNetState;
 	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
-	std::unique_ptr<EthereumHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	std::unique_ptr<PeerHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;

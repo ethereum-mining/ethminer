@@ -68,7 +68,11 @@ public:
 	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> void registerCapability(T* _t) { _t->m_host = this; m_capabilities[T::name()] = std::shared_ptr<HostCapabilityFace>(_t); }
+	template <class T> void registerCapability(T* _t) { _t->m_host = this; m_capabilities[T::staticName()] = std::shared_ptr<HostCapabilityFace>(_t); }
+
+	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
+	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
+	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(T::staticName())); } catch (...) { return nullptr; } }
 
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
@@ -104,9 +108,6 @@ public:
 	void restorePeers(bytesConstRef _b);
 
 	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
-
-	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
-	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 
 protected:
 	/// Called when the session has provided us with a new peer we can connect to.

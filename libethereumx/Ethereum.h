@@ -30,6 +30,7 @@
 #include <libethential/CommonIO.h>
 #include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
+#include <libethnet/Common.h>
 #include <libethcore/Dagger.h>
 #include <libethereum/PastMessage.h>
 #include <libethereum/MessageFilter.h>
