@@ -123,11 +123,11 @@ bool EthereumPeer::interpret(RLP const& _r)
 
 		clogS(NetMessageSummary) << "Status: " << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
 
-		if (genesisHash != m_server->m_chain->genesisHash())
+		if (genesisHash != hostCapability()->m_chain->genesisHash())
 			disable("Invalid genesis hash");
-		if (m_protocolVersion != EthereumHost::protocolVersion())
+		if (m_protocolVersion != hostCapability()->protocolVersion())
 			disable("Invalid protocol version.");
-		if (m_networkId != m_server->networkId() || !m_id)
+		if (m_networkId != hostCapability()->networkId() || !m_id)
 			disable("Invalid network identifier.");
 
 		startInitialSync();
@@ -135,14 +135,10 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case GetTransactionsPacket:
 	{
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		m_requireTransactions = true;
 		break;
 	}
 	case TransactionsPacket:
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << " entries)";
 		m_rating += _r.itemCount() - 1;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -153,8 +149,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 		break;
 	case GetBlockHashesPacket:
 	{
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		h256 later = _r[1].toHash<h256>();
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries, " << later.abridged() << ")";
@@ -171,8 +165,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << " entries)";
 		if (_r.itemCount() == 1)
 		{
@@ -199,8 +191,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case GetBlocksPacket:
 	{
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		clogS(NetMessageSummary) << "GetBlocks (" << dec << (_r.itemCount() - 1) << " entries)";
 		// TODO: return the requested blocks.
 		bytes rlp;
@@ -220,8 +210,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		if (m_server->m_mode == NodeMode::PeerServer)
-			break;
 		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << " entries)";
 
 		if (_r.itemCount() == 1 && !m_askedBlocksChanged)

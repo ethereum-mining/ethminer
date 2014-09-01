@@ -94,7 +94,7 @@ private:
 
 	mutable std::mutex x_blocksNeeded;
 	u256 m_totalDifficultyOfNeeded;
-	h256s m_blocksNeeded;				/// From latest to earliest.
+	h256s m_blocksNeeded;
 	h256Set m_blocksOnWay;
 
 	h256 m_latestBlockSent;
