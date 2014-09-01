@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthereumSession.h
+/** @file EthereumPeer.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -28,13 +28,15 @@
 #include <utility>
 #include <libethential/RLP.h>
 #include <libethcore/CommonEth.h>
+#include <libethnet/Common.h>
 #include "CommonNet.h"
-#include "EthereumHost.h"
 
 namespace eth
 {
 
-class WhisperSession: public PeerSession
+class HostCapabilityFace;
+
+class WhisperSession: public PeerCapability
 {
 public:
 	WhisperSession();
@@ -43,11 +45,11 @@ public:
 	static std::string name() { return "shh"; }
 
 private:
-	virtual bool interpret(RLP const&) {}
+	virtual bool interpret(RLP const&) { return false; }
 };
 
 /**
- * @brief The EthereumSession class
+ * @brief The EthereumPeer class
  * @todo Document fully.
  */
 class EthereumPeer: public PeerCapability
@@ -55,12 +57,12 @@ class EthereumPeer: public PeerCapability
 	friend class EthereumHost;
 
 public:
-	EthereumPeer(PeerSession* _s, HostCapability* _h);
+	EthereumPeer(PeerSession* _s, HostCapabilityFace* _h);
 	virtual ~EthereumPeer();
 
 	static std::string name() { return "eth"; }
 
-	EthereumHost* hostCapability() const { return static_cast<EthereumHost*>(PeerCapability::hostCapability()); }
+	EthereumHost* host() const;
 
 private:
 	virtual bool interpret(RLP const& _r);
@@ -76,8 +78,6 @@ private:
 	void restartGettingChain();
 
 	void giveUpOnFetch();
-
-	EthereumHost* m_host;
 
 	uint m_protocolVersion;
 	u256 m_networkId;

@@ -32,13 +32,14 @@
 #include <libethcore/CommonEth.h>
 #include <libethnet/Common.h>
 #include "CommonNet.h"
-#include "EthereumSession.h"
+#include "EthereumPeer.h"
 
 namespace eth
 {
 
 class RLPStream;
 class TransactionQueue;
+class BlockQueue;
 
 /**
  * @brief The EthereumHost class
@@ -66,7 +67,7 @@ private:
 	/// @returns true if we didn't have it.
 	bool noteBlock(h256 _hash, bytesConstRef _data);
 	/// Session has finished getting the chain of hashes.
-	void noteHaveChain(std::shared_ptr<EthereumSession> const& _who);
+	void noteHaveChain(EthereumPeer* _who);
 	/// Called when the peer can no longer provide us with any needed blocks.
 	void noteDoneBlocks();
 

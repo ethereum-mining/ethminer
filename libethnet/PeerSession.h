@@ -40,6 +40,7 @@ namespace eth
 class PeerSession: public std::enable_shared_from_this<PeerSession>
 {
 	friend class PeerHost;
+	friend class HostCapabilityFace;
 
 public:
 	PeerSession(PeerHost* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
@@ -52,12 +53,19 @@ public:
 
 	bool isOpen() const { return m_socket.is_open(); }
 
+	unsigned id() const { return m_socket.native_handle(); }
+
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
+
+	template <class PeerCap>
+	PeerCap* cap() const { try { return static_cast<PeerCap*>(m_capabilities.at(PeerCap::name())); } catch (...) { return nullptr; } }
 
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
+
+	void addRating(unsigned _r) { m_rating += _r; }
 
 private:
 	void dropped();
@@ -77,7 +85,7 @@ private:
 	std::recursive_mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
 
-	bi::tcp::socket m_socket;
+	mutable bi::tcp::socket m_socket;	///< Mutable to ask for native_handle().
 	std::array<byte, 65536> m_data;
 	PeerInfo m_info;
 	Public m_id;
@@ -85,7 +93,6 @@ private:
 	bytes m_incoming;
 	uint m_protocolVersion;
 	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
-	std::vector<std::string> m_caps;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
@@ -93,7 +100,7 @@ private:
 
 	uint m_rating;
 
-	std::vector<std::shared_ptr<PeerCapability>> m_capabilities;
+	std::map<std::string, std::shared_ptr<PeerCapability>> m_capabilities;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

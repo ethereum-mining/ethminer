@@ -132,9 +132,9 @@ private:
 	/// Check to see if the client/server connection is open.
 	bool connectionOpen() const;
 	/// Start the API client.
-	void startClient();
+	void connectToRPCServer();
 	/// Start the API server.
-	void startServer();
+	void startRPCServer();
 
 	std::unique_ptr<Client> m_client;
 

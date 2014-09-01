@@ -45,7 +45,7 @@ PeerSession::~PeerSession()
 {
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
-		i.reset();
+		i.second.reset();
 
 	try
 	{
@@ -76,11 +76,11 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 		m_protocolVersion = _r[1].toInt<uint>();
 		auto clientVersion = _r[2].toString();
-		m_caps = _r[3].toVector<string>();
+		auto caps = _r[3].toVector<string>();
 		m_listenPort = _r[4].toInt<unsigned short>();
 		m_id = _r[5].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << m_caps << dec << m_listenPort;
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << caps << dec << m_listenPort;
 
 		if (m_server->havePeer(m_id))
 		{
@@ -89,8 +89,12 @@ bool PeerSession::interpret(RLP const& _r)
 			disconnect(DuplicatePeer);
 			return false;
 		}
-
-		if (m_protocolVersion != m_server->protocolVersion() || !m_id)
+		if (!m_id)
+		{
+			disconnect(InvalidIdentity);
+			return false;
+		}
+		if (m_protocolVersion != m_server->protocolVersion())
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
@@ -103,7 +107,7 @@ bool PeerSession::interpret(RLP const& _r)
 			return false;
 		}
 
-		m_server->registerPeer(shared_from_this());
+		m_server->registerPeer(shared_from_this(), caps);
 		break;
 	}
 	case DisconnectPacket:
@@ -180,7 +184,7 @@ bool PeerSession::interpret(RLP const& _r)
 		break;
 	default:
 		for (auto const& i: m_capabilities)
-			if (i->m_enabled && i->interpret(_r))
+			if (i.second->m_enabled && i.second->interpret(_r))
 				return true;
 		return false;
 	}
