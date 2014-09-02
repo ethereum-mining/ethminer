@@ -30,6 +30,7 @@
 #include <libethential/CommonIO.h>
 #include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
+#include <libethnet/Common.h>
 #include <libethcore/Dagger.h>
 #include <libethereum/PastMessage.h>
 #include <libethereum/MessageFilter.h>
@@ -132,9 +133,9 @@ private:
 	/// Check to see if the client/server connection is open.
 	bool connectionOpen() const;
 	/// Start the API client.
-	void startClient();
+	void connectToRPCServer();
 	/// Start the API server.
-	void startServer();
+	void startRPCServer();
 
 	std::unique_ptr<Client> m_client;
 

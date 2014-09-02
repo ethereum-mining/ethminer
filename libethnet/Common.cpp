@@ -20,6 +20,10 @@
  */
 
 #include "Common.h"
+
+#include <libethential/RLP.h>
+#include "PeerSession.h"
+#include "PeerHost.h"
 using namespace std;
 using namespace eth;
 
@@ -59,3 +63,49 @@ std::string eth::reasonOf(DisconnectReason _r)
 	}
 }
 
+void PeerCapability::disable(std::string const& _problem)
+{
+	clog(NetConnect) << "Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	m_enabled = false;
+}
+
+void HostCapabilityFace::seal(bytes& _b)
+{
+	m_host->seal(_b);
+}
+
+std::vector<std::shared_ptr<PeerSession> > HostCapabilityFace::peers() const
+{
+	Guard l(m_host->x_peers);
+	std::vector<std::shared_ptr<PeerSession> > ret;
+	for (auto const& i: m_host->m_peers)
+		if (std::shared_ptr<PeerSession> p = i.second.lock())
+			if (p->m_capabilities.count(name()))
+				ret.push_back(p);
+	return ret;
+}
+
+RLPStream& PeerCapability::prep(RLPStream& _s)
+{
+	return PeerSession::prep(_s);
+}
+
+void PeerCapability::sealAndSend(RLPStream& _s)
+{
+	m_session->sealAndSend(_s);
+}
+
+void PeerCapability::sendDestroy(bytes& _msg)
+{
+	m_session->sendDestroy(_msg);
+}
+
+void PeerCapability::send(bytesConstRef _msg)
+{
+	m_session->send(_msg);
+}
+
+void PeerCapability::addRating(unsigned _r)
+{
+	m_session->addRating(_r);
+}

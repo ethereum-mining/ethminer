@@ -41,15 +41,20 @@ class RLPStream;
 class TransactionQueue;
 class BlockQueue;
 
+/**
+ * @brief The PeerHost class
+ * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
+ */
 class PeerHost
 {
 	friend class PeerSession;
+	friend class HostCapabilityFace;
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, listening for connections on a system-assigned port.
-	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, but don't listen.
 	PeerHost(std::string const& _clientVersion);
 
@@ -63,7 +68,11 @@ public:
 	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> void registerCapability() { m_capabilities[T::name()] = std::shared_ptr<HostCapabilityFace>(new T(this)); }
+	template <class T> void registerCapability(T* _t) { _t->m_host = this; m_capabilities[T::staticName()] = std::shared_ptr<HostCapabilityFace>(_t); }
+
+	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
+	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
+	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(T::staticName())); } catch (...) { return nullptr; } }
 
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
@@ -72,7 +81,7 @@ public:
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
 	/// This won't touch alter the blockchain.
-	void process() { if (isInitialised()) m_ioService.poll(); }
+	void process();
 
 	/// @returns true iff we have the a peer of the given id.
 	bool havePeer(Public _id) const;
@@ -98,16 +107,12 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
-	void registerPeer(std::shared_ptr<PeerSession> _s);
-
-	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
-	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
+	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
 
 protected:
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
 
-	virtual bool isInitialised() const { return true; }
 	void seal(bytes& _b);
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
@@ -121,6 +126,7 @@ protected:
 	std::string m_clientVersion;
 
 	unsigned short m_listenPort;
+	bool m_localNetworking = false;
 
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;
@@ -133,8 +139,7 @@ protected:
 	mutable std::mutex x_peers;
 	mutable std::map<Public, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
-	mutable std::recursive_mutex m_incomingLock;
-	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;
+	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
 	std::vector<Public> m_freePeers;
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;

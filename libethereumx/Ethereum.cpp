@@ -38,11 +38,11 @@ void Ethereum::ensureReady()
 		{
 			m_client = unique_ptr<Client>(new Client("+ethereum+"));
 			if (m_client)
-				startServer();
+				startRPCServer();
 		}
 		catch (DatabaseAlreadyOpen)
 		{
-			startClient();
+			connectToRPCServer();
 		}
 }
 
@@ -55,11 +55,11 @@ bool Ethereum::connectionOpen() const
 	return false;
 }
 
-void Ethereum::startClient()
+void Ethereum::connectToRPCServer()
 {
 }
 
-void Ethereum::startServer()
+void Ethereum::startRPCServer()
 {
 }
 
