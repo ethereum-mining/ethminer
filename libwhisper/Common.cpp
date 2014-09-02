@@ -14,37 +14,14 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Whisper.h
+/** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "Common.h"
 
-namespace eth
-{
-/*
-class NetPeer
-{
-public:
-	NetPeer();
-	virtual ~NetPeer();
+using namespace std;
+using namespace eth;
+using namespace shh;
 
-protected:
-	virtual void onIncoming(PeerId);
-	void send(PeerId);
-};
-*/
-/**
- */
-class Whisper//: public NetPeer
-{
-public:
-	/// Constructor.
-	Whisper();
-
-	/// Destructor.
-	virtual ~Whisper();
-};
-
-}

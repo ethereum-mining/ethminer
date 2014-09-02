@@ -19,6 +19,7 @@ include_directories(..)
 
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
+target_link_libraries(${EXECUTABLE} whisper)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethnet)
 target_link_libraries(${EXECUTABLE} secp256k1)

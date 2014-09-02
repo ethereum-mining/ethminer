@@ -36,7 +36,6 @@ static const eth::uint c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlo
 static const eth::uint c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
 static const eth::uint c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
-class UPnP;
 class OverlayDB;
 class BlockChain;
 class TransactionQueue;
