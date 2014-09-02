@@ -107,6 +107,8 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
+	h512 id() const { return m_key.pub(); }
+
 	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
 
 protected:

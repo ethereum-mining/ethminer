@@ -35,9 +35,9 @@
 #include <chrono>
 #include <thread>
 #include <libethential/Common.h>
-#include <libethcore/UPnP.h>
 #include <libethcore/Exceptions.h>
 #include "PeerSession.h"
+#include "UPnP.h"
 using namespace std;
 using namespace eth;
 

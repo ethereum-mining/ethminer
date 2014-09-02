@@ -1,0 +1,200 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file Whisper.h
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
+#pragma once
+
+#include <mutex>
+#include <array>
+#include <set>
+#include <memory>
+#include <utility>
+#include <libethential/RLP.h>
+#include <libethential/Guards.h>
+#include <libethcore/SHA3.h>
+#include "Common.h"
+
+namespace shh
+{
+
+using eth::PeerSession;
+using eth::HostCapabilityFace;
+using eth::HostCapability;
+
+struct Message
+{
+	unsigned expiry = 0;
+	unsigned ttl = 0;
+	bytes topic;
+	bytes payload;
+
+	Message() {}
+	Message(unsigned _exp, unsigned _ttl, bytes const& _topic, bytes const& _payload): expiry(_exp), ttl(_ttl), topic(_topic), payload(_payload) {}
+	Message(RLP const& _m)
+	{
+		expiry = _m[0].toInt<unsigned>();
+		ttl = _m[1].toInt<unsigned>();
+		topic = _m[2].toBytes();
+		payload = _m[3].toBytes();
+	}
+
+	operator bool () const { return !!expiry; }
+
+	void streamOut(RLPStream& _s) const { _s.appendList(4) << expiry << ttl << topic << payload; }
+	h256 sha3() const { RLPStream s; streamOut(s); return eth::sha3(s.out()); }
+};
+
+/**
+ */
+class WhisperPeer: public eth::PeerCapability
+{
+	friend class WhisperHost;
+
+public:
+	WhisperPeer(PeerSession* _s, HostCapabilityFace* _h);
+	virtual ~WhisperPeer();
+
+	static std::string name() { return "shh"; }
+
+	WhisperHost* host() const;
+
+private:
+	virtual bool interpret(RLP const&);
+
+	void sendMessages();
+
+	unsigned rating(Message const&) const { return 0; }	// TODO
+	void noteNewMessage(h256 _h, Message const& _m);
+
+	mutable eth::Mutex x_unseen;
+	std::map<unsigned, h256> m_unseen;	///< Rated according to what they want.
+};
+
+class MessageFilter
+{
+public:
+	MessageFilter() {}
+	MessageFilter(std::vector<std::pair<bytes, bytes> > const& _m): m_topicMasks(_m) {}
+	MessageFilter(RLP const& _r): m_topicMasks((std::vector<std::pair<bytes, bytes> >)_r) {}
+
+	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
+	h256 sha3() const { RLPStream s; fillStream(s); return eth::sha3(s.out()); }
+
+	bool matches(Message const& _m) const;
+
+private:
+	std::vector<std::pair<bytes, bytes> > m_topicMasks;
+};
+
+struct InstalledFilter
+{
+	InstalledFilter(MessageFilter const& _f): filter(_f) {}
+
+	MessageFilter filter;
+	unsigned refCount = 1;
+};
+
+struct ClientWatch
+{
+	ClientWatch() {}
+	explicit ClientWatch(h256 _id): id(_id) {}
+
+	h256 id;
+	h256s changes;
+};
+
+class WhisperHost: public HostCapability<WhisperPeer>
+{
+	friend class WhisperPeer;
+
+public:
+	WhisperHost();
+	virtual ~WhisperHost();
+
+	unsigned protocolVersion() const { return 0; }
+
+	void inject(Message const& _m, WhisperPeer* _from = nullptr);
+
+	unsigned installWatch(MessageFilter const& _filter);
+	unsigned installWatch(h256 _filterId);
+	void uninstallWatch(unsigned _watchId);
+	h256s peekWatch(unsigned _watchId) const { eth::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
+	h256s checkWatch(unsigned _watchId) { eth::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
+
+	Message message(h256 _m) const { try { eth::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
+
+	void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
+
+private:
+	void streamMessage(h256 _m, RLPStream& _s) const;
+
+	void noteChanged(h256 _messageHash, h256 _filter);
+
+	mutable eth::SharedMutex x_messages;
+	std::map<h256, Message> m_messages;
+
+	mutable eth::Mutex m_filterLock;
+	std::map<h256, InstalledFilter> m_filters;
+	std::map<unsigned, ClientWatch> m_watches;
+};
+
+struct WatchChannel: public eth::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
+#define cwatch eth::LogOutputStream<shh::WatchChannel, true>()
+
+class Watch;
+
+}
+/*
+namespace std { void swap(shh::Watch& _a, shh::Watch& _b); }
+
+namespace shh
+{
+
+class Watch: public boost::noncopyable
+{
+	friend void std::swap(Watch& _a, Watch& _b);
+
+public:
+	Watch() {}
+	Watch(Whisper& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Whisper& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
+
+	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
+	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
+
+private:
+	Whisper* m_c;
+	unsigned m_id;
+};
+
+}
+
+namespace shh
+{
+
+inline void swap(shh::Watch& _a, shh::Watch& _b)
+{
+	swap(_a.m_c, _b.m_c);
+	swap(_a.m_id, _b.m_id);
+}
+
+}
+*/

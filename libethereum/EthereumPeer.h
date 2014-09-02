@@ -36,18 +36,6 @@ namespace eth
 
 class HostCapabilityFace;
 
-class WhisperSession: public PeerCapability
-{
-public:
-	WhisperSession();
-	virtual ~WhisperSession();
-
-	static std::string name() { return "shh"; }
-
-private:
-	virtual bool interpret(RLP const&) { return false; }
-};
-
 /**
  * @brief The EthereumPeer class
  * @todo Document fully.

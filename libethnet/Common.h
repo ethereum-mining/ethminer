@@ -110,7 +110,7 @@ public:
 protected:
 	virtual std::string name() const = 0;
 	virtual PeerCapability* newPeerCapability(PeerSession* _s) = 0;
-	virtual bool isInitialised() const = 0;
+	virtual bool isInitialised() const { return true; }
 
 	void seal(bytes& _b);
 
@@ -128,7 +128,6 @@ public:
 	static std::string staticName() { return PeerCap::name(); }
 
 protected:
-	virtual bool isInitialised() const = 0;
 	virtual std::string name() const { return PeerCap::name(); }
 	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s, this); }
 };

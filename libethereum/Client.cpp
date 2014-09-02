@@ -162,6 +162,17 @@ void Client::uninstallWatch(unsigned _i)
 			m_filters.erase(fit);
 }
 
+void Client::noteChanged(h256Set const& _filters)
+{
+	lock_guard<mutex> l(m_filterLock);
+	for (auto& i: m_watches)
+		if (_filters.count(i.second.id))
+		{
+			cwatch << "!!!" << i.first << i.second.id;
+			i.second.changes++;
+		}
+}
+
 void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
@@ -178,17 +189,6 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 	for (pair<h256, InstalledFilter> const& i: m_filters)
 		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
 			o_changed.insert(i.first);
-}
-
-void Client::noteChanged(h256Set const& _filters)
-{
-	lock_guard<mutex> l(m_filterLock);
-	for (auto& i: m_watches)
-		if (_filters.count(i.second.id))
-		{
-			cwatch << "!!!" << i.first << i.second.id;
-			i.second.changes++;
-		}
 }
 
 void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp, u256 _networkId)

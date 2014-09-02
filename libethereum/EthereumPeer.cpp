@@ -30,7 +30,7 @@
 using namespace std;
 using namespace eth;
 
-#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->id() << "] "
+#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 EthereumPeer::EthereumPeer(PeerSession* _s, HostCapabilityFace* _h): PeerCapability(_s, _h)
 {
@@ -100,7 +100,7 @@ inline string toString(h256s const& _bs)
 
 void EthereumPeer::giveUpOnFetch()
 {
-	clogS(NetNote) << "GIVE UP FETCH; can't get " << toString(m_askedBlocks);
+	clogS(NetNote) << "GIVE UP FETCH; can't get" << toString(m_askedBlocks);
 	if (m_askedBlocks.size())
 	{
 		Guard l (host()->x_blocksNeeded);
@@ -127,7 +127,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		m_latestHash = _r[4].toHash<h256>();
 		auto genesisHash = _r[5].toHash<h256>();
 
-		clogS(NetMessageSummary) << "Status: " << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
+		clogS(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
 
 		if (genesisHash != host()->m_chain->genesisHash())
 			disable("Invalid genesis hash");
@@ -145,7 +145,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		break;
 	}
 	case TransactionsPacket:
-		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << " entries)";
+		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << "entries)";
 		addRating(_r.itemCount() - 1);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
@@ -157,7 +157,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		h256 later = _r[1].toHash<h256>();
 		unsigned limit = _r[2].toInt<unsigned>();
-		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries, " << later.abridged() << ")";
+		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
 
 		unsigned c = min<unsigned>(host()->m_chain->number(later), limit);
 
@@ -171,7 +171,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << " entries)";
+		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << "entries)";
 		if (_r.itemCount() == 1)
 		{
 			host()->noteHaveChain(this);
@@ -197,7 +197,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case GetBlocksPacket:
 	{
-		clogS(NetMessageSummary) << "GetBlocks (" << dec << (_r.itemCount() - 1) << " entries)";
+		clogS(NetMessageSummary) << "GetBlocks (" << dec << (_r.itemCount() - 1) << "entries)";
 		// TODO: return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
@@ -216,7 +216,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << " entries)";
+		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << "entries)";
 
 		if (_r.itemCount() == 1 && !m_askedBlocksChanged)
 		{
@@ -246,16 +246,16 @@ bool EthereumPeer::interpret(RLP const& _r)
 				if (!host()->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{
 					unknownParents++;
-					clogS(NetAllDetail) << "Unknown parent " << bi.parentHash << " of block " << h;
+					clogS(NetAllDetail) << "Unknown parent" << bi.parentHash << "of block" << h;
 				}
 				else
 				{
 					knownParents++;
-					clogS(NetAllDetail) << "Known parent " << bi.parentHash << " of block " << h;
+					clogS(NetAllDetail) << "Known parent" << bi.parentHash << "of block" << h;
 				}
 			}
 		}
-		clogS(NetMessageSummary) << dec << knownParents << " known parents, " << unknownParents << "unknown, " << used << "used.";
+		clogS(NetMessageSummary) << dec << knownParents << "known parents," << unknownParents << "unknown," << used << "used.";
 		continueGettingChain();
 		break;
 	}
@@ -301,7 +301,7 @@ void EthereumPeer::continueGettingChain()
 	}
 	else
 	{
-		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have " << m_failedBlocks.size() << "of our needed blocks.";
+		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have" << m_failedBlocks.size() << "of our needed blocks.";
 		host()->noteDoneBlocks();
 	}
 }

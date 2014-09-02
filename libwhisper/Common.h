@@ -14,40 +14,43 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file UPnP.h
- * @authors:
- *   Gav Wood <i@gavwood.com>
+/** @file Common.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
 #pragma once
 
-#include <set>
 #include <string>
-#include <memory>
+#include <chrono>
+#include <libethential/Common.h>
+#include <libethential/Log.h>
+#include <libethcore/CommonEth.h>
+#include <libethnet/Common.h>
 
-struct UPNPUrls;
-struct IGDdatas;
-
-namespace eth
+namespace shh
 {
 
-class UPnP
+using h256 = eth::h256;
+using h512 = eth::h512;
+using h256s = eth::h256s;
+using bytes = eth::bytes;
+using RLPStream = eth::RLPStream;
+using RLP = eth::RLP;
+using bytesRef = eth::bytesRef;
+using bytesConstRef = eth::bytesConstRef;
+using h256Set = eth::h256Set;
+
+class WhisperHost;
+class WhisperPeer;
+class Whisper;
+
+enum WhisperPacket
 {
-public:
-	UPnP();
-	~UPnP();
-
-	std::string externalIP();
-	int addRedirect(char const* addr, int port);
-	void removeRedirect(int port);
-
-	bool isValid() const { return m_ok; }
-
-	std::set<int> m_reg;
-	bool m_ok;
-	std::shared_ptr<struct UPNPUrls> m_urls;
-	std::shared_ptr<struct IGDdatas> m_data;
+	StatusPacket = 0x20,
+	MessagesPacket,
+	AddFilterPacket,
+	RemoveFilterPacket
 };
 
 }

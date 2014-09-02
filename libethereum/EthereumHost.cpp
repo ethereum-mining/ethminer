@@ -29,7 +29,6 @@
 #include <libethential/Common.h>
 #include <libethnet/PeerHost.h>
 #include <libethnet/PeerSession.h>
-#include <libethcore/UPnP.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"

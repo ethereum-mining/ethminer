@@ -53,7 +53,8 @@ public:
 
 	bool isOpen() const { return m_socket.is_open(); }
 
-	unsigned id() const { return m_socket.native_handle(); }
+	h512 id() const { return m_id; }
+	unsigned socketId() const { return m_socket.native_handle(); }
 
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
