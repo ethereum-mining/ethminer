@@ -30,6 +30,7 @@
 #include <libethential/Common.h>
 #include <libethential/CommonData.h>
 #include <libethential/RLP.h>
+#include <libethnet/All.h>
 #if 0
 #include <libevm/VM.h>
 #include "BuildInfo.h"
@@ -287,7 +288,7 @@ void parseTree(string const& _s, sp::utree& o_out)
 			throw std::exception();
 }
 #endif
-int main(int, char**)
+int main(int argc, char** argv)
 {
 #if 0
 	sp::utree out;
@@ -297,7 +298,37 @@ int main(int, char**)
 	cout << endl;
 #endif
 
-	cnote << RLP(fromHex("f837c0c0b4600160003556601359506301000000600035040f6018590060005660805460016080530160005760003560805760203560003557"));
-	cnote << toHex(RLPStream(1).append(bytes(54, 0)).out());
+	g_logVerbosity = 20;
+
+	short listenPort = 30303;
+	string remoteHost;
+	short remotePort = 30303;
+
+	for (int i = 1; i < argc; ++i)
+	{
+		string arg = argv[i];
+		if (arg == "-l" && i + 1 < argc)
+			listenPort = (short)atoi(argv[++i]);
+		else if (arg == "-r" && i + 1 < argc)
+			remoteHost = argv[++i];
+		else if (arg == "-p" && i + 1 < argc)
+			remotePort = (short)atoi(argv[++i]);
+		else
+			remoteHost = argv[i];
+	}
+
+	PeerHost ph("Test", listenPort, "", false, true);
+
+	if (!remoteHost.empty())
+		ph.connect(remoteHost, remotePort);
+
+	for (int i = 0; ; ++i)
+	{
+		this_thread::sleep_for(chrono::milliseconds(100));
+		if (!(i % 100))
+			ph.pingAll();
+		ph.process();
+	}
+
 	return 0;
 }
