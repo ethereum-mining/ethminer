@@ -36,7 +36,7 @@ string eth::memDump(bytes const& _b, unsigned _w, bool _html)
 		ret << hex << setw(4) << setfill('0') << i << " ";
 		for (unsigned j = i; j < i + _w; ++j)
 			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 128)
+				if (_b[j] >= 32 && _b[j] < 127)
 					if ((char)_b[j] == '<' && _html)
 						ret << "&lt;";
 					else if ((char)_b[j] == '&' && _html)
