@@ -28,9 +28,10 @@
 #include <boost/utility.hpp>
 #include <libethential/Common.h>
 #include <libethential/CommonIO.h>
+#include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include <libethential/Guards.h>
+#include <libethnet/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -49,6 +50,12 @@ enum ClientWorkState
 	Active = 0,
 	Deleting,
 	Deleted
+};
+
+enum class NodeMode
+{
+	PeerServer,
+	Full
 };
 
 class VersionChecker
@@ -298,7 +305,7 @@ private:
 	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
 	std::atomic<ClientWorkState> m_workNetState;
 	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
-	std::unique_ptr<EthereumHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	std::unique_ptr<PeerHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;

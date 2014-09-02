@@ -52,9 +52,10 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp):
+PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp, bool _localNetworking):
 	m_clientVersion(_clientVersion),
 	m_listenPort(_port),
+	m_localNetworking(_localNetworking),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
 	m_socket(m_ioService),
 	m_key(KeyPair::create())
@@ -62,12 +63,14 @@ PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, stri
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
-	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
+	clog(NetNote) << "Id:" << m_key.address().abridged();
 }
 
-PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddress, bool _upnp):
+PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
 	m_clientVersion(_clientVersion),
 	m_listenPort(0),
+	m_localNetworking(_localNetworking),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
 	m_key(KeyPair::create())
@@ -78,7 +81,8 @@ PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddre
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
-	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
+	clog(NetNote) << "Id:" << m_key.address().abridged();
 }
 
 PeerHost::PeerHost(std::string const& _clientVersion):
@@ -90,7 +94,8 @@ PeerHost::PeerHost(std::string const& _clientVersion):
 {
 	// populate addresses.
 	populateAddresses();
-	clog(NetNote) << "Id:" << toHex(m_key.address().ref().cropped(0, 4));
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
+	clog(NetNote) << "Id:" << m_key.address().abridged();
 }
 
 PeerHost::~PeerHost()
@@ -103,15 +108,15 @@ unsigned PeerHost::protocolVersion() const
 	return 0;
 }
 
-void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s)
+void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s, vector<string> const& _caps)
 {
 	{
 		Guard l(x_peers);
 		m_peers[_s->m_id] = _s;
 	}
-	for (auto const& i: _s->m_caps)
+	for (auto const& i: _caps)
 		if (haveCapability(i))
-			_s->m_capabilities.push_back(shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get())));
+			_s->m_capabilities[i] = shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get()));
 }
 
 void PeerHost::disconnectPeers()
@@ -161,14 +166,14 @@ void PeerHost::determinePublic(string const& _publicAddress, bool _upnp)
 	bi::tcp::resolver r(m_ioService);
 	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
-		clog(NetNote) << "External addr: " << m_upnp->externalIP();
+		clog(NetNote) << "External addr:" << m_upnp->externalIP();
 		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
 		if (p)
 			clog(NetNote) << "Punched through NAT and mapped local port" << m_listenPort << "onto external port" << p << ".";
 		else
 		{
 			// couldn't map
-			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place). Assuming " << m_listenPort << " is local & external port.";
+			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place). Assuming" << m_listenPort << "is local & external port.";
 			p = m_listenPort;
 		}
 
@@ -277,7 +282,7 @@ std::map<Public, bi::tcp::endpoint> PeerHost::potentialPeers()
 		{
 			auto ep = j->endpoint();
 			// Skip peers with a listen port of zero or are on a private network
-			bool peerOnNet = (j->m_listenPort != 0 && !isPrivateAddress(ep.address()));
+			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_localNetworking));
 			if (peerOnNet && ep.port() && j->m_id)
 				ret.insert(make_pair(i.first, ep));
 		}
@@ -448,6 +453,16 @@ std::vector<PeerInfo> PeerHost::peers(bool _updatePing) const
 			if (j->m_socket.is_open())
 				ret.push_back(j->m_info);
 	return ret;
+}
+
+void PeerHost::process()
+{
+	for (auto const& i: m_capabilities)
+		if (!i.second->isInitialised())
+			return;
+	growPeers();
+	prunePeers();
+	m_ioService.poll();
 }
 
 void PeerHost::pingAll()
