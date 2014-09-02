@@ -51,7 +51,7 @@ void EthereumPeer::sendStatus()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(9) << StatusPacket
+	s.appendList(6) << StatusPacket
 					<< host()->protocolVersion()
 					<< host()->networkId()
 					<< host()->m_chain->details().totalDifficulty
