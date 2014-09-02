@@ -157,7 +157,7 @@ bool PeerSession::interpret(RLP const& _r)
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			Public id = _r[i][2].toHash<Public>();
-			if (isPrivateAddress(peerAddress))
+			if (isPrivateAddress(peerAddress) && !m_server->m_localNetworking)
 				goto CONTINUE;
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
@@ -331,7 +331,7 @@ void PeerSession::start()
 {
 	RLPStream s;
 	prep(s);
-	s.appendList(9) << HelloPacket
+	s.appendList(6) << HelloPacket
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()

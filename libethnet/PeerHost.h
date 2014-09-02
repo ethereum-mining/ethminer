@@ -52,9 +52,9 @@ class PeerHost
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, listening for connections on a system-assigned port.
-	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true);
+	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, but don't listen.
 	PeerHost(std::string const& _clientVersion);
 
@@ -126,6 +126,7 @@ protected:
 	std::string m_clientVersion;
 
 	unsigned short m_listenPort;
+	bool m_localNetworking = false;
 
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;
