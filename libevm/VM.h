@@ -166,6 +166,12 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
+		case Instruction::CALLSTATELESS:
+			require(7);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+			break;
+
 		case Instruction::POST:
 			require(5);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
@@ -580,12 +586,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		}
 		case Instruction::CALL:
+		case Instruction::CALLSTATELESS:
 		{
 			require(7);
 
 			u256 gas = m_stack.back();
 			m_stack.pop_back();
-			u160 receiveAddress = asAddress(m_stack.back());
+			Address receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
 			u256 value = m_stack.back();
 			m_stack.pop_back();
@@ -602,7 +609,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp));
+				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), inst == Instruction::CALL ? receiveAddress : _ext.myAddress));
 			}
 			else
 				m_stack.push_back(0);

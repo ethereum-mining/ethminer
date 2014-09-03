@@ -1037,7 +1037,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1053,10 +1053,10 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 		o_ms->input = _data.toBytes();
 	}
 
-	if (addressHasCode(_receiveAddress))
+	if (addressHasCode(_codeAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms, _level);
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
 		try
