@@ -24,7 +24,7 @@
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
-#include <libp2p/PeerSession.h>
+#include <libp2p/Session.h>
 #include "BlockChain.h"
 #include "EthereumHost.h"
 using namespace std;
@@ -33,8 +33,8 @@ using namespace p2p;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-EthereumPeer::EthereumPeer(PeerSession* _s, HostCapabilityFace* _h):
-	PeerCapability(_s, _h)
+EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
+	Capability(_s, _h)
 {
 	sendStatus();
 }
@@ -46,7 +46,7 @@ EthereumPeer::~EthereumPeer()
 
 EthereumHost* EthereumPeer::host() const
 {
-	return static_cast<EthereumHost*>(PeerCapability::hostCapability());
+	return static_cast<EthereumHost*>(Capability::hostCapability());
 }
 
 void EthereumPeer::sendStatus()

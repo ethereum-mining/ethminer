@@ -29,7 +29,7 @@
 #include <utility>
 #include <thread>
 #include <libethential/Guards.h>
-#include "Common.h"
+#include "HostCapability.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -43,24 +43,24 @@ class BlockQueue;
 using eth::Guard;
 
 /**
- * @brief The PeerHost class
+ * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  */
-class PeerHost
+class Host
 {
-	friend class PeerSession;
+	friend class Session;
 	friend class HostCapabilityFace;
 
 public:
 	/// Start server, listening for connections on the given port.
-	PeerHost(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
+	Host(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, listening for connections on a system-assigned port.
-	PeerHost(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
+	Host(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
 	/// Start server, but don't listen.
-	PeerHost(std::string const& _clientVersion);
+	Host(std::string const& _clientVersion);
 
 	/// Will block on network process events.
-	virtual ~PeerHost();
+	virtual ~Host();
 
 	/// Closes all peers.
 	void disconnectPeers();
@@ -110,7 +110,7 @@ public:
 
 	h512 id() const { return m_id; }
 
-	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
+	void registerPeer(std::shared_ptr<Session> _s, std::vector<std::string> const& _caps);
 
 protected:
 	/// Called when the session has provided us with a new peer we can connect to.
@@ -140,7 +140,7 @@ protected:
 	h512 m_id;
 
 	mutable std::mutex x_peers;
-	mutable std::map<h512, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
+	mutable std::map<h512, std::weak_ptr<Session>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
 	std::map<h512, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
 	std::vector<h512> m_freePeers;

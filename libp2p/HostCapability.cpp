@@ -14,43 +14,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.h
+/** @file HostCapability.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "HostCapability.h"
 
-#include <string>
-#include <chrono>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
-#include <libethcore/CommonEth.h>
-#include <libp2p/Capability.h>
+#include "Session.h"
+#include "Host.h"
+using namespace std;
+using namespace eth;
+using namespace p2p;
 
-namespace shh
+void HostCapabilityFace::seal(bytes& _b)
 {
+	m_host->seal(_b);
+}
 
-using h256 = eth::h256;
-using h512 = eth::h512;
-using h256s = eth::h256s;
-using bytes = eth::bytes;
-using RLPStream = eth::RLPStream;
-using RLP = eth::RLP;
-using bytesRef = eth::bytesRef;
-using bytesConstRef = eth::bytesConstRef;
-using h256Set = eth::h256Set;
-
-class WhisperHost;
-class WhisperPeer;
-class Whisper;
-
-enum WhisperPacket
+std::vector<std::shared_ptr<Session> > HostCapabilityFace::peers() const
 {
-	StatusPacket = 0x20,
-	MessagesPacket,
-	AddFilterPacket,
-	RemoveFilterPacket
-};
-
+	Guard l(m_host->x_peers);
+	std::vector<std::shared_ptr<Session> > ret;
+	for (auto const& i: m_host->m_peers)
+		if (std::shared_ptr<Session> p = i.second.lock())
+			if (p->m_capabilities.count(name()))
+				ret.push_back(p);
+	return ret;
 }

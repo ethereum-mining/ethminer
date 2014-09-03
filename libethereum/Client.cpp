@@ -25,7 +25,7 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libethential/Log.h>
-#include <libp2p/PeerHost.h>
+#include <libp2p/Host.h>
 #include "Defaults.h"
 #include "EthereumHost.h"
 using namespace std;
@@ -215,13 +215,13 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 			try
 			{
-				m_net.reset(new PeerHost(m_clientVersion, _listenPort, _publicIP, _upnp));
+				m_net.reset(new Host(m_clientVersion, _listenPort, _publicIP, _upnp));
 			}
 			catch (std::exception const&)
 			{
 				// Probably already have the port open.
 				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-				m_net.reset(new PeerHost(m_clientVersion, 0, _publicIP, _upnp));
+				m_net.reset(new Host(m_clientVersion, 0, _publicIP, _upnp));
 			}
 			if (_mode == NodeMode::Full)
 				m_net->registerCapability(new EthereumHost(m_bc, _networkId));

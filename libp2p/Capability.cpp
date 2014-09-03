@@ -14,43 +14,45 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.h
+/** @file Capability.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "Capability.h"
 
-#include <string>
-#include <chrono>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
-#include <libethcore/CommonEth.h>
-#include <libp2p/Capability.h>
+#include "Session.h"
+using namespace std;
+using namespace eth;
+using namespace p2p;
 
-namespace shh
+void Capability::disable(std::string const& _problem)
 {
+	clog(NetConnect) << "Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	m_enabled = false;
+}
 
-using h256 = eth::h256;
-using h512 = eth::h512;
-using h256s = eth::h256s;
-using bytes = eth::bytes;
-using RLPStream = eth::RLPStream;
-using RLP = eth::RLP;
-using bytesRef = eth::bytesRef;
-using bytesConstRef = eth::bytesConstRef;
-using h256Set = eth::h256Set;
-
-class WhisperHost;
-class WhisperPeer;
-class Whisper;
-
-enum WhisperPacket
+RLPStream& Capability::prep(RLPStream& _s)
 {
-	StatusPacket = 0x20,
-	MessagesPacket,
-	AddFilterPacket,
-	RemoveFilterPacket
-};
+	return Session::prep(_s);
+}
 
+void Capability::sealAndSend(RLPStream& _s)
+{
+	m_session->sealAndSend(_s);
+}
+
+void Capability::sendDestroy(bytes& _msg)
+{
+	m_session->sendDestroy(_msg);
+}
+
+void Capability::send(bytesConstRef _msg)
+{
+	m_session->send(_msg);
+}
+
+void Capability::addRating(unsigned _r)
+{
+	m_session->addRating(_r);
 }

@@ -30,7 +30,7 @@ using namespace shh;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-WhisperPeer::WhisperPeer(PeerSession* _s, HostCapabilityFace* _h): PeerCapability(_s, _h)
+WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h): Capability(_s, _h)
 {
 	RLPStream s;
 	prep(s);
@@ -43,7 +43,7 @@ WhisperPeer::~WhisperPeer()
 
 WhisperHost* WhisperPeer::host() const
 {
-	return static_cast<WhisperHost*>(PeerCapability::hostCapability());
+	return static_cast<WhisperHost*>(Capability::hostCapability());
 }
 
 bool WhisperPeer::interpret(RLP const& _r)

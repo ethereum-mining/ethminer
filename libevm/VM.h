@@ -89,6 +89,8 @@ private:
 // INLINE:
 template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	auto memNeed = [](eth::u256 _offset, eth::u256 _size) { return _size ? _offset + _size : 0; };
+
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
@@ -138,20 +140,20 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		case Instruction::RETURN:
 			require(2);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::SHA3:
 			require(2);
 			runGas = c_sha3Gas;
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::CODECOPY:
 			require(3);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 
 		case Instruction::BALANCE:
@@ -161,13 +163,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		case Instruction::CALL:
 			require(7);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = std::max(m_stack[m_stack.size() - 6] + m_stack[m_stack.size() - 7], m_stack[m_stack.size() - 4] + m_stack[m_stack.size() - 5]);
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
 		case Instruction::POST:
 			require(5);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = m_stack[m_stack.size() - 4] + m_stack[m_stack.size() - 5];
+			newTempSize = memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]);
 			break;
 
 		case Instruction::CREATE:
