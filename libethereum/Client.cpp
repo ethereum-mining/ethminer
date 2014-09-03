@@ -25,11 +25,12 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libethential/Log.h>
-#include <libethnet/PeerHost.h>
+#include <libp2p/PeerHost.h>
 #include "Defaults.h"
 #include "EthereumHost.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())

@@ -27,10 +27,9 @@
 #include <memory>
 #include <utility>
 #include <libethential/RLP.h>
-#include <libethcore/CommonEth.h>
 #include "Common.h"
 
-namespace eth
+namespace p2p
 {
 
 /**
@@ -89,10 +88,10 @@ private:
 	mutable bi::tcp::socket m_socket;	///< Mutable to ask for native_handle().
 	std::array<byte, 65536> m_data;
 	PeerInfo m_info;
-	Public m_id;
+	h512 m_id;
 
 	bytes m_incoming;
-	uint m_protocolVersion;
+	unsigned m_protocolVersion;
 	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
 
 	std::chrono::steady_clock::time_point m_ping;

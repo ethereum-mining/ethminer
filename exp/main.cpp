@@ -30,13 +30,14 @@
 #include <libethential/Common.h>
 #include <libethential/CommonData.h>
 #include <libethential/RLP.h>
-#include <libethnet/All.h>
+#include <libp2p/All.h>
 #include <libwhisper/WhisperPeer.h>
 #if 0
 #include <libevm/VM.h>
 #include "BuildInfo.h"
 #endif
 using namespace std;
+using namespace p2p;
 using namespace eth;
 using namespace shh;
 #if 0

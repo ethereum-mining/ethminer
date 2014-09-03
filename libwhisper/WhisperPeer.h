@@ -34,9 +34,10 @@
 namespace shh
 {
 
-using eth::PeerSession;
-using eth::HostCapabilityFace;
-using eth::HostCapability;
+using p2p::PeerSession;
+using p2p::HostCapabilityFace;
+using p2p::HostCapability;
+using p2p::PeerCapability;
 
 struct Message
 {
@@ -63,7 +64,7 @@ struct Message
 
 /**
  */
-class WhisperPeer: public eth::PeerCapability
+class WhisperPeer: public PeerCapability
 {
 	friend class WhisperHost;
 

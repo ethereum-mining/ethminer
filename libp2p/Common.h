@@ -29,16 +29,29 @@
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethential/Log.h>
+#include <libethential/FixedHash.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
 namespace eth
 {
+class RLP;
+class RLPStream;
+}
+
+namespace p2p
+{
+
+using eth::LogChannel;
+using eth::bytes;
+using eth::h256;
+using eth::h512;
+using eth::bytesConstRef;
+using eth::RLP;
+using eth::RLPStream;
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
-class RLP;
-class RLPStream;
 class PeerHost;
 class PeerSession;
 

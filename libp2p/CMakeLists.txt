@@ -4,7 +4,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-set(EXECUTABLE ethnet)
+set(EXECUTABLE p2p)
 
 # set(CMAKE_INSTALL_PREFIX ../lib)
 if(ETH_STATIC)
@@ -17,9 +17,6 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
-target_link_libraries(${EXECUTABLE} evm)
-target_link_libraries(${EXECUTABLE} lll)
-target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 if(MINIUPNPC_LS)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})

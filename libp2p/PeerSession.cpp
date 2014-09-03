@@ -27,6 +27,7 @@
 #include "PeerHost.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
@@ -74,7 +75,7 @@ bool PeerSession::interpret(RLP const& _r)
 	{
 	case HelloPacket:
 	{
-		m_protocolVersion = _r[1].toInt<uint>();
+		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
 		auto caps = _r[3].toVector<string>();
 		m_listenPort = _r[4].toInt<unsigned short>();
@@ -156,14 +157,14 @@ bool PeerSession::interpret(RLP const& _r)
 		{
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-			Public id = _r[i][2].toHash<Public>();
+			h512 id = _r[i][2].toHash<h512>();
 			if (isPrivateAddress(peerAddress) && !m_server->m_localNetworking)
 				goto CONTINUE;
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
 
 			// check that it's not us or one we already know:
-			if (id && (m_server->m_key.pub() == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
+			if (id && (m_server->m_id == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
 				goto CONTINUE;
 
 			// check that we're not already connected to addr:
@@ -336,7 +337,7 @@ void PeerSession::start()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
 					<< m_server->m_public.port()
-					<< m_server->m_key.pub();
+					<< m_server->m_id;
 	sealAndSend(s);
 	ping();
 	getPeers();

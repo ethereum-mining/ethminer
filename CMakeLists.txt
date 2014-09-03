@@ -337,12 +337,15 @@ add_subdirectory(lllc)
 add_subdirectory(sc)
 if (NOT LANGUAGES)
 	add_subdirectory(secp256k1)
-	add_subdirectory(libethnet)
+	add_subdirectory(libp2p)
+	add_subdirectory(libwhisper)
+
 	add_subdirectory(libethcore)
 	add_subdirectory(libevm)
-	add_subdirectory(libwhisper)
 	add_subdirectory(libethereum)
-	add_subdirectory(libethereumx)
+	add_subdirectory(libethereumx)	 # TODO remove
+
+	#add_subdirectory(libwebthree)
 	add_subdirectory(test)
 	add_subdirectory(eth)
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")

@@ -30,7 +30,7 @@
 #include <thread>
 #include <libethential/Guards.h>
 #include <libethcore/CommonEth.h>
-#include <libethnet/Common.h>
+#include <libp2p/Common.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
 
@@ -45,7 +45,7 @@ class BlockQueue;
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
  */
-class EthereumHost: public HostCapability<EthereumPeer>
+class EthereumHost: public p2p::HostCapability<EthereumPeer>
 {
 	friend class EthereumPeer;
 
