@@ -85,7 +85,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
-//		throw BlockGasLimitReached();
+		throw BlockGasLimitReached();
 	}
 
 	// Increment associated nonce for sender.
