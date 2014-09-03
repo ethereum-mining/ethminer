@@ -401,6 +401,26 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
+		case Instruction::EXTCODESIZE:
+			require(1);
+			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
+			break;
+		case Instruction::EXTCODECOPY:
+		{
+			require(4);
+			Address a = asAddress(m_stack.back());
+			m_stack.pop_back();
+			unsigned mf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned cf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned l = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned el = cf + l > _ext.codeAt(a).size() ? _ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - cf : l;
+			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + cf, el);
+			memset(m_temp.data() + mf + el, 0, l - el);
+			break;
+		}
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
 			break;
