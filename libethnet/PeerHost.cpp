@@ -40,6 +40,7 @@
 #include "UPnP.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 // Addresses we will skip during network interface discovery
 // Use a vector as the list is small
@@ -58,13 +59,13 @@ PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, stri
 	m_localNetworking(_localNetworking),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create())
+	m_id(h512::random())
 {
 	populateAddresses();
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_key.address().abridged();
+	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
 PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
@@ -73,7 +74,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddre
 	m_localNetworking(_localNetworking),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create())
+	m_id(h512::random())
 {
 	m_listenPort = m_acceptor.local_endpoint().port();
 
@@ -82,7 +83,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddre
 	determinePublic(_publicAddress, _upnp);
 	ensureAccepting();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_key.address().abridged();
+	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
 PeerHost::PeerHost(std::string const& _clientVersion):
@@ -90,12 +91,12 @@ PeerHost::PeerHost(std::string const& _clientVersion):
 	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
 	m_socket(m_ioService),
-	m_key(KeyPair::create())
+	m_id(h512::random())
 {
 	// populate addresses.
 	populateAddresses();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_key.address().abridged();
+	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
 PeerHost::~PeerHost()
@@ -271,11 +272,11 @@ void PeerHost::populateAddresses()
 #endif
 }
 
-std::map<Public, bi::tcp::endpoint> PeerHost::potentialPeers()
+std::map<h512, bi::tcp::endpoint> PeerHost::potentialPeers()
 {
-	std::map<Public, bi::tcp::endpoint> ret;
+	std::map<h512, bi::tcp::endpoint> ret;
 	if (!m_public.address().is_unspecified())
-		ret.insert(make_pair(m_key.pub(), m_public));
+		ret.insert(make_pair(m_id, m_public));
 	Guard l(x_peers);
 	for (auto i: m_peers)
 		if (auto j = i.second.lock())
@@ -361,7 +362,7 @@ void PeerHost::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerHost::havePeer(Public _id) const
+bool PeerHost::havePeer(h512 _id) const
 {
 	Guard l(x_peers);
 
@@ -413,7 +414,7 @@ void PeerHost::prunePeers()
 {
 	Guard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-	for (uint old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+	for (unsigned old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
 		while (m_peers.size() > m_idealPeerCount)
 		{
 			// look for worst peer to kick off
@@ -492,7 +493,7 @@ void PeerHost::restorePeers(bytesConstRef _b)
 {
 	for (auto i: RLP(_b))
 	{
-		auto k = (Public)i[2];
+		auto k = (h512)i[2];
 		if (!m_incomingPeers.count(k))
 		{
 			m_incomingPeers.insert(make_pair(k, make_pair(bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>()), 0)));

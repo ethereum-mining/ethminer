@@ -36,6 +36,7 @@
 #include "EthereumPeer.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 EthereumHost::EthereumHost(BlockChain const& _ch, u256 _networkId):
 	HostCapability<EthereumPeer>(),

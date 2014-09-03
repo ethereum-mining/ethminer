@@ -34,18 +34,16 @@
 namespace eth
 {
 
-class HostCapabilityFace;
-
 /**
  * @brief The EthereumPeer class
  * @todo Document fully.
  */
-class EthereumPeer: public PeerCapability
+class EthereumPeer: public p2p::PeerCapability
 {
 	friend class EthereumHost;
 
 public:
-	EthereumPeer(PeerSession* _s, HostCapabilityFace* _h);
+	EthereumPeer(p2p::PeerSession* _s, p2p::HostCapabilityFace* _h);
 	virtual ~EthereumPeer();
 
 	static std::string name() { return "eth"; }
