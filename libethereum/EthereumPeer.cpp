@@ -29,10 +29,12 @@
 #include "EthereumHost.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-EthereumPeer::EthereumPeer(PeerSession* _s, HostCapabilityFace* _h): PeerCapability(_s, _h)
+EthereumPeer::EthereumPeer(PeerSession* _s, HostCapabilityFace* _h):
+	PeerCapability(_s, _h)
 {
 	sendStatus();
 }

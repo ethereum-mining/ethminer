@@ -29,17 +29,18 @@
 #include <utility>
 #include <thread>
 #include <libethential/Guards.h>
-#include <libethcore/CommonEth.h>
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
-namespace eth
+namespace p2p
 {
 
 class RLPStream;
 class TransactionQueue;
 class BlockQueue;
+
+using eth::Guard;
 
 /**
  * @brief The PeerHost class
@@ -84,7 +85,7 @@ public:
 	void process();
 
 	/// @returns true iff we have the a peer of the given id.
-	bool havePeer(Public _id) const;
+	bool havePeer(h512 _id) const;
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -107,7 +108,7 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
-	h512 id() const { return m_key.pub(); }
+	h512 id() const { return m_id; }
 
 	void registerPeer(std::shared_ptr<PeerSession> _s, std::vector<std::string> const& _caps);
 
@@ -123,7 +124,7 @@ protected:
 	void growPeers();
 	void prunePeers();
 
-	std::map<Public, bi::tcp::endpoint> potentialPeers();
+	std::map<h512, bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
 
@@ -136,13 +137,13 @@ protected:
 
 	UPnP* m_upnp = nullptr;
 	bi::tcp::endpoint m_public;
-	KeyPair m_key;
+	h512 m_id;
 
 	mutable std::mutex x_peers;
-	mutable std::map<Public, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
+	mutable std::map<h512, std::weak_ptr<PeerSession>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 
-	std::map<Public, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
-	std::vector<Public> m_freePeers;
+	std::map<h512, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
+	std::vector<h512> m_freePeers;
 
 	std::chrono::steady_clock::time_point m_lastPeersRequest;
 	unsigned m_idealPeerCount = 5;

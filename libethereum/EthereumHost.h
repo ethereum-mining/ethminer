@@ -45,7 +45,7 @@ class BlockQueue;
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
  */
-class EthereumHost: public HostCapability<EthereumPeer>
+class EthereumHost: public p2p::HostCapability<EthereumPeer>
 {
 	friend class EthereumPeer;
 
