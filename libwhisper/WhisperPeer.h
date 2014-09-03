@@ -34,10 +34,10 @@
 namespace shh
 {
 
-using p2p::PeerSession;
+using p2p::Session;
 using p2p::HostCapabilityFace;
 using p2p::HostCapability;
-using p2p::PeerCapability;
+using p2p::Capability;
 
 struct Message
 {
@@ -64,12 +64,12 @@ struct Message
 
 /**
  */
-class WhisperPeer: public PeerCapability
+class WhisperPeer: public Capability
 {
 	friend class WhisperHost;
 
 public:
-	WhisperPeer(PeerSession* _s, HostCapabilityFace* _h);
+	WhisperPeer(Session* _s, HostCapabilityFace* _h);
 	virtual ~WhisperPeer();
 
 	static std::string name() { return "shh"; }

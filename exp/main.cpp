@@ -320,7 +320,7 @@ int main(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	PeerHost ph("Test", listenPort, "", false, true);
+	Host ph("Test", listenPort, "", false, true);
 	ph.registerCapability(new WhisperHost());
 	auto wh = ph.cap<WhisperHost>();
 

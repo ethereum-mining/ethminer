@@ -28,7 +28,7 @@
 #include <utility>
 #include <libethential/RLP.h>
 #include <libethcore/CommonEth.h>
-#include <libp2p/Common.h>
+#include <libp2p/Capability.h>
 #include "CommonNet.h"
 
 namespace eth
@@ -38,12 +38,12 @@ namespace eth
  * @brief The EthereumPeer class
  * @todo Document fully.
  */
-class EthereumPeer: public p2p::PeerCapability
+class EthereumPeer: public p2p::Capability
 {
 	friend class EthereumHost;
 
 public:
-	EthereumPeer(p2p::PeerSession* _s, p2p::HostCapabilityFace* _h);
+	EthereumPeer(p2p::Session* _s, p2p::HostCapabilityFace* _h);
 	virtual ~EthereumPeer();
 
 	static std::string name() { return "eth"; }

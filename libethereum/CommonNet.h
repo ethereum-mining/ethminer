@@ -18,7 +18,7 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
- * Miscellanea required for the PeerServer/PeerSession classes.
+ * Miscellanea required for the PeerServer/Session classes.
  */
 
 #pragma once

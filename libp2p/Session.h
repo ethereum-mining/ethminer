@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerSession.h
+/** @file Session.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -33,17 +33,17 @@ namespace p2p
 {
 
 /**
- * @brief The PeerSession class
+ * @brief The Session class
  * @todo Document fully.
  */
-class PeerSession: public std::enable_shared_from_this<PeerSession>
+class Session: public std::enable_shared_from_this<Session>
 {
-	friend class PeerHost;
+	friend class Host;
 	friend class HostCapabilityFace;
 
 public:
-	PeerSession(PeerHost* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
-	virtual ~PeerSession();
+	Session(Host* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
+	virtual ~Session();
 
 	void start();
 	void disconnect(int _reason);
@@ -80,7 +80,7 @@ private:
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
 
-	PeerHost* m_server;
+	Host* m_server;
 
 	std::recursive_mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
@@ -100,7 +100,7 @@ private:
 
 	uint m_rating;
 
-	std::map<std::string, std::shared_ptr<PeerCapability>> m_capabilities;
+	std::map<std::string, std::shared_ptr<Capability>> m_capabilities;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

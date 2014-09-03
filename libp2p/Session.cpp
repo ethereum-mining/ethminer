@@ -14,24 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerSession.cpp
+/** @file Session.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "PeerSession.h"
+#include "Session.h"
 
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
-#include "PeerHost.h"
+#include "Host.h"
+#include "Capability.h"
 using namespace std;
 using namespace eth;
 using namespace p2p;
 
 #define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-PeerSession::PeerSession(PeerHost* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
+Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_listenPort(_peerPort),
@@ -42,7 +43,7 @@ PeerSession::PeerSession(PeerHost* _s, bi::tcp::socket _socket, bi::address _pee
 	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0)});
 }
 
-PeerSession::~PeerSession()
+Session::~Session()
 {
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -56,7 +57,7 @@ PeerSession::~PeerSession()
 	catch (...){}
 }
 
-bi::tcp::endpoint PeerSession::endpoint() const
+bi::tcp::endpoint Session::endpoint() const
 {
 	if (m_socket.is_open())
 		try
@@ -68,7 +69,7 @@ bi::tcp::endpoint PeerSession::endpoint() const
 	return bi::tcp::endpoint();
 }
 
-bool PeerSession::interpret(RLP const& _r)
+bool Session::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
 	switch (_r[0].toInt<unsigned>())
@@ -192,25 +193,25 @@ bool PeerSession::interpret(RLP const& _r)
 	return true;
 }
 
-void PeerSession::ping()
+void Session::ping()
 {
 	RLPStream s;
 	sealAndSend(prep(s).appendList(1) << PingPacket);
 	m_ping = std::chrono::steady_clock::now();
 }
 
-void PeerSession::getPeers()
+void Session::getPeers()
 {
 	RLPStream s;
 	sealAndSend(prep(s).appendList(1) << GetPeersPacket);
 }
 
-RLPStream& PeerSession::prep(RLPStream& _s)
+RLPStream& Session::prep(RLPStream& _s)
 {
 	return _s.appendRaw(bytes(8, 0));
 }
 
-void PeerSession::sealAndSend(RLPStream& _s)
+void Session::sealAndSend(RLPStream& _s)
 {
 	bytes b;
 	_s.swapOut(b);
@@ -218,7 +219,7 @@ void PeerSession::sealAndSend(RLPStream& _s)
 	sendDestroy(b);
 }
 
-bool PeerSession::checkPacket(bytesConstRef _msg)
+bool Session::checkPacket(bytesConstRef _msg)
 {
 	if (_msg.size() < 8)
 		return false;
@@ -233,7 +234,7 @@ bool PeerSession::checkPacket(bytesConstRef _msg)
 	return true;
 }
 
-void PeerSession::sendDestroy(bytes& _msg)
+void Session::sendDestroy(bytes& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 
@@ -246,7 +247,7 @@ void PeerSession::sendDestroy(bytes& _msg)
 	writeImpl(buffer);
 }
 
-void PeerSession::send(bytesConstRef _msg)
+void Session::send(bytesConstRef _msg)
 {
 	clogS(NetLeft) << RLP(_msg.cropped(8));
 	
@@ -259,7 +260,7 @@ void PeerSession::send(bytesConstRef _msg)
 	writeImpl(buffer);
 }
 
-void PeerSession::writeImpl(bytes& _buffer)
+void Session::writeImpl(bytes& _buffer)
 {
 //	cerr << (void*)this << " writeImpl" << endl;
 	if (!m_socket.is_open())
@@ -271,7 +272,7 @@ void PeerSession::writeImpl(bytes& _buffer)
 		write();
 }
 
-void PeerSession::write()
+void Session::write()
 {
 //	cerr << (void*)this << " write" << endl;
 	lock_guard<recursive_mutex> l(m_writeLock);
@@ -298,7 +299,7 @@ void PeerSession::write()
 	});
 }
 
-void PeerSession::dropped()
+void Session::dropped()
 {
 //	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
@@ -310,7 +311,7 @@ void PeerSession::dropped()
 		catch (...) {}
 }
 
-void PeerSession::disconnect(int _reason)
+void Session::disconnect(int _reason)
 {
 	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
 	if (m_socket.is_open())
@@ -328,7 +329,7 @@ void PeerSession::disconnect(int _reason)
 	}
 }
 
-void PeerSession::start()
+void Session::start()
 {
 	RLPStream s;
 	prep(s);
@@ -345,7 +346,7 @@ void PeerSession::start()
 	doRead();
 }
 
-void PeerSession::doRead()
+void Session::doRead()
 {
 	// ignore packets received while waiting to disconnect
 	if (chrono::steady_clock::now() - m_disconnect > chrono::seconds(0))

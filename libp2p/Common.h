@@ -18,7 +18,7 @@
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
- * Miscellanea required for the PeerHost/PeerSession classes.
+ * Miscellanea required for the Host/Session classes.
  */
 
 #pragma once
@@ -52,8 +52,10 @@ using eth::RLPStream;
 
 bool isPrivateAddress(bi::address _addressToCheck);
 
-class PeerHost;
-class PeerSession;
+class UPnP;
+class Capability;
+class Host;
+class Session;
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
@@ -100,81 +102,6 @@ struct PeerInfo
 	std::string host;
 	unsigned short port;
 	std::chrono::steady_clock::duration lastPing;
-};
-
-class UPnP;
-
-class PeerCapability;
-
-class HostCapabilityFace
-{
-	friend class PeerHost;
-	template <class T> friend class HostCapability;
-	friend class PeerCapability;
-
-public:
-	HostCapabilityFace() {}
-	virtual ~HostCapabilityFace() {}
-
-	PeerHost* host() const { return m_host; }
-
-	std::vector<std::shared_ptr<PeerSession> > peers() const;
-
-protected:
-	virtual std::string name() const = 0;
-	virtual PeerCapability* newPeerCapability(PeerSession* _s) = 0;
-	virtual bool isInitialised() const { return true; }
-
-	void seal(bytes& _b);
-
-private:
-	PeerHost* m_host = nullptr;
-};
-
-template<class PeerCap>
-class HostCapability: public HostCapabilityFace
-{
-public:
-	HostCapability() {}
-	virtual ~HostCapability() {}
-
-	static std::string staticName() { return PeerCap::name(); }
-
-protected:
-	virtual std::string name() const { return PeerCap::name(); }
-	virtual PeerCapability* newPeerCapability(PeerSession* _s) { return new PeerCap(_s, this); }
-};
-
-class PeerCapability
-{
-	friend class PeerSession;
-
-public:
-	PeerCapability(PeerSession* _s, HostCapabilityFace* _h): m_session(_s), m_host(_h) {}
-	virtual ~PeerCapability() {}
-
-	/// Must return the capability name.
-	static std::string name() { return ""; }
-
-	PeerSession* session() const { return m_session; }
-	HostCapabilityFace* hostCapability() const { return m_host; }
-
-protected:
-	virtual bool interpret(RLP const&) = 0;
-
-	void disable(std::string const& _problem);
-
-	static RLPStream& prep(RLPStream& _s);
-	void sealAndSend(RLPStream& _s);
-	void sendDestroy(bytes& _msg);
-	void send(bytesConstRef _msg);
-
-	void addRating(unsigned _r);
-
-private:
-	PeerSession* m_session;
-	HostCapabilityFace* m_host;
-	bool m_enabled = true;
 };
 
 }

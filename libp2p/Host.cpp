@@ -14,14 +14,14 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file PeerHost.cpp
+/** @file Host.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Eric Lombrozo <elombrozo@gmail.com>
  * @date 2014
  */
 
-#include "PeerHost.h"
+#include "Host.h"
 
 #include <sys/types.h>
 #ifdef _WIN32
@@ -36,7 +36,8 @@
 #include <thread>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
-#include "PeerSession.h"
+#include "Session.h"
+#include "Capability.h"
 #include "UPnP.h"
 using namespace std;
 using namespace eth;
@@ -53,7 +54,7 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp, bool _localNetworking):
+Host::Host(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp, bool _localNetworking):
 	m_clientVersion(_clientVersion),
 	m_listenPort(_port),
 	m_localNetworking(_localNetworking),
@@ -68,7 +69,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, unsigned short _port, stri
 	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
-PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
+Host::Host(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
 	m_clientVersion(_clientVersion),
 	m_listenPort(0),
 	m_localNetworking(_localNetworking),
@@ -86,7 +87,7 @@ PeerHost::PeerHost(std::string const& _clientVersion, string const& _publicAddre
 	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
-PeerHost::PeerHost(std::string const& _clientVersion):
+Host::Host(std::string const& _clientVersion):
 	m_clientVersion(_clientVersion),
 	m_listenPort(0),
 	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
@@ -99,17 +100,17 @@ PeerHost::PeerHost(std::string const& _clientVersion):
 	clog(NetNote) << "Id:" << m_id.abridged();
 }
 
-PeerHost::~PeerHost()
+Host::~Host()
 {
 	disconnectPeers();
 }
 
-unsigned PeerHost::protocolVersion() const
+unsigned Host::protocolVersion() const
 {
 	return 0;
 }
 
-void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s, vector<string> const& _caps)
+void Host::registerPeer(std::shared_ptr<Session> _s, vector<string> const& _caps)
 {
 	{
 		Guard l(x_peers);
@@ -117,10 +118,10 @@ void PeerHost::registerPeer(std::shared_ptr<PeerSession> _s, vector<string> cons
 	}
 	for (auto const& i: _caps)
 		if (haveCapability(i))
-			_s->m_capabilities[i] = shared_ptr<PeerCapability>(m_capabilities[i]->newPeerCapability(_s.get()));
+			_s->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(_s.get()));
 }
 
-void PeerHost::disconnectPeers()
+void Host::disconnectPeers()
 {
 	for (unsigned n = 0;; n = 0)
 	{
@@ -142,7 +143,7 @@ void PeerHost::disconnectPeers()
 	delete m_upnp;
 }
 
-void PeerHost::seal(bytes& _b)
+void Host::seal(bytes& _b)
 {
 	_b[0] = 0x22;
 	_b[1] = 0x40;
@@ -155,7 +156,7 @@ void PeerHost::seal(bytes& _b)
 	_b[7] = len & 0xff;
 }
 
-void PeerHost::determinePublic(string const& _publicAddress, bool _upnp)
+void Host::determinePublic(string const& _publicAddress, bool _upnp)
 {
 	if (_upnp)
 		try
@@ -197,7 +198,7 @@ void PeerHost::determinePublic(string const& _publicAddress, bool _upnp)
 	}
 }
 
-void PeerHost::populateAddresses()
+void Host::populateAddresses()
 {
 #ifdef _WIN32
 	WSAData wsaData;
@@ -272,7 +273,7 @@ void PeerHost::populateAddresses()
 #endif
 }
 
-std::map<h512, bi::tcp::endpoint> PeerHost::potentialPeers()
+std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 {
 	std::map<h512, bi::tcp::endpoint> ret;
 	if (!m_public.address().is_unspecified())
@@ -290,7 +291,7 @@ std::map<h512, bi::tcp::endpoint> PeerHost::potentialPeers()
 	return ret;
 }
 
-void PeerHost::ensureAccepting()
+void Host::ensureAccepting()
 {
 	if (m_accepting == false)
 	{
@@ -306,7 +307,7 @@ void PeerHost::ensureAccepting()
 					} catch (...){}
 					bi::address remoteAddress = m_socket.remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<PeerSession>(this, std::move(m_socket), remoteAddress);
+					auto p = std::make_shared<Session>(this, std::move(m_socket), remoteAddress);
 					p->start();
 				}
 				catch (std::exception const& _e)
@@ -320,7 +321,7 @@ void PeerHost::ensureAccepting()
 	}
 }
 
-void PeerHost::connect(std::string const& _addr, unsigned short _port) noexcept
+void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	try
 	{
@@ -333,7 +334,7 @@ void PeerHost::connect(std::string const& _addr, unsigned short _port) noexcept
 	}
 }
 
-void PeerHost::connect(bi::tcp::endpoint const& _ep)
+void Host::connect(bi::tcp::endpoint const& _ep)
 {
 	clog(NetConnect) << "Attempting connection to " << _ep;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
@@ -354,7 +355,7 @@ void PeerHost::connect(bi::tcp::endpoint const& _ep)
 		}
 		else
 		{
-			auto p = make_shared<PeerSession>(this, std::move(*s), _ep.address(), _ep.port());
+			auto p = make_shared<Session>(this, std::move(*s), _ep.address(), _ep.port());
 			clog(NetConnect) << "Connected to " << _ep;
 			p->start();
 		}
@@ -362,7 +363,7 @@ void PeerHost::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool PeerHost::havePeer(h512 _id) const
+bool Host::havePeer(h512 _id) const
 {
 	Guard l(x_peers);
 
@@ -376,7 +377,7 @@ bool PeerHost::havePeer(h512 _id) const
 	return !!m_peers.count(_id);
 }
 
-void PeerHost::growPeers()
+void Host::growPeers()
 {
 	Guard l(x_peers);
 	while (m_peers.size() < m_idealPeerCount)
@@ -387,7 +388,7 @@ void PeerHost::growPeers()
 			{
 				RLPStream s;
 				bytes b;
-				(PeerSession::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
+				(Session::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
 				seal(b);
 				for (auto const& i: m_peers)
 					if (auto p = i.second.lock())
@@ -410,7 +411,7 @@ void PeerHost::growPeers()
 	}
 }
 
-void PeerHost::prunePeers()
+void Host::prunePeers()
 {
 	Guard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
@@ -419,11 +420,11 @@ void PeerHost::prunePeers()
 		{
 			// look for worst peer to kick off
 			// first work out how many are old enough to kick off.
-			shared_ptr<PeerSession> worst;
+			shared_ptr<Session> worst;
 			unsigned agedPeers = 0;
 			for (auto i: m_peers)
 				if (auto p = i.second.lock())
-					if (/*(m_mode != NodeMode::PeerHost || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+					if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
 					{
 						++agedPeers;
 						if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
@@ -442,11 +443,11 @@ void PeerHost::prunePeers()
 			i = m_peers.erase(i);
 }
 
-std::vector<PeerInfo> PeerHost::peers(bool _updatePing) const
+std::vector<PeerInfo> Host::peers(bool _updatePing) const
 {
 	Guard l(x_peers);
     if (_updatePing)
-		const_cast<PeerHost*>(this)->pingAll();
+		const_cast<Host*>(this)->pingAll();
 	this_thread::sleep_for(chrono::milliseconds(200));
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
@@ -456,7 +457,7 @@ std::vector<PeerInfo> PeerHost::peers(bool _updatePing) const
 	return ret;
 }
 
-void PeerHost::process()
+void Host::process()
 {
 	for (auto const& i: m_capabilities)
 		if (!i.second->isInitialised())
@@ -466,7 +467,7 @@ void PeerHost::process()
 	m_ioService.poll();
 }
 
-void PeerHost::pingAll()
+void Host::pingAll()
 {
 	Guard l(x_peers);
 	for (auto& i: m_peers)
@@ -474,7 +475,7 @@ void PeerHost::pingAll()
 			j->ping();
 }
 
-bytes PeerHost::savePeers() const
+bytes Host::savePeers() const
 {
 	Guard l(x_peers);
 	RLPStream ret;
@@ -489,7 +490,7 @@ bytes PeerHost::savePeers() const
 	return RLPStream(n).appendRaw(ret.out(), n).out();
 }
 
-void PeerHost::restorePeers(bytesConstRef _b)
+void Host::restorePeers(bytesConstRef _b)
 {
 	for (auto i: RLP(_b))
 	{
