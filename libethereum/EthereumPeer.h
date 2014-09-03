@@ -28,7 +28,7 @@
 #include <utility>
 #include <libethential/RLP.h>
 #include <libethcore/CommonEth.h>
-#include <libethnet/Common.h>
+#include <libp2p/Common.h>
 #include "CommonNet.h"
 
 namespace eth

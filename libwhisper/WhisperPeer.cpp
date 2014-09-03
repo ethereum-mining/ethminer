@@ -22,7 +22,7 @@
 #include "WhisperPeer.h"
 
 #include <libethential/Log.h>
-#include <libethnet/All.h>
+#include <libp2p/All.h>
 using namespace std;
 using namespace eth;
 using namespace p2p;

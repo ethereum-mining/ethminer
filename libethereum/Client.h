@@ -31,7 +31,7 @@
 #include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include <libethnet/Common.h>
+#include <libp2p/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -199,7 +199,7 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers();
+	std::vector<p2p::PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;
 	/// Same as peers().size(), but more efficient.
@@ -305,7 +305,7 @@ private:
 	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
 	std::atomic<ClientWorkState> m_workNetState;
 	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
-	std::unique_ptr<PeerHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+	std::unique_ptr<p2p::PeerHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 
 	std::unique_ptr<std::thread> m_work;	///< The work thread.
 	std::atomic<ClientWorkState> m_workState;

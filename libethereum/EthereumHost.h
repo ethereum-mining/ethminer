@@ -30,7 +30,7 @@
 #include <thread>
 #include <libethential/Guards.h>
 #include <libethcore/CommonEth.h>
-#include <libethnet/Common.h>
+#include <libp2p/Common.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
 

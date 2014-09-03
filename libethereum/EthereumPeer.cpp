@@ -24,7 +24,7 @@
 #include <chrono>
 #include <libethential/Common.h>
 #include <libethcore/Exceptions.h>
-#include <libethnet/PeerSession.h>
+#include <libp2p/PeerSession.h>
 #include "BlockChain.h"
 #include "EthereumHost.h"
 using namespace std;

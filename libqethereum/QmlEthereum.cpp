@@ -26,7 +26,7 @@ using eth::Client;
 using eth::Instruction;
 using eth::KeyPair;
 using eth::NodeMode;
-using eth::PeerInfo;
+using p2p::PeerInfo;
 using eth::RLP;
 using eth::Secret;
 using eth::Transaction;
