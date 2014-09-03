@@ -163,6 +163,7 @@ enum class Instruction: uint8_t
 	CALL,
 	RETURN,
 	POST,
+	CALLSTATELESS,
 	SUICIDE = 0xff
 };
 
