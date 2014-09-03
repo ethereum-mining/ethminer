@@ -49,6 +49,9 @@ public:
 	/// Write a value in storage.
 	void setStore(u256 _n, u256 _v) { m_s.setStorage(myAddress, _n, _v); if (m_ms) m_ms->altered.push_back(_n); }
 
+	/// Read address's code.
+	bytes const& codeAt(Address _a) { return m_s.code(_a); }
+
 	/// Create a new contract.
 	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, OnOpFunc const& _onOp = OnOpFunc())
 	{

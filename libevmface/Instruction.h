@@ -72,6 +72,8 @@ enum class Instruction: uint8_t
 	CODESIZE,
 	CODECOPY,
 	GASPRICE,
+	EXTCODESIZE,
+	EXTCODECOPY,
 
 	PREVHASH = 0x40,
 	COINBASE,

@@ -66,6 +66,9 @@ public:
 	/// Read address's balance.
 	u256 balance(Address) { return 0; }
 
+	/// Read address's code.
+	bytes const& codeAt(Address) { return NullBytes; }
+
 	/// Subtract amount from account's balance.
 	void subBalance(u256) {}
 
