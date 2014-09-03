@@ -34,6 +34,7 @@
 #include <libethential/Log.h>
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 UPnP::UPnP()
 {
@@ -126,7 +127,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 		return _port;
 
 	// Failed - now try (random external, port internal) and cycle up to 10 times.
-	for (uint i = 0; i < 10; ++i)
+	for (unsigned i = 0; i < 10; ++i)
 	{
 		_port = rand() % 65535 - 1024 + 1024;
 		sprintf(port_str, "%d", _port);

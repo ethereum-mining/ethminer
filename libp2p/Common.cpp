@@ -26,12 +26,13 @@
 #include "PeerHost.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 // Helper function to determine if an address falls within one of the reserved ranges
 // For V4:
 // Class A "10.*", Class B "172.[16->31].*", Class C "192.168.*"
 // Not implemented yet for V6
-bool eth::isPrivateAddress(bi::address _addressToCheck)
+bool p2p::isPrivateAddress(bi::address _addressToCheck)
 {
 	if (_addressToCheck.is_v4())
 	{
@@ -47,7 +48,7 @@ bool eth::isPrivateAddress(bi::address _addressToCheck)
 	return false;
 }
 
-std::string eth::reasonOf(DisconnectReason _r)
+std::string p2p::reasonOf(DisconnectReason _r)
 {
 	switch (_r)
 	{

@@ -27,8 +27,8 @@
 #include <chrono>
 #include <thread>
 #include <libethential/Common.h>
-#include <libethnet/PeerHost.h>
-#include <libethnet/PeerSession.h>
+#include <libp2p/PeerHost.h>
+#include <libp2p/PeerSession.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
@@ -36,6 +36,7 @@
 #include "EthereumPeer.h"
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 EthereumHost::EthereumHost(BlockChain const& _ch, u256 _networkId):
 	HostCapability<EthereumPeer>(),

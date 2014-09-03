@@ -49,6 +49,7 @@
 
 using namespace std;
 using namespace eth;
+using namespace p2p;
 using namespace boost::algorithm;
 using eth::Instruction;
 

@@ -48,7 +48,7 @@ extern u256 c_genesisDifficulty;
  * and calculateGasLimit() and the object serialised to RLP with fillStream. To determine the
  * header hash without the nonce (for mining), the method headerHashWithoutNonce() is provided.
  *
- * The defualt constructor creates an empty object, which can be tested against with the boolean
+ * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
  */
 struct BlockInfo

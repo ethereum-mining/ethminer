@@ -30,7 +30,7 @@
 #include <libethential/CommonIO.h>
 #include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
-#include <libethnet/Common.h>
+#include <libp2p/Common.h>
 #include <libethcore/Dagger.h>
 #include <libethereum/PastMessage.h>
 #include <libethereum/MessageFilter.h>
@@ -120,7 +120,7 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers();
+	std::vector<p2p::PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;
 

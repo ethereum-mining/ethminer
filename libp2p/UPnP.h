@@ -29,7 +29,7 @@
 struct UPNPUrls;
 struct IGDdatas;
 
-namespace eth
+namespace p2p
 {
 
 class UPnP
