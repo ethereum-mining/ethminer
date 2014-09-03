@@ -25,6 +25,7 @@
 #include <libethereum/Client.h>
 using namespace std;
 using namespace eth;
+using namespace p2p;
 
 Ethereum::Ethereum()
 {

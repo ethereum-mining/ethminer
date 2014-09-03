@@ -27,8 +27,8 @@
 #include <chrono>
 #include <thread>
 #include <libethential/Common.h>
-#include <libethnet/PeerHost.h>
-#include <libethnet/PeerSession.h>
+#include <libp2p/PeerHost.h>
+#include <libp2p/PeerSession.h>
 #include <libethcore/Exceptions.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
