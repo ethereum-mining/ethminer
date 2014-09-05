@@ -26,10 +26,10 @@
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/support_utree.hpp>
 #endif
-#include <libethential/Log.h>
-#include <libethential/Common.h>
-#include <libethential/CommonData.h>
-#include <libethential/RLP.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/RLP.h>
 #include <libp2p/All.h>
 #include <libwhisper/WhisperPeer.h>
 #if 0

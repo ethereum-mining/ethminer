@@ -23,10 +23,10 @@
 #pragma once
 
 #include <string>
-#include <libethential/Common.h>
-#include <libethential/CommonIO.h>
-#include <libethential/CommonData.h>
-#include <libethential/FixedHash.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/FixedHash.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev

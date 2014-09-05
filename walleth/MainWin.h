@@ -47,9 +47,9 @@ protected:
 	virtual void timerEvent(QTimerEvent *);
 
 private:
-/*	QString pretty(dev::eth::Address _a) const;
-	QString render(dev::eth::Address _a) const;
-	dev::eth::Address fromString(QString const& _a) const;
+/*	QString pretty(dev::Address _a) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
 */
 	dev::eth::State const& state() const;
 
@@ -67,7 +67,7 @@ private:
 	QMutex m_guiLock;
 	QTimer* m_refresh;
 	QTimer* m_refreshNetwork;
-	QVector<dev::eth::KeyPair> m_myKeys;
+	QVector<dev::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
 	int m_port;
 	int m_idealPeers;

@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include <libethential/RLP.h>
-#include <libethcore/SHA3.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev

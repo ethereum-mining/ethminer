@@ -24,7 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/EthereumHost.h>

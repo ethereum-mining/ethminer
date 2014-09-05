@@ -29,9 +29,9 @@
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #endif
-#include <libethential/Exceptions.h>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
+#include <libdevcore/Exceptions.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;

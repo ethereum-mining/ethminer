@@ -22,7 +22,7 @@
 #include "Session.h"
 
 #include <chrono>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"

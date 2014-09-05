@@ -20,8 +20,8 @@
  */
 
 #include <secp256k1/secp256k1.h>
-#include <libethential/vector_ref.h>
-#include <libethential/Log.h>
+#include <libdevcore/vector_ref.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;

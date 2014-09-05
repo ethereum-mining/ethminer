@@ -23,12 +23,13 @@
 
 #include <iostream>
 #include <jsonrpc/rpc.h>
+#include <libdevcrypto/Common.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "abstractethstubserver.h"
 #pragma GCC diagnostic pop
 
-namespace dev { namespace eth { class Client; class KeyPair; } }
+namespace dev { namespace eth { class Client; } class KeyPair; }
 
 class EthStubServer: public AbstractEthStubServer
 {
@@ -54,10 +55,10 @@ public:
 	virtual Json::Value lastBlock();
 	virtual std::string lll(const std::string& s);
 	virtual Json::Value block(const std::string&);
-	void setKeys(std::vector<dev::eth::KeyPair> _keys) { m_keys = _keys; }
+	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
 	dev::eth::Client& m_client;
-	std::vector<dev::eth::KeyPair> m_keys;
+	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
 	Json::Value blockJson(const std::string&);
 };

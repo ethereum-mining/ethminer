@@ -50,16 +50,16 @@ using dev::h160;
 using dev::h256;
 using dev::u160;
 using dev::u256;
-using dev::eth::Address;
+using dev::Address;
 using dev::eth::BlockInfo;
 using dev::eth::Client;
 using dev::eth::Instruction;
-using dev::eth::KeyPair;
+using dev::KeyPair;
 using dev::eth::NodeMode;
 using dev::eth::BlockChain;
 using dev::p2p::PeerInfo;
 using dev::RLP;
-using dev::eth::Secret;
+using dev::Secret;
 using dev::eth::Transaction;
 using dev::eth::Executive;
 
@@ -291,7 +291,7 @@ void Main::eval(QString const& _js)
 	ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
 }
 
-QString Main::pretty(dev::eth::Address _a) const
+QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
@@ -301,7 +301,7 @@ QString Main::pretty(dev::eth::Address _a) const
 	return fromRaw(n);
 }
 
-QString Main::render(dev::eth::Address _a) const
+QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
 	if (!p.isNull())

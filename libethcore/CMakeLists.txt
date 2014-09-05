@@ -15,7 +15,8 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
-target_link_libraries(${EXECUTABLE} ethential)
+target_link_libraries(${EXECUTABLE} devcrypto)
+target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})

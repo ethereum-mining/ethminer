@@ -28,7 +28,7 @@
 #include <memory>
 #include <utility>
 #include <thread>
-#include <libethential/Guards.h>
+#include <libdevcore/Guards.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"

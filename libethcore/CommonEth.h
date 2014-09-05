@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include <libethential/Common.h>
-#include <libethential/FixedHash.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
+#include <libdevcrypto/Common.h>
 
 namespace dev
 {
@@ -36,21 +37,6 @@ extern const unsigned c_protocolVersion;
 
 /// Current database version.
 extern const unsigned c_databaseVersion;
-
-/// A secret key: 32 bytes.
-/// @NOTE This is not endian-specific; it's just a bunch of bytes.
-using Secret = h256;
-
-/// A public key: 64 bytes.
-/// @NOTE This is not endian-specific; it's just a bunch of bytes.
-using Public = h512;
-
-/// An Ethereum address: 20 bytes.
-/// @NOTE This is not endian-specific; it's just a bunch of bytes.
-using Address = h160;
-
-/// A vector of Ethereum addresses.
-using Addresses = h160s;
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(u256 _b);
@@ -78,45 +64,6 @@ static const u256 Gwei = u256(1000000000);
 static const u256 Mwei = u256(1000000);
 static const u256 Kwei = u256(1000);
 static const u256 wei = u256(1);
-
-/// Convert a private key into the public key equivalent.
-/// @returns 0 if it's not a valid private key.
-Address toAddress(h256 _private);
-
-/// Simple class that represents a "key pair".
-/// All of the data of the class can be regenerated from the secret key (m_secret) alone.
-/// Actually stores a tuplet of secret, public and address (the right 160-bits of the public).
-class KeyPair
-{
-public:
-	/// Null constructor.
-	KeyPair() {}
-
-	/// Normal constructor - populates object from the given secret key.
-	KeyPair(Secret _k);
-
-	/// Create a new, randomly generated object.
-	static KeyPair create();
-
-	/// Retrieve the secret key.
-	Secret const& secret() const { return m_secret; }
-	/// Retrieve the secret key.
-	Secret const& sec() const { return m_secret; }
-
-	/// Retrieve the public key.
-	Public const& pub() const { return m_public; }
-
-	/// Retrieve the associated address of the public key.
-	Address const& address() const { return m_address; }
-
-	bool operator==(KeyPair const& _c) const { return m_secret == _c.m_secret; }
-	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
-
-private:
-	Secret m_secret;
-	Public m_public;
-	Address m_address;
-};
 
 }
 }

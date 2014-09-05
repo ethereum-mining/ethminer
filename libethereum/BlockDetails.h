@@ -26,8 +26,8 @@
 #include <leveldb/db.h>
 #pragma warning(pop)
 
-#include <libethential/Log.h>
-#include <libethential/RLP.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/RLP.h>
 #include "Manifest.h"
 namespace ldb = leveldb;
 

@@ -22,10 +22,10 @@
 #pragma once
 
 #include <map>
-#include <libethential/Common.h>
-#include <libethential/FixedHash.h>
-#include <libethential/Log.h>
-#include <libethential/RLP.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/RLP.h>
 
 namespace dev
 {

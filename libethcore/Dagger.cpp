@@ -27,7 +27,7 @@
 #include <random>
 #include <thread>
 #include <libethcore/CryptoHeaders.h>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include "Dagger.h"
 using namespace std;
 using namespace std::chrono;

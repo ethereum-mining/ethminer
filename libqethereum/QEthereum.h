@@ -3,7 +3,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QStringList>
 #include <QtCore/QList>
-#include <libethential/CommonIO.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev { namespace eth {
@@ -55,8 +55,8 @@ template <unsigned N> dev::FixedHash<N> toFixed(QString const& _s)
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s);
 
-inline dev::eth::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
-inline dev::eth::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
+inline dev::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
+inline dev::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
 inline dev::u256 toU256(QString const& _s) { return toInt<32>(_s); }
 
 template <unsigned S> QString toQJS(dev::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
@@ -99,7 +99,7 @@ class QEthereum: public QObject
 	Q_OBJECT
 
 public:
-	QEthereum(QObject* _p, dev::eth::Client* _c, QList<dev::eth::KeyPair> _accounts);
+	QEthereum(QObject* _p, dev::eth::Client* _c, QList<dev::KeyPair> _accounts);
 	virtual ~QEthereum();
 
 	dev::eth::Client* client() const;
@@ -108,7 +108,7 @@ public:
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
 
-	void setAccounts(QList<dev::eth::KeyPair> _l) { m_accounts = _l; keysChanged(); }
+	void setAccounts(QList<dev::KeyPair> _l) { m_accounts = _l; keysChanged(); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
@@ -165,9 +165,9 @@ public:
 	int getDefault() const;
 
 	QString/*dev::KeyPair*/ key() const;
-	QStringList/*list of dev::eth::KeyPair*/ keys() const;
+	QStringList/*list of dev::KeyPair*/ keys() const;
 	QString/*dev::Address*/ account() const;
-	QStringList/*list of dev::eth::Address*/ accounts() const;
+	QStringList/*list of dev::Address*/ accounts() const;
 
 	unsigned peerCount() const;
 
@@ -201,7 +201,7 @@ private:
 
 	dev::eth::Client* m_client;
 	std::vector<unsigned> m_watches;
-	QList<dev::eth::KeyPair> m_accounts;
+	QList<dev::KeyPair> m_accounts;
 };
 
 #define QETH_INSTALL_JS_NAMESPACE(frame, eth, env) [frame, eth, env]() \

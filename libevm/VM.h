@@ -22,10 +22,10 @@
 #pragma once
 
 #include <unordered_map>
-#include <libethential/Exceptions.h>
+#include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libevmface/Instruction.h>
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
 #include "ExtVMFace.h"

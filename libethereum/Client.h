@@ -26,9 +26,9 @@
 #include <list>
 #include <atomic>
 #include <boost/utility.hpp>
-#include <libethential/Common.h>
-#include <libethential/CommonIO.h>
-#include <libethential/Guards.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/Guards.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
 #include <libp2p/Common.h>

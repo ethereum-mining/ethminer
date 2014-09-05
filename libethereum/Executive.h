@@ -22,7 +22,7 @@
 #pragma once
 
 #include <functional>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libevm/ExtVMFace.h>

@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/SHA3.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/SHA3.h>
 
 namespace dev
 {

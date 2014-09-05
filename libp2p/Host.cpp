@@ -34,7 +34,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
 #include "Capability.h"

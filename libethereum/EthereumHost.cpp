@@ -26,7 +26,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libp2p/Host.h>
 #include <libp2p/Session.h>
 #include <libethcore/Exceptions.h>

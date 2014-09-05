@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-set(EXECUTABLE ethential)
+set(EXECUTABLE devcore)
 
 # set(CMAKE_INSTALL_PREFIX ../lib)
 if(ETH_STATIC)
@@ -20,7 +20,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
-target_link_libraries(${EXECUTABLE} ethential)
+target_link_libraries(${EXECUTABLE} devcore)
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 	include_directories(/usr/x86_64-w64-mingw32/include/cryptopp)
