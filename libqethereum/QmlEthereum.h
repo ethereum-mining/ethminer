@@ -4,7 +4,7 @@
 #if ETH_QTQML
 #include <QtQml/QtQml>
 #endif
-#include <libethential/CommonIO.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev { namespace eth {
@@ -20,9 +20,9 @@ extern dev::eth::Client* g_qmlClient;
 extern QObject* g_qmlMain;
 
 Q_DECLARE_METATYPE(dev::u256)
-Q_DECLARE_METATYPE(dev::eth::Address)
-Q_DECLARE_METATYPE(dev::eth::Secret)
-Q_DECLARE_METATYPE(dev::eth::KeyPair)
+Q_DECLARE_METATYPE(dev::Address)
+Q_DECLARE_METATYPE(dev::Secret)
+Q_DECLARE_METATYPE(dev::KeyPair)
 Q_DECLARE_METATYPE(QmlAccount*)
 Q_DECLARE_METATYPE(QmlEthereum*)
 
@@ -64,16 +64,16 @@ class QmlKeyHelper: public QObject
 public:
 	QmlKeyHelper(QObject* _p = nullptr): QObject(_p) {}
 
-	Q_INVOKABLE dev::eth::KeyPair create() const { return dev::eth::KeyPair::create(); }
-	Q_INVOKABLE dev::eth::Address address(dev::eth::KeyPair _p) const { return _p.address(); }
-	Q_INVOKABLE dev::eth::Secret secret(dev::eth::KeyPair _p) const { return _p.secret(); }
-	Q_INVOKABLE dev::eth::KeyPair keypair(dev::eth::Secret _k) const { return dev::eth::KeyPair(_k); }
+	Q_INVOKABLE dev::KeyPair create() const { return dev::KeyPair::create(); }
+	Q_INVOKABLE dev::Address address(dev::KeyPair _p) const { return _p.address(); }
+	Q_INVOKABLE dev::Secret secret(dev::KeyPair _p) const { return _p.secret(); }
+	Q_INVOKABLE dev::KeyPair keypair(dev::Secret _k) const { return dev::KeyPair(_k); }
 
-	Q_INVOKABLE bool isNull(dev::eth::Address _a) const { return !_a; }
+	Q_INVOKABLE bool isNull(dev::Address _a) const { return !_a; }
 
-	Q_INVOKABLE dev::eth::Address addressOf(QString _s) const { return dev::eth::Address(_s.toStdString()); }
-	Q_INVOKABLE QString stringOf(dev::eth::Address _a) const { return QString::fromStdString(dev::toHex(_a.asArray())); }
-	Q_INVOKABLE QString toAbridged(dev::eth::Address _a) const { return QString::fromStdString(_a.abridged()); }
+	Q_INVOKABLE dev::Address addressOf(QString _s) const { return dev::Address(_s.toStdString()); }
+	Q_INVOKABLE QString stringOf(dev::Address _a) const { return QString::fromStdString(dev::toHex(_a.asArray())); }
+	Q_INVOKABLE QString toAbridged(dev::Address _a) const { return QString::fromStdString(_a.abridged()); }
 };
 
 class QmlAccount: public QObject
@@ -88,13 +88,13 @@ public:
 	Q_INVOKABLE dev::u256 balance() const;
 	Q_INVOKABLE double txCount() const;
 	Q_INVOKABLE bool isContract() const;
-	Q_INVOKABLE dev::eth::Address address() const { return m_address; }
+	Q_INVOKABLE dev::Address address() const { return m_address; }
 
 	// TODO: past transactions models.
 
 public slots:
 	void setEthereum(QmlEthereum* _eth);
-	void setAddress(dev::eth::Address _a) { m_address = _a; }
+	void setAddress(dev::Address _a) { m_address = _a; }
 
 signals:
 	void changed();
@@ -102,12 +102,12 @@ signals:
 
 private:
 	QmlEthereum* m_eth = nullptr;
-	dev::eth::Address m_address;
+	dev::Address m_address;
 
 	Q_PROPERTY(dev::u256 balance READ balance NOTIFY changed STORED false)
 	Q_PROPERTY(double txCount READ txCount NOTIFY changed STORED false)
 	Q_PROPERTY(bool isContract READ isContract NOTIFY changed STORED false)
-	Q_PROPERTY(dev::eth::Address address READ address WRITE setAddress NOTIFY changed)
+	Q_PROPERTY(dev::Address address READ address WRITE setAddress NOTIFY changed)
 	Q_PROPERTY(QmlEthereum* ethereum READ ethereum WRITE setEthereum NOTIFY ethChanged)
 };
 
@@ -124,23 +124,23 @@ public:
 	static QObject* constructU256Helper(QQmlEngine*, QJSEngine*) { return new QmlU256Helper; }
 	static QObject* constructKeyHelper(QQmlEngine*, QJSEngine*) { return new QmlKeyHelper; }
 
-	Q_INVOKABLE dev::eth::Address coinbase() const;
+	Q_INVOKABLE dev::Address coinbase() const;
 
 	Q_INVOKABLE bool isListening() const;
 	Q_INVOKABLE bool isMining() const;
 
-	Q_INVOKABLE dev::u256 balanceAt(dev::eth::Address _a) const;
-	Q_INVOKABLE double txCountAt(dev::eth::Address _a) const;
-	Q_INVOKABLE bool isContractAt(dev::eth::Address _a) const;
+	Q_INVOKABLE dev::u256 balanceAt(dev::Address _a) const;
+	Q_INVOKABLE double txCountAt(dev::Address _a) const;
+	Q_INVOKABLE bool isContractAt(dev::Address _a) const;
 
 	Q_INVOKABLE unsigned peerCount() const;
 
 	Q_INVOKABLE QmlEthereum* self() { return this; }
 
 public slots:
-	void transact(dev::eth::Secret _secret, dev::eth::Address _dest, dev::u256 _amount, dev::u256 _gasPrice, dev::u256 _gas, QByteArray _data);
-	void transact(dev::eth::Secret _secret, dev::u256 _amount, dev::u256 _gasPrice, dev::u256 _gas, QByteArray _init);
-	void setCoinbase(dev::eth::Address);
+	void transact(dev::Secret _secret, dev::Address _dest, dev::u256 _amount, dev::u256 _gasPrice, dev::u256 _gas, QByteArray _data);
+	void transact(dev::Secret _secret, dev::u256 _amount, dev::u256 _gasPrice, dev::u256 _gas, QByteArray _init);
+	void setCoinbase(dev::Address);
 	void setMining(bool _l);
 
 	void setListening(bool _l);
@@ -151,7 +151,7 @@ signals:
 //	void miningChanged();
 
 private:
-	Q_PROPERTY(dev::eth::Address coinbase READ coinbase WRITE setCoinbase NOTIFY coinbaseChanged)
+	Q_PROPERTY(dev::Address coinbase READ coinbase WRITE setCoinbase NOTIFY coinbaseChanged)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
@@ -198,10 +198,10 @@ public:
 	Q_INVOKABLE QByteArray bytesOf(QVariant _t) const { dev::h256 b = in(_t); return QByteArray((char const*)&b, sizeof(dev::h256)); }
 	Q_INVOKABLE QVariant fromHex(QString _s) const { return out((dev::u256)dev::h256(_s.toStdString())); }
 
-	Q_INVOKABLE QVariant fromAddress(QVariant/*dev::eth::Address*/ _a) const { return out((dev::eth::u160)to<dev::eth::Address>(_a)); }
-	Q_INVOKABLE QVariant toAddress(QVariant/*dev::eth::Address*/ _a) const { return toQJS<dev::eth::Address>((dev::eth::u160)in(_a)); }
+	Q_INVOKABLE QVariant fromAddress(QVariant/*dev::Address*/ _a) const { return out((dev::eth::u160)to<dev::Address>(_a)); }
+	Q_INVOKABLE QVariant toAddress(QVariant/*dev::Address*/ _a) const { return toQJS<dev::Address>((dev::eth::u160)in(_a)); }
 
-	Q_INVOKABLE bool isNull(QVariant/*dev::eth::Address*/ _a) const { return !in(_a); }
+	Q_INVOKABLE bool isNull(QVariant/*dev::Address*/ _a) const { return !in(_a); }
 };
 
 class KeyHelper: public QObject
@@ -211,19 +211,19 @@ class KeyHelper: public QObject
 public:
 	KeyHelper(QObject* _p = nullptr): QObject(_p) {}
 
-	static dev::eth::Address in(QVariant const& _s) { return to<dev::eth::Address>(_s); }
-	static QVariant out(dev::eth::Address const& _s) { return toQJS(_s); }
+	static dev::Address in(QVariant const& _s) { return to<dev::Address>(_s); }
+	static QVariant out(dev::Address const& _s) { return toQJS(_s); }
 
-	Q_INVOKABLE QVariant/*dev::eth::KeyPair*/ create() const { return toQJS(dev::eth::KeyPair::create()); }
-	Q_INVOKABLE QVariant/*dev::eth::Address*/ address(QVariant/*dev::eth::KeyPair*/ _p) const { return out(to<dev::eth::KeyPair>(_p).address()); }
-	Q_INVOKABLE QVariant/*dev::eth::Secret*/ secret(QVariant/*dev::eth::KeyPair*/ _p) const { return toQJS(to<dev::eth::KeyPair>(_p).secret()); }
-	Q_INVOKABLE QVariant/*dev::eth::KeyPair*/ keypair(QVariant/*dev::eth::Secret*/ _k) const { return toQJS(dev::eth::KeyPair(to<dev::eth::Secret>(_k))); }
+	Q_INVOKABLE QVariant/*dev::KeyPair*/ create() const { return toQJS(dev::KeyPair::create()); }
+	Q_INVOKABLE QVariant/*dev::Address*/ address(QVariant/*dev::KeyPair*/ _p) const { return out(to<dev::KeyPair>(_p).address()); }
+	Q_INVOKABLE QVariant/*dev::Secret*/ secret(QVariant/*dev::KeyPair*/ _p) const { return toQJS(to<dev::KeyPair>(_p).secret()); }
+	Q_INVOKABLE QVariant/*dev::KeyPair*/ keypair(QVariant/*dev::Secret*/ _k) const { return toQJS(dev::KeyPair(to<dev::Secret>(_k))); }
 
-	Q_INVOKABLE bool isNull(QVariant/*dev::eth::Address*/ _a) const { return !in(_a); }
+	Q_INVOKABLE bool isNull(QVariant/*dev::Address*/ _a) const { return !in(_a); }
 
-	Q_INVOKABLE QVariant/*dev::eth::Address*/ addressOf(QString _s) const { return out(dev::eth::Address(_s.toStdString())); }
-	Q_INVOKABLE QString stringOf(QVariant/*dev::eth::Address*/ _a) const { return QString::fromStdString(dev::eth::toHex(in(_a).asArray())); }
-	Q_INVOKABLE QString toAbridged(QVariant/*dev::eth::Address*/ _a) const { return QString::fromStdString(in(_a).abridged()); }
+	Q_INVOKABLE QVariant/*dev::Address*/ addressOf(QString _s) const { return out(dev::Address(_s.toStdString())); }
+	Q_INVOKABLE QString stringOf(QVariant/*dev::Address*/ _a) const { return QString::fromStdString(dev::eth::toHex(in(_a).asArray())); }
+	Q_INVOKABLE QString toAbridged(QVariant/*dev::Address*/ _a) const { return QString::fromStdString(in(_a).abridged()); }
 
 };
 

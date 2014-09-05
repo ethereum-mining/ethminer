@@ -21,7 +21,7 @@
 
 #include "TransactionQueue.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;

@@ -27,9 +27,9 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
-#include <libethential/FixedHash.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/FixedHash.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 

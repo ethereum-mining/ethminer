@@ -22,7 +22,7 @@
 #include "EthereumPeer.h"
 
 #include <chrono>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libp2p/Session.h>
 #include "BlockChain.h"

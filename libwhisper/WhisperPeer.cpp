@@ -21,7 +21,7 @@
 
 #include "WhisperPeer.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libp2p/All.h>
 using namespace std;
 using namespace dev;

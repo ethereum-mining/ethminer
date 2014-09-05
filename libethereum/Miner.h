@@ -25,7 +25,7 @@
 #include <thread>
 #include <list>
 #include <atomic>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/CommonEth.h>
 #include "State.h"
 

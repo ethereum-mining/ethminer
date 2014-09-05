@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include "CommonEth.h"
 
 #define FAKE_DAGGER 1

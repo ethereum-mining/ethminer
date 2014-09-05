@@ -25,8 +25,8 @@
 
 #include <string>
 #include <chrono>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
 
 namespace dev
 {

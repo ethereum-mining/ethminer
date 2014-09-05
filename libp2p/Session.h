@@ -26,7 +26,7 @@
 #include <set>
 #include <memory>
 #include <utility>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include "Common.h"
 
 namespace dev

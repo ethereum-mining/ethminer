@@ -3,7 +3,7 @@
 #endif
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethcore/Dagger.h>
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -21,13 +21,13 @@ using dev::u160;
 using dev::u256;
 using dev::u256s;
 using dev::RLP;
-using dev::eth::Address;
+using dev::Address;
 using dev::eth::BlockInfo;
 using dev::eth::Client;
 using dev::eth::Instruction;
-using dev::eth::KeyPair;
+using dev::KeyPair;
 using dev::eth::NodeMode;
-using dev::eth::Secret;
+using dev::Secret;
 using dev::eth::Transaction;
 using dev::p2p::PeerInfo;
 

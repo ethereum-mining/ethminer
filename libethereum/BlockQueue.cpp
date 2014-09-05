@@ -21,7 +21,7 @@
 
 #include "BlockQueue.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"

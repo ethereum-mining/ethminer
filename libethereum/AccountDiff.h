@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev

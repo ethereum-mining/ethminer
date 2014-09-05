@@ -27,8 +27,8 @@
 #pragma warning(pop)
 
 #include <memory>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
 #include "MemoryDB.h"
 namespace ldb = leveldb;
 

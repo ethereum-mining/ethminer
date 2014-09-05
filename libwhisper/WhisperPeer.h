@@ -26,9 +26,9 @@
 #include <set>
 #include <memory>
 #include <utility>
-#include <libethential/RLP.h>
-#include <libethential/Guards.h>
-#include <libethcore/SHA3.h>
+#include <libdevcore/RLP.h>
+#include <libdevcore/Guards.h>
+#include <libdevcrypto/SHA3.h>
 #include "Common.h"
 
 namespace dev

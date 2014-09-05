@@ -23,7 +23,7 @@
 
 #include <iostream>
 #include <sstream>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev

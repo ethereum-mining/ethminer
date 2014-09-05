@@ -21,7 +21,7 @@
 
 #include "MessageFilter.h"
 
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include "State.h"
 using namespace std;
 using namespace dev;

@@ -27,10 +27,10 @@
 #pragma warning(pop)
 
 #include <mutex>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
-#include <libethential/Guards.h>
+#include <libdevcore/Guards.h>
 #include "BlockDetails.h"
 #include "AddressState.h"
 #include "BlockQueue.h"

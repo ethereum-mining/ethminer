@@ -27,7 +27,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
@@ -47,7 +47,7 @@ class QQuickView;
 struct WorldState
 {
 	uint64_t steps;
-	dev::eth::Address cur;
+	dev::Address cur;
 	dev::u256 curPC;
 	dev::eth::Instruction inst;
 	dev::bigint newMemSize;
@@ -71,7 +71,7 @@ public:
 
 	dev::eth::Client* client() { return m_client.get(); }
 
-	QList<dev::eth::KeyPair> const& owned() const { return m_myKeys; }
+	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
 public slots:
 	void load(QString _file);
@@ -146,7 +146,7 @@ signals:
 	void poll();
 
 private:
-	QString pretty(dev::eth::Address _a) const;
+	QString pretty(dev::Address _a) const;
 	QString prettyU256(dev::u256 _n) const;
 
 	QString lookup(QString const& _n) const;
@@ -155,8 +155,8 @@ private:
 	void initDebugger();
 	void updateDebugger();
 	void debugFinished();
-	QString render(dev::eth::Address _a) const;
-	dev::eth::Address fromString(QString const& _a) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
 	std::string renderDiff(dev::eth::StateDiff const& _d) const;
 
 	void alterDebugStateGroup(bool _enable) const;
@@ -208,11 +208,11 @@ private:
 
 	QByteArray m_peers;
 	QStringList m_servers;
-	QList<dev::eth::KeyPair> m_myKeys;
+	QList<dev::KeyPair> m_myKeys;
 	QString m_privateChain;
 	bool m_keysChanged = false;
 	dev::bytes m_data;
-	dev::eth::Address m_nameReg;
+	dev::Address m_nameReg;
 
 	unsigned m_backupGas;
 

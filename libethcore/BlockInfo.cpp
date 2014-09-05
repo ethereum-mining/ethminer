@@ -21,9 +21,9 @@
 
 #if !ETH_LANGUAGES
 
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"

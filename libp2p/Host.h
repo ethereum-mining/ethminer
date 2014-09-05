@@ -28,7 +28,7 @@
 #include <memory>
 #include <utility>
 #include <thread>
-#include <libethential/Guards.h>
+#include <libdevcore/Guards.h>
 #include "HostCapability.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;

@@ -29,7 +29,7 @@
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
 #endif
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
 #include <libevm/VM.h>
 #include <libethereum/All.h>

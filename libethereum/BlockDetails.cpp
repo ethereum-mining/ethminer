@@ -21,7 +21,7 @@
 
 #include "BlockDetails.h"
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

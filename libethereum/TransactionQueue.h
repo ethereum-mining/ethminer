@@ -22,9 +22,9 @@
 #pragma once
 
 #include <boost/thread.hpp>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include "libethcore/CommonEth.h"
-#include <libethential/Guards.h>
+#include <libdevcore/Guards.h>
 
 namespace dev
 {

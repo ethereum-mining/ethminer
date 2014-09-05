@@ -26,7 +26,7 @@
 #include <set>
 #include <memory>
 #include <utility>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"

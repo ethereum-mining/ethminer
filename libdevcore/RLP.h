@@ -28,10 +28,10 @@
 #include <exception>
 #include <iostream>
 #include <iomanip>
-#include <libethential/vector_ref.h>
-#include <libethential/Common.h>
-#include <libethential/Exceptions.h>
-#include <libethential/FixedHash.h>
+#include <libdevcore/vector_ref.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Exceptions.h>
+#include <libdevcore/FixedHash.h>
 
 namespace dev
 {

@@ -14,25 +14,23 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Compiler.h
- * @author Gav Wood <i@gavwood.com>
+/** @file CryptoHeaders.h
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
  */
-
 #pragma once
 
-#include <string>
-#include <vector>
-#include <libdevcore/Common.h>
+// need to leave this one disabled
+#pragma GCC diagnostic ignored "-Wunused-function"
 
-namespace dev
-{
-namespace eth
-{
-
-std::string parseLLL(std::string const& _src);
-std::string compileLLLToAsm(std::string const& _src, bool _opt = true, std::vector<std::string>* _errors = nullptr);
-bytes compileLLL(std::string const& _src, bool _opt = true, std::vector<std::string>* _errors = nullptr);
-
-}
-}
+#pragma warning(push)
+#pragma warning(disable:4100 4244)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <sha.h>
+#include <sha3.h>
+#include <ripemd.h>
+#include <secp256k1/secp256k1.h>
+#pragma warning(pop)
+#pragma GCC diagnostic pop

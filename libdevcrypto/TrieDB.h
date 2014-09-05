@@ -28,9 +28,9 @@
 
 #include <map>
 #include <memory>
-#include <libethential/Common.h>
-#include <libethential/Log.h>
-#include <libethcore/SHA3.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
+#include <libdevcrypto/SHA3.h>
 #include "MemoryDB.h"
 #include "OverlayDB.h"
 #include "TrieCommon.h"

@@ -27,7 +27,7 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
@@ -54,7 +54,7 @@ public:
 
 	dev::eth::Client* client() { return m_client.get(); }
 
-	QList<dev::eth::KeyPair> const& owned() const { return m_myKeys; }
+	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
 public slots:
 	void note(QString _entry);
@@ -79,9 +79,9 @@ signals:
 	void poll();
 
 private:
-	QString pretty(dev::eth::Address _a) const;
-	QString render(dev::eth::Address _a) const;
-	dev::eth::Address fromString(QString const& _a) const;
+	QString pretty(dev::Address _a) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
 	QString lookup(QString const& _n) const;
 
 	void readSettings(bool _skipGeometry = false);
@@ -113,7 +113,7 @@ private:
 
 	std::unique_ptr<dev::eth::Client> m_client;
 
-	QList<dev::eth::KeyPair> m_myKeys;
+	QList<dev::KeyPair> m_myKeys;
 
 	std::map<unsigned, std::function<void()>> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
