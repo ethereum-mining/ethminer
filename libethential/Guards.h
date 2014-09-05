@@ -24,7 +24,7 @@
 #include <mutex>
 #include <boost/thread.hpp>
 
-namespace eth
+namespace dev
 {
 
 using Mutex = std::mutex;

@@ -25,10 +25,13 @@
 
 #include <string>
 
+namespace dev
+{
 namespace eth
 {
 
 /// @returns the path for user data.
 std::string getDataDir();
 
+}
 }

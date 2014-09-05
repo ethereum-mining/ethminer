@@ -36,6 +36,8 @@
 #include <libethereum/MessageFilter.h>
 #include <libethereum/CommonNet.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -142,4 +144,5 @@ private:
 	int m_default = -1;
 };
 
+}
 }

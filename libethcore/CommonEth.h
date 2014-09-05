@@ -26,6 +26,8 @@
 #include <libethential/Common.h>
 #include <libethential/FixedHash.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -116,4 +118,5 @@ private:
 	Address m_address;
 };
 
+}
 }

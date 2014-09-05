@@ -27,10 +27,10 @@
 #include "Host.h"
 #include "Capability.h"
 using namespace std;
-using namespace eth;
-using namespace p2p;
+using namespace dev;
+using namespace dev::p2p;
 
-#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
+#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
 Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
 	m_server(_s),

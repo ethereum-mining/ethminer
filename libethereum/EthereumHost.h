@@ -34,10 +34,14 @@
 #include "CommonNet.h"
 #include "EthereumPeer.h"
 
-namespace eth
+namespace dev
 {
 
 class RLPStream;
+
+namespace eth
+{
+
 class TransactionQueue;
 class BlockQueue;
 
@@ -102,4 +106,5 @@ private:
 	std::set<h256> m_transactionsSent;
 };
 
+}
 }

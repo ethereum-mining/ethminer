@@ -24,6 +24,8 @@
 #include "Common.h"
 #include "HostCapability.h"
 
+namespace dev
+{
 namespace p2p
 {
 
@@ -59,4 +61,5 @@ private:
 	bool m_enabled = true;
 };
 
+}
 }

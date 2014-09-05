@@ -21,8 +21,8 @@
 
 #include "Common.h"
 using namespace std;
-using namespace eth;
-using namespace p2p;
+using namespace dev;
+using namespace dev::p2p;
 
 // Helper function to determine if an address falls within one of the reserved ranges
 // For V4:

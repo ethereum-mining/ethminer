@@ -5,12 +5,7 @@
 #include <vector>
 #include <string>
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
-namespace eth
+namespace dev
 {
 
 template <class _T>
@@ -26,8 +21,9 @@ public:
 	vector_ref(std::string* _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::vector<typename std::remove_const<_T>::type> const*, std::vector<_T>*>::type _data): m_data(_data->data()), m_count(_data->size()) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::string const&, std::string&>::type _data): m_data((_T*)_data.data()), m_count(_data.size() / sizeof(_T)) {}
+#ifdef STORAGE_LEVELDB_INCLUDE_DB_H_
 	vector_ref(leveldb::Slice const& _s): m_data(_s.data()), m_count(_s.size() / sizeof(_T)) {}
-
+#endif
 	explicit operator bool() const { return m_data && m_count; }
 
 	bool contentsEqual(std::vector<mutable_value_type> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
@@ -56,7 +52,9 @@ public:
 	bool operator==(vector_ref<_T> const& _cmp) const { return m_data == _cmp.m_data && m_count == _cmp.m_count; }
 	bool operator!=(vector_ref<_T> const& _cmp) const { return !operator==(_cmp); }
 
+#ifdef STORAGE_LEVELDB_INCLUDE_DB_H_
 	operator leveldb::Slice() const { return leveldb::Slice((char const*)m_data, m_count * sizeof(_T)); }
+#endif
 
 	void reset() { m_data = nullptr; m_count = 0; }
 

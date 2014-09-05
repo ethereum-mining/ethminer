@@ -10,48 +10,48 @@
 using namespace std;
 
 // types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::u256s;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using p2p::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
+using dev::bytes;
+using dev::bytesConstRef;
+using dev::h160;
+using dev::h256;
+using dev::u160;
+using dev::u256;
+using dev::u256s;
+using dev::RLP;
+using dev::eth::Address;
+using dev::eth::BlockInfo;
+using dev::eth::Client;
+using dev::eth::Instruction;
+using dev::eth::KeyPair;
+using dev::eth::NodeMode;
+using dev::p2p::PeerInfo;
+using dev::eth::Secret;
+using dev::eth::Transaction;
 
 // functions
-using eth::toHex;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
-using eth::operator +;
+using dev::toHex;
+using dev::fromHex;
+using dev::right160;
+using dev::simpleDebugOut;
+using dev::toLog2;
+using dev::toString;
+using dev::operator+;
+using dev::eth::disassemble;
+using dev::eth::units;
+using dev::eth::formatBalance;
 
 // vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
+using dev::g_logPost;
+using dev::g_logVerbosity;
 
-eth::bytes toBytes(QString const& _s)
+dev::bytes toBytes(QString const& _s)
 {
 	if (_s.startsWith("0x"))
 		// Hex
-		return eth::fromHex(_s.mid(2).toStdString());
+		return dev::fromHex(_s.mid(2).toStdString());
 	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Decimal
-		return eth::toCompactBigEndian(eth::bigint(_s.toStdString()));
+		return dev::toCompactBigEndian(dev::bigint(_s.toStdString()));
 	else
 	{
 		// Binary
@@ -62,12 +62,12 @@ eth::bytes toBytes(QString const& _s)
 
 QString padded(QString const& _s, unsigned _l, unsigned _r)
 {
-	eth::bytes b = toBytes(_s);
+	dev::bytes b = toBytes(_s);
 	while (b.size() < _l)
 		b.insert(b.begin(), 0);
 	while (b.size() < _r)
 		b.push_back(0);
-	return asQString(eth::asBytes(eth::asString(b).substr(b.size() - max(_l, _r))));
+	return asQString(dev::asBytes(dev::asString(b).substr(b.size() - max(_l, _r))));
 }
 
 //"0xff".bin().unbin()
@@ -89,7 +89,8 @@ QString unpadded(QString _s)
 	return _s;
 }
 
-QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
+QEthereum::QEthereum(QObject* _p, Client* _c, QList<dev::eth::KeyPair> _accounts):
+	QObject(_p), m_client(_c), m_accounts(_accounts)
 {
 	// required to prevent crash on osx when performing addto/evaluatejavascript calls
 	moveToThread(_p->thread());
@@ -126,27 +127,27 @@ Client* QEthereum::client() const
 
 QString QEthereum::lll(QString _s) const
 {
-	return toQJS(eth::compileLLL(_s.toStdString()));
+	return toQJS(dev::eth::compileLLL(_s.toStdString()));
 }
 
 QString QEthereum::sha3(QString _s) const
 {
-	return toQJS(eth::sha3(toBytes(_s)));
+	return toQJS(dev::eth::sha3(toBytes(_s)));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2) const
 {
-	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
+	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
 {
-	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
+	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
 QString QEthereum::sha3old(QString _s) const
 {
-	return toQJS(eth::sha3(asBytes(_s)));
+	return toQJS(dev::eth::sha3(asBytes(_s)));
 }
 
 QString QEthereum::offset(QString _s, int _i) const
@@ -254,9 +255,9 @@ double QEthereum::countAt(QString _a, int _block) const
 	return m_client ? (double)(uint64_t)client()->countAt(toAddress(_a), _block) : 0;
 }
 
-static eth::MessageFilter toMessageFilter(QString _json)
+static dev::eth::MessageFilter toMessageFilter(QString _json)
 {
-	eth::MessageFilter filter;
+	dev::eth::MessageFilter filter;
 
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	if (f.contains("earliest"))
@@ -333,21 +334,21 @@ static TransactionSkeleton toTransaction(QString _json)
 			ret.data = toBytes(f["code"].toString());
 		else if (f["data"].isArray())
 			for (auto i: f["data"].toArray())
-				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
+				dev::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["code"].isArray())
 			for (auto i: f["code"].toArray())
-				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
+				dev::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["dataclose"].isArray())
 			for (auto i: f["dataclose"].toArray())
-				eth::operator +=(ret.data, toBytes(i.toString()));
+				dev::operator +=(ret.data, toBytes(i.toString()));
 	}
 	return ret;
 }
 
-static QString toJson(eth::PastMessages const& _pms)
+static QString toJson(dev::eth::PastMessages const& _pms)
 {
 	QJsonArray jsonArray;
-	for (eth::PastMessage const& t: _pms)
+	for (dev::eth::PastMessage const& t: _pms)
 	{
 		QJsonObject v;
 		v["input"] = ::fromBinary(t.input);
@@ -441,7 +442,7 @@ QString QEthereum::doTransact(QString _json)
 		t.from = b.secret();
 	}
 	if (!t.gasPrice)
-		t.gasPrice = 10 * eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
 	if (t.to)
@@ -462,7 +463,7 @@ QString QEthereum::doCall(QString _json)
 	if (!t.from && m_accounts.size())
 		t.from = m_accounts[0].secret();
 	if (!t.gasPrice)
-		t.gasPrice = 10 * eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
 	bytes out = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
@@ -475,9 +476,9 @@ unsigned QEthereum::newWatch(QString _json)
 		return (unsigned)-1;
 	unsigned ret;
 	if (_json == "chain")
-		ret = m_client->installWatch(eth::ChainChangedFilter);
+		ret = m_client->installWatch(dev::eth::ChainChangedFilter);
 	else if (_json == "pending")
-		ret = m_client->installWatch(eth::PendingChangedFilter);
+		ret = m_client->installWatch(dev::eth::PendingChangedFilter);
 	else
 		ret = m_client->installWatch(toMessageFilter(_json));
 	m_watches.push_back(ret);

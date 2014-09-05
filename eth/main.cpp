@@ -42,9 +42,10 @@
 #endif
 #include "BuildInfo.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace boost::algorithm;
-using eth::Instruction;
+using dev::eth::Instruction;
 
 #undef RETURN
 
@@ -124,13 +125,13 @@ string credits(bool _interactive = false)
 {
 	std::ostringstream cout;
 	cout
-        << "Ethereum (++) " << eth::EthVersion << endl
+		<< "Ethereum (++) " << dev::Version << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
 	if (_interactive)
 	{
-        string vs = toString(eth::EthVersion);
+		string vs = toString(dev::Version);
 		vs = vs.substr(vs.find_first_of('.') + 1)[0];
 		int pocnumber = stoi(vs);
 		string m_servers;
@@ -148,13 +149,13 @@ string credits(bool _interactive = false)
 
 void version()
 {
-    cout << "eth version " << eth::EthVersion << endl;
-	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "eth version " << dev::Version << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
-string pretty(h160 _a, eth::State _st)
+string pretty(h160 _a, dev::eth::State _st)
 {
 	string ns;
 	h256 n;
@@ -176,7 +177,7 @@ int main(int argc, char** argv)
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	string dbPath;
-	eth::uint mining = ~(eth::uint)0;
+	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	bool interactive = false;
@@ -246,7 +247,7 @@ int main(int argc, char** argv)
 		{
 			string m = argv[++i];
 			if (isTrue(m))
-				mining = ~(eth::uint)0;
+				mining = ~(unsigned)0;
 			else if (isFalse(m))
 				mining = 0;
 			else if (int i = stoi(m))
@@ -295,7 +296,7 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	Client c("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 
 	c.setForceMining(true);
 
@@ -348,14 +349,14 @@ int main(int argc, char** argv)
 			iss >> cmd;
 			if (cmd == "netstart")
 			{
-				eth::uint port;
+				unsigned port;
 				iss >> port;
 				c.startNetwork((short)port);
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
-				eth::uint port;
+				unsigned port;
 				iss >> addr >> port;
 				c.connect(addr, (short)port);
 			}
@@ -449,7 +450,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = eth::parseData(sdata);
+					bytes data = dev::eth::parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -587,7 +588,7 @@ int main(int argc, char** argv)
 				ofstream f;
 				f.open(filename);
 
-				eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
+				dev::eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
 					Executive e(state);
@@ -600,33 +601,33 @@ int main(int argc, char** argv)
 					if (format == "pretty")
 						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
 						{
-							eth::VM* vm = (VM*)vvm;
-							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
 							f << endl << "    STACK" << endl;
 							for (auto i: vm->stack())
 								f << (h256)i << endl;
-							f << "    MEMORY" << endl << eth::memDump(vm->memory());
+							f << "    MEMORY" << endl << dev::memDump(vm->memory());
 							f << "    STORAGE" << endl;
 							for (auto const& i: ext->state().storage(ext->myAddress))
 								f << showbase << hex << i.first << ": " << i.second << endl;
-							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
 						};
 					else if (format == "standard")
 						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
 						{
-							eth::VM* vm = (VM*)vvm;
-							eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 						};
 					else if (format == "standard+")
 						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
 						{
-							eth::VM* vm = (VM*)vvm;
-							eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
 							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
 								for (auto const& i: ext->state().storage(ext->myAddress))
-									f << toHex(eth::toCompactBigEndian(i.first, 1)) << " " << toHex(eth::toCompactBigEndian(i.second, 1)) << endl;
-							f << ext->myAddress << " " << hex << toHex(eth::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(eth::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(eth::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 						};
 					e.go(oof);
 					e.finalize(oof);
@@ -659,7 +660,7 @@ int main(int argc, char** argv)
 
 						cnote << "Saved" << rechex << "to" << outFile;
 					}
-					catch (eth::InvalidTrie)
+					catch (dev::eth::InvalidTrie)
 					{
 						cwarn << "Corrupted trie.";
 					}
@@ -736,7 +737,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		eth::uint n = c.blockChain().details().number;
+		unsigned n = c.blockChain().details().number;
 		if (mining)
 			c.startMining();
 		while (true)

@@ -22,7 +22,8 @@
 #include "VM.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 void VM::reset(u256 _gas)
 {

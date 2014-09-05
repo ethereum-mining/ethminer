@@ -24,6 +24,8 @@
 #include <libethential/Common.h>
 #include <libethcore/CommonEth.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -65,9 +67,10 @@ struct StateDiff
 	std::map<Address, AccountDiff> accounts;
 };
 
-std::ostream& operator<<(std::ostream& _out, StateDiff const& _s);
-std::ostream& operator<<(std::ostream& _out, AccountDiff const& _s);
-
 }
 
+std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s);
+std::ostream& operator<<(std::ostream& _out, dev::eth::AccountDiff const& _s);
+
+}
 

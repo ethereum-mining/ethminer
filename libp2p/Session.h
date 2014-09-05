@@ -29,6 +29,9 @@
 #include <libethential/RLP.h>
 #include "Common.h"
 
+namespace dev
+{
+
 namespace p2p
 {
 
@@ -98,11 +101,12 @@ private:
 	std::chrono::steady_clock::time_point m_connect;
 	std::chrono::steady_clock::time_point m_disconnect;
 
-	uint m_rating;
+	unsigned m_rating;
 
 	std::map<std::string, std::shared_ptr<Capability>> m_capabilities;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };
 
+}
 }

@@ -26,7 +26,8 @@
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 {

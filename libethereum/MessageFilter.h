@@ -26,6 +26,8 @@
 #include <libethcore/CommonEth.h>
 #include "PastMessage.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -70,4 +72,5 @@ private:
 	unsigned m_skip;
 };
 
+}
 }

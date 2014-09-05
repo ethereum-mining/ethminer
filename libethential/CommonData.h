@@ -30,7 +30,7 @@
 #include <string>
 #include "Common.h"
 
-namespace eth
+namespace dev
 {
 
 // String conversion functions, mainly to/from hex/nibble/byte representations.
@@ -79,7 +79,7 @@ bytes asNibbles(std::string const& _s);
 /// The size of the collection object will be unchanged. If it is too small, it will not represent the
 /// value properly, if too big then the additional elements will be zeroed out.
 /// @a _Out will typically be either std::string or bytes.
-/// @a _T will typically by uint, u160, u256 or bigint.
+/// @a _T will typically by unsigned, u160, u256 or bigint.
 template <class _T, class _Out>
 inline void toBigEndian(_T _val, _Out& o_out)
 {
@@ -89,7 +89,7 @@ inline void toBigEndian(_T _val, _Out& o_out)
 
 /// Converts a big-endian byte-stream represented on a templated collection to a templated integer value.
 /// @a _In will typically be either std::string or bytes.
-/// @a _T will typically by uint, u160, u256 or bigint.
+/// @a _T will typically by unsigned, u160, u256 or bigint.
 template <class _T, class _In>
 inline _T fromBigEndian(_In const& _bytes)
 {
@@ -140,10 +140,10 @@ std::string escaped(std::string const& _s, bool _all = true);
 /// @returns the number of elements both @a _t and @a _u share, in order, at the beginning.
 /// @example commonPrefix("Hello world!", "Hello, world!") == 5
 template <class _T, class _U>
-uint commonPrefix(_T const& _t, _U const& _u)
+unsigned commonPrefix(_T const& _t, _U const& _u)
 {
-	uint s = std::min<uint>(_t.size(), _u.size());
-	for (uint i = 0;; ++i)
+	unsigned s = std::min<unsigned>(_t.size(), _u.size());
+	for (unsigned i = 0;; ++i)
 		if (i == s || _t[i] != _u[i])
 			return i;
 	return s;
@@ -157,9 +157,9 @@ std::string randomWord();
 
 /// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
 template <class _T>
-inline uint bytesRequired(_T _i)
+inline unsigned bytesRequired(_T _i)
 {
-	uint i = 0;
+	unsigned i = 0;
 	for (; _i != 0; ++i, _i >>= 8) {}
 	return i;
 }
@@ -167,7 +167,7 @@ inline uint bytesRequired(_T _i)
 /// Trims a given number of elements from the front of a collection.
 /// Only works for POD element types.
 template <class _T>
-void trimFront(_T& _t, uint _elements)
+void trimFront(_T& _t, unsigned _elements)
 {
 	static_assert(std::is_pod<typename _T::value_type>::value, "");
 	memmove(_t.data(), _t.data() + _elements, (_t.size() - _elements) * sizeof(_t[0]));

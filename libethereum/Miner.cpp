@@ -23,7 +23,8 @@
 #include "Miner.h"
 #include "State.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 Miner::Miner(MinerHost* _host, unsigned _id):
 	m_host(_host),

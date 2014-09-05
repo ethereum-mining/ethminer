@@ -23,6 +23,8 @@
 
 #include <libethential/Common.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -37,4 +39,5 @@ extern u256 const c_memoryGas;			///< Times the address of the (highest referenc
 extern u256 const c_txDataGas;			///< Per byte of data attached to a transaction. NOTE: Not payable on data of calls between transactions.
 extern u256 const c_txGas;				///< Per transaction. NOTE: Not payable on data of calls between transactions.
 
+}
 }

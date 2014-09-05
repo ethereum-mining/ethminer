@@ -24,9 +24,12 @@
 #include <string>
 #include <libethential/Common.h>
 
+namespace dev
+{
 namespace eth
 {
 
 bytes parseData(std::string const& _args);
 
+}
 }

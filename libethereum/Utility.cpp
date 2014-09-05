@@ -24,9 +24,10 @@
 #include <boost/regex.hpp>
 #include <libethcore/CommonEth.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-bytes eth::parseData(string const& _args)
+bytes dev::eth::parseData(string const& _args)
 {
 	bytes m_data;
 
@@ -41,12 +42,12 @@ bytes eth::parseData(string const& _args)
 		{
 			u256 v((string)what[2]);
 			if (what[6] == "szabo")
-				v *= eth::szabo;
+				v *= dev::eth::szabo;
 			else if (what[5] == "finney")
-				v *= eth::finney;
+				v *= dev::eth::finney;
 			else if (what[4] == "ether")
-				v *= eth::ether;
-			bytes bs = eth::toCompactBigEndian(v);
+				v *= dev::eth::ether;
+			bytes bs = dev::toCompactBigEndian(v);
 			if (what[1] != "$")
 				for (auto i = bs.size(); i < 32; ++i)
 					m_data.push_back(0);

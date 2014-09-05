@@ -29,6 +29,8 @@
 #include <libethcore/CommonEth.h>
 #include "State.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -41,8 +43,8 @@ struct MineProgress
 	double requirement = 0;	///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
 	double best = 1e99;		///< The PoW achievement - as the second logarithm of the minimum found hash.
 	double current = 0;		///< The most recent PoW achievement - as the second logarithm of the presently found hash.
-	uint hashes = 0;		///< Total number of hashes computed.
-	uint ms = 0;			///< Total number of milliseconds of mining thus far.
+	unsigned hashes = 0;		///< Total number of hashes computed.
+	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
 /**
@@ -138,4 +140,5 @@ private:
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
 };
 
+}
 }

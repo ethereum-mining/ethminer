@@ -23,11 +23,17 @@
 #include "CryptoHeaders.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-h256 eth::EmptySHA3 = sha3(bytesConstRef());
+namespace dev
+{
+namespace eth
+{
 
-std::string eth::sha3(std::string const& _input, bool _hex)
+h256 EmptySHA3 = sha3(bytesConstRef());
+
+std::string sha3(std::string const& _input, bool _hex)
 {
 	if (!_hex)
 	{
@@ -44,7 +50,7 @@ std::string eth::sha3(std::string const& _input, bool _hex)
 	return ret;
 }
 
-void eth::sha3(bytesConstRef _input, bytesRef _output)
+void sha3(bytesConstRef _input, bytesRef _output)
 {
 	CryptoPP::SHA3_256 ctx;
 	ctx.Update((byte*)_input.data(), _input.size());
@@ -52,17 +58,19 @@ void eth::sha3(bytesConstRef _input, bytesRef _output)
 	ctx.Final(_output.data());
 }
 
-bytes eth::sha3Bytes(bytesConstRef _input)
+bytes sha3Bytes(bytesConstRef _input)
 {
 	bytes ret(32);
 	sha3(_input, &ret);
 	return ret;
 }
 
-h256 eth::sha3(bytesConstRef _input)
+h256 sha3(bytesConstRef _input)
 {
 	h256 ret;
 	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
 }
 
+}
+}

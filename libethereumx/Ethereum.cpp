@@ -24,7 +24,8 @@
 #include <libethential/Log.h>
 #include <libethereum/Client.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace p2p;
 
 Ethereum::Ethereum()

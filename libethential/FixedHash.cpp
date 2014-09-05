@@ -23,6 +23,6 @@
 #include "FixedHash.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-std::mt19937_64 eth::s_fixedHashEngine(time(0));
+std::mt19937_64 dev::s_fixedHashEngine(time(0));

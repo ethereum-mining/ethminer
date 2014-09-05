@@ -25,7 +25,8 @@
 #include "State.h"
 #include "ExtVM.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ETH_VMTRACE 1
 
@@ -157,8 +158,8 @@ OnOpFunc Executive::simpleTrace()
 		o << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
-		eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+		dev::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+		dev::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
 	};
 }
 

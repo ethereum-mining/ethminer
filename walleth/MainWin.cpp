@@ -18,38 +18,38 @@
 using namespace std;
 
 // types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::u256s;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using p2p::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
+using dev::bytes;
+using dev::bytesConstRef;
+using dev::h160;
+using dev::h256;
+using dev::u160;
+using dev::u256;
+using dev::u256s;
+using dev::eth::Address;
+using dev::eth::BlockInfo;
+using dev::eth::Client;
+using dev::eth::Instruction;
+using dev::eth::KeyPair;
+using dev::eth::NodeMode;
+using dev::p2p::PeerInfo;
+using dev::RLP;
+using dev::eth::Secret;
+using dev::eth::Transaction;
 
 // functions
-using eth::toHex;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
+using dev::toHex;
+using dev::fromHex;
+using dev::right160;
+using dev::simpleDebugOut;
+using dev::toLog2;
+using dev::toString;
+using dev::eth::units;
+using dev::eth::disassemble;
+using dev::eth::formatBalance;
 
 // vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
+using dev::g_logPost;
+using dev::g_logVerbosity;
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -61,14 +61,14 @@ Main::Main(QWidget *parent) :
 
 	g_qmlMain = this;
 
-	m_client.reset(new Client("Walleth", Address(), eth::getDataDir() + "/Walleth"));
+	m_client.reset(new Client("Walleth", Address(), dev::eth::getDataDir() + "/Walleth"));
 	
 	g_qmlClient = m_client.get();
 
-	qRegisterMetaType<eth::u256>("eth::u256");
-	qRegisterMetaType<eth::KeyPair>("eth::KeyPair");
-	qRegisterMetaType<eth::Secret>("eth::Secret");
-	qRegisterMetaType<eth::Address>("eth::Address");
+	qRegisterMetaType<dev::u256>("dev::u256");
+	qRegisterMetaType<dev::eth::KeyPair>("dev::eth::KeyPair");
+	qRegisterMetaType<dev::eth::Secret>("dev::eth::Secret");
+	qRegisterMetaType<dev::eth::Address>("dev::eth::Address");
 	qRegisterMetaType<QmlAccount*>("QmlAccount*");
 	qRegisterMetaType<QmlEthereum*>("QmlEthereum*");
 
@@ -112,7 +112,7 @@ Main::Main(QWidget *parent) :
 			on_net_triggered(true);
 		}
 	});
-	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(eth::EthVersion).section('.', 1, 1) + ".txt"));
+	QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString(dev::Version).section('.', 1, 1) + ".txt"));
 	r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
 	m_webCtrl.get(r);
 	srand(time(0));
@@ -136,7 +136,7 @@ void Main::timerEvent(QTimerEvent *)
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Walleth PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Walleth/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
+	QMessageBox::about(this, "About Walleth PoC-" + QString(dev::Version).section('.', 1, 1), QString("Walleth/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::writeSettings()
@@ -217,10 +217,10 @@ void Main::refresh()
 
 void Main::on_net_triggered(bool _auto)
 {
-    string n = string("Walleth/v") + eth::EthVersion;
+    string n = string("Walleth/v") + dev::Version;
 	if (m_clientName.size())
 		n += "/" + m_clientName.toStdString();
-	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
+	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
 	client()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{

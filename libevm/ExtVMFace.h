@@ -26,6 +26,8 @@
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -106,4 +108,5 @@ public:
 	std::list<Post> posts;		///< Any posts that have been made.
 };
 
+}
 }

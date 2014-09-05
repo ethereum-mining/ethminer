@@ -23,9 +23,10 @@
 
 #include <libethential/Common.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-const std::map<std::string, Instruction> eth::c_instructions =
+const std::map<std::string, Instruction> dev::eth::c_instructions =
 {
 	{ "STOP", Instruction::STOP },
 	{ "ADD", Instruction::ADD },
@@ -279,10 +280,10 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SUICIDE,		{ "SUICIDE",		0, 1, 0} }
 };
 
-string eth::disassemble(bytes const& _mem)
+string dev::eth::disassemble(bytes const& _mem)
 {
 	stringstream ret;
-	uint numerics = 0;
+	unsigned numerics = 0;
 	for (auto it = _mem.begin(); it != _mem.end(); ++it)
 	{
 		byte n = *it;
@@ -303,7 +304,7 @@ string eth::disassemble(bytes const& _mem)
 	return ret.str();
 }
 
-InstructionInfo eth::instructionInfo(Instruction _inst)
+InstructionInfo dev::eth::instructionInfo(Instruction _inst)
 {
 	try
 	{

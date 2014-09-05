@@ -33,7 +33,8 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ctrace clog(StateTrace)
 
@@ -72,7 +73,7 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 
 	paranoia("beginning of normal construction.", true);
 
-	eth::commit(genesisState(), m_db, m_state);
+	dev::eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
 
 	paranoia("after DB commit of normal construction.", true);
@@ -300,7 +301,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 
 void State::commit()
 {
-	eth::commit(m_cache, m_db, m_state);
+	dev::eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
@@ -761,7 +762,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
-MineInfo State::mine(uint _msTimeout, bool _turbo)
+MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 {
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
@@ -1200,7 +1201,7 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
+std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;

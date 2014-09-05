@@ -22,8 +22,11 @@
 #include <libethential/Common.h>
 #include "MemoryDB.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -112,4 +115,5 @@ set<h256> MemoryDB::keys() const
 	return ret;
 }
 
+}
 }

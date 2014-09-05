@@ -37,7 +37,7 @@
 #include <iostream>
 #include "Common.h"
 
-namespace eth
+namespace dev
 {
 
 /// Retrieve and returns the contents of the given file. If the file doesn't exist or isn't readable, returns an empty bytes.

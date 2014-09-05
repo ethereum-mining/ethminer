@@ -28,13 +28,15 @@
 #include <libethential/Common.h>
 #include <libethential/Log.h>
 
+namespace dev
+{
 namespace eth
 {
 
-static const eth::uint c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
-static const eth::uint c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
-static const eth::uint c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
-static const eth::uint c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const unsigned c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
+static const unsigned c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
+static const unsigned c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
+static const unsigned c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 class OverlayDB;
 class BlockChain;
@@ -53,4 +55,5 @@ enum EthereumPacket
 	BlocksPacket,
 };
 
+}
 }

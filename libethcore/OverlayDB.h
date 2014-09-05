@@ -21,12 +21,19 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <memory>
 #include <libethential/Common.h>
 #include <libethential/Log.h>
 #include "MemoryDB.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -55,4 +62,5 @@ private:
 	ldb::WriteOptions m_writeOptions;
 };
 
+}
 }

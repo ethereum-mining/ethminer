@@ -23,8 +23,8 @@
 
 #include "Session.h"
 using namespace std;
-using namespace eth;
-using namespace p2p;
+using namespace dev;
+using namespace dev::p2p;
 
 void Capability::disable(std::string const& _problem)
 {

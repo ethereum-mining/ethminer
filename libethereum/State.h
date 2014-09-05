@@ -38,6 +38,8 @@
 #include "Executive.h"
 #include "AccountDiff.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -120,7 +122,7 @@ public:
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns Information on the mining.
-	MineInfo mine(uint _msTimeout = 1000, bool _turbo = false);
+	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -363,5 +365,5 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 }
 
 }
-
+}
 

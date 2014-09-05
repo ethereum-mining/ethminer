@@ -24,9 +24,9 @@
 #include <random>
 #include "Exceptions.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-std::string eth::escaped(std::string const& _s, bool _all)
+std::string dev::escaped(std::string const& _s, bool _all)
 {
 	std::string ret;
 	ret.reserve(_s.size());
@@ -48,7 +48,7 @@ std::string eth::escaped(std::string const& _s, bool _all)
 	return ret;
 }
 
-std::string eth::randomWord()
+std::string dev::randomWord()
 {
 	static std::mt19937_64 s_eng(0);
 	std::string ret(std::uniform_int_distribution<int>(1, 5)(s_eng), ' ');
@@ -59,7 +59,7 @@ std::string eth::randomWord()
 	return ret;
 }
 
-int eth::fromHex(char _i)
+int dev::fromHex(char _i)
 {
 	if (_i >= '0' && _i <= '9')
 		return _i - '0';
@@ -70,9 +70,9 @@ int eth::fromHex(char _i)
 	throw BadHexCharacter();
 }
 
-bytes eth::fromHex(std::string const& _s)
+bytes dev::fromHex(std::string const& _s)
 {
-	uint s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
+	unsigned s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
 	std::vector<uint8_t> ret;
 	ret.reserve((_s.size() - s + 1) / 2);
 
@@ -82,7 +82,7 @@ bytes eth::fromHex(std::string const& _s)
 			ret.push_back(fromHex(_s[s++]));
 		}
 		catch (...){ ret.push_back(0); }
-	for (uint i = s; i < _s.size(); i += 2)
+	for (unsigned i = s; i < _s.size(); i += 2)
 		try
 		{
 			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
@@ -91,7 +91,7 @@ bytes eth::fromHex(std::string const& _s)
 	return ret;
 }
 
-bytes eth::asNibbles(std::string const& _s)
+bytes dev::asNibbles(std::string const& _s)
 {
 	std::vector<uint8_t> ret;
 	ret.reserve(_s.size() * 2);

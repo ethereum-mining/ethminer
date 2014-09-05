@@ -6,26 +6,26 @@
 #include <libethential/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
-namespace eth {
+namespace dev { namespace eth {
 class Client;
 class State;
-}
+}}
 
 class QJSEngine;
 class QWebFrame;
 
 class QEthereum;
 
-inline eth::bytes asBytes(QString const& _s)
+inline dev::bytes asBytes(QString const& _s)
 {
-	eth::bytes ret;
+	dev::bytes ret;
 	ret.reserve(_s.size());
 	for (QChar c: _s)
 		ret.push_back(c.cell());
 	return ret;
 }
 
-inline QString asQString(eth::bytes const& _s)
+inline QString asQString(dev::bytes const& _s)
 {
 	QString ret;
 	ret.reserve(_s.size());
@@ -34,34 +34,34 @@ inline QString asQString(eth::bytes const& _s)
 	return ret;
 }
 
-eth::bytes toBytes(QString const& _s);
+dev::bytes toBytes(QString const& _s);
 
 QString padded(QString const& _s, unsigned _l, unsigned _r);
 QString padded(QString const& _s, unsigned _l);
 QString unpadded(QString _s);
 
-template <unsigned N> eth::FixedHash<N> toFixed(QString const& _s)
+template <unsigned N> dev::FixedHash<N> toFixed(QString const& _s)
 {
 	if (_s.startsWith("0x"))
 		// Hex
-		return eth::FixedHash<N>(_s.mid(2).toStdString());
+		return dev::FixedHash<N>(_s.mid(2).toStdString());
 	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Decimal
-		return (typename eth::FixedHash<N>::Arith)(_s.toStdString());
+		return (typename dev::FixedHash<N>::Arith)(_s.toStdString());
 	else
 		// Binary
-		return eth::FixedHash<N>(asBytes(padded(_s, N)));
+		return dev::FixedHash<N>(asBytes(padded(_s, N)));
 }
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s);
 
-inline eth::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
-inline eth::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
-inline eth::u256 toU256(QString const& _s) { return toInt<32>(_s); }
+inline dev::eth::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
+inline dev::eth::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
+inline dev::u256 toU256(QString const& _s) { return toInt<32>(_s); }
 
-template <unsigned S> QString toQJS(eth::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
-template <unsigned N> QString toQJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return QString::fromStdString("0x" + eth::toHex(eth::toCompactBigEndian(_n))); }
-inline QString toQJS(eth::bytes const& _n) { return "0x" + QString::fromStdString(eth::toHex(_n)); }
+template <unsigned S> QString toQJS(dev::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
+template <unsigned N> QString toQJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return QString::fromStdString("0x" + dev::toHex(dev::toCompactBigEndian(_n))); }
+inline QString toQJS(dev::bytes const& _n) { return "0x" + QString::fromStdString(dev::toHex(_n)); }
 
 inline QString toBinary(QString const& _s)
 {
@@ -70,23 +70,23 @@ inline QString toBinary(QString const& _s)
 
 inline QString toDecimal(QString const& _s)
 {
-	return QString::fromStdString(eth::toString(toU256(_s)));
+	return QString::fromStdString(dev::toString(toU256(_s)));
 }
 
 inline double fromFixed(QString const& _s)
 {
-	return (double)toU256(_s) / (double)(eth::u256(1) << 128);
+	return (double)toU256(_s) / (double)(dev::u256(1) << 128);
 }
 
 inline QString toFixed(double _s)
 {
-	return toQJS(eth::u256(_s * (double)(eth::u256(1) << 128)));
+	return toQJS(dev::u256(_s * (double)(dev::u256(1) << 128)));
 }
 
-inline QString fromBinary(eth::bytes _s, unsigned _padding = 32)
+inline QString fromBinary(dev::bytes _s, unsigned _padding = 32)
 {
 	_s.resize(std::max<unsigned>(_s.size(), _padding));
-	return QString::fromStdString("0x" + eth::toHex(_s));
+	return QString::fromStdString("0x" + dev::toHex(_s));
 }
 
 inline QString fromBinary(QString const& _s, unsigned _padding = 32)
@@ -99,16 +99,16 @@ class QEthereum: public QObject
 	Q_OBJECT
 
 public:
-	QEthereum(QObject* _p, eth::Client* _c, QList<eth::KeyPair> _accounts);
+	QEthereum(QObject* _p, dev::eth::Client* _c, QList<dev::eth::KeyPair> _accounts);
 	virtual ~QEthereum();
 
-	eth::Client* client() const;
-	void setClient(eth::Client* _c) { m_client = _c; }
+	dev::eth::Client* client() const;
+	void setClient(dev::eth::Client* _c) { m_client = _c; }
 
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
 
-	void setAccounts(QList<eth::KeyPair> _l) { m_accounts = _l; keysChanged(); }
+	void setAccounts(QList<dev::eth::KeyPair> _l) { m_accounts = _l; keysChanged(); }
 
 	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
@@ -134,15 +134,15 @@ public:
 	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
 
 	// [NEW API] - Use this instead.
-	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a, int _block) const;
-	Q_INVOKABLE double countAt(QString/*eth::Address*/ _a, int _block) const;
-	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p, int _block) const;
-	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a, int _block) const;
+	Q_INVOKABLE QString/*dev::u256*/ balanceAt(QString/*dev::Address*/ _a, int _block) const;
+	Q_INVOKABLE double countAt(QString/*dev::Address*/ _a, int _block) const;
+	Q_INVOKABLE QString/*dev::u256*/ stateAt(QString/*dev::Address*/ _a, QString/*dev::u256*/ _p, int _block) const;
+	Q_INVOKABLE QString/*dev::u256*/ codeAt(QString/*dev::Address*/ _a, int _block) const;
 
-	Q_INVOKABLE QString/*eth::u256*/ balanceAt(QString/*eth::Address*/ _a) const;
-	Q_INVOKABLE double countAt(QString/*eth::Address*/ _a) const;
-	Q_INVOKABLE QString/*eth::u256*/ stateAt(QString/*eth::Address*/ _a, QString/*eth::u256*/ _p) const;
-	Q_INVOKABLE QString/*eth::u256*/ codeAt(QString/*eth::Address*/ _a) const;
+	Q_INVOKABLE QString/*dev::u256*/ balanceAt(QString/*dev::Address*/ _a) const;
+	Q_INVOKABLE double countAt(QString/*dev::Address*/ _a) const;
+	Q_INVOKABLE QString/*dev::u256*/ stateAt(QString/*dev::Address*/ _a, QString/*dev::u256*/ _p) const;
+	Q_INVOKABLE QString/*dev::u256*/ codeAt(QString/*dev::Address*/ _a) const;
 
 	Q_INVOKABLE QString/*json*/ getMessages(QString _attribs/*json*/) const;
 
@@ -159,20 +159,20 @@ public:
 	bool isListening() const;
 	bool isMining() const;
 
-	QString/*eth::Address*/ coinbase() const;
-	QString/*eth::u256*/ gasPrice() const { return toQJS(10 * eth::szabo); }
-	QString/*eth::u256*/ number() const;
+	QString/*dev::Address*/ coinbase() const;
+	QString/*dev::u256*/ gasPrice() const { return toQJS(10 * dev::eth::szabo); }
+	QString/*dev::u256*/ number() const;
 	int getDefault() const;
 
-	QString/*eth::KeyPair*/ key() const;
-	QStringList/*list of eth::KeyPair*/ keys() const;
-	QString/*eth::Address*/ account() const;
-	QStringList/*list of eth::Address*/ accounts() const;
+	QString/*dev::KeyPair*/ key() const;
+	QStringList/*list of dev::eth::KeyPair*/ keys() const;
+	QString/*dev::Address*/ account() const;
+	QStringList/*list of dev::eth::Address*/ accounts() const;
 
 	unsigned peerCount() const;
 
 public slots:
-	void setCoinbase(QString/*eth::Address*/);
+	void setCoinbase(QString/*dev::Address*/);
 	void setMining(bool _l);
 	void setListening(bool _l);
 	void setDefault(int _block);
@@ -199,9 +199,9 @@ private:
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
 
-	eth::Client* m_client;
+	dev::eth::Client* m_client;
 	std::vector<unsigned> m_watches;
-	QList<eth::KeyPair> m_accounts;
+	QList<dev::eth::KeyPair> m_accounts;
 };
 
 #define QETH_INSTALL_JS_NAMESPACE(frame, eth, env) [frame, eth, env]() \
@@ -232,12 +232,12 @@ private:
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
 {
 	if (_s.startsWith("0x"))
-		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(eth::fromHex(_s.toStdString().substr(2)));
+		return dev::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(dev::fromHex(_s.toStdString().substr(2)));
 	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Hex or Decimal
 		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s.toStdString());
 	else
 		// Binary
-		return eth::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(padded(_s, N)));
+		return dev::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(padded(_s, N)));
 }
 

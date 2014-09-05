@@ -40,6 +40,8 @@
 #include "MessageFilter.h"
 #include "Miner.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -94,13 +96,13 @@ struct ClientWatch
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
-#define cwatch eth::LogOutputStream<eth::WatchChannel, true>()
+#define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
 struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
 struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
 struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
-#define cwork eth::LogOutputStream<eth::WorkChannel, true>()
-#define cworkin eth::LogOutputStream<eth::WorkInChannel, true>()
-#define cworkout eth::LogOutputStream<eth::WorkOutChannel, true>()
+#define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
+#define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
+#define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -176,19 +178,19 @@ public:
 	std::vector<Address> addresses(int _block) const;
 
 	/// Get the fee associated for a transaction with the given data.
-	static u256 txGas(uint _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
+	static u256 txGas(unsigned _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 
-	eth::State state(unsigned _txi, h256 _block) const;
-	eth::State state(h256 _block) const;
-	eth::State state(unsigned _txi) const;
+	dev::eth::State state(unsigned _txi, h256 _block) const;
+	dev::eth::State state(h256 _block) const;
+	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
 
@@ -326,9 +328,12 @@ private:
 class Watch;
 
 }
+}
 
-namespace std { void swap(eth::Watch& _a, eth::Watch& _b); }
+namespace std { void swap(dev::eth::Watch& _a, dev::eth::Watch& _b); }
 
+namespace dev
+{
 namespace eth
 {
 
@@ -352,11 +357,12 @@ private:
 };
 
 }
+}
 
 namespace std
 {
 
-inline void swap(eth::Watch& _a, eth::Watch& _b)
+inline void swap(dev::eth::Watch& _a, dev::eth::Watch& _b)
 {
 	swap(_a.m_c, _b.m_c);
 	swap(_a.m_id, _b.m_id);

@@ -25,6 +25,8 @@
 #include <libethential/RLP.h>
 #include "CommonEth.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -121,5 +123,4 @@ inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 }
 
 }
-
-
+}

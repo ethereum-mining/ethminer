@@ -343,9 +343,9 @@ if (NOT LANGUAGES)
 	add_subdirectory(libethcore)
 	add_subdirectory(libevm)
 	add_subdirectory(libethereum)
-	add_subdirectory(libethereumx)	 # TODO remove
+#	add_subdirectory(libethereumx)	 # TODO remove
 
-	#add_subdirectory(libwebthree)
+	add_subdirectory(libwebthree)
 	add_subdirectory(test)
 	add_subdirectory(eth)
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")

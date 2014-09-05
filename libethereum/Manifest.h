@@ -26,6 +26,8 @@
 #include <libethential/RLP.h>
 #include <libethcore/CommonEth.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -67,4 +69,5 @@ struct Manifest
 	Manifests internal;
 };
 
+}
 }
