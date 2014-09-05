@@ -33,16 +33,16 @@
 #include <libethential/Exceptions.h>
 #include <libethential/FixedHash.h>
 
-namespace eth
+namespace dev
 {
 
 class RLP;
 typedef std::vector<RLP> RLPs;
 
-template <class _T> struct intTraits { static const uint maxSize = sizeof(_T); };
-template <> struct intTraits<u160> { static const uint maxSize = 20; };
-template <> struct intTraits<u256> { static const uint maxSize = 32; };
-template <> struct intTraits<bigint> { static const uint maxSize = ~(uint)0; };
+template <class _T> struct intTraits { static const unsigned maxSize = sizeof(_T); };
+template <> struct intTraits<u160> { static const unsigned maxSize = 20; };
+template <> struct intTraits<u256> { static const unsigned maxSize = 32; };
+template <> struct intTraits<bigint> { static const unsigned maxSize = ~(unsigned)0; };
 
 static const byte c_rlpMaxLengthBytes = 8;
 static const byte c_rlpDataImmLenStart = 0x80;
@@ -72,7 +72,7 @@ public:
 	explicit RLP(bytes const& _d): m_data(&_d) {}
 
 	/// Construct a node to read RLP data in the bytes given.
-	RLP(byte const* _b, uint _s): m_data(bytesConstRef(_b, _s)) {}
+	RLP(byte const* _b, unsigned _s): m_data(bytesConstRef(_b, _s)) {}
 
 	/// Construct a node to read RLP data in the string.
 	explicit RLP(std::string const& _s): m_data(bytesConstRef((byte const*)_s.data(), _s.size())) {}
@@ -99,12 +99,12 @@ public:
 	bool isInt() const;
 
 	/// @returns the number of items in the list, or zero if it isn't a list.
-	uint itemCount() const { return isList() ? items() : 0; }
-	uint itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
+	unsigned itemCount() const { return isList() ? items() : 0; }
+	unsigned itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
 
 	/// @returns the number of bytes in the data, or zero if it isn't data.
-	uint size() const { return isData() ? length() : 0; }
-	uint sizeStrict() const { if (!isData()) throw BadCast(); return length(); }
+	unsigned size() const { return isData() ? length() : 0; }
+	unsigned sizeStrict() const { if (!isData()) throw BadCast(); return length(); }
 
 	/// Equality operators; does best-effort conversion and checks for equality.
 	bool operator==(char const* _s) const { return isData() && toString() == _s; }
@@ -113,8 +113,8 @@ public:
 	bool operator!=(std::string const& _s) const { return isData() && toString() != _s; }
 	template <unsigned _N> bool operator==(FixedHash<_N> const& _h) const { return isData() && toHash<_N>() == _h; }
 	template <unsigned _N> bool operator!=(FixedHash<_N> const& _s) const { return isData() && toHash<_N>() != _s; }
-	bool operator==(uint const& _i) const { return isInt() && toInt<uint>() == _i; }
-	bool operator!=(uint const& _i) const { return isInt() && toInt<uint>() != _i; }
+	bool operator==(unsigned const& _i) const { return isInt() && toInt<unsigned>() == _i; }
+	bool operator!=(unsigned const& _i) const { return isInt() && toInt<unsigned>() != _i; }
 	bool operator==(u256 const& _i) const { return isInt() && toInt<u256>() == _i; }
 	bool operator!=(u256 const& _i) const { return isInt() && toInt<u256>() != _i; }
 	bool operator==(bigint const& _i) const { return isInt() && toInt<bigint>() == _i; }
@@ -123,7 +123,7 @@ public:
 	/// Subscript operator.
 	/// @returns the list item @a _i if isList() and @a _i < listItems(), or RLP() otherwise.
 	/// @note if used to access items in ascending order, this is efficient.
-	RLP operator[](uint _i) const;
+	RLP operator[](unsigned _i) const;
 
 	typedef RLP element_type;
 
@@ -146,7 +146,7 @@ public:
 		iterator() {}
 		iterator(RLP const& _parent, bool _begin);
 
-		uint m_remaining = 0;
+		unsigned m_remaining = 0;
 		bytesConstRef m_lastItem;
 	};
 
@@ -160,7 +160,7 @@ public:
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
 	explicit operator byte() const { return toInt<byte>(); }
-	explicit operator uint() const { return toInt<uint>(); }
+	explicit operator unsigned() const { return toInt<unsigned>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
@@ -181,7 +181,7 @@ public:
 	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
 	template <class T> std::set<T> toSet() const { std::set<T> ret; if (isList()) { for (auto const& i: *this) ret.insert((T)i); } return ret; }
 	template <class T, class U> std::pair<T, U> toPair() const { std::pair<T, U> ret; if (isList()) { ret.first = (T)((*this)[0]); ret.second = (U)((*this)[1]); } return ret; }
-	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (uint i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
+	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (unsigned i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
 
 	/// Int conversion flags
 	enum
@@ -194,7 +194,7 @@ public:
 	};
 
 	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
-	template <class _T = uint> _T toInt(int _flags = Strict) const
+	template <class _T = unsigned> _T toInt(int _flags = Strict) const
 	{
 		if ((!isInt() && !(_flags & AllowNonCanon)) || isList() || isNull())
 			if (_flags & ThrowOnFail)
@@ -237,27 +237,27 @@ public:
 
 	/// @returns the theoretical size of this item.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
-	uint actualSize() const;
+	unsigned actualSize() const;
 
 private:
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
 	/// @returns the bytes used to encode the length of the data. Valid for all types.
-	uint lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
+	unsigned lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
 
 	/// @returns the size in bytes of the payload, as given by the RLP as opposed to as inferred from m_data.
-	uint length() const;
+	unsigned length() const;
 
 	/// @returns the number of data items.
-	uint items() const;
+	unsigned items() const;
 
 	/// Our byte data.
 	bytesConstRef m_data;
 
 	/// The list-indexing cache.
-	mutable uint m_lastIndex = (uint)-1;
-	mutable uint m_lastEnd = 0;
+	mutable unsigned m_lastIndex = (unsigned)-1;
+	mutable unsigned m_lastEnd = 0;
 	mutable bytesConstRef m_lastItem;
 };
 
@@ -271,12 +271,12 @@ public:
 	RLPStream() {}
 
 	/// Initializes the RLPStream as a list of @a _listItems items.
-	explicit RLPStream(uint _listItems) { appendList(_listItems); }
+	explicit RLPStream(unsigned _listItems) { appendList(_listItems); }
 
 	~RLPStream() {}
 
 	/// Append given datum to the byte stream.
-	RLPStream& append(uint _s) { return append(bigint(_s)); }
+	RLPStream& append(unsigned _s) { return append(bigint(_s)); }
 	RLPStream& append(u160 _s) { return append(bigint(_s)); }
 	RLPStream& append(u256 _s) { return append(bigint(_s)); }
 	RLPStream& append(bigint _s);
@@ -287,7 +287,7 @@ public:
 	template <unsigned N> RLPStream& append(FixedHash<N> _s, bool _compact = false, bool _allOrNothing = false) { return _allOrNothing && !_s ? append(bytesConstRef()) : append(_s.ref(), _compact); }
 
 	/// Appends an arbitrary RLP fragment - this *must* be a single item.
-	RLPStream& append(RLP const& _rlp, uint _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
+	RLPStream& append(RLP const& _rlp, unsigned _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.
 	template <class _T> RLPStream& append(std::vector<_T> const& _s) { return appendVector(_s); }
@@ -297,14 +297,14 @@ public:
 	template <class T, class U> RLPStream& append(std::pair<T, U> const& _s) { appendList(2); append(_s.first); append(_s.second); return *this; }
 
 	/// Appends a list.
-	RLPStream& appendList(uint _items);
+	RLPStream& appendList(unsigned _items);
 	RLPStream& appendList(bytesConstRef _rlp);
 	RLPStream& appendList(bytes const& _rlp) { return appendList(&_rlp); }
 	RLPStream& appendList(RLPStream const& _s) { return appendList(&_s.out()); }
 
 	/// Appends raw (pre-serialised) RLP data. Use with caution.
-	RLPStream& appendRaw(bytesConstRef _rlp, uint _itemCount = 1);
-	RLPStream& appendRaw(bytes const& _rlp, uint _itemCount = 1) { return appendRaw(&_rlp, _itemCount); }
+	RLPStream& appendRaw(bytesConstRef _rlp, unsigned _itemCount = 1);
+	RLPStream& appendRaw(bytes const& _rlp, unsigned _itemCount = 1) { return appendRaw(&_rlp, _itemCount); }
 
 	/// Shift operators for appending data items.
 	template <class T> RLPStream& operator<<(T _data) { return append(_data); }
@@ -319,14 +319,14 @@ public:
 	void swapOut(bytes& _dest) { assert(m_listStack.empty()); swap(m_out, _dest); }
 
 private:
-	void noteAppended(uint _itemCount = 1);
+	void noteAppended(unsigned _itemCount = 1);
 
 	/// Push the node-type byte (using @a _base) along with the item count @a _count.
 	/// @arg _count is number of characters for strings, data-bytes for ints, or items for lists.
-	void pushCount(uint _count, byte _offset);
+	void pushCount(unsigned _count, byte _offset);
 
 	/// Push an integer as a raw big-endian byte-stream.
-	template <class _T> void pushInt(_T _i, uint _br)
+	template <class _T> void pushInt(_T _i, unsigned _br)
 	{
 		m_out.resize(m_out.size() + _br);
 		byte* b = &m_out.back();
@@ -337,7 +337,7 @@ private:
 	/// Our output byte stream.
 	bytes m_out;
 
-	std::vector<std::pair<uint, uint>> m_listStack;
+	std::vector<std::pair<unsigned, unsigned>> m_listStack;
 };
 
 template <class _T> void rlpListAux(RLPStream& _out, _T _t) { _out << _t; }
@@ -362,6 +362,6 @@ extern bytes RLPNull;
 extern bytes RLPEmptyList;
 
 /// Human readable version of RLP.
-std::ostream& operator<<(std::ostream& _out, eth::RLP const& _d);
+std::ostream& operator<<(std::ostream& _out, dev::RLP const& _d);
 
 }

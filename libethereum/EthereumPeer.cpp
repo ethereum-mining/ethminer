@@ -28,10 +28,11 @@
 #include "BlockChain.h"
 #include "EthereumHost.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace p2p;
 
-#define clogS(X) eth::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
+#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
 	Capability(_s, _h)
@@ -73,7 +74,7 @@ void EthereumPeer::startInitialSync()
 	}
 
 	h256 c = host()->m_chain->currentHash();
-	uint n = host()->m_chain->number();
+	unsigned n = host()->m_chain->number();
 	u256 td = max(host()->m_chain->details().totalDifficulty, host()->m_totalDifficultyOfNeeded);
 
 	clogS(NetAllDetail) << "Initial sync. Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain->details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
@@ -123,7 +124,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 	case StatusPacket:
 	{
-		m_protocolVersion = _r[1].toInt<uint>();
+		m_protocolVersion = _r[1].toInt<unsigned>();
 		m_networkId = _r[2].toInt<u256>();
 		m_totalDifficulty = _r[3].toInt<u256>();
 		m_latestHash = _r[4].toHash<h256>();

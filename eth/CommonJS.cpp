@@ -22,9 +22,10 @@
 
 #include "CommonJS.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-bytes eth::jsToBytes(string const& _s)
+bytes dev::eth::jsToBytes(string const& _s)
 {
 	if (_s.substr(0, 2) == "0x")
 		// Hex
@@ -37,7 +38,7 @@ bytes eth::jsToBytes(string const& _s)
 		return asBytes(_s);
 }
 
-string eth::jsPadded(string const& _s, unsigned _l, unsigned _r)
+string dev::eth::jsPadded(string const& _s, unsigned _l, unsigned _r)
 {
 	bytes b = jsToBytes(_s);
 	while (b.size() < _l)
@@ -47,7 +48,7 @@ string eth::jsPadded(string const& _s, unsigned _l, unsigned _r)
 	return asString(b).substr(b.size() - max(_l, _r));
 }
 
-string eth::jsPadded(string const& _s, unsigned _l)
+string dev::eth::jsPadded(string const& _s, unsigned _l)
 {
 	if (_s.substr(0, 2) == "0x" || _s.find_first_not_of("0123456789") == string::npos)
 		// Numeric: pad to right
@@ -57,7 +58,7 @@ string eth::jsPadded(string const& _s, unsigned _l)
 		return jsPadded(_s, 0, _l);
 }
 
-string eth::jsUnpadded(string _s)
+string dev::eth::jsUnpadded(string _s)
 {
 	auto p = _s.find_last_not_of((char)0);
 	_s.resize(p == string::npos ? 0 : (p + 1));

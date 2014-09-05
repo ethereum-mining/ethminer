@@ -35,7 +35,8 @@
 #include "BlockQueue.h"
 #include "EthereumPeer.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace p2p;
 
 EthereumHost::EthereumHost(BlockChain const& _ch, u256 _networkId):
@@ -139,7 +140,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 	{
 		auto ep = p->cap<EthereumPeer>();
 		bytes b;
-		uint n = 0;
+		unsigned n = 0;
 		for (auto const& i: _tq.transactions())
 			if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
 			{

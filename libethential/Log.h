@@ -28,7 +28,7 @@
 #include <boost/thread.hpp>
 #include "vector_ref.h"
 
-namespace eth
+namespace dev
 {
 
 /// The null output stream. Used when logging is disabled.
@@ -107,19 +107,19 @@ private:
 
 // Simple cout-like stream objects for accessing common log channels.
 // Dirties the global namespace, but oh so convenient...
-#define cnote eth::LogOutputStream<eth::NoteChannel, true>()
-#define cwarn eth::LogOutputStream<eth::WarnChannel, true>()
+#define cnote dev::LogOutputStream<dev::NoteChannel, true>()
+#define cwarn dev::LogOutputStream<dev::WarnChannel, true>()
 
 // Null stream-like objects.
-#define ndebug if (true) {} else eth::NullOutputStream()
-#define nlog(X) if (true) {} else eth::NullOutputStream()
-#define nslog(X) if (true) {} else eth::NullOutputStream()
+#define ndebug if (true) {} else dev::NullOutputStream()
+#define nlog(X) if (true) {} else dev::NullOutputStream()
+#define nslog(X) if (true) {} else dev::NullOutputStream()
 
 // Kill debugging log channel when we're in release mode.
 #if NDEBUG
 #define cdebug ndebug
 #else
-#define cdebug eth::LogOutputStream<eth::DebugChannel, true>()
+#define cdebug dev::LogOutputStream<dev::DebugChannel, true>()
 #endif
 
 // Kill all logs when when NLOG is defined.
@@ -127,8 +127,8 @@ private:
 #define clog(X) nlog(X)
 #define cslog(X) nslog(X)
 #else
-#define clog(X) eth::LogOutputStream<X, true>()
-#define cslog(X) eth::LogOutputStream<X, false>()
+#define clog(X) dev::LogOutputStream<X, true>()
+#define cslog(X) dev::LogOutputStream<X, false>()
 #endif
 
 }

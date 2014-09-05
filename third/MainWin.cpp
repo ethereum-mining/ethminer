@@ -44,45 +44,45 @@
 using namespace std;
 
 // types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using eth::BlockChain;
-using p2p::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
-using eth::Executive;
+using dev::bytes;
+using dev::bytesConstRef;
+using dev::h160;
+using dev::h256;
+using dev::u160;
+using dev::u256;
+using dev::eth::Address;
+using dev::eth::BlockInfo;
+using dev::eth::Client;
+using dev::eth::Instruction;
+using dev::eth::KeyPair;
+using dev::eth::NodeMode;
+using dev::eth::BlockChain;
+using dev::p2p::PeerInfo;
+using dev::RLP;
+using dev::eth::Secret;
+using dev::eth::Transaction;
+using dev::eth::Executive;
 
 // functions
-using eth::toHex;
-using eth::compileLLL;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::sha3;
-using eth::left160;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
-using eth::operator<<;
+using dev::toHex;
+using dev::fromHex;
+using dev::left160;
+using dev::right160;
+using dev::simpleDebugOut;
+using dev::toLog2;
+using dev::toString;
+using dev::operator<<;
+using dev::eth::units;
+using dev::eth::compileLLL;
+using dev::eth::disassemble;
+using dev::eth::formatBalance;
+using dev::eth::sha3;
 
 // vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
+using dev::g_logPost;
+using dev::g_logVerbosity;
 
-static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
+static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 {
 	if (_n)
 	{
@@ -121,8 +121,8 @@ Main::Main(QWidget *parent) :
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
-	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
-	cerr << "Client database version: " << eth::c_databaseVersion << endl;
+	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
 	ui->ownedAccountsDock->hide();
 
@@ -186,14 +186,14 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
 {
 	auto ret = m_client->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
-unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
 	auto ret = m_client->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -202,26 +202,26 @@ unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
 
 void Main::installWatches()
 {
-	installWatch(eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
-	installWatch(eth::ChainChangedFilter, [=](){ onNewBlock(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
 
 void Main::installNameRegWatch()
 {
 	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	m_client->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	eth::MessageFilter tf;
+	dev::eth::MessageFilter tf;
 
 	vector<Address> altCoins;
 	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
@@ -291,7 +291,7 @@ void Main::eval(QString const& _js)
 	ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
 }
 
-QString Main::pretty(eth::Address _a) const
+QString Main::pretty(dev::eth::Address _a) const
 {
 	h256 n;
 
@@ -301,7 +301,7 @@ QString Main::pretty(eth::Address _a) const
 	return fromRaw(n);
 }
 
-QString Main::render(eth::Address _a) const
+QString Main::render(dev::eth::Address _a) const
 {
 	QString p = pretty(_a);
 	if (!p.isNull())
@@ -368,7 +368,7 @@ QString Main::lookup(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Third PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Third/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
+	QMessageBox::about(this, "About Third PoC-" + QString(dev::Version).section('.', 1, 1), QString("Third/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::writeSettings()
@@ -466,7 +466,7 @@ void Main::on_urlEdit_returnPressed()
 
 void Main::refreshMining()
 {
-	eth::MineProgress p = m_client->miningProgress();
+	dev::eth::MineProgress p = m_client->miningProgress();
 	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 }
 
@@ -516,7 +516,7 @@ void Main::refreshBlockCount()
 	cwatch << "refreshBlockCount()";
 	auto d = m_client->blockChain().details();
 	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
+	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion));
 }
 
 void Main::timerEvent(QTimerEvent*)
@@ -572,11 +572,11 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::ensureNetwork()
 {
-	string n = string("Third/v") + eth::EthVersion;
-	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
+	string n = string("Third/v") + dev::Version;
+	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
 	m_client->setClientVersion(n);
 
-	int pocnumber = QString(eth::EthVersion).section('.', 1, 1).toInt();
+	int pocnumber = QString(dev::Version).section('.', 1, 1).toInt();
 	string defPeer;
 	if (pocnumber == 5)
 		defPeer = "54.72.69.180";

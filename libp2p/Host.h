@@ -33,14 +33,13 @@
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
-namespace p2p
+namespace dev
 {
 
 class RLPStream;
-class TransactionQueue;
-class BlockQueue;
 
-using eth::Guard;
+namespace p2p
+{
 
 /**
  * @brief The Host class
@@ -156,4 +155,5 @@ protected:
 	bool m_accepting = false;
 };
 
+}
 }

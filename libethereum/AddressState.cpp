@@ -22,7 +22,8 @@
 #include "AddressState.h"
 #include <libethcore/CommonEth.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 namespace { char dummy; };

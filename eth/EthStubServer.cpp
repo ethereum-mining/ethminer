@@ -27,7 +27,8 @@
 #include <libethereum/Client.h>
 #include "CommonJS.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, Client& _client):
 	AbstractEthStubServer(_conn),
@@ -89,7 +90,7 @@ std::string EthStubServer::create(const std::string& _bCode, const std::string& 
 
 std::string EthStubServer::lll(const std::string& _s)
 {
-	return "0x" + toHex(eth::compileLLL(_s));
+	return "0x" + toHex(dev::eth::compileLLL(_s));
 }
 
 std::string EthStubServer::gasPrice()

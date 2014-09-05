@@ -30,6 +30,8 @@
 #include "FeeStructure.h"
 #include "ExtVMFace.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -87,9 +89,9 @@ private:
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
-	auto memNeed = [](eth::u256 _offset, eth::u256 _size) { return _size ? _offset + _size : 0; };
+	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
 
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
@@ -310,7 +312,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		case Instruction::BYTE:
 			require(2);
-			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
+			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (unsigned)(8 * (31 - m_stack.back()))) & 0xff : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::ADDMOD:
@@ -688,4 +690,4 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		throw StepsDone();
 	return bytesConstRef();
 }
-
+}

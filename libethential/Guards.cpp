@@ -21,9 +21,9 @@
 
 #include "Guards.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-namespace eth
+namespace dev
 {
 
 }

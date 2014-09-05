@@ -29,7 +29,8 @@
 #include "Defaults.h"
 #include "EthereumHost.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace p2p;
 
 VersionChecker::VersionChecker(string const& _dbPath):

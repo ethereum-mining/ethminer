@@ -21,6 +21,11 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <map>
 #include <memory>
 #include <libethential/Common.h>
@@ -31,6 +36,8 @@
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -223,7 +230,7 @@ private:
 
 	// in: [K1 & K2, V] (DEL) : nibbles(K1) == _s, 0 < _s <= nibbles(K1 & K2)
 	// out: [K1, H] ; [K2, V] => H (INS)  (being  [K1, [K2, V]]  if necessary)
-	bytes cleve(RLP const& _orig, uint _s);
+	bytes cleve(RLP const& _orig, unsigned _s);
 
 	// in: [K1, H] (DEL) ; H <= [K2, V] (DEL)  (being  [K1, [K2, V]] (DEL)  if necessary)
 	// out: [K1 & K2, V]
@@ -309,8 +316,11 @@ std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
 }
 
 }
+}
 
 // Template implementations...
+namespace dev
+{
 namespace eth
 {
 
@@ -756,7 +766,7 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 		return (RLPStream(2) << _orig[0] << _s).out();
 
 	auto s = RLPStream(17);
-	for (uint i = 0; i < 16; ++i)
+	for (unsigned i = 0; i < 16; ++i)
 		s << _orig[i];
 	s << _s;
 	return s.out();
@@ -778,7 +788,7 @@ template <class DB> bytes GenericTrieDB<DB>::remove(RLP const& _orig)
 	if (_orig.itemCount() == 2)
 		return RLPNull;
 	RLPStream r(17);
-	for (uint i = 0; i < 16; ++i)
+	for (unsigned i = 0; i < 16; ++i)
 		r << _orig[i];
 	r << "";
 	return r.out();
@@ -793,7 +803,7 @@ template <class DB> RLPStream& GenericTrieDB<DB>::streamNode(RLPStream& _s, byte
 	return _s;
 }
 
-template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, uint _s)
+template <class DB> bytes GenericTrieDB<DB>::cleve(RLP const& _orig, unsigned _s)
 {
 #if ETH_PARANOIA
 	tdebug << "cleve " << _orig << _s;
@@ -874,14 +884,14 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 	if (k.size() == 0)
 	{
 		assert(isLeaf(_orig));
-		for (uint i = 0; i < 16; ++i)
+		for (unsigned i = 0; i < 16; ++i)
 			r << "";
 		r << _orig[1];
 	}
 	else
 	{
 		byte b = k[0];
-		for (uint i = 0; i < 16; ++i)
+		for (unsigned i = 0; i < 16; ++i)
 			if (i == b)
 				if (isLeaf(_orig) || k.size() > 1)
 				{
@@ -899,3 +909,5 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 }
 
 }
+}
+

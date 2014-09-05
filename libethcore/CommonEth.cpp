@@ -25,12 +25,17 @@
 #include <libethcore/SHA3.h>
 #include "Exceptions.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 //#define ETH_ADDRESS_DEBUG 1
+namespace dev
+{
+namespace eth
+{
 
-const unsigned eth::c_protocolVersion = 32;
-const unsigned eth::c_databaseVersion = 1;
+const unsigned c_protocolVersion = 32;
+const unsigned c_databaseVersion = 1;
 
 static const vector<pair<u256, string>> g_units =
 {
@@ -55,12 +60,12 @@ static const vector<pair<u256, string>> g_units =
 	{u256(1), "wei"}
 };
 
-vector<pair<u256, string>> const& eth::units()
+vector<pair<u256, string>> const& units()
 {
 	return g_units;
 }
 
-std::string eth::formatBalance(u256 _b)
+std::string formatBalance(u256 _b)
 {
 	ostringstream ret;
 	if (_b > g_units[0].first * 10000)
@@ -79,7 +84,7 @@ std::string eth::formatBalance(u256 _b)
 	return ret.str();
 }
 
-Address eth::toAddress(Secret _private)
+Address toAddress(Secret _private)
 {
 	secp256k1_start();
 
@@ -95,7 +100,7 @@ Address eth::toAddress(Secret _private)
 	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
 	if (!ok)
 		return Address();
-	auto ret = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+	auto ret = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 #if ETH_ADDRESS_DEBUG
 	cout << "---- ADDRESS -------------------------------" << endl;
 	cout << "SEC: " << _private << endl;
@@ -104,6 +109,8 @@ Address eth::toAddress(Secret _private)
 #endif
 	return ret;
 }
+
+}}
 
 KeyPair KeyPair::create()
 {
@@ -143,7 +150,7 @@ KeyPair::KeyPair(h256 _sec):
 
 	m_secret = m_secret;
 	memcpy(m_public.data(), &(pubkey[1]), 64);
-	m_address = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+	m_address = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 
 #if ETH_ADDRESS_DEBUG
 	cout << "---- ADDRESS -------------------------------" << endl;

@@ -27,6 +27,8 @@
 namespace boost { namespace spirit { class utree; } }
 namespace sp = boost::spirit;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -187,4 +189,5 @@ extern const std::map<std::string, Instruction> c_instructions;
 /// Convert from EVM code to simple EVM assembly language.
 std::string disassemble(bytes const& _mem);
 
+}
 }

@@ -28,18 +28,20 @@
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 
+namespace dev
+{
 namespace shh
 {
 
-using h256 = eth::h256;
-using h512 = eth::h512;
-using h256s = eth::h256s;
-using bytes = eth::bytes;
-using RLPStream = eth::RLPStream;
-using RLP = eth::RLP;
-using bytesRef = eth::bytesRef;
-using bytesConstRef = eth::bytesConstRef;
-using h256Set = eth::h256Set;
+using h256 = dev::h256;
+using h512 = dev::h512;
+using h256s = dev::h256s;
+using bytes = dev::bytes;
+using RLPStream = dev::RLPStream;
+using RLP = dev::RLP;
+using bytesRef = dev::bytesRef;
+using bytesConstRef = dev::bytesConstRef;
+using h256Set = dev::h256Set;
 
 class WhisperHost;
 class WhisperPeer;
@@ -53,4 +55,5 @@ enum WhisperPacket
 	RemoveFilterPacket
 };
 
+}
 }

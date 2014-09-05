@@ -27,6 +27,8 @@
 #include <libethential/FixedHash.h>
 #include <libethential/vector_ref.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -58,4 +60,5 @@ inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input))
 
 extern h256 EmptySHA3;
 
+}
 }

@@ -21,6 +21,8 @@
 
 #include "TrieCommon.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -42,8 +44,8 @@ namespace eth
 
 std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf, int _begin, int _end)
 {
-	uint begin = _begin;
-	uint end = _end < 0 ? _hexVector.size() + 1 + _end : _end;
+	unsigned begin = _begin;
+	unsigned end = _end < 0 ? _hexVector.size() + 1 + _end : _end;
 	bool odd = ((end - begin) % 2) != 0;
 
 	std::string ret(1, ((_leaf ? 2 : 0) | (odd ? 1 : 0)) * 16);
@@ -52,21 +54,21 @@ std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf, int _begin, int
 		ret[0] |= _hexVector[begin];
 		++begin;
 	}
-	for (uint i = begin; i < end; i += 2)
+	for (unsigned i = begin; i < end; i += 2)
 		ret += _hexVector[i] * 16 + _hexVector[i + 1];
 	return ret;
 }
 
-std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, uint _offset)
+std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, unsigned _offset)
 {
-	uint begin = _beginNibble + _offset;
-	uint end = (_endNibble < 0 ? (_data.size() * 2 - _offset) + 1 + _endNibble : _endNibble) + _offset;
+	unsigned begin = _beginNibble + _offset;
+	unsigned end = (_endNibble < 0 ? (_data.size() * 2 - _offset) + 1 + _endNibble : _endNibble) + _offset;
 	bool odd = (end - begin) & 1;
 
 	std::string ret(1, ((_leaf ? 2 : 0) | (odd ? 1 : 0)) * 16);
 	ret.reserve((end - begin) / 2 + 1);
 
-	uint d = odd ? 1 : 2;
+	unsigned d = odd ? 1 : 2;
 	for (auto i = begin; i < end; ++i, ++d)
 	{
 		byte n = nibble(_data, i);
@@ -78,19 +80,19 @@ std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, i
 	return ret;
 }
 
-std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _leaf)
+std::string hexPrefixEncode(bytesConstRef _d1, unsigned _o1, bytesConstRef _d2, unsigned _o2, bool _leaf)
 {
-	uint begin1 = _o1;
-	uint end1 = _d1.size() * 2;
-	uint begin2 = _o2;
-	uint end2 = _d2.size() * 2;
+	unsigned begin1 = _o1;
+	unsigned end1 = _d1.size() * 2;
+	unsigned begin2 = _o2;
+	unsigned end2 = _d2.size() * 2;
 
 	bool odd = (end1 - begin1 + end2 - begin2) & 1;
 
 	std::string ret(1, ((_leaf ? 2 : 0) | (odd ? 1 : 0)) * 16);
 	ret.reserve((end1 - begin1 + end2 - begin2) / 2 + 1);
 
-	uint d = odd ? 1 : 2;
+	unsigned d = odd ? 1 : 2;
 	for (auto i = begin1; i < end1; ++i, ++d)
 	{
 		byte n = nibble(_d1, i);
@@ -124,4 +126,5 @@ byte uniqueInUse(RLP const& _orig, byte except)
 	return used;
 }
 
+}
 }

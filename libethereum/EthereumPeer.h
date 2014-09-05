@@ -31,6 +31,8 @@
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -65,7 +67,7 @@ private:
 
 	void giveUpOnFetch();
 
-	uint m_protocolVersion;
+	unsigned m_protocolVersion;
 	u256 m_networkId;
 
 	h256 m_latestHash;						///< Peer's latest block's hash.
@@ -82,4 +84,5 @@ private:
 	std::set<h256> m_knownTransactions;
 };
 
+}
 }

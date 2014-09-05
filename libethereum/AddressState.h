@@ -25,6 +25,8 @@
 #include <libethential/RLP.h>
 #include <libethcore/SHA3.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -78,5 +80,5 @@ private:
 };
 
 }
-
+}
 

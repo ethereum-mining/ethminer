@@ -29,6 +29,8 @@
 #include "Transaction.h"
 #include "Manifest.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -77,4 +79,5 @@ private:
 	u256 m_endGas;
 };
 
+}
 }

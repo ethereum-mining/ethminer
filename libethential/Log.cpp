@@ -24,20 +24,20 @@
 #include <string>
 #include <iostream>
 using namespace std;
-using namespace eth;
+using namespace dev;
 
 // Logging
-int eth::g_logVerbosity = 5;
-map<type_info const*, bool> eth::g_logOverride;
+int dev::g_logVerbosity = 5;
+map<type_info const*, bool> dev::g_logOverride;
 
-ThreadLocalLogName eth::t_logThreadName("main");
+ThreadLocalLogName dev::t_logThreadName("main");
 
 // foward declare without all of Windows.h
 #ifdef _WIN32
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
 #endif
 
-void eth::simpleDebugOut(std::string const& _s, char const*)
+void dev::simpleDebugOut(std::string const& _s, char const*)
 {
 	cout << _s << endl << flush;
 
@@ -50,5 +50,5 @@ void eth::simpleDebugOut(std::string const& _s, char const*)
 	#endif
 }
 
-std::function<void(std::string const&, char const*)> eth::g_logPost = simpleDebugOut;
+std::function<void(std::string const&, char const*)> dev::g_logPost = simpleDebugOut;
 

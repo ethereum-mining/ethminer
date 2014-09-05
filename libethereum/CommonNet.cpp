@@ -21,4 +21,5 @@
 
 #include "CommonNet.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;

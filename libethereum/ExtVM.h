@@ -27,6 +27,8 @@
 #include <libevm/ExtVMFace.h>
 #include "State.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -122,5 +124,5 @@ private:
 };
 
 }
-
+}
 

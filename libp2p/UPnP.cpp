@@ -33,8 +33,8 @@
 #include <libethential/Common.h>
 #include <libethential/Log.h>
 using namespace std;
-using namespace eth;
-using namespace p2p;
+using namespace dev;
+using namespace dev::p2p;
 
 UPnP::UPnP()
 {

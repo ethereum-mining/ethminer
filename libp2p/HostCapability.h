@@ -25,6 +25,9 @@
 
 #include "Common.h"
 
+namespace dev
+{
+
 namespace p2p
 {
 
@@ -66,5 +69,7 @@ protected:
 	virtual std::string name() const { return PeerCap::name(); }
 	virtual Capability* newPeerCapability(Session* _s) { return new PeerCap(_s, this); }
 };
+
+}
 
 }

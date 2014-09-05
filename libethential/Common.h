@@ -23,7 +23,7 @@
 
 #pragma once
 
-// way to many uint to size_t warnings in 32 bit build
+// way to many unsigned to size_t warnings in 32 bit build
 #ifdef _M_IX86
 #pragma warning(disable:4244)
 #endif
@@ -43,13 +43,13 @@
 using byte = uint8_t;
 
 // Quote a given token stream to turn it into a string.
-#define ETH_QUOTED_HELPER(s) #s
-#define ETH_QUOTED(s) ETH_QUOTED_HELPER(s)
+#define DEV_QUOTED_HELPER(s) #s
+#define DEV_QUOTED(s) DEV_QUOTED_HELPER(s)
 
-namespace eth
+namespace dev
 {
 
-extern char const* EthVersion;
+extern char const* Version;
 
 // Binary data types.
 using bytes = std::vector<byte>;
@@ -62,8 +62,6 @@ using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backe
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 using u160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using s160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
-using uint = uint64_t;
-using sint = int64_t;
 using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
@@ -96,6 +94,13 @@ inline u256 s2u(s256 _u)
         return (u256)_u;
     else
         return (u256)(c_end + _u);
+}
+
+inline unsigned int toLog2(u256 _x)
+{
+	unsigned ret;
+	for (ret = 0; _x >>= 1; ++ret) {}
+	return ret;
 }
 
 }

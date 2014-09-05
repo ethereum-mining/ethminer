@@ -23,7 +23,8 @@
 
 #include <libethential/CommonIO.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 AccountChange AccountDiff::changeType() const
 {
@@ -39,7 +40,9 @@ char const* AccountDiff::lead() const
 	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
+namespace dev {
+
+std::ostream& operator<<(std::ostream& _out, dev::eth::AccountDiff const& _s)
 {
 	if (!_s.exist.to())
 		return _out;
@@ -68,10 +71,14 @@ std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
 	return _out;
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, StateDiff const& _s)
+std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s)
 {
 	_out << _s.accounts.size() << " accounts changed:" << endl;
+	dev::eth::AccountDiff d;
+	_out << d;
 	for (auto const& i: _s.accounts)
 		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
 	return _out;
+}
+
 }

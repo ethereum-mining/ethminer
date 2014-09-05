@@ -26,6 +26,8 @@
 #include "libethcore/CommonEth.h"
 #include <libethential/Guards.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -67,5 +69,4 @@ private:
 };
 
 }
-
-
+}

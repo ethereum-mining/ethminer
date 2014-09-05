@@ -31,11 +31,12 @@
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ETH_CATCH 1
 
-std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
+std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
 	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
@@ -49,7 +50,7 @@ std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-std::map<Address, AddressState> const& eth::genesisState()
+std::map<Address, AddressState> const& dev::eth::genesisState()
 {
 	static std::map<Address, AddressState> s_ret;
 	if (s_ret.empty())
@@ -71,7 +72,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 BlockInfo* BlockChain::s_genesis = nullptr;
 boost::shared_mutex BlockChain::x_genesis;
 
-ldb::Slice eth::toSlice(h256 _h, unsigned _sub)
+ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local h256 h = _h ^ h256(u256(_sub));
@@ -95,12 +96,12 @@ bytes BlockChain::createGenesisBlock()
 		MemoryDB db;
 		TrieDB<Address, MemoryDB> state(&db);
 		state.init();
-		eth::commit(genesisState(), db, state);
+		dev::eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
 	}
 
 	block.appendList(13) << h256() << sha3EmptyList << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
+	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -135,7 +136,7 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 		// Insert details of genesis block.
 		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
 		auto r = m_details[m_genesisHash].rlp();
-		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
+		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
 	}
 
 	checkConsistency();
@@ -287,7 +288,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// All ok - insert into DB
 		{
 			WriteGuard l(x_details);
-			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {}, b);
+			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}, b);
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
@@ -299,10 +300,10 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_traces[newHash] = bt;
 		}
 
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)eth::ref(m_blooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)eth::ref(m_traces[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)dev::ref(m_blooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)dev::ref(m_traces[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 
 #if ETH_PARANOIA

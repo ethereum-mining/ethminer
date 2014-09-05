@@ -30,9 +30,10 @@
 #endif
 #include <boost/filesystem.hpp>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-std::string eth::getDataDir()
+std::string dev::eth::getDataDir()
 {
 #ifdef _WIN32
 	char path[1024] = "";

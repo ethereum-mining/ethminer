@@ -26,7 +26,7 @@
 #include "CommonData.h"
 #include "FixedHash.h"
 
-namespace eth
+namespace dev
 {
 
 class Exception: public std::exception

@@ -22,14 +22,11 @@
 #include <libethential/Common.h>
 #include "TrieDB.h"
 using namespace std;
-using namespace eth;
-
-namespace eth
-{
+using namespace dev;
+using namespace dev::eth;
 
 #if !ETH_LANGUAGES
 
-const h256 c_shaNull = sha3(rlp(""));
+const h256 dev::eth::c_shaNull = sha3(rlp(""));
 
 #endif
-}

@@ -28,9 +28,10 @@
 #include "Exceptions.h"
 #include "BlockInfo.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-u256 eth::c_genesisDifficulty = (u256)1 << 17;
+u256 dev::eth::c_genesisDifficulty = (u256)1 << 17;
 
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
@@ -71,7 +72,7 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
-	hash = eth::sha3(_header.data());
+	hash = dev::eth::sha3(_header.data());
 
 	int field = 0;
 	try

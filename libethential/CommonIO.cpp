@@ -24,9 +24,9 @@
 #include <fstream>
 #include "Exceptions.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-string eth::memDump(bytes const& _b, unsigned _w, bool _html)
+string dev::memDump(bytes const& _b, unsigned _w, bool _html)
 {
 	stringstream ret;
 	if (_html)
@@ -57,7 +57,7 @@ string eth::memDump(bytes const& _b, unsigned _w, bool _html)
 	return ret.str();
 }
 
-bytes eth::contents(std::string const& _file)
+bytes dev::contents(std::string const& _file)
 {
 	std::ifstream is(_file, std::ifstream::binary);
 	if (!is)
@@ -72,7 +72,7 @@ bytes eth::contents(std::string const& _file)
 	return ret;
 }
 
-void eth::writeFile(std::string const& _file, bytes const& _data)
+void dev::writeFile(std::string const& _file, bytes const& _data)
 {
 	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
 }

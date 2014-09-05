@@ -25,6 +25,8 @@
 #include <libethcore/CommonEth.h>
 #include "Manifest.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -50,4 +52,5 @@ struct PastMessage
 
 typedef std::vector<PastMessage> PastMessages;
 
+}
 }

@@ -29,6 +29,8 @@
 struct UPNPUrls;
 struct IGDdatas;
 
+namespace dev
+{
 namespace p2p
 {
 
@@ -50,4 +52,5 @@ public:
 	std::shared_ptr<struct IGDdatas> m_data;
 };
 
+}
 }

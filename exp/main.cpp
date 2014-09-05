@@ -37,9 +37,10 @@
 #include "BuildInfo.h"
 #endif
 using namespace std;
-using namespace p2p;
-using namespace eth;
-using namespace shh;
+using namespace dev;
+using namespace dev::eth;
+using namespace dev::p2p;
+using namespace dev::shh;
 #if 0
 #if 0
 namespace qi = boost::spirit::qi;
@@ -218,6 +219,7 @@ void debugOutAST(ostream& _out, sp::utree const& _this)
 	}
 }
 
+namespace dev {
 namespace eth {
 namespace parseTreeLLL_ {
 
@@ -230,13 +232,13 @@ struct tagNode
 	}
 };
 
-}}
+}}}
 
 void parseTree(string const& _s, sp::utree& o_out)
 {
 	using qi::standard::space;
 	using qi::standard::space_type;
-	using eth::parseTreeLLL_::tagNode;
+	using dev::eth::parseTreeLLL_::tagNode;
 	typedef sp::basic_string<std::string, sp::utree_type::symbol_type> symbol_type;
 	typedef string::const_iterator it;
 

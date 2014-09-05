@@ -22,8 +22,11 @@
 #include <libethential/Common.h>
 #include "OverlayDB.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -96,4 +99,5 @@ void OverlayDB::kill(h256 _h)
 #endif
 }
 
+}
 }

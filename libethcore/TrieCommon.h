@@ -24,40 +24,42 @@
 #include <libethential/Common.h>
 #include <libethential/RLP.h>
 
+namespace dev
+{
 namespace eth
 {
 
-inline byte nibble(bytesConstRef _data, uint _i)
+inline byte nibble(bytesConstRef _data, unsigned _i)
 {
 	return (_i & 1) ? (_data[_i / 2] & 15) : (_data[_i / 2] >> 4);
 }
 
-inline uint sharedNibbles(bytesConstRef _a, uint _ab, uint _ae, bytesConstRef _b, uint _bb, uint _be)
+inline unsigned sharedNibbles(bytesConstRef _a, unsigned _ab, unsigned _ae, bytesConstRef _b, unsigned _bb, unsigned _be)
 {
-	uint ret = 0;
-	for (uint ai = _ab, bi = _bb; ai < _ae && bi < _be && nibble(_a, ai) == nibble(_b, bi); ++ai, ++bi, ++ret) {}
+	unsigned ret = 0;
+	for (unsigned ai = _ab, bi = _bb; ai < _ae && bi < _be && nibble(_a, ai) == nibble(_b, bi); ++ai, ++bi, ++ret) {}
 	return ret;
 }
 
 struct NibbleSlice
 {
 	bytesConstRef data;
-	uint offset;
+	unsigned offset;
 
-	NibbleSlice(bytesConstRef _d = bytesConstRef(), uint _o = 0): data(_d), offset(_o) {}
-	byte operator[](uint _index) const { return nibble(data, offset + _index); }
-	uint size() const { return data.size() * 2 - offset; }
-	NibbleSlice mid(uint _index) const { return NibbleSlice(data, offset + _index); }
+	NibbleSlice(bytesConstRef _d = bytesConstRef(), unsigned _o = 0): data(_d), offset(_o) {}
+	byte operator[](unsigned _index) const { return nibble(data, offset + _index); }
+	unsigned size() const { return data.size() * 2 - offset; }
+	NibbleSlice mid(unsigned _index) const { return NibbleSlice(data, offset + _index); }
 
 	bool contains(NibbleSlice _k) const { return shared(_k) == _k.size(); }
-	uint shared(NibbleSlice _k) const { return sharedNibbles(data, offset, offset + size(), _k.data, _k.offset, _k.offset + _k.size()); }
+	unsigned shared(NibbleSlice _k) const { return sharedNibbles(data, offset, offset + size(), _k.data, _k.offset, _k.offset + _k.size()); }
 	bool operator==(NibbleSlice _k) const { return _k.size() == size() && shared(_k) == _k.size(); }
 	bool operator!=(NibbleSlice _s) const { return !operator==(_s); }
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NibbleSlice const& _m)
 {
-	for (uint i = 0; i < _m.size(); ++i)
+	for (unsigned i = 0; i < _m.size(); ++i)
 		_out << std::hex << (int)_m[i] << std::dec;
 	return _out;
 }
@@ -86,8 +88,8 @@ inline NibbleSlice keyOf(RLP const& _twoItem)
 
 byte uniqueInUse(RLP const& _orig, byte except);
 std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf = false, int _begin = 0, int _end = -1);
-std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, uint _offset);
-std::string hexPrefixEncode(bytesConstRef _d1, uint _o1, bytesConstRef _d2, uint _o2, bool _leaf);
+std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, unsigned _offset);
+std::string hexPrefixEncode(bytesConstRef _d1, unsigned _o1, bytesConstRef _d2, unsigned _o2, bool _leaf);
 
 inline std::string hexPrefixEncode(NibbleSlice _s, bool _leaf, int _begin = 0, int _end = -1)
 {
@@ -99,4 +101,5 @@ inline std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf)
 	return hexPrefixEncode(_s1.data, _s1.offset, _s2.data, _s2.offset, _leaf);
 }
 
+}
 }

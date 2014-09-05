@@ -40,8 +40,8 @@
 #include "Capability.h"
 #include "UPnP.h"
 using namespace std;
-using namespace eth;
-using namespace p2p;
+using namespace dev;
+using namespace dev::p2p;
 
 // Addresses we will skip during network interface discovery
 // Use a vector as the list is small

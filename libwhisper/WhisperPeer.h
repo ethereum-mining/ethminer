@@ -31,6 +31,8 @@
 #include <libethcore/SHA3.h>
 #include "Common.h"
 
+namespace dev
+{
 namespace shh
 {
 
@@ -59,7 +61,7 @@ struct Message
 	operator bool () const { return !!expiry; }
 
 	void streamOut(RLPStream& _s) const { _s.appendList(4) << expiry << ttl << topic << payload; }
-	h256 sha3() const { RLPStream s; streamOut(s); return eth::sha3(s.out()); }
+	h256 sha3() const { RLPStream s; streamOut(s); return dev::eth::sha3(s.out()); }
 };
 
 /**
@@ -84,7 +86,7 @@ private:
 	unsigned rating(Message const&) const { return 0; }	// TODO
 	void noteNewMessage(h256 _h, Message const& _m);
 
-	mutable eth::Mutex x_unseen;
+	mutable dev::Mutex x_unseen;
 	std::map<unsigned, h256> m_unseen;	///< Rated according to what they want.
 };
 
@@ -96,7 +98,7 @@ public:
 	MessageFilter(RLP const& _r): m_topicMasks((std::vector<std::pair<bytes, bytes> >)_r) {}
 
 	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
-	h256 sha3() const { RLPStream s; fillStream(s); return eth::sha3(s.out()); }
+	h256 sha3() const { RLPStream s; fillStream(s); return dev::eth::sha3(s.out()); }
 
 	bool matches(Message const& _m) const;
 
@@ -136,10 +138,10 @@ public:
 	unsigned installWatch(MessageFilter const& _filter);
 	unsigned installWatch(h256 _filterId);
 	void uninstallWatch(unsigned _watchId);
-	h256s peekWatch(unsigned _watchId) const { eth::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
-	h256s checkWatch(unsigned _watchId) { eth::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
+	h256s peekWatch(unsigned _watchId) const { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
+	h256s checkWatch(unsigned _watchId) { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
 
-	Message message(h256 _m) const { try { eth::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
+	Message message(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
 
 	void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
 
@@ -148,19 +150,20 @@ private:
 
 	void noteChanged(h256 _messageHash, h256 _filter);
 
-	mutable eth::SharedMutex x_messages;
+	mutable dev::SharedMutex x_messages;
 	std::map<h256, Message> m_messages;
 
-	mutable eth::Mutex m_filterLock;
+	mutable dev::Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
 };
 
-struct WatchChannel: public eth::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
-#define cwatch eth::LogOutputStream<shh::WatchChannel, true>()
+struct WatchChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
+#define cwatch dev::LogOutputStream<shh::WatchChannel, true>()
 
 class Watch;
 
+}
 }
 /*
 namespace std { void swap(shh::Watch& _a, shh::Watch& _b); }

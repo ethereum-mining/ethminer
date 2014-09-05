@@ -48,10 +48,11 @@
 #undef OK
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 using namespace p2p;
 using namespace boost::algorithm;
-using eth::Instruction;
+using dev::eth::Instruction;
 
 bool isTrue(std::string const& _m)
 {
@@ -121,11 +122,11 @@ string credits()
 {
 	std::ostringstream ccout;
 	ccout
-		<< "NEthereum (++) " << eth::EthVersion << endl
+		<< "NEthereum (++) " << dev::Version << endl
 		<< "  Code by Gav Wood & , (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	string vs = toString(eth::EthVersion);
+	string vs = toString(dev::Version);
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
@@ -142,14 +143,14 @@ string credits()
 
 void version()
 {
-	cout << "neth version " << eth::EthVersion << endl;
-	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "neth version " << dev::Version << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
-string pretty(h160 _a, eth::State _st)
+string pretty(h160 _a, dev::eth::State _st)
 {
 	string ns;
 	h256 n;
@@ -412,7 +413,7 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	Client c("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
 
 	c.setForceMining(true);
 
@@ -525,14 +526,14 @@ int main(int argc, char** argv)
 
 		if (cmd == "netstart")
 		{
-			eth::uint port;
+			unsigned port;
 			iss >> port;
 			c.startNetwork((short)port);
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
-			eth::uint port;
+			unsigned port;
 			iss >> addr >> port;
 			c.connect(addr, (short)port);
 		}
@@ -582,7 +583,7 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "block")
 		{
-			eth::uint n = c.blockChain().details().number;
+			unsigned n = c.blockChain().details().number;
 			ccout << "Current block # ";
 			ccout << toString(n) << endl;
 		}
@@ -645,7 +646,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = eth::parseData(sdata);
+				bytes data = dev::eth::parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -810,7 +811,7 @@ int main(int argc, char** argv)
 
 					cnote << "Saved" << rechex << "to" << outFile;
 				}
-				catch (eth::InvalidTrie)
+				catch (dev::eth::InvalidTrie)
 				{
 					cwarn << "Corrupted trie.";
 				}
@@ -955,7 +956,7 @@ int main(int argc, char** argv)
 
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
-		eth::uint n = c.blockChain().details().number;
+		unsigned n = c.blockChain().details().number;
 		mvwprintw(blockswin, 0, 10, toString(n).c_str());
 
 		// Pending
@@ -976,7 +977,7 @@ int main(int argc, char** argv)
 		if (c.isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
-			eth::MineProgress p = c.miningProgress();
+			dev::eth::MineProgress p = c.miningProgress();
 			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
 			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
 		}

@@ -22,11 +22,12 @@
 #include "Common.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-namespace eth
+namespace dev
 {
 
-char const* EthVersion = "0.6.8";
+char const* Version = "0.6.8";
 
 }
+

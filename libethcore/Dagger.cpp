@@ -32,12 +32,14 @@
 using namespace std;
 using namespace std::chrono;
 
+namespace dev
+{
 namespace eth
 {
 
 #if FAKE_DAGGER
 
-MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool _continue, bool _turbo)
+MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
 {
 	MineInfo ret;
 	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
@@ -91,7 +93,7 @@ bool Dagger::verify(h256 const& _root, u256 const& _nonce, u256 const& _difficul
 	return eval(_root, _nonce) < bound(_difficulty);
 }
 
-bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout, bool const& _continue)
+bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool const& _continue)
 {
 	// restart search if root has changed
 	if (m_root != _root)
@@ -185,5 +187,5 @@ h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
 
 #endif
 }
-
+}
 #endif

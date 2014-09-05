@@ -24,7 +24,8 @@
 #include <libethcore/SHA3.h>
 #include "State.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 void MessageFilter::fillStream(RLPStream& _s) const
 {
@@ -35,7 +36,7 @@ h256 MessageFilter::sha3() const
 {
 	RLPStream s;
 	fillStream(s);
-	return eth::sha3(s.out());
+	return dev::eth::sha3(s.out());
 }
 
 bool MessageFilter::matches(h256 _bloom) const

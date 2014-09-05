@@ -21,6 +21,11 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <mutex>
 #include <libethential/Log.h>
 #include <libethcore/CommonEth.h>
@@ -31,6 +36,8 @@
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -95,8 +102,8 @@ public:
 	bytes block() const { return block(currentHash()); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
-	uint number(h256 _hash) const { return details(_hash).number; }
-	uint number() const { return number(currentHash()); }
+	unsigned number(h256 _hash) const { return details(_hash).number; }
+	unsigned number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { ReadGuard l(x_lastBlockHash); return m_lastBlockHash; }
@@ -194,4 +201,5 @@ private:
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 
+}
 }

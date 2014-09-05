@@ -23,6 +23,8 @@
 
 #include <libethential/Common.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -44,4 +46,5 @@ private:
 	static Defaults* s_this;
 };
 
+}
 }

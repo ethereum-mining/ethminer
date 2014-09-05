@@ -21,10 +21,10 @@
 
 #include "RLP.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
 
-bytes eth::RLPNull = rlp("");
-bytes eth::RLPEmptyList = rlpList();
+bytes dev::RLPNull = rlp("");
+bytes dev::RLPEmptyList = rlpList();
 
 RLP::iterator& RLP::iterator::operator++()
 {
@@ -32,7 +32,7 @@ RLP::iterator& RLP::iterator::operator++()
 	{
 		m_lastItem.retarget(m_lastItem.next().data(), m_remaining);
 		m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem).actualSize());
-		m_remaining -= std::min<uint>(m_remaining, m_lastItem.size());
+		m_remaining -= std::min<unsigned>(m_remaining, m_lastItem.size());
 	}
 	else
 		m_lastItem.retarget(m_lastItem.next().data(), 0);
@@ -54,7 +54,7 @@ RLP::iterator::iterator(RLP const& _parent, bool _begin)
 	}
 }
 
-RLP RLP::operator[](uint _i) const
+RLP RLP::operator[](unsigned _i) const
 {
 	if (_i < m_lastIndex)
 	{
@@ -81,7 +81,7 @@ RLPs RLP::toList() const
 	return ret;
 }
 
-eth::uint RLP::actualSize() const
+unsigned RLP::actualSize() const
 {
 	if (isNull())
 		return 0;
@@ -118,11 +118,11 @@ bool RLP::isInt() const
 	return false;
 }
 
-eth::uint RLP::length() const
+unsigned RLP::length() const
 {
 	if (isNull())
 		return 0;
-	uint ret = 0;
+	unsigned ret = 0;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return 1;
@@ -147,12 +147,12 @@ eth::uint RLP::length() const
 	return ret;
 }
 
-eth::uint RLP::items() const
+unsigned RLP::items() const
 {
 	if (isList())
 	{
 		bytesConstRef d = payload().cropped(0, length());
-		eth::uint i = 0;
+		unsigned i = 0;
 		for (; d.size(); ++i)
 			d = d.cropped(RLP(d).actualSize());
 		return i;
@@ -160,16 +160,16 @@ eth::uint RLP::items() const
 	return 0;
 }
 
-RLPStream& RLPStream::appendRaw(bytesConstRef _s, uint _itemCount)
+RLPStream& RLPStream::appendRaw(bytesConstRef _s, unsigned _itemCount)
 {
-	uint os = m_out.size();
+	unsigned os = m_out.size();
 	m_out.resize(os + _s.size());
 	memcpy(m_out.data() + os, _s.data(), _s.size());
 	noteAppended(_itemCount);
 	return *this;
 }
 
-void RLPStream::noteAppended(uint _itemCount)
+void RLPStream::noteAppended(unsigned _itemCount)
 {
 	if (!_itemCount)
 		return;
@@ -184,9 +184,9 @@ void RLPStream::noteAppended(uint _itemCount)
 		{
 			auto p = m_listStack.back().second;
 			m_listStack.pop_back();
-			uint s = m_out.size() - p;		// list size
+			unsigned s = m_out.size() - p;		// list size
 			auto brs = bytesRequired(s);
-			uint encodeSize = s < c_rlpListImmLenCount ? 1 : (1 + brs);
+			unsigned encodeSize = s < c_rlpListImmLenCount ? 1 : (1 + brs);
 //			cdebug << "s: " << s << ", p: " << p << ", m_out.size(): " << m_out.size() << ", encodeSize: " << encodeSize << " (br: " << brs << ")";
 			auto os = m_out.size();
 			m_out.resize(os + encodeSize);
@@ -205,7 +205,7 @@ void RLPStream::noteAppended(uint _itemCount)
 	}
 }
 
-RLPStream& RLPStream::appendList(uint _items)
+RLPStream& RLPStream::appendList(unsigned _items)
 {
 //	cdebug << "appendList(" << _items << ")";
 	if (_items)
@@ -227,7 +227,7 @@ RLPStream& RLPStream::appendList(bytesConstRef _rlp)
 
 RLPStream& RLPStream::append(bytesConstRef _s, bool _compact)
 {
-	uint s = _s.size();
+	unsigned s = _s.size();
 	byte const* d = _s.data();
 	if (_compact)
 		for (unsigned i = 0; i < _s.size() && !*d; ++i, --s, ++d) {}
@@ -254,7 +254,7 @@ RLPStream& RLPStream::append(bigint _i)
 		m_out.push_back((byte)_i);
 	else
 	{
-		uint br = bytesRequired(_i);
+		unsigned br = bytesRequired(_i);
 		if (br < c_rlpDataImmLenCount)
 			m_out.push_back((byte)(br + c_rlpDataImmLenStart));
 		else
@@ -269,21 +269,21 @@ RLPStream& RLPStream::append(bigint _i)
 	return *this;
 }
 
-void RLPStream::pushCount(uint _count, byte _base)
+void RLPStream::pushCount(unsigned _count, byte _base)
 {
 	auto br = bytesRequired(_count);
 	m_out.push_back((byte)(br + _base));	// max 8 bytes.
 	pushInt(_count, br);
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, eth::RLP const& _d)
+std::ostream& dev::operator<<(std::ostream& _out, RLP const& _d)
 {
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
 		_out << std::showbase << std::hex << std::nouppercase << _d.toInt<bigint>(RLP::LaisezFaire) << dec;
 	else if (_d.isData())
-		_out << eth::escaped(_d.toString(), false);
+		_out << escaped(_d.toString(), false);
 	else if (_d.isList())
 	{
 		_out << "[";

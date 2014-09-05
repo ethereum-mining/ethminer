@@ -27,6 +27,8 @@
 #include <libethential/Log.h>
 #include <libethential/RLP.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -54,7 +56,7 @@ public:
 
 protected:
 	std::map<h256, std::string> m_over;
-	std::map<h256, uint> m_refCount;
+	std::map<h256, unsigned> m_refCount;
 
 	mutable bool m_enforceRefs = false;
 };
@@ -82,4 +84,5 @@ inline std::ostream& operator<<(std::ostream& _out, MemoryDB const& _m)
 	return _out;
 }
 
+}
 }

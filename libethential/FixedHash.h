@@ -28,7 +28,7 @@
 #include <algorithm>
 #include "CommonData.h"
 
-namespace eth
+namespace dev
 {
 
 extern std::mt19937_64 s_fixedHashEngine;
@@ -65,13 +65,13 @@ public:
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 
 	/// Explicitly construct, copying from a byte array.
-	explicit FixedHash(bytes const& _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<uint>(_b.size(), N)); }
+	explicit FixedHash(bytes const& _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); }
 
 	/// Explicitly construct, copying from a bytes in memory with given pointer.
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	/// Explicitly construct, copying from a  string.
-	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex): FixedHash(_t == FromHex ? fromHex(_s) : eth::asBytes(_s)) {}
+	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex): FixedHash(_t == FromHex ? fromHex(_s) : dev::asBytes(_s)) {}
 
 	/// Convert to arithmetic type.
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
@@ -221,6 +221,6 @@ inline h160 left160(h256 const& _t)
 
 namespace std
 {
-	/// Forward std::hash<eth::h256> to eth::h256::hash.
-	template<> struct hash<eth::h256>: eth::h256::hash {};
+	/// Forward std::hash<dev::h256> to dev::h256::hash.
+	template<> struct hash<dev::h256>: dev::h256::hash {};
 }
