@@ -23,6 +23,7 @@
 
 #include <string>
 #include <iostream>
+#include "Guards.h"
 using namespace std;
 using namespace dev;
 
@@ -39,6 +40,9 @@ extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* l
 
 void dev::simpleDebugOut(std::string const& _s, char const*)
 {
+	static Mutex s_lock;
+	Guard l(s_lock);
+
 	cout << _s << endl << flush;
 
 	// helpful to use OutputDebugString on windows
