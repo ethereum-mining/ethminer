@@ -443,10 +443,12 @@ void Client::workNet()
 			m_net->process();	// must be in guard for now since it uses the blockchain.
 
 			// returns h256Set as block hashes, once for each block that has come in/gone out.
-			cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
-			m_net->cap<EthereumHost>()->sync(m_tq, m_bq);
-
-			cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+			if (m_net->cap<EthereumHost>())
+			{
+				cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
+				m_net->cap<EthereumHost>()->sync(m_tq, m_bq);
+				cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
+			}
 		}
 	}
 	this_thread::sleep_for(chrono::milliseconds(1));
