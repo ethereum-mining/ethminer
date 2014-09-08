@@ -178,6 +178,8 @@ inline string toString(h256s const& _bs)
 
 h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
+	_bq.tick(*this);
+
 	vector<bytes> blocks;
 	_bq.drain(blocks);
 
@@ -197,7 +199,13 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
 			_bq.import(&block, *this);
 		}
-		catch (...){}
+		catch (Exception const& _e)
+		{
+			cwarn << "Unexpected exception!" << _e.description();
+			_bq.import(&block, *this);
+		}
+		catch (...)
+		{}
 	}
 	_bq.doneDrain();
 	return ret;

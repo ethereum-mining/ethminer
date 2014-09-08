@@ -33,10 +33,10 @@ namespace dev
 namespace eth
 {
 
-static const unsigned c_maxHashes = 32;		///< Maximum number of hashes BlockHashes will ever send.
-static const unsigned c_maxHashesAsk = 32;	///< Maximum number of hashes GetBlockHashes will ever ask for.
-static const unsigned c_maxBlocks = 16;		///< Maximum number of blocks Blocks will ever send.
-static const unsigned c_maxBlocksAsk = 16;	///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
+static const unsigned c_maxHashes = 256;		///< Maximum number of hashes BlockHashes will ever send.
+static const unsigned c_maxHashesAsk = 256;		///< Maximum number of hashes GetBlockHashes will ever ask for.
+static const unsigned c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send.
+static const unsigned c_maxBlocksAsk = 128;		///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 
 class OverlayDB;
 class BlockChain;
