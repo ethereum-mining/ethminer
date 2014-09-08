@@ -315,22 +315,31 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 	bool ret = false;
 	// BLOCK
 	BlockInfo bi = _bi;
-	try
+	while (1)
 	{
-		if (!bi)
+		try
 		{
-			auto b = _bc.block(_block);
-			bi.populate(b);
-//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+			if (!bi)
+			{
+				auto b = _bc.block(_block);
+				bi.populate(b);
+	//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+				break;
+			}
+		}
+		catch (Exception const& _e)
+		{
+			// TODO: Slightly nicer handling? :-)
+			cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+			cerr << _e.description() << endl;
+		}
+		catch (std::exception const& _e)
+		{
+			// TODO: Slightly nicer handling? :-)
+			cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+			cerr << _e.what() << endl;
 		}
 	}
-	catch (...)
-	{
-		// TODO: Slightly nicer handling? :-)
-		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-		exit(1);
-	}
-
 	if (bi == m_currentBlock)
 	{
 		// We mined the last block.

@@ -47,6 +47,10 @@ enum class NodeMode
 	Full
 };
 
+namespace eth { class Interface; }
+namespace shh { class Interface; }
+namespace bzz { class Interface; }
+
 /**
  * @brief Main API hub for interfacing with Web 3 components. This doesn't do any local multiplexing, so you can only have one
  * running on any given machine for the provided DB path.
@@ -59,6 +63,12 @@ public:
 
 	/// Destructor.
 	~RawWebThree();
+
+	// The mainline interfaces:
+
+	eth::Interface* ethereum() const;
+	shh::Interface* whisper() const;
+	bzz::Interface* swarm() const;
 
 	// Misc stuff:
 
