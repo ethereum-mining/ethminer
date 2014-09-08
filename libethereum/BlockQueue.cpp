@@ -38,7 +38,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 
 	UpgradableGuard l(m_lock);
 
-	if (m_readySet.count(h) || m_drainingSet.count(h) || m_futureSet.count(h))
+	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h))
 	{
 		// Already know about this one.
 		cnote << "Already known.";
@@ -70,23 +70,20 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 		return false;
 	}
 
-	// Check it's not crazy
-	if (bi.timestamp > (u256)time(0) + 10)
-	{
-		cnote << "Invalid timestamp.";
-		return false;
-	}
+	UpgradeGuard ul(l);
 
+	// Check it's not in the future
+	if (bi.timestamp > (u256)time(0))
+		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
+	else
 	{
-		UpgradeGuard ul(l);
-
 		// We now know it.
 		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.details(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
 //			cnote << "OK - queued for future.";
-			m_future.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
-			m_futureSet.insert(h);
+			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
+			m_unknownSet.insert(h);
 		}
 		else
 		{
@@ -102,21 +99,41 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	return true;
 }
 
+void BlockQueue::tick(BlockChain const& _bc)
+{
+	unsigned t = time(0);
+	for (auto i = m_future.begin(); i != m_future.end() && i->first < time(0); ++i)
+		import(&(i->second), _bc);
+
+	WriteGuard l(m_lock);
+	m_future.erase(m_future.begin(), m_future.upper_bound(t));
+}
+
+void BlockQueue::drain(std::vector<bytes>& o_out)
+{
+	WriteGuard l(m_lock);
+	if (m_drainingSet.empty())
+	{
+		swap(o_out, m_ready);
+		swap(m_drainingSet, m_readySet);
+	}
+}
+
 void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 {
 	list<h256> goodQueue(1, _good);
 	while (goodQueue.size())
 	{
-		auto r = m_future.equal_range(goodQueue.front());
+		auto r = m_unknown.equal_range(goodQueue.front());
 		goodQueue.pop_front();
 		for (auto it = r.first; it != r.second; ++it)
 		{
 			m_ready.push_back(it->second.second);
 			auto newReady = it->second.first;
-			m_futureSet.erase(newReady);
+			m_unknownSet.erase(newReady);
 			m_readySet.insert(newReady);
 			goodQueue.push_back(newReady);
 		}
-		m_future.erase(r.first, r.second);
+		m_unknown.erase(r.first, r.second);
 	}
 }

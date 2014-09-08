@@ -47,7 +47,7 @@ public:
 	void drop(h256 _txHash);
 
 	std::map<h256, bytes> transactions() const { ReadGuard l(m_lock); return m_current; }
-	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_future.size()); }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_unknown.size()); }
 
 	void setFuture(std::pair<h256, bytes> const& _t);
 	void noteGood(std::pair<h256, bytes> const& _t);
@@ -56,7 +56,7 @@ private:
 	mutable boost::shared_mutex m_lock;							///< General lock.
 	std::set<h256> m_known;										///< Hashes of transactions in both sets.
 	std::map<h256, bytes> m_current;							///< Map of SHA3(tx) to tx.
-	std::multimap<Address, std::pair<h256, bytes>> m_future;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
+	std::multimap<Address, std::pair<h256, bytes>> m_unknown;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
 };
 
 }
