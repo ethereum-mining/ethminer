@@ -123,7 +123,25 @@ struct ClientWatch
 	h256s changes;
 };
 
-class WhisperHost: public HostCapability<WhisperPeer>
+class Interface
+{
+public:
+	virtual ~Interface() {}
+
+	virtual void inject(Message const& _m, WhisperPeer* _from = nullptr) = 0;
+
+	virtual unsigned installWatch(MessageFilter const& _filter) = 0;
+	virtual unsigned installWatch(h256 _filterId) = 0;
+	virtual void uninstallWatch(unsigned _watchId) = 0;
+	virtual h256s peekWatch(unsigned _watchId) const = 0;
+	virtual h256s checkWatch(unsigned _watchId) = 0;
+
+	virtual Message message(h256 _m) const = 0;
+
+	virtual void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) = 0;
+};
+
+class WhisperHost: public HostCapability<WhisperPeer>, public Interface
 {
 	friend class WhisperPeer;
 
@@ -158,8 +176,8 @@ private:
 	std::map<unsigned, ClientWatch> m_watches;
 };
 
-struct WatchChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
-#define cwatch dev::LogOutputStream<shh::WatchChannel, true>()
+struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
+#define cwatshh dev::LogOutputStream<shh::WatshhChannel, true>()
 
 class Watch;
 

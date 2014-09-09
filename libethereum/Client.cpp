@@ -68,6 +68,22 @@ Client::Client(std::string const& _clientVersion, Address _us, std::string const
 	work();
 }
 
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId):
+	m_vc(_dbPath),
+	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
+	m_preMine(Address(), m_stateDB),
+	m_postMine(Address(), m_stateDB)
+{
+	m_extHost = _extNet->registerCapability(new EthereumHost(m_bc, _networkId));
+
+//	setMiningThreads();
+	if (_dbPath.size())
+		Defaults::setDBPath(_dbPath);
+	m_vc.setOk();
+	work();
+}
+
 Client::~Client()
 {
 	if (m_work)
@@ -118,6 +134,8 @@ void Client::clearPending()
 		appendFromNewPending(m_postMine.bloom(i), changeds);
 	changeds.insert(PendingChangedFilter);
 	m_postMine = m_preMine;
+
+	if (!m_extHost.lock())
 	{
 		ReadGuard l(x_miners);
 		for (auto& m: m_miners)
@@ -214,24 +232,28 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 					m_workNetState.store(Deleted, std::memory_order_release);
 				}));
 
-			try
+			if (!m_extHost.lock())
 			{
-				m_net.reset(new Host(m_clientVersion, _listenPort, _publicIP, _upnp));
+				try
+				{
+					m_net.reset(new Host(m_clientVersion, _listenPort, _publicIP, _upnp));
+				}
+				catch (std::exception const&)
+				{
+					// Probably already have the port open.
+					cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
+					m_net.reset(new Host(m_clientVersion, 0, _publicIP, _upnp));
+				}
+				if (_mode == NodeMode::Full)
+					m_net->registerCapability(new EthereumHost(m_bc, _networkId));
 			}
-			catch (std::exception const&)
-			{
-				// Probably already have the port open.
-				cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-				m_net.reset(new Host(m_clientVersion, 0, _publicIP, _upnp));
-			}
-			if (_mode == NodeMode::Full)
-				m_net->registerCapability(new EthereumHost(m_bc, _networkId));
 		}
 		m_net->setIdealPeerCount(_peers);
 	}
 
-	if (_seedHost.size())
-		connect(_seedHost, _port);
+	if (!m_extHost.lock())
+		if (_seedHost.size())
+			connect(_seedHost, _port);
 
 	ensureWorking();
 }
@@ -300,6 +322,9 @@ void Client::connect(std::string const& _seedHost, unsigned short _port)
 
 void Client::setMiningThreads(unsigned _threads)
 {
+	if (m_extHost.lock())
+		return;
+
 	stopMining();
 
 	auto t = _threads ? _threads : thread::hardware_concurrency();
@@ -314,6 +339,8 @@ void Client::setMiningThreads(unsigned _threads)
 MineProgress Client::miningProgress() const
 {
 	MineProgress ret;
+	if (m_extHost.lock())
+		return ret;
 	ReadGuard l(x_miners);
 	for (auto& m: m_miners)
 		ret.combine(m.miningProgress());
@@ -323,6 +350,9 @@ MineProgress Client::miningProgress() const
 std::list<MineInfo> Client::miningHistory()
 {
 	std::list<MineInfo> ret;
+	if (m_extHost.lock())
+		return ret;
+
 	ReadGuard l(x_miners);
 	if (m_miners.empty())
 		return ret;
@@ -451,6 +481,10 @@ void Client::workNet()
 			}
 		}
 	}
+
+	if (auto h = m_extHost.lock())
+		h->sync(m_tq, m_bq);
+
 	this_thread::sleep_for(chrono::milliseconds(1));
 }
 
@@ -461,26 +495,29 @@ void Client::work()
 	cworkin << "WORK";
 	h256Set changeds;
 
-	ReadGuard l(x_miners);
-	for (auto& m: m_miners)
-		if (m.isComplete())
-		{
-			cwork << "CHAIN <== postSTATE";
-			h256s hs;
+	if (!m_extHost.lock())
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			if (m.isComplete())
 			{
-				WriteGuard l(x_stateDB);
-				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				cwork << "CHAIN <== postSTATE";
+				h256s hs;
+				{
+					WriteGuard l(x_stateDB);
+					hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				}
+				if (hs.size())
+				{
+					for (auto h: hs)
+						appendFromNewBlock(h, changeds);
+					changeds.insert(ChainChangedFilter);
+					//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
+				}
+				for (auto& m: m_miners)
+					m.noteStateChange();
 			}
-			if (hs.size())
-			{
-				for (auto h: hs)
-					appendFromNewBlock(h, changeds);
-				changeds.insert(ChainChangedFilter);
-				//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
-			}
-			for (auto& m: m_miners)
-				m.noteStateChange();
-		}
+	}
 
 	// Synchronise state to block chain.
 	// This should remove any transactions on our queue that are included within our state.
@@ -529,7 +566,7 @@ void Client::work()
 			rsm = true;
 		}
 	}
-	if (rsm)
+	if (!m_extHost.lock() && rsm)
 	{
 		ReadGuard l(x_miners);
 		for (auto& m: m_miners)

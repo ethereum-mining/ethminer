@@ -158,7 +158,7 @@ void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
 	for (auto& i: m_watches)
 		if (i.second.id == _filter)
 		{
-			cwatch << "!!!" << i.first << i.second.id;
+			cwatshh << "!!!" << i.first << i.second.id;
 			i.second.changes.push_back(_messageHash);
 		}
 }
@@ -182,7 +182,7 @@ unsigned WhisperHost::installWatch(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 	m_watches[ret] = ClientWatch(_h);
-	cwatch << "+++" << ret << _h;
+	cwatshh << "+++" << ret << _h;
 	return ret;
 }
 
@@ -200,7 +200,7 @@ unsigned WhisperHost::installWatch(shh::MessageFilter const& _f)
 
 void WhisperHost::uninstallWatch(unsigned _i)
 {
-	cwatch << "XXX" << _i;
+	cwatshh << "XXX" << _i;
 
 	Guard l(m_filterLock);
 
