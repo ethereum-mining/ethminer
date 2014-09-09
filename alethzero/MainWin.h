@@ -69,7 +69,7 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::eth::Client* client() { return m_client.get(); }
+	dev::eth::Client* client() const { return m_client.get(); }
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	

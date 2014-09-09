@@ -34,14 +34,14 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
-	cnote << "Queuing block" << h.abridged() << "for import...";
+	cblockq << "Queuing block" << h.abridged() << "for import...";
 
 	UpgradableGuard l(m_lock);
 
 	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h))
 	{
 		// Already know about this one.
-		cnote << "Already known.";
+		cblockq << "Already known.";
 		return false;
 	}
 
@@ -66,7 +66,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	// Check block doesn't already exist first!
 	if (_bc.details(h))
 	{
-		cnote << "Already known in chain.";
+		cblockq << "Already known in chain.";
 		return false;
 	}
 
