@@ -23,7 +23,8 @@
 
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
-#include "libethcore/CommonEth.h"
+#include <libdevcore/Log.h>
+#include <libethcore/CommonEth.h>
 #include <libdevcore/Guards.h>
 
 namespace dev
@@ -32,6 +33,9 @@ namespace eth
 {
 
 class BlockChain;
+
+struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 7; };
+#define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
