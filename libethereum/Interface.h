@@ -29,6 +29,7 @@
 #include "MessageFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
+#include "Miner.h"
 
 namespace dev
 {
@@ -37,7 +38,6 @@ namespace eth
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
- * @TODO Mining hooks.
  */
 class Interface
 {
@@ -66,9 +66,7 @@ public:
 	/// Makes the given call. Nothing is recorded into the state.
 	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
-	// Informational stuff
-
-	// [NEW API]
+	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
 	void setDefault(int _block) { m_default = _block; }
@@ -85,14 +83,17 @@ public:
 	virtual bytes codeAt(Address _a, int _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, int _block) const = 0;
 
+	// [MESSAGE API]
+
+	virtual PastMessages messages(unsigned _watchId) const = 0;
+	virtual PastMessages messages(MessageFilter const& _filter) const = 0;
+
+	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(MessageFilter const& _filter) = 0;
 	virtual unsigned installWatch(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual bool peekWatch(unsigned _watchId) const = 0;
 	virtual bool checkWatch(unsigned _watchId) = 0;
-
-	virtual PastMessages messages(unsigned _watchId) const = 0;
-	virtual PastMessages messages(MessageFilter const& _filter) const = 0;
 
 	// [EXTRA API]:
 
@@ -115,9 +116,75 @@ public:
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
 
+	// [MINING API]:
+
+	/// Set the coinbase address.
+	virtual void setAddress(Address _us) = 0;
+	/// Get the coinbase address.
+	virtual Address address() const = 0;
+
+	/// Stops mining and sets the number of mining threads (0 for automatic).
+	virtual void setMiningThreads(unsigned _threads = 0) = 0;
+	/// Get the effective number of mining threads.
+	virtual unsigned miningThreads() const = 0;
+
+	/// Start mining.
+	/// NOT thread-safe - call it & stopMining only from a single thread
+	virtual void startMining() = 0;
+	/// Stop mining.
+	/// NOT thread-safe
+	virtual void stopMining() = 0;
+	/// Are we mining now?
+	virtual bool isMining() = 0;
+
+	/// Check the progress of the mining.
+	virtual MineProgress miningProgress() const = 0;
+
 protected:
 	int m_default = -1;
 };
 
+class Watch;
+
 }
+}
+
+namespace std { void swap(dev::eth::Watch& _a, dev::eth::Watch& _b); }
+
+namespace dev
+{
+namespace eth
+{
+
+class Watch: public boost::noncopyable
+{
+	friend void std::swap(Watch& _a, Watch& _b);
+
+public:
+	Watch() {}
+	Watch(Interface& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Interface& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
+
+	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
+	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
+	PastMessages messages() const { return m_c->messages(m_id); }
+
+private:
+	Interface* m_c = nullptr;
+	unsigned m_id = 0;
+};
+
+}
+}
+
+namespace std
+{
+
+inline void swap(dev::eth::Watch& _a, dev::eth::Watch& _b)
+{
+	swap(_a.m_c, _b.m_c);
+	swap(_a.m_id, _b.m_id);
+}
+
 }

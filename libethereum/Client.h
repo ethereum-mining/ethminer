@@ -323,47 +323,5 @@ private:
 	std::map<unsigned, ClientWatch> m_watches;
 };
 
-class Watch;
-
 }
-}
-
-namespace std { void swap(dev::eth::Watch& _a, dev::eth::Watch& _b); }
-
-namespace dev
-{
-namespace eth
-{
-
-class Watch: public boost::noncopyable
-{
-	friend void std::swap(Watch& _a, Watch& _b);
-
-public:
-	Watch() {}
-	Watch(Client& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
-	Watch(Client& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
-	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
-
-	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
-	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
-	PastMessages messages() const { return m_c->messages(m_id); }
-
-private:
-	Client* m_c;
-	unsigned m_id;
-};
-
-}
-}
-
-namespace std
-{
-
-inline void swap(dev::eth::Watch& _a, dev::eth::Watch& _b)
-{
-	swap(_a.m_c, _b.m_c);
-	swap(_a.m_id, _b.m_id);
-}
-
 }
