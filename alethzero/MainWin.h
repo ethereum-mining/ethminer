@@ -201,6 +201,7 @@ private:
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::eth::Client> m_client;
+
 	std::map<unsigned, std::function<void()>> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
