@@ -182,7 +182,7 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_ethereum = new QEthereum(this, m_client.get(), owned());
+		m_ethereum = new QEthereum(this, client(), owned());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
@@ -233,14 +233,14 @@ void Main::onKeysChanged()
 
 unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = client()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
 unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = client()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
@@ -255,14 +255,14 @@ void Main::installWatches()
 
 void Main::installNameRegWatch()
 {
-	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	client()->uninstallWatch(m_nameRegFilter);
+	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)client()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
-	m_client->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	client()->uninstallWatch(m_currenciesFilter);
+	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)client()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -270,9 +270,9 @@ void Main::installBalancesWatch()
 	dev::eth::MessageFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
-		altCoins.push_back(right160(m_client->stateAt(coinsAddr, i + 1)));
+	Address coinsAddr = right160(client()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < client()->stateAt(coinsAddr, 0); ++i)
+		altCoins.push_back(right160(client()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 	{
 		tf.altered(i.address());
@@ -280,7 +280,7 @@ void Main::installBalancesWatch()
 			tf.altered(c, (u160)i.address());
 	}
 
-	m_client->uninstallWatch(m_balancesFilter);
+	client()->uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
 }
 
@@ -328,7 +328,7 @@ void Main::onNewPending()
 
 void Main::on_forceMining_triggered()
 {
-	m_client->setForceMining(ui->forceMining->isChecked());
+	client()->setForceMining(ui->forceMining->isChecked());
 }
 
 void Main::on_enableOptimizer_triggered()
@@ -361,6 +361,7 @@ void Main::load(QString _s)
 		}
 	}
 }
+
 // env.load("/home/gav/eth/init.eth")
 
 void Main::on_loadJS_triggered()
@@ -421,11 +422,11 @@ QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-		n = m_client->stateAt(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)client()->stateAt(c_config, 0))
+		n = client()->stateAt(nameReg, (u160)(_a));
 
 	if (!n)
-		n = m_client->stateAt(m_nameReg, (u160)(_a));
+		n = client()->stateAt(m_nameReg, (u160)(_a));
 
 	return fromRaw(n);
 }
@@ -451,11 +452,11 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-			if (h256 a = m_client->stateAt(nameReg, n))
+		if (h160 nameReg = (u160)client()->stateAt(c_config, 0))
+			if (h256 a = client()->stateAt(nameReg, n))
 				return right160(a);
 
-		if (h256 a = m_client->stateAt(m_nameReg, n))
+		if (h256 a = client()->stateAt(m_nameReg, n))
 			return right160(a);
 	}
 	if (_a.size() == 40)
@@ -483,8 +484,8 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)m_client->stateAt(c_config, 4, 0))
-		ret = m_client->stateAt(dnsReg, n);
+	if (h160 dnsReg = (u160)client()->stateAt(c_config, 4, 0))
+		ret = client()->stateAt(dnsReg, n);
 /*	if (!ret)
 		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0, 0))
 			ret = m_client->stateAt(nameReg, n2);
@@ -505,7 +506,7 @@ void Main::on_about_triggered()
 
 void Main::on_paranoia_triggered()
 {
-	m_client->setParanoia(ui->paranoia->isChecked());
+	client()->setParanoia(ui->paranoia->isChecked());
 }
 
 void Main::writeSettings()
@@ -536,7 +537,7 @@ void Main::writeSettings()
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
 
-	bytes d = m_client->savePeers();
+	bytes d = client()->savePeers();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -568,7 +569,7 @@ void Main::readSettings(bool _skipGeometry)
 				m_myKeys.append(KeyPair(k));
 		}
 	}
-	m_client->setAddress(m_myKeys.back().address());
+	client()->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
@@ -664,17 +665,17 @@ void Main::on_nameReg_textChanged()
 
 void Main::on_preview_triggered()
 {
-	m_client->setDefault(ui->preview->isChecked() ? 0 : -1);
+	client()->setDefault(ui->preview->isChecked() ? 0 : -1);
 	refreshAll();
 }
 
 void Main::refreshMining()
 {
-	dev::eth::MineProgress p = m_client->miningProgress();
-	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
+	dev::eth::MineProgress p = client()->miningProgress();
+	ui->mineStatus->setText(client()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
-	list<dev::eth::MineInfo> l = m_client->miningHistory();
+	list<dev::eth::MineInfo> l = client()->miningHistory();
 	static unsigned lh = 0;
 	if (p.hashes < lh)
 		ui->miningView->resetStats();
@@ -693,12 +694,12 @@ void Main::refreshBalances()
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
 	map<Address, tuple<QString, u256, u256>> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(client()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < client()->stateAt(coinsAddr, 0); ++i)
 	{
-		auto n = m_client->stateAt(coinsAddr, i + 1);
-		auto addr = right160(m_client->stateAt(coinsAddr, n));
-		auto denom = m_client->stateAt(coinsAddr, sha3(h256(n).asBytes()));
+		auto n = client()->stateAt(coinsAddr, i + 1);
+		auto addr = right160(client()->stateAt(coinsAddr, n));
+		auto denom = client()->stateAt(coinsAddr, sha3(h256(n).asBytes()));
 		if (denom == 0)
 			denom = 1;
 //		cdebug << n << addr << denom << sha3(h256(n).asBytes());
@@ -706,13 +707,13 @@ void Main::refreshBalances()
 	}
 	for (auto i: m_myKeys)
 	{
-		u256 b = m_client->balanceAt(i.address());
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->countAt(i.address())), ui->ourAccounts))
+		u256 b = client()->balanceAt(i.address());
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)client()->countAt(i.address())), ui->ourAccounts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 		totalBalance += b;
 
 		for (auto& c: altCoins)
-			get<1>(c.second) += (u256)m_client->stateAt(c.first, (u160)i.address());
+			get<1>(c.second) += (u256)client()->stateAt(c.first, (u160)i.address());
 	}
 
 	QString b;
@@ -728,7 +729,7 @@ void Main::refreshBalances()
 
 void Main::refreshNetwork()
 {
-	auto ps = m_client->peers();
+	auto ps = client()->peers();
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
@@ -750,7 +751,7 @@ void Main::refreshPending()
 {
 	cwatch << "refreshPending()";
 	ui->transactionQueue->clear();
-	for (Transaction const& t: m_client->pending())
+	for (Transaction const& t: client()->pending())
 	{
 		QString s = t.receiveAddress ?
 			QString("%2 %5> %3: %1 [%4]")
@@ -758,7 +759,7 @@ void Main::refreshPending()
 				.arg(render(t.safeSender()))
 				.arg(render(t.receiveAddress))
 				.arg((unsigned)t.nonce)
-				.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
+				.arg(client()->codeAt(t.receiveAddress).size() ? '*' : '-') :
 			QString("%2 +> %3: %1 [%4]")
 				.arg(formatBalance(t.value).c_str())
 				.arg(render(t.safeSender()))
@@ -774,16 +775,16 @@ void Main::refreshAccounts()
 	ui->accounts->clear();
 	ui->contracts->clear();
 	for (auto n = 0; n < 2; ++n)
-		for (auto i: m_client->addresses())
+		for (auto i: client()->addresses())
 		{
 			auto r = render(i);
 			if (r.contains('(') == !n)
 			{
 				if (n == 0 || ui->showAllAccounts->isChecked())
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->accounts))
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(client()->balanceAt(i)).c_str()).arg(r).arg((unsigned)client()->countAt(i)), ui->accounts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
-				if (m_client->codeAt(i).size())
-					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(m_client->balanceAt(i)).c_str()).arg(r).arg((unsigned)m_client->countAt(i)), ui->contracts))
+				if (client()->codeAt(i).size())
+					(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(client()->balanceAt(i)).c_str()).arg(r).arg((unsigned)client()->countAt(i)), ui->contracts))
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
@@ -793,7 +794,7 @@ void Main::refreshDestination()
 {
 	cwatch << "refreshDestination()";
 	QString s;
-	for (auto i: m_client->addresses())
+	for (auto i: client()->addresses())
 		if ((s = pretty(i)).size())
 			// A namereg address
 			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
@@ -806,8 +807,8 @@ void Main::refreshDestination()
 void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
-	auto d = m_client->blockChain().details();
-	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
+	auto d = client()->blockChain().details();
+	auto diff = BlockInfo(client()->blockChain().block()).difficulty;
 	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
@@ -838,7 +839,7 @@ static bool transactionMatch(string const& _f, Transaction const& _t)
 
 void Main::on_turboMining_triggered()
 {
-	m_client->setTurboMining(ui->turboMining->isChecked());
+	client()->setTurboMining(ui->turboMining->isChecked());
 }
 
 void Main::refreshBlockChain()
@@ -849,7 +850,7 @@ void Main::refreshBlockChain()
 	ui->blocks->clear();
 
 	string filter = ui->blockChainFilter->text().toLower().toStdString();
-	auto const& bc = m_client->blockChain();
+	auto const& bc = client()->blockChain();
 	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
 	for (auto h = bc.currentHash(); h != bc.genesisHash() && bc.details(h) && i; h = bc.details(h).parent, --i)
 	{
@@ -876,7 +877,7 @@ void Main::refreshBlockChain()
 						.arg(render(t.safeSender()))
 						.arg(render(t.receiveAddress))
 						.arg((unsigned)t.nonce)
-						.arg(m_client->codeAt(t.receiveAddress).size() ? '*' : '-') :
+						.arg(client()->codeAt(t.receiveAddress).size() ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
 						.arg(formatBalance(t.value).c_str())
 						.arg(render(t.safeSender()))
@@ -947,7 +948,7 @@ void Main::timerEvent(QTimerEvent*)
 		m_ethereum->poll();
 
 	for (auto const& i: m_handlers)
-		if (m_client->checkWatch(i.first))
+		if (client()->checkWatch(i.first))
 			i.second();
 }
 
@@ -1018,9 +1019,9 @@ void Main::on_transactionQueue_currentItemChanged()
 
 	stringstream s;
 	int i = ui->transactionQueue->currentRow();
-	if (i >= 0 && i < (int)m_client->pending().size())
+	if (i >= 0 && i < (int)client()->pending().size())
 	{
-		Transaction tx(m_client->pending()[i]);
+		Transaction tx(client()->pending()[i]);
 		auto ss = tx.safeSender();
 		h256 th = sha3(rlpList(ss, tx.nonce));
 		s << "<h3>" << th << "</h3>";
@@ -1048,7 +1049,7 @@ void Main::on_transactionQueue_currentItemChanged()
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 
-		s << renderDiff(m_client->diff(i, 0));
+		s << renderDiff(client()->diff(i, 0));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -1075,7 +1076,7 @@ void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
 	bytes b = fromHex(s.toStdString());
-	m_client->inject(&b);
+	client()->inject(&b);
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -1089,8 +1090,8 @@ void Main::on_blocks_currentItemChanged()
 		auto hba = item->data(Qt::UserRole).toByteArray();
 		assert(hba.size() == 32);
 		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
-		auto details = m_client->blockChain().details(h);
-		auto blockData = m_client->blockChain().block(h);
+		auto details = client()->blockChain().details(h);
+		auto blockData = client()->blockChain().block(h);
 		auto block = RLP(blockData);
 		BlockInfo info(blockData);
 
@@ -1114,7 +1115,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
-			s << "<br/>Pre: <b>" << BlockInfo(m_client->blockChain().block(info.parentHash)).stateRoot << "</b>";
+			s << "<br/>Pre: <b>" << BlockInfo(client()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i[0].data()).abridged() << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
@@ -1150,7 +1151,7 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data.size())
 					s << dev::memDump(tx.data, 16, true);
 			}
-			s << renderDiff(m_client->diff(txi, h));
+			s << renderDiff(client()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
 			ui->debugDumpStatePre->setEnabled(true);
@@ -1172,7 +1173,7 @@ void Main::on_debugCurrent_triggered()
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = m_client->state(txi + 1, h);
+			m_executiveState = client()->state(txi + 1, h);
 			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
@@ -1198,7 +1199,7 @@ void Main::on_debugDumpState_triggered(int _add)
 			if (f.is_open())
 			{
 				unsigned txi = item->data(Qt::UserRole + 1).toInt();
-				f << m_client->state(txi + _add, h) << endl;
+				f << client()->state(txi + _add, h) << endl;
 			}
 		}
 	}
@@ -1264,10 +1265,10 @@ void Main::on_contracts_currentItemChanged()
 		stringstream s;
 		try
 		{
-			auto storage = m_client->storageAt(address);
+			auto storage = client()->storageAt(address);
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
-			s << "<h4>Body Code</h4>" << disassemble(m_client->codeAt(address));
+			s << "<h4>Body Code</h4>" << disassemble(client()->codeAt(address));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
 		catch (dev::eth::InvalidTrie)
@@ -1280,7 +1281,7 @@ void Main::on_contracts_currentItemChanged()
 
 void Main::on_idealPeers_valueChanged()
 {
-	m_client->setIdealPeerCount(ui->idealPeers->value());
+	client()->setIdealPeerCount(ui->idealPeers->value());
 }
 
 void Main::on_ourAccounts_doubleClicked()
@@ -1426,7 +1427,7 @@ void Main::on_data_textChanged()
 				s = s.mid(1);
 		}
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
-		if (m_client->codeAt(fromString(ui->destination->currentText()), 0).size())
+		if (client()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
 			ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 1));
 			if (!ui->gas->isEnabled())
@@ -1451,7 +1452,7 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	m_client.reset();
 	m_client.reset(new Client("AlethZero", Address(), string(), true));
-	m_ethereum->setClient(m_client.get());
+	m_ethereum->setClient(client());
 	readSettings(true);
 	installWatches();
 	refreshAll();
@@ -1494,7 +1495,7 @@ void Main::updateFee()
 
 	bool ok = false;
 	for (auto i: m_myKeys)
-		if (m_client->balanceAt(i.address()) >= totalReq)
+		if (client()->balanceAt(i.address()) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -1513,15 +1514,15 @@ void Main::on_net_triggered()
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
 	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
-	m_client->setClientVersion(n);
+	client()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		m_client->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
+		client()->startNetwork(ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
 		if (m_peers.size() && ui->usePast->isChecked())
-			m_client->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			client()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
-		m_client->stopNetwork();
+		client()->stopNetwork();
 }
 
 void Main::on_connect_triggered()
@@ -1537,7 +1538,7 @@ void Main::on_connect_triggered()
 	{
 		string host = s.section(":", 0, 0).toStdString();
 		unsigned short port = s.section(":", 1).toInt();
-		m_client->connect(host, port);
+		client()->connect(host, port);
 	}
 }
 
@@ -1551,25 +1552,25 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		m_client->setAddress(m_myKeys.last().address());
-		m_client->startMining();
+		client()->setAddress(m_myKeys.last().address());
+		client()->startMining();
 	}
 	else
-		m_client->stopMining();
+		client()->stopMining();
 }
 
 void Main::on_send_clicked()
 {
 	u256 totalReq = value() + fee();
 	for (auto i: m_myKeys)
-		if (m_client->balanceAt(i.address(), 0) >= totalReq)
+		if (client()->balanceAt(i.address(), 0) >= totalReq)
 		{
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
-				m_client->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+				client()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
 			else
-				m_client->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+				client()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
 		}
 	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
@@ -1582,10 +1583,10 @@ void Main::on_debug_clicked()
 	{
 		u256 totalReq = value() + fee();
 		for (auto i: m_myKeys)
-			if (m_client->balanceAt(i.address()) >= totalReq)
+			if (client()->balanceAt(i.address()) >= totalReq)
 			{
 				Secret s = i.secret();
-				m_executiveState = m_client->postState();
+				m_executiveState = client()->postState();
 				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
 				Transaction t;
 				t.nonce = m_executiveState.transactionsFrom(dev::toAddress(s));
