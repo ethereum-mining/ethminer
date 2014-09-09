@@ -69,7 +69,7 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::eth::Client* client() { return m_client.get(); }
+	dev::eth::Client* client() const { return m_client.get(); }
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
@@ -201,6 +201,7 @@ private:
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::eth::Client> m_client;
+
 	std::map<unsigned, std::function<void()>> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
