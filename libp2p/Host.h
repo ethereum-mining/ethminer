@@ -68,7 +68,7 @@ public:
 	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> void registerCapability(T* _t) { _t->m_host = this; m_capabilities[T::staticName()] = std::shared_ptr<HostCapabilityFace>(_t); }
+	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[T::staticName()] = ret; return ret; }
 
 	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
 	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
