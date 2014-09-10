@@ -31,6 +31,7 @@
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
+#include <libwebthree/WebThree.h>
 
 namespace Ui {
 class Main;
@@ -69,7 +70,9 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::eth::Client* client() const { return m_client.get(); }
+	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
+	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
+	dev::shh::WhisperHost* whisper() const { return m_webThree->whisper(); }
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
@@ -200,7 +203,7 @@ private:
 
 	std::unique_ptr<Ui::Main> ui;
 
-	std::unique_ptr<dev::eth::Client> m_client;
+	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 
 	std::map<unsigned, std::function<void()>> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;

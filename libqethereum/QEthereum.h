@@ -7,8 +7,7 @@
 #include <libethcore/CommonEth.h>
 
 namespace dev { namespace eth {
-class Client;
-class State;
+class Interface;
 }}
 
 class QJSEngine;
@@ -99,11 +98,11 @@ class QEthereum: public QObject
 	Q_OBJECT
 
 public:
-	QEthereum(QObject* _p, dev::eth::Client* _c, QList<dev::KeyPair> _accounts);
+	QEthereum(QObject* _p, dev::eth::Interface* _c, QList<dev::KeyPair> _accounts);
 	virtual ~QEthereum();
 
-	dev::eth::Client* client() const;
-	void setClient(dev::eth::Client* _c) { m_client = _c; }
+	dev::eth::Interface* client() const;
+	void setClient(dev::eth::Interface* _c) { m_client = _c; }
 
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
@@ -199,7 +198,7 @@ private:
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
 
-	dev::eth::Client* m_client;
+	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
 	QList<dev::KeyPair> m_accounts;
 };

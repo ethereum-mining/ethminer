@@ -165,6 +165,9 @@ public:
 
 	// [EXTRA API]:
 
+	/// @returns the length of the chain.
+	virtual unsigned number() const { return m_bc.number(); }
+
 	/// Get a map containing each of the pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	Transactions pending() const { return m_postMine.pending(); }
@@ -254,8 +257,12 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
+	// Debug stuff:
+
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
+	/// Kills the blockchain. Just for debug use.
+	void killChain();
 
 private:
 	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
