@@ -137,7 +137,7 @@ class RPCMaster {};
 class EthereumSlave: public eth::Interface
 {
 public:
-	EthereumSlave(RPCSlave* _c) {}
+	EthereumSlave(RPCSlave*) {}
 
 	// TODO: implement all of the virtuals with the RLPClient link.
 };
@@ -145,7 +145,7 @@ public:
 class EthereumMaster
 {
 public:
-	EthereumMaster(RPCMaster* _m) {}
+	EthereumMaster(RPCMaster*) {}
 
 	// TODO: implement the master-end of whatever the RLPClient link will send over.
 };
@@ -155,7 +155,7 @@ public:
 class WhisperSlave: public shh::Interface
 {
 public:
-	WhisperSlave(RPCSlave* _c) {}
+	WhisperSlave(RPCSlave*) {}
 
 	// TODO: implement all of the virtuals with the RLPClient link.
 };
@@ -163,7 +163,7 @@ public:
 class WhisperMaster
 {
 public:
-	WhisperMaster(RPCMaster* _m) {}
+	WhisperMaster(RPCMaster*) {}
 
 	// TODO: implement the master-end of whatever the RLPClient link will send over.
 };

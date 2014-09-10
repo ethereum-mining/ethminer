@@ -124,6 +124,11 @@ void Client::flushTransactions()
 	work();
 }
 
+void Client::killChain()
+{
+	// TODO
+}
+
 void Client::clearPending()
 {
 	WriteGuard l(x_stateDB);
