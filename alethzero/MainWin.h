@@ -149,6 +149,8 @@ signals:
 	void poll();
 
 private:
+	dev::p2p::NetworkPreferences netPrefs() const;
+
 	QString pretty(dev::Address _a) const;
 	QString prettyU256(dev::u256 _n) const;
 

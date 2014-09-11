@@ -79,7 +79,6 @@ static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 	return QString();
 }
 
-
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
 Main::Main(QWidget *parent) :
@@ -142,7 +141,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_webThree.reset(new WebThreeDirect("AlethZero", getDataDir() + "/AlethZero", false));
+	m_webThree.reset(new WebThreeDirect("AlethZero", getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
@@ -189,6 +188,11 @@ Main::~Main()
 
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+dev::p2p::NetworkPreferences Main::netPrefs() const
+{
+	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), false);
 }
 
 void Main::onKeysChanged()
@@ -1483,6 +1487,9 @@ void Main::on_net_triggered()
 	{
 		// TODO: alter network stuff?
 		//ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0
+		web3()->setIdealPeerCount(ui->idealPeers->value());
+		web3()->setNetworkPreferences(netPrefs());
+		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
 		web3()->startNetwork();
 		if (m_peers.size() && ui->usePast->isChecked())
 			web3()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));

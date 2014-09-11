@@ -259,6 +259,8 @@ public:
 
 	// Debug stuff:
 
+	/// Sets the network id.
+	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
 	/// Kills the blockchain. Just for debug use.

@@ -41,6 +41,16 @@ class RLPStream;
 namespace p2p
 {
 
+struct NetworkPreferences
+{
+	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), publicIP(i), upnp(u), localNetworking(l) {}
+
+	unsigned short listenPort = 30303;
+	std::string publicIP;
+	bool upnp = true;
+	bool localNetworking = false;
+};
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -52,11 +62,7 @@ class Host
 
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
-	/// Start server, listening for connections on a system-assigned port.
-	Host(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
-	/// Start server, but don't listen.
-	Host(std::string const& _clientVersion);
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bool _start = false);
 
 	/// Will block on network process events.
 	virtual ~Host();
@@ -107,6 +113,11 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
+	void setNetworkPreferences(NetworkPreferences const& _p) { stop(); m_netPrefs = _p; start(); }
+
+	void start();
+	void stop();
+
 	h512 id() const { return m_id; }
 
 	void registerPeer(std::shared_ptr<Session> _s, std::vector<std::string> const& _caps);
@@ -127,8 +138,10 @@ protected:
 
 	std::string m_clientVersion;
 
-	unsigned short m_listenPort;
-	bool m_localNetworking = false;
+	NetworkPreferences m_netPrefs;
+
+	static const int NetworkStopped = -1;
+	int m_listenPort = NetworkStopped;
 
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;

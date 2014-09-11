@@ -54,55 +54,69 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-Host::Host(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp, bool _localNetworking):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool _start):
 	m_clientVersion(_clientVersion),
-	m_listenPort(_port),
-	m_localNetworking(_localNetworking),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
+	m_netPrefs(_n),
+	m_acceptor(m_ioService),
 	m_socket(m_ioService),
 	m_id(h512::random())
 {
 	populateAddresses();
-	determinePublic(_publicAddress, _upnp);
-	ensureAccepting();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << m_id.abridged();
-}
-
-Host::Host(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
-	m_clientVersion(_clientVersion),
-	m_listenPort(0),
-	m_localNetworking(_localNetworking),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
-	m_socket(m_ioService),
-	m_id(h512::random())
-{
-	m_listenPort = m_acceptor.local_endpoint().port();
-
-	// populate addresses.
-	populateAddresses();
-	determinePublic(_publicAddress, _upnp);
-	ensureAccepting();
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
-}
-
-Host::Host(std::string const& _clientVersion):
-	m_clientVersion(_clientVersion),
-	m_listenPort(0),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
-	m_socket(m_ioService),
-	m_id(h512::random())
-{
-	// populate addresses.
-	populateAddresses();
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
+	if (_start)
+		start();
 }
 
 Host::~Host()
 {
 	disconnectPeers();
+	stop();
+}
+
+void Host::start()
+{
+	stop();
+	for (unsigned i = 0; i < 2; ++i)
+	{
+		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : m_netPrefs.listenPort);
+		try
+		{
+			m_acceptor.open(endpoint.protocol());
+			m_acceptor.set_option(ba::socket_base::reuse_address(true));
+			m_acceptor.bind(endpoint);
+			m_acceptor.listen();
+		}
+		catch (...)
+		{
+			if (i)
+			{
+				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?";
+				return;
+			}
+			m_acceptor.close();
+			continue;
+		}
+	}
+	m_listenPort = m_acceptor.local_endpoint().port();
+
+	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+	ensureAccepting();
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
+	clog(NetNote) << "Id:" << m_id.abridged();
+}
+
+void Host::stop()
+{
+	if (m_acceptor.is_open())
+	{
+		if (m_accepting)
+			m_acceptor.cancel();
+		m_acceptor.close();
+		m_accepting = false;
+	}
+	if (m_socket.is_open())
+		m_socket.close();
 }
 
 unsigned Host::protocolVersion() const
@@ -284,7 +298,7 @@ std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 		{
 			auto ep = j->endpoint();
 			// Skip peers with a listen port of zero or are on a private network
-			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_localNetworking));
+			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
 			if (peerOnNet && ep.port() && j->m_id)
 				ret.insert(make_pair(i.first, ep));
 		}
@@ -293,7 +307,7 @@ std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 
 void Host::ensureAccepting()
 {
-	if (m_accepting == false)
+	if (!m_accepting)
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
@@ -315,7 +329,7 @@ void Host::ensureAccepting()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			m_accepting = false;
-			if (ec.value() != 1)
+			if (ec.value() < 1)
 				ensureAccepting();
 		});
 	}
@@ -459,9 +473,6 @@ std::vector<PeerInfo> Host::peers(bool _updatePing) const
 
 void Host::process()
 {
-	for (auto const& i: m_capabilities)
-		if (!i.second->isInitialised())
-			return;
 	growPeers();
 	prunePeers();
 	m_ioService.poll();

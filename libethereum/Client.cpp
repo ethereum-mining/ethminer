@@ -82,6 +82,18 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
 	work();
+
+	static const char* c_threadName = "ethsync";
+	m_workNet.reset(new thread([&]()
+	{
+		setThreadName(c_threadName);
+		m_workNetState.store(Active, std::memory_order_release);
+		while (m_workNetState.load(std::memory_order_acquire) != Deleting)
+			workNet();
+		m_workNetState.store(Deleted, std::memory_order_release);
+	}));
+
+	ensureWorking();
 }
 
 Client::~Client()
@@ -239,16 +251,7 @@ void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHo
 
 			if (!m_extHost.lock())
 			{
-				try
-				{
-					m_net.reset(new Host(m_clientVersion, _listenPort, _publicIP, _upnp));
-				}
-				catch (std::exception const&)
-				{
-					// Probably already have the port open.
-					cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-					m_net.reset(new Host(m_clientVersion, 0, _publicIP, _upnp));
-				}
+				m_net.reset(new Host(m_clientVersion, NetworkPreferences(_listenPort, _publicIP, _upnp, false)));
 				if (_mode == NodeMode::Full)
 					m_net->registerCapability(new EthereumHost(m_bc, _networkId));
 			}
@@ -281,6 +284,12 @@ void Client::stopNetwork()
 		m_net.reset(nullptr);
 		m_workNet.reset(nullptr);
 	}
+}
+
+void Client::setNetworkId(u256 _n)
+{
+	if (auto h = m_extHost.lock())
+		h->setNetworkId(_n);
 }
 
 std::vector<PeerInfo> Client::peers()
