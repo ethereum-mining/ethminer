@@ -35,20 +35,30 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, unsigned short _listenPort, std::string const& _publicIP, bool _upnp, dev::u256 _networkId, bool _localNetworking):
+WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n):
 	m_clientVersion(_clientVersion),
-	m_net(m_clientVersion, _listenPort, _publicIP, _upnp, _localNetworking)
+	m_net(_clientVersion, _n)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, _networkId));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean));
 
 //	if (_interfaces.count("shh"))
 //		m_whisper = new eth::Whisper(m_net.get());
+}
 
-	static const char* c_threadName = "net";
+WebThreeDirect::~WebThreeDirect()
+{
+	stopNetwork();
+}
+
+void WebThreeDirect::startNetwork()
+{
+	static const char* c_threadName = "p2p";
+
+	m_net.start();
 
 	UpgradableGuard l(x_work);
 	{
@@ -60,15 +70,20 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 				setThreadName(c_threadName);
 				m_workState.store(Active, std::memory_order_release);
 				while (m_workState.load(std::memory_order_acquire) != Deleting)
-					workNet();
+				{
+					this_thread::sleep_for(chrono::milliseconds(1));
+					ReadGuard l(x_work);
+					m_net.process();	// must be in guard for now since it uses the blockchain.
+				}
 				m_workState.store(Deleted, std::memory_order_release);
 			}));
-
 	}
 }
 
-WebThreeDirect::~WebThreeDirect()
+void WebThreeDirect::stopNetwork()
 {
+	m_net.stop();
+
 	UpgradableGuard l(x_work);
 
 	if (m_work)
@@ -121,16 +136,3 @@ void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
 	ReadGuard l(x_work);
 	m_net.connect(_seedHost, _port);
 }
-
-void WebThreeDirect::workNet()
-{
-	// Process network events.
-	// Synchronise block chain with network.
-	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	{
-		ReadGuard l(x_work);
-		m_net.process();	// must be in guard for now since it uses the blockchain.
-	}
-	this_thread::sleep_for(chrono::milliseconds(1));
-}
-

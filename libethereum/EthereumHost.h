@@ -62,6 +62,7 @@ public:
 
 	unsigned protocolVersion() const { return c_protocolVersion; }
 	u256 networkId() const { return m_networkId; }
+	void setNetworkId(u256 _n) { m_networkId = _n; }
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	bool sync(TransactionQueue&, BlockQueue& _bc);
@@ -84,7 +85,7 @@ private:
 	h256Set neededBlocks(h256Set const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
-	virtual bool isInitialised() const { return m_latestBlockSent; }
+	bool isInitialised() const { return m_latestBlockSent; }
 
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised(TransactionQueue& _tq);

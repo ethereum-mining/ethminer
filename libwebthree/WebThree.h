@@ -66,7 +66,7 @@ class WebThreeDirect
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
 	/// ethereum() may be safely static_cast()ed to a eth::Client*.
-	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, unsigned short _listenPort = 30303, std::string const& _publicIP = std::string(), bool _upnp = true, dev::u256 _networkId = 0, bool _localNetworking = false);
+	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences());
 
 	/// Destructor.
 	~WebThreeDirect();
@@ -104,16 +104,15 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
 
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { stopNetwork(); m_netPrefs = _n; startNetwork(); }
+
 	/// Start the network subsystem.
-	void startNetwork() { setIdealPeerCount(5); }
+	void startNetwork();
 
 	/// Stop the network subsystem.
-	void stopNetwork() { setIdealPeerCount(0); }
+	void stopNetwork();
 
 private:
-	/// Do some work on the network.
-	void workNet();
-
 	std::string m_clientVersion;					///< Our end-application client's name/version.
 
 	std::unique_ptr<eth::Client> m_ethereum;		///< Main interface for Ethereum ("eth") protocol.
@@ -123,6 +122,7 @@ private:
 	std::unique_ptr<std::thread> m_work;			///< The network thread.
 	mutable boost::shared_mutex x_work;				///< Lock for the network existance.
 	std::atomic<WorkState> m_workState;
+	p2p::NetworkPreferences m_netPrefs;
 };
 
 

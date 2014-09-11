@@ -322,7 +322,7 @@ int main(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	Host ph("Test", listenPort, "", false, true);
+	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
 	ph.registerCapability(new WhisperHost());
 	auto wh = ph.cap<WhisperHost>();
 
