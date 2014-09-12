@@ -312,6 +312,17 @@ void Client::restorePeers(bytesConstRef _saved)
 		return m_net->restorePeers(_saved);
 }
 
+void Client::setForceMining(bool _enable)
+{
+	 m_forceMining = _enable;
+	 if (!m_extHost.lock())
+	 {
+		 ReadGuard l(x_miners);
+		 for (auto& m: m_miners)
+			 m.noteStateChange();
+	 }
+}
+
 void Client::connect(std::string const& _seedHost, unsigned short _port)
 {
 	ReadGuard l(x_net);
