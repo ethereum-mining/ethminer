@@ -65,14 +65,15 @@ void Miner::stop()
 void Miner::work()
 {
 	// Do some mining.
-	if ((m_pendingCount || m_host->force()) && m_miningStatus != Mined)
+	if (m_miningStatus != Waiting && m_miningStatus != Mined)
 	{
 		if (m_miningStatus == Preparing)
 		{
-			m_miningStatus = Mining;
-
 			m_host->setupState(m_mineState);
-			m_pendingCount = m_mineState.pending().size();
+			if (m_host->force() || m_mineState.pending().size())
+				m_miningStatus = Mining;
+			else
+				m_miningStatus = Waiting;
 
 			{
 				Guard l(x_mineInfo);
@@ -82,26 +83,29 @@ void Miner::work()
 			}
 		}
 
+		if (m_miningStatus == Mining)
+		{
 		// Mine for a while.
-		MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
+			MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
 
-		{
-			Guard l(x_mineInfo);
-			m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
-			m_mineProgress.current = mineInfo.best;
-			m_mineProgress.requirement = mineInfo.requirement;
-			m_mineProgress.ms += 100;
-			m_mineProgress.hashes += mineInfo.hashes;
-			m_mineHistory.push_back(mineInfo);
+			{
+				Guard l(x_mineInfo);
+				m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
+				m_mineProgress.current = mineInfo.best;
+				m_mineProgress.requirement = mineInfo.requirement;
+				m_mineProgress.ms += 100;
+				m_mineProgress.hashes += mineInfo.hashes;
+				m_mineHistory.push_back(mineInfo);
+			}
+			if (mineInfo.completed)
+			{
+				m_mineState.completeMine();
+				m_host->onComplete();
+				m_miningStatus = Mined;
+			}
+			else
+				m_host->onProgressed();
 		}
-		if (mineInfo.completed)
-		{
-			m_mineState.completeMine();
-			m_host->onComplete();
-			m_miningStatus = Mined;
-		}
-		else
-			m_host->onProgressed();
 	}
 	else
 	{
