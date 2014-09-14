@@ -217,6 +217,16 @@ inline h160 left160(h256 const& _t)
 	return ret;
 }
 
+inline std::string toString(h256s const& _bs)
+{
+	std::ostringstream out;
+	out << "[ ";
+	for (auto i: _bs)
+		out << i.abridged() << ", ";
+	out << "]";
+	return out.str();
+}
+
 }
 
 namespace std
