@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <array>
+#include <deque>
 #include <set>
 #include <memory>
 #include <utility>

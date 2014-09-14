@@ -91,16 +91,6 @@ void EthereumPeer::startInitialSync()
 	}
 }
 
-inline string toString(h256s const& _bs)
-{
-	ostringstream out;
-	out << "[ ";
-	for (auto i: _bs)
-		out << i.abridged() << ", ";
-	out << "]";
-	return out.str();
-}
-
 void EthereumPeer::giveUpOnFetch()
 {
 	clogS(NetNote) << "GIVE UP FETCH; can't get" << toString(m_askedBlocks);
