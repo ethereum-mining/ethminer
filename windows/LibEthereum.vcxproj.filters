@@ -22,15 +22,6 @@
     <ClCompile Include="..\libethereum\ExtVM.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethereum\PeerNetwork.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethereum\PeerServer.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethereum\PeerSession.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
     <ClCompile Include="..\libethereum\State.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
@@ -39,15 +30,6 @@
     </ClCompile>
     <ClCompile Include="..\libethereum\TransactionQueue.cpp">
       <Filter>libethereum</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\BlockInfo.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\CommonEth.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\Dagger.cpp">
-      <Filter>libethcore</Filter>
     </ClCompile>
     <ClCompile Include="..\libevm\ExtVMFace.cpp">
       <Filter>libevm</Filter>
@@ -58,47 +40,8 @@
     <ClCompile Include="..\libevm\VM.cpp">
       <Filter>libevm</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethential\Common.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethential\CommonData.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethential\CommonIO.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethential\FixedHash.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethential\Log.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethential\RLP.cpp">
-      <Filter>libethential</Filter>
-    </ClCompile>
     <ClCompile Include="..\libevmface\Instruction.cpp">
       <Filter>libevmface</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\FileSystem.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\MemoryDB.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\OverlayDB.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\SHA3.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\TrieCommon.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\TrieDB.cpp">
-      <Filter>libethcore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethcore\UPnP.cpp">
-      <Filter>libethcore</Filter>
     </ClCompile>
     <ClCompile Include="..\liblll\Assembly.cpp">
       <Filter>liblll</Filter>
@@ -136,6 +79,102 @@
     <ClCompile Include="..\libethereum\AccountDiff.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
+    <ClCompile Include="..\libdevcrypto\Common.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\FileSystem.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\MemoryDB.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\OverlayDB.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\SHA3.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\TrieCommon.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\TrieDB.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethcore\BlockInfo.cpp">
+      <Filter>libethcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethcore\CommonEth.cpp">
+      <Filter>libethcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethcore\Dagger.cpp">
+      <Filter>libethcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\CommonData.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\CommonIO.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\FixedHash.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\Guards.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\Log.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\RLP.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\_libdevcore.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethcore\_libethcore.cpp">
+      <Filter>libethcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevm\_libevm.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\CommonNet.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\EthereumHost.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\PastMessage.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\EthereumPeer.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\Interface.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\Capability.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\Host.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\HostCapability.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\Session.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\UPnP.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\_libp2p.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libwhisper\_libwhisper.cpp">
+      <Filter>libwhisper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libwhisper\WhisperPeer.cpp">
+      <Filter>libwhisper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -159,15 +198,6 @@
     <ClInclude Include="..\libethereum\ExtVM.h">
       <Filter>libethereum</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethereum\PeerNetwork.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethereum\PeerServer.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethereum\PeerSession.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
     <ClInclude Include="..\libethereum\State.h">
       <Filter>libethereum</Filter>
     </ClInclude>
@@ -176,18 +206,6 @@
     </ClInclude>
     <ClInclude Include="..\libethereum\TransactionQueue.h">
       <Filter>libethereum</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\BlockInfo.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\CommonEth.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\Dagger.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\Exceptions.h">
-      <Filter>libethcore</Filter>
     </ClInclude>
     <ClInclude Include="..\libevm\ExtVMFace.h">
       <Filter>libevm</Filter>
@@ -198,65 +216,11 @@
     <ClInclude Include="..\libevm\VM.h">
       <Filter>libevm</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethential\All.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\Common.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\CommonData.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\CommonIO.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\Exceptions.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\FixedHash.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\Log.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\RLP.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethential\vector_ref.h">
-      <Filter>libethential</Filter>
-    </ClInclude>
     <ClInclude Include="..\libevm\All.h">
       <Filter>libevm</Filter>
     </ClInclude>
     <ClInclude Include="..\libevmface\Instruction.h">
       <Filter>libevmface</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\All.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\CryptoHeaders.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\FileSystem.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\MemoryDB.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\OverlayDB.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\SHA3.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\TrieCommon.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\TrieDB.h">
-      <Filter>libethcore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethcore\UPnP.h">
-      <Filter>libethcore</Filter>
     </ClInclude>
     <ClInclude Include="..\liblll\All.h">
       <Filter>liblll</Filter>
@@ -300,6 +264,126 @@
     <ClInclude Include="..\libethereum\AccountDiff.h">
       <Filter>libethereum</Filter>
     </ClInclude>
+    <ClInclude Include="..\libdevcrypto\All.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\Common.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\CryptoHeaders.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\FileSystem.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\MemoryDB.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\OverlayDB.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\SHA3.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\TrieCommon.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\TrieDB.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\All.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\BlockInfo.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\CommonEth.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\CryptoHeaders.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\Dagger.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethcore\Exceptions.h">
+      <Filter>libethcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\All.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\Common.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\CommonData.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\CommonIO.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\Exceptions.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\FixedHash.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\Guards.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\Log.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\RLP.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\vector_ref.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\CommonNet.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\EthereumHost.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\PastMessage.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\All.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\EthereumPeer.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\Interface.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\All.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\Capability.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\Common.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\Host.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\HostCapability.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\Session.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\UPnP.h">
+      <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libwhisper\Common.h">
+      <Filter>libwhisper</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libwhisper\WhisperPeer.h">
+      <Filter>libwhisper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -317,11 +401,20 @@
     <Filter Include="libevmface">
       <UniqueIdentifier>{ed9ad1b3-700c-47f9-8548-a90b5ef179ac}</UniqueIdentifier>
     </Filter>
-    <Filter Include="libethential">
-      <UniqueIdentifier>{35c32f6c-3f19-4603-8084-1b88ec9ae498}</UniqueIdentifier>
-    </Filter>
     <Filter Include="liblll">
       <UniqueIdentifier>{e6332606-e0ca-48aa-8a6b-303971ba7a93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libdevcrypto">
+      <UniqueIdentifier>{fae2102b-d574-40fc-9f90-1b9ed0d117ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libdevcore">
+      <UniqueIdentifier>{35c32f6c-3f19-4603-8084-1b88ec9ae498}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libp2p">
+      <UniqueIdentifier>{fc2cb618-ab0c-45b6-8eb9-6d88e0336fa9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libwhisper">
+      <UniqueIdentifier>{36748e80-c977-4fee-84e6-699c039dff87}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

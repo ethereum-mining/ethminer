@@ -33,6 +33,7 @@ namespace dev
 namespace shh
 {
 
+/* this makes these symbols ambiguous on VS2013
 using h256 = dev::h256;
 using h512 = dev::h512;
 using h256s = dev::h256s;
@@ -42,6 +43,7 @@ using RLP = dev::RLP;
 using bytesRef = dev::bytesRef;
 using bytesConstRef = dev::bytesConstRef;
 using h256Set = dev::h256Set;
+*/
 
 class WhisperHost;
 class WhisperPeer;

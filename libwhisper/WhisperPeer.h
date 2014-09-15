@@ -95,7 +95,7 @@ class MessageFilter
 public:
 	MessageFilter() {}
 	MessageFilter(std::vector<std::pair<bytes, bytes> > const& _m): m_topicMasks(_m) {}
-	MessageFilter(RLP const& _r): m_topicMasks((std::vector<std::pair<bytes, bytes> >)_r) {}
+	MessageFilter(RLP const& _r): m_topicMasks(_r.operator std::vector<std::pair<bytes, bytes>>()) {}
 
 	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const { RLPStream s; fillStream(s); return dev::eth::sha3(s.out()); }

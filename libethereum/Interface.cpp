@@ -20,3 +20,6 @@
  */
 
 #include "Interface.h"
+
+#pragma GCC diagnostic ignored "-Wunused-variable"
+namespace { char dummy; };
