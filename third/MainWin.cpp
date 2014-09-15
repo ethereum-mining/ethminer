@@ -356,7 +356,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 	s.setValue("url", ui->urlEdit->text());
 
-	bytes d = ethereum()->savePeers();
+	bytes d = m_web3->savePeers();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -471,7 +471,7 @@ void Main::refreshBalances()
 
 void Main::refreshNetwork()
 {
-	auto ps = ethereum()->peers();
+	auto ps = m_web3->peers();
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 }
@@ -560,10 +560,10 @@ void Main::ensureNetwork()
 		web3()->connect(defPeer);
 	}
 	else
-		if (!ethereum()->peerCount())
-			ethereum()->connect(defPeer);
+		if (!m_web3->peerCount())
+			m_web3->connect(defPeer);
 	if (m_peers.size())
-		ethereum()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+		m_web3->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 }
 
 void Main::on_connect_triggered()

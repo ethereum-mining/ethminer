@@ -506,7 +506,7 @@ void Main::writeSettings()
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
 
-	bytes d = ethereum()->savePeers();
+	bytes d = m_webThree->savePeers();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -1250,7 +1250,7 @@ void Main::on_contracts_currentItemChanged()
 
 void Main::on_idealPeers_valueChanged()
 {
-	ethereum()->setIdealPeerCount(ui->idealPeers->value());
+	m_webThree->setIdealPeerCount(ui->idealPeers->value());
 }
 
 void Main::on_ourAccounts_doubleClicked()

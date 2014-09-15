@@ -29,12 +29,12 @@
 #include "abstractethstubserver.h"
 #pragma GCC diagnostic pop
 
-namespace dev { namespace eth { class Client; } class KeyPair; }
+namespace dev { class WebThreeDirect; namespace eth { class Client; } class KeyPair; }
 
 class EthStubServer: public AbstractEthStubServer
 {
 public:
-	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::eth::Client& _client);
+	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
 	virtual Json::Value procedures();
 	virtual std::string balanceAt(std::string const& _a);
@@ -57,7 +57,8 @@ public:
 	virtual Json::Value block(const std::string&);
 	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
-	dev::eth::Client& m_client;
+	dev::eth::Client& ethereum() const;
+	dev::WebThreeDirect& m_web3;
 	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
 	Json::Value blockJson(const std::string&);
