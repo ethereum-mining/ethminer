@@ -178,10 +178,59 @@ public:
 	/// Converts to string. @throws BadCast if not a string.
 	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
 
-	template <class T> std::vector<T> toVector() const { std::vector<T> ret; if (isList()) { ret.reserve(itemCount()); for (auto const& i: *this) ret.push_back((T)i); } return ret; }
-	template <class T> std::set<T> toSet() const { std::set<T> ret; if (isList()) { for (auto const& i: *this) ret.insert((T)i); } return ret; }
-	template <class T, class U> std::pair<T, U> toPair() const { std::pair<T, U> ret; if (isList()) { ret.first = (T)((*this)[0]); ret.second = (U)((*this)[1]); } return ret; }
-	template <class T, size_t N> std::array<T, N> toArray() const { if (itemCount() != N || !isList()) throw BadCast(); std::array<T, N> ret; for (unsigned i = 0; i < N; ++i) ret[i] = (T)operator[](i); return ret; }
+	template <class T>
+	std::vector<T> toVector() const
+	{
+		std::vector<T> ret;
+		if (isList())
+		{
+			ret.reserve(itemCount());
+			for (auto const& i: *this)
+			{
+				ret.push_back((T)i);
+			}
+		 }
+		 return ret;
+	}
+
+	template <class T>
+	std::set<T> toSet() const
+	{
+		std::set<T> ret;
+		if (isList())
+		{
+			for (auto const& i: *this)
+			{
+				ret.insert((T)i);
+			}
+		}
+		return ret;
+	}
+	
+	template <class T, class U>
+	std::pair<T, U> toPair() const
+	{
+		std::pair<T, U> ret;
+		if (isList())
+		{
+			ret.first = (*this)[0].operator T();
+			ret.second = (*this)[1].operator U();
+		}
+		return ret;
+	}
+
+	template <class T, size_t N>
+	std::array<T, N> toArray() const
+	{
+		if (itemCount() != N || !isList())
+			throw BadCast();
+		std::array<T, N> ret;
+		for (unsigned i = 0; i < N; ++i)
+		{
+			ret[i] = (T)operator[](i);
+		}
+		return ret;
+	}
 
 	/// Int conversion flags
 	enum
