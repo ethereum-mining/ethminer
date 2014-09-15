@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 #include <libdevcore/RLP.h>
+#include <libdevcore/Guards.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
@@ -80,6 +81,7 @@ private:
 
 	bool m_requireTransactions;
 
+	Mutex x_knownBlocks;
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
 };

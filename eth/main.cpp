@@ -33,6 +33,7 @@
 #include <libevmface/Instruction.h>
 #include <libevm/VM.h>
 #include <libethereum/All.h>
+#include <libwebthree/WebThree.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -43,6 +44,7 @@
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
+using namespace dev::p2p;
 using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
@@ -296,16 +298,18 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-
-	c.setForceMining(true);
-
 	cout << credits();
 
+	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, NetworkPreferences(listenPort, publicIP, upnp, false));
+	web3.setIdealPeerCount(peers);
+	eth::Client& c = *web3.ethereum();
+
 	c.setForceMining(forceMining);
+	c.setAddress(coinbase);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
-	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	web3.startNetwork();
+	web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
 	auto_ptr<EthStubServer> jsonrpcServer;

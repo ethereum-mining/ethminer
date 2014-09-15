@@ -104,7 +104,9 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
 
-	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { stopNetwork(); m_netPrefs = _n; startNetwork(); }
+	bool haveNetwork() const { return !!m_work; }
+
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_netPrefs = _n; if (had) startNetwork(); }
 
 	/// Start the network subsystem.
 	void startNetwork();

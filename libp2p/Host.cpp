@@ -70,7 +70,6 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 
 Host::~Host()
 {
-	disconnectPeers();
 	stop();
 }
 
@@ -86,6 +85,8 @@ void Host::start()
 			m_acceptor.set_option(ba::socket_base::reuse_address(true));
 			m_acceptor.bind(endpoint);
 			m_acceptor.listen();
+			m_listenPort = i ? m_acceptor.local_endpoint().port() : m_netPrefs.listenPort;
+			break;
 		}
 		catch (...)
 		{
@@ -98,7 +99,6 @@ void Host::start()
 			continue;
 		}
 	}
-	m_listenPort = m_acceptor.local_endpoint().port();
 
 	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
 	ensureAccepting();
@@ -117,6 +117,7 @@ void Host::stop()
 	}
 	if (m_socket.is_open())
 		m_socket.close();
+	disconnectPeers();
 }
 
 unsigned Host::protocolVersion() const
@@ -339,6 +340,7 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	try
 	{
+		// TODO: actual DNS lookup.
 		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
 	}
 	catch (exception const& e)
