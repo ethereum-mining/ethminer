@@ -205,6 +205,7 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 		for (auto j: peers())
 		{
 			auto p = j->cap<EthereumPeer>();
+			Guard l(p->x_knownBlocks);
 			if (!p->m_knownBlocks.count(_currentHash))
 				p->send(&b);
 			p->m_knownBlocks.clear();

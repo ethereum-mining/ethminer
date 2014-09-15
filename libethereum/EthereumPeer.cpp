@@ -235,6 +235,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			if (host()->noteBlock(h, _r[i].data()))
 				used++;
 			m_askedBlocks.erase(h);
+			Guard l(x_knownBlocks);
 			m_knownBlocks.insert(h);
 		}
 		addRating(used);
@@ -246,6 +247,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			{
 				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());
+				Guard l(x_knownBlocks);
 				if (!host()->m_chain->details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{
 					unknownParents++;
