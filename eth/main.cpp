@@ -300,7 +300,8 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
-	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, NetworkPreferences(listenPort, publicIP, upnp, false));
+	NetworkPreferences netPrefs(listenPort, publicIP, upnp, false);
+	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
 	web3.setIdealPeerCount(peers);
 	eth::Client& c = *web3.ethereum();
 
@@ -315,7 +316,7 @@ int main(int argc, char** argv)
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -353,20 +354,20 @@ int main(int argc, char** argv)
 			iss >> cmd;
 			if (cmd == "netstart")
 			{
-				unsigned port;
-				iss >> port;
-				c.startNetwork((short)port);
+				iss >> netPrefs.listenPort;
+				web3.setNetworkPreferences(netPrefs);
+				web3.startNetwork();
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				unsigned port;
 				iss >> addr >> port;
-				c.connect(addr, (short)port);
+				web3.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{
-				c.stopNetwork();
+				web3.stopNetwork();
 			}
 			else if (cmd == "minestart")
 			{
@@ -399,7 +400,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
@@ -426,7 +427,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "peers")
 			{
-				for (auto it: c.peers())
+				for (auto it: web3.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
