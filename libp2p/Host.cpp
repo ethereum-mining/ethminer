@@ -17,7 +17,7 @@
 /** @file Host.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
- *   Eric Lombrozo <elombrozo@gmail.com>
+ *   Eric Lombrozo <elombrozo@gmail.com> (Windows version of populateAddresses())
  * @date 2014
  */
 
@@ -55,6 +55,7 @@ static const set<bi::address> c_rejectAddresses = {
 };
 
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool _start):
+	Worker("p2p"),
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_acceptor(m_ioService),
@@ -104,10 +105,20 @@ void Host::start()
 	ensureAccepting();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << m_id.abridged();
+
+	for (auto const& h: m_capabilities)
+		h.second->onStarting();
+
+	startWorking();
 }
 
 void Host::stop()
 {
+	for (auto const& h: m_capabilities)
+		h.second->onStopping();
+
+	stopWorking();
+
 	if (m_acceptor.is_open())
 	{
 		if (m_accepting)
@@ -473,7 +484,7 @@ std::vector<PeerInfo> Host::peers(bool _updatePing) const
 	return ret;
 }
 
-void Host::process()
+void Host::doWork()
 {
 	growPeers();
 	prunePeers();

@@ -49,6 +49,9 @@ protected:
 	virtual std::string name() const = 0;
 	virtual Capability* newPeerCapability(Session* _s) = 0;
 
+	virtual void onStarting() {}
+	virtual void onStopping() {}
+
 	void seal(bytes& _b);
 
 private:

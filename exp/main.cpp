@@ -326,16 +326,17 @@ int main(int argc, char** argv)
 	ph.registerCapability(new WhisperHost());
 	auto wh = ph.cap<WhisperHost>();
 
+	ph.start();
+
 	if (!remoteHost.empty())
 		ph.connect(remoteHost, remotePort);
 
 	/// Only interested in the packet if the lowest bit is 1
 	auto w = wh->installWatch(MessageFilter(std::vector<std::pair<bytes, bytes> >({{fromHex("0000000000000000000000000000000000000000000000000000000000000001"), fromHex("0000000000000000000000000000000000000000000000000000000000000001")}})));
 
+
 	for (int i = 0; ; ++i)
 	{
-		this_thread::sleep_for(chrono::milliseconds(1000));
-		ph.process();
 		wh->sendRaw(h256(u256(i * i)).asBytes(), h256(u256(i)).asBytes(), 1000);
 		for (auto i: wh->checkWatch(w))
 			cnote << "New message:" << (u256)h256(wh->message(i).payload);

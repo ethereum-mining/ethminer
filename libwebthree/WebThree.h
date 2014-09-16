@@ -104,15 +104,15 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
 
-	bool haveNetwork() const { return !!m_work; }
+	bool haveNetwork() const { return m_net.isStarted(); }
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_netPrefs = _n; if (had) startNetwork(); }
 
 	/// Start the network subsystem.
-	void startNetwork();
+	void startNetwork() { m_net.start(); }
 
 	/// Stop the network subsystem.
-	void stopNetwork();
+	void stopNetwork() { m_net.stop(); }
 
 private:
 	std::string m_clientVersion;					///< Our end-application client's name/version.
@@ -121,9 +121,6 @@ private:
 	std::unique_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
 
 	p2p::Host m_net;								///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-	std::unique_ptr<std::thread> m_work;			///< The network thread.
-	mutable boost::shared_mutex x_work;				///< Lock for the network existance.
-	std::atomic<WorkState> m_workState;
 	p2p::NetworkPreferences m_netPrefs;
 };
 
