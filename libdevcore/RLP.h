@@ -160,7 +160,6 @@ public:
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
 	explicit operator byte() const { return toInt<byte>(); }
-	explicit operator unsigned() const { return toInt<unsigned>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
