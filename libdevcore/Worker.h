@@ -31,8 +31,18 @@ namespace dev
 class Worker
 {
 protected:
-	Worker(std::string const& _name): m_name(_name) {}
+	Worker(std::string const& _name = "anon"): m_name(_name) {}
+
+	/// Move-constructor.
+	Worker(Worker&& _m) { std::swap(m_name, _m.m_name); }
+
+	/// Move-assignment.
+	Worker& operator=(Worker&& _m) { std::swap(m_name, _m.m_name); return *this; }
+
 	virtual ~Worker() { stopWorking(); }
+
+	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
+
 	void startWorking();
 	void stopWorking();
 	bool isWorking() const { Guard l(x_work); return !!m_work; }
