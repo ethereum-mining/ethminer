@@ -51,88 +51,34 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 
 WebThreeDirect::~WebThreeDirect()
 {
-	stopNetwork();
-}
-
-void WebThreeDirect::startNetwork()
-{
-	static const char* c_threadName = "p2p";
-
-	m_net.start();
-
-	UpgradableGuard l(x_work);
-	{
-		UpgradeGuard ul(l);
-
-		if (!m_work)
-			m_work.reset(new thread([&]()
-			{
-				setThreadName(c_threadName);
-				m_workState.store(Active, std::memory_order_release);
-				while (m_workState.load(std::memory_order_acquire) != Deleting)
-				{
-					this_thread::sleep_for(chrono::milliseconds(1));
-					ReadGuard l(x_work);
-					m_net.process();	// must be in guard for now since it uses the blockchain.
-				}
-				m_workState.store(Deleted, std::memory_order_release);
-			}));
-	}
-}
-
-void WebThreeDirect::stopNetwork()
-{
-	m_net.stop();
-
-	UpgradableGuard l(x_work);
-
-	if (m_work)
-	{
-		if (m_workState.load(std::memory_order_acquire) == Active)
-			m_workState.store(Deleting, std::memory_order_release);
-		while (m_workState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_work->join();
-	}
-	if (m_work)
-	{
-		UpgradeGuard ul(l);
-		m_work.reset(nullptr);
-	}
 }
 
 std::vector<PeerInfo> WebThreeDirect::peers()
 {
-	ReadGuard l(x_work);
 	return m_net.peers();
 }
 
 size_t WebThreeDirect::peerCount() const
 {
-	ReadGuard l(x_work);
 	return m_net.peerCount();
 }
 
 void WebThreeDirect::setIdealPeerCount(size_t _n)
 {
-	ReadGuard l(x_work);
 	return m_net.setIdealPeerCount(_n);
 }
 
 bytes WebThreeDirect::savePeers()
 {
-	ReadGuard l(x_work);
 	return m_net.savePeers();
 }
 
 void WebThreeDirect::restorePeers(bytesConstRef _saved)
 {
-	ReadGuard l(x_work);
 	return m_net.restorePeers(_saved);
 }
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
 {
-	ReadGuard l(x_work);
 	m_net.connect(_seedHost, _port);
 }

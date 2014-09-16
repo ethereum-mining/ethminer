@@ -39,9 +39,12 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
-EthereumHost::EthereumHost(BlockChain const& _ch, u256 _networkId):
+EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
-	m_chain		(&_ch),
+	Worker("ethsync"),
+	m_chain		(_ch),
+	m_tq		(_tq),
+	m_bq		(_bq),
 	m_networkId	(_networkId)
 {
 	m_latestBlockSent = _ch.currentHash();
@@ -82,7 +85,7 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 	if (!m_latestBlockSent)
 	{
 		// First time - just initialise.
-		m_latestBlockSent = m_chain->currentHash();
+		m_latestBlockSent = m_chain.currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
 
 		for (auto const& i: _tq.transactions())
@@ -102,7 +105,7 @@ void EthereumHost::noteDoneBlocks()
 			clog(NetNote) << "No more blocks coming. Missing" << m_blocksNeeded.size() << "blocks.";
 		else
 			clog(NetNote) << "No more blocks to get.";
-		m_latestBlockSent = m_chain->currentHash();
+		m_latestBlockSent = m_chain.currentHash();
 	}
 }
 
@@ -110,7 +113,7 @@ bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
 {
 	Guard l(x_blocksNeeded);
 	m_blocksOnWay.erase(_hash);
-	if (!m_chain->details(_hash))
+	if (!m_chain.details(_hash))
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
 		m_incomingBlocks.push_back(_data.toBytes());
@@ -119,13 +122,14 @@ bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
 	return false;
 }
 
-bool EthereumHost::sync(TransactionQueue& _tq, BlockQueue& _bq)
+void EthereumHost::doWork()
 {
-	bool netChange = ensureInitialised(_tq);
-	auto h = m_chain->currentHash();
-	maintainTransactions(_tq, h);
-	maintainBlocks(_bq, h);
-	return netChange;
+	bool netChange = ensureInitialised(m_tq);
+	auto h = m_chain.currentHash();
+	maintainTransactions(m_tq, h);
+	maintainBlocks(m_bq, h);
+//	return netChange;
+	// TODO: Figure out what to do with netChange.
 }
 
 void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
@@ -172,7 +176,7 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
 		for (auto it = m_incomingBlocks.rbegin(); it != m_incomingBlocks.rend(); ++it)
-			if (_bq.import(&*it, *m_chain))
+			if (_bq.import(&*it, m_chain))
 			{}
 			else{} // TODO: don't forward it.
 		m_incomingBlocks.clear();
@@ -191,9 +195,9 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 		EthereumPeer::prep(ts);
 		bytes bs;
 		unsigned c = 0;
-		for (auto h: m_chain->treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
+		for (auto h: m_chain.treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
 		{
-			bs += m_chain->block(h);
+			bs += m_chain.block(h);
 			++c;
 		}
 		clog(NetMessageSummary) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
@@ -221,9 +225,9 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	if (_from->m_neededBlocks.empty())
 		return;
 
-	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain->details().totalDifficulty << "," << m_totalDifficultyOfNeeded << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain.details().totalDifficulty << "," << m_totalDifficultyOfNeeded << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
 
-	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain->details().totalDifficulty)
+	if ((m_totalDifficultyOfNeeded && td < m_totalDifficultyOfNeeded) || td < m_chain.details().totalDifficulty)
 	{
 		clog(NetNote) << "Difficulty of hashchain LOWER. Ignoring.";
 		return;

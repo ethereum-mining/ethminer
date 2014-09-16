@@ -29,6 +29,7 @@
 #include <utility>
 #include <thread>
 #include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"
@@ -49,13 +50,13 @@ class BlockQueue;
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
  */
-class EthereumHost: public p2p::HostCapability<EthereumPeer>
+class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
 {
 	friend class EthereumPeer;
 
 public:
 	/// Start server, but don't listen.
-	EthereumHost(BlockChain const& _ch, u256 _networkId);
+	EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
 
 	/// Will block on network process events.
 	virtual ~EthereumHost();
@@ -63,9 +64,6 @@ public:
 	unsigned protocolVersion() const { return c_protocolVersion; }
 	u256 networkId() const { return m_networkId; }
 	void setNetworkId(u256 _n) { m_networkId = _n; }
-
-	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	bool sync(TransactionQueue&, BlockQueue& _bc);
 
 private:
 	/// Session wants to pass us a block that we might not have.
@@ -75,6 +73,9 @@ private:
 	void noteHaveChain(EthereumPeer* _who);
 	/// Called when the peer can no longer provide us with any needed blocks.
 	void noteDoneBlocks();
+
+	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
+	void doWork();
 
 	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
 	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
@@ -90,7 +91,12 @@ private:
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised(TransactionQueue& _tq);
 
-	BlockChain const* m_chain = nullptr;
+	virtual void onStarting() { startWorking(); }
+	virtual void onStopping() { stopWorking(); }
+
+	BlockChain const& m_chain;
+	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	BlockQueue& m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
 	u256 m_networkId;
 

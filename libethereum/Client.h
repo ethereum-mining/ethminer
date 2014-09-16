@@ -29,6 +29,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
 #include <libp2p/Common.h>
@@ -108,7 +109,7 @@ struct WorkChannel: public LogChannel { static const char* name() { return "-W-"
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client: public MinerHost, public Interface
+class Client: public MinerHost, public Interface, Worker
 {
 	friend class Miner;
 
@@ -217,7 +218,7 @@ public:
 	unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() { ensureWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
+	void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
 	/// Stop mining.
 	/// NOT thread-safe
 	void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
@@ -238,15 +239,10 @@ public:
 	void killChain();
 
 private:
-	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
-	void ensureWorking();
-
 	/// Do some work. Handles blockchain maintenance and mining.
-	/// @param _justQueue If true will only processing the transaction queues.
-	void work();
+	virtual void doWork();
 
-	/// Syncs the queues with the network.
-	void workNet();
+	virtual void doneWorking();
 
 	/// Overrides for being a mining host.
 	virtual void setupState(State& _s);
@@ -281,13 +277,7 @@ private:
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
-	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
-	std::atomic<ClientWorkState> m_workNetState;
-
-	std::weak_ptr<EthereumHost> m_extHost;	///< Our Ethereum Host. Don't do anything if we can't lock.
-
-	std::unique_ptr<std::thread> m_work;	///< The work thread.
-	std::atomic<ClientWorkState> m_workState;
+	std::weak_ptr<EthereumHost> m_host;	///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	std::vector<Miner> m_miners;
 	mutable boost::shared_mutex x_miners;
