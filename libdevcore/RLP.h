@@ -212,8 +212,8 @@ public:
 		std::pair<T, U> ret;
 		if (isList())
 		{
-			ret.first = (*this)[0].operator T();
-			ret.second = (*this)[1].operator U();
+			ret.first = (T)(*this)[0];
+			ret.second = (U)(*this)[1];
 		}
 		return ret;
 	}
