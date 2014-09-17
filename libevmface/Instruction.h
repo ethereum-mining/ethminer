@@ -32,143 +32,140 @@ namespace dev
 namespace eth
 {
 
-// TODO: Update comments.
-
 /// Virtual machine bytecode instruction.
 enum class Instruction: uint8_t
 {
 	STOP = 0x00,		///< halts execution
-	ADD,
-	MUL,
-	SUB,
-	DIV,
-	SDIV,
-	MOD,
-	SMOD,
-	EXP,
-	NEG,
-	LT,
-	GT,
-	SLT,
-	SGT,
-	EQ,
-	NOT,
+	ADD,				///< addition operation
+	MUL,				///< mulitplication operation
+	SUB,				///< subtraction operation
+	DIV,				///< integer division operation
+	SDIV,				///< signed integer division operation
+	MOD,				///< modulo remainder operation
+	SMOD,				///< signed modulo remainder operation
+	EXP,				///< exponential operation
+	NEG,				///< negation operation
+	LT,					///< less-than comparision
+	GT,					///< greater-than comparision
+	SLT,				///< signed less-than comparision
+	SGT,				///< signed greater-than comparision
+	EQ,					///< equality comparision
+	NOT,				///< simple not operator
 
-	AND = 0x10,
-	OR,
-	XOR,
-	BYTE,
-	ADDMOD,
-	MULMOD,
+	AND = 0x10,			///< bitwise AND operation
+	OR,					///< bitwise OR operation
+	XOR,				///< bitwise XOR operation
+	BYTE,				///< retrieve single byte from word
+	ADDMOD,				///< unsigned modular addition
+	MULMOD,				///< unsigned modular multiplication
+	SHA3 = 0x20,		///< compute SHA3-256 hash
 
-	SHA3 = 0x20,
+	ADDRESS = 0x30,		///< get address of currently executing account
+	BALANCE,			///< get balance of the given account
+	ORIGIN,				///< get execution origination address
+	CALLER,				///< get caller address
+	CALLVALUE,			///< get deposited value by the instruction/transaction responsible for this execution
+	CALLDATALOAD,		///< get input data of current environment
+	CALLDATASIZE,		///< get size of input data in current environment
+	CALLDATACOPY,		///< copy input data in current environment to memory
+	CODESIZE,			///< get size of code running in current environment
+	CODECOPY,			///< copy code running in current environment to memory
+	GASPRICE,			///< get price of gas in current environment
+	EXTCODESIZE,		///< get external code size (from another contract)
+	EXTCODECOPY,		///< copy external code (from another contract)
 
-	ADDRESS = 0x30,
-	BALANCE,
-	ORIGIN,
-	CALLER,
-	CALLVALUE,
-	CALLDATALOAD,
-	CALLDATASIZE,
-	CALLDATACOPY,
-	CODESIZE,
-	CODECOPY,
-	GASPRICE,
-	EXTCODESIZE,
-	EXTCODECOPY,
+	PREVHASH = 0x40,	///< get hash of most recent complete block
+	COINBASE,			///< get the block's coinbase address
+	TIMESTAMP,			///< get the block's timestamp
+	NUMBER,				///< get the block's number
+	DIFFICULTY,			///< get the block's difficulty
+	GASLIMIT,			///< get the block's gas limit
 
-	PREVHASH = 0x40,
-	COINBASE,
-	TIMESTAMP,
-	NUMBER,
-	DIFFICULTY,
-	GASLIMIT,
+	POP = 0x50,			///< remove item from stack
+	MLOAD = 0x53,		///< load word from memory
+	MSTORE,				///< save word to memory
+	MSTORE8,			///< save byte to memory
+	SLOAD,				///< load word from storage
+	SSTORE,				///< save word to storage
+	JUMP,				///< alter the program counter
+	JUMPI,				///< conditionally alter the program counter
+	PC,					///< get the program counter
+	MSIZE,				///< get the size of active memory
+	GAS,				///< get the amount of available gas
 
-	POP = 0x50,
-	MLOAD = 0x53,
-	MSTORE,
-	MSTORE8,
-	SLOAD,
-	SSTORE,
-	JUMP,
-	JUMPI,
-	PC,
-	MSIZE,
-	GAS,
+	PUSH1 = 0x60,		///< place 1 byte item on stack
+	PUSH2,				///< place 2 byte item on stack
+	PUSH3,				///< place 3 byte item on stack
+	PUSH4,				///< place 4 byte item on stack
+	PUSH5,				///< place 5 byte item on stack
+	PUSH6,				///< place 6 byte item on stack
+	PUSH7,				///< place 7 byte item on stack
+	PUSH8,				///< place 8 byte item on stack
+	PUSH9,				///< place 9 byte item on stack
+	PUSH10,				///< place 10 byte item on stack
+	PUSH11,				///< place 11 byte item on stack
+	PUSH12,				///< place 12 byte item on stack
+	PUSH13,				///< place 13 byte item on stack
+	PUSH14,				///< place 14 byte item on stack
+	PUSH15,				///< place 15 byte item on stack
+	PUSH16,				///< place 16 byte item on stack
+	PUSH17,				///< place 17 byte item on stack
+	PUSH18,				///< place 18 byte item on stack
+	PUSH19,				///< place 19 byte item on stack
+	PUSH20,				///< place 20 byte item on stack
+	PUSH21,				///< place 21 byte item on stack
+	PUSH22,				///< place 22 byte item on stack
+	PUSH23,				///< place 23 byte item on stack
+	PUSH24,				///< place 24 byte item on stack
+	PUSH25,				///< place 25 byte item on stack
+	PUSH26,				///< place 26 byte item on stack
+	PUSH27,				///< place 27 byte item on stack
+	PUSH28,				///< place 28 byte item on stack
+	PUSH29,				///< place 29 byte item on stack
+	PUSH30,				///< place 30 byte item on stack
+	PUSH31,				///< place 31 byte item on stack
+	PUSH32,				///< place 32 byte item on stack
 
-	PUSH1 = 0x60,
-	PUSH2,
-	PUSH3,
-	PUSH4,
-	PUSH5,
-	PUSH6,
-	PUSH7,
-	PUSH8,
-	PUSH9,
-	PUSH10,
-	PUSH11,
-	PUSH12,
-	PUSH13,
-	PUSH14,
-	PUSH15,
-	PUSH16,
-	PUSH17,
-	PUSH18,
-	PUSH19,
-	PUSH20,
-	PUSH21,
-	PUSH22,
-	PUSH23,
-	PUSH24,
-	PUSH25,
-	PUSH26,
-	PUSH27,
-	PUSH28,
-	PUSH29,
-	PUSH30,
-	PUSH31,
-	PUSH32,
+	DUP1 = 0x80,		///< copies the highest item in the stack to the top of the stack
+	DUP2,				///< copies the second highest item in the stack to the top of the stack
+	DUP3,				///< copies the third highest item in the stack to the top of the stack
+	DUP4,				///< copies the 4th highest item in the stack to the top of the stack
+	DUP5,				///< copies the 5th highest item in the stack to the top of the stack
+	DUP6,				///< copies the 6th highest item in the stack to the top of the stack
+	DUP7,				///< copies the 7th highest item in the stack to the top of the stack
+	DUP8,				///< copies the 8th highest item in the stack to the top of the stack
+	DUP9,				///< copies the 9th highest item in the stack to the top of the stack
+	DUP10,				///< copies the 10th highest item in the stack to the top of the stack
+	DUP11,				///< copies the 11th highest item in the stack to the top of the stack
+	DUP12,				///< copies the 12th highest item in the stack to the top of the stack
+	DUP13,				///< copies the 13th highest item in the stack to the top of the stack
+	DUP14,				///< copies the 14th highest item in the stack to the top of the stack
+	DUP15,				///< copies the 15th highest item in the stack to the top of the stack
+	DUP16,				///< copies the 16th highest item in the stack to the top of the stack
 
-	DUP1 = 0x80,
-	DUP2,
-	DUP3,
-	DUP4,
-	DUP5,
-	DUP6,
-	DUP7,
-	DUP8,
-	DUP9,
-	DUP10,
-	DUP11,
-	DUP12,
-	DUP13,
-	DUP14,
-	DUP15,
-	DUP16,
+	SWAP1 = 0x90,		///< swaps the highest and second highest value on the stack
+	SWAP2,				///< swaps the highest and third highest value on the stack
+	SWAP3,				///< swaps the highest and 4th highest value on the stack
+	SWAP4,				///< swaps the highest and 5th highest value on the stack
+	SWAP5,				///< swaps the highest and 6th highest value on the stack
+	SWAP6,				///< swaps the highest and 7th highest value on the stack
+	SWAP7,				///< swaps the highest and 8th highest value on the stack
+	SWAP8,				///< swaps the highest and 9th highest value on the stack
+	SWAP9,				///< swaps the highest and 10th highest value on the stack
+	SWAP10,				///< swaps the highest and 11th highest value on the stack
+	SWAP11,				///< swaps the highest and 12th highest value on the stack
+	SWAP12,				///< swaps the highest and 13th highest value on the stack
+	SWAP13,				///< swaps the highest and 14th highest value on the stack
+	SWAP14,				///< swaps the highest and 15th highest value on the stack
+	SWAP15,				///< swaps the highest and 16th highest value on the stack
+	SWAP16,				///< swaps the highest and 17th highest value on the stack
 
-	SWAP1 = 0x90,
-	SWAP2,
-	SWAP3,
-	SWAP4,
-	SWAP5,
-	SWAP6,
-	SWAP7,
-	SWAP8,
-	SWAP9,
-	SWAP10,
-	SWAP11,
-	SWAP12,
-	SWAP13,
-	SWAP14,
-	SWAP15,
-	SWAP16,
-
-	CREATE = 0xf0,
-	CALL,
-	RETURN,
-	POST,
+	CREATE = 0xf0,		///< create a new account with associated code
+	CALL,				///< message-call into an account
+	RETURN,				///< halt execution returning output data
+	POST,				///< asynchronous call without output (adds a message to the post queue)
 	CALLSTATELESS,
-	SUICIDE = 0xff
+	SUICIDE = 0xff		///< halt execution and register account for later deletion
 };
 
 /// Information structure for a particular instruction.
