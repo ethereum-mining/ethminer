@@ -148,14 +148,17 @@ bool EthereumPeer::interpret(RLP const& _r)
 		break;
 	}
 	case TransactionsPacket:
+	{
 		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << "entries)";
 		addRating(_r.itemCount() - 1);
+		lock_guard<recursive_mutex> l(host()->m_incomingLock);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			host()->m_incomingTransactions.push_back(_r[i].data().toBytes());
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
+	}
 	case GetBlockHashesPacket:
 	{
 		h256 later = _r[1].toHash<h256>();
@@ -306,6 +309,7 @@ void EthereumPeer::continueGettingChain()
 	}
 	else
 	{
+		if (m_failedBlocks.size())
 		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have" << m_failedBlocks.size() << "of our needed blocks.";
 		host()->noteDoneBlocks();
 	}
