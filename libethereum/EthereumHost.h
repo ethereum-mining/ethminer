@@ -75,6 +75,9 @@ private:
 	/// Called when the peer can no longer provide us with any needed blocks.
 	void noteDoneBlocks();
 
+	/// Called by peer to add incoming transactions.
+	void addIncomingTransaction(bytes const& _bytes) { std::lock_guard<std::recursive_mutex> l(m_incomingLock); m_incomingTransactions.push_back(_bytes); }
+	
 	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
 	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
 

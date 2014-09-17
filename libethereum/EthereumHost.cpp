@@ -131,37 +131,44 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 {
 	bool resendAll = (_currentHash != m_latestBlockSent);
 
-	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-		if (_tq.import(&*it))
-		{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
-		else
-			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-	m_incomingTransactions.clear();
+	{
+		lock_guard<recursive_mutex> l(m_incomingLock);
+		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
+			if (_tq.import(&*it))
+			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
+			else
+				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
+		m_incomingTransactions.clear();
+	}
 
 	// Send any new transactions.
 	for (auto const& p: peers())
 	{
 		auto ep = p->cap<EthereumPeer>();
-		bytes b;
-		unsigned n = 0;
-		for (auto const& i: _tq.transactions())
-			if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
-			{
-				b += i.second;
-				++n;
-				m_transactionsSent.insert(i.first);
-			}
-		if (n)
+		if (ep)
 		{
-			RLPStream ts;
-			EthereumPeer::prep(ts);
-			ts.appendList(n + 1) << TransactionsPacket;
-			ts.appendRaw(b, n).swapOut(b);
-			seal(b);
-			ep->send(&b);
+			bytes b;
+			unsigned n = 0;
+			for (auto const& i: _tq.transactions())
+				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
+				{
+					b += i.second;
+					++n;
+					m_transactionsSent.insert(i.first);
+				}
+			ep->clearKnownTransactions();
+			
+			if (n)
+			{
+				RLPStream ts;
+				EthereumPeer::prep(ts);
+				ts.appendList(n + 1) << TransactionsPacket;
+				ts.appendRaw(b, n).swapOut(b);
+				seal(b);
+				ep->send(&b);
+			}
+			ep->m_requireTransactions = false;
 		}
-		ep->m_knownTransactions.clear();
-		ep->m_requireTransactions = false;
 	}
 }
 
