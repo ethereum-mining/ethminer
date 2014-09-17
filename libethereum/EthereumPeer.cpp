@@ -91,16 +91,6 @@ void EthereumPeer::startInitialSync()
 	}
 }
 
-inline string toString(h256s const& _bs)
-{
-	ostringstream out;
-	out << "[ ";
-	for (auto i: _bs)
-		out << i.abridged() << ", ";
-	out << "]";
-	return out.str();
-}
-
 void EthereumPeer::giveUpOnFetch()
 {
 	clogS(NetNote) << "GIVE UP FETCH; can't get" << toString(m_askedBlocks);
@@ -154,7 +144,9 @@ bool EthereumPeer::interpret(RLP const& _r)
 		lock_guard<recursive_mutex> l(host()->m_incomingLock);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			host()->m_incomingTransactions.push_back(_r[i].data().toBytes());
+			host()->addIncomingTransaction(_r[i].data().toBytes());
+			
+			lock_guard<mutex> l(x_knownTransactions);
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;

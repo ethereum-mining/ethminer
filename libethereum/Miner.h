@@ -126,10 +126,9 @@ private:
 
 	MinerHost* m_host = nullptr;			///< Our host.
 
-	enum MiningStatus { Preparing, Mining, Mined, Stopping, Stopped };
-	MiningStatus m_miningStatus = Preparing;///< TODO: consider mutex/atomic variable.
+	enum MiningStatus { Waiting, Preparing, Mining, Mined, Stopping, Stopped };
+	MiningStatus m_miningStatus = Waiting;	///< TODO: consider mutex/atomic variable.
 	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
-	mutable unsigned m_pendingCount = 0;	///< How many pending transactions are there in m_mineState?
 
 	mutable std::mutex x_mineInfo;			///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;			///< What's our progress?

@@ -156,7 +156,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			require(3);
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
-
+		case Instruction::EXTCODECOPY:
+			require(4);
+			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
+			break;
+			
 		case Instruction::BALANCE:
 			runGas = c_balanceGas;
 			break;
