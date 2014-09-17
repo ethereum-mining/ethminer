@@ -142,7 +142,9 @@ bool EthereumPeer::interpret(RLP const& _r)
 		addRating(_r.itemCount() - 1);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			host()->m_incomingTransactions.push_back(_r[i].data().toBytes());
+			host()->addIncomingTransaction(_r[i].data().toBytes());
+			
+			lock_guard<mutex> l(x_knownTransactions);
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
