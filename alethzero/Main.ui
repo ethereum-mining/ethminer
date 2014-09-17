@@ -1432,6 +1432,39 @@ font-size: 14pt</string>
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_12">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Blockchain Download</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_12">
+    <layout class="QHBoxLayout" name="horizontalLayout_8">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="DownloadView" name="downloadView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
@@ -1710,6 +1743,12 @@ font-size: 14pt</string>
    <class>MiningView</class>
    <extends>QWidget</extends>
    <header>MiningView.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DownloadView</class>
+   <extends>QWidget</extends>
+   <header>DownloadView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

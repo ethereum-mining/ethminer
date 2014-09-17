@@ -97,7 +97,6 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 
 void EthereumHost::noteDoneBlocks()
 {
-	clog(NetNote) << "Peer given up on blocks fetch.";
 	if (m_blocksOnWay.empty())
 	{
 		// Done our chain-get.
@@ -135,13 +134,15 @@ void EthereumHost::doWork()
 void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
 {
 	bool resendAll = (_currentHash != m_latestBlockSent);
-
-	for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-		if (_tq.import(&*it))
-		{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
-		else
-			m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-	m_incomingTransactions.clear();
+	{
+		lock_guard<recursive_mutex> l(m_incomingLock);
+		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
+			if (_tq.import(&*it))
+			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
+			else
+				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
+		m_incomingTransactions.clear();
+	}
 
 	// Send any new transactions.
 	for (auto const& p: peers())

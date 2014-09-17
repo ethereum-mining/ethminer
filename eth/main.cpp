@@ -747,7 +747,7 @@ int main(int argc, char** argv)
 			c.startMining();
 		while (true)
 		{
-			if (c.blockChain().details().number - n == mining)
+			if (c.isMining() && c.blockChain().details().number - n == mining)
 				c.stopMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
