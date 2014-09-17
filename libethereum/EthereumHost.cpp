@@ -148,26 +148,30 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 	for (auto const& p: peers())
 	{
 		auto ep = p->cap<EthereumPeer>();
-		bytes b;
-		unsigned n = 0;
-		for (auto const& i: _tq.transactions())
-			if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
-			{
-				b += i.second;
-				++n;
-				m_transactionsSent.insert(i.first);
-			}
-		if (n)
+		if (ep)
 		{
-			RLPStream ts;
-			EthereumPeer::prep(ts);
-			ts.appendList(n + 1) << TransactionsPacket;
-			ts.appendRaw(b, n).swapOut(b);
-			seal(b);
-			ep->send(&b);
+			bytes b;
+			unsigned n = 0;
+			for (auto const& i: _tq.transactions())
+				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
+				{
+					b += i.second;
+					++n;
+					m_transactionsSent.insert(i.first);
+				}
+			ep->clearKnownTransactions();
+			
+			if (n)
+			{
+				RLPStream ts;
+				EthereumPeer::prep(ts);
+				ts.appendList(n + 1) << TransactionsPacket;
+				ts.appendRaw(b, n).swapOut(b);
+				seal(b);
+				ep->send(&b);
+			}
+			ep->m_requireTransactions = false;
 		}
-		ep->m_knownTransactions.clear();
-		ep->m_requireTransactions = false;
 	}
 }
 

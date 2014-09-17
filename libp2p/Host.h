@@ -77,7 +77,7 @@ public:
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[T::staticName()] = ret; return ret; }
 
-	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name); }
+	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name) != 0; }
 	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(T::staticName())); } catch (...) { return nullptr; } }
 

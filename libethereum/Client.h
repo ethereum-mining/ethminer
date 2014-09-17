@@ -202,7 +202,7 @@ public:
 	/// Should we force mining to happen, even without transactions?
 	bool forceMining() const { return m_forceMining; }
 	/// Enable/disable forcing of mining to happen, even without transactions.
-	void setForceMining(bool _enable) { m_forceMining = _enable; }
+	void setForceMining(bool _enable);
 	/// Are we mining as fast as we can?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable fast mining.
