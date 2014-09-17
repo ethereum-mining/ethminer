@@ -374,6 +374,11 @@ if (NOT LANGUAGES)
 	endif()
 endif()
 
+if(ETC)
+  add_subdirectory(etc)
+endif()
+
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(SRC_LIST BuildInfo.h)
 
