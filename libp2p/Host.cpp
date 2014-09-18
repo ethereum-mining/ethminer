@@ -129,6 +129,8 @@ void Host::stop()
 	if (m_socket.is_open())
 		m_socket.close();
 	disconnectPeers();
+
+	m_ioService.reset();
 }
 
 unsigned Host::protocolVersion() const

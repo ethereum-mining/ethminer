@@ -191,6 +191,17 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 			o_changed.insert(i.first);
 }
 
+void Client::setForceMining(bool _enable)
+{
+	 m_forceMining = _enable;
+	 if (!m_host.lock())
+	 {
+		 ReadGuard l(x_miners);
+		 for (auto& m: m_miners)
+			 m.noteStateChange();
+	 }
+}
+
 void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
