@@ -49,7 +49,7 @@ public:
 	virtual Json::Value keys();
 	virtual int peerCount();
 	virtual std::string storageAt(const std::string& a, const std::string& x);
-	virtual std::string stateAt(const std::string& a, const std::string& x, const std::string& b);
+	virtual std::string stateAt(const std::string& a, const std::string& x, const std::string& s);
 	virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue);
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
