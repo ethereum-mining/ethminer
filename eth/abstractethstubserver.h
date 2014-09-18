@@ -30,7 +30,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("procedures", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::proceduresI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
             this->bindAndAddMethod(new jsonrpc::Procedure("storageAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::storageAtI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING,"b",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::stateAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::stateAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "aDest",jsonrpc::JSON_STRING,"bData",jsonrpc::JSON_STRING,"sec",jsonrpc::JSON_STRING,"xGas",jsonrpc::JSON_STRING,"xGasPrice",jsonrpc::JSON_STRING,"xValue",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("txCountAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::txCountAtI);
 
@@ -123,7 +123,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void stateAtI(const Json::Value& request, Json::Value& response)
         {
-            response = this->stateAt(request["a"].asString(), request["x"].asString(), request["b"].asString());
+            response = this->stateAt(request["a"].asString(), request["x"].asString(), request["s"].asString());
         }
 
         inline virtual void transactI(const Json::Value& request, Json::Value& response) 
