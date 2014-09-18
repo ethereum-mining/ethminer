@@ -67,6 +67,8 @@ private:
 
 	void giveUpOnFetch();
 
+	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
+	
 	unsigned m_protocolVersion;
 	u256 m_networkId;
 
@@ -82,6 +84,7 @@ private:
 
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
+	std::mutex x_knownTransactions;
 };
 
 }
