@@ -73,16 +73,35 @@ void EthereumPeer::startInitialSync()
 		sealAndSend(s);
 	}
 
+	host()->noteHavePeerState(this);
+}
+
+void EthereumPeer::tryGrabbingHashChain()
+{
+	// if already done this, then ignore.
+	if (m_grabbing != Grabbing::State)
+	{
+		clogS(NetAllDetail) << "Already synced with this peer.";
+		return;
+	}
+
 	h256 c = host()->m_chain.currentHash();
 	unsigned n = host()->m_chain.number();
 	u256 td = max(host()->m_chain.details().totalDifficulty, host()->m_totalDifficultyOfNeeded);
 
-	clogS(NetAllDetail) << "Initial sync. Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain.details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
+	clogS(NetAllDetail) << "Attempt chain-grab? Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain.details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
 	if (td > m_totalDifficulty)
+	{
+		clogS(NetAllDetail) << "No. Our chain is better.";
+		m_grabbing = Grabbing::Nothing;
 		return;	// All good - we have the better chain.
+	}
 
 	// Our chain isn't better - grab theirs.
 	{
+		clogS(NetAllDetail) << "Yes. Their chain is better.";
+
+		m_grabbing = Grabbing::Hashes;
 		RLPStream s;
 		prep(s).appendList(3);
 		s << GetBlockHashesPacket << m_latestHash << c_maxHashesAsk;
@@ -94,6 +113,16 @@ void EthereumPeer::startInitialSync()
 void EthereumPeer::giveUpOnFetch()
 {
 	clogS(NetNote) << "GIVE UP FETCH; can't get" << toString(m_askedBlocks);
+
+	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
+	if (m_grabbing == Grabbing::Chain)
+	{
+		m_grabbing = Grabbing::Nothing;
+		host()->updateGrabbing(Grabbing::Nothing);
+	}
+
+	// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
+
 	if (m_askedBlocks.size())
 	{
 		Guard l (host()->x_blocksNeeded);
@@ -157,7 +186,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
 
-		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
+		unsigned c = min<unsigned>(max<unsigned>(1, host()->m_chain.number(later)) - 1, limit);
 
 		RLPStream s;
 		prep(s).appendList(1 + c).append(BlockHashesPacket);
@@ -169,7 +198,13 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << "entries)";
+		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreHashes");
+
+		if (m_grabbing != Grabbing::Hashes)
+		{
+			cwarn << "Peer giving us hashes when we didn't ask for them.";
+			break;
+		}
 		if (_r.itemCount() == 1)
 		{
 			host()->noteHaveChain(this);
@@ -196,7 +231,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	case GetBlocksPacket:
 	{
 		clogS(NetMessageSummary) << "GetBlocks (" << dec << (_r.itemCount() - 1) << "entries)";
-		// TODO: return the requested blocks.
+		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
 		for (unsigned i = 1; i < _r.itemCount() && i <= c_maxBlocks; ++i)
@@ -214,7 +249,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << "entries)";
+		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreBlocks");
 
 		if (_r.itemCount() == 1 && !m_askedBlocksChanged)
 		{
@@ -302,7 +337,7 @@ void EthereumPeer::continueGettingChain()
 	else
 	{
 		if (m_failedBlocks.size())
-		clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have" << m_failedBlocks.size() << "of our needed blocks.";
+			clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have" << m_failedBlocks.size() << "of our needed blocks.";
 		host()->noteDoneBlocks();
 	}
 }

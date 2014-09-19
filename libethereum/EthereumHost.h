@@ -185,7 +185,10 @@ public:
 	u256 networkId() const { return m_networkId; }
 	void setNetworkId(u256 _n) { m_networkId = _n; }
 
+	void reset();
+
 private:
+	void noteHavePeerState(EthereumPeer* _who);
 	/// Session wants to pass us a block that we might not have.
 	/// @returns true if we didn't have it.
 	bool noteBlock(h256 _hash, bytesConstRef _data);
@@ -199,7 +202,7 @@ private:
 
 	/// Called by peer to add incoming transactions.
 	void addIncomingTransaction(bytes const& _bytes) { std::lock_guard<std::recursive_mutex> l(m_incomingLock); m_incomingTransactions.push_back(_bytes); }
-	
+
 	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
 	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
 
@@ -217,11 +220,16 @@ private:
 	virtual void onStarting() { startWorking(); }
 	virtual void onStopping() { stopWorking(); }
 
+	void readyForSync();
+	void updateGrabbing(Grabbing _g);
+
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue& m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
 	u256 m_networkId;
+
+	Grabbing m_grabbing = Grabbing::Nothing;
 
 	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;
@@ -233,7 +241,7 @@ private:
 	h256Set m_blocksOnWay;
 
 	h256 m_latestBlockSent;
-	std::set<h256> m_transactionsSent;
+	h256Set m_transactionsSent;
 };
 
 }

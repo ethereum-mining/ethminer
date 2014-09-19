@@ -70,6 +70,8 @@ public:
 	BlockChain(std::string _path, bool _killExisting = false);
 	~BlockChain();
 
+	void reopen(std::string _path, bool _killExisting = false) { close(); open(_path, _killExisting); }
+
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
@@ -84,6 +86,9 @@ public:
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	h256s import(bytes const& _block, OverlayDB const& _stateDB);
+
+	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
+	bool isKnown(h256 _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
@@ -143,6 +148,9 @@ public:
 	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
 
 private:
+	void open(std::string _path, bool _killExisting = false);
+	void close();
+
 	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
 	{
 		{

@@ -132,6 +132,7 @@
     </property>
     <addaction name="upnp"/>
     <addaction name="usePast"/>
+    <addaction name="localNetworking"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -1729,6 +1730,14 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Reserved Debug 1</string>
+   </property>
+  </action>
+  <action name="localNetworking">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable Local Addresses</string>
    </property>
   </action>
  </widget>

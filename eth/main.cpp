@@ -112,7 +112,8 @@ void help()
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-        << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "    -L,--local-networking Use peers whose addresses are local." << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
         << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
@@ -188,6 +189,7 @@ int main(int argc, char** argv)
 #endif
 	string publicIP;
 	bool upnp = true;
+	bool useLocal = false;
 	bool forceMining = false;
 	string clientName;
 
@@ -233,10 +235,12 @@ int main(int argc, char** argv)
 				upnp = false;
 			else
 			{
-				cerr << "Invalid UPnP option: " << m << endl;
+				cerr << "Invalid -n/--upnp option: " << m << endl;
 				return -1;
 			}
 		}
+		else if (arg == "-L" || arg == "--local-networking")
+			useLocal = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
@@ -256,7 +260,7 @@ int main(int argc, char** argv)
 				mining = i;
 			else
 			{
-				cerr << "Unknown mining option: " << m << endl;
+				cerr << "Unknown -m/--mining option: " << m << endl;
 				return -1;
 			}
 		}
@@ -300,7 +304,7 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
-	NetworkPreferences netPrefs(listenPort, publicIP, upnp, false);
+	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
 	web3.setIdealPeerCount(peers);
 	eth::Client& c = *web3.ethereum();
