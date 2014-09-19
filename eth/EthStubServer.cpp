@@ -146,7 +146,7 @@ std::string EthStubServer::storageAt(const std::string& _a, const std::string& x
 
 std::string EthStubServer::stateAt(const std::string& _a, const std::string& x, const std::string& s)
 {
-	return toJS(m_client.stateAt(jsToAddress(_a), jsToU256(x), std::atol(s.c_str())));
+	return toJS(ethereum().stateAt(jsToAddress(_a), jsToU256(x), std::atol(s.c_str())));
 }
 
 Json::Value EthStubServer::transact(const std::string& _aDest, const std::string& _bData, const std::string& _sec, const std::string& _xGas, const std::string& _xGasPrice, const std::string& _xValue)
