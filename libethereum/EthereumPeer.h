@@ -59,6 +59,8 @@ private:
 	void sendStatus();
 	void startInitialSync();
 
+	void tryGrabbingHashChain();
+
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
 	void ensureGettingChain();
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
@@ -72,6 +74,8 @@ private:
 	
 	unsigned m_protocolVersion;
 	u256 m_networkId;
+
+	Grabbing m_grabbing = Grabbing::State;
 
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.

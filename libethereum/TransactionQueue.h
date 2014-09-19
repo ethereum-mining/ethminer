@@ -52,6 +52,8 @@ public:
 	void setFuture(std::pair<h256, bytes> const& _t);
 	void noteGood(std::pair<h256, bytes> const& _t);
 
+	void clear() { WriteGuard l(m_lock); m_known.clear(); m_current.clear(); m_unknown.clear(); }
+
 private:
 	mutable boost::shared_mutex m_lock;							///< General lock.
 	std::set<h256> m_known;										///< Hashes of transactions in both sets.

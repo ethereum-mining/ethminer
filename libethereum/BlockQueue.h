@@ -34,7 +34,7 @@ namespace eth
 
 class BlockChain;
 
-struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 7; };
+struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 /**
@@ -63,6 +63,9 @@ public:
 
 	/// Get information on the items queued.
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
+
+	/// Clear everything.
+	void clear() { WriteGuard l(m_lock); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
 
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);

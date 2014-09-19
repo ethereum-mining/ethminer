@@ -106,7 +106,7 @@ public:
 
 	bool haveNetwork() const { return m_net.isStarted(); }
 
-	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_netPrefs = _n; if (had) startNetwork(); }
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_net.setNetworkPreferences(_n); if (had) startNetwork(); }
 
 	/// Start the network subsystem.
 	void startNetwork() { m_net.start(); }
@@ -121,7 +121,6 @@ private:
 	std::unique_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
 
 	p2p::Host m_net;								///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-	p2p::NetworkPreferences m_netPrefs;
 };
 
 

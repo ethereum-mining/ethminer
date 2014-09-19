@@ -99,7 +99,35 @@ void Client::flushTransactions()
 
 void Client::killChain()
 {
-	// TODO
+	bool wasMining = isMining();
+	if (wasMining)
+		stopMining();
+	stopWorking();
+
+	m_tq.clear();
+	m_bq.clear();
+	m_miners.clear();
+	m_preMine = State();
+	m_postMine = State();
+
+	{
+		WriteGuard l(x_stateDB);
+		m_stateDB = OverlayDB();
+		m_stateDB = State::openDB(Defaults::dbPath(), true);
+	}
+	m_bc.reopen(Defaults::dbPath(), true);
+
+	m_preMine = State(Address(), m_stateDB);
+	m_postMine = State(Address(), m_stateDB);
+
+	if (auto h = m_host.lock())
+		h->reset();
+
+	doWork();
+
+	startWorking();
+	if (wasMining)
+		startMining();
 }
 
 void Client::clearPending()

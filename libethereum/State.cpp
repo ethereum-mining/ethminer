@@ -152,8 +152,13 @@ State& State::operator=(State const& _s)
 	m_currentBlock = _s.m_currentBlock;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
+	m_lastTx = _s.m_lastTx;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
+}
+
+State::~State()
+{
 }
 
 struct CachedAddressState
