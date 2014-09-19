@@ -125,6 +125,8 @@ void Client::killChain()
 
 	doWork();
 
+	setMiningThreads(0);
+
 	startWorking();
 	if (wasMining)
 		startMining();
