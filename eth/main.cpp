@@ -307,10 +307,13 @@ int main(int argc, char** argv)
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
 	web3.setIdealPeerCount(peers);
-	eth::Client& c = *web3.ethereum();
+	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
 
-	c.setForceMining(forceMining);
-	c.setAddress(coinbase);
+	if (c)
+	{
+		c->setForceMining(forceMining);
+		c->setAddress(coinbase);
+	}
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
@@ -373,19 +376,19 @@ int main(int argc, char** argv)
 			{
 				web3.stopNetwork();
 			}
-			else if (cmd == "minestart")
+			else if (c && cmd == "minestart")
 			{
-				c.startMining();
+				c->startMining();
 			}
-			else if (cmd == "minestop")
+			else if (c && cmd == "minestop")
 			{
-				c.stopMining();
+				c->stopMining();
 			}
-			else if (cmd == "mineforce")
+			else if (c && cmd == "mineforce")
 			{
 				string enable;
 				iss >> enable;
-				c.setForceMining(isTrue(enable));
+				c->setForceMining(isTrue(enable));
 			}
 			else if (cmd == "verbosity")
 			{
@@ -425,9 +428,9 @@ int main(int argc, char** argv)
 			{
 				cout << "Secret Key: " << toHex(us.secret().asArray()) << endl;
 			}
-			else if (cmd == "block")
+			else if (c && cmd == "block")
 			{
-				cout << "Current block: " << c.blockChain().details().number << endl;
+				cout << "Current block: " <<c->blockChain().details().number << endl;
 			}
 			else if (cmd == "peers")
 			{
@@ -436,13 +439,13 @@ int main(int argc, char** argv)
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
 			}
-			else if (cmd == "balance")
+			else if (c && cmd == "balance")
 			{
-				cout << "Current balance: " << formatBalance(c.balanceAt(us.address())) << " = " << c.balanceAt(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance( c->balanceAt(us.address())) << " = " <<c->balanceAt(us.address()) << " wei" << endl;
 			}
-			else if (cmd == "transact")
+			else if (c && cmd == "transact")
 			{
-				auto const& bc = c.blockChain();
+				auto const& bc =c->blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
@@ -487,35 +490,35 @@ int main(int argc, char** argv)
 					{
 						Secret secret = h256(fromHex(sechex));
 						Address dest = h160(fromHex(hexAddr));
-						c.transact(secret, amount, dest, data, gas, gasPrice);
+						c->transact(secret, amount, dest, data, gas, gasPrice);
 					}
 				}
 				else
 					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
-			else if (cmd == "listContracts")
+			else if (c && cmd == "listContracts")
 			{
-				auto acs = c.addresses();
+				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if (c.codeAt(i, 0).size())
+					if ( c->codeAt(i, 0).size())
 					{
-						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
+						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
 			}
-			else if (cmd == "listAccounts")
+			else if (c && cmd == "listAccounts")
 			{
-				auto acs = c.addresses();
+				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if (c.codeAt(i, 0).empty())
+					if ( c->codeAt(i, 0).empty())
 					{
-						ss = toString(i) + " : " + toString(c.balanceAt(i)) + " [" + toString((unsigned)c.countAt(i)) + "]";
+						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
 			}
-			else if (cmd == "send")
+			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
 				{
@@ -531,21 +534,21 @@ int main(int argc, char** argv)
 					}
 					else 
 					{
-						auto const& bc = c.blockChain();
+						auto const& bc =c->blockChain();
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
 						u256 minGas = (u256)Client::txGas(0, 0);
 						Address dest = h160(fromHex(hexAddr));
-						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+						c->transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 					}
 				} 
 				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
 			}
-			else if (cmd == "contract")
+			else if (c && cmd == "contract")
 			{
-				auto const& bc = c.blockChain();
+				auto const& bc =c->blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
@@ -582,12 +585,12 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c.transact(us.secret(), endowment, init, gas, gasPrice);
+						c->transact(us.secret(), endowment, init, gas, gasPrice);
 				} 
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
-			else if (cmd == "dumptrace")
+			else if (c && cmd == "dumptrace")
 			{
 				unsigned block;
 				unsigned index;
@@ -597,7 +600,7 @@ int main(int argc, char** argv)
 				ofstream f;
 				f.open(filename);
 
-				dev::eth::State state = c.state(index + 1, c.blockChain().numberHash(block));
+				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
 					Executive e(state);
@@ -642,7 +645,7 @@ int main(int argc, char** argv)
 					e.finalize(oof);
 				}
 			}
-			else if (cmd == "inspect")
+			else if (c && cmd == "inspect")
 			{
 				string rechex;
 				iss >> rechex;
@@ -656,10 +659,10 @@ int main(int argc, char** argv)
 
 					try
 					{
-						auto storage = c.storageAt(h, 0);
+						auto storage =c->storageAt(h, 0);
 						for (auto const& i: storage)
 							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble(c.codeAt(h, 0)) << endl;
+						s << endl << disassemble( c->codeAt(h, 0)) << endl;
 
 						string outFile = getDataDir() + "/" + rechex + ".evm";
 						ofstream ofs;
@@ -744,19 +747,21 @@ int main(int argc, char** argv)
 			jsonrpcServer->StopListening();
 #endif
 	}
-	else
+	else if (c)
 	{
-		unsigned n = c.blockChain().details().number;
+		unsigned n =c->blockChain().details().number;
 		if (mining)
-			c.startMining();
+			c->startMining();
 		while (true)
 		{
-			if (c.isMining() && c.blockChain().details().number - n == mining)
-				c.stopMining();
+			if ( c->isMining() &&c->blockChain().details().number - n == mining)
+				c->stopMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
-
+	else
+		while (true)
+			this_thread::sleep_for(chrono::milliseconds(1000));
 
 	return 0;
 }
