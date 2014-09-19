@@ -4,13 +4,13 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 link_directories(../libethcore)
-link_directories(../libethereum)
+link_directories(../libwebthree)
 
 set(EXECUTABLE eth)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
-target_link_libraries(${EXECUTABLE} ethereum)
+target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
 if(MINIUPNPC_LS)

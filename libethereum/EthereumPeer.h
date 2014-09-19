@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 #include <libdevcore/RLP.h>
+#include <libdevcore/Guards.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
@@ -58,6 +59,8 @@ private:
 	void sendStatus();
 	void startInitialSync();
 
+	void tryGrabbingHashChain();
+
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
 	void ensureGettingChain();
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
@@ -72,6 +75,8 @@ private:
 	unsigned m_protocolVersion;
 	u256 m_networkId;
 
+	Grabbing m_grabbing = Grabbing::State;
+
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
 	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
@@ -82,6 +87,7 @@ private:
 
 	bool m_requireTransactions;
 
+	Mutex x_knownBlocks;
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
 	std::mutex x_knownTransactions;

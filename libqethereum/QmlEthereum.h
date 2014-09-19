@@ -23,8 +23,8 @@ Q_DECLARE_METATYPE(dev::u256)
 Q_DECLARE_METATYPE(dev::Address)
 Q_DECLARE_METATYPE(dev::Secret)
 Q_DECLARE_METATYPE(dev::KeyPair)
-Q_DECLARE_METATYPE(QmlAccount*)
-Q_DECLARE_METATYPE(QmlEthereum*)
+//Q_DECLARE_METATYPE(QmlAccount*)
+//Q_DECLARE_METATYPE(QmlEthereum*)
 
 class QmlU256Helper: public QObject
 {
@@ -75,7 +75,7 @@ public:
 	Q_INVOKABLE QString stringOf(dev::Address _a) const { return QString::fromStdString(dev::toHex(_a.asArray())); }
 	Q_INVOKABLE QString toAbridged(dev::Address _a) const { return QString::fromStdString(_a.abridged()); }
 };
-
+#if 0
 class QmlAccount: public QObject
 {
 	Q_OBJECT
@@ -155,7 +155,7 @@ private:
 	Q_PROPERTY(bool listening READ isListening WRITE setListening)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining)
 };
-
+#endif
 #if 0
 template <class T> T to(QVariant const& _s) { if (_s.type() != QVariant::String) return T(); auto s = _s.toString().toLatin1(); assert(s.size() == sizeof(T)); return *(T*)s.data(); }
 template <class T> QVariant toQJS(T const& _s) { QLatin1String ret((char*)&_s, sizeof(T)); assert(QVariant(QString(ret)).toString().toLatin1().size() == sizeof(T)); assert(*(T*)(QVariant(QString(ret)).toString().toLatin1().data()) == _s); return QVariant(QString(ret)); }
