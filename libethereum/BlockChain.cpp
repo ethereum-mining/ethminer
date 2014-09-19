@@ -460,7 +460,7 @@ bool BlockChain::isKnown(h256 _hash) const
 	}
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
-	return d.size();
+	return !!d.size();
 }
 
 bytes BlockChain::block(h256 _hash) const
