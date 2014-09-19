@@ -29,6 +29,7 @@
 #include <utility>
 #include <thread>
 #include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
 #include "HostCapability.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
@@ -41,22 +42,28 @@ class RLPStream;
 namespace p2p
 {
 
+struct NetworkPreferences
+{
+	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), publicIP(i), upnp(u), localNetworking(l) {}
+
+	unsigned short listenPort = 30303;
+	std::string publicIP;
+	bool upnp = true;
+	bool localNetworking = false;
+};
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  */
-class Host
+class Host: public Worker
 {
 	friend class Session;
 	friend class HostCapabilityFace;
 
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, unsigned short _port, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
-	/// Start server, listening for connections on a system-assigned port.
-	Host(std::string const& _clientVersion, std::string const& _publicAddress = std::string(), bool _upnp = true, bool _localNetworking = false);
-	/// Start server, but don't listen.
-	Host(std::string const& _clientVersion);
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bool _start = false);
 
 	/// Will block on network process events.
 	virtual ~Host();
@@ -77,11 +84,6 @@ public:
 	/// Connect to a peer explicitly.
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
-
-	/// Conduct I/O, polling, syncing, whatever.
-	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
-	/// This won't touch alter the blockchain.
-	void process();
 
 	/// @returns true iff we have the a peer of the given id.
 	bool havePeer(h512 _id) const;
@@ -107,11 +109,17 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restorePeers(bytesConstRef _b);
 
+	void setNetworkPreferences(NetworkPreferences const& _p) { stop(); m_netPrefs = _p; start(); }
+
+	void start();
+	void stop();
+	bool isStarted() const { return isWorking(); }
+
 	h512 id() const { return m_id; }
 
 	void registerPeer(std::shared_ptr<Session> _s, std::vector<std::string> const& _caps);
 
-protected:
+private:
 	/// Called when the session has provided us with a new peer we can connect to.
 	void noteNewPeers() {}
 
@@ -123,12 +131,19 @@ protected:
 	void growPeers();
 	void prunePeers();
 
+	/// Conduct I/O, polling, syncing, whatever.
+	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
+	/// This won't touch alter the blockchain.
+	virtual void doWork();
+
 	std::map<h512, bi::tcp::endpoint> potentialPeers();
 
 	std::string m_clientVersion;
 
-	unsigned short m_listenPort;
-	bool m_localNetworking = false;
+	NetworkPreferences m_netPrefs;
+
+	static const int NetworkStopped = -1;
+	int m_listenPort = NetworkStopped;
 
 	ba::io_service m_ioService;
 	bi::tcp::acceptor m_acceptor;

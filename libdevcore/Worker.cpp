@@ -14,50 +14,50 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file peer.cpp
+/** @file Worker.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Peer Network test functions.
  */
+
+#include "Worker.h"
 
 #include <chrono>
 #include <thread>
-#include <libp2p/Host.h>
+#include "Log.h"
 using namespace std;
 using namespace dev;
-using namespace dev::p2p;
 
-int peerTest(int argc, char** argv)
+void Worker::startWorking()
 {
-	short listenPort = 30303;
-	string remoteHost;
-	short remotePort = 30303;
-
-	for (int i = 1; i < argc; ++i)
+	cdebug << "startWorking for thread" << m_name;
+	Guard l(x_work);
+	if (m_work)
+		return;
+	cdebug << "Spawning" << m_name;
+	m_stop = false;
+	m_work.reset(new thread([&]()
 	{
-		string arg = argv[i];
-		if (arg == "-l" && i + 1 < argc)
-			listenPort = (short)atoi(argv[++i]);
-		else if (arg == "-r" && i + 1 < argc)
-			remoteHost = argv[++i];
-		else if (arg == "-p" && i + 1 < argc)
-			remotePort = (short)atoi(argv[++i]);
-		else
-			remoteHost = argv[i];
-	}
+		setThreadName(m_name.c_str());
+		while (!m_stop)
+		{
+			this_thread::sleep_for(chrono::milliseconds(1));
+			doWork();
+		}
+		cdebug << "Finishing up worker thread";
+		doneWorking();
+	}));
+}
 
-	Host ph("Test", NetworkPreferences(listenPort));
-
-	if (!remoteHost.empty())
-		ph.connect(remoteHost, remotePort);
-
-	for (int i = 0; ; ++i)
-	{
-		this_thread::sleep_for(chrono::milliseconds(100));
-		if (!(i % 10))
-			ph.pingAll();
-	}
-
-	return 0;
+void Worker::stopWorking()
+{
+	cdebug << "stopWorking for thread" << m_name;
+	Guard l(x_work);
+	if (!m_work)
+		return;
+	cdebug << "Stopping" << m_name;
+	m_stop = true;
+	m_work->join();
+	m_work.reset();
+	cdebug << "Stopped" << m_name;
 }
 

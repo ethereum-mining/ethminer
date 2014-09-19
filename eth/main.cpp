@@ -33,6 +33,7 @@
 #include <libevmface/Instruction.h>
 #include <libevm/VM.h>
 #include <libethereum/All.h>
+#include <libwebthree/WebThree.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -43,6 +44,7 @@
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
+using namespace dev::p2p;
 using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
@@ -110,7 +112,8 @@ void help()
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-        << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "    -L,--local-networking Use peers whose addresses are local." << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
         << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
@@ -186,6 +189,7 @@ int main(int argc, char** argv)
 #endif
 	string publicIP;
 	bool upnp = true;
+	bool useLocal = false;
 	bool forceMining = false;
 	string clientName;
 
@@ -231,10 +235,12 @@ int main(int argc, char** argv)
 				upnp = false;
 			else
 			{
-				cerr << "Invalid UPnP option: " << m << endl;
+				cerr << "Invalid -n/--upnp option: " << m << endl;
 				return -1;
 			}
 		}
+		else if (arg == "-L" || arg == "--local-networking")
+			useLocal = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
@@ -254,7 +260,7 @@ int main(int argc, char** argv)
 				mining = i;
 			else
 			{
-				cerr << "Unknown mining option: " << m << endl;
+				cerr << "Unknown -m/--mining option: " << m << endl;
 				return -1;
 			}
 		}
@@ -296,22 +302,25 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-
-	c.setForceMining(true);
-
 	cout << credits();
 
+	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
+	web3.setIdealPeerCount(peers);
+	eth::Client& c = *web3.ethereum();
+
 	c.setForceMining(forceMining);
+	c.setAddress(coinbase);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
-	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	web3.startNetwork();
+	web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -349,20 +358,20 @@ int main(int argc, char** argv)
 			iss >> cmd;
 			if (cmd == "netstart")
 			{
-				unsigned port;
-				iss >> port;
-				c.startNetwork((short)port);
+				iss >> netPrefs.listenPort;
+				web3.setNetworkPreferences(netPrefs);
+				web3.startNetwork();
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
 				unsigned port;
 				iss >> addr >> port;
-				c.connect(addr, (short)port);
+				web3.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{
-				c.stopNetwork();
+				web3.stopNetwork();
 			}
 			else if (cmd == "minestart")
 			{
@@ -395,7 +404,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
@@ -422,7 +431,7 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "peers")
 			{
-				for (auto it: c.peers())
+				for (auto it: web3.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
@@ -742,7 +751,7 @@ int main(int argc, char** argv)
 			c.startMining();
 		while (true)
 		{
-			if (c.blockChain().details().number - n == mining)
+			if (c.isMining() && c.blockChain().details().number - n == mining)
 				c.stopMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
