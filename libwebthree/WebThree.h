@@ -66,7 +66,7 @@ class WebThreeDirect
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
 	/// ethereum() may be safely static_cast()ed to a eth::Client*.
-	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, unsigned short _listenPort = 30303, std::string const& _publicIP = std::string(), bool _upnp = true, dev::u256 _networkId = 0, bool _localNetworking = false);
+	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences());
 
 	/// Destructor.
 	~WebThreeDirect();
@@ -104,25 +104,23 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
 
+	bool haveNetwork() const { return m_net.isStarted(); }
+
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_net.setNetworkPreferences(_n); if (had) startNetwork(); }
+
 	/// Start the network subsystem.
-	void startNetwork() { setIdealPeerCount(5); }
+	void startNetwork() { m_net.start(); }
 
 	/// Stop the network subsystem.
-	void stopNetwork() { setIdealPeerCount(0); }
+	void stopNetwork() { m_net.stop(); }
 
 private:
-	/// Do some work on the network.
-	void workNet();
-
 	std::string m_clientVersion;					///< Our end-application client's name/version.
 
 	std::unique_ptr<eth::Client> m_ethereum;		///< Main interface for Ethereum ("eth") protocol.
 	std::unique_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
 
 	p2p::Host m_net;								///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-	std::unique_ptr<std::thread> m_work;			///< The network thread.
-	mutable boost::shared_mutex x_work;				///< Lock for the network existance.
-	std::atomic<WorkState> m_workState;
 };
 
 
@@ -137,7 +135,7 @@ class RPCMaster {};
 class EthereumSlave: public eth::Interface
 {
 public:
-	EthereumSlave(RPCSlave* _c) {}
+	EthereumSlave(RPCSlave*) {}
 
 	// TODO: implement all of the virtuals with the RLPClient link.
 };
@@ -145,7 +143,7 @@ public:
 class EthereumMaster
 {
 public:
-	EthereumMaster(RPCMaster* _m) {}
+	EthereumMaster(RPCMaster*) {}
 
 	// TODO: implement the master-end of whatever the RLPClient link will send over.
 };
@@ -155,7 +153,7 @@ public:
 class WhisperSlave: public shh::Interface
 {
 public:
-	WhisperSlave(RPCSlave* _c) {}
+	WhisperSlave(RPCSlave*) {}
 
 	// TODO: implement all of the virtuals with the RLPClient link.
 };
@@ -163,7 +161,7 @@ public:
 class WhisperMaster
 {
 public:
-	WhisperMaster(RPCMaster* _m) {}
+	WhisperMaster(RPCMaster*) {}
 
 	// TODO: implement the master-end of whatever the RLPClient link will send over.
 };

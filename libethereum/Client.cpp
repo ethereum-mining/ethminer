@@ -53,94 +53,104 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
-	m_clientVersion(_clientVersion),
-	m_vc(_dbPath),
-	m_bc(_dbPath, !m_vc.ok() || _forceClean),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
-	m_preMine(_us, m_stateDB),
-	m_postMine(_us, m_stateDB)
-{
-	setMiningThreads();
-	if (_dbPath.size())
-		Defaults::setDBPath(_dbPath);
-	m_vc.setOk();
-	work();
-}
-
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId):
+	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
-	m_extHost = _extNet->registerCapability(new EthereumHost(m_bc, _networkId));
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-//	setMiningThreads();
+	setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-	work();
+	doWork();
+
+	startWorking();
 }
 
 Client::~Client()
 {
-	if (m_work)
-	{
-		if (m_workState.load(std::memory_order_acquire) == Active)
-			m_workState.store(Deleting, std::memory_order_release);
-		while (m_workState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_work->join();
-		m_work.reset(nullptr);
-	}
-	stopNetwork();
+	stopWorking();
 }
 
-void Client::ensureWorking()
+void Client::setNetworkId(u256 _n)
 {
-	static const char* c_threadName = "eth";
+	if (auto h = m_host.lock())
+		h->setNetworkId(_n);
+}
 
-	if (!m_work)
-		m_work.reset(new thread([&]()
-		{
-			setThreadName(c_threadName);
-			m_workState.store(Active, std::memory_order_release);
-			while (m_workState.load(std::memory_order_acquire) != Deleting)
-				work();
-			m_workState.store(Deleted, std::memory_order_release);
-
-			// Synchronise the state according to the head of the block chain.
-			// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-			WriteGuard l(x_stateDB);
-			m_preMine.sync(m_bc);
-			m_postMine = m_preMine;
-		}));
+void Client::doneWorking()
+{
+	// Synchronise the state according to the head of the block chain.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+	WriteGuard l(x_stateDB);
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
 }
 
 void Client::flushTransactions()
 {
-	work();
+	doWork();
+}
+
+void Client::killChain()
+{
+	bool wasMining = isMining();
+	if (wasMining)
+		stopMining();
+	stopWorking();
+
+	m_tq.clear();
+	m_bq.clear();
+	m_miners.clear();
+	m_preMine = State();
+	m_postMine = State();
+
+	{
+		WriteGuard l(x_stateDB);
+		m_stateDB = OverlayDB();
+		m_stateDB = State::openDB(Defaults::dbPath(), true);
+	}
+	m_bc.reopen(Defaults::dbPath(), true);
+
+	m_preMine = State(Address(), m_stateDB);
+	m_postMine = State(Address(), m_stateDB);
+
+	if (auto h = m_host.lock())
+		h->reset();
+
+	doWork();
+
+	setMiningThreads(0);
+
+	startWorking();
+	if (wasMining)
+		startMining();
 }
 
 void Client::clearPending()
 {
-	WriteGuard l(x_stateDB);
-	if (!m_postMine.pending().size())
-		return;
 	h256Set changeds;
-	for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-		appendFromNewPending(m_postMine.bloom(i), changeds);
-	changeds.insert(PendingChangedFilter);
-	m_postMine = m_preMine;
+	{
+		WriteGuard l(x_stateDB);
+		if (!m_postMine.pending().size())
+			return;
+		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
+			appendFromNewPending(m_postMine.bloom(i), changeds);
+		changeds.insert(PendingChangedFilter);
+		m_postMine = m_preMine;
+	}
 
-	if (!m_extHost.lock())
 	{
 		ReadGuard l(x_miners);
 		for (auto& m: m_miners)
 			m.noteStateChange();
 	}
+
 	noteChanged(changeds);
 }
 
@@ -211,111 +221,10 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 			o_changed.insert(i.first);
 }
 
-void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp, u256 _networkId)
-{
-	static const char* c_threadName = "net";
-
-	{
-		UpgradableGuard l(x_net);
-		if (m_net.get())
-			return;
-		{
-			UpgradeGuard ul(l);
-
-			if (!m_workNet)
-				m_workNet.reset(new thread([&]()
-				{
-					setThreadName(c_threadName);
-					m_workNetState.store(Active, std::memory_order_release);
-					while (m_workNetState.load(std::memory_order_acquire) != Deleting)
-						workNet();
-					m_workNetState.store(Deleted, std::memory_order_release);
-				}));
-
-			if (!m_extHost.lock())
-			{
-				try
-				{
-					m_net.reset(new Host(m_clientVersion, _listenPort, _publicIP, _upnp));
-				}
-				catch (std::exception const&)
-				{
-					// Probably already have the port open.
-					cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-					m_net.reset(new Host(m_clientVersion, 0, _publicIP, _upnp));
-				}
-				if (_mode == NodeMode::Full)
-					m_net->registerCapability(new EthereumHost(m_bc, _networkId));
-			}
-		}
-		m_net->setIdealPeerCount(_peers);
-	}
-
-	if (!m_extHost.lock())
-		if (_seedHost.size())
-			connect(_seedHost, _port);
-
-	ensureWorking();
-}
-
-void Client::stopNetwork()
-{
-	UpgradableGuard l(x_net);
-
-	if (m_workNet)
-	{
-		if (m_workNetState.load(std::memory_order_acquire) == Active)
-			m_workNetState.store(Deleting, std::memory_order_release);
-		while (m_workNetState.load(std::memory_order_acquire) != Deleted)
-			this_thread::sleep_for(chrono::milliseconds(10));
-		m_workNet->join();
-	}
-	if (m_net)
-	{
-		UpgradeGuard ul(l);
-		m_net.reset(nullptr);
-		m_workNet.reset(nullptr);
-	}
-}
-
-std::vector<PeerInfo> Client::peers()
-{
-	ReadGuard l(x_net);
-	return m_net ? m_net->peers() : std::vector<PeerInfo>();
-}
-
-size_t Client::peerCount() const
-{
-	ReadGuard l(x_net);
-	return m_net ? m_net->peerCount() : 0;
-}
-
-void Client::setIdealPeerCount(size_t _n) const
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->setIdealPeerCount(_n);
-}
-
-bytes Client::savePeers()
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->savePeers();
-	return bytes();
-}
-
-void Client::restorePeers(bytesConstRef _saved)
-{
-	ReadGuard l(x_net);
-	if (m_net)
-		return m_net->restorePeers(_saved);
-}
-
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 if (!m_extHost.lock())
+	 if (!m_host.lock())
 	 {
 		 ReadGuard l(x_miners);
 		 for (auto& m: m_miners)
@@ -323,19 +232,8 @@ void Client::setForceMining(bool _enable)
 	 }
 }
 
-void Client::connect(std::string const& _seedHost, unsigned short _port)
-{
-	ReadGuard l(x_net);
-	if (!m_net.get())
-		return;
-	m_net->connect(_seedHost, _port);
-}
-
 void Client::setMiningThreads(unsigned _threads)
 {
-	if (m_extHost.lock())
-		return;
-
 	stopMining();
 
 	auto t = _threads ? _threads : thread::hardware_concurrency();
@@ -350,8 +248,6 @@ void Client::setMiningThreads(unsigned _threads)
 MineProgress Client::miningProgress() const
 {
 	MineProgress ret;
-	if (m_extHost.lock())
-		return ret;
 	ReadGuard l(x_miners);
 	for (auto& m: m_miners)
 		ret.combine(m.miningProgress());
@@ -361,8 +257,6 @@ MineProgress Client::miningProgress() const
 std::list<MineInfo> Client::miningHistory()
 {
 	std::list<MineInfo> ret;
-	if (m_extHost.lock())
-		return ret;
 
 	ReadGuard l(x_miners);
 	if (m_miners.empty())
@@ -404,7 +298,7 @@ void Client::setupState(State& _s)
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	ensureWorking();
+	startWorking();
 
 	Transaction t;
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
@@ -446,7 +340,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
-	ensureWorking();
+	startWorking();
 
 	Transaction t;
 	{
@@ -466,47 +360,18 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
-	ensureWorking();
+	startWorking();
 
 	m_tq.attemptImport(_rlp);
 }
 
-void Client::workNet()
-{
-	// Process network events.
-	// Synchronise block chain with network.
-	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	{
-		ReadGuard l(x_net);
-		if (m_net)
-		{
-			cwork << "NETWORK";
-			m_net->process();	// must be in guard for now since it uses the blockchain.
-
-			// returns h256Set as block hashes, once for each block that has come in/gone out.
-			if (m_net->cap<EthereumHost>())
-			{
-				cwork << "NET <==> TQ ; CHAIN ==> NET ==> BQ";
-				m_net->cap<EthereumHost>()->sync(m_tq, m_bq);
-				cwork << "TQ:" << m_tq.items() << "; BQ:" << m_bq.items();
-			}
-		}
-	}
-
-	if (auto h = m_extHost.lock())
-		h->sync(m_tq, m_bq);
-
-	this_thread::sleep_for(chrono::milliseconds(1));
-}
-
-void Client::work()
+void Client::doWork()
 {
 	// TODO: Use condition variable rather than polling.
 
 	cworkin << "WORK";
 	h256Set changeds;
 
-	if (!m_extHost.lock())
 	{
 		ReadGuard l(x_miners);
 		for (auto& m: m_miners)
@@ -557,7 +422,8 @@ void Client::work()
 		cwork << "preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
-			cnote << "New block on chain: Restarting mining operation.";
+			if (isMining())
+				cnote << "New block on chain: Restarting mining operation.";
 			m_postMine = m_preMine;
 			rsm = true;
 			changeds.insert(PendingChangedFilter);
@@ -573,11 +439,12 @@ void Client::work()
 				appendFromNewPending(i, changeds);
 			changeds.insert(PendingChangedFilter);
 
-			cnote << "Additional transaction ready: Restarting mining operation.";
+			if (isMining())
+				cnote << "Additional transaction ready: Restarting mining operation.";
 			rsm = true;
 		}
 	}
-	if (!m_extHost.lock() && rsm)
+	if (rsm)
 	{
 		ReadGuard l(x_miners);
 		for (auto& m: m_miners)
