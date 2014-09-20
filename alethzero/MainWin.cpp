@@ -98,7 +98,7 @@ Main::Main(QWidget *parent) :
 	};
 
 #if ETH_DEBUG
-	m_servers.append("localhost:30303");
+	m_servers.append("localhost:30300");
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 

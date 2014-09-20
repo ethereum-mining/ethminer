@@ -91,8 +91,10 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
-
-		m_chain = _chain;
+		m_chain.clear();
+		m_chain.reserve(_chain.size());
+		for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
+			m_chain.push_back(*i);
 		m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
 	}
 
