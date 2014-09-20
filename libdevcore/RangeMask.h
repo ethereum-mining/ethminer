@@ -24,6 +24,7 @@
 #include <map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 namespace dev
 {
@@ -52,7 +53,7 @@ public:
 	{
 		RangeMask ret(m_all);
 		for (auto i = m_ranges.begin(); i != m_ranges.end() && _items; ++i)
-			_items -= (ret.m_ranges[i->first] = std::min(i->first + _items, i->second));
+			_items -= (ret.m_ranges[i->first] = std::min(i->first + _items, i->second)) - i->first;
 		return ret;
 	}
 
@@ -138,6 +139,16 @@ public:
 	{
 		auto it = m_ranges.lower_bound(_i);
 		return it != m_ranges.end() && it->first <= _i && it->second > _i;
+	}
+
+	bool empty() const
+	{
+		return m_ranges.empty();
+	}
+
+	void clear()
+	{
+		m_ranges.clear();
 	}
 
 	class const_iterator

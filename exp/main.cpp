@@ -19,12 +19,14 @@
  * @date 2014
  * Ethereum client.
  */
+#include <functional>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
 #include <libp2p/All.h>
 #include <libdevcore/RangeMask.h>
+#include <libethereum/DownloadMan.h>
 #include <libwhisper/WhisperPeer.h>
 using namespace std;
 using namespace dev;
@@ -34,7 +36,25 @@ using namespace dev::shh;
 
 int main()
 {
-	RangeMask<unsigned> m(0, 100);
+	DownloadMan man;
+	DownloadSub s0(&man);
+	DownloadSub s1(&man);
+	DownloadSub s2(&man);
+	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}));
+	cnote << s0.nextFetch(2);
+	cnote << s1.nextFetch(2);
+	cnote << s2.nextFetch(2);
+	s0.noteBlock(u256(0));
+	s0.doneFetch();
+	cnote << s0.nextFetch(2);
+	s1.noteBlock(u256(2));
+	s1.noteBlock(u256(3));
+	s1.doneFetch();
+	cnote << s1.nextFetch(2);
+	s0.doneFetch();
+	cnote << s0.nextFetch(2);
+
+/*	RangeMask<unsigned> m(0, 100);
 	cnote << m;
 	m += UnsignedRange(3, 10);
 	cnote << m;
@@ -45,7 +65,7 @@ int main()
 	cnote << ~m;
 	cnote << (~m).lowest(10);
 	for (auto i: (~m).lowest(10))
-		cnote << i;
+		cnote << i;*/
 	return 0;
 }
 
