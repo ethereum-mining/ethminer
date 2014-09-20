@@ -159,10 +159,11 @@ bool Session::interpret(RLP const& _r)
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+
 			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
 				goto CONTINUE;
 
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
 
 			// check that it's not us or one we already know:
 			if (id && (m_server->m_id == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
