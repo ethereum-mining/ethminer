@@ -100,6 +100,7 @@ Main::Main(QWidget *parent) :
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
+	m_web3->connect(Host::pocHost());
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
