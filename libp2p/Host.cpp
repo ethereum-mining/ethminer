@@ -77,7 +77,9 @@ Host::~Host()
 
 void Host::start()
 {
-	stop();
+	if (isWorking())
+		stop();
+
 	for (unsigned i = 0; i < 2; ++i)
 	{
 		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : m_netPrefs.listenPort);
@@ -104,6 +106,10 @@ void Host::start()
 
 	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
 	ensureAccepting();
+
+	m_incomingPeers.clear();
+	m_freePeers.clear();
+
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << m_id.abridged();
 

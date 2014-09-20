@@ -66,7 +66,7 @@ void EthereumPeer::sendStatus()
 
 void EthereumPeer::startInitialSync()
 {
-	// Grab trsansactions off them.
+	// Grab transactions off them.
 	{
 		RLPStream s;
 		prep(s).appendList(1);
@@ -102,6 +102,7 @@ void EthereumPeer::tryGrabbingHashChain()
 	{
 		clogS(NetAllDetail) << "Yes. Their chain is better.";
 
+		host()->updateGrabbing(Grabbing::Hashes);
 		m_grabbing = Grabbing::Hashes;
 		RLPStream s;
 		prep(s).appendList(3);
@@ -255,6 +256,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		if (_r.itemCount() == 1 && !m_askedBlocksChanged)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
+			m_sub.doneFetch();
 			giveUpOnFetch();
 		}
 		m_askedBlocksChanged = false;
@@ -263,6 +265,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
+			m_sub.noteBlock(h);
 			if (host()->noteBlock(h, _r[i].data()))
 				used++;
 			m_askedBlocks.erase(h);
@@ -282,12 +285,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 				if (!host()->m_chain.details(bi.parentHash) && !m_knownBlocks.count(bi.parentHash))
 				{
 					unknownParents++;
-					clogS(NetAllDetail) << "Unknown parent" << bi.parentHash << "of block" << h;
+					clogS(NetAllDetail) << "Unknown parent" << bi.parentHash.abridged() << "of block" << h.abridged();
 				}
 				else
 				{
 					knownParents++;
-					clogS(NetAllDetail) << "Known parent" << bi.parentHash << "of block" << h;
+					clogS(NetAllDetail) << "Known parent" << bi.parentHash.abridged() << "of block" << h.abridged();
 				}
 			}
 		}
@@ -323,15 +326,14 @@ void EthereumPeer::ensureGettingChain()
 
 void EthereumPeer::continueGettingChain()
 {
-	if (!m_askedBlocks.size())
-		m_askedBlocks = host()->neededBlocks(m_failedBlocks);
+	auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 
-	if (m_askedBlocks.size())
+	if (blocks.size())
 	{
 		RLPStream s;
 		prep(s);
-		s.appendList(m_askedBlocks.size() + 1) << GetBlocksPacket;
-		for (auto i: m_askedBlocks)
+		s.appendList(blocks.size() + 1) << GetBlocksPacket;
+		for (auto const& i: blocks)
 			s << i;
 		sealAndSend(s);
 	}

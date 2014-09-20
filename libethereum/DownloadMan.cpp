@@ -39,26 +39,31 @@ DownloadSub::~DownloadSub()
 	}
 }
 
-h256s DownloadSub::nextFetch(unsigned _n)
+h256Set DownloadSub::nextFetch(unsigned _n)
 {
 	Guard l(m_fetch);
 
+	if (m_remaining.size())
+		return m_remaining;
+
 	m_asked.clear();
+	m_indices.clear();
+	m_remaining.clear();
+
 	if (!m_man)
-		return h256s();
+		return h256Set();
 
 	m_asked = (~(m_man->taken() + m_attempted)).lowest(_n);
 	if (m_asked.empty())
 		m_asked = (~(m_man->taken(true) + m_attempted)).lowest(_n);
 	m_attempted += m_asked;
-	m_indices.clear();
-	h256s ret;
 	for (auto i: m_asked)
 	{
-		ret.push_back(m_man->m_chain[i]);
-		m_indices[ret.back()] = i;
+		auto x = m_man->m_chain[i];
+		m_remaining.insert(x);
+		m_indices[x] = i;
 	}
-	return ret;
+	return m_remaining;
 }
 
 void DownloadSub::noteBlock(h256 _hash)
@@ -66,5 +71,5 @@ void DownloadSub::noteBlock(h256 _hash)
 	Guard l(m_fetch);
 	if (m_man && m_indices.count(_hash))
 		m_man->m_blocksGot += m_indices[_hash];
+	m_remaining.erase(_hash);
 }
-
