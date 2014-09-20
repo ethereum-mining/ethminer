@@ -114,29 +114,17 @@ void EthereumPeer::tryGrabbingHashChain()
 
 void EthereumPeer::giveUpOnFetch()
 {
-	clogS(NetNote) << "GIVE UP FETCH; can't get" << toString(m_askedBlocks);
+	clogS(NetNote) << "GIVE UP FETCH";
 
 	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 	if (m_grabbing == Grabbing::Chain)
 	{
+		host()->noteDoneBlocks(this);
 		m_grabbing = Grabbing::Nothing;
-		host()->updateGrabbing(Grabbing::Nothing);
 	}
 
+	m_sub.doneFetch();
 	// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
-
-	if (m_askedBlocks.size())
-	{
-		Guard l (host()->x_blocksNeeded);
-		host()->m_blocksNeeded.reserve(host()->m_blocksNeeded.size() + m_askedBlocks.size());
-		for (auto i: m_askedBlocks)
-		{
-			m_failedBlocks.insert(i);
-			host()->m_blocksOnWay.erase(i);
-			host()->m_blocksNeeded.push_back(i);
-		}
-		m_askedBlocks.clear();
-	}
 }
 
 bool EthereumPeer::interpret(RLP const& _r)
@@ -253,13 +241,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreBlocks");
 
-		if (_r.itemCount() == 1 && !m_askedBlocksChanged)
+		if (_r.itemCount() == 1)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
 			m_sub.doneFetch();
 			giveUpOnFetch();
 		}
-		m_askedBlocksChanged = false;
 
 		unsigned used = 0;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -268,7 +255,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 			m_sub.noteBlock(h);
 			if (host()->noteBlock(h, _r[i].data()))
 				used++;
-			m_askedBlocks.erase(h);
 			Guard l(x_knownBlocks);
 			m_knownBlocks.insert(h);
 		}
@@ -304,21 +290,9 @@ bool EthereumPeer::interpret(RLP const& _r)
 	return true;
 }
 
-void EthereumPeer::restartGettingChain()
-{
-	if (m_askedBlocks.size())
-	{
-		m_askedBlocksChanged = true;	// So that we continue even if the Ask's reply is empty.
-		m_askedBlocks.clear();			// So that we restart once we get the Ask's reply.
-		m_failedBlocks.clear();
-	}
-	else
-		ensureGettingChain();
-}
-
 void EthereumPeer::ensureGettingChain()
 {
-	if (m_askedBlocks.size())
+	if (m_grabbing == Grabbing::ChainHelper)
 		return;	// Already asked & waiting for some.
 
 	continueGettingChain();
@@ -326,6 +300,9 @@ void EthereumPeer::ensureGettingChain()
 
 void EthereumPeer::continueGettingChain()
 {
+	if (m_grabbing != Grabbing::Chain)
+		m_grabbing = Grabbing::ChainHelper;
+
 	auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 
 	if (blocks.size())
@@ -338,9 +315,5 @@ void EthereumPeer::continueGettingChain()
 		sealAndSend(s);
 	}
 	else
-	{
-		if (m_failedBlocks.size())
-			clogS(NetMessageSummary) << "No blocks left to get. Peer doesn't seem to have" << m_failedBlocks.size() << "of our needed blocks.";
-		host()->noteDoneBlocks();
-	}
+		giveUpOnFetch();
 }

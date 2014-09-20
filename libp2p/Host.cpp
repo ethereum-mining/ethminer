@@ -456,8 +456,11 @@ void Host::growPeers()
 
 		auto x = time(0) % m_freePeers.size();
 		m_incomingPeers[m_freePeers[x]].second++;
-		connect(m_incomingPeers[m_freePeers[x]].first);
-		m_freePeers.erase(m_freePeers.begin() + x);
+		if (!m_peers.count(m_freePeers[x]))
+		{
+			connect(m_incomingPeers[m_freePeers[x]].first);
+			m_freePeers.erase(m_freePeers.begin() + x);
+		}
 	}
 }
 
