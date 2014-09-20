@@ -30,10 +30,12 @@
 #include <thread>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
+#include <libdevcore/RangeMask.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
+#include "DownloadMan.h"
 
 namespace dev
 {
@@ -45,44 +47,6 @@ namespace eth
 
 class TransactionQueue;
 class BlockQueue;
-
-#if 0
-class DownloadSub
-{
-	friend class DownloadMan;
-
-public:
-	h256s nextFetch();
-	void noteBlock(h256 _hash, bytesConstRef _data);
-
-private:
-	void resetFetch();		// Called by DownloadMan when we need to reset the download.
-
-	DownloadMan* m_man;
-
-	Mutex m_fetch;
-	h256s m_fetching;
-	h256s m_activeGet;
-	bool m_killFetch;
-	RangeMask m_attempted;
-};
-
-class DownloadMan
-{
-	friend class DownloadSub;
-
-public:
-	void resetToChain(h256s const& _chain);
-
-private:
-	void cancelFetch(DownloadSub* );
-	void noteBlock(h256 _hash, bytesConstRef _data);
-
-	h256s m_chain;
-	RangeMask m_complete;
-	std::map<DownloadSub*, UnsignedRange> m_fetching;
-};
-#endif
 
 /**
  * @brief The EthereumHost class
@@ -113,7 +77,7 @@ private:
 	/// Session has finished getting the chain of hashes.
 	void noteHaveChain(EthereumPeer* _who);
 	/// Called when the peer can no longer provide us with any needed blocks.
-	void noteDoneBlocks();
+	void noteDoneBlocks(EthereumPeer* _who);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
@@ -147,16 +111,15 @@ private:
 
 	u256 m_networkId;
 
-	Grabbing m_grabbing = Grabbing::Nothing;
+	Grabbing m_grabbing = Grabbing::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
 
 	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
 
-	mutable std::mutex x_blocksNeeded;
 	u256 m_totalDifficultyOfNeeded;
-	h256s m_blocksNeeded;
-	h256Set m_blocksOnWay;
+
+	DownloadMan m_man;
 
 	h256 m_latestBlockSent;
 	h256Set m_transactionsSent;

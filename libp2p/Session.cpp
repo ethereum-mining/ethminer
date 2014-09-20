@@ -159,13 +159,13 @@ bool Session::interpret(RLP const& _r)
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << m_id.abridged() << isPrivateAddress(endpoint().address()) << m_server->m_incomingPeers.count(id) << (m_server->m_incomingPeers.count(id) ? isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()) : -1);
+
 			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
 				goto CONTINUE;
 
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
-
 			// check that it's not us or one we already know:
-			if (id && (m_server->m_id == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
+			if (!(m_id == id && isPrivateAddress(endpoint().address()) && (!m_server->m_incomingPeers.count(id) || isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()))) && (!id || m_server->m_id == id || m_server->m_incomingPeers.count(id)))
 				goto CONTINUE;
 
 			// check that we're not already connected to addr:
@@ -180,7 +180,7 @@ bool Session::interpret(RLP const& _r)
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			m_server->m_freePeers.push_back(id);
 			m_server->noteNewPeers();
-            clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
+			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}
 		break;

@@ -15,9 +15,7 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file EthereumHost.cpp
- * @authors:
- *   Gav Wood <i@gavwood.com>
- *   Eric Lombrozo <elombrozo@gmail.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
@@ -34,6 +32,7 @@
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
 #include "EthereumPeer.h"
+#include "DownloadMan.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -54,30 +53,6 @@ EthereumHost::~EthereumHost()
 {
 	for (auto const& i: peers())
 		i->cap<EthereumPeer>()->giveUpOnFetch();
-}
-
-h256Set EthereumHost::neededBlocks(h256Set const& _exclude)
-{
-	Guard l(x_blocksNeeded);
-	h256Set ret;
-	if (m_blocksNeeded.size())
-	{
-		int s = m_blocksNeeded.size() - 1;
-		for (; ret.size() < c_maxBlocksAsk && s < (int)m_blocksNeeded.size() && s >= 0; --s)
-			if (!_exclude.count(m_blocksNeeded[s]))
-			{
-				auto it = m_blocksNeeded.begin() + s;
-				ret.insert(*it);
-				m_blocksOnWay.insert(*it);
-				m_blocksNeeded.erase(it);
-			}
-	}
-	if (ret.empty())
-		for (auto i = m_blocksOnWay.begin(); ret.size() < c_maxBlocksAsk && i != m_blocksOnWay.end() && !_exclude.count(*i); ++i)
-			ret.insert(*i);
-	if (ret.size())
-		clog(NetMessageSummary) << "Asking for" << ret.size() << "blocks that we don't yet have." << m_blocksNeeded.size() << "blocks still needed," << m_blocksOnWay.size() << "total blocks on way.";
-	return ret;
 }
 
 bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
@@ -103,7 +78,7 @@ void EthereumHost::noteHavePeerState(EthereumPeer* _who)
 	if (m_grabbing != Grabbing::Nothing)
 	{
 		clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
-		_who->restartGettingChain();
+		_who->ensureGettingChain();
 		return;
 	}
 
@@ -118,7 +93,7 @@ void EthereumHost::updateGrabbing(Grabbing _g)
 		readyForSync();
 	else if (_g == Grabbing::Chain)
 		for (auto j: peers())
-			j->cap<EthereumPeer>()->restartGettingChain();
+			j->cap<EthereumPeer>()->ensureGettingChain();
 }
 
 void EthereumHost::noteHaveChain(EthereumPeer* _from)
@@ -145,13 +120,9 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << _from->m_latestHash.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
 
 	// Looks like it's the best yet for total difficulty. Set to download.
-	{
-		Guard l(x_blocksNeeded);
-		m_blocksNeeded = _from->m_neededBlocks;
-		m_blocksOnWay.clear();
-		m_totalDifficultyOfNeeded = td;
-		m_latestBlockSent = _from->m_latestHash;
-	}
+	m_man.resetToChain(_from->m_neededBlocks);
+	m_totalDifficultyOfNeeded = td;
+	m_latestBlockSent = _from->m_latestHash;
 
 	_from->m_grabbing = Grabbing::Chain;
 	updateGrabbing(Grabbing::Chain);
@@ -172,23 +143,25 @@ void EthereumHost::readyForSync()
 	clog(NetNote) << "No more peers to sync with.";
 }
 
-void EthereumHost::noteDoneBlocks()
+void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
 {
-	if (m_blocksOnWay.empty())
+	if (m_man.isComplete())
 	{
 		// Done our chain-get.
-		if (m_blocksNeeded.size())
-			clog(NetNote) << "No more blocks coming. Missing" << m_blocksNeeded.size() << "blocks.";
-		else
-			clog(NetNote) << "No more blocks to get.";
+		clog(NetNote) << "Chain download complete.";
+		updateGrabbing(Grabbing::Nothing);
+	}
+	if (_who->m_grabbing == Grabbing::Chain)
+	{
+		// Done our chain-get.
+		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
+		// TODO: note that peer is BADBADBAD!
 		updateGrabbing(Grabbing::Nothing);
 	}
 }
 
 bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
 {
-	Guard l(x_blocksNeeded);
-	m_blocksOnWay.erase(_hash);
 	if (!m_chain.details(_hash))
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
@@ -257,12 +230,12 @@ void EthereumHost::reset()
 {
 	m_grabbing = Grabbing::Nothing;
 
+	m_man.resetToChain(h256s());
+
 	m_incomingTransactions.clear();
 	m_incomingBlocks.clear();
 
 	m_totalDifficultyOfNeeded = 0;
-	m_blocksNeeded.clear();
-	m_blocksOnWay.clear();
 
 	m_latestBlockSent = h256();
 	m_transactionsSent.clear();

@@ -353,7 +353,7 @@ if (NOT LANGUAGES)
 		add_subdirectory(exp)
 	endif ()
 	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
-		#add_subdirectory(neth)			// resurect once moved over to WebThree API.
+		add_subdirectory(neth)
 	endif ()
 	if(QTQML)
 		add_definitions(-DETH_QTQML)

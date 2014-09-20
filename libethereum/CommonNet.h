@@ -66,6 +66,7 @@ enum class Grabbing
 	State,
 	Hashes,
 	Chain,
+	ChainHelper,
 	Nothing
 };
 

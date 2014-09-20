@@ -39,6 +39,7 @@
 #include <eth/CommonJS.h>
 #include <eth/CommonJS.cpp>
 #endif
+#include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -413,7 +414,9 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	WebThreeDirect web3("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath);
+	// mode doesn't work anymore: see eth for how that should be structured.
+	Client& c = *web3.ethereum();
 
 	c.setForceMining(true);
 
@@ -479,7 +482,12 @@ int main(int argc, char** argv)
 	wmove(mainwin, 1, 4);
 
 	if (!remoteHost.empty())
-		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	{
+		web3.setIdealPeerCount(peers);
+		web3.setNetworkPreferences(NetworkPreferences(listenPort, publicIP, upnp));
+		web3.startNetwork();
+		web3.connect(remoteHost, remotePort);
+	}
 	if (mining)
 		c.startMining();
 
@@ -487,7 +495,7 @@ int main(int argc, char** argv)
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -528,18 +536,19 @@ int main(int argc, char** argv)
 		{
 			unsigned port;
 			iss >> port;
-			c.startNetwork((short)port);
+			web3.setNetworkPreferences(NetworkPreferences((short)port, publicIP, upnp));
+			web3.startNetwork();
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
 			unsigned port;
 			iss >> addr >> port;
-			c.connect(addr, (short)port);
+			web3.connect(addr, (short)port);
 		}
 		else if (cmd == "netstop")
 		{
-			c.stopNetwork();
+			web3.stopNetwork();
 		}
 		else if (cmd == "minestart")
 		{
@@ -560,7 +569,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 			jsonrpcServer->setKeys({us});
 			jsonrpcServer->StartListening();
 		}
@@ -589,7 +598,7 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "peers")
 		{
-			for (auto it: c.peers())
+			for (auto it: web3.peers())
 				cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 					<< endl;
@@ -925,7 +934,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		y = 1;
-		for (PeerInfo const& i: c.peers())
+		for (PeerInfo const& i: web3.peers())
 		{
 			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
 				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
@@ -971,7 +980,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
-		mvwprintw(peerswin, 0, 9, toString(c.peers().size()).c_str());
+		mvwprintw(peerswin, 0, 9, toString(web3.peers().size()).c_str());
 
 		// Mining flag
 		if (c.isMining())
