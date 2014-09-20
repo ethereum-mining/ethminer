@@ -54,6 +54,9 @@ public:
 	/// Nothing doing here.
 	void doneFetch() { resetFetch(); }
 
+	RangeMask<unsigned> const& asked() const { return m_asked; }
+	RangeMask<unsigned> const& attemped() const { return m_attempted; }
+
 private:
 	void resetFetch()		// Called by DownloadMan when we need to reset the download.
 	{
@@ -114,6 +117,10 @@ public:
 	{
 		return m_blocksGot.full();
 	}
+
+	h256s chain() const { return m_chain; }
+	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
+	RangeMask<unsigned> blocksGot() const { return m_blocksGot; }
 
 private:
 	h256s m_chain;

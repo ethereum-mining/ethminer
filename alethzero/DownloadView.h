@@ -33,6 +33,7 @@
 
 namespace dev { namespace eth {
 struct MineInfo;
+class DownloadMan;
 }}
 
 class DownloadView: public QWidget
@@ -42,8 +43,11 @@ class DownloadView: public QWidget
 public:
 	DownloadView(QWidget* _p = nullptr);
 
+	void setDownloadMan(dev::eth::DownloadMan const* _man) { m_man = _man; }
+
 protected:
 	virtual void paintEvent(QPaintEvent*);
 
 private:
+	dev::eth::DownloadMan const* m_man = nullptr;
 };

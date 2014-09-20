@@ -69,6 +69,9 @@ public:
 
 	void reset();
 
+	DownloadMan const& downloadMan() const { return m_man; }
+	bool isSyncing() const { return m_grabbing == Grabbing::Chain; }
+
 private:
 	void noteHavePeerState(EthereumPeer* _who);
 	/// Session wants to pass us a block that we might not have.
@@ -116,8 +119,6 @@ private:
 	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;
 	std::vector<bytes> m_incomingBlocks;
-
-	u256 m_totalDifficultyOfNeeded;
 
 	DownloadMan m_man;
 

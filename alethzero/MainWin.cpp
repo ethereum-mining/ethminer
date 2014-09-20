@@ -39,6 +39,8 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
+#include <libethereum/DownloadMan.h>
+#include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
@@ -881,6 +883,9 @@ void Main::timerEvent(QTimerEvent*)
 	if (interval / 100 % 2 == 0)
 		refreshMining();
 
+	if (interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing())
+		ui->downloadView->update();
+
 	if (m_logChanged)
 	{
 		m_logLock.lock();
@@ -1478,11 +1483,15 @@ void Main::on_net_triggered()
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
 		web3()->startNetwork();
+		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 		if (m_peers.size() && ui->usePast->isChecked())
 			web3()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
+	{
+		ui->downloadView->setDownloadMan(nullptr);
 		web3()->stopNetwork();
+	}
 }
 
 void Main::on_connect_triggered()

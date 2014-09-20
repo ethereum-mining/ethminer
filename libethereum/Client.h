@@ -48,6 +48,7 @@ namespace eth
 {
 
 class Client;
+class DownloadMan;
 
 enum ClientWorkState
 {
@@ -231,6 +232,8 @@ public:
 
 	// Debug stuff:
 
+	DownloadMan const* downloadMan() const;
+	bool isSyncing() const;
 	/// Sets the network id.
 	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.

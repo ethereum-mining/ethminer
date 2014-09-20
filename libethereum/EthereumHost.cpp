@@ -107,9 +107,9 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 		return;
 	}
 
-	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain.details().totalDifficulty << "," << m_totalDifficultyOfNeeded << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain.details().totalDifficulty << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
 
-	if ((m_totalDifficultyOfNeeded && (td < m_totalDifficultyOfNeeded || (td == m_totalDifficultyOfNeeded && m_latestBlockSent == _from->m_latestHash))) || td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
+	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
 	{
 		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
 		_from->m_grabbing = Grabbing::Nothing;
@@ -121,7 +121,6 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 
 	// Looks like it's the best yet for total difficulty. Set to download.
 	m_man.resetToChain(_from->m_neededBlocks);
-	m_totalDifficultyOfNeeded = td;
 	m_latestBlockSent = _from->m_latestHash;
 
 	_from->m_grabbing = Grabbing::Chain;
@@ -234,8 +233,6 @@ void EthereumHost::reset()
 
 	m_incomingTransactions.clear();
 	m_incomingBlocks.clear();
-
-	m_totalDifficultyOfNeeded = 0;
 
 	m_latestBlockSent = h256();
 	m_transactionsSent.clear();
