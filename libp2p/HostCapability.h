@@ -48,7 +48,9 @@ public:
 protected:
 	virtual std::string name() const = 0;
 	virtual Capability* newPeerCapability(Session* _s) = 0;
-	virtual bool isInitialised() const { return true; }
+
+	virtual void onStarting() {}
+	virtual void onStopping() {}
 
 	void seal(bytes& _b);
 

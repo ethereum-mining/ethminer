@@ -14,43 +14,27 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TestHelper.cpp
- * @author Marko Simovic <markobarko@gmail.com>
+/** @file DownloadView.cpp
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "TestHelper.h"
+#include "DownloadView.h"
 
-#include <thread>
-#include <chrono>
+#include <QtWidgets>
+#include <QtCore>
 #include <libethereum/Client.h>
+#include "Grapher.h"
 
-namespace dev
-{
-namespace eth
-{
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
 
-void mine(Client& c, int numBlocks)
+DownloadView::DownloadView(QWidget* _p): QWidget(_p)
 {
-	auto startBlock = c.blockChain().details().number;
-
-	c.startMining();
-	while(c.blockChain().details().number < startBlock + numBlocks)
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	c.stopMining();
 }
 
-void connectClients(Client& c1, Client& c2)
+void DownloadView::paintEvent(QPaintEvent*)
 {
-	// TODO: Move to WebThree. eth::Client no longer handles networking.
-#if 0
-	short c1Port = 20000;
-	short c2Port = 21000;
-	c1.startNetwork(c1Port);
-	c2.startNetwork(c2Port);
-	c2.connect("127.0.0.1", c1Port);
-#endif
-}
-
-}
+	QPainter p(this);
 }

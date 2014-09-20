@@ -159,7 +159,7 @@ bool Session::interpret(RLP const& _r)
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
-			if (isPrivateAddress(peerAddress) && !m_server->m_localNetworking)
+			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
 				goto CONTINUE;
 
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
@@ -266,19 +266,19 @@ void Session::writeImpl(bytes& _buffer)
 	if (!m_socket.is_open())
 		return;
 
-	lock_guard<recursive_mutex> l(m_writeLock);
-	m_writeQueue.push_back(_buffer);
-	if (m_writeQueue.size() == 1)
+	bool doWrite = false;
+	{
+		lock_guard<mutex> l(m_writeLock);
+		m_writeQueue.push_back(_buffer);
+		doWrite = (m_writeQueue.size() == 1);
+	}
+
+	if (doWrite)
 		write();
 }
 
 void Session::write()
 {
-//	cerr << (void*)this << " write" << endl;
-	lock_guard<recursive_mutex> l(m_writeLock);
-	if (m_writeQueue.empty())
-		return;
-	
 	const bytes& bytes = m_writeQueue[0];
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
@@ -290,12 +290,16 @@ void Session::write()
 		{
 			cwarn << "Error sending: " << ec.message();
 			dropped();
+			return;
 		}
 		else
 		{
+			lock_guard<mutex> l(m_writeLock);
 			m_writeQueue.pop_front();
-			write();
+			if (m_writeQueue.empty())
+				return;
 		}
+		write();
 	});
 }
 

@@ -25,6 +25,7 @@ var spec = [
             { "method": "peerCount", "params": null, "order": [], "returns" : 0 },
             { "method": "balanceAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
             { "method": "storageAt", "params": { "a": "", "x": "" }, "order": ["a", "x"], "returns" : "" },
+            { "method": "stateAt", "params": { "a": "", "x": "", "s": "" }, "order": ["a", "x", "s"], "returns" : "" },
             { "method": "txCountAt", "params": { "a": "" },"order": ["a"], "returns" : "" },
             { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
             { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] , "returns": "" },
@@ -70,9 +71,14 @@ window.eth = (function ethScope() {
 		var m = s.method;
 		var am = "get" + m.slice(0, 1).toUpperCase() + m.slice(1);
 		var getParams = function(a) {
-			var p = s.params ? {} : null
+			var p = s.params ? {} : null;
+			if (m == "stateAt")
+				if (a.length == 2)
+					a[2] = "0";
+				else
+					a[2] = String(a[2]);
 			for (j in s.order)
-				p[s.order[j]] = (s.order[j][0] === "b") ? a[j].unbin() : a[j]
+				p[s.order[j]] = (s.order[j][0] === "b") ? a[j].unbin() : a[j];
 			return p
 		};
 		if (m == "create" || m == "transact")
@@ -101,7 +107,7 @@ window.eth = (function ethScope() {
 		for (var c in changed)
 			m_watching[changed[c]]()
 		var that = this;
-		setTimeout(function() { that.check() }, 5000)
+		setTimeout(function() { that.check() }, 12000)
 	}
 
 	ret.watch = function(a, fx, f) {

@@ -109,6 +109,20 @@ bytes BlockChain::createGenesisBlock()
 
 BlockChain::BlockChain(std::string _path, bool _killExisting)
 {
+	// Initialise with the genesis as the last block on the longest chain.
+	m_genesisHash = BlockChain::genesis().hash;
+	m_genesisBlock = BlockChain::createGenesisBlock();
+
+	open(_path, _killExisting);
+}
+
+BlockChain::~BlockChain()
+{
+	close();
+}
+
+void BlockChain::open(std::string _path, bool _killExisting)
+{
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directories(_path);
@@ -126,10 +140,6 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 		throw DatabaseAlreadyOpen();
 	if (!m_extrasDB)
 		throw DatabaseAlreadyOpen();
-
-	// Initialise with the genesis as the last block on the longest chain.
-	m_genesisHash = BlockChain::genesis().hash;
-	m_genesisBlock = BlockChain::createGenesisBlock();
 
 	if (!details(m_genesisHash))
 	{
@@ -150,11 +160,16 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
 
-BlockChain::~BlockChain()
+void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
 	delete m_extrasDB;
 	delete m_db;
+	m_lastBlockHash = m_genesisHash;
+	m_details.clear();
+	m_blooms.clear();
+	m_traces.clear();
+	m_cache.clear();
 }
 
 template <class T, class V>
@@ -245,20 +260,22 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
-	if (details(newHash))
+	if (isKnown(newHash))
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
 
 	// Work out its number as the parent's number + 1
-	auto pd = details(bi.parentHash);
-	if (!pd)
+	if (!isKnown(bi.parentHash))
 	{
 		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
 	}
+
+	auto pd = details(bi.parentHash);
+	assert(pd);
 
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
@@ -430,6 +447,20 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 			ret.insert(sha3(i.data()));
 	}
 	return ret;
+}
+
+bool BlockChain::isKnown(h256 _hash) const
+{
+	if (_hash == m_genesisHash)
+		return true;
+	{
+		ReadGuard l(x_cache);
+		if (m_cache.count(_hash))
+			return true;
+	}
+	string d;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	return !!d.size();
 }
 
 bytes BlockChain::block(h256 _hash) const

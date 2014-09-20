@@ -74,21 +74,24 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 
 	// Check it's not in the future
 	if (bi.timestamp > (u256)time(0))
+	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
+		cblockq << "OK - queued for future.";
+	}
 	else
 	{
 		// We now know it.
-		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.details(bi.parentHash))
+		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-//			cnote << "OK - queued for future.";
+			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 		}
 		else
 		{
 			// If valid, append to blocks.
-//			cnote << "OK - ready for chain insertion.";
+			cblockq << "OK - ready for chain insertion.";
 			m_ready.push_back(_block.toBytes());
 			m_readySet.insert(h);
 
