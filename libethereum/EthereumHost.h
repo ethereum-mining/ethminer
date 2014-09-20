@@ -35,6 +35,7 @@
 #include <libp2p/Common.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
+#include "DownloadMan.h"
 
 namespace dev
 {
@@ -121,6 +122,8 @@ private:
 	h256s m_blocksNeeded;
 
 	h256Set m_blocksOnWay;
+
+	DownloadMan m_man;
 
 	h256 m_latestBlockSent;
 	h256Set m_transactionsSent;

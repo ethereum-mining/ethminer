@@ -42,7 +42,7 @@ class DownloadSub
 	friend class DownloadMan;
 
 public:
-	DownloadSub(DownloadMan* _man);
+	DownloadSub(DownloadMan& _man);
 	~DownloadSub();
 
 	/// Finished last fetch - grab the next bunch of block hashes to download.

@@ -32,6 +32,7 @@
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
+#include "DownloadMan.h"
 
 namespace dev
 {
@@ -94,6 +95,8 @@ private:
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
 	std::mutex x_knownTransactions;
+
+	DownloadSub m_sub;
 };
 
 }

@@ -37,9 +37,9 @@ using namespace dev::shh;
 int main()
 {
 	DownloadMan man;
-	DownloadSub s0(&man);
-	DownloadSub s1(&man);
-	DownloadSub s2(&man);
+	DownloadSub s0(man);
+	DownloadSub s1(man);
+	DownloadSub s2(man);
 	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}));
 	cnote << s0.nextFetch(2);
 	cnote << s1.nextFetch(2);
