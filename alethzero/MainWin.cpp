@@ -125,7 +125,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_webThree.reset(new WebThreeDirect("AlethZero", getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
