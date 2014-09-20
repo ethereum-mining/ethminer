@@ -120,6 +120,7 @@ public:
 
 	h256s chain() const { return m_chain; }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
+	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
 	RangeMask<unsigned> blocksGot() const { return m_blocksGot; }
 
 private:

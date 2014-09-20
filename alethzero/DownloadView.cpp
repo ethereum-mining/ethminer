@@ -38,7 +38,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 {
 	QPainter p(this);
 
-	if (!m_man || m_man->chain().empty())
+	if (!m_man || m_man->chain().empty() || !m_man->subCount())
 	{
 		p.fillRect(rect(), Qt::white);
 		return;
@@ -46,7 +46,13 @@ void DownloadView::paintEvent(QPaintEvent*)
 
 	p.fillRect(rect(), Qt::black);
 
-	double n = sqrt(double(rect().width()) * rect().height() / m_man->chain().size());
+
+	double ratio = (double)rect().width() / rect().height();
+	if (ratio < 1)
+		ratio = 1 / ratio;
+	double n = min(rect().width(), rect().height()) / ceil(sqrt(m_man->chain().size() / ratio));
+
+//	double n = sqrt(double(rect().width()) * rect().height() / (m_man->chain().size()));
 	QSizeF area(n, n);
 	QPointF pos(0, 0);
 
@@ -57,6 +63,14 @@ void DownloadView::paintEvent(QPaintEvent*)
 		QColor c = Qt::black;
 		if (bg.contains(i))
 			c = Qt::white;
+		unsigned h = 0;
+		unsigned dh = 360 / m_man->subCount();
+		m_man->foreachSub([&](DownloadSub const& s)
+		{
+			if (s.asked().contains(i))
+				c = QColor::fromHsv(h, 64, 128);
+			h += dh;
+		});
 		p.fillRect(QRectF(pos, area), QBrush(c));
 
 		pos.setX(pos.x() + n);

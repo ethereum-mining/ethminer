@@ -117,7 +117,7 @@ void EthereumPeer::giveUpOnFetch()
 	clogS(NetNote) << "GIVE UP FETCH";
 
 	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
-	if (m_grabbing == Grabbing::Chain)
+	if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
 	{
 		host()->noteDoneBlocks(this);
 		m_grabbing = Grabbing::Nothing;
