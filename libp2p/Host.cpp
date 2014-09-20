@@ -34,6 +34,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
+#include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
@@ -349,12 +350,20 @@ void Host::ensureAccepting()
 	}
 }
 
+string Host::pocHost()
+{
+	vector<string> strs;
+	boost::split(strs, dev::Version, boost::is_any_of("."));
+	return "poc-" + strs[1] + ".ethdev.com";
+}
+
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	try
 	{
-		// TODO: actual DNS lookup.
-		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+		bi::tcp::resolver r(m_ioService);
+		connect(r.resolve({_addr, toString(_port)})->endpoint());
+//		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
 	}
 	catch (exception const& e)
 	{

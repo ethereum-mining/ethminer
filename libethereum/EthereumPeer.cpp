@@ -35,7 +35,8 @@ using namespace p2p;
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
-	Capability(_s, _h)
+	Capability(_s, _h),
+	m_sub(host()->m_man)
 {
 	sendStatus();
 }
@@ -90,7 +91,7 @@ void EthereumPeer::tryGrabbingHashChain()
 	u256 td = max(host()->m_chain.details().totalDifficulty, host()->m_totalDifficultyOfNeeded);
 
 	clogS(NetAllDetail) << "Attempt chain-grab? Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain.details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
-	if (td > m_totalDifficulty)
+	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
 		m_grabbing = Grabbing::Nothing;
