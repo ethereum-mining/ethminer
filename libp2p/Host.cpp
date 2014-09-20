@@ -312,6 +312,7 @@ std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 		if (auto j = i.second.lock())
 		{
 			auto ep = j->endpoint();
+			cdebug << "Checking potential peer" << j->m_listenPort << j->endpoint() << isPrivateAddress(ep.address()) << ep.port() << j->m_id.abridged();
 			// Skip peers with a listen port of zero or are on a private network
 			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
 			if (peerOnNet && ep.port() && j->m_id)
