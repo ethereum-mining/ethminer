@@ -452,7 +452,6 @@ void Host::growPeers()
 				m_lastPeersRequest = chrono::steady_clock::now();
 			}
 
-
 			if (!m_accepting)
 				ensureAccepting();
 
@@ -462,10 +461,8 @@ void Host::growPeers()
 		auto x = time(0) % m_freePeers.size();
 		m_incomingPeers[m_freePeers[x]].second++;
 		if (!m_peers.count(m_freePeers[x]))
-		{
 			connect(m_incomingPeers[m_freePeers[x]].first);
-			m_freePeers.erase(m_freePeers.begin() + x);
-		}
+		m_freePeers.erase(m_freePeers.begin() + x);
 	}
 }
 
