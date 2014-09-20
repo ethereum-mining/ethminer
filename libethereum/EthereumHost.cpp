@@ -144,9 +144,12 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << _from->m_latestHash.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
 
 	// Looks like it's the best yet for total difficulty. Set to download.
+	m_man.resetToChain(_from->m_neededBlocks);
 	{
 		Guard l(x_blocksNeeded);
-		m_blocksNeeded = _from->m_neededBlocks;
+		m_blocksNeeded.clear();
+		for (auto i = _from->m_neededBlocks.rbegin(); i != _from->m_neededBlocks.rend(); ++i)
+			m_blocksNeeded.push_back(*i);
 		m_blocksOnWay.clear();
 		m_totalDifficultyOfNeeded = td;
 		m_latestBlockSent = _from->m_latestHash;
@@ -173,7 +176,7 @@ void EthereumHost::readyForSync()
 
 void EthereumHost::noteDoneBlocks()
 {
-	if (m_blocksOnWay.empty())
+	if (m_man.isComplete())
 	{
 		// Done our chain-get.
 		if (m_blocksNeeded.size())

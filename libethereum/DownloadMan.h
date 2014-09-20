@@ -46,17 +46,19 @@ public:
 	~DownloadSub();
 
 	/// Finished last fetch - grab the next bunch of block hashes to download.
-	h256s nextFetch(unsigned _n);
+	h256Set nextFetch(unsigned _n);
 
 	/// Note that we've received a particular block.
 	void noteBlock(h256 _hash);
 
-	void doneFetch() { nextFetch(0); }
+	/// Nothing doing here.
+	void doneFetch() { resetFetch(); }
 
 private:
 	void resetFetch()		// Called by DownloadMan when we need to reset the download.
 	{
 		Guard l(m_fetch);
+		m_remaining.clear();
 		m_indices.clear();
 		m_asked.clear();
 		m_attempted.clear();
@@ -65,6 +67,7 @@ private:
 	DownloadMan* m_man = nullptr;
 
 	Mutex m_fetch;
+	h256Set m_remaining;
 	std::map<h256, unsigned> m_indices;
 	RangeMask<unsigned> m_asked;
 	RangeMask<unsigned> m_attempted;
@@ -103,6 +106,11 @@ public:
 				ret += i->m_asked;
 		}
 		return ret;
+	}
+
+	bool isComplete() const
+	{
+		return m_blocksGot.full();
 	}
 
 private:

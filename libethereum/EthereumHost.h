@@ -111,7 +111,7 @@ private:
 
 	u256 m_networkId;
 
-	Grabbing m_grabbing = Grabbing::Nothing;
+	Grabbing m_grabbing = Grabbing::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
 
 	mutable std::recursive_mutex m_incomingLock;
 	std::vector<bytes> m_incomingTransactions;

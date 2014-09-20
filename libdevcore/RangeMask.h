@@ -146,6 +146,11 @@ public:
 		return m_ranges.empty();
 	}
 
+	bool full() const
+	{
+		return m_ranges.size() == 1 && m_ranges.begin()->first == m_all.first && m_ranges.begin()->second == m_all.second;
+	}
+
 	void clear()
 	{
 		m_ranges.clear();
