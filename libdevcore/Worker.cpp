@@ -40,7 +40,7 @@ void Worker::startWorking()
 		setThreadName(m_name.c_str());
 		while (!m_stop)
 		{
-			this_thread::sleep_for(chrono::milliseconds(1));
+			this_thread::sleep_for(chrono::milliseconds(100));
 			doWork();
 		}
 		cdebug << "Finishing up worker thread";
