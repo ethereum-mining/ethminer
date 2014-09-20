@@ -99,6 +99,7 @@ void help()
         << "Usage eth [OPTIONS] <remote-host>" << endl
         << "Options:" << endl
         << "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
+		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
         << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
@@ -134,17 +135,8 @@ string credits(bool _interactive = false)
 
 	if (_interactive)
 	{
-		string vs = toString(dev::Version);
-		vs = vs.substr(vs.find_first_of('.') + 1)[0];
-		int pocnumber = stoi(vs);
-		string m_servers;
-		if (pocnumber == 4)
-			m_servers = "54.72.31.55";
-		else
-			m_servers = "54.72.69.180";
-
 		cout << "Type 'netstart 30303' to start networking" << endl;
-		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+		cout << "Type 'connect " << Host::pocHost() << " 30303' to connect" << endl;
 		cout << "Type 'exit' to quit" << endl << endl;
 	}
 	return cout.str();
@@ -188,6 +180,7 @@ int main(int argc, char** argv)
 	int jsonrpc = 8080;
 #endif
 	string publicIP;
+	bool bootstrap = false;
 	bool upnp = true;
 	bool useLocal = false;
 	bool forceMining = false;
@@ -264,6 +257,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-b" || arg == "--bootstrap")
+			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
@@ -317,7 +312,11 @@ int main(int argc, char** argv)
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
-	web3.connect(remoteHost, remotePort);
+
+	if (bootstrap)
+		web3.connect(Host::pocHost());
+	if (remoteHost.size())
+		web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
 	auto_ptr<EthStubServer> jsonrpcServer;

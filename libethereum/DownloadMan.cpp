@@ -24,7 +24,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-DownloadSub::DownloadSub(DownloadMan* _man): m_man(_man)
+DownloadSub::DownloadSub(DownloadMan& _man): m_man(&_man)
 {
 	WriteGuard l(m_man->x_subs);
 	m_man->m_subs.insert(this);
