@@ -97,10 +97,10 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
-	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 #if ETH_DEBUG
 	m_servers.append("localhost:30303");
 #endif
+	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
     cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
