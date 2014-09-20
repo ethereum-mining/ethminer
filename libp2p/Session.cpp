@@ -180,7 +180,7 @@ bool Session::interpret(RLP const& _r)
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			m_server->m_freePeers.push_back(id);
 			m_server->noteNewPeers();
-            clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
+			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}
 		break;
