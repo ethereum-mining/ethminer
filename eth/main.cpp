@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 	unsigned peers = 5;
 	bool interactive = false;
 #if ETH_JSONRPC
-	int jsonrpc = 8080;
+	int jsonrpc = -1;
 #endif
 	string publicIP;
 	bool bootstrap = false;
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
 			interactive = true;
 #if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc ? jsonrpc : 8080;
+			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
