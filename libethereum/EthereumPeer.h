@@ -28,9 +28,11 @@
 #include <utility>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/RangeMask.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
+#include "DownloadMan.h"
 
 namespace dev
 {
@@ -65,8 +67,6 @@ private:
 	void ensureGettingChain();
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
 	void continueGettingChain();
-	/// Now getting a different chain so we need to make sure we restart.
-	void restartGettingChain();
 
 	void giveUpOnFetch();
 
@@ -80,10 +80,6 @@ private:
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
 	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
-	h256Set m_failedBlocks;					///< Blocks that the peer doesn't seem to have.
-
-	h256Set m_askedBlocks;					///< The blocks for which we sent the last GetBlocks for but haven't received a corresponding Blocks.
-	bool m_askedBlocksChanged = true;
 
 	bool m_requireTransactions;
 
@@ -91,6 +87,8 @@ private:
 	std::set<h256> m_knownBlocks;
 	std::set<h256> m_knownTransactions;
 	std::mutex x_knownTransactions;
+
+	DownloadSub m_sub;
 };
 
 }

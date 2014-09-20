@@ -97,26 +97,10 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
-#if 0&&ETH_DEBUG
-	m_servers.append("192.168.0.10:30301");
-#else
-    int pocnumber = QString(dev::Version).section('.', 1, 1).toInt();
-	if (pocnumber == 5)
-        m_servers.push_back("54.72.69.180:30303");
-	else if (pocnumber == 6)
-		m_servers.push_back("54.76.56.74:30303");
-	else
-	{
-		connect(&m_webCtrl, &QNetworkAccessManager::finished, [&](QNetworkReply* _r)
-		{
-			m_servers = QString::fromUtf8(_r->readAll()).split("\n", QString::SkipEmptyParts);
-		});
-		QNetworkRequest r(QUrl("http://www.ethereum.org/servers.poc" + QString::number(pocnumber) + ".txt"));
-		r.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1712.0 Safari/537.36");
-		m_webCtrl.get(r);
-		srand(time(0));
-	}
+#if ETH_DEBUG
+	m_servers.append("localhost:30300");
 #endif
+	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
     cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
@@ -141,7 +125,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_webThree.reset(new WebThreeDirect("AlethZero", getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{

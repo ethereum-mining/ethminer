@@ -82,6 +82,7 @@ public:
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(T::staticName())); } catch (...) { return nullptr; } }
 
 	/// Connect to a peer explicitly.
+	static std::string pocHost();
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
 
