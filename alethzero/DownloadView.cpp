@@ -23,7 +23,7 @@
 
 #include <QtWidgets>
 #include <QtCore>
-#include <libethereum/Client.h>
+#include <libethereum/DownloadMan.h>
 #include "Grapher.h"
 
 using namespace std;
@@ -37,4 +37,30 @@ DownloadView::DownloadView(QWidget* _p): QWidget(_p)
 void DownloadView::paintEvent(QPaintEvent*)
 {
 	QPainter p(this);
+
+	if (!m_man || m_man->chain().empty())
+	{
+		p.fillRect(rect(), Qt::white);
+		return;
+	}
+
+	p.fillRect(rect(), Qt::black);
+
+	double n = sqrt(double(rect().width()) * rect().height() / m_man->chain().size());
+	QSizeF area(n, n);
+	QPointF pos(0, 0);
+
+	auto const& bg = m_man->blocksGot();
+
+	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
+	{
+		QColor c = Qt::black;
+		if (bg.contains(i))
+			c = Qt::white;
+		p.fillRect(QRectF(pos, area), QBrush(c));
+
+		pos.setX(pos.x() + n);
+		if (pos.x() >= rect().width() - n)
+			pos = QPoint(0, pos.y() + n);
+	}
 }

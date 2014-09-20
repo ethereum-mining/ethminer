@@ -371,17 +371,22 @@ string Host::pocHost()
 
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
-	try
-	{
-		bi::tcp::resolver r(m_ioService);
-		connect(r.resolve({_addr, toString(_port)})->endpoint());
-//		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
-	}
-	catch (exception const& e)
-	{
-		// Couldn't connect
-		clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
-	}
+	for (int i = 0; i < 2; ++i)
+		try
+		{
+			if (i == 0)
+			{
+				bi::tcp::resolver r(m_ioService);
+				connect(r.resolve({_addr, toString(_port)})->endpoint());
+			}
+			else
+				connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+		}
+		catch (exception const& e)
+		{
+			// Couldn't connect
+			clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
+		}
 }
 
 void Host::connect(bi::tcp::endpoint const& _ep)

@@ -137,8 +137,10 @@ public:
 
 	bool contains(T _i) const
 	{
-		auto it = m_ranges.lower_bound(_i);
-		return it != m_ranges.end() && it->first <= _i && it->second > _i;
+		auto it = m_ranges.upper_bound(_i);
+		if (it == m_ranges.begin())
+			return false;
+		return (--it)->second > _i;
 	}
 
 	bool empty() const
@@ -155,6 +157,8 @@ public:
 	{
 		m_ranges.clear();
 	}
+
+	std::pair<T, T> const& all() const { return m_all; }
 
 	class const_iterator
 	{

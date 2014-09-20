@@ -88,9 +88,9 @@ void EthereumPeer::tryGrabbingHashChain()
 
 	h256 c = host()->m_chain.currentHash();
 	unsigned n = host()->m_chain.number();
-	u256 td = max(host()->m_chain.details().totalDifficulty, host()->m_totalDifficultyOfNeeded);
+	u256 td = host()->m_chain.details().totalDifficulty;
 
-	clogS(NetAllDetail) << "Attempt chain-grab? Latest:" << c.abridged() << ", number:" << n << ", TD: max(" << host()->m_chain.details().totalDifficulty << "," << host()->m_totalDifficultyOfNeeded << ") versus " << m_totalDifficulty;
+	clogS(NetAllDetail) << "Attempt chain-grab? Latest:" << c.abridged() << ", number:" << n << ", TD:" << td << " versus " << m_totalDifficulty;
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
@@ -233,6 +233,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 				++n;
 			}
 		}
+		sleep(1);
 		RLPStream s;
 		sealAndSend(prep(s).appendList(n + 1).append(BlocksPacket).appendRaw(rlp, n));
 		break;
