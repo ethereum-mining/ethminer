@@ -28,6 +28,7 @@
 #include <utility>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/RangeMask.h>
 #include <libethcore/CommonEth.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
@@ -84,6 +85,8 @@ private:
 
 	h256Set m_askedBlocks;					///< The blocks for which we sent the last GetBlocks for but haven't received a corresponding Blocks.
 	bool m_askedBlocksChanged = true;
+
+	RangeMask<unsigned> m_blocksAsked;
 
 	bool m_requireTransactions;
 

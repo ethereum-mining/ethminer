@@ -15,9 +15,7 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file EthereumHost.cpp
- * @authors:
- *   Gav Wood <i@gavwood.com>
- *   Eric Lombrozo <elombrozo@gmail.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
@@ -34,6 +32,7 @@
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
 #include "EthereumPeer.h"
+#include "DownloadMan.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
