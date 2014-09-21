@@ -102,7 +102,7 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration()}); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<string>()}); }
 		catch (...)
 		{
 			disconnect(BadProtocol);
