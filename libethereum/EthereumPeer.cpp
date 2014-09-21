@@ -233,7 +233,6 @@ bool EthereumPeer::interpret(RLP const& _r)
 				++n;
 			}
 		}
-		sleep(1);
 		RLPStream s;
 		sealAndSend(prep(s).appendList(n + 1).append(BlocksPacket).appendRaw(rlp, n));
 		break;
