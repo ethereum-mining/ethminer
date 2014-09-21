@@ -305,7 +305,6 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	string dbPath;
 	bool mining = false;
-	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
@@ -390,19 +389,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
-		{
-			string m = argv[++i];
-			if (m == "full")
-				mode = NodeMode::Full;
-			else if (m == "peer")
-				mode = NodeMode::PeerServer;
-			else
-			{
-				cerr << "Unknown mode: " << m << endl;
-				return -1;
-			}
-		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -415,7 +401,6 @@ int main(int argc, char** argv)
 		clientName += "/";
 
 	WebThreeDirect web3("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath);
-	// mode doesn't work anymore: see eth for how that should be structured.
 	Client& c = *web3.ethereum();
 
 	c.setForceMining(true);
