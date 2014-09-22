@@ -30,6 +30,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("procedures", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::proceduresI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
             this->bindAndAddMethod(new jsonrpc::Procedure("storageAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::storageAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"x",jsonrpc::JSON_STRING,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::stateAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "aDest",jsonrpc::JSON_STRING,"bData",jsonrpc::JSON_STRING,"sec",jsonrpc::JSON_STRING,"xGas",jsonrpc::JSON_STRING,"xGasPrice",jsonrpc::JSON_STRING,"xValue",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("txCountAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::txCountAtI);
 
@@ -120,6 +121,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->storageAt(request["a"].asString(), request["x"].asString());
         }
 
+        inline virtual void stateAtI(const Json::Value& request, Json::Value& response)
+        {
+            response = this->stateAt(request["a"].asString(), request["x"].asString(), request["s"].asString());
+        }
+
         inline virtual void transactI(const Json::Value& request, Json::Value& response) 
         {
             response = this->transact(request["aDest"].asString(), request["bData"].asString(), request["sec"].asString(), request["xGas"].asString(), request["xGasPrice"].asString(), request["xValue"].asString());
@@ -148,6 +154,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual Json::Value procedures() = 0;
         virtual std::string secretToAddress(const std::string& a) = 0;
         virtual std::string storageAt(const std::string& a, const std::string& x) = 0;
+        virtual std::string stateAt(const std::string& a, const std::string& x, const std::string& b) = 0;
         virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue) = 0;
         virtual std::string txCountAt(const std::string& a) = 0;
 

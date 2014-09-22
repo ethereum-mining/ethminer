@@ -22,12 +22,10 @@
 
 #include <chrono>
 #include <thread>
-#include <boost/filesystem/operations.hpp>
-#include <libethereum/BlockChain.h>
-#include <libethereum/PeerServer.h>
+#include <libp2p/Host.h>
 using namespace std;
-using namespace eth;
-using boost::asio::ip::tcp;
+using namespace dev;
+using namespace dev::p2p;
 
 int peerTest(int argc, char** argv)
 {
@@ -48,18 +46,16 @@ int peerTest(int argc, char** argv)
 			remoteHost = argv[i];
 	}
 
-	BlockChain ch(boost::filesystem::temp_directory_path().string());
-	PeerServer pn("Test", ch, 0, listenPort);
+	Host ph("Test", NetworkPreferences(listenPort));
 
 	if (!remoteHost.empty())
-		pn.connect(remoteHost, remotePort);
+		ph.connect(remoteHost, remotePort);
 
 	for (int i = 0; ; ++i)
 	{
 		this_thread::sleep_for(chrono::milliseconds(100));
-//		pn.sync();
 		if (!(i % 10))
-			pn.pingAll();
+			ph.pingAll();
 	}
 
 	return 0;

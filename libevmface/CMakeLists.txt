@@ -17,7 +17,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
-target_link_libraries(${EXECUTABLE} ethential)
+target_link_libraries(${EXECUTABLE} devcore)
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_thread_win32-mt-s)

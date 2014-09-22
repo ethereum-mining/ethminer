@@ -23,18 +23,18 @@
 
 #include <iostream>
 #include <jsonrpc/rpc.h>
+#include <libdevcrypto/Common.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "abstractethstubserver.h"
 #pragma GCC diagnostic pop
 
-namespace eth { class Client; }
-namespace eth { class KeyPair; }
+namespace dev { class WebThreeDirect; namespace eth { class Client; } class KeyPair; }
 
 class EthStubServer: public AbstractEthStubServer
 {
 public:
-	EthStubServer(jsonrpc::AbstractServerConnector* _conn, eth::Client& _client);
+	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
 	virtual Json::Value procedures();
 	virtual std::string balanceAt(std::string const& _a);
@@ -49,16 +49,18 @@ public:
 	virtual Json::Value keys();
 	virtual int peerCount();
 	virtual std::string storageAt(const std::string& a, const std::string& x);
+	virtual std::string stateAt(const std::string& a, const std::string& x, const std::string& s);
 	virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue);
 	virtual std::string txCountAt(const std::string& a);
 	virtual std::string secretToAddress(const std::string& a);
 	virtual Json::Value lastBlock();
 	virtual std::string lll(const std::string& s);
 	virtual Json::Value block(const std::string&);
-	void setKeys(std::vector<eth::KeyPair> _keys) { m_keys = _keys; }
+	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
-	eth::Client& m_client;
-	std::vector<eth::KeyPair> m_keys;
+	dev::eth::Client& ethereum() const;
+	dev::WebThreeDirect& m_web3;
+	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
 	Json::Value blockJson(const std::string&);
 };

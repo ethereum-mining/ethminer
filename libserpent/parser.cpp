@@ -85,8 +85,11 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
             }
             oq.push_back(tok);
         }
+        else if (toktyp == UNARY_OP) {
+            stack.push_back(tok);
+        }
         // If binary op, keep popping from stack while higher bedmas precedence
-        else if (toktyp == UNARY_OP || toktyp == BINARY_OP) {
+        else if (toktyp == BINARY_OP) {
             if (tok.val == "-" && prevtyp != ALPHANUM && prevtyp != RPAREN) {
                 oq.push_back(token("0", tok.metadata));
             }
@@ -150,10 +153,10 @@ Node treefy(std::vector<Node> stream) {
         else if (typ == RPAREN) {
             std::vector<Node> args;
             while (1) {
+                if (!oq.size()) err("Bracket without matching", tok.metadata);
                 if (toktype(oq.back()) == LPAREN) break;
                 args.push_back(oq.back());
                 oq.pop_back();
-                if (!oq.size()) err("Bracket without matching", tok.metadata);
             }
             oq.pop_back();
             args.push_back(oq.back());
@@ -239,14 +242,16 @@ int spaceCount(std::string s) {
 
 // Is this a command that takes an argument on the same line?
 bool bodied(std::string tok) {
-    return tok == "if" || tok == "elif" || tok == "while";
+    return tok == "if" || tok == "elif" || tok == "while"
+        || tok == "with" || tok == "def";
 }
 
 // Is this a command that takes an argument as a child block?
 bool childBlocked(std::string tok) {
     return tok == "if" || tok == "elif" || tok == "else"
         || tok == "code" || tok == "shared" || tok == "init"
-        || tok == "while" || tok == "repeat" || tok == "for";
+        || tok == "while" || tok == "repeat" || tok == "for"
+        || tok == "with" || tok == "def";
 }
 
 // Are the two commands meant to continue each other? 

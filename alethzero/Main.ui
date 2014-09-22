@@ -132,6 +132,7 @@
     </property>
     <addaction name="upnp"/>
     <addaction name="usePast"/>
+    <addaction name="localNetworking"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -184,7 +185,11 @@
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
-    <addaction name="clearPending"/>
+    <addaction name="forceMining"/>
+    <addaction name="turboMining"/>
+    <addaction name="enableOptimizer"/>
+    <addaction name="separator"/>
+    <addaction name="usePrivate"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Network"/>
@@ -377,18 +382,26 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QListWidget" name="log">
+      <widget class="QPlainTextEdit" name="log">
        <property name="font">
         <font>
-         <family>Monospace</family>
-         <pointsize>12</pointsize>
+         <family>Ubuntu Mono</family>
         </font>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
        </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Plain</enum>
+       </property>
+       <property name="lineWidth">
+        <number>0</number>
+       </property>
+       <property name="lineWrapMode">
+        <enum>QPlainTextEdit::NoWrap</enum>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -498,6 +511,7 @@
    <addaction name="connect"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
+   <addaction name="refresh"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget_5">
    <property name="sizePolicy">
@@ -557,13 +571,16 @@
        </widget>
        <widget class="QTextEdit" name="code">
         <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
+         <enum>Qt::ClickFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
         </property>
         <property name="lineWidth">
          <number>0</number>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
         </property>
        </widget>
       </widget>
@@ -1416,6 +1433,39 @@ font-size: 14pt</string>
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_12">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Blockchain Download</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_12">
+    <layout class="QHBoxLayout" name="horizontalLayout_8">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="DownloadView" name="downloadView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
@@ -1553,9 +1603,12 @@ font-size: 14pt</string>
     <string>Ctrl+F10</string>
    </property>
   </action>
-  <action name="clearPending">
+  <action name="forceMining">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>&amp;Clear Pending</string>
+    <string>&amp;Force Mining</string>
    </property>
   </action>
   <action name="dumpTraceStorage">
@@ -1650,6 +1703,43 @@ font-size: 14pt</string>
     <string>&amp;Pretty...</string>
    </property>
   </action>
+  <action name="refresh">
+   <property name="text">
+    <string>&amp;Refresh</string>
+   </property>
+  </action>
+  <action name="usePrivate">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Use Private Chain...</string>
+   </property>
+  </action>
+  <action name="enableOptimizer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Enable LLL &amp;Optimizer</string>
+   </property>
+  </action>
+  <action name="turboMining">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Reserved Debug 1</string>
+   </property>
+  </action>
+  <action name="localNetworking">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable Local Addresses</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -1662,6 +1752,12 @@ font-size: 14pt</string>
    <class>MiningView</class>
    <extends>QWidget</extends>
    <header>MiningView.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DownloadView</class>
+   <extends>QWidget</extends>
+   <header>DownloadView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

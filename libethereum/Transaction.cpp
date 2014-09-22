@@ -20,16 +20,17 @@
  */
 
 #include <secp256k1/secp256k1.h>
-#include <libethential/vector_ref.h>
-#include <libethential/Log.h>
+#include <libdevcore/vector_ref.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ETH_ADDRESS_DEBUG 0
 
-Transaction::Transaction(bytesConstRef _rlpData)
+Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 {
 	int field = 0;
 	RLP rlp(_rlpData);
@@ -42,6 +43,8 @@ Transaction::Transaction(bytesConstRef _rlpData)
 		value = rlp[field = 4].toInt<u256>();
 		data = rlp[field = 5].toBytes();
 		vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
+		if (_checkSender)
+			m_sender = sender();
 	}
 	catch (RLPException const&)
 	{
@@ -63,27 +66,30 @@ Address Transaction::safeSender() const noexcept
 
 Address Transaction::sender() const
 {
-	secp256k1_start();
+	if (!m_sender)
+	{
+		secp256k1_start();
 
-	h256 sig[2] = { vrs.r, vrs.s };
-	h256 msg = sha3(false);
+		h256 sig[2] = { vrs.r, vrs.s };
+		h256 msg = sha3(false);
 
-	byte pubkey[65];
-	int pubkeylen = 65;
-	if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig[0].data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
-		throw InvalidSignature();
+		byte pubkey[65];
+		int pubkeylen = 65;
+		if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig[0].data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
+			throw InvalidSignature();
 
-	// TODO: check right160 is correct and shouldn't be left160.
-	auto ret = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+		// TODO: check right160 is correct and shouldn't be left160.
+		m_sender = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 
 #if ETH_ADDRESS_DEBUG
-	cout << "---- RECOVER -------------------------------" << endl;
-	cout << "MSG: " << msg << endl;
-	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
-	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-	cout << "ADR: " << ret << endl;
+		cout << "---- RECOVER -------------------------------" << endl;
+		cout << "MSG: " << msg << endl;
+		cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
+		cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+		cout << "ADR: " << m_sender << endl;
 #endif
-	return ret;
+	}
+	return m_sender;
 }
 
 void Transaction::sign(Secret _priv)
@@ -114,7 +120,12 @@ void Transaction::sign(Secret _priv)
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
 {
 	_s.appendList((_sig ? 3 : 0) + 6);
-	_s << nonce << gasPrice << gas << receiveAddress << value << data;
+	_s << nonce << gasPrice << gas;
+	if (receiveAddress)
+		_s << receiveAddress;
+	else
+		_s << "";
+	_s << value << data;
 	if (_sig)
 		_s << vrs.v << vrs.r << vrs.s;
 }

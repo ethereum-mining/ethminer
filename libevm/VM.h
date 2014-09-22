@@ -22,14 +22,16 @@
 #pragma once
 
 #include <unordered_map>
-#include <libethential/Exceptions.h>
+#include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libevmface/Instruction.h>
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
 #include "ExtVMFace.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -39,7 +41,6 @@ class BreakPointHit: public VMException {};
 class BadInstruction: public VMException {};
 class OutOfGas: public VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
-class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -87,8 +88,10 @@ private:
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
@@ -98,7 +101,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 
 		// FEES...
 		bigint runGas = c_stepGas;
-		unsigned newTempSize = (unsigned)m_temp.size();
+		bigint newTempSize = m_temp.size();
 		switch (inst)
 		{
 		case Instruction::STOP:
@@ -126,49 +129,65 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		// These all operate on memory and therefore potentially expand it:
 		case Instruction::MSTORE:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + 32;
+			newTempSize = m_stack.back() + 32;
 			break;
 		case Instruction::MSTORE8:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + 1;
+			newTempSize = m_stack.back() + 1;
 			break;
 		case Instruction::MLOAD:
 			require(1);
-			newTempSize = (unsigned)m_stack.back() + 32;
+			newTempSize = m_stack.back() + 32;
 			break;
 		case Instruction::RETURN:
 			require(2);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::SHA3:
 			require(2);
 			runGas = c_sha3Gas;
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::CODECOPY:
 			require(3);
-			newTempSize = (unsigned)m_stack.back() + (unsigned)m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
-
+		case Instruction::EXTCODECOPY:
+			require(4);
+			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
+			break;
+			
 		case Instruction::BALANCE:
 			runGas = c_balanceGas;
 			break;
 
 		case Instruction::CALL:
 			require(7);
-			runGas = c_callGas + (unsigned)m_stack[m_stack.size() - 1];
-			newTempSize = std::max((unsigned)m_stack[m_stack.size() - 6] + (unsigned)m_stack[m_stack.size() - 7], (unsigned)m_stack[m_stack.size() - 4] + (unsigned)m_stack[m_stack.size() - 5]);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+			break;
+
+		case Instruction::CALLSTATELESS:
+			require(7);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+			break;
+
+		case Instruction::POST:
+			require(5);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]);
 			break;
 
 		case Instruction::CREATE:
 		{
 			require(3);
-			unsigned inOff = (unsigned)m_stack[m_stack.size() - 2];
-			unsigned inSize = (unsigned)m_stack[m_stack.size() - 3];
+			auto inOff = m_stack[m_stack.size() - 2];
+			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
             runGas = c_createGas;
 			break;
@@ -183,7 +202,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
 
 		if (_onOp)
-			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : 0, runGas, this, &_ext);
+			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
 		if (m_gas < runGas)
 		{
@@ -195,7 +214,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		m_gas = (u256)((bigint)m_gas - runGas);
 
 		if (newTempSize > m_temp.size())
-			m_temp.resize(newTempSize);
+			m_temp.resize((size_t)newTempSize);
 
 		// EXECUTE...
 		switch (inst)
@@ -241,9 +260,9 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		{
 			require(2);
 			auto base = m_stack.back();
-			unsigned expon = (unsigned)m_stack[m_stack.size() - 2];
+			auto expon = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
-			m_stack.back() = boost::multiprecision::pow(base, expon);
+			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
 		case Instruction::NEG:
@@ -296,7 +315,19 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		case Instruction::BYTE:
 			require(2);
-			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
+			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (unsigned)(8 * (31 - m_stack.back()))) & 0xff : 0;
+			m_stack.pop_back();
+			break;
+		case Instruction::ADDMOD:
+			require(3);
+			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) + bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		case Instruction::MULMOD:
+			require(3);
+			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		case Instruction::SHA3:
@@ -375,6 +406,26 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
+		case Instruction::EXTCODESIZE:
+			require(1);
+			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
+			break;
+		case Instruction::EXTCODECOPY:
+		{
+			require(4);
+			Address a = asAddress(m_stack.back());
+			m_stack.pop_back();
+			unsigned mf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned cf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned l = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned el = cf + l > _ext.codeAt(a).size() ? _ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - cf : l;
+			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + cf, el);
+			memset(m_temp.data() + mf + el, 0, l - el);
+			break;
+		}
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
 			break;
@@ -440,39 +491,52 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			require(1);
 			m_stack.pop_back();
 			break;
-		case Instruction::DUP:
-			require(1);
-			m_stack.push_back(m_stack.back());
-			break;
-		/*case Instruction::DUPN:
+		case Instruction::DUP1:
+		case Instruction::DUP2:
+		case Instruction::DUP3:
+		case Instruction::DUP4:
+		case Instruction::DUP5:
+		case Instruction::DUP6:
+		case Instruction::DUP7:
+		case Instruction::DUP8:
+		case Instruction::DUP9:
+		case Instruction::DUP10:
+		case Instruction::DUP11:
+		case Instruction::DUP12:
+		case Instruction::DUP13:
+		case Instruction::DUP14:
+		case Instruction::DUP15:
+		case Instruction::DUP16:
 		{
-			auto s = store(curPC + 1);
-			if (s == 0 || s > stack.size())
-				throw OperandOutOfRange(1, stack.size(), s);
-			stack.push_back(stack[stack.size() - (uint)s]);
-			nextPC = curPC + 2;
-			break;
-		}*/
-		case Instruction::SWAP:
-		{
-			require(2);
-			auto d = m_stack.back();
-			m_stack.back() = m_stack[m_stack.size() - 2];
-			m_stack[m_stack.size() - 2] = d;
+			auto n = 1 + (int)inst - (int)Instruction::DUP1;
+			require(n);
+			m_stack.push_back(m_stack[m_stack.size() - n]);
 			break;
 		}
-		/*case Instruction::SWAPN:
+		case Instruction::SWAP1:
+		case Instruction::SWAP2:
+		case Instruction::SWAP3:
+		case Instruction::SWAP4:
+		case Instruction::SWAP5:
+		case Instruction::SWAP6:
+		case Instruction::SWAP7:
+		case Instruction::SWAP8:
+		case Instruction::SWAP9:
+		case Instruction::SWAP10:
+		case Instruction::SWAP11:
+		case Instruction::SWAP12:
+		case Instruction::SWAP13:
+		case Instruction::SWAP14:
+		case Instruction::SWAP15:
+		case Instruction::SWAP16:
 		{
-			require(1);
-			auto d = stack.back();
-			auto s = store(curPC + 1);
-			if (s == 0 || s > stack.size())
-				throw OperandOutOfRange(1, stack.size(), s);
-			stack.back() = stack[stack.size() - (uint)s];
-			stack[stack.size() - (uint)s] = d;
-			nextPC = curPC + 2;
+			unsigned n = (int)inst - (int)Instruction::SWAP1 + 2;
+			require(n);
+			auto d = m_stack.back();
+			m_stack.back() = m_stack[m_stack.size() - n];
+			m_stack[m_stack.size() - n] = d;
 			break;
-		}*/
+		}
 		case Instruction::MLOAD:
 		{
 			require(1);
@@ -547,12 +611,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		}
 		case Instruction::CALL:
+		case Instruction::CALLSTATELESS:
 		{
 			require(7);
 
 			u256 gas = m_stack.back();
 			m_stack.pop_back();
-			u160 receiveAddress = asAddress(m_stack.back());
+			Address receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
 			u256 value = m_stack.back();
 			m_stack.pop_back();
@@ -569,7 +634,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp));
+				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), inst == Instruction::CALL ? receiveAddress : _ext.myAddress));
 			}
 			else
 				m_stack.push_back(0);
@@ -597,6 +662,29 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
+		case Instruction::POST:
+		{
+			require(5);
+
+			u256 gas = m_stack.back();
+			m_stack.pop_back();
+			u160 receiveAddress = asAddress(m_stack.back());
+			m_stack.pop_back();
+			u256 value = m_stack.back();
+			m_stack.pop_back();
+
+			unsigned inOff = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned inSize = (unsigned)m_stack.back();
+			m_stack.pop_back();
+
+			if (_ext.balance(_ext.myAddress) >= value)
+			{
+				_ext.subBalance(value);
+				_ext.post(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas);
+			}
+			break;
+		}
 		default:
 			throw BadInstruction();
 		}
@@ -605,4 +693,4 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		throw StepsDone();
 	return bytesConstRef();
 }
-
+}

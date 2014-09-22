@@ -27,36 +27,38 @@
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
-#include <libethential/RLP.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libqethereum/QEthereum.h>
+#include <libwebthree/WebThree.h>
 
 namespace Ui {
 class Main;
 }
 
-namespace eth {
+namespace dev { namespace eth {
 class Client;
 class State;
-}
+class MessageFilter;
+}}
 
 class QQuickView;
 
 struct WorldState
 {
 	uint64_t steps;
-	eth::Address cur;
-	eth::u256 curPC;
-	eth::Instruction inst;
-	unsigned newMemSize;
-	eth::u256 gas;
-	eth::h256 code;
-	eth::h256 callData;
-	eth::u256s stack;
-	eth::bytes memory;
-	eth::bigint gasCost;
-	std::map<eth::u256, eth::u256> storage;
+	dev::Address cur;
+	dev::u256 curPC;
+	dev::eth::Instruction inst;
+	dev::bigint newMemSize;
+	dev::u256 gas;
+	dev::h256 code;
+	dev::h256 callData;
+	dev::u256s stack;
+	dev::bytes memory;
+	dev::bigint gasCost;
+	std::map<dev::u256, dev::u256> storage;
 	std::vector<WorldState const*> levels;
 };
 
@@ -68,15 +70,19 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	eth::Client* client() { return m_client.get(); }
+	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
+	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
+	dev::shh::WhisperHost* whisper() const { return m_webThree->whisper(); }
 
-	QList<eth::KeyPair> const& owned() const { return m_myKeys; }
+	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
 public slots:
 	void load(QString _file);
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+
+	void onKeysChanged();
 
 private slots:
 	void eval(QString const& _js);
@@ -106,7 +112,7 @@ private slots:
 	void on_about_triggered();
 	void on_paranoia_triggered();
 	void on_nameReg_textChanged();
-	void on_preview_triggered() { refresh(true); }
+	void on_preview_triggered();
 	void on_quit_triggered() { close(); }
 	void on_urlEdit_returnPressed();
 	void on_debugStep_triggered();
@@ -118,11 +124,11 @@ private slots:
 	void on_importKey_triggered();
 	void on_exportKey_triggered();
 	void on_inject_triggered();
-	void on_showAll_triggered() { refresh(true); }
-	void on_showAllAccounts_triggered() { refresh(true); }
+	void on_showAll_triggered() { refreshBlockChain(); }
+	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_loadJS_triggered();
 	void on_blockChainFilter_textChanged();
-	void on_clearPending_triggered();
+	void on_forceMining_triggered();
 	void on_dumpTrace_triggered();
 	void on_dumpTraceStorage_triggered();
 	void on_dumpTracePretty_triggered();
@@ -134,73 +140,105 @@ private slots:
 	void on_debugCurrent_triggered();
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
-
-	void refresh(bool _override = false);
-	void refreshNetwork();
-	void refreshMining();
-	void refreshBlockChain();
+	void on_refresh_triggered();
+    void on_usePrivate_triggered();
+	void on_enableOptimizer_triggered();
+	void on_turboMining_triggered();
 
 signals:
-	void changed();	// TODO: manifest
+	void poll();
 
 private:
-	void updateBlockCount();
+	dev::p2p::NetworkPreferences netPrefs() const;
 
-	QString pretty(eth::Address _a) const;
-	QString prettyU256(eth::u256 _n) const;
+	QString pretty(dev::Address _a) const;
+	QString prettyU256(dev::u256 _n) const;
 
-	void populateDebugger(eth::bytesConstRef r);
+	QString lookup(QString const& _n) const;
+
+	void populateDebugger(dev::bytesConstRef r);
 	void initDebugger();
 	void updateDebugger();
 	void debugFinished();
-	QString render(eth::Address _a) const;
-	eth::Address fromString(QString const& _a) const;
-	std::string renderDiff(eth::StateDiff const& _d) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
+	std::string renderDiff(dev::eth::StateDiff const& _d) const;
 
 	void alterDebugStateGroup(bool _enable) const;
 
-	eth::State const& state() const;
-
 	void updateFee();
-	void readSettings();
+	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
 	bool isCreation() const;
-	eth::u256 fee() const;
-	eth::u256 total() const;
-	eth::u256 value() const;
-	eth::u256 gasPrice() const;
+	dev::u256 fee() const;
+	dev::u256 total() const;
+	dev::u256 value() const;
+	dev::u256 gasPrice() const;
+
+	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+
+	void onNewPending();
+	void onNewBlock();
+	void onNameRegChange();
+	void onCurrenciesChange();
+	void onBalancesChange();
+
+	void installWatches();
+	void installCurrenciesWatch();
+	void installNameRegWatch();
+	void installBalancesWatch();
+
+	virtual void timerEvent(QTimerEvent*);
+
+	void refreshNetwork();
+	void refreshMining();
+
+	void refreshAll();
+	void refreshPending();
+	void refreshAccounts();
+	void refreshDestination();
+	void refreshBlockChain();
+	void refreshBlockCount();
+	void refreshBalances();
 
 	std::unique_ptr<Ui::Main> ui;
 
-	std::unique_ptr<eth::Client> m_client;
+	std::unique_ptr<dev::WebThreeDirect> m_webThree;
+
+	std::map<unsigned, std::function<void()>> m_handlers;
+	unsigned m_nameRegFilter = (unsigned)-1;
+	unsigned m_currenciesFilter = (unsigned)-1;
+	unsigned m_balancesFilter = (unsigned)-1;
 
 	QByteArray m_peers;
-	QMutex m_guiLock;
-	QTimer* m_refresh;
-	QTimer* m_refreshNetwork;
-	QTimer* m_refreshMining;
 	QStringList m_servers;
-	QList<eth::KeyPair> m_myKeys;
+	QList<dev::KeyPair> m_myKeys;
+	QString m_privateChain;
 	bool m_keysChanged = false;
-	eth::bytes m_data;
-	eth::Address m_nameReg;
+	dev::bytes m_data;
+	dev::Address m_nameReg;
 
 	unsigned m_backupGas;
 
-	eth::State m_executiveState;
-	std::unique_ptr<eth::Executive> m_currentExecution;
-	eth::h256 m_lastCode;
-	eth::h256 m_lastData;
+	dev::eth::State m_executiveState;
+	std::unique_ptr<dev::eth::Executive> m_currentExecution;
+	dev::h256 m_lastCode;
+	dev::h256 m_lastData;
 	std::vector<WorldState const*> m_lastLevels;
 
 	QMap<unsigned, unsigned> m_pcWarp;
 	QList<WorldState> m_history;
-	std::map<eth::u256, eth::bytes> m_codes;	// and pcWarps
+	std::map<dev::u256, dev::bytes> m_codes;	// and pcWarps
+	bool m_enableOptimizer = true;
 
 	QNetworkAccessManager m_webCtrl;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
+	QMutex m_logLock;
+	QString m_logHistory;
+	bool m_logChanged = true;
 
-	QEthereum* m_ethereum;
+	QEthereum* m_ethereum = nullptr;
 };

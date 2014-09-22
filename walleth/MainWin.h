@@ -6,16 +6,16 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libethcore/CommonEth.h>
-#include <libqethereum/QEthereum.h>
+#include <libqethereum/QmlEthereum.h>
 
 namespace Ui {
 class Main;
 }
 
-namespace eth {
+namespace dev { namespace eth {
 class Client;
 class State;
-}
+}}
 
 class QQuickView;
 class QQmlEngine;
@@ -29,7 +29,7 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	eth::Client* client() const { return m_client.get(); }
+	dev::eth::Client* client() const { return m_client.get(); }
 	
 private slots:
 	void on_connect_triggered();
@@ -43,26 +43,23 @@ private slots:
 	void refresh();
 	void refreshNetwork();
 
-signals:
-	void changed();
-
 protected:
 	virtual void timerEvent(QTimerEvent *);
 
 private:
-/*	QString pretty(eth::Address _a) const;
-	QString render(eth::Address _a) const;
-	eth::Address fromString(QString const& _a) const;
+/*	QString pretty(dev::Address _a) const;
+	QString render(dev::Address _a) const;
+	dev::Address fromString(QString const& _a) const;
 */
-	eth::State const& state() const;
+	dev::eth::State const& state() const;
 
 	void updateFee();
 	void readSettings();
 	void writeSettings();
 
-	eth::u256 fee() const;
-	eth::u256 total() const;
-	eth::u256 value() const;
+	dev::u256 fee() const;
+	dev::u256 total() const;
+	dev::u256 value() const;
 
 	std::unique_ptr<Ui::Main> ui;
 
@@ -70,7 +67,7 @@ private:
 	QMutex m_guiLock;
 	QTimer* m_refresh;
 	QTimer* m_refreshNetwork;
-	QVector<eth::KeyPair> m_myKeys;
+	QVector<dev::KeyPair> m_myKeys;
 	bool m_keysChanged = false;
 	int m_port;
 	int m_idealPeers;
@@ -81,7 +78,7 @@ private:
 
 	QNetworkAccessManager m_webCtrl;
 
-	std::unique_ptr<eth::Client> m_client;
+	std::unique_ptr<dev::eth::Client> m_client;
 };
 
 #endif // MAIN_H

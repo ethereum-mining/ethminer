@@ -27,6 +27,8 @@
 #include <libevm/ExtVMFace.h>
 #include "State.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -49,6 +51,9 @@ public:
 	/// Write a value in storage.
 	void setStore(u256 _n, u256 _v) { m_s.setStorage(myAddress, _n, _v); if (m_ms) m_ms->altered.push_back(_n); }
 
+	/// Read address's code.
+	bytes const& codeAt(Address _a) { return m_s.code(_a); }
+
 	/// Create a new contract.
 	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, OnOpFunc const& _onOp = OnOpFunc())
 	{
@@ -56,18 +61,18 @@ public:
 		m_s.noteSending(myAddress);
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
+		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, &posts, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
 	}
 
-	/// Create a new message call.
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = OnOpFunc())
+	/// Create a new message call. Leave _myAddressOverride as the default to use the present address as caller.
+	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = OnOpFunc(), Address _myAddressOverride = Address(), Address _codeAddressOverride = Address())
 	{
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
+		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, &posts, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
@@ -93,6 +98,20 @@ public:
 	/// @TODO check call site for the parent manifest being discarded.
 	void revert() { if (m_ms) *m_ms = Manifest(); m_s.m_cache = m_origCache; }
 
+	/// Execute any posts we have left.
+	u256 doPosts(OnOpFunc const& _onOp = OnOpFunc())
+	{
+		u256 ret;
+		while (posts.size())
+		{
+			Post& p = posts.front();
+			call(p.to, p.value, &p.data, &p.gas, bytesRef(), _onOp, p.from);
+			ret += p.gas;
+			posts.pop_front();
+		}
+		return ret;
+	}
+
 	State& state() const { return m_s; }
 
 	/// @note not a part of the main API; just for use by tracing/debug stuff.
@@ -105,5 +124,5 @@ private:
 };
 
 }
-
+}
 

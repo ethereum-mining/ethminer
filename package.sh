@@ -3,7 +3,7 @@
 opwd="$PWD"
 br=$(git branch | grep '\*' | sed 's/^..//')
 
-n=cpp-ethereum-src-$(date "+%Y%m%d%H%M%S" --date="1970-01-01 $(git log -1 --date=short --pretty=format:%ct) sec GMT")-$(grep "EthVersion = " libethential/Common.cpp | sed 's/^[^"]*"//' | sed 's/".*$//')-$(git rev-parse HEAD | cut -c1-6)
+n=cpp-ethereum-src-$(date "+%Y%m%d%H%M%S" --date="1970-01-01 $(git log -1 --date=short --pretty=format:%ct) sec GMT")-$(grep "Version = " libdevcore/Common.cpp | sed 's/^[^"]*"//' | sed 's/".*$//')-$(git rev-parse HEAD | cut -c1-6)
 
 cd /tmp
 git clone "$opwd" $n

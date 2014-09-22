@@ -23,25 +23,23 @@
 
 #pragma once
 
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include "CommonEth.h"
 
 #define FAKE_DAGGER 1
 
+namespace dev
+{
 namespace eth
 {
 
-inline uint toLog2(u256 _d)
-{
-	return (uint)log2((double)_d);
-}
-
 struct MineInfo
 {
-	double requirement;
-	double best;
-	uint hashes;
-	bool completed;
+	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
+	double requirement = 0;
+	double best = 1e99;
+	unsigned hashes = 0;
+	bool completed = false;
 };
 
 #if FAKE_DAGGER
@@ -52,7 +50,7 @@ public:
 	static h256 eval(h256 const& _root, h256 const& _nonce) { h256 b[2] = { _root, _nonce }; return sha3(bytesConstRef((byte const*)&b[0], 64)); }
 	static bool verify(h256 const& _root, h256 const& _nonce, u256 const& _difficulty) { return (bigint)(u256)eval(_root, _nonce) <= (bigint(1) << 256) / _difficulty; }
 
-	MineInfo mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
+	MineInfo mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
 
 	h256 m_last;
 };
@@ -70,7 +68,7 @@ public:
 	static h256 eval(h256 const& _root, u256 const& _nonce);
 	static bool verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty);
 
-	bool mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, uint _msTimeout = 100, bool const& _continue = bool(true));
+	bool mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout = 100, bool const& _continue = bool(true));
 
 private:
 
@@ -83,5 +81,4 @@ private:
 #endif
 
 }
-
-
+}

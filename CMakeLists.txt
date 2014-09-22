@@ -190,6 +190,7 @@ else()
 	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
+		${PYTHON_INCLUDE_DIR}
 		/usr/include/python2.7
 		/usr/local/include/python2.7
 		)
@@ -289,7 +290,7 @@ else()
 	if (LANGUAGES)
 		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time)
 	else()
-		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system)
+		find_package(Boost 1.53 REQUIRED COMPONENTS thread date_time system regex)
 	endif()
 
 	set(QTQML 1)
@@ -323,7 +324,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	include_directories(/usr/local/include)
 endif()
 
-add_subdirectory(libethential)
+add_subdirectory(libdevcore)
 add_subdirectory(libevmface)
 add_subdirectory(liblll)
 add_subdirectory(libserpent)
@@ -336,9 +337,16 @@ add_subdirectory(lllc)
 add_subdirectory(sc)
 if (NOT LANGUAGES)
 	add_subdirectory(secp256k1)
+	add_subdirectory(libp2p)
+	add_subdirectory(libdevcrypto)
+	add_subdirectory(libwhisper)
+
 	add_subdirectory(libethcore)
 	add_subdirectory(libevm)
 	add_subdirectory(libethereum)
+#	add_subdirectory(libethereumx)	 # TODO remove
+
+	add_subdirectory(libwebthree)
 	add_subdirectory(test)
 	add_subdirectory(eth)
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
@@ -358,8 +366,10 @@ if (NOT LANGUAGES)
 		
 		add_subdirectory(libqethereum)
 		add_subdirectory(alethzero)
+		add_subdirectory(third)
 		if(QTQML)
-			add_subdirectory(walleth)
+			#add_subdirectory(iethxi)
+			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
 		endif()
 	endif()
 endif()
