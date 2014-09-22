@@ -381,6 +381,7 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 			}
 			else
 				connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+			break;
 		}
 		catch (exception const& e)
 		{

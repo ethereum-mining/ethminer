@@ -293,18 +293,11 @@
     <ClInclude Include="..\libethereum\EthereumPeer.h" />
     <ClInclude Include="..\libethereum\Executive.h" />
     <ClInclude Include="..\libethereum\ExtVM.h" />
-<<<<<<< HEAD
-    <ClInclude Include="..\libethereum\Manifest.h" />
-    <ClInclude Include="..\libethereum\PeerNetwork.h" />
-    <ClInclude Include="..\libethereum\PeerServer.h" />
-    <ClInclude Include="..\libethereum\PeerSession.h" />
-=======
     <ClInclude Include="..\libethereum\Interface.h" />
     <ClInclude Include="..\libethereum\Manifest.h" />
     <ClInclude Include="..\libethereum\MessageFilter.h" />
     <ClInclude Include="..\libethereum\Miner.h" />
     <ClInclude Include="..\libethereum\PastMessage.h" />
->>>>>>> develop
     <ClInclude Include="..\libethereum\State.h" />
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
