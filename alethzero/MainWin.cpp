@@ -570,6 +570,26 @@ void Main::on_importKey_triggered()
 		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
 }
 
+void Main::on_importKeyFile_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	bytes b = fromHex(s.toStdString());
+	if (b.size() == 32)
+	{
+		auto k = KeyPair(h256(b));
+		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+		{
+			m_myKeys.append(k);
+			m_keysChanged = true;
+			update();
+		}
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	else
+		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
@@ -1687,6 +1707,12 @@ void Main::on_dumpTraceStorage_triggered()
 					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
 			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
+}
+
+void Main::on_go_triggered()
+{
+	ui->net->setChecked(true);
+	web3()->connect(Host::pocHost());
 }
 
 void Main::on_callStack_currentItemChanged()

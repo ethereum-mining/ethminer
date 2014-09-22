@@ -130,6 +130,8 @@
     <property name="title">
      <string>&amp;Network</string>
     </property>
+    <addaction name="go"/>
+    <addaction name="separator"/>
     <addaction name="upnp"/>
     <addaction name="usePast"/>
     <addaction name="localNetworking"/>
@@ -141,14 +143,11 @@
      <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
-    <addaction name="preview"/>
     <addaction name="separator"/>
     <addaction name="create"/>
     <addaction name="importKey"/>
+    <addaction name="importKeyFile"/>
     <addaction name="exportKey"/>
-    <addaction name="separator"/>
-    <addaction name="showAll"/>
-    <addaction name="showAllAccounts"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
    </widget>
@@ -191,7 +190,17 @@
     <addaction name="separator"/>
     <addaction name="usePrivate"/>
    </widget>
+   <widget class="QMenu" name="menu_View">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="showAll"/>
+    <addaction name="showAllAccounts"/>
+    <addaction name="separator"/>
+    <addaction name="preview"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menu_View"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
    <addaction name="menu_Debug"/>
@@ -507,8 +516,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="net"/>
-   <addaction name="connect"/>
+   <addaction name="go"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
    <addaction name="refresh"/>
@@ -1521,7 +1529,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Preview</string>
+    <string>&amp;Preview Pending Transactions</string>
    </property>
   </action>
   <action name="debugStep">
@@ -1738,6 +1746,16 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Enable Local Addresses</string>
+   </property>
+  </action>
+  <action name="importKeyFile">
+   <property name="text">
+    <string>Import Key &amp;File...</string>
+   </property>
+  </action>
+  <action name="go">
+   <property name="text">
+    <string>Go!</string>
    </property>
   </action>
  </widget>
