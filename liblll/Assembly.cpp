@@ -21,18 +21,19 @@
 
 #include "Assembly.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 int AssemblyItem::deposit() const
 {
 	switch (m_type)
 	{
 	case Operation:
-		return c_instructionInfo.at((Instruction)(byte)m_data).ret - c_instructionInfo.at((Instruction)(byte)m_data).args;
-	case Push: case PushString: case PushTag: case PushData:
+		return instructionInfo((Instruction)(byte)m_data).ret - instructionInfo((Instruction)(byte)m_data).args;
+	case Push: case PushString: case PushTag: case PushData: case PushSub: case PushSubSize:
 		return 1;
 	case Tag:
 		return 0;
@@ -59,15 +60,19 @@ unsigned Assembly::bytesRequired() const
 				ret += 33;
 				break;
 			case Push:
-				ret += 1 + max<unsigned>(1, eth::bytesRequired(i.m_data));
+				ret += 1 + max<unsigned>(1, dev::bytesRequired(i.m_data));
+				break;
+			case PushSubSize:
+				ret += 4;		// worst case: a 16MB program
 				break;
 			case PushTag:
 			case PushData:
+			case PushSub:
 				ret += 1 + br;
 			case Tag:;
 			default:;
 			}
-		if (eth::bytesRequired(ret) <= br)
+		if (dev::bytesRequired(ret) <= br)
 			return ret;
 	}
 }
@@ -87,6 +92,8 @@ void Assembly::append(Assembly const& _a)
 		m_data.insert(i);
 	for (auto const& i: _a.m_strings)
 		m_strings.insert(i);
+	for (auto const& i: _a.m_subs)
+		m_subs.insert(i);
 
 	assert(!_a.m_baseDeposit);
 	assert(!_a.m_totalDeposit);
@@ -104,19 +111,19 @@ void Assembly::append(Assembly const& _a, int _deposit)
 	}
 }
 
-ostream& eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
+ostream& dev::eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 {
 	for (AssemblyItem const& i: _i)
 		switch (i.type())
 		{
 		case Operation:
-			_out << " " << c_instructionInfo.at((Instruction)(byte)i.data()).name;
+			_out << " " << instructionInfo((Instruction)(byte)i.data()).name;
 			break;
 		case Push:
 			_out << " PUSH" << i.data();
 			break;
 		case PushString:
-			_out << " PUSH'[" << h256(i.data()).abridged() << "]";
+			_out << " PUSH'[" << hex << (unsigned)i.data() << "]";
 			break;
 		case PushTag:
 			_out << " PUSH[tag" << i.data() << "]";
@@ -125,7 +132,13 @@ ostream& eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 			_out << " tag" << i.data() << ":";
 			break;
 		case PushData:
-			_out << " PUSH*[" << h256(i.data()).abridged() << "]";
+			_out << " PUSH*[" << hex << (unsigned)i.data() << "]";
+			break;
+		case PushSub:
+			_out << " PUSHs[" << hex << h256(i.data()).abridged() << "]";
+			break;
+		case PushSubSize:
+			_out << " PUSHss[" << hex << h256(i.data()).abridged() << "]";
 			break;
 		case UndefinedItem:
 			_out << " ???";
@@ -134,38 +147,50 @@ ostream& eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 	return _out;
 }
 
-ostream& Assembly::streamOut(ostream& _out) const
+ostream& Assembly::streamOut(ostream& _out, string const& _prefix) const
 {
-	_out << ".code:" << endl;
+	_out << _prefix << ".code:" << endl;
 	for (AssemblyItem const& i: m_items)
 		switch (i.m_type)
 		{
 		case Operation:
-			_out << "  " << c_instructionInfo.at((Instruction)(byte)i.m_data).name << endl;
+			_out << _prefix << "  " << instructionInfo((Instruction)(byte)i.m_data).name << endl;
 			break;
 		case Push:
-			_out << "  PUSH " << i.m_data << endl;
+			_out << _prefix << "  PUSH " << i.m_data << endl;
 			break;
 		case PushString:
-			_out << "  PUSH \"" << m_strings.at((h256)i.m_data) << "\"" << endl;
+			_out << _prefix << "  PUSH \"" << m_strings.at((h256)i.m_data) << "\"" << endl;
 			break;
 		case PushTag:
-			_out << "  PUSH [tag" << i.m_data << "]" << endl;
+			_out << _prefix << "  PUSH [tag" << i.m_data << "]" << endl;
+			break;
+		case PushSub:
+			_out << _prefix << "  PUSH [$" << h256(i.m_data).abridged() << "]" << endl;
+			break;
+		case PushSubSize:
+			_out << _prefix << "  PUSH #[$" << h256(i.m_data).abridged() << "]" << endl;
 			break;
 		case Tag:
-			_out << "tag" << i.m_data << ": " << endl;
+			_out << _prefix << "tag" << i.m_data << ": " << endl;
 			break;
 		case PushData:
-			_out << "  PUSH [" << h256(i.m_data).abridged() << "]" << endl;
+			_out << _prefix << "  PUSH [" << hex << (unsigned)i.m_data << "]" << endl;
 			break;
 		default:;
 		}
 
-	if (m_data.size())
+	if (m_data.size() || m_subs.size())
 	{
-		_out << ".data:" << endl;
+		_out << _prefix << ".data:" << endl;
 		for (auto const& i: m_data)
-			_out << "  " << i.first.abridged() << ": " << toHex(i.second) << endl;
+			if (!m_subs.count(i.first))
+				_out << _prefix << "  " << hex << (unsigned)(u256)i.first << ": " << toHex(i.second) << endl;
+		for (auto const& i: m_subs)
+		{
+			_out << _prefix << "  " << hex << (unsigned)(u256)i.first << ": " << endl;
+			i.second.streamOut(_out, _prefix + "  ");
+		}
 	}
 	return _out;
 }
@@ -193,22 +218,24 @@ inline bool matches(AssemblyItemsConstRef _a, AssemblyItemsConstRef _b)
 }
 
 struct OptimiserChannel: public LogChannel { static const char* name() { return "OPT"; } static const int verbosity = 12; };
-#define copt eth::LogOutputStream<OptimiserChannel, true>()
+#define copt dev::LogOutputStream<OptimiserChannel, true>()
 
-void Assembly::optimise()
+Assembly& Assembly::optimise(bool _enable)
 {
+	if (!_enable)
+		return *this;
 	map<Instruction, function<u256(u256, u256)>> c_simple =
 	{
 		{ Instruction::SUB, [](u256 a, u256 b)->u256{return a - b;} },
 		{ Instruction::DIV, [](u256 a, u256 b)->u256{return a / b;} },
-        { Instruction::SDIV, [](u256 a, u256 b)->u256{return s2u(u2s(a) / u2s(b));} },
+		{ Instruction::SDIV, [](u256 a, u256 b)->u256{return s2u(u2s(a) / u2s(b));} },
 		{ Instruction::MOD, [](u256 a, u256 b)->u256{return a % b;} },
-        { Instruction::SMOD, [](u256 a, u256 b)->u256{return s2u(u2s(a) % u2s(b));} },
-		{ Instruction::EXP, [](u256 a, u256 b)->u256{return boost::multiprecision::pow(a, (unsigned)b);} },
+		{ Instruction::SMOD, [](u256 a, u256 b)->u256{return s2u(u2s(a) % u2s(b));} },
+		{ Instruction::EXP, [](u256 a, u256 b)->u256{return (u256)boost::multiprecision::powm((bigint)a, (bigint)b, bigint(2) << 256);} },
 		{ Instruction::LT, [](u256 a, u256 b)->u256{return a < b ? 1 : 0;} },
 		{ Instruction::GT, [](u256 a, u256 b)->u256{return a > b ? 1 : 0;} },
-        { Instruction::SLT, [](u256 a, u256 b)->u256{return u2s(a) < u2s(b) ? 1 : 0;} },
-        { Instruction::SGT, [](u256 a, u256 b)->u256{return u2s(a) > u2s(b) ? 1 : 0;} },
+		{ Instruction::SLT, [](u256 a, u256 b)->u256{return u2s(a) < u2s(b) ? 1 : 0;} },
+		{ Instruction::SGT, [](u256 a, u256 b)->u256{return u2s(a) > u2s(b) ? 1 : 0;} },
 		{ Instruction::EQ, [](u256 a, u256 b)->u256{return a == b ? 1 : 0;} },
 	};
 	map<Instruction, function<u256(u256, u256)>> c_associative =
@@ -221,6 +248,8 @@ void Assembly::optimise()
 		{ { Push, Instruction::POP }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
 		{ { PushTag, Instruction::POP }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
 		{ { PushString, Instruction::POP }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
+		{ { PushSub, Instruction::POP }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
+		{ { PushSubSize, Instruction::POP }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
 		{ { Push, PushTag, Instruction::JUMPI }, [](AssemblyItemsConstRef m) -> AssemblyItems { if (m[0].data()) return { m[1], Instruction::JUMP }; else return {}; } },
 		{ { Instruction::NOT, Instruction::NOT }, [](AssemblyItemsConstRef) -> AssemblyItems { return {}; } },
 	};
@@ -309,6 +338,11 @@ void Assembly::optimise()
 	}
 
 	copt << total << " optimisations done.";
+
+	for (auto& i: m_subs)
+	  i.second.optimise(true);
+
+	return *this;
 }
 
 bytes Assembly::assemble() const
@@ -320,8 +354,11 @@ bytes Assembly::assemble() const
 	vector<unsigned> tagPos(m_usedTags);
 	map<unsigned, unsigned> tagRef;
 	multimap<h256, unsigned> dataRef;
-	unsigned bytesPerTag = eth::bytesRequired(totalBytes);
+	unsigned bytesPerTag = dev::bytesRequired(totalBytes);
 	byte tagPush = (byte)Instruction::PUSH1 - 1 + bytesPerTag;
+
+	for (auto const& i: m_subs)
+		m_data[i.first] = i.second.assemble();
 
 	for (AssemblyItem const& i: m_items)
 		switch (i.m_type)
@@ -344,7 +381,7 @@ bytes Assembly::assemble() const
 		}
 		case Push:
 		{
-			byte b = max<unsigned>(1, eth::bytesRequired(i.m_data));
+			byte b = max<unsigned>(1, dev::bytesRequired(i.m_data));
 			ret.push_back((byte)Instruction::PUSH1 - 1 + b);
 			ret.resize(ret.size() + b);
 			bytesRef byr(&ret.back() + 1 - b, b);
@@ -358,11 +395,21 @@ bytes Assembly::assemble() const
 			ret.resize(ret.size() + bytesPerTag);
 			break;
 		}
-		case PushData:
+		case PushData: case PushSub:
 		{
 			ret.push_back(tagPush);
 			dataRef.insert(make_pair((h256)i.m_data, ret.size()));
 			ret.resize(ret.size() + bytesPerTag);
+			break;
+		}
+		case PushSubSize:
+		{
+			auto s = m_data[i.m_data].size();
+			byte b = max<unsigned>(1, dev::bytesRequired(s));
+			ret.push_back((byte)Instruction::PUSH1 - 1 + b);
+			ret.resize(ret.size() + b);
+			bytesRef byr(&ret.back() + 1 - b, b);
+			toBigEndian(s, byr);
 			break;
 		}
 		case Tag:

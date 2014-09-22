@@ -27,12 +27,13 @@
 
 #include <list>
 #include <QtWidgets/QWidget>
+#ifndef Q_MOC_RUN
 #include <libethereum/Client.h>
+#endif
 
-namespace eth
-{
+namespace dev { namespace eth {
 struct MineInfo;
-}
+}}
 
 class MiningView: public QWidget
 {
@@ -41,14 +42,14 @@ class MiningView: public QWidget
 public:
 	MiningView(QWidget* _p = nullptr);
 
-	void appendStats(std::list<eth::MineInfo> const& _l, eth::MineProgress const& _p);
+	void appendStats(std::list<dev::eth::MineInfo> const& _l, dev::eth::MineProgress const& _p);
 	void resetStats();
 
 protected:
 	virtual void paintEvent(QPaintEvent*);
 
 private:
-	eth::MineProgress m_progress;
+	dev::eth::MineProgress m_progress;
 	unsigned m_duration = 300;
 	std::vector<float> m_values;
 	std::vector<float> m_bests;

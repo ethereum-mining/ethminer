@@ -85,9 +85,10 @@ std::vector<Node> tokenize(std::string inp, Metadata metadata, bool lispMode) {
                 }
             }
             // Special case the minus sign
-            if (cur.length() > 1 && cur[cur.length() - 1] == '-') {
+            if (cur.length() > 1 && (cur.substr(cur.length() - 1) == "-"
+                                  || cur.substr(cur.length() - 1) == "!")) {
                 out.push_back(token(cur.substr(0, cur.length() - 1), metadata));
-                out.push_back(token("-", metadata));
+                out.push_back(token(cur.substr(cur.length() - 1), metadata));
                 cur = "";
             }
             // Boundary between different char types

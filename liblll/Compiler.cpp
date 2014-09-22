@@ -25,18 +25,17 @@
 #include "CodeFragment.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-bytes eth::compileLLL(string const& _src, bool _opt, vector<string>* _errors)
+bytes dev::eth::compileLLL(string const& _src, bool _opt, vector<string>* _errors)
 {
 	try
 	{
 		CompilerState cs;
 		cs.populateStandard();
 		auto f = CodeFragment::compile(_src, cs);
-		if (_opt)
-			f.optimise();
-		bytes ret = f.code(cs);
+		bytes ret = f.assembly(cs).optimise(_opt).assemble();
 		for (auto i: cs.treesToKill)
 			killBigints(i);
 		return ret;
@@ -54,16 +53,13 @@ bytes eth::compileLLL(string const& _src, bool _opt, vector<string>* _errors)
 	return bytes();
 }
 
-std::string eth::compileLLLToAsm(std::string const& _src, bool _opt, std::vector<std::string>* _errors)
+std::string dev::eth::compileLLLToAsm(std::string const& _src, bool _opt, std::vector<std::string>* _errors)
 {
 	try
 	{
 		CompilerState cs;
 		cs.populateStandard();
-		auto f = CodeFragment::compile(_src, cs);
-		if (_opt)
-			f.optimise();
-		string ret = f.assembly(cs);
+		string ret = CodeFragment::compile(_src, cs).assembly(cs).optimise(_opt).out();
 		for (auto i: cs.treesToKill)
 			killBigints(i);
 		return ret;
@@ -81,7 +77,7 @@ std::string eth::compileLLLToAsm(std::string const& _src, bool _opt, std::vector
 	return string();
 }
 
-string eth::parseLLL(string const& _src)
+string dev::eth::parseLLL(string const& _src)
 {
 	sp::utree o;
 	try

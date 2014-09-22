@@ -22,13 +22,15 @@
 #pragma once
 
 #include <functional>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libevm/ExtVMFace.h>
 #include "Transaction.h"
 #include "Manifest.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -48,7 +50,7 @@ public:
 	bool create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
 	bool go(OnOpFunc const& _onOp = OnOpFunc());
-	void finalize();
+	void finalize(OnOpFunc const& _onOp = OnOpFunc());
 	u256 gasUsed() const;
 
 	static OnOpFunc simpleTrace();
@@ -77,4 +79,5 @@ private:
 	u256 m_endGas;
 };
 
+}
 }

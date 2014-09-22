@@ -19,11 +19,14 @@
  * @date 2014
  */
 
+#include "TestHelper.h"
+
 #include <thread>
 #include <chrono>
 #include <libethereum/Client.h>
-#include "TestHelper.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -39,11 +42,15 @@ void mine(Client& c, int numBlocks)
 
 void connectClients(Client& c1, Client& c2)
 {
+	// TODO: Move to WebThree. eth::Client no longer handles networking.
+#if 0
 	short c1Port = 20000;
 	short c2Port = 21000;
 	c1.startNetwork(c1Port);
 	c2.startNetwork(c2Port);
 	c2.connect("127.0.0.1", c1Port);
+#endif
 }
 
+}
 }

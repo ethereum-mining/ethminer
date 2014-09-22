@@ -22,12 +22,13 @@
 
 #include <fstream>
 #include "JsonSpiritHeaders.h"
-#include <libethcore/TrieCommon.h>
-#include <libethential/Log.h>
+#include <libdevcrypto/TrieCommon.h>
+#include <libdevcore/Log.h>
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 namespace js = json_spirit;
 
 BOOST_AUTO_TEST_CASE(hexPrefix_test)

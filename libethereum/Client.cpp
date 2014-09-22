@@ -24,11 +24,14 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <libethential/Common.h>
+#include <libdevcore/Log.h>
+#include <libp2p/Host.h>
 #include "Defaults.h"
-#include "PeerServer.h"
+#include "EthereumHost.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
+using namespace p2p;
 
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
@@ -50,110 +53,262 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(std::string const& _clientVersion, Address _us, std::string const& _dbPath, bool _forceClean):
-	m_clientVersion(_clientVersion),
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId):
+	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
-	m_preMine(_us, m_stateDB),
-	m_postMine(_us, m_stateDB),
-	m_workState(Active)
+	m_preMine(Address(), m_stateDB),
+	m_postMine(Address(), m_stateDB)
 {
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+
+	setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
-	m_changed = true;
-}
+	doWork();
 
-void Client::start() {
-	static const char* c_threadName = "eth";
-
-	m_work.reset(new thread([&](){
-		setThreadName(c_threadName);
-		while (m_workState.load(std::memory_order_acquire) != Deleting)
-			work();
-		m_workState.store(Deleted, std::memory_order_release);
-
-		// Synchronise the state according to the head of the block chain.
-		// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-		m_preMine.sync(m_bc);
-		m_postMine = m_preMine;
-	}));
+	startWorking();
 }
 
 Client::~Client()
 {
-	if (m_workState.load(std::memory_order_acquire) == Active)
-		m_workState.store(Deleting, std::memory_order_release);
-	while (m_workState.load(std::memory_order_acquire) != Deleted)
-		this_thread::sleep_for(chrono::milliseconds(10));
-	m_work->join();
+	stopWorking();
 }
 
-void Client::startNetwork(unsigned short _listenPort, std::string const& _seedHost, unsigned short _port, NodeMode _mode, unsigned _peers, string const& _publicIP, bool _upnp)
+void Client::setNetworkId(u256 _n)
 {
-	ClientGuard l(this);
-	if (m_net.get())
-		return;
-	try
+	if (auto h = m_host.lock())
+		h->setNetworkId(_n);
+}
+
+DownloadMan const* Client::downloadMan() const { if (auto h = m_host.lock()) return &(h->downloadMan()); return nullptr; }
+bool Client::isSyncing() const { if (auto h = m_host.lock()) return h->isSyncing(); return false; }
+
+void Client::doneWorking()
+{
+	// Synchronise the state according to the head of the block chain.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+	WriteGuard l(x_stateDB);
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
+}
+
+void Client::flushTransactions()
+{
+	doWork();
+}
+
+void Client::killChain()
+{
+	bool wasMining = isMining();
+	if (wasMining)
+		stopMining();
+	stopWorking();
+
+	m_tq.clear();
+	m_bq.clear();
+	m_miners.clear();
+	m_preMine = State();
+	m_postMine = State();
+
 	{
-		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _listenPort, _mode, _publicIP, _upnp));
+		WriteGuard l(x_stateDB);
+		m_stateDB = OverlayDB();
+		m_stateDB = State::openDB(Defaults::dbPath(), true);
 	}
-	catch (std::exception const&)
+	m_bc.reopen(Defaults::dbPath(), true);
+
+	m_preMine = State(Address(), m_stateDB);
+	m_postMine = State(Address(), m_stateDB);
+
+	if (auto h = m_host.lock())
+		h->reset();
+
+	doWork();
+
+	setMiningThreads(0);
+
+	startWorking();
+	if (wasMining)
+		startMining();
+}
+
+void Client::clearPending()
+{
+	h256Set changeds;
 	{
-		// Probably already have the port open.
-		cwarn << "Could not initialize with specified/default port. Trying system-assigned port";
-		m_net.reset(new PeerServer(m_clientVersion, m_bc, 0, _mode, _publicIP, _upnp));
+		WriteGuard l(x_stateDB);
+		if (!m_postMine.pending().size())
+			return;
+		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
+			appendFromNewPending(m_postMine.bloom(i), changeds);
+		changeds.insert(PendingChangedFilter);
+		m_postMine = m_preMine;
 	}
 
-	m_net->setIdealPeerCount(_peers);
-	if (_seedHost.size())
-		connect(_seedHost, _port);
+	{
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
+	}
+
+	noteChanged(changeds);
 }
 
-std::vector<PeerInfo> Client::peers()
+unsigned Client::installWatch(h256 _h)
 {
-	ClientGuard l(this);
-	return m_net ? m_net->peers() : std::vector<PeerInfo>();
+	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
+	m_watches[ret] = ClientWatch(_h);
+	cwatch << "+++" << ret << _h;
+	return ret;
 }
 
-size_t Client::peerCount() const
+unsigned Client::installWatch(MessageFilter const& _f)
 {
-	ClientGuard l(this);
-	return m_net ? m_net->peerCount() : 0;
+	lock_guard<mutex> l(m_filterLock);
+
+	h256 h = _f.sha3();
+
+	if (!m_filters.count(h))
+		m_filters.insert(make_pair(h, _f));
+
+	return installWatch(h);
 }
 
-void Client::connect(std::string const& _seedHost, unsigned short _port)
+void Client::uninstallWatch(unsigned _i)
 {
-	ClientGuard l(this);
-	if (!m_net.get())
+	cwatch << "XXX" << _i;
+
+	lock_guard<mutex> l(m_filterLock);
+
+	auto it = m_watches.find(_i);
+	if (it == m_watches.end())
 		return;
-	m_net->connect(_seedHost, _port);
+	auto id = it->second.id;
+	m_watches.erase(it);
+
+	auto fit = m_filters.find(id);
+	if (fit != m_filters.end())
+		if (!--fit->second.refCount)
+			m_filters.erase(fit);
 }
 
-void Client::stopNetwork()
+void Client::noteChanged(h256Set const& _filters)
 {
-	ClientGuard l(this);
-	m_net.reset(nullptr);
+	lock_guard<mutex> l(m_filterLock);
+	for (auto& i: m_watches)
+		if (_filters.count(i.second.id))
+		{
+			cwatch << "!!!" << i.first << i.second.id;
+			i.second.changes++;
+		}
 }
 
-void Client::startMining()
+void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 {
-	m_doMine = true;
-	m_restartMining = true;
+	lock_guard<mutex> l(m_filterLock);
+	for (pair<h256, InstalledFilter> const& i: m_filters)
+		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
+			o_changed.insert(i.first);
 }
 
-void Client::stopMining()
+void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 {
-	m_doMine = false;
+	auto d = m_bc.details(_block);
+
+	lock_guard<mutex> l(m_filterLock);
+	for (pair<h256, InstalledFilter> const& i: m_filters)
+		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
+			o_changed.insert(i.first);
+}
+
+void Client::setForceMining(bool _enable)
+{
+	 m_forceMining = _enable;
+	 if (!m_host.lock())
+	 {
+		 ReadGuard l(x_miners);
+		 for (auto& m: m_miners)
+			 m.noteStateChange();
+	 }
+}
+
+void Client::setMiningThreads(unsigned _threads)
+{
+	stopMining();
+
+	auto t = _threads ? _threads : thread::hardware_concurrency();
+	WriteGuard l(x_miners);
+	m_miners.clear();
+	m_miners.resize(t);
+	unsigned i = 0;
+	for (auto& m: m_miners)
+		m.setup(this, i++);
+}
+
+MineProgress Client::miningProgress() const
+{
+	MineProgress ret;
+	ReadGuard l(x_miners);
+	for (auto& m: m_miners)
+		ret.combine(m.miningProgress());
+	return ret;
+}
+
+std::list<MineInfo> Client::miningHistory()
+{
+	std::list<MineInfo> ret;
+
+	ReadGuard l(x_miners);
+	if (m_miners.empty())
+		return ret;
+	ret = m_miners[0].miningHistory();
+	for (unsigned i = 1; i < m_miners.size(); ++i)
+	{
+		auto l = m_miners[i].miningHistory();
+		auto ri = ret.begin();
+		auto li = l.begin();
+		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
+			ri->combine(*li);
+	}
+	return ret;
+}
+
+void Client::setupState(State& _s)
+{
+	{
+		ReadGuard l(x_stateDB);
+		cwork << "SETUP MINE";
+		_s = m_postMine;
+	}
+	if (m_paranoia)
+	{
+		if (_s.amIJustParanoid(m_bc))
+		{
+			cnote << "I'm just paranoid. Block is fine.";
+			_s.commitToMine(m_bc);
+		}
+		else
+		{
+			cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
+		}
+	}
+	else
+		_s.commitToMine(m_bc);
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	ClientGuard l(this);
+	startWorking();
+
 	Transaction t;
-	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -164,11 +319,37 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+{
+	State temp;
+	Transaction t;
+//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		temp = m_postMine;
+		t.nonce = temp.transactionsFrom(toAddress(_secret));
+	}
+	t.value = _value;
+	t.gasPrice = _gasPrice;
+	t.gas = _gas;
+	t.receiveAddress = _dest;
+	t.data = _data;
+	t.sign(_secret);
+	bytes out;
+	u256 gasUsed = temp.execute(t.data, &out, false);
+	(void)gasUsed; // TODO: do something with gasused which it returns.
+	return out;
+}
+
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
-	ClientGuard l(this);
+	startWorking();
+
 	Transaction t;
-	t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	{
+		ReadGuard l(x_stateDB);
+		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+	}
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
@@ -182,25 +363,39 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 
 void Client::inject(bytesConstRef _rlp)
 {
-	ClientGuard l(this);
+	startWorking();
+
 	m_tq.attemptImport(_rlp);
-	m_changed = true;
 }
 
-void Client::work()
+void Client::doWork()
 {
-	bool changed = false;
+	// TODO: Use condition variable rather than polling.
 
-	// Process network events.
-	// Synchronise block chain with network.
-	// Will broadcast any of our (new) transactions and blocks, and collect & add any of their (new) transactions and blocks.
-	if (m_net)
+	cworkin << "WORK";
+	h256Set changeds;
+
 	{
-		ClientGuard l(this);
-		m_net->process();	// must be in guard for now since it uses the blockchain. TODO: make BlockChain thread-safe.
-
-		if (m_net->sync(m_bc, m_tq, m_stateDB))
-			changed = true;
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			if (m.isComplete())
+			{
+				cwork << "CHAIN <== postSTATE";
+				h256s hs;
+				{
+					WriteGuard l(x_stateDB);
+					hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				}
+				if (hs.size())
+				{
+					for (auto h: hs)
+						appendFromNewBlock(h, changeds);
+					changeds.insert(ChainChangedFilter);
+					//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
+				}
+				for (auto& m: m_miners)
+					m.noteStateChange();
+			}
 	}
 
 	// Synchronise state to block chain.
@@ -210,90 +405,60 @@ void Client::work()
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
 	// Resynchronise state with block chain & trans
+	bool rsm = false;
 	{
-		ClientGuard l(this);
+		WriteGuard l(x_stateDB);
+		cwork << "BQ ==> CHAIN ==> STATE";
+		OverlayDB db = m_stateDB;
+		x_stateDB.unlock();
+		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		if (newBlocks.size())
+		{
+			for (auto i: newBlocks)
+				appendFromNewBlock(i, changeds);
+			changeds.insert(ChainChangedFilter);
+		}
+		x_stateDB.lock();
+		if (newBlocks.size())
+			m_stateDB = db;
+
+		cwork << "preSTATE <== CHAIN";
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
-			if (m_doMine)
+			if (isMining())
 				cnote << "New block on chain: Restarting mining operation.";
-			changed = true;
-			m_restartMining = true;	// need to re-commit to mine.
 			m_postMine = m_preMine;
+			rsm = true;
+			changeds.insert(PendingChangedFilter);
+			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
-		if (m_postMine.sync(m_tq, &changed))
+
+		// returns h256s as blooms, once for each transaction.
+		cwork << "postSTATE <== TQ";
+		h256s newPendingBlooms = m_postMine.sync(m_tq);
+		if (newPendingBlooms.size())
 		{
-			if (m_doMine)
+			for (auto i: newPendingBlooms)
+				appendFromNewPending(i, changeds);
+			changeds.insert(PendingChangedFilter);
+
+			if (isMining())
 				cnote << "Additional transaction ready: Restarting mining operation.";
-			m_restartMining = true;
+			rsm = true;
 		}
 	}
-
-	if (m_doMine)
+	if (rsm)
 	{
-		if (m_restartMining)
-		{
-			m_mineProgress.best = (double)-1;
-			m_mineProgress.hashes = 0;
-			m_mineProgress.ms = 0;
-			ClientGuard l(this);
-			if (m_paranoia)
-			{
-				if (m_postMine.amIJustParanoid(m_bc))
-				{
-					cnote << "I'm just paranoid. Block is fine.";
-					m_postMine.commitToMine(m_bc);
-				}
-				else
-				{
-					cwarn << "I'm not just paranoid. Cannot mine. Please file a bug report.";
-					m_doMine = false;
-				}
-			}
-			else
-				m_postMine.commitToMine(m_bc);
-		}
+		ReadGuard l(x_miners);
+		for (auto& m: m_miners)
+			m.noteStateChange();
 	}
 
-	if (m_doMine)
-	{
-		m_restartMining = false;
+	cwork << "noteChanged" << changeds.size() << "items";
+	noteChanged(changeds);
+	cworkout << "WORK";
 
-		// Mine for a while.
-		MineInfo mineInfo = m_postMine.mine(100);
-
-		m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
-		m_mineProgress.current = mineInfo.best;
-		m_mineProgress.requirement = mineInfo.requirement;
-		m_mineProgress.ms += 100;
-		m_mineProgress.hashes += mineInfo.hashes;
-		{
-			ClientGuard l(this);
-			m_mineHistory.push_back(mineInfo);
-		}
-
-		if (mineInfo.completed)
-		{
-			// Import block.
-			ClientGuard l(this);
-			m_postMine.completeMine();
-			m_bc.attemptImport(m_postMine.blockData(), m_stateDB);
-			m_changed = true;
-		}
-	}
-	else
-		this_thread::sleep_for(chrono::milliseconds(100));
-
-	m_changed = m_changed || changed;
-}
-
-void Client::lock() const
-{
-	m_lock.lock();
-}
-
-void Client::unlock() const
-{
-	m_lock.unlock();
+	this_thread::sleep_for(chrono::milliseconds(100));
 }
 
 unsigned Client::numberOf(int _n) const
@@ -308,6 +473,7 @@ unsigned Client::numberOf(int _n) const
 
 State Client::asOf(int _h) const
 {
+	ReadGuard l(x_stateDB);
 	if (_h == 0)
 		return m_postMine;
 	else if (_h == -1)
@@ -316,154 +482,81 @@ State Client::asOf(int _h) const
 		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
 }
 
+State Client::state(unsigned _txi, h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+}
+
+eth::State Client::state(h256 _block) const
+{
+	ReadGuard l(x_stateDB);
+	return State(m_stateDB, m_bc, _block);
+}
+
+eth::State Client::state(unsigned _txi) const
+{
+	ReadGuard l(x_stateDB);
+	return m_postMine.fromPending(_txi);
+}
+
+StateDiff Client::diff(unsigned _txi, int _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
+StateDiff Client::diff(unsigned _txi, h256 _block) const
+{
+	State st = state(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
+}
+
+std::vector<Address> Client::addresses(int _block) const
+{
+	vector<Address> ret;
+	for (auto const& i: asOf(_block).addresses())
+		ret.push_back(i.first);
+	return ret;
+}
+
 u256 Client::balanceAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).balance(_a);
+}
+
+std::map<u256, u256> Client::storageAt(Address _a, int _block) const
+{
+	return asOf(_block).storage(_a);
 }
 
 u256 Client::countAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 Client::stateAt(Address _a, u256 _l, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).storage(_a, _l);
 }
 
 bytes Client::codeAt(Address _a, int _block) const
 {
-	ClientGuard l(this);
 	return asOf(_block).code(_a);
 }
 
-bool TransactionFilter::matches(h256 _bloom) const
-{
-	auto have = [=](Address const& a) { return _bloom.contains(a.bloom()); };
-	if (m_from.size())
-	{
-		for (auto i: m_from)
-			if (have(i))
-				goto OK1;
-		return false;
-	}
-	OK1:
-	if (m_to.size())
-	{
-		for (auto i: m_to)
-			if (have(i))
-				goto OK2;
-		return false;
-	}
-	OK2:
-	if (m_stateAltered.size() || m_altered.size())
-	{
-		for (auto i: m_altered)
-			if (have(i))
-				goto OK3;
-		for (auto i: m_stateAltered)
-			if (have(i.first) && _bloom.contains(h256(i.second).bloom()))
-				goto OK3;
-		return false;
-	}
-	OK3:
-	return true;
-}
-
-bool TransactionFilter::matches(State const& _s, unsigned _i) const
-{
-	h256 b = _s.changesFromPending(_i).bloom();
-	if (!matches(b))
-		return false;
-
-	Transaction t = _s.pending()[_i];
-	if (!m_to.empty() && !m_to.count(t.receiveAddress))
-		return false;
-	if (!m_from.empty() && !m_from.count(t.sender()))
-		return false;
-	if (m_stateAltered.empty() && m_altered.empty())
-		return true;
-	StateDiff d = _s.pendingDiff(_i);
-	if (!m_altered.empty())
-	{
-		for (auto const& s: m_altered)
-			if (d.accounts.count(s))
-				return true;
-		return false;
-	}
-	if (!m_stateAltered.empty())
-	{
-		for (auto const& s: m_stateAltered)
-			if (d.accounts.count(s.first) && d.accounts.at(s.first).storage.count(s.second))
-				return true;
-		return false;
-	}
-	return true;
-}
-
-PastMessages TransactionFilter::matches(Manifest const& _m, unsigned _i) const
+PastMessages Client::messages(MessageFilter const& _f) const
 {
 	PastMessages ret;
-	matches(_m, vector<unsigned>(1, _i), _m.from, PastMessages(), ret);
-	return ret;
-}
-
-bool TransactionFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const
-{
-	bool ret;
-
-	if ((m_from.empty() || m_from.count(_m.from)) && (m_to.empty() || m_to.count(_m.to)))
-		_limbo.push_back(PastMessage(_m, _p, _o));
-
-	// Handle limbos, by checking against all addresses in alteration.
-	bool alters = m_altered.empty() && m_stateAltered.empty();
-	alters = alters || m_altered.count(_m.from) || m_altered.count(_m.to);
-
-	if (!alters)
-		for (auto const& i: _m.altered)
-			if (m_altered.count(_m.to) || m_stateAltered.count(make_pair(_m.to, i)))
-			{
-				alters = true;
-				break;
-			}
-	// If we do alter stuff,
-	if (alters)
-	{
-		o_ret += _limbo;
-		_limbo.clear();
-		ret = true;
-	}
-
-	_p.push_back(0);
-	for (auto const& m: _m.internal)
-	{
-		if (matches(m, _p, _o, _limbo, o_ret))
-		{
-			_limbo.clear();
-			ret = true;
-		}
-		_p.back()++;
-	}
-
-	return ret;
-}
-
-PastMessages Client::transactions(TransactionFilter const& _f) const
-{
-	ClientGuard l(this);
-
-	PastMessages ret;
-	unsigned begin = numberOf(_f.latest());
-	unsigned end = min(begin, numberOf(_f.earliest()));
+	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
+	unsigned end = min(begin, (unsigned)_f.earliest());
 	unsigned m = _f.max();
 	unsigned s = _f.skip();
 
 	// Handle pending transactions differently as they're not on the block chain.
-	if (_f.latest() == 0)
+	if (begin == m_bc.number())
 	{
+		ReadGuard l(x_stateDB);
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		{
 			// Might have a transaction that contains a matching message.
@@ -477,36 +570,29 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 						s--;
 					else
 						// Have a transaction that contains a matching message.
-						ret.insert(ret.begin(), pm[j].polish(h256(), ts, 0));
+						ret.insert(ret.begin(), pm[j].polish(h256(), ts, m_bc.number() + 1, m_postMine.address()));
 			}
 		}
-/*		for (unsigned i = m_postMine.pending().size(); i-- && ret.size() != m;)
-			if (_f.matches(m_postMine, i))
-			{
-				if (s)
-					s--;
-				else
-					ret.insert(ret.begin(), PastMessage(m_postMine.pending()[i], h256(), i, time(0), 0));
-			}*/
-		// Early exit here since we can't rely on begin/end, being out of the blockchain as we are.
-		if (_f.earliest() == 0)
-			return ret;
 	}
 
+#if ETH_DEBUG
 	unsigned skipped = 0;
 	unsigned falsePos = 0;
-	auto cn = m_bc.number();
+#endif
 	auto h = m_bc.numberHash(begin);
 	unsigned n = begin;
 	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
 	{
 		auto d = m_bc.details(h);
+#if ETH_DEBUG
 		int total = 0;
+#endif
 		if (_f.matches(d.bloom))
 		{
 			// Might have a block that contains a transaction that contains a matching message.
 			auto bs = m_bc.blooms(h).blooms;
 			Manifests ms;
+			BlockInfo bi;
 			for (unsigned i = 0; i < bs.size(); ++i)
 				if (_f.matches(bs[i]))
 				{
@@ -517,45 +603,35 @@ PastMessages Client::transactions(TransactionFilter const& _f) const
 					PastMessages pm = _f.matches(changes, i);
 					if (pm.size())
 					{
+#if ETH_DEBUG
 						total += pm.size();
-						auto ts = BlockInfo(m_bc.block(h)).timestamp;
+#endif
+						if (!bi)
+							bi.populate(m_bc.block(h));
+						auto ts = bi.timestamp;
+						auto cb = bi.coinbaseAddress;
 						for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
 							if (s)
 								s--;
 							else
 								// Have a transaction that contains a matching message.
-								ret.insert(ret.begin(), pm[j].polish(h, ts, cn - n + 2));
+								ret.push_back(pm[j].polish(h, ts, n, cb));
 					}
 				}
+#if ETH_DEBUG
 			if (!total)
 				falsePos++;
-/*			try
-			{
-				State st(m_stateDB, m_bc, h);
-				unsigned os = s;
-				for (unsigned i = st.pending().size(); i-- && ret.size() != m;)
-					if (_f.matches(st, i))
-					{
-						if (s)
-							s--;
-						else
-							ret.insert(ret.begin(), PastMessage(st.pending()[i], h, i, BlockInfo(m_bc.block(h)).timestamp, cn - n + 2));
-					}
-				if (os - s == st.pending().size())
-					falsePos++;
-			}
-			catch (...)
-			{
-				// Gaa. bad state. not good at all. bury head in sand for now.
-			}
-*/
 		}
 		else
 			skipped++;
-
+#else
+		}
+#endif
 		if (n == end)
 			break;
 	}
+#if ETH_DEBUG
 //	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
+#endif
 	return ret;
 }

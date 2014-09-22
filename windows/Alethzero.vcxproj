@@ -87,7 +87,7 @@
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINSOCK_DEPRECATED_NO_WARNINGS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -126,7 +126,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINSOCK_DEPRECATED_NO_WARNINGS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -209,6 +209,24 @@
     </CustomBuild>
     <ClInclude Include="..\alethzero\Grapher.h" />
     <ClInclude Include="..\alethzero\GraphParameters.h" />
+    <CustomBuild Include="..\alethzero\DownloadView.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)moc_%(FileName).cpp</Outputs>
+    </CustomBuild>
     <CustomBuild Include="..\alethzero\MiningView.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Lua) moc.lua "$(QtBin)/moc" "$(IntDir)moc_%(FileName).cpp" "@(ClCompile->'%(AdditionalIncludeDirectories)');$(IncludePath)" "@(ClCompile->'%(PreprocessorDefinitions)');_MSC_VER=1800" "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

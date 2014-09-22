@@ -29,14 +29,11 @@
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
 #endif
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/Client.h>
-#include <libethereum/PeerNetwork.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
-#include <libethcore/CommonEth.h>
+#include <libevm/VM.h>
+#include <libethereum/All.h>
+#include <libwebthree/WebThree.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -46,10 +43,13 @@
 #endif
 #include "BuildInfo.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::p2p;
+using namespace dev::eth;
 using namespace boost::algorithm;
-using eth::Instruction;
-using eth::c_instructionInfo;
+using dev::eth::Instruction;
+
+#undef RETURN
 
 bool isTrue(std::string const& _m)
 {
@@ -73,6 +73,7 @@ void interactiveHelp()
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
+		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
 		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
@@ -81,13 +82,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    listAccounts List the accounts on the network." << endl
-		<< "    listContracts List the contracts on the network." << endl
-		<< "    setSecret <secret> Set the secret to the hex secret key." <<endl
-		<< "    setAddress <addr> Set the coinbase (mining payout) address." <<endl
-		<< "    exportConfig <path> Export the config (.RLP) to the path provided." <<endl
-		<< "    importConfig <path> Import the config (.RLP) from the path provided." <<endl
-		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    listAccounts  List the accounts on the network." << endl
+		<< "    listContracts  List the contracts on the network." << endl
+		<< "    setSecret <secret>  Set the secret to the hex secret key." <<endl
+		<< "    setAddress <addr>  Set the coinbase (mining payout) address." <<endl
+		<< "    exportConfig <path>  Export the config (.RLP) to the path provided." <<endl
+		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
+		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -97,10 +99,12 @@ void help()
         << "Usage eth [OPTIONS] <remote-host>" << endl
         << "Options:" << endl
         << "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
+		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
         << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-        << "    -h,--help  Show this help message and exit." << endl
+		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
@@ -108,8 +112,9 @@ void help()
 #endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-        << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-        << "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -L,--local-networking Use peers whose addresses are local." << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
         << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
@@ -124,23 +129,14 @@ string credits(bool _interactive = false)
 {
 	std::ostringstream cout;
 	cout
-        << "Ethereum (++) " << eth::EthVersion << endl
+		<< "Ethereum (++) " << dev::Version << endl
 		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
 	if (_interactive)
 	{
-        string vs = toString(eth::EthVersion);
-		vs = vs.substr(vs.find_first_of('.') + 1)[0];
-		int pocnumber = stoi(vs);
-		string m_servers;
-		if (pocnumber == 4)
-			m_servers = "54.72.31.55";
-		else
-			m_servers = "54.72.69.180";
-
 		cout << "Type 'netstart 30303' to start networking" << endl;
-		cout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
+		cout << "Type 'connect " << Host::pocHost() << " 30303' to connect" << endl;
 		cout << "Type 'exit' to quit" << endl << endl;
 	}
 	return cout.str();
@@ -148,13 +144,13 @@ string credits(bool _interactive = false)
 
 void version()
 {
-    cout << "eth version " << eth::EthVersion << endl;
-	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "eth version " << dev::Version << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
-string pretty(h160 _a, eth::State _st)
+string pretty(h160 _a, dev::eth::State _st)
 {
 	string ns;
 	h256 n;
@@ -169,22 +165,25 @@ string pretty(h160 _a, eth::State _st)
 	}
 	return ns;
 }
-bytes parse_data(string _args);
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	string dbPath;
-	eth::uint mining = ~(eth::uint)0;
+	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	bool interactive = false;
 #if ETH_JSONRPC
-	int jsonrpc = 8080;
+	int jsonrpc = -1;
 #endif
 	string publicIP;
+	bool bootstrap = false;
 	bool upnp = true;
+	bool useLocal = false;
+	bool forceMining = false;
 	string clientName;
 
 	// Init defaults
@@ -229,10 +228,12 @@ int main(int argc, char** argv)
 				upnp = false;
 			else
 			{
-				cerr << "Invalid UPnP option: " << m << endl;
+				cerr << "Invalid -n/--upnp option: " << m << endl;
 				return -1;
 			}
 		}
+		else if (arg == "-L" || arg == "--local-networking")
+			useLocal = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
@@ -245,22 +246,26 @@ int main(int argc, char** argv)
 		{
 			string m = argv[++i];
 			if (isTrue(m))
-				mining = ~(eth::uint)0;
+				mining = ~(unsigned)0;
 			else if (isFalse(m))
 				mining = 0;
 			else if (int i = stoi(m))
 				mining = i;
 			else
 			{
-				cerr << "Unknown mining option: " << m << endl;
+				cerr << "Unknown -m/--mining option: " << m << endl;
 				return -1;
 			}
 		}
+		else if (arg == "-b" || arg == "--bootstrap")
+			bootstrap = true;
+		else if (arg == "-f" || arg == "--force-mining")
+			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc ? jsonrpc : 8080;
+			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
@@ -291,18 +296,33 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-    Client c("Ethereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-	c.start();
+
 	cout << credits();
 
+	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
+	web3.setIdealPeerCount(peers);
+	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
+
+	if (c)
+	{
+		c->setForceMining(forceMining);
+		c->setAddress(coinbase);
+	}
+
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
-	c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	web3.startNetwork();
+
+	if (bootstrap)
+		web3.connect(Host::pocHost());
+	if (remoteHost.size())
+		web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -310,9 +330,16 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
+		string logbuf;
 		string l;
 		while (true)
 		{
+			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
+			cout << logbuf << "Press Enter" << flush;
+			std::getline(cin, l);
+			logbuf.clear();
+			g_logPost = [&](std::string const& a, char const*) { logbuf += a + "\n"; };
+
 #if ETH_READLINE
 			if (l.size())
 				add_history(l.c_str());
@@ -333,31 +360,34 @@ int main(int argc, char** argv)
 			iss >> cmd;
 			if (cmd == "netstart")
 			{
-				eth::uint port;
-				iss >> port;
-				ClientGuard g(&c);
-				c.startNetwork((short)port);
+				iss >> netPrefs.listenPort;
+				web3.setNetworkPreferences(netPrefs);
+				web3.startNetwork();
 			}
 			else if (cmd == "connect")
 			{
 				string addr;
-				eth::uint port;
+				unsigned port;
 				iss >> addr >> port;
-				ClientGuard g(&c);
-				c.connect(addr, (short)port);
+				web3.connect(addr, (short)port);
 			}
 			else if (cmd == "netstop")
 			{
-				ClientGuard g(&c);
-				c.stopNetwork();
+				web3.stopNetwork();
 			}
-			else if (cmd == "minestart")
+			else if (c && cmd == "minestart")
 			{
-				c.startMining();
+				c->startMining();
 			}
-			else if (cmd == "minestop")
+			else if (c && cmd == "minestop")
 			{
-				c.stopMining();
+				c->stopMining();
+			}
+			else if (c && cmd == "mineforce")
+			{
+				string enable;
+				iss >> enable;
+				c->setForceMining(isTrue(enable));
 			}
 			else if (cmd == "verbosity")
 			{
@@ -376,7 +406,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
@@ -397,28 +427,24 @@ int main(int argc, char** argv)
 			{
 				cout << "Secret Key: " << toHex(us.secret().asArray()) << endl;
 			}
-			else if (cmd == "block")
+			else if (c && cmd == "block")
 			{
-				ClientGuard g(&c);
-				cout << "Current block: " << c.blockChain().details().number;
+				cout << "Current block: " <<c->blockChain().details().number << endl;
 			}
 			else if (cmd == "peers")
 			{
-				ClientGuard g(&c);
-				for (auto it: c.peers())
+				for (auto it: web3.peers())
 					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
 			}
-			else if (cmd == "balance")
+			else if (c && cmd == "balance")
 			{
-				ClientGuard g(&c);
-				cout << "Current balance: " << formatBalance(c.postState().balance(us.address())) << " = " << c.postState().balance(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance( c->balanceAt(us.address())) << " = " <<c->balanceAt(us.address()) << " wei" << endl;
 			}
-			else if (cmd == "transact")
+			else if (c && cmd == "transact")
 			{
-				ClientGuard g(&c);
-				auto const& bc = c.blockChain();
+				auto const& bc =c->blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
@@ -435,7 +461,7 @@ int main(int argc, char** argv)
 					
 					cnote << "Data:";
 					cnote << sdata;
-					bytes data = parse_data(sdata);
+					bytes data = dev::eth::parseData(sdata);
 					cnote << "Bytes:";
 					string sbd = asString(data);
 					bytes bbd = asBytes(sbd);
@@ -444,16 +470,16 @@ int main(int argc, char** argv)
 					cnote << ssbd.str();
 					int ssize = sechex.length();
 					int size = hexAddr.length();
-					u256 minGas = (u256)c.state().callGas(data.size(), 0);
+					u256 minGas = (u256)Client::txGas(data.size(), 0);
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else if (ssize < 40)
 					{
 						if (ssize > 0)
@@ -463,48 +489,36 @@ int main(int argc, char** argv)
 					{
 						Secret secret = h256(fromHex(sechex));
 						Address dest = h160(fromHex(hexAddr));
-						c.transact(secret, amount, dest, data, gas, gasPrice);
+						c->transact(secret, amount, dest, data, gas, gasPrice);
 					}
 				}
 				else
 					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
-			else if (cmd == "listContracts")
+			else if (c && cmd == "listContracts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (st.addressHasCode(r))
+					if ( c->codeAt(i, 0).size())
 					{
-						ss = toString(r) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
-				}
 			}
-			else if (cmd == "listAccounts")
+			else if (c && cmd == "listAccounts")
 			{
-				ClientGuard g(&c);
-				auto const& st = c.state();
-				auto acs = st.addresses();
+				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-				{
-					auto r = i.first;
-					if (!st.addressHasCode(r))
+					if ( c->codeAt(i, 0).empty())
 					{
-						ss = toString(r) + pretty(r, st) + " : " + toString(formatBalance(i.second)) + " [" + toString((unsigned)st.transactionsFrom(i.first)) + "]";
+						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
-					
-				}
 			}
-			else if (cmd == "send")
+			else if (c && cmd == "send")
 			{
-				ClientGuard g(&c);
 				if (iss.peek() != -1)
 				{
 					string hexAddr;
@@ -515,31 +529,30 @@ int main(int argc, char** argv)
 					if (size < 40)
 					{
 						if (size > 0)
-							cwarn << "Invalid address length: " << size;
+							cwarn << "Invalid address length:" << size;
 					}
 					else 
 					{
-						auto const& bc = c.blockChain();
+						auto const& bc =c->blockChain();
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
-						u256 minGas = (u256)c.state().callGas(0, 0);
+						u256 minGas = (u256)Client::txGas(0, 0);
 						Address dest = h160(fromHex(hexAddr));
-						c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+						c->transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 					}
-					
 				} 
 				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
 			}
-			else if (cmd == "contract")
+			else if (c && cmd == "contract")
 			{
-				ClientGuard g(&c);
-				auto const& bc = c.blockChain();
+				auto const& bc =c->blockChain();
 				auto h = bc.currentHash();
 				auto blockData = bc.block(h);
 				BlockInfo info(blockData);
-				if(iss.peek() != -1) {
+				if (iss.peek() != -1)
+				{
 					u256 endowment;
 					u256 gas;
 					u256 gasPrice;
@@ -550,7 +563,7 @@ int main(int argc, char** argv)
 					bytes init;
 					cnote << "Init:";
 					cnote << sinit;
-					cnote << "Code size: " << size;
+					cnote << "Code size:" << size;
 					if (size < 1)
 						cwarn << "No code submitted";
 					else
@@ -563,20 +576,75 @@ int main(int argc, char** argv)
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
-					u256 minGas = (u256)c.state().createGas(init.size(), 0);
+					u256 minGas = (u256)Client::txGas(init.size(), 0);
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is " << info.minGasPrice;
+						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
-						cwarn << "Minimum gas amount is " << minGas;
+						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c.transact(us.secret(), endowment, init, gas, gasPrice);
+						c->transact(us.secret(), endowment, init, gas, gasPrice);
 				} 
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
-			else if (cmd == "inspect")
+			else if (c && cmd == "dumptrace")
+			{
+				unsigned block;
+				unsigned index;
+				string filename;
+				string format;
+				iss >> block >> index >> filename >> format;
+				ofstream f;
+				f.open(filename);
+
+				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
+				if (index < state.pending().size())
+				{
+					Executive e(state);
+					Transaction t = state.pending()[index];
+					state = state.fromPending(index);
+					bytes r = t.rlp();
+					e.setup(&r);
+
+					OnOpFunc oof;
+					if (format == "pretty")
+						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+						{
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << endl << "    STACK" << endl;
+							for (auto i: vm->stack())
+								f << (h256)i << endl;
+							f << "    MEMORY" << endl << dev::memDump(vm->memory());
+							f << "    STORAGE" << endl;
+							for (auto const& i: ext->state().storage(ext->myAddress))
+								f << showbase << hex << i.first << ": " << i.second << endl;
+							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+						};
+					else if (format == "standard")
+						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+						{
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						};
+					else if (format == "standard+")
+						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+						{
+							dev::eth::VM* vm = (VM*)vvm;
+							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+						};
+					e.go(oof);
+					e.finalize(oof);
+				}
+			}
+			else if (c && cmd == "inspect")
 			{
 				string rechex;
 				iss >> rechex;
@@ -585,20 +653,28 @@ int main(int argc, char** argv)
 					cwarn << "Invalid address length";
 				else
 				{
-					ClientGuard g(&c);
 					auto h = h160(fromHex(rechex));
 					stringstream s;
-					auto mem = c.state().storage(h);
 
-					for (auto const& i: mem)
-						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-					s << endl << disassemble(c.state().code(h));
+					try
+					{
+						auto storage =c->storageAt(h, 0);
+						for (auto const& i: storage)
+							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+						s << endl << disassemble( c->codeAt(h, 0)) << endl;
 
-					string outFile = getDataDir() + "/" + rechex + ".evm";
-					ofstream ofs;
-					ofs.open(outFile, ofstream::binary);
-					ofs.write(s.str().c_str(), s.str().length());
-					ofs.close();
+						string outFile = getDataDir() + "/" + rechex + ".evm";
+						ofstream ofs;
+						ofs.open(outFile, ofstream::binary);
+						ofs.write(s.str().c_str(), s.str().length());
+						ofs.close();
+
+						cnote << "Saved" << rechex << "to" << outFile;
+					}
+					catch (dev::eth::InvalidTrie)
+					{
+						cwarn << "Corrupted trie.";
+					}
 				}
 			}
 			else if (cmd == "setSecret")
@@ -670,75 +746,22 @@ int main(int argc, char** argv)
 			jsonrpcServer->StopListening();
 #endif
 	}
-	else
+	else if (c)
 	{
-		eth::uint n = c.blockChain().details().number;
+		unsigned n =c->blockChain().details().number;
 		if (mining)
-			c.startMining();
+			c->startMining();
 		while (true)
 		{
-			if (c.blockChain().details().number - n == mining)
-				c.stopMining();
+			if ( c->isMining() &&c->blockChain().details().number - n == mining)
+				c->stopMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
-
+	else
+		while (true)
+			this_thread::sleep_for(chrono::milliseconds(1000));
 
 	return 0;
 }
 
-bytes parse_data(string _args)
-{
-	bytes m_data;
-	stringstream args(_args);
-	string arg;
-	int cc = 0;
-	while (args >> arg)
-	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
-		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
-			if (boost::starts_with(arg, "0x"))
-			{
-				cnote << "hex: " << arg;
-				bytes bs = fromHex(arg);
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
-			}
-			else
-			{
-				cnote << "value: " << arg;
-				bytes bs = toBigEndian(u256(arg));
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-		}
-		else
-			for (int i = 0; i < al; ++i)
-				m_data.push_back(arg[i]);
-		cc++;
-	}
-	return m_data;
-}

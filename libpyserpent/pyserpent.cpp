@@ -7,9 +7,15 @@
 #include <libserpent/funcs.h>
 
 #define PYMETHOD(name, FROM, method, TO) \
-    static PyObject * name(PyObject *self, PyObject *args) { \
+    static PyObject * name(PyObject *, PyObject *args) { \
+        try { \
         FROM(med) \
         return TO(method(med)); \
+        } \
+        catch (std::string e) { \
+           PyErr_SetString(PyExc_Exception, e.c_str()); \
+           return NULL; \
+        } \
     }
 
 #define FROMSTR(v) \
@@ -128,7 +134,7 @@ PYMETHOD(ps_parse_lll, FROMSTR, parseLLL, pyifyNode)
 static PyMethodDef PyextMethods[] = {
     {"compile",  ps_compile, METH_VARARGS,
         "Compile code."},
-    {"compile_to_lll",  ps_parse,  METH_VARARGS,
+    {"compile_to_lll",  ps_compile_to_lll, METH_VARARGS,
         "Compile code to LLL."},
     {"compile_lll",  ps_compile_lll, METH_VARARGS,
         "Compile LLL to EVM."},
@@ -149,7 +155,7 @@ static PyMethodDef PyextMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC initpyext(void)
+PyMODINIT_FUNC initserpent_pyext(void)
 {
-     PyObject *m = Py_InitModule( "pyext", PyextMethods );
+     Py_InitModule( "serpent_pyext", PyextMethods );
 }

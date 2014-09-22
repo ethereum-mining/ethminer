@@ -25,42 +25,42 @@
 #include <mutex>
 #include <list>
 #include <atomic>
-#include <libethential/Common.h>
+#include <boost/utility.hpp>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
+#include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
+#include <libp2p/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
-#include "PeerNetwork.h"
+#include "CommonNet.h"
+#include "PastMessage.h"
+#include "MessageFilter.h"
+#include "Miner.h"
+#include "Interface.h"
 
+namespace dev
+{
 namespace eth
 {
 
-struct MineProgress
-{
-	double requirement;
-	double best;
-	double current;
-	uint hashes;
-	uint ms;
-};
-
 class Client;
-
-class ClientGuard
-{
-public:
-	inline ClientGuard(Client const* _c);
-	inline ~ClientGuard();
-
-private:
-	Client const* m_client;
-};
+class DownloadMan;
 
 enum ClientWorkState
 {
 	Active = 0,
 	Deleting,
 	Deleted
+};
+
+enum class NodeMode
+{
+	PeerServer,
+	Full
 };
 
 class VersionChecker
@@ -78,73 +78,45 @@ private:
 
 static const int GenesisBlock = INT_MIN;
 
-struct PastMessage
+struct InstalledFilter
 {
-	PastMessage(Manifest const& _m, std::vector<unsigned> _path, Address _o): to(_m.to), from(_m.from), value(_m.value), input(_m.input), output(_m.output), path(_path), origin(_o) {}
+	InstalledFilter(MessageFilter const& _f): filter(_f) {}
 
-	PastMessage& polish(h256 _b, u256 _ts, int _a) { block = _b; timestamp = _ts; age = _a; return *this; }
-
-	Address to;					///< The receiving address of the transaction. Address() in the case of a creation.
-	Address from;				///< The receiving address of the transaction. Address() in the case of a creation.
-	u256 value;					///< The value associated with the call.
-	bytes input;				///< The data associated with the message, or the initialiser if it's a creation transaction.
-	bytes output;				///< The data returned by the message, or the body code if it's a creation transaction.
-
-	std::vector<unsigned> path;	///< Call path into the block transaction. size() is always > 0. First item is the transaction index in the block.
-	Address origin;				///< Originating sender of the transaction.
-	h256 block;					///< Block hash.
-	u256 timestamp;			///< Block timestamp.
-	int age;					///< Transaction age.
+	MessageFilter filter;
+	unsigned refCount = 1;
 };
 
-typedef std::vector<PastMessage> PastMessages;
+static const h256 PendingChangedFilter = u256(0);
+static const h256 ChainChangedFilter = u256(1);
 
-class TransactionFilter
+struct ClientWatch
 {
-public:
-	TransactionFilter(int _earliest = GenesisBlock, int _latest = 0, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+	ClientWatch() {}
+	explicit ClientWatch(h256 _id): id(_id) {}
 
-	int earliest() const { return m_earliest; }
-	int latest() const { return m_latest; }
-	unsigned max() const { return m_max; }
-	unsigned skip() const { return m_skip; }
-	bool matches(h256 _bloom) const;
-	bool matches(State const& _s, unsigned _i) const;
-	PastMessages matches(Manifest const& _m, unsigned _i) const;
-
-	TransactionFilter from(Address _a) { m_from.insert(_a); return *this; }
-	TransactionFilter to(Address _a) { m_to.insert(_a); return *this; }
-	TransactionFilter altered(Address _a, u256 _l) { m_stateAltered.insert(std::make_pair(_a, _l)); return *this; }
-	TransactionFilter altered(Address _a) { m_altered.insert(_a); return *this; }
-	TransactionFilter withMax(unsigned _m) { m_max = _m; return *this; }
-	TransactionFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
-	TransactionFilter withEarliest(int _e) { m_earliest = _e; return *this; }
-	TransactionFilter withLatest(int _e) { m_latest = _e; return *this; }
-
-private:
-	bool matches(Manifest const& _m, std::vector<unsigned> _p, Address _o, PastMessages _limbo, PastMessages& o_ret) const;
-
-	std::set<Address> m_from;
-	std::set<Address> m_to;
-	std::set<std::pair<Address, u256>> m_stateAltered;
-	std::set<Address> m_altered;
-	int m_earliest;
-	int m_latest;
-	unsigned m_max;
-	unsigned m_skip;
+	h256 id;
+	unsigned changes = 1;
 };
+
+struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
+#define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
+struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
+struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
+struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
+#define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
+#define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
+#define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client
+class Client: public MinerHost, public Interface, Worker
 {
-public:
-	/// Constructor.
-	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
+	friend class Miner;
 
-	// Start client. Boost require threads are started outside constructor.
-	void start();
+public:
+	/// New-style Constructor.
+	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
 
 	/// Destructor.
 	~Client();
@@ -156,107 +128,141 @@ public:
 	/// @returns the new contract's address (assuming it all goes through).
 	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	void inject(bytesConstRef _rlp);
 
-	/// Makes the given call. Nothing is recorded into the state. TODO
-//	bytes call(Secret _secret, u256 _amount, u256 _gasPrice, Address _dest, u256 _gas, bytes _data = bytes());
+	/// Blocks until all pending transactions have been processed.
+	void flushTransactions();
 
-	/// Requires transactions involving this address be queued for inspection.
-	void setInterest(Address _dest);
-
-	/// @returns incoming minable transactions that we wanted to be notified of. Clears the queue.
-	Transactions pendingQueue() { ClientGuard g(this); return m_tq.interestQueue(); }
-
-	/// @returns alterations in state of a mined block that we wanted to be notified of. Clears the queue.
-	std::vector<std::pair<Address, AddressState>> minedQueue() { ClientGuard g(this); return m_bc.interestQueue(); }
-
-	// Not yet - probably best as using some sort of signals implementation.
-	/// Calls @a _f when a valid transaction is received that involves @a _dest and once per such transaction.
-//	void onPending(Address _dest, function<void(Transaction)> const& _f);
-
-	/// Calls @a _f when a transaction is mined that involves @a _dest and once per change.
-//	void onConfirmed(Address _dest, function<void(Transaction, AddressState)> const& _f);
+	/// Makes the given call. Nothing is recorded into the state.
+	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	// Informational stuff
 
-	/// Determines whether at least one of the state/blockChain/transactionQueue has changed since the last call to changed().
-	bool changed() const { auto ret = m_changed; m_changed = false; return ret; }
-	bool peekChanged() const { return m_changed; }
-
-	/// Get a map containing each of the pending transactions.
-	Transactions pending() const { return m_postMine.pending(); }
-
-	// [OLD API]:
-
-	/// Locks/unlocks the state/blockChain/transactionQueue for access.
-	void lock() const;
-	void unlock() const;
-
-	/// Get the object representing the current state of Ethereum.
-	State const& state() const { return m_preMine; }
-	/// Get the object representing the current state of Ethereum.
-	State const& postState() const { return m_postMine; }
-	/// Get the object representing the current canonical blockchain.
-	BlockChain const& blockChain() const { return m_bc; }
-
 	// [NEW API]
 
-	u256 balanceAt(Address _a, int _block = -1) const;
-	u256 countAt(Address _a, int _block = -1) const;
-	u256 stateAt(Address _a, u256 _l, int _block = -1) const;
-	bytes codeAt(Address _a, int _block = -1) const;
-	PastMessages transactions(TransactionFilter const& _f) const;
+	using Interface::balanceAt;
+	using Interface::countAt;
+	using Interface::stateAt;
+	using Interface::codeAt;
+	using Interface::storageAt;
 
-	// Misc stuff:
+	u256 balanceAt(Address _a, int _block) const;
+	u256 countAt(Address _a, int _block) const;
+	u256 stateAt(Address _a, u256 _l, int _block) const;
+	bytes codeAt(Address _a, int _block) const;
+	std::map<u256, u256> storageAt(Address _a, int _block) const;
 
-	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
+	unsigned installWatch(MessageFilter const& _filter);
+	unsigned installWatch(h256 _filterId);
+	void uninstallWatch(unsigned _watchId);
+	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
+	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
-	// Network stuff:
+	PastMessages messages(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return messages(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	PastMessages messages(MessageFilter const& _filter) const;
 
-	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers();
-	/// Same as peers().size(), but more efficient.
-	size_t peerCount() const;
+	// [EXTRA API]:
 
-	/// Start the network subsystem.
-	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true);
-	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, unsigned short _port = 30303);
-	/// Stop the network subsystem.
-	void stopNetwork();
-	/// Is the network subsystem up?
-	bool haveNetwork() { return !!m_net; }
-	/// Get access to the peer server object. This will be null if the network isn't online.
-	PeerServer* peerServer() const { return m_net.get(); }
+	/// @returns the length of the chain.
+	virtual unsigned number() const { return m_bc.number(); }
+
+	/// Get a map containing each of the pending transactions.
+	/// @TODO: Remove in favour of transactions().
+	Transactions pending() const { return m_postMine.pending(); }
+
+	/// Differences between transactions.
+	using Interface::diff;
+	StateDiff diff(unsigned _txi, h256 _block) const;
+	StateDiff diff(unsigned _txi, int _block) const;
+
+	/// Get a list of all active addresses.
+	using Interface::addresses;
+	std::vector<Address> addresses(int _block) const;
+
+	/// Get the remaining gas limit in this block.
+	u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
+
+	// [PRIVATE API - only relevant for base clients, not available in general]
+
+	dev::eth::State state(unsigned _txi, h256 _block) const;
+	dev::eth::State state(h256 _block) const;
+	dev::eth::State state(unsigned _txi) const;
+
+	/// Get the object representing the current state of Ethereum.
+	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	/// Get the object representing the current canonical blockchain.
+	BlockChain const& blockChain() const { return m_bc; }
 
 	// Mining stuff:
 
 	/// Check block validity prior to mining.
-	bool paranoia() const { return m_paranoia; }
+	bool miningParanoia() const { return m_paranoia; }
 	/// Change whether we check block validity prior to mining.
 	void setParanoia(bool _p) { m_paranoia = _p; }
+	/// Should we force mining to happen, even without transactions?
+	bool forceMining() const { return m_forceMining; }
+	/// Enable/disable forcing of mining to happen, even without transactions.
+	void setForceMining(bool _enable);
+	/// Are we mining as fast as we can?
+	bool turboMining() const { return m_turboMining; }
+	/// Enable/disable fast mining.
+	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
+
 	/// Set the coinbase address.
 	void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
 	Address address() const { return m_preMine.address(); }
+	/// Stops mining and sets the number of mining threads (0 for automatic).
+	void setMiningThreads(unsigned _threads = 0);
+	/// Get the effective number of mining threads.
+	unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
 	/// Start mining.
-	void startMining();
+	/// NOT thread-safe - call it & stopMining only from a single thread
+	void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
 	/// Stop mining.
-	void stopMining();
+	/// NOT thread-safe
+	void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
 	/// Are we mining now?
-	bool isMining() { return m_doMine; }
-	/// Register a callback for information concerning mining.
-	/// This callback will be in an arbitrary thread, blocking progress. JUST COPY THE DATA AND GET OUT.
+	bool isMining() { ReadGuard l(x_miners); return m_miners.size() && m_miners[0].isRunning(); }
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const { return m_mineProgress; }
+	MineProgress miningProgress() const;
 	/// Get and clear the mining history.
-	std::list<MineInfo> miningHistory() { auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
+	std::list<MineInfo> miningHistory();
 
+	// Debug stuff:
+
+	DownloadMan const* downloadMan() const;
+	bool isSyncing() const;
+	/// Sets the network id.
+	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.
-	void clearPending() { ClientGuard l(this); m_postMine = m_preMine; changed(); }
+	void clearPending();
+	/// Kills the blockchain. Just for debug use.
+	void killChain();
 
 private:
-	void work();
+	/// Do some work. Handles blockchain maintenance and mining.
+	virtual void doWork();
+
+	virtual void doneWorking();
+
+	/// Overrides for being a mining host.
+	virtual void setupState(State& _s);
+	virtual bool turbo() const { return m_turboMining; }
+	virtual bool force() const { return m_forceMining; }
+
+	/// Collate the changed filters for the bloom filter of the given pending transaction.
+	/// Insert any filters that are activated into @a o_changed.
+	void appendFromNewPending(h256 _pendingTransactionBloom, h256Set& o_changed) const;
+
+	/// Collate the changed filters for the hash of the given block.
+	/// Insert any filters that are activated into @a o_changed.
+	void appendFromNewBlock(h256 _blockHash, h256Set& o_changed) const;
+
+	/// Record that the set of filters @a _filters have changed.
+	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
+	void noteChanged(h256Set const& _filters);
 
 	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
 	unsigned numberOf(int _b) const;
@@ -264,36 +270,28 @@ private:
 	State asOf(int _h) const;
 	State asOf(unsigned _h) const;
 
-	std::string m_clientVersion;		///< Our end-application client's name/version.
-	VersionChecker m_vc;				///< Dummy object to check & update the protocol version.
-	BlockChain m_bc;					///< Maintains block database.
-	TransactionQueue m_tq;				///< Maintains list of incoming transactions not yet on the block chain.
-	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	State m_preMine;					///< The present state of the client.
-	State m_postMine;					///< The state of the client which we're mining (i.e. it'll have all the rewards added).
-	std::unique_ptr<PeerServer> m_net;	///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-	
-	std::unique_ptr<std::thread> m_work;///< The work thread.
-	
-	mutable std::recursive_mutex m_lock;
-	std::atomic<ClientWorkState> m_workState;
-	bool m_paranoia = false;
-	bool m_doMine = false;				///< Are we supposed to be mining?
-	MineProgress m_mineProgress;
-	std::list<MineInfo> m_mineHistory;
-	mutable bool m_restartMining = false;
+	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
+	BlockChain m_bc;						///< Maintains block database.
+	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
-	mutable bool m_changed;
+	mutable boost::shared_mutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
+	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	State m_preMine;						///< The present state of the client.
+	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+
+	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
+
+	std::vector<Miner> m_miners;
+	mutable boost::shared_mutex x_miners;
+	bool m_paranoia = false;				///< Should we be paranoid about our state?
+	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
+	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+
+	mutable std::mutex m_filterLock;
+	std::map<h256, InstalledFilter> m_filters;
+	std::map<unsigned, ClientWatch> m_watches;
 };
 
-inline ClientGuard::ClientGuard(Client const* _c): m_client(_c)
-{
-	m_client->lock();
 }
-
-inline ClientGuard::~ClientGuard()
-{
-	m_client->unlock();
-}
-
 }

@@ -24,10 +24,11 @@
 #include <boost/filesystem/operations.hpp>
 #include <libethereum/Client.h>
 #include <libethereum/BlockChain.h>
-#include <libethereum/PeerServer.h>
+#include <libethereum/EthereumHost.h>
 #include "TestHelper.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 // Disabled since tests shouldn't block (not the worst offender, but timeout should be reduced anyway).
 /*

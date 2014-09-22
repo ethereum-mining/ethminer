@@ -33,7 +33,8 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ctrace clog(StateTrace)
 
@@ -52,6 +53,9 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
+	if (!db)
+		throw DatabaseAlreadyOpen();
+
 	cnote << "Opened state DB.";
 	return OverlayDB(db);
 }
@@ -69,7 +73,7 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 
 	paranoia("beginning of normal construction.", true);
 
-	eth::commit(genesisState(), m_db, m_state);
+	dev::eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
 
 	paranoia("after DB commit of normal construction.", true);
@@ -148,8 +152,13 @@ State& State::operator=(State const& _s)
 	m_currentBlock = _s.m_currentBlock;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
+	m_lastTx = _s.m_lastTx;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
+}
+
+State::~State()
+{
 }
 
 struct CachedAddressState
@@ -287,7 +296,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		if (state.isNull())
 			s = AddressState(0, 0, h256(), EmptySHA3);
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].isEmpty() ? EmptySHA3 : state[3].toHash<h256>());
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
@@ -297,7 +306,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 
 void State::commit()
 {
-	eth::commit(m_cache, m_db, m_state);
+	dev::eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
@@ -311,22 +320,29 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 	bool ret = false;
 	// BLOCK
 	BlockInfo bi = _bi;
-	try
-	{
-		if (!bi)
+	if (!bi)
+		while (1)
 		{
-			auto b = _bc.block(_block);
-			bi.populate(b);
-//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+			try
+			{
+				auto b = _bc.block(_block);
+				bi.populate(b);
+	//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+				break;
+			}
+			catch (Exception const& _e)
+			{
+				// TODO: Slightly nicer handling? :-)
+				cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+				cerr << _e.description() << endl;
+			}
+			catch (std::exception const& _e)
+			{
+				// TODO: Slightly nicer handling? :-)
+				cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+				cerr << _e.what() << endl;
+			}
 		}
-	}
-	catch (...)
-	{
-		// TODO: Slightly nicer handling? :-)
-		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-		exit(1);
-	}
-
 	if (bi == m_currentBlock)
 	{
 		// We mined the last block.
@@ -390,7 +406,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
 	m_previousBlock = biParent;
-	return enact(_block, biGrandParent);
+	return enact(_block, &_bc);
 }
 
 map<Address, u256> State::addresses() const
@@ -454,28 +470,24 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-bool State::sync(TransactionQueue& _tq, bool* _changed)
+h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	bool ret = false;
+	h256s ret;
 	auto ts = _tq.transactions();
-	vector<pair<h256, bytes>> futures;
 
 	for (int goodTxs = 1; goodTxs;)
 	{
 		goodTxs = 0;
 		for (auto const& i: ts)
-		{
 			if (!m_transactionSet.count(i.first))
 			{
 				// don't have it yet! Execute it now.
 				try
 				{
-					ret = true;
 					uncommitToMine();
 					execute(i.second);
-					if (_changed)
-						*_changed = true;
+					ret.push_back(m_transactions.back().changes.bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 				}
@@ -485,8 +497,8 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 					{
 						// too old
 						_tq.drop(i.first);
-						if (_changed)
-							*_changed = true;
+						if (o_transactionQueueChanged)
+							*o_transactionQueueChanged = true;
 					}
 					else
 						_tq.setFuture(i);
@@ -495,16 +507,15 @@ bool State::sync(TransactionQueue& _tq, bool* _changed)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					if (_changed)
-						*_changed = true;
+					if (o_transactionQueueChanged)
+						*o_transactionQueueChanged = true;
 				}
 			}
-		}
 	}
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _checkNonce)
+u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
@@ -563,16 +574,21 @@ u256 State::enact(bytesConstRef _block, BlockInfo const& _grandParent, bool _che
 	// Check uncles & apply their rewards to state.
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
+	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
 	for (auto const& i: RLP(_block)[2])
 	{
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
-
-		if (m_previousBlock.parentHash != uncle.parentHash)
-			throw UncleNotAnUncle();
 		if (nonces.count(uncle.nonce))
 			throw DuplicateUncleNonce();
-		if (_grandParent)
-			uncle.verifyParent(_grandParent);
+		if (_bc)
+		{
+			BlockInfo uncleParent(_bc->block(uncle.parentHash));
+			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
+				throw UncleTooOld();
+			if (knownUncles.count(sha3(i.data())))
+				throw UncleInChain();
+			uncle.verifyParent(uncleParent);
+		}
 
 		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
@@ -656,7 +672,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), BlockInfo(), false);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(&block.out(), &_bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -674,7 +690,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 
 h256 State::bloom() const
 {
-	h256 ret;
+	h256 ret = m_currentBlock.coinbaseAddress.bloom();
 	for (auto const& i: m_transactions)
 		ret |= i.changes.bloom();
 	return ret;
@@ -686,7 +702,7 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-	cnote << "Commiting to mine on block" << m_previousBlock.hash;
+	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
 #ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
@@ -694,26 +710,30 @@ void State::commitToMine(BlockChain const& _bc)
 
 	m_lastTx = m_db;
 
-	RLPStream uncles;
 	Addresses uncleAddresses;
 
+	RLPStream unclesData;
+	unsigned unclesCount = 0;
 	if (m_previousBlock != BlockChain::genesis())
 	{
-		// Find uncles if we're not a direct child of the genesis.
+		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
-		auto us = _bc.details(m_previousBlock.parentHash).children;
-		assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
-		uncles.appendList(us.size() - 1);	// one fewer - uncles precludes our parent from the list of grandparent's children.
-		for (auto const& u: us)
-			if (u != m_previousBlock.hash)	// ignore our own parent - it's not an uncle.
-			{
-				BlockInfo ubi(_bc.block(u));
-				ubi.fillStream(uncles, true);
-				uncleAddresses.push_back(ubi.coinbaseAddress);
-			}
+		set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+		auto p = m_previousBlock.parentHash;
+		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash(); ++gen, p = _bc.details(p).parent)
+		{
+			auto us = _bc.details(p).children;
+			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
+			for (auto const& u: us)
+				if (!knownUncles.count(BlockInfo::headerHash(_bc.block(u))))	// ignore any uncles/mainline blocks that we know about. We use header-hash for this.
+				{
+					BlockInfo ubi(_bc.block(u));
+					ubi.fillStream(unclesData, true);
+					++unclesCount;
+					uncleAddresses.push_back(ubi.coinbaseAddress);
+				}
+		}
 	}
-	else
-		uncles.appendList(0);
 
 	MemoryDB tm;
 	GenericTrieDB<MemoryDB> transactionReceipts(&tm);
@@ -733,7 +753,8 @@ void State::commitToMine(BlockChain const& _bc)
 	}
 
 	txs.swapOut(m_currentTxs);
-	uncles.swapOut(m_currentUncles);
+
+	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
 	m_currentBlock.transactionsRoot = transactionReceipts.root();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
@@ -744,7 +765,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-	cnote << "Post-reward stateRoot:" << m_state.root();
+	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
 //	cnote << m_state;
 //	cnote << *this;
 
@@ -753,13 +774,13 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
-MineInfo State::mine(uint _msTimeout)
+MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 {
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout);
+	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
@@ -772,9 +793,6 @@ void State::completeMine()
 	cdebug << "Completing mine!";
 	// Got it!
 
-	// Commit to disk.
-	m_db.commit();
-
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
@@ -783,7 +801,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(m_currentBytes);
-	cnote << "Mined " << m_currentBlock.hash << "(parent: " << m_currentBlock.parentHash << ")";
+	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
@@ -1032,7 +1050,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1048,10 +1066,10 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 		o_ms->input = _data.toBytes();
 	}
 
-	if (addressHasCode(_receiveAddress))
+	if (addressHasCode(_codeAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms, _level);
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
 		try
@@ -1061,6 +1079,9 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 			if (o_suicides)
 				for (auto i: evm.suicides)
 					o_suicides->insert(i);
+			if (o_posts)
+				for (auto i: evm.posts)
+					o_posts->push_back(i);
 			if (o_ms)
 				o_ms->output = out.toBytes();
 		}
@@ -1093,7 +1114,7 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1111,7 +1132,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, 0, h256(), h256());
+	m_cache[newAddress] = AddressState(0, _endowment, h256(), h256());
 
 	// Execute init code.
 	VM vm(*_gas);
@@ -1127,6 +1148,9 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		if (o_suicides)
 			for (auto i: evm.suicides)
 				o_suicides->insert(i);
+		if (o_posts)
+			for (auto i: evm.posts)
+				o_posts->push_back(i);
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -1183,13 +1207,13 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleAddresses)
 	{
-		addBalance(i, m_blockReward * 3 / 4);
-		r += m_blockReward / 8;
+		addBalance(i, m_blockReward * 15 / 16);
+		r += m_blockReward / 32;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
+std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
@@ -1232,10 +1256,12 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 				}
 				if (cache)
 					for (auto const& j: cache->storage())
+					{
 						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
 							mem[j.first] = j.second, delta.insert(j.first);
 						else if (j.second)
 							cached.insert(j.first);
+					}
 				if (delta.size())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
@@ -1260,56 +1286,5 @@ std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
 			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
-	return _out;
-}
-
-AccountChange AccountDiff::changeType() const
-{
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
-}
-
-char const* AccountDiff::lead() const
-{
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
-}
-
-std::ostream& eth::operator<<(std::ostream& _out, AccountDiff const& _s)
-{
-	if (!_s.exist.to())
-		return _out;
-
-	if (_s.nonce)
-	{
-		_out << std::dec << "#" << _s.nonce.to() << " ";
-		if (_s.nonce.from())
-			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
-	}
-	if (_s.balance)
-	{
-		_out << std::dec << _s.balance.to() << " ";
-		if (_s.balance.from())
-			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
-	}
-	if (_s.code)
-		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
-	for (pair<u256, Diff<u256>> const& i: _s.storage)
-		if (!i.second.from())
-			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
-		else if (!i.second.to())
-			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
-		else
-			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
-	return _out;
-}
-
-std::ostream& eth::operator<<(std::ostream& _out, StateDiff const& _s)
-{
-	_out << _s.accounts.size() << " accounts changed:" << endl;
-	for (auto const& i: _s.accounts)
-		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }

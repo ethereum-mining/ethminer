@@ -19,12 +19,14 @@
  * @date 2014
  */
 
+#include <boost/timer.hpp>
 #include <libevm/VM.h>
 #include "Executive.h"
 #include "State.h"
 #include "ExtVM.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ETH_VMTRACE 1
 
@@ -143,7 +145,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, unsigned newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
 	{
 		ExtVM const& ext = *(ExtVM const*)voidExt;
 		VM& vm = *(VM*)voidVM;
@@ -156,8 +158,8 @@ OnOpFunc Executive::simpleTrace()
 		o << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
-		eth::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-		eth::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << c_instructionInfo.at(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+		dev::LogOutputStream<VMTraceChannel, false>(true) << o.str();
+		dev::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.level << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
 	};
 }
 
@@ -165,6 +167,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
 	{
+		boost::timer t;
+		auto sgas = m_vm->gas();
 		bool revert = false;
 		try
 		{
@@ -183,6 +187,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "VM Exception: " << _e.description();
+			m_endGas = m_vm->gas();
 		}
 		catch (Exception const& _e)
 		{
@@ -192,6 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "std::exception in VM: " << _e.what();
 		}
+		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 
 		// Write state out only in the case of a non-excepted transaction.
 		if (revert)
@@ -213,21 +219,19 @@ u256 Executive::gas() const
 	return m_vm ? m_vm->gas() : m_endGas;
 }
 
-void Executive::finalize()
+void Executive::finalize(OnOpFunc const& _onOp)
 {
 	if (m_t.isCreation() && m_newAddress && m_out.size())
 		// non-reverted creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
 
+	if (m_ext)
+		m_endGas += m_ext->doPosts(_onOp);
+
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice);
 
-	u256 gasSpentInEth = (m_t.gas - m_endGas) * m_t.gasPrice;
-/*	unsigned c_feesKept = 8;
-	u256 feesEarned = gasSpentInEth - (gasSpentInEth / c_feesKept);
-	cnote << "Transferring" << (100.0 - 100.0 / c_feesKept) << "% of" << formatBalance(gasSpent) << "=" << formatBalance(feesEarned) << "to miner (" << formatBalance(gasSpentInEth - feesEarned) << "is burnt).";
-*/
-	u256 feesEarned = gasSpentInEth;
+	u256 feesEarned = (m_t.gas - m_endGas) * m_t.gasPrice;
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 

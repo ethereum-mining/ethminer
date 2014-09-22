@@ -22,7 +22,8 @@
 #include "ExtVMFace.h"
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 ExtVMFace::ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
 	myAddress(_myAddress),

@@ -29,13 +29,9 @@
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
 #endif
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
-#include <libethereum/Defaults.h>
-#include <libethereum/Client.h>
-#include <libethereum/PeerNetwork.h>
-#include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
+#include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <eth/EthStubServer.h>
 #include <eth/EthStubServer.cpp>
@@ -43,6 +39,7 @@
 #include <eth/CommonJS.h>
 #include <eth/CommonJS.cpp>
 #endif
+#include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -52,10 +49,11 @@
 #undef OK
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
+using namespace p2p;
 using namespace boost::algorithm;
-using eth::Instruction;
-using eth::c_instructionInfo;
+using dev::eth::Instruction;
 
 bool isTrue(std::string const& _m)
 {
@@ -125,18 +123,18 @@ string credits()
 {
 	std::ostringstream ccout;
 	ccout
-		<< "NEthereum (++) " << eth::EthVersion << endl
+		<< "NEthereum (++) " << dev::Version << endl
 		<< "  Code by Gav Wood & , (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	string vs = toString(eth::EthVersion);
+	string vs = toString(dev::Version);
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
-	if (pocnumber == 4)
-		m_servers = "54.72.31.55";
-	else
+	if (pocnumber == 5)
 		m_servers = "54.72.69.180";
+	else
+		m_servers = "54.76.56.74";
 
 	ccout << "Type 'netstart 30303' to start networking" << endl;
 	ccout << "Type 'connect " << m_servers << " 30303' to connect" << endl;
@@ -146,13 +144,14 @@ string credits()
 
 void version()
 {
-	cout << "neth version " << eth::EthVersion << endl;
-	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "neth version " << dev::Version << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
-Address c_config = Address("9ef0f0d81e040012600b0c1abdef7c48f720f88a");
-string pretty(h160 _a, eth::State _st)
+Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+
+string pretty(h160 _a, dev::eth::State _st)
 {
 	string ns;
 	h256 n;
@@ -298,8 +297,6 @@ int nc_window_streambuf::sync()
 }
 
 vector<string> form_dialog(vector<string> _sfields, vector<string> _lfields, vector<string> _bfields, int _cols, int _rows, string _post_form);
-bytes parse_data(string _args);
-
 
 int main(int argc, char** argv)
 {
@@ -308,7 +305,6 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	string dbPath;
 	bool mining = false;
-	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
@@ -393,19 +389,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
-		{
-			string m = argv[++i];
-			if (m == "full")
-				mode = NodeMode::Full;
-			else if (m == "peer")
-				mode = NodeMode::PeerServer;
-			else
-			{
-				cerr << "Unknown mode: " << m << endl;
-				return -1;
-			}
-		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -416,8 +399,12 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-    Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
-    c.start();
+
+	WebThreeDirect web3("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath);
+	Client& c = *web3.ethereum();
+
+	c.setForceMining(true);
+
 	cout << credits();
 
 	std::ostringstream ccout;
@@ -480,18 +467,20 @@ int main(int argc, char** argv)
 	wmove(mainwin, 1, 4);
 
 	if (!remoteHost.empty())
-		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
-	if (mining)
 	{
-		ClientGuard g(&c);
-		c.startMining();
+		web3.setIdealPeerCount(peers);
+		web3.setNetworkPreferences(NetworkPreferences(listenPort, publicIP, upnp));
+		web3.startNetwork();
+		web3.connect(remoteHost, remotePort);
 	}
+	if (mining)
+		c.startMining();
 
 #if ETH_JSONRPC
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -530,32 +519,28 @@ int main(int argc, char** argv)
 
 		if (cmd == "netstart")
 		{
-			eth::uint port;
+			unsigned port;
 			iss >> port;
-			ClientGuard g(&c);
-			c.startNetwork((short)port);
+			web3.setNetworkPreferences(NetworkPreferences((short)port, publicIP, upnp));
+			web3.startNetwork();
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
-			eth::uint port;
+			unsigned port;
 			iss >> addr >> port;
-			ClientGuard g(&c);
-			c.connect(addr, (short)port);
+			web3.connect(addr, (short)port);
 		}
 		else if (cmd == "netstop")
 		{
-			ClientGuard g(&c);
-			c.stopNetwork();
+			web3.stopNetwork();
 		}
 		else if (cmd == "minestart")
 		{
-			ClientGuard g(&c);
 			c.startMining();
 		}
 		else if (cmd == "minestop")
 		{
-			ClientGuard g(&c);
 			c.stopMining();
 		}
 #if ETH_JSONRPC
@@ -569,7 +554,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 			jsonrpcServer->setKeys({us});
 			jsonrpcServer->StartListening();
 		}
@@ -592,26 +577,25 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "block")
 		{
-			eth::uint n = c.blockChain().details().number;
+			unsigned n = c.blockChain().details().number;
 			ccout << "Current block # ";
 			ccout << toString(n) << endl;
 		}
 		else if (cmd == "peers")
 		{
-			for (auto it: c.peers())
+			for (auto it: web3.peers())
 				cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 					<< endl;
 		}
 		else if (cmd == "balance")
 		{
-			u256 balance = c.state().balance(us.address());
+			u256 balance = c.balanceAt(us.address());
 			ccout << "Current balance:" << endl;
 			ccout << toString(balance) << endl;
 		}
 		else if (cmd == "transact")
 		{
-			ClientGuard g(&c);
 			auto const& bc = c.blockChain();
 			auto h = bc.currentHash();
 			auto blockData = bc.block(h);
@@ -656,7 +640,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = parse_data(sdata);
+				bytes data = dev::eth::parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -664,16 +648,16 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)c.state().callGas(data.size(), 0);
+				u256 minGas = (u256)Client::txGas(data.size(), 0);
 				if (size < 40)
 				{
 					if (size > 0)
-						cwarn << "Invalid address length: " << size;
+						cwarn << "Invalid address length:" << size;
 				}
 				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is " << info.minGasPrice;
+					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
-					cwarn << "Minimum gas amount is " << minGas;
+					cwarn << "Minimum gas amount is" << minGas;
 				else if (ssize < 40)
 				{
 					if (ssize > 0)
@@ -689,7 +673,6 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "send")
 		{
-			ClientGuard g(&c);
 			vector<string> s;
 			s.push_back("Address");
 			vector<string> l;
@@ -713,7 +696,7 @@ int main(int argc, char** argv)
 				if (size < 40)
 				{
 					if (size > 0)
-						cwarn << "Invalid address length: " << size;
+						cwarn << "Invalid address length:" << size;
 				}
 				else
 				{
@@ -721,7 +704,7 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)c.state().callGas(0, 0);
+					u256 minGas = (u256)Client::txGas(0, 0);
 					Address dest = h160(fromHex(fields[0]));
 					c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
 				}
@@ -729,7 +712,6 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "contract")
 		{
-			ClientGuard g(&c);
 			auto const& bc = c.blockChain();
 			auto h = bc.currentHash();
 			auto blockData = bc.block(h);
@@ -770,7 +752,7 @@ int main(int argc, char** argv)
 				bytes init;
 				cnote << "Init:";
 				cnote << sinit;
-				cnote << "Code size: " << size;
+				cnote << "Code size:" << size;
 				if (size < 1)
 					cwarn << "No code submitted";
 				else
@@ -783,13 +765,13 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)c.state().createGas(init.size(), 0);
+				u256 minGas = (u256)Client::txGas(init.size(), 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
 				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is " << info.minGasPrice;
+					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
-					cwarn << "Minimum gas amount is " << minGas;
+					cwarn << "Minimum gas amount is" << minGas;
 				else
 				{
 					c.transact(us.secret(), endowment, init, gas, gasPrice);
@@ -805,20 +787,28 @@ int main(int argc, char** argv)
 				cwarn << "Invalid address length";
 			else
 			{
-				ClientGuard g(&c);
-				auto h = h160(fromHex(rechex));
+				auto address = h160(fromHex(rechex));
 				stringstream s;
-				auto mem = c.state().storage(h);
 
-				for (auto const& i: mem)
-					s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-				s << endl << disassemble(c.state().code(h));
+				try
+				{
+					auto storage = c.storageAt(address);
+					for (auto const& i: storage)
+						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+					s << endl << disassemble(c.codeAt(address)) << endl;
 
-				string outFile = getDataDir() + "/" + rechex + ".evm";
-				ofstream ofs;
-				ofs.open(outFile, ofstream::binary);
-				ofs.write(s.str().c_str(), s.str().length());
-				ofs.close();
+					string outFile = getDataDir() + "/" + rechex + ".evm";
+					ofstream ofs;
+					ofs.open(outFile, ofstream::binary);
+					ofs.write(s.str().c_str(), s.str().length());
+					ofs.close();
+
+					cnote << "Saved" << rechex << "to" << outFile;
+				}
+				catch (dev::eth::InvalidTrie)
+				{
+					cwarn << "Corrupted trie.";
+				}
 			}
 		}
 		else if (cmd == "reset")
@@ -840,9 +830,6 @@ int main(int argc, char** argv)
 
 
 		// Lock to prevent corrupt block-chain errors
-		ClientGuard g(&c);
-
-		auto const& st = c.state();
 		auto const& bc = c.blockChain();
 		ccout << "Genesis hash: " << bc.genesisHash() << endl;
 
@@ -861,7 +848,7 @@ int main(int argc, char** argv)
 				auto s = t.receiveAddress ?
 					boost::format("  %1% %2%> %3%: %4% [%5%]") %
 						toString(t.safeSender()) %
-						(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+						(c.codeAt(t.receiveAddress, 0).size() ? '*' : '-') %
 						toString(t.receiveAddress) %
 						toString(formatBalance(t.value)) %
 						toString((unsigned)t.nonce) :
@@ -881,23 +868,21 @@ int main(int argc, char** argv)
 
 		// Pending
 		y = 1;
-		auto aps = c.pending();
-		for (auto const& t: aps)
+		for (Transaction const& t: c.pending())
 		{
-			if (t.receiveAddress)
-				auto s = boost::format("%1% %2%> %3%: %4% [%5%]") %
+			auto s = t.receiveAddress ?
+				boost::format("%1% %2%> %3%: %4% [%5%]") %
 					toString(t.safeSender()) %
-					(st.addressHasCode(t.receiveAddress) ? '*' : '-') %
+					(c.codeAt(t.receiveAddress, 0).size() ? '*' : '-') %
 					toString(t.receiveAddress) %
 					toString(formatBalance(t.value)) %
-					toString((unsigned)t.nonce);
-			else
-				auto s = boost::format("%1% +> %2%: %3% [%4%]") %
+					toString((unsigned)t.nonce) :
+				boost::format("%1% +> %2%: %3% [%4%]") %
 					toString(t.safeSender()) %
 					toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
 					toString(formatBalance(t.value)) %
 					toString((unsigned)t.nonce);
-			mvwaddnstr(pendingwin, y++, x, s.c_str(), qwidth);
+			mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
 			if (y > height * 1 / 5 - 4)
 				break;
 		}
@@ -906,48 +891,42 @@ int main(int argc, char** argv)
 		// Contracts and addresses
 		y = 1;
 		int cc = 1;
-		auto acs = st.addresses();
+		auto acs = c.addresses();
 		for (auto const& i: acs)
-		{
-			auto r = i.first;
-
-			if (st.addressHasCode(r))
+			if (c.codeAt(i, 0).size())
 			{
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
-					toString(r) %
-					pretty(r, st) %
-					toString(formatBalance(i.second)) %
-					toString((unsigned)st.transactionsFrom(i.first));
+					toString(i) %
+					pretty(i, c.postState()) %
+					toString(formatBalance(c.balanceAt(i))) %
+					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
 				if (cc > qheight - 2)
 					break;
 			}
-		}
 		for (auto const& i: acs)
-		{
-			auto r = i.first;
-			if (!st.addressHasCode(r)) {
+			if (c.codeAt(i, 0).empty())
+			{
 				auto s = boost::format("%1%%2% : %3% [%4%]") %
-					toString(r) %
-					pretty(r, st) %
-					toString(formatBalance(i.second)) %
-					toString((unsigned)st.transactionsFrom(i.first));
+					toString(i) %
+					pretty(i, c.postState()) %
+					toString(formatBalance(c.balanceAt(i))) %
+					toString((unsigned)c.countAt(i, 0));
 				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
 				if (y > height * 3 / 5 - 4)
 					break;
 			}
-		}
 
 		// Peers
 		y = 1;
-		string psc;
-		string pss;
-		auto cp = c.peers();
-		psc = toString(cp.size()) + " peer(s)";
-		for (PeerInfo const& i: cp)
+		for (PeerInfo const& i: web3.peers())
 		{
-			pss = toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) + " ms - " + i.host + ":" + toString(i.port) + " - " + i.clientVersion;
-			mvwaddnstr(peerswin, y++, x, pss.c_str(), qwidth);
+			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
+				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
+				i.host %
+				toString(i.port) %
+				i.clientVersion;
+			mvwaddnstr(peerswin, y++, x, s.str().c_str(), qwidth);
 			if (y > height * 2 / 5 - 4)
 				break;
 		}
@@ -962,15 +941,16 @@ int main(int argc, char** argv)
 
 		// Balance
 		stringstream ssb;
-		u256 balance = c.state().balance(us.address());
-		Address gavCoin("0115554959f43bf1d04cd7e3749d00fb0623ce1f");
-		u256 totalGavCoinBalance = st.storage(gavCoin, (u160)us.address());
+		u256 balance = c.balanceAt(us.address());
+		Address coinsAddr = right160(c.stateAt(c_config, 1));
+		Address gavCoin = right160(c.stateAt(coinsAddr, c.stateAt(coinsAddr, 1)));
+		u256 totalGavCoinBalance = c.stateAt(gavCoin, (u160)us.address());
 		ssb << "Balance: " << formatBalance(balance) <<  " | " << totalGavCoinBalance << " GAV";
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
 
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
-		eth::uint n = c.blockChain().details().number;
+		unsigned n = c.blockChain().details().number;
 		mvwprintw(blockswin, 0, 10, toString(n).c_str());
 
 		// Pending
@@ -985,13 +965,13 @@ int main(int argc, char** argv)
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
-		mvwprintw(peerswin, 0, 9, toString(c.peers().size()).c_str());
+		mvwprintw(peerswin, 0, 9, toString(web3.peers().size()).c_str());
 
 		// Mining flag
 		if (c.isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
-			eth::MineProgress p = c.miningProgress();
+			dev::eth::MineProgress p = c.miningProgress();
 			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
 			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
 		}
@@ -1215,60 +1195,4 @@ vector<string> form_dialog(vector<string> _sv, vector<string> _lv, vector<string
 			vs.push_back(field_buffer(field[fi], 0));
 
 	return vs;
-}
-
-bytes parse_data(string _args)
-{
-	bytes m_data;
-	stringstream args(_args);
-	string arg;
-	int cc = 0;
-	while (args >> arg)
-	{
-		int al = arg.length();
-		if (boost::starts_with(arg, "0x"))
-		{
-			bytes bs = fromHex(arg);
-			m_data += bs;
-		}
-		else if (arg[0] == '@')
-		{
-			arg = arg.substr(1, arg.length());
-			if (boost::starts_with(arg, "0x"))
-			{
-				cnote << "hex: " << arg;
-				bytes bs = fromHex(arg);
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-			else if (boost::starts_with(arg, "\"") && boost::ends_with(arg, "\""))
-			{
-				arg = arg.substr(1, arg.length() - 2);
-				cnote << "string: " << arg;
-				if (al < 32)
-					for (int i = 0; i < 32 - al; ++i)
-						m_data.push_back(0);
-				for (int i = 0; i < al; ++i)
-					m_data.push_back(arg[i]);
-			}
-			else
-			{
-				cnote << "value: " << arg;
-				bytes bs = toBigEndian(u256(arg));
-				int size = bs.size();
-				if (size < 32)
-					for (auto i = 0; i < 32 - size; ++i)
-						m_data.push_back(0);
-				m_data += bs;
-			}
-		}
-		else
-			for (int i = 0; i < al; ++i)
-				m_data.push_back(arg[i]);
-		cc++;
-	}
-	return m_data;
 }

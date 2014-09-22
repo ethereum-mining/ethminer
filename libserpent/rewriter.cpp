@@ -17,8 +17,12 @@ std::string valid[][3] = {
     { "alloc", "1", "1" },
     { "array", "1", "1" },
     { "call", "2", "4" },
+    { "call_stateless", "2", "4" },
+    { "post", "4", "5" },
+    { "postcall", "3", "4" },
     { "create", "1", "4" },
     { "msg", "4", "6" },
+    { "msg_stateless", "4", "6" },
     { "getch", "2", "2" },
     { "setch", "3", "3" },
     { "sha3", "1", "2" },
@@ -79,6 +83,10 @@ std::string macros[][2] = {
         "(calldataload (mul 32 $ind))"
     },
     {
+        "(slice $arr $pos)",
+        "(add $arr (mul 32 $pos))",
+    },
+    {
         "(array $len)",
         "(alloc (mul 32 $len))"
     },
@@ -127,6 +135,22 @@ std::string macros[][2] = {
         "(call (sub (gas) 25) $to $value 0 0 0 0)"
     },
     {
+        "(post $gas $to $value $datain $datainsz)",
+        "(~post $gas $to $value $datain (mul $datainsz 32))"
+    },
+    {
+        "(post $gas $to $value $datain)",
+        "(seq (set $1 $datain) (~post $gas $to $value (ref $1) 32))"
+    },
+    {
+        "(postcall $gas $to $datain)",
+        "(post $gas $to 0 $datain)",
+    },
+    {
+        "(postcall $gas $to $datain $datainsz)",
+        "(post $gas $to 0 $datain $datainsz)",
+    },
+    {
         "(send $gas $to $value)",
         "(call $gas $to $value 0 0 0 0)"
     },
@@ -156,7 +180,7 @@ std::string macros[][2] = {
     },
     {
         "(|| $x $y)",
-        "(seq (set $1 $x) (if (get $1) (get $1) $y))"
+        "(with $1 $x (if (get $1) (get $1) $y))"
     },
     {
         "(>= $x $y)",
@@ -180,8 +204,9 @@ std::string macros[][2] = {
     },
     {
         "(create $endowment $code)",
-        "(seq (set $1 (msize)) (create $endowment (get $1) (lll (outer $code) (msize))))"
+        "(with $1 (msize) (create $endowment (get $1) (lll (outer $code) (msize))))"
     },
+    // Call and msg
     {
         "(call $f $dataval)",
         "(msg (sub (gas) 45) $f 0 $dataval)"
@@ -192,7 +217,7 @@ std::string macros[][2] = {
     },
     {
         "(call $f $inp $inpsz $outsz)",
-        "(seq (set $1 $outsz) (set $2 (alloc (mul 32 (get $1)))) (pop (call (sub (gas) (add 25 (get $1))) $f 0 $inp (mul 32 $inpsz) (get $2) (mul 32 (get $1)))) (get $2))"
+        "(with $1 $outsz (with $2 (alloc (mul 32 (get $1))) (seq (call (sub (gas) (add 25 (get $1))) $f 0 $inp (mul 32 $inpsz) (get $2) (mul 32 (get $1))) (get $2))))"
     },
     {
         "(msg $gas $to $val $inp $inpsz)",
@@ -204,8 +229,34 @@ std::string macros[][2] = {
     },
     {
         "(msg $gas $to $val $inp $inpsz $outsz)",
-        "(seq (set $1 (mul 32 $outsz)) (set $2 (alloc (get $1))) (pop (call $gas $to $val $inp (mul 32 $inpsz) (get $2) (get $1))) (get $2))"
+        "(with $1 (mul 32 $outsz) (with $2 (alloc (get $1)) (call $gas $to $val $inp (mul 32 $inpsz) (get $2) (get $1)) (get $2)))"
     },
+    // Call stateless and msg stateless
+    {
+        "(call_stateless $f $dataval)",
+        "(msg_stateless (sub (gas) 45) $f 0 $dataval)"
+    },
+    {
+        "(call_stateless $f $inp $inpsz)",
+        "(msg_stateless (sub (gas) 25) $f 0 $inp $inpsz)"
+    },
+    {
+        "(call_stateless $f $inp $inpsz $outsz)",
+        "(with $1 $outsz (with $2 (alloc (mul 32 (get $1))) (seq (call_stateless (sub (gas) (add 25 (get $1))) $f 0 $inp (mul 32 $inpsz) (get $2) (mul 32 (get $1))) (get $2))))"
+    },
+    {
+        "(msg_stateless $gas $to $val $inp $inpsz)",
+        "(seq (call_stateless $gas $to $val $inp (mul 32 $inpsz) (ref $1) 32) (get $1))"
+    },
+    {
+        "(msg_stateless $gas $to $val $dataval)",
+        "(seq (set $1 $dataval) (call_stateless $gas $to $val (ref $1) 32 (ref $2) 32) (get $2))"
+    },
+    {
+        "(msg_stateless $gas $to $val $inp $inpsz $outsz)",
+        "(with $1 (mul 32 $outsz) (with $2 (alloc (get $1)) (call_stateless $gas $to $val $inp (mul 32 $inpsz) (get $2) (get $1)) (get $2)))"
+    },
+    // Wrappers
     {
         "(outer (init $init $code))",
         "(seq $init (~return 0 (lll $code 0)))"
@@ -228,7 +279,11 @@ std::string macros[][2] = {
     },
     {
         "(create $x)",
-        "(seq (set $1 (msize)) (create $val (get $1) (lll $code (get $1))))"
+        "(with $1 (msize) (create $val (get $1) (lll $code (get $1))))"
+    },
+    {
+        "(with (= $var $val) $cond)",
+        "(with $var $val $cond)"
     },
     { "msg.datasize", "(div (calldatasize) 32)" },
     { "msg.sender", "(caller)" },
@@ -253,6 +308,8 @@ std::vector<std::vector<Node> > nodeMacros;
 std::string synonyms[][2] = {
     { "or", "||" },
     { "and", "&&" },
+    { "|", "~or" },
+    { "&", "~and" },
     { "elif", "if" },
     { "!", "not" },
     { "string", "alloc" },
@@ -344,7 +401,7 @@ Node subst(Node pattern,
 
 Node array_lit_transform(Node node) {
     std::vector<Node> o1;
-    o1.push_back(token(intToDecimal(node.args.size() * 32), node.metadata));
+    o1.push_back(token(unsignedToDecimal(node.args.size() * 32), node.metadata));
     std::vector<Node> o2;
     std::string symb = "_temp"+mkUniqueToken()+"_0";
     o2.push_back(token(symb, node.metadata));
@@ -357,7 +414,7 @@ Node array_lit_transform(Node node) {
         o5.push_back(token(symb, node.metadata));
         std::vector<Node> o6;
         o6.push_back(astnode("get", o5, node.metadata));
-        o6.push_back(token(intToDecimal(i * 32), node.metadata));
+        o6.push_back(token(unsignedToDecimal(i * 32), node.metadata));
         std::vector<Node> o7;
         o7.push_back(astnode("add", o6));
         o7.push_back(node.args[i]);
@@ -407,11 +464,12 @@ Node apply_rules(Node node) {
         node = array_lit_transform(node);
     if (node.type == ASTNODE) {
 		unsigned i = 0;
-        if (node.val == "set" || node.val == "ref" || node.val == "get") {
+        if (node.val == "set" || node.val == "ref" 
+                || node.val == "get" || node.val == "with") {
             node.args[0].val = "'" + node.args[0].val;
             i = 1;
         }
-        for (i = i; i < node.args.size(); i++) {
+        for (; i < node.args.size(); i++) {
             node.args[i] = apply_rules(node.args[i]);
         }
     }
@@ -430,7 +488,12 @@ Node apply_rules(Node node) {
 }
 
 Node optimize(Node inp) {
-    if (inp.type == TOKEN) return tryNumberize(inp);
+    if (inp.type == TOKEN) {
+        Node o = tryNumberize(inp);
+        if (decimalGt(o.val, tt256, true))
+            err("Value too large (exceeds 32 bytes or 2^256)", inp.metadata);
+        return o;
+    }
 	for (unsigned i = 0; i < inp.args.size(); i++) {
         inp.args[i] = optimize(inp.args[i]);
     }
@@ -474,10 +537,10 @@ Node validate(Node inp) {
         int i = 0;
         while(valid[i][0] != "---END---") {
             if (inp.val == valid[i][0]) {
-                if (decimalGt(valid[i][1], intToDecimal(inp.args.size()))) {
+                if (decimalGt(valid[i][1], unsignedToDecimal(inp.args.size()))) {
                     err("Too few arguments for "+inp.val, inp.metadata);   
                 }
-                if (decimalGt(intToDecimal(inp.args.size()), valid[i][2])) {
+                if (decimalGt(unsignedToDecimal(inp.args.size()), valid[i][2])) {
                     err("Too many arguments for "+inp.val, inp.metadata);   
                 }
             }

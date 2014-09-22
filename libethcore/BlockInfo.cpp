@@ -21,16 +21,17 @@
 
 #if !ETH_LANGUAGES
 
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include "Dagger.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-u256 eth::c_genesisDifficulty = (u256)1 << 22;
+u256 dev::eth::c_genesisDifficulty = (u256)1 << 17;
 
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
@@ -64,8 +65,15 @@ void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 		_s << nonce;
 }
 
+h256 BlockInfo::headerHash(bytesConstRef _block)
+{
+	return sha3(RLP(_block)[0].data());
+}
+
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
+	hash = dev::eth::sha3(_header.data());
+
 	int field = 0;
 	try
 	{
@@ -101,10 +109,9 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 
 void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 {
-	hash = eth::sha3(_block);
-
 	RLP root(_block);
 	RLP header = root[0];
+
 	if (!header.isList())
 		throw InvalidBlockFormat(0, header.data());
 	populateFromHeader(header, _checkNonce);
@@ -166,7 +173,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return timestamp >= _parent.timestamp + 42 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
+		return timestamp >= _parent.timestamp + 5 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
@@ -176,7 +183,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		throw InvalidDifficulty();
 
 	if (gasLimit != calculateGasLimit(_parent))
-		throw InvalidGasLimit();
+		throw InvalidGasLimit(gasLimit, calculateGasLimit(_parent));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)

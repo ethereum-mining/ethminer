@@ -20,7 +20,7 @@
  * Main test functions.
  */
 
-#include <libethcore/TrieDB.h>
+#include <libdevcrypto/TrieDB.h>
 #include "TrieHash.h"
 #include "MemTrie.h"
 
@@ -35,10 +35,11 @@ int vmTest();
 int hexPrefixTest();
 int peerTest(int argc, char** argv);
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/BlockInfo.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 BOOST_AUTO_TEST_CASE(basic_tests)
 {
