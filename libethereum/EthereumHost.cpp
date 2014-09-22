@@ -183,7 +183,7 @@ void EthereumHost::doWork()
 
 void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
 {
-	bool resendAll = (_currentHash != m_latestBlockSent);
+	bool resendAll = (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
@@ -251,7 +251,7 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 	}
 
 	// If we've finished our initial sync send any new blocks.
-	if (m_grabbing == Grabbing::Nothing && m_chain.details(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	if (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
 		RLPStream ts;
 		EthereumPeer::prep(ts);
