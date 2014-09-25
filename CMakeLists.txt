@@ -374,6 +374,11 @@ if (NOT LANGUAGES)
 	endif()
 endif()
 
+if (EVMCC)
+  add_subdirectory(evmcc)
+endif()
+
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(SRC_LIST BuildInfo.h)
 
