@@ -95,7 +95,12 @@ public:
 	virtual bool peekWatch(unsigned _watchId) const = 0;
 	virtual bool checkWatch(unsigned _watchId) = 0;
 
+	// TODO: Block query API.
+
 	// [EXTRA API]:
+
+	/// @returns The height of the chain.
+	virtual unsigned number() const = 0;
 
 	/// Get a map containing each of the pending transactions.
 	/// @TODO: Remove in favour of transactions().

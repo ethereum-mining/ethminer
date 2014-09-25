@@ -27,42 +27,12 @@ using namespace dev;
 using namespace dev::eth;
 
 Miner::Miner(MinerHost* _host, unsigned _id):
-	m_host(_host),
-	m_id(_id)
+	Worker("miner-" + toString(_id)),
+	m_host(_host)
 {
 }
 
-void Miner::start()
-{
-	if (!m_host)
-		return;
-
-	Guard l(x_work);
-	if (!m_work)
-	{
-		m_stop = false;
-		m_work.reset(new thread([&]()
-		{
-			setThreadName(("miner-" + toString(m_id)).c_str());
-			m_miningStatus = Preparing;
-			while (!m_stop)
-				work();
-		}));
-	}
-}
-
-void Miner::stop()
-{
-	Guard l(x_work);
-	if (m_work)
-	{
-		m_stop = true;
-		m_work->join();
-		m_work.reset(nullptr);
-	}
-}
-
-void Miner::work()
+void Miner::doWork()
 {
 	// Do some mining.
 	if (m_miningStatus != Waiting && m_miningStatus != Mined)

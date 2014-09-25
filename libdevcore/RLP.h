@@ -160,7 +160,6 @@ public:
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
 	explicit operator byte() const { return toInt<byte>(); }
-	explicit operator unsigned() const { return toInt<unsigned>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
@@ -213,8 +212,8 @@ public:
 		std::pair<T, U> ret;
 		if (isList())
 		{
-			ret.first = (*this)[0].operator T();
-			ret.second = (*this)[1].operator U();
+			ret.first = (T)(*this)[0];
+			ret.second = (U)(*this)[1];
 		}
 		return ret;
 	}

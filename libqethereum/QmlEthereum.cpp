@@ -50,7 +50,7 @@ using dev::g_logVerbosity;
 // Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
 dev::eth::Client* g_qmlClient;
 QObject* g_qmlMain;
-
+#if 0
 QmlAccount::QmlAccount(QObject*)
 {
 }
@@ -176,6 +176,8 @@ void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _ga
 {
 	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
 }
+
+#endif
 
 // extra bits needed to link on VS
 #ifdef _MSC_VER

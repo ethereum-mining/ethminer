@@ -102,7 +102,7 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration()}); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<string>()}); }
 		catch (...)
 		{
 			disconnect(BadProtocol);
@@ -159,13 +159,13 @@ bool Session::interpret(RLP const& _r)
 			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
-			if (isPrivateAddress(peerAddress) && !m_server->m_localNetworking)
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << m_id.abridged() << isPrivateAddress(endpoint().address()) << m_server->m_incomingPeers.count(id) << (m_server->m_incomingPeers.count(id) ? isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()) : -1);
+
+			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
 				goto CONTINUE;
 
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
-
 			// check that it's not us or one we already know:
-			if (id && (m_server->m_id == id || m_server->havePeer(id) || m_server->m_incomingPeers.count(id)))
+			if (!(m_id == id && isPrivateAddress(endpoint().address()) && (!m_server->m_incomingPeers.count(id) || isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()))) && (!id || m_server->m_id == id || m_server->m_incomingPeers.count(id)))
 				goto CONTINUE;
 
 			// check that we're not already connected to addr:
@@ -180,7 +180,7 @@ bool Session::interpret(RLP const& _r)
 			m_server->m_incomingPeers[id] = make_pair(ep, 0);
 			m_server->m_freePeers.push_back(id);
 			m_server->noteNewPeers();
-            clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
+			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}
 		break;
@@ -266,19 +266,19 @@ void Session::writeImpl(bytes& _buffer)
 	if (!m_socket.is_open())
 		return;
 
-	lock_guard<recursive_mutex> l(m_writeLock);
-	m_writeQueue.push_back(_buffer);
-	if (m_writeQueue.size() == 1)
+	bool doWrite = false;
+	{
+		lock_guard<mutex> l(m_writeLock);
+		m_writeQueue.push_back(_buffer);
+		doWrite = (m_writeQueue.size() == 1);
+	}
+
+	if (doWrite)
 		write();
 }
 
 void Session::write()
 {
-//	cerr << (void*)this << " write" << endl;
-	lock_guard<recursive_mutex> l(m_writeLock);
-	if (m_writeQueue.empty())
-		return;
-	
 	const bytes& bytes = m_writeQueue[0];
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
@@ -290,12 +290,16 @@ void Session::write()
 		{
 			cwarn << "Error sending: " << ec.message();
 			dropped();
+			return;
 		}
 		else
 		{
+			lock_guard<mutex> l(m_writeLock);
 			m_writeQueue.pop_front();
-			write();
+			if (m_writeQueue.empty())
+				return;
 		}
+		write();
 	});
 }
 

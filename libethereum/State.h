@@ -90,6 +90,8 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
+	~State();
+
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
 	void setAddress(Address _coinbaseAddress) { m_ourAddress = _coinbaseAddress; resetCurrent(); }
