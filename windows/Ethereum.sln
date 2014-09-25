@@ -37,6 +37,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sc", "Sc.vcxproj", "{90068D
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lllc", "Lllc.vcxproj", "{255BDC68-B8DB-465F-8220-981E77684189}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "evmcc", "evmcc.vcxproj", "{D51A4898-BD9E-4961-BCAE-1FE7F854BB4D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
