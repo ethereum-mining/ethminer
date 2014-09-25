@@ -14,20 +14,50 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Worker.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#include "Worker.h"
 
+#include <chrono>
+#include <thread>
+#include "Log.h"
 using namespace std;
 using namespace dev;
 
-namespace dev
+void Worker::startWorking()
 {
+	cdebug << "startWorking for thread" << m_name;
+	Guard l(x_work);
+	if (m_work)
+		return;
+	cdebug << "Spawning" << m_name;
+	m_stop = false;
+	m_work.reset(new thread([&]()
+	{
+		setThreadName(m_name.c_str());
+		while (!m_stop)
+		{
+			this_thread::sleep_for(chrono::milliseconds(30));
+			doWork();
+		}
+		cdebug << "Finishing up worker thread";
+		doneWorking();
+	}));
+}
 
-char const* Version = "0.6.9";
-
+void Worker::stopWorking()
+{
+	cdebug << "stopWorking for thread" << m_name;
+	Guard l(x_work);
+	if (!m_work)
+		return;
+	cdebug << "Stopping" << m_name;
+	m_stop = true;
+	m_work->join();
+	m_work.reset();
+	cdebug << "Stopped" << m_name;
 }
 

@@ -8,41 +8,8 @@
 #include <libethereum/EthereumHost.h>
 #include "QEthereum.h"
 using namespace std;
-
-// types
-using dev::bytes;
-using dev::bytesConstRef;
-using dev::h160;
-using dev::h256;
-using dev::u160;
-using dev::u256;
-using dev::u256s;
-using dev::RLP;
-using dev::Address;
-using dev::eth::BlockInfo;
-using dev::eth::Client;
-using dev::eth::Instruction;
-using dev::KeyPair;
-using dev::eth::NodeMode;
-using dev::p2p::PeerInfo;
-using dev::Secret;
-using dev::eth::Transaction;
-
-// functions
-using dev::toHex;
-using dev::fromHex;
-using dev::right160;
-using dev::simpleDebugOut;
-using dev::toLog2;
-using dev::toString;
-using dev::operator+;
-using dev::eth::disassemble;
-using dev::eth::units;
-using dev::eth::formatBalance;
-
-// vars
-using dev::g_logPost;
-using dev::g_logVerbosity;
+using namespace dev;
+using namespace dev::eth;
 
 dev::bytes toBytes(QString const& _s)
 {
@@ -89,7 +56,7 @@ QString unpadded(QString _s)
 	return _s;
 }
 
-QEthereum::QEthereum(QObject* _p, Client* _c, QList<dev::KeyPair> _accounts):
+QEthereum::QEthereum(QObject* _p, eth::Interface* _c, QList<dev::KeyPair> _accounts):
 	QObject(_p), m_client(_c), m_accounts(_accounts)
 {
 	// required to prevent crash on osx when performing addto/evaluatejavascript calls
@@ -120,7 +87,7 @@ QString QEthereum::secretToAddress(QString _s) const
 	return toQJS(KeyPair(toSecret(_s)).address());
 }
 
-Client* QEthereum::client() const
+eth::Interface* QEthereum::client() const
 {
 	return m_client;
 }
@@ -162,7 +129,7 @@ QString QEthereum::coinbase() const
 
 QString QEthereum::number() const
 {
-	return m_client ? QString::number(client()->blockChain().number() + 1) : "";
+	return m_client ? QString::number(client()->number() + 1) : "";
 }
 
 QString QEthereum::account() const
@@ -381,7 +348,7 @@ bool QEthereum::isMining() const
 
 bool QEthereum::isListening() const
 {
-	return m_client ? client()->haveNetwork() : false;
+	return /*m_client ? client()->haveNetwork() :*/ false;
 }
 
 void QEthereum::setMining(bool _l)
@@ -395,19 +362,19 @@ void QEthereum::setMining(bool _l)
 	}
 }
 
-void QEthereum::setListening(bool _l)
+void QEthereum::setListening(bool)
 {
 	if (!m_client)
 		return;
-	if (_l)
+/*	if (_l)
 		client()->startNetwork();
 	else
-		client()->stopNetwork();
+		client()->stopNetwork();*/
 }
 
 unsigned QEthereum::peerCount() const
 {
-	return m_client ? (unsigned)client()->peerCount() : 0;
+	return /*m_client ? (unsigned)client()->peerCount() :*/ 0;
 }
 
 QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)

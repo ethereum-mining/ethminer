@@ -369,7 +369,7 @@ if (NOT LANGUAGES)
 		add_subdirectory(third)
 		if(QTQML)
 			#add_subdirectory(iethxi)
-			add_subdirectory(walleth)
+			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
 		endif()
 	endif()
 endif()

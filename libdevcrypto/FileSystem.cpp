@@ -31,9 +31,8 @@
 #include <boost/filesystem.hpp>
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
 
-std::string dev::eth::getDataDir()
+std::string dev::getDataDir()
 {
 #ifdef _WIN32
 	char path[1024] = "";
