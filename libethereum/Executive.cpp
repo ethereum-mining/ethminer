@@ -187,6 +187,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "VM Exception: " << _e.description();
+			m_endGas = m_vm->gas();
 		}
 		catch (Exception const& _e)
 		{

@@ -55,6 +55,11 @@ int fromHex(char _i);
 /// @example fromHex("41626261") == asBytes("Abba")
 bytes fromHex(std::string const& _s);
 
+#if 0
+std::string toBase58(bytesConstRef _data);
+bytes fromBase58(std::string const& _s);
+#endif
+
 /// Converts byte array to a string containing the same (binary) data. Unless
 /// the byte array happens to contain ASCII data, this won't be printable.
 inline std::string asString(bytes const& _b)

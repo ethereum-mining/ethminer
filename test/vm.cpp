@@ -219,13 +219,13 @@ public:
 						if (li)
 							store[curKey] = curVal;
 						li = s.first;
-						curKey = toString(li);
+						curKey = "0x"+toHex(toCompactBigEndian(li));
 						curVal = mArray();
 					}
 					else
 						for (; li != s.first; ++li)
 							curVal.push_back(0);
-					push(curVal, s.second);
+					curVal.push_back("0x"+toHex(toCompactBigEndian(s.second)));
 					++li;
 				}
 				if (li)
@@ -474,8 +474,9 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 
 BOOST_AUTO_TEST_CASE(vm_tests)
 {
+	/*
 	// Populate tests first:
-//	try
+	try
 	{
 		cnote << "Populating VM tests...";
 		json_spirit::mValue v;
@@ -485,7 +486,7 @@ BOOST_AUTO_TEST_CASE(vm_tests)
 		dev::test::doTests(v, true);
 		writeFile("../../../tests/vmtests.json", asBytes(json_spirit::write_string(v, true)));
 	}
-/*	catch (std::exception const& e)
+	catch (std::exception const& e)
 	{
 		BOOST_ERROR("Failed VM Test with Exception: " << e.what());
 	}*/
@@ -502,5 +503,32 @@ BOOST_AUTO_TEST_CASE(vm_tests)
 	catch (std::exception const& e)
 	{
 		BOOST_ERROR("Failed VM Test with Exception: " << e.what()); 
+	}
+}
+
+BOOST_AUTO_TEST_CASE(vmArithmeticTest)
+{
+	/*
+			cnote << "Populating VM tests...";
+			json_spirit::mValue v;
+			string s = asString(contents("../../../cpp-ethereum/test/vmArithmeticTestFiller.json"));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty.");
+			json_spirit::read_string(s, v);
+			dev::test::doTests(v, true);
+			writeFile("../../../tests/vmArithmeticTest.json", asBytes(json_spirit::write_string(v, true)));
+	*/
+
+	try
+	{
+		cnote << "Testing VM arithmetic commands...";
+		json_spirit::mValue v;
+		string s = asString(contents("../../../tests/vmArithmeticTest.json"));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmArithmeticTest.json' is empty. Have you cloned the 'tests' repo branch develop?");
+		json_spirit::read_string(s, v);
+		dev::test::doTests(v, false);
+	}
+	catch (std::exception const& e)
+	{
+		BOOST_ERROR("Failed VM arithmetic test with Exception: " << e.what());
 	}
 }

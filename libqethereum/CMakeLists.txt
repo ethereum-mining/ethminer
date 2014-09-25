@@ -105,6 +105,6 @@ else ()
 	target_link_libraries(${EXECUTABLE} boost_filesystem)
 	find_package(Threads REQUIRED)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
-	install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin )
+	install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 endif ()
 

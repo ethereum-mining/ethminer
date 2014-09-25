@@ -49,15 +49,6 @@ void writeFile(std::string const& _file, bytes const& _data);
 /// Nicely renders the given bytes to a string, optionally as HTML.
 std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
 
-/// Converts arbitrary value to string representation using std::stringstream.
-template <class _T>
-std::string toString(_T const& _t)
-{
-	std::ostringstream o;
-	o << _t;
-	return o.str();
-}
-
 // Stream I/O functions.
 // Provides templated stream I/O for all STL collections so they can be shifted on to any iostream-like interface.
 
@@ -222,5 +213,16 @@ S& streamout(S& _out, std::multimap<T, U> const& _v)
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e) { streamout(_out, _e); return _out; }
 
 template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p) { if (_p) _out << "@" << (*_p); else _out << "nullptr"; return _out; }
+
+// Functions that use streaming stuff.
+
+/// Converts arbitrary value to string representation using std::stringstream.
+template <class _T>
+std::string toString(_T const& _t)
+{
+	std::ostringstream o;
+	o << _t;
+	return o.str();
+}
 
 }

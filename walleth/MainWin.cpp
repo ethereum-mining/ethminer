@@ -61,7 +61,7 @@ Main::Main(QWidget *parent) :
 
 	g_qmlMain = this;
 
-	m_client.reset(new Client("Walleth", Address(), dev::eth::getDataDir() + "/Walleth"));
+	m_client.reset(new Client("Walleth", Address(), dev::getDataDir() + "/Walleth"));
 	
 	g_qmlClient = m_client.get();
 
