@@ -56,7 +56,7 @@ extern u256 c_genesisDifficulty;
 struct BlockInfo
 {
 public:
-	h256 hash;						///< SHA3 hash of the entire block! Not serialised (the only member not contained in a block header).
+	h256 hash;						///< SHA3 hash of the block header! Not serialised (the only member not contained in a block header).
 	h256 parentHash;
 	h256 sha3Uncles;
 	Address coinbaseAddress;

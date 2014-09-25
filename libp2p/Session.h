@@ -86,7 +86,7 @@ private:
 
 	Host* m_server;
 
-	std::recursive_mutex m_writeLock;
+	std::mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
 
 	mutable bi::tcp::socket m_socket;	///< Mutable to ask for native_handle().

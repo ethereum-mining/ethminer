@@ -17,7 +17,7 @@
 /** @file Host.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
- *   Eric Lombrozo <elombrozo@gmail.com>
+ *   Eric Lombrozo <elombrozo@gmail.com> (Windows version of populateAddresses())
  * @date 2014
  */
 
@@ -34,6 +34,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
+#include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
@@ -54,55 +55,89 @@ static const set<bi::address> c_rejectAddresses = {
 	{bi::address_v6::from_string("::")}
 };
 
-Host::Host(std::string const& _clientVersion, unsigned short _port, string const& _publicAddress, bool _upnp, bool _localNetworking):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool _start):
+	Worker("p2p"),
 	m_clientVersion(_clientVersion),
-	m_listenPort(_port),
-	m_localNetworking(_localNetworking),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), _port)),
+	m_netPrefs(_n),
+	m_acceptor(m_ioService),
 	m_socket(m_ioService),
 	m_id(h512::random())
 {
 	populateAddresses();
-	determinePublic(_publicAddress, _upnp);
-	ensureAccepting();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << m_id.abridged();
-}
-
-Host::Host(std::string const& _clientVersion, string const& _publicAddress, bool _upnp, bool _localNetworking):
-	m_clientVersion(_clientVersion),
-	m_listenPort(0),
-	m_localNetworking(_localNetworking),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
-	m_socket(m_ioService),
-	m_id(h512::random())
-{
-	m_listenPort = m_acceptor.local_endpoint().port();
-
-	// populate addresses.
-	populateAddresses();
-	determinePublic(_publicAddress, _upnp);
-	ensureAccepting();
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
-}
-
-Host::Host(std::string const& _clientVersion):
-	m_clientVersion(_clientVersion),
-	m_listenPort(0),
-	m_acceptor(m_ioService, bi::tcp::endpoint(bi::tcp::v4(), 0)),
-	m_socket(m_ioService),
-	m_id(h512::random())
-{
-	// populate addresses.
-	populateAddresses();
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
+	if (_start)
+		start();
 }
 
 Host::~Host()
 {
+	stop();
+}
+
+void Host::start()
+{
+	if (isWorking())
+		stop();
+
+	for (unsigned i = 0; i < 2; ++i)
+	{
+		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : m_netPrefs.listenPort);
+		try
+		{
+			m_acceptor.open(endpoint.protocol());
+			m_acceptor.set_option(ba::socket_base::reuse_address(true));
+			m_acceptor.bind(endpoint);
+			m_acceptor.listen();
+			m_listenPort = i ? m_acceptor.local_endpoint().port() : m_netPrefs.listenPort;
+			break;
+		}
+		catch (...)
+		{
+			if (i)
+			{
+				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?";
+				return;
+			}
+			m_acceptor.close();
+			continue;
+		}
+	}
+
+	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+	ensureAccepting();
+
+	m_incomingPeers.clear();
+	m_freePeers.clear();
+
+	m_lastPeersRequest = chrono::steady_clock::time_point::min();
+	clog(NetNote) << "Id:" << m_id.abridged();
+
+	for (auto const& h: m_capabilities)
+		h.second->onStarting();
+
+	startWorking();
+}
+
+void Host::stop()
+{
+	for (auto const& h: m_capabilities)
+		h.second->onStopping();
+
+	stopWorking();
+
+	if (m_acceptor.is_open())
+	{
+		if (m_accepting)
+			m_acceptor.cancel();
+		m_acceptor.close();
+		m_accepting = false;
+	}
+	if (m_socket.is_open())
+		m_socket.close();
 	disconnectPeers();
+
+	m_ioService.reset();
 }
 
 unsigned Host::protocolVersion() const
@@ -283,8 +318,14 @@ std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 		if (auto j = i.second.lock())
 		{
 			auto ep = j->endpoint();
+//			cnote << "Checking potential peer" << j->m_listenPort << j->endpoint() << isPrivateAddress(ep.address()) << ep.port() << j->m_id.abridged();
 			// Skip peers with a listen port of zero or are on a private network
-			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_localNetworking));
+			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
+			if (!peerOnNet && m_incomingPeers.count(j->m_id))
+			{
+				ep = m_incomingPeers.at(j->m_id).first;
+				peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
+			}
 			if (peerOnNet && ep.port() && j->m_id)
 				ret.insert(make_pair(i.first, ep));
 		}
@@ -293,7 +334,7 @@ std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
 
 void Host::ensureAccepting()
 {
-	if (m_accepting == false)
+	if (!m_accepting)
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
@@ -315,23 +356,38 @@ void Host::ensureAccepting()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			m_accepting = false;
-			if (ec.value() != 1)
+			if (ec.value() < 1)
 				ensureAccepting();
 		});
 	}
 }
 
+string Host::pocHost()
+{
+	vector<string> strs;
+	boost::split(strs, dev::Version, boost::is_any_of("."));
+	return "poc-" + strs[1] + ".ethdev.com";
+}
+
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
-	try
-	{
-		connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
-	}
-	catch (exception const& e)
-	{
-		// Couldn't connect
-		clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
-	}
+	for (int i = 0; i < 2; ++i)
+		try
+		{
+			if (i == 0)
+			{
+				bi::tcp::resolver r(m_ioService);
+				connect(r.resolve({_addr, toString(_port)})->endpoint());
+			}
+			else
+				connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
+			break;
+		}
+		catch (exception const& e)
+		{
+			// Couldn't connect
+			clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
+		}
 }
 
 void Host::connect(bi::tcp::endpoint const& _ep)
@@ -397,7 +453,6 @@ void Host::growPeers()
 				m_lastPeersRequest = chrono::steady_clock::now();
 			}
 
-
 			if (!m_accepting)
 				ensureAccepting();
 
@@ -406,7 +461,8 @@ void Host::growPeers()
 
 		auto x = time(0) % m_freePeers.size();
 		m_incomingPeers[m_freePeers[x]].second++;
-		connect(m_incomingPeers[m_freePeers[x]].first);
+		if (!m_peers.count(m_freePeers[x]))
+			connect(m_incomingPeers[m_freePeers[x]].first);
 		m_freePeers.erase(m_freePeers.begin() + x);
 	}
 }
@@ -457,11 +513,8 @@ std::vector<PeerInfo> Host::peers(bool _updatePing) const
 	return ret;
 }
 
-void Host::process()
+void Host::doWork()
 {
-	for (auto const& i: m_capabilities)
-		if (!i.second->isInitialised())
-			return;
 	growPeers();
 	prunePeers();
 	m_ioService.poll();

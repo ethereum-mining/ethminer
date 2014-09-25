@@ -41,7 +41,6 @@ class BreakPointHit: public VMException {};
 class BadInstruction: public VMException {};
 class OutOfGas: public VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
-class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -157,7 +156,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			require(3);
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
-
+		case Instruction::EXTCODECOPY:
+			require(4);
+			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
+			break;
+			
 		case Instruction::BALANCE:
 			runGas = c_balanceGas;
 			break;

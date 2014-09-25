@@ -14,20 +14,9 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file RangeMask.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
-
-using namespace std;
-using namespace dev;
-
-namespace dev
-{
-
-char const* Version = "0.6.9";
-
-}
-
+#include "RangeMask.h"
