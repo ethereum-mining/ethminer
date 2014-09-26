@@ -2,5 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\evmcc\evmcc.cpp" />
+    <ClCompile Include="..\evmcc\Compiler.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\evmcc\Compiler.h" />
   </ItemGroup>
 </Project>

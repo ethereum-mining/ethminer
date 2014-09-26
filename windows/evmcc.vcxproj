@@ -19,7 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\evmcc\Compiler.cpp" />
     <ClCompile Include="..\evmcc\evmcc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\evmcc\Compiler.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D51A4898-BD9E-4961-BCAE-1FE7F854BB4D}</ProjectGuid>
