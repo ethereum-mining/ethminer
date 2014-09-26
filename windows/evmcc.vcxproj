@@ -22,6 +22,7 @@
     <ClCompile Include="..\evmcc\Compiler.cpp" />
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
+    <ClCompile Include="..\evmcc\Stack.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
