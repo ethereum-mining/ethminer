@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\Compiler.cpp" />
+    <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
+    <ClInclude Include="..\evmcc\ExecutionEngine.h" />
   </ItemGroup>
 </Project>
