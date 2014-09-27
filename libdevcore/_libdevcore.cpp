@@ -6,5 +6,7 @@
 #include "FixedHash.cpp"
 #include "Guards.cpp"
 #include "Log.cpp"
+#include "RangeMask.cpp"
 #include "RLP.cpp"
+#include "Worker.cpp"
 #endif
