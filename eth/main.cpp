@@ -300,7 +300,13 @@ int main(int argc, char** argv)
 	cout << credits();
 
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
-	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
+	dev::WebThreeDirect web3(
+		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM),
+		dbPath,
+		false,
+		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		netPrefs
+		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
 
