@@ -175,6 +175,9 @@
     <ClCompile Include="..\libwhisper\WhisperPeer.cpp">
       <Filter>libwhisper</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\Manifest.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -383,6 +386,9 @@
     </ClInclude>
     <ClInclude Include="..\libwhisper\WhisperPeer.h">
       <Filter>libwhisper</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\Manifest.h">
+      <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
