@@ -275,7 +275,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	}
 
 	auto pd = details(bi.parentHash);
-	assert(pd);
+	if (!pd)
+		cwarn << "Odd: details is returning false despite block known:" << RLP(pd.rlp());
 
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
