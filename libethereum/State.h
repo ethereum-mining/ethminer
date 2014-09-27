@@ -32,14 +32,20 @@
 #include <libethcore/Dagger.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
+
 #include "TransactionQueue.h"
 #include "AddressState.h"
 #include "Transaction.h"
 #include "Executive.h"
 #include "AccountDiff.h"
 
+//#include <test/vm.h>
+
+
 namespace dev
 {
+namespace test{ class FakeExtVM;}
+
 namespace eth
 {
 
@@ -75,6 +81,7 @@ struct TransactionReceipt
 class State
 {
 	friend class ExtVM;
+	friend class test::FakeExtVM;
 	friend class Executive;
 
 public:
