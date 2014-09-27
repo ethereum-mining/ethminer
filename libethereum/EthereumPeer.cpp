@@ -246,6 +246,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
 			m_sub.doneFetch();
 			giveUpOnFetch();
+			break;
 		}
 
 		unsigned used = 0;

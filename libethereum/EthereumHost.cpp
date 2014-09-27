@@ -149,6 +149,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
 		updateGrabbing(Grabbing::Nothing);
+		m_man.reset();
 	}
 	if (_who->m_grabbing == Grabbing::Chain)
 	{
@@ -156,6 +157,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
 		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
 		// TODO: note that peer is BADBADBAD!
 		updateGrabbing(Grabbing::Nothing);
+		m_man.reset();
 	}
 }
 
