@@ -27,6 +27,7 @@
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
+    <ClInclude Include="..\evmcc\Stack.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D51A4898-BD9E-4961-BCAE-1FE7F854BB4D}</ProjectGuid>
