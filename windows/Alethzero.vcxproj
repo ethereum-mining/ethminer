@@ -176,6 +176,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\alethzero\DownloadView.cpp" />
     <ClCompile Include="..\alethzero\Grapher.cpp" />
     <ClCompile Include="..\alethzero\main.cpp" />
     <ClCompile Include="..\alethzero\MainWin.cpp" />
