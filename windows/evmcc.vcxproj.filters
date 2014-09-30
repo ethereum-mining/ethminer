@@ -5,10 +5,12 @@
     <ClCompile Include="..\evmcc\Compiler.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
     <ClCompile Include="..\evmcc\Stack.cpp" />
+    <ClCompile Include="..\evmcc\Ext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
     <ClInclude Include="..\evmcc\Stack.h" />
+    <ClInclude Include="..\evmcc\Ext.h" />
   </ItemGroup>
 </Project>
