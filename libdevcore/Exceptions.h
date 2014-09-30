@@ -22,6 +22,8 @@
 #pragma once
 
 #include <exception>
+#include <boost/exception/all.hpp>
+#include <boost/throw_exception.hpp>
 #include "CommonIO.h"
 #include "CommonData.h"
 #include "FixedHash.h"
@@ -36,11 +38,20 @@ public:
 	virtual char const* what() const noexcept { return typeid(*this).name(); }
 };
 
-class BadHexCharacter: public Exception {};
+// As an exemplar case I only restructure BadRLP, if I would restrucutre everything the above Exception class
+// can be replaced completely.
 
-class RLPException: public Exception {};
+struct BException: virtual boost::exception, virtual std::exception {};
+
+// there is no need to derive from any other class then BException just to add more information.
+// This can be done dynamically during runtime.
+
+struct BadRLP: virtual BException {};
+
+
+class BadHexCharacter: public Exception {};
+class RLPException: public BException {};
 class BadCast: public RLPException {};
-class BadRLP: public RLPException {};
 class NoNetworking: public Exception {};
 class NoUPnPDevice: public Exception {};
 class RootNotFound: public Exception {};

@@ -91,6 +91,19 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		extraData = _header[field = 11].toBytes();
 		nonce = _header[field = 12].toHash<h256>();
 	}
+	catch (BException const& e)
+	{
+		// define error information to be added to the exception
+		typedef boost::error_info<struct field_info,int> InvalidBlockHeaderFormat_field;
+		typedef boost::error_info<struct header_field_data,string> InvalidBlockHeaderFormat_header_field_data;
+
+		// instead of using a new exception type, we add information to the existing exception
+		e << InvalidBlockHeaderFormat_field(field);
+		e << InvalidBlockHeaderFormat_header_field_data(toHex(_header[field].data().toBytes()));
+
+		throw;
+	}
+	// this block would be replaced
 	catch (RLPException const&)
 	{
 		throw InvalidBlockHeaderFormat(field, _header[field].data());
