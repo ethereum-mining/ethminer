@@ -22,11 +22,13 @@
     <ClCompile Include="..\evmcc\Compiler.cpp" />
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
+    <ClCompile Include="..\evmcc\Ext.cpp" />
     <ClCompile Include="..\evmcc\Stack.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
+    <ClInclude Include="..\evmcc\Ext.h" />
     <ClInclude Include="..\evmcc\Stack.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -136,8 +138,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../builds/llvm3.5/Debug/lib;../../_build/LibEthereum/x64_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>LibEthereum.lib;LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../../builds/llvm3.5/Debug/lib;../../_build/LibEthereum/x64_Debug;../../_build/LibSecp256k1/x64_Debug;../../_build/LibCryptoPP/x64_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>LibEthereum.lib;LibSecp256k1.lib;LibCryptoPP.lib;LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
