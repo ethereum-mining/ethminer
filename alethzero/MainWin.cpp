@@ -28,6 +28,7 @@
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
@@ -49,6 +50,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
+namespace js = json_spirit;
 
 static void initUnits(QComboBox* _b)
 {
@@ -573,10 +575,29 @@ void Main::on_importKey_triggered()
 void Main::on_importKeyFile_triggered()
 {
 	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
-	bytes b = fromHex(s.toStdString());
-	if (b.size() == 32)
+	try
 	{
-		auto k = KeyPair(h256(b));
+		js::mValue val;
+		json_spirit::read_string(asString(contents(s.toStdString())), val);
+		js::mObject obj = val.get_obj();
+		KeyPair k;
+
+		if (obj["encseed"].type() == js::str_type)
+		{
+			string encseedstr = obj["encseed"].get_str();
+			bytes encseed = fromHex(encseedstr);
+			Secret sec = sha3(encseed);
+			k = KeyPair(sec);
+			if (obj["ethaddr"].type() == js::str_type)
+			{
+				Address a(obj["ethaddr"].get_str());
+				Address b = k.address();
+				if (a != b && QMessageBox::warning(this, "Key File Invalid", "Could not import the secret key: it doesn't agree with the given address.\nWould you like to attempt to import anyway?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+					return;
+			}
+		}
+		else
+			throw 0;
 		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 		{
 			m_myKeys.append(k);
@@ -586,8 +607,10 @@ void Main::on_importKeyFile_triggered()
 		else
 			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 	}
-	else
-		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
+	catch (...)
+	{
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
+	}
 }
 
 void Main::on_exportKey_triggered()
