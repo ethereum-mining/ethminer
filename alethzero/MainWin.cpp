@@ -776,7 +776,13 @@ static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 
 		if (_f.size() > 1 && _f.size() < 10 && _f[0] == '#' && stoul(_f.substr(1)) == _b.number)
 			return true;
 	}
-	catch (...) {}
+	catch (...)
+	{
+		std::cerr << "Unhandled exception!" << std::endl <<
+			boost::current_exception_diagnostic_information();
+		// possible output would include: function name, __FILE__, __LINE__ (at throw) and all added information,
+		// such has the block header info added in BlockInfo.cpp line 101-102.
+	}
 	if (toHex(_h.ref()).find(_f) != string::npos)
 		return true;
 	BlockInfo bi(_bc.block(_h));
