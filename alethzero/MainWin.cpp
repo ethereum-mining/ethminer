@@ -1711,7 +1711,11 @@ void Main::on_dumpTraceStorage_triggered()
 
 void Main::on_go_triggered()
 {
-	ui->net->setChecked(true);
+	if (!ui->net->isChecked())
+	{
+		ui->net->setChecked(true);
+		on_net_triggered();
+	}
 	web3()->connect(Host::pocHost());
 }
 
