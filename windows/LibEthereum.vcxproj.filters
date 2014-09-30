@@ -178,6 +178,18 @@
     <ClCompile Include="..\libethereum\Manifest.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
+    <ClCompile Include="..\libdevcore\RangeMask.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcore\Worker.cpp">
+      <Filter>libdevcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\DownloadMan.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libwebthree\WebThree.cpp">
+      <Filter>libwebthree</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -390,6 +402,18 @@
     <ClInclude Include="..\libethereum\Manifest.h">
       <Filter>libethereum</Filter>
     </ClInclude>
+    <ClInclude Include="..\libdevcore\RangeMask.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcore\Worker.h">
+      <Filter>libdevcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\DownloadMan.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libwebthree\webthree.h">
+      <Filter>libwebthree</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -421,6 +445,9 @@
     </Filter>
     <Filter Include="libwhisper">
       <UniqueIdentifier>{36748e80-c977-4fee-84e6-699c039dff87}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libwebthree">
+      <UniqueIdentifier>{d838fece-fc20-42f6-bff5-97c236159b80}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

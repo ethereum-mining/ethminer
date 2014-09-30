@@ -21,6 +21,9 @@
 
 #pragma once
 
+#ifdef Q_MOC_RUN
+#define BOOST_MPL_IF_HPP_INCLUDED
+#endif
 
 #include <map>
 #include <QtNetwork/QNetworkAccessManager>
