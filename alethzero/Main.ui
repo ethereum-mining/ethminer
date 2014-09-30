@@ -161,25 +161,8 @@
     <property name="title">
      <string>Deb&amp;ug</string>
     </property>
-    <widget class="QMenu" name="menuDump_Trace">
-     <property name="title">
-      <string>&amp;Dump Trace</string>
-     </property>
-     <addaction name="dumpTrace"/>
-     <addaction name="dumpTraceStorage"/>
-     <addaction name="dumpTracePretty"/>
-    </widget>
-    <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
-    <addaction name="separator"/>
-    <addaction name="debugStep"/>
-    <addaction name="debugStepInto"/>
-    <addaction name="debugStepOut"/>
-    <addaction name="debugStepBack"/>
-    <addaction name="debugStepBackInto"/>
-    <addaction name="debugStepBackOut"/>
-    <addaction name="menuDump_Trace"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
@@ -199,10 +182,39 @@
     <addaction name="separator"/>
     <addaction name="preview"/>
    </widget>
+   <widget class="QMenu" name="menuDebugger">
+    <property name="title">
+     <string>D&amp;ebugger</string>
+    </property>
+    <widget class="QMenu" name="menu_Dump_Trace">
+     <property name="title">
+      <string>&amp;Dump Trace</string>
+     </property>
+     <addaction name="dumpTrace"/>
+     <addaction name="dumpTraceStorage"/>
+     <addaction name="dumpTracePretty"/>
+    </widget>
+    <widget class="QMenu" name="menuType_Here">
+     <property name="title">
+      <string>Type Here</string>
+     </property>
+    </widget>
+    <addaction name="debugCurrent"/>
+    <addaction name="menu_Dump_Trace"/>
+    <addaction name="separator"/>
+    <addaction name="debugStep"/>
+    <addaction name="debugStepInto"/>
+    <addaction name="debugStepOut"/>
+    <addaction name="debugStepBack"/>
+    <addaction name="debugStepBackInto"/>
+    <addaction name="debugStepBackOut"/>
+    <addaction name="menuType_Here"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menuDebugger"/>
    <addaction name="menu_Debug"/>
    <addaction name="menu_Help"/>
   </widget>
