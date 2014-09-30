@@ -95,6 +95,7 @@ struct PeerInfo
 	unsigned short port;
 	std::chrono::steady_clock::duration lastPing;
 	std::set<std::string> caps;
+	unsigned socket;
 };
 
 }
