@@ -485,7 +485,7 @@ bytes BlockChain::block(h256 _hash) const
 	if (!d.size())
 	{
 		cwarn << "Couldn't find requested block:" << _hash.abridged();
-		return d;
+		return bytes();
 	}
 
 	WriteGuard l(x_cache);
