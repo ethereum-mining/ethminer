@@ -11,6 +11,7 @@
     </ClCompile>
     <ClCompile Include="..\alethzero\Grapher.cpp" />
     <ClCompile Include="..\alethzero\MiningView.cpp" />
+    <ClCompile Include="..\alethzero\DownloadView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -31,5 +32,6 @@
       <Filter>Windows</Filter>
     </CustomBuild>
     <CustomBuild Include="..\alethzero\MiningView.h" />
+    <CustomBuild Include="..\alethzero\DownloadView.h" />
   </ItemGroup>
 </Project>

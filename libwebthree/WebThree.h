@@ -93,7 +93,7 @@ public:
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 
 	/// Is the network subsystem up?
-	bool haveNetwork() { return peerCount(); }
+	bool haveNetwork() { return peerCount() != 0; }
 
 	/// Save peers
 	dev::bytes savePeers();
