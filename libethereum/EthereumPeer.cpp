@@ -176,12 +176,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
 
-		unsigned c = min<unsigned>(max<unsigned>(1, host()->m_chain.number(later)) - 1, limit);
+		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
 
 		RLPStream s;
 		prep(s).appendList(1 + c).append(BlockHashesPacket);
 		h256 p = host()->m_chain.details(later).parent;
-		for (unsigned i = 0; i < c; ++i, p = host()->m_chain.details(p).parent)
+		for (unsigned i = 0; i < c && p; ++i, p = host()->m_chain.details(p).parent)
 			s << p;
 		sealAndSend(s);
 		break;
