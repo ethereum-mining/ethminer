@@ -264,7 +264,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned unknownParents = 0;
 		if (g_logVerbosity >= NetMessageSummary::verbosity)
 		{
-			for (unsigned i = 1; i < _r.itemCount(); ++i)
+			unsigned ic = _r.itemCount();
+			for (unsigned i = 1; i < ic; ++i)
 			{
 				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());

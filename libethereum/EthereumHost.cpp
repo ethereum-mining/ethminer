@@ -265,6 +265,8 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 			++c;
 		}
 		clog(NetMessageSummary) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+		if (c > 1000)
+			cwarn << "Gaa sending an awful lot of new blocks. Sure this is right?";
 		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
 		bytes b;
 		ts.swapOut(b);
