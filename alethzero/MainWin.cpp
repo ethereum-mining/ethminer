@@ -711,7 +711,7 @@ void Main::refreshNetwork()
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
 	for (PeerInfo const& i: ps)
-		ui->peers->addItem(QString("%3 ms - %1:%2 - %4 %5").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))));
+		ui->peers->addItem(QString("[%6] %3 ms - %1:%2 - %4 %5").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))).arg(i.socket));
 }
 
 void Main::refreshAll()
