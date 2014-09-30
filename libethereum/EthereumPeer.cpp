@@ -203,7 +203,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = _r[i].toHash<h256>();
-			if (host()->m_chain.details(h))
+			if (host()->m_chain.isKnown(h))
 			{
 				host()->noteHaveChain(this);
 				return true;
