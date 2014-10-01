@@ -101,6 +101,17 @@ public:
 		m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
 	}
 
+	void reset()
+	{
+		{
+			ReadGuard l(x_subs);
+			for (auto i: m_subs)
+				i->resetFetch();
+		}
+		m_chain.clear();
+		m_blocksGot.clear();
+	}
+
 	RangeMask<unsigned> taken(bool _desperate = false) const
 	{
 		auto ret = m_blocksGot;

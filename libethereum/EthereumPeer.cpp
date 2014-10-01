@@ -176,12 +176,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
 
-		unsigned c = min<unsigned>(max<unsigned>(1, host()->m_chain.number(later)) - 1, limit);
+		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
 
 		RLPStream s;
 		prep(s).appendList(1 + c).append(BlockHashesPacket);
 		h256 p = host()->m_chain.details(later).parent;
-		for (unsigned i = 0; i < c; ++i, p = host()->m_chain.details(p).parent)
+		for (unsigned i = 0; i < c && p; ++i, p = host()->m_chain.details(p).parent)
 			s << p;
 		sealAndSend(s);
 		break;
@@ -203,7 +203,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = _r[i].toHash<h256>();
-			if (host()->m_chain.details(h))
+			if (host()->m_chain.isKnown(h))
 			{
 				host()->noteHaveChain(this);
 				return true;
@@ -246,6 +246,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
 			m_sub.doneFetch();
 			giveUpOnFetch();
+			break;
 		}
 
 		unsigned used = 0;
@@ -263,7 +264,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned unknownParents = 0;
 		if (g_logVerbosity >= NetMessageSummary::verbosity)
 		{
-			for (unsigned i = 1; i < _r.itemCount(); ++i)
+			unsigned ic = _r.itemCount();
+			for (unsigned i = 1; i < ic; ++i)
 			{
 				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());

@@ -28,6 +28,7 @@
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
@@ -49,6 +50,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
+namespace js = json_spirit;
 
 static void initUnits(QComboBox* _b)
 {
@@ -133,11 +135,13 @@ Main::Main(QWidget *parent) :
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_ethereum = new QEthereum(this, ethereum(), owned());
+		m_whisper = new QWhisper(this, whisper());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
+		auto qshh = m_whisper;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -570,6 +574,44 @@ void Main::on_importKey_triggered()
 		QMessageBox::warning(this, "Invalid Entry", "Could not import the secret key; invalid key entered. Make sure it is 64 hex characters (0-9 or A-F).");
 }
 
+void Main::on_importKeyFile_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	try
+	{
+		js::mValue val;
+		json_spirit::read_string(asString(contents(s.toStdString())), val);
+		auto obj = val.get_obj();
+		if (obj["encseed"].type() == js::str_type)
+		{
+			auto encseed = fromHex(obj["encseed"].get_str());
+			KeyPair k = KeyPair::fromEncryptedSeed(&encseed, QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString());
+			if (obj["ethaddr"].type() == js::str_type)
+			{
+				Address a(obj["ethaddr"].get_str());
+				Address b = k.address();
+				if (a != b && QMessageBox::warning(this, "Key File Invalid", "Could not import the secret key: it doesn't agree with the given address.\nWould you like to attempt to import anyway?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+					return;
+			}
+
+			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+			{
+				m_myKeys.append(k);
+				m_keysChanged = true;
+				update();
+			}
+			else
+				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+		}
+		else
+			throw 0;
+	}
+	catch (...)
+	{
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
+	}
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
@@ -691,7 +733,7 @@ void Main::refreshNetwork()
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
 	for (PeerInfo const& i: ps)
-		ui->peers->addItem(QString("%3 ms - %1:%2 - %4 %5").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))));
+		ui->peers->addItem(QString("[%6] %3 ms - %1:%2 - %4 %5").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))).arg(i.socket));
 }
 
 void Main::refreshAll()
@@ -1687,6 +1729,16 @@ void Main::on_dumpTraceStorage_triggered()
 					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
 			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
+}
+
+void Main::on_go_triggered()
+{
+	if (!ui->net->isChecked())
+	{
+		ui->net->setChecked(true);
+		on_net_triggered();
+	}
+	web3()->connect(Host::pocHost());
 }
 
 void Main::on_callStack_currentItemChanged()
