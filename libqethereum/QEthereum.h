@@ -269,8 +269,6 @@ private:
 	frame->evaluateJavaScript("String.prototype.dec = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toDecimal(this) }"); \
 	frame->evaluateJavaScript("String.prototype.fix = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toFixed(this) }"); \
 	frame->evaluateJavaScript("String.prototype.sha3 = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.sha3old(this) }"); \
-	frame->evaluateJavaScript("console.log = env.note"); \
-	frame->evaluateJavaScript("window.onerror = function (errorMsg, url, lineNumber, column, errorObj) { env.warn('Error: ' + errorMsg + ', Script: ' + url + ', Line: ' + lineNumber + ', Column: ' + column + ', StackTrace: ' + String(errorObj)) }"); \
 	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 }
