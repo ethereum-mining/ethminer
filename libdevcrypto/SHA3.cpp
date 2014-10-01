@@ -72,5 +72,30 @@ h256 sha3(bytesConstRef _input)
 	return ret;
 }
 
+bytes aesDecrypt(bytesConstRef _cipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)
+{
+	bytes pw = asBytes(_password);
+	bytes target(CryptoPP::AES::DEFAULT_KEYLENGTH);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256>().DeriveKey(target.data(), target.size(), 0, pw.data(), pw.size(), _salt.data(), _salt.size(), _rounds);
+
+	try
+	{
+		CryptoPP::AES::Decryption aesDecryption(target.data(), target.size());
+		bytes iv(CryptoPP::AES::BLOCKSIZE);
+		CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv.data());
+		std::string decrypted;
+		CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
+		stfDecryptor.Put(_cipher.data(), _cipher.size());
+		stfDecryptor.MessageEnd();
+		return asBytes(decrypted);
+	}
+	catch (exception const& e)
+	{
+		cerr << e.what() << endl;
+		return bytes();
+	}
+}
+
 }
 }

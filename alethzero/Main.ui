@@ -194,11 +194,6 @@
      <addaction name="dumpTraceStorage"/>
      <addaction name="dumpTracePretty"/>
     </widget>
-    <widget class="QMenu" name="menuType_Here">
-     <property name="title">
-      <string>Type Here</string>
-     </property>
-    </widget>
     <addaction name="debugCurrent"/>
     <addaction name="menu_Dump_Trace"/>
     <addaction name="separator"/>
@@ -208,7 +203,6 @@
     <addaction name="debugStepBack"/>
     <addaction name="debugStepBackInto"/>
     <addaction name="debugStepBackOut"/>
-    <addaction name="menuType_Here"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>

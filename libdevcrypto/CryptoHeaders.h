@@ -28,9 +28,14 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <sha.h>
 #include <sha3.h>
 #include <ripemd.h>
+#include <aes.h>
+#include <pwdbased.h>
+#include <modes.h>
+#include <filters.h>
 #include <secp256k1/secp256k1.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop

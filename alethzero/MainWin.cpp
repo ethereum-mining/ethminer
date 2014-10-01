@@ -28,11 +28,6 @@
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
-#include <cryptopp/aes.h>
-#include <cryptopp/pwdbased.h>
-#include <cryptopp/modes.h>
-#include <cryptopp/sha.h>
-#include <cryptopp/filters.h>
 #include <test/JsonSpiritHeaders.h>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
@@ -586,40 +581,11 @@ void Main::on_importKeyFile_triggered()
 	{
 		js::mValue val;
 		json_spirit::read_string(asString(contents(s.toStdString())), val);
-		js::mObject obj = val.get_obj();
-		KeyPair k;
-
+		auto obj = val.get_obj();
 		if (obj["encseed"].type() == js::str_type)
 		{
-			QString pw = QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password);
-
-			string encseedstr = obj["encseed"].get_str();
-			bytes encseed = fromHex(encseedstr);
-			bytes pwbytes = asBytes(pw.toStdString());
-
-			byte targetBuffer[64];
-			byte saltBuffer[64];
-			CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256>().DeriveKey(targetBuffer, 64, 0, pwbytes.data(), pwbytes.size(), saltBuffer, 0, 2000);
-
-			try
-			{
-				CryptoPP::AES::Decryption aesDecryption(targetBuffer, 64);
-				byte iv[CryptoPP::AES::BLOCKSIZE];
-				CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
-				std::string decrypted;
-				CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
-				stfDecryptor.Put(encseed.data(), encseed.size());
-				stfDecryptor.MessageEnd();
-				encseed = asBytes(decrypted);
-			}
-			catch (exception const& e)
-			{
-				cerr << e.what() << endl;
-				return;
-			}
-
-			auto sec = sha3(encseed);
-			k = KeyPair(sec);
+			auto encseed = fromHex(obj["encseed"].get_str());
+			KeyPair k = KeyPair::fromEncryptedSeed(&encseed, QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString());
 			if (obj["ethaddr"].type() == js::str_type)
 			{
 				Address a(obj["ethaddr"].get_str());
@@ -627,17 +593,18 @@ void Main::on_importKeyFile_triggered()
 				if (a != b && QMessageBox::warning(this, "Key File Invalid", "Could not import the secret key: it doesn't agree with the given address.\nWould you like to attempt to import anyway?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
 					return;
 			}
+
+			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+			{
+				m_myKeys.append(k);
+				m_keysChanged = true;
+				update();
+			}
+			else
+				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 		}
 		else
 			throw 0;
-		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
-		{
-			m_myKeys.append(k);
-			m_keysChanged = true;
-			update();
-		}
-		else
-			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 	}
 	catch (...)
 	{
