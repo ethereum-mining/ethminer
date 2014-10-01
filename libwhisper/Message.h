@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file WhisperPeer.h
+/** @file Message.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -30,42 +30,33 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/SHA3.h>
 #include "Common.h"
-#include "Message.h"
 
 namespace dev
 {
 namespace shh
 {
 
-using p2p::Session;
-using p2p::HostCapabilityFace;
-using p2p::HostCapability;
-using p2p::Capability;
-
-/**
- */
-class WhisperPeer: public Capability
+struct Message
 {
-	friend class WhisperHost;
+	unsigned expiry = 0;
+	unsigned ttl = 0;
+	bytes topic;
+	bytes payload;
 
-public:
-	WhisperPeer(Session* _s, HostCapabilityFace* _h);
-	virtual ~WhisperPeer();
+	Message() {}
+	Message(unsigned _exp, unsigned _ttl, bytes const& _topic, bytes const& _payload): expiry(_exp), ttl(_ttl), topic(_topic), payload(_payload) {}
+	Message(RLP const& _m)
+	{
+		expiry = _m[0].toInt<unsigned>();
+		ttl = _m[1].toInt<unsigned>();
+		topic = _m[2].toBytes();
+		payload = _m[3].toBytes();
+	}
 
-	static std::string name() { return "shh"; }
+	operator bool () const { return !!expiry; }
 
-	WhisperHost* host() const;
-
-private:
-	virtual bool interpret(RLP const&);
-
-	void sendMessages();
-
-	unsigned rating(Message const&) const { return 0; }	// TODO
-	void noteNewMessage(h256 _h, Message const& _m);
-
-	mutable dev::Mutex x_unseen;
-	std::map<unsigned, h256> m_unseen;	///< Rated according to what they want.
+	void streamOut(RLPStream& _s) const { _s.appendList(4) << expiry << ttl << topic << payload; }
+	h256 sha3() const { RLPStream s; streamOut(s); return dev::eth::sha3(s.out()); }
 };
 
 }

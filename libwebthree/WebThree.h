@@ -32,7 +32,7 @@
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
 
-#include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 #include <libethereum/Client.h>
 
 namespace dev
