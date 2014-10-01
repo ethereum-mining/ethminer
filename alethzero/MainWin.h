@@ -147,6 +147,8 @@ private slots:
     void on_usePrivate_triggered();
 	void on_enableOptimizer_triggered();
 	void on_turboMining_triggered();
+	void on_go_triggered();
+	void on_importKeyFile_triggered();
 
 signals:
 	void poll();
