@@ -25,6 +25,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtWebKitWidgets/QWebFrame>
+#include <QWebSettings>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
@@ -137,6 +138,7 @@ Main::Main(QWidget *parent) :
 		m_ethereum = new QEthereum(this, ethereum(), owned());
 		m_whisper = new QWhisper(this, whisper());
 
+		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
