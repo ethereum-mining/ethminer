@@ -48,17 +48,17 @@ public:
 
 	unsigned protocolVersion() const { return 0; }
 
-	void inject(Message const& _m, WhisperPeer* _from = nullptr);
+	virtual void inject(Message const& _m, WhisperPeer* _from = nullptr);
 
-	unsigned installWatch(MessageFilter const& _filter);
-	unsigned installWatch(h256 _filterId);
-	void uninstallWatch(unsigned _watchId);
-	h256s peekWatch(unsigned _watchId) const { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
-	h256s checkWatch(unsigned _watchId) { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
+	virtual unsigned installWatch(MessageFilter const& _filter);
+	virtual unsigned installWatch(h256 _filterId);
+	virtual void uninstallWatch(unsigned _watchId);
+	virtual h256s peekWatch(unsigned _watchId) const { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
+	virtual h256s checkWatch(unsigned _watchId) { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
 
-	Message message(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
+	virtual Message message(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
 
-	void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
+	virtual void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
 
 private:
 	void streamMessage(h256 _m, RLPStream& _s) const;
