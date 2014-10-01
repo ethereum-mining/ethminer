@@ -40,7 +40,7 @@ struct Message
 {
 	unsigned expiry = 0;
 	unsigned ttl = 0;
-	bytes topic;
+	bytes topic;	// TODO: change to h256
 	bytes payload;
 
 	Message() {}

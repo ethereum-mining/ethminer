@@ -246,4 +246,5 @@ private:
 	bool m_logChanged = true;
 
 	QEthereum* m_ethereum = nullptr;
+	QWhisper* m_whisper = nullptr;
 };
