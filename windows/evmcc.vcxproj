@@ -23,13 +23,17 @@
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
     <ClCompile Include="..\evmcc\Ext.cpp" />
+    <ClCompile Include="..\evmcc\Memory.cpp" />
     <ClCompile Include="..\evmcc\Stack.cpp" />
+    <ClCompile Include="..\evmcc\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
     <ClInclude Include="..\evmcc\Ext.h" />
+    <ClInclude Include="..\evmcc\Memory.h" />
     <ClInclude Include="..\evmcc\Stack.h" />
+    <ClInclude Include="..\evmcc\Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D51A4898-BD9E-4961-BCAE-1FE7F854BB4D}</ProjectGuid>
