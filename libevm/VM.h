@@ -585,7 +585,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.push_back(m_curPC);
 			break;
 		case Instruction::MSIZE:
-			m_stack.push_back(m_temp.size() / 32);
+			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
 			m_stack.push_back(m_gas);
