@@ -25,7 +25,7 @@ class InvalidBlockHeaderFormat: public dev::Exception { public: InvalidBlockHead
 class InvalidUnclesHash: public dev::Exception {};
 class InvalidUncle: public dev::Exception {};
 class UncleTooOld: public dev::Exception {};
-class UncleInChain: public dev::Exception {};
+class UncleInChain: public dev::Exception { public: UncleInChain(h256Set _uncles, h256 _block): m_uncles(_uncles), m_block(_block) {} h256Set m_uncles; h256 m_block; virtual std::string description() const { return "Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"; } };
 class DuplicateUncleNonce: public dev::Exception {};
 class InvalidStateRoot: public dev::Exception {};
 class InvalidTransactionsHash: public dev::Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual std::string description() const { return "Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref()); } };
