@@ -28,6 +28,11 @@
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
+#include <cryptopp/aes.h>
+#include <cryptopp/pwdbased.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/filters.h>
 #include <test/JsonSpiritHeaders.h>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
@@ -135,11 +140,13 @@ Main::Main(QWidget *parent) :
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_ethereum = new QEthereum(this, ethereum(), owned());
+		m_whisper = new QWhisper(this, whisper());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
+		auto qshh = m_whisper;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -584,9 +591,34 @@ void Main::on_importKeyFile_triggered()
 
 		if (obj["encseed"].type() == js::str_type)
 		{
+			QString pw = QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password);
+
 			string encseedstr = obj["encseed"].get_str();
 			bytes encseed = fromHex(encseedstr);
-			Secret sec = sha3(encseed);
+			bytes pwbytes = asBytes(pw.toStdString());
+
+			byte targetBuffer[64];
+			byte saltBuffer[64];
+			CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256>().DeriveKey(targetBuffer, 64, 0, pwbytes.data(), pwbytes.size(), saltBuffer, 0, 2000);
+
+			try
+			{
+				CryptoPP::AES::Decryption aesDecryption(targetBuffer, 64);
+				byte iv[CryptoPP::AES::BLOCKSIZE];
+				CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
+				std::string decrypted;
+				CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
+				stfDecryptor.Put(encseed.data(), encseed.size());
+				stfDecryptor.MessageEnd();
+				encseed = asBytes(decrypted);
+			}
+			catch (exception const& e)
+			{
+				cerr << e.what() << endl;
+				return;
+			}
+
+			auto sec = sha3(encseed);
 			k = KeyPair(sec);
 			if (obj["ethaddr"].type() == js::str_type)
 			{

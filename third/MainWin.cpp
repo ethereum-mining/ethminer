@@ -106,11 +106,13 @@ Main::Main(QWidget *parent) :
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_ethereum = new QEthereum(this, ethereum(), owned());
+		m_whisper = new QWhisper(this, whisper());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
+		auto qshh = m_whisper;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -151,6 +153,11 @@ Main::~Main()
 eth::Client* Main::ethereum() const
 {
 	return m_web3->ethereum();
+}
+
+std::shared_ptr<dev::shh::WhisperHost> Main::whisper() const
+{
+	return m_web3->whisper();
 }
 
 void Main::onKeysChanged()
