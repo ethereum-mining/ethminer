@@ -184,6 +184,8 @@ private:
 	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 
+	void keysChanged();
+
 	void onNewPending();
 	void onNewBlock();
 	void onNameRegChange();
@@ -221,7 +223,6 @@ private:
 	QStringList m_servers;
 	QList<dev::KeyPair> m_myKeys;
 	QString m_privateChain;
-	bool m_keysChanged = false;
 	dev::bytes m_data;
 	dev::Address m_nameReg;
 
