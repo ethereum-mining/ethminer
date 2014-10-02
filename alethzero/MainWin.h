@@ -75,7 +75,7 @@ public:
 
 	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	dev::shh::WhisperHost* whisper() const { return m_webThree->whisper(); }
+	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
@@ -184,6 +184,8 @@ private:
 	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 
+	void keysChanged();
+
 	void onNewPending();
 	void onNewBlock();
 	void onNameRegChange();
@@ -221,7 +223,6 @@ private:
 	QStringList m_servers;
 	QList<dev::KeyPair> m_myKeys;
 	QString m_privateChain;
-	bool m_keysChanged = false;
 	dev::bytes m_data;
 	dev::Address m_nameReg;
 
@@ -246,4 +247,5 @@ private:
 	bool m_logChanged = true;
 
 	QEthereum* m_ethereum = nullptr;
+	QWhisper* m_whisper = nullptr;
 };

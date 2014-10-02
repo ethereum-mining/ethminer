@@ -14,20 +14,34 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file Interface.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "Common.h"
+#include "Interface.h"
 
+#include <libdevcore/Log.h>
+#include <libp2p/All.h>
+#include "WhisperHost.h"
 using namespace std;
 using namespace dev;
+using namespace dev::p2p;
+using namespace dev::shh;
 
-namespace dev
+#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
+
+bool MessageFilter::matches(Message const& _m) const
 {
-
-char const* Version = "0.6.11";
-
+	for (auto const& t: m_topicMasks)
+	{
+		if (t.first.size() != t.second.size() || _m.topic.size() < t.first.size())
+			continue;
+		for (unsigned i = 0; i < t.first.size(); ++i)
+			if (((t.first[i] ^ _m.topic[i]) & t.second[i]) != 0)
+				goto NEXT;
+		return true;
+		NEXT:;
+	}
+	return false;
 }
-
