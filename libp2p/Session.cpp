@@ -40,7 +40,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, un
 {
 	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
-	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0), set<string>(), 0});
+	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0), set<string>(), 0, map<string, string>()});
 }
 
 Session::~Session()
@@ -102,7 +102,7 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<string>(), (unsigned)m_socket.native_handle()}); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<string>(), (unsigned)m_socket.native_handle(), map<string, string>() }); }
 		catch (...)
 		{
 			disconnect(BadProtocol);

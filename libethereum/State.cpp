@@ -1142,7 +1142,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, _endowment, h256(), h256());
+	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
 	VM vm(*_gas);
