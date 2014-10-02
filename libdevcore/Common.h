@@ -39,7 +39,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include "vector_ref.h"
 
-// CryptoPP defines byte in the global namespace, so so must we.
+// CryptoPP defines byte in the global namespace, so must we.
 using byte = uint8_t;
 
 // Quote a given token stream to turn it into a string.

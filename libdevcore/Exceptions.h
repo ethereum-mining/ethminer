@@ -30,30 +30,19 @@
 
 namespace dev
 {
+// base class for all exceptions
+struct Exception: virtual std::exception, virtual boost::exception {};
 
-class Exception: public std::exception
-{
-public:
-	virtual std::string description() const { return typeid(*this).name(); }
-	virtual char const* what() const noexcept { return typeid(*this).name(); }
-};
+struct BadHexCharacter: virtual Exception {};
+struct RLPException: virtual Exception {};
+struct BadCast: virtual RLPException {};
+struct BadRLP: virtual RLPException {};
+struct NoNetworking: virtual Exception {};
+struct NoUPnPDevice: virtual Exception {};
+struct RootNotFound: virtual Exception {};
+struct FileError: virtual Exception {};
 
-// As an exemplar case I only restructure BadRLP, if I would restrucutre everything the above Exception class
-// can be replaced completely.
-
-struct BException: virtual boost::exception, virtual std::exception {};
-
-// there is no need to derive from any other class then BException just to add more information.
-// This can be done dynamically during runtime.
-
-struct BadRLP: virtual BException {};
-
-
-class BadHexCharacter: public Exception {};
-class RLPException: public BException {};
-class BadCast: public RLPException {};
-class NoNetworking: public Exception {};
-class NoUPnPDevice: public Exception {};
-class RootNotFound: public Exception {};
-
+// error information to be added to exceptions
+typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;
+typedef boost::error_info<struct tag_comment, std::string> errinfo_comment;
 }

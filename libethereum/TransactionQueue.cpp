@@ -49,9 +49,9 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 		m_current[h] = _transactionRLP.toBytes();
 		m_known.insert(h);
 	}
-	catch (InvalidTransactionFormat const& _e)
+	catch (Exception const& _e)
 	{
-		cwarn << "Ignoring invalid transaction: " << _e.description();
+		cwarn << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
 		return false;
 	}
 	catch (std::exception const& _e)

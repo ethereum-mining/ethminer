@@ -91,33 +91,22 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		extraData = _header[field = 11].toBytes();
 		nonce = _header[field = 12].toHash<h256>();
 	}
-	catch (BException const& e)
+
+	catch (Exception & _e)
 	{
-		// define error information to be added to the exception
-		typedef boost::error_info<struct field_info,int> InvalidBlockHeaderFormat_field;
-		typedef boost::error_info<struct header_field_data,string> InvalidBlockHeaderFormat_header_field_data;
-
-		// instead of using a new exception type, we add information to the existing exception
-		e << InvalidBlockHeaderFormat_field(field);
-		e << InvalidBlockHeaderFormat_header_field_data(toHex(_header[field].data().toBytes()));
-
+		_e << errinfo_name("invalid block header format") << BadFieldError(field, toHex(_header[field].data().toBytes()));
 		throw;
-	}
-	// this block would be replaced
-	catch (RLPException const&)
-	{
-		throw InvalidBlockHeaderFormat(field, _header[field].data());
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (_checkNonce && parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
-		throw InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty);
+		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty));
 
 	if (gasUsed > gasLimit)
-		throw TooMuchGasUsed();
+		BOOST_THROW_EXCEPTION(TooMuchGasUsed());
 
 	if (number && extraData.size() > 1024)
-		throw ExtraDataTooBig();
+		BOOST_THROW_EXCEPTION(ExtraDataTooBig());
 }
 
 void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
@@ -126,13 +115,13 @@ void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 	RLP header = root[0];
 
 	if (!header.isList())
-		throw InvalidBlockFormat(0, header.data());
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,header.data()));
 	populateFromHeader(header, _checkNonce);
 
 	if (!root[1].isList())
-		throw InvalidBlockFormat(1, root[1].data());
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(1, root[1].data()));
 	if (!root[2].isList())
-		throw InvalidBlockFormat(2, root[2].data());
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(2, root[2].data()));
 }
 
 void BlockInfo::verifyInternals(bytesConstRef _block) const
@@ -154,13 +143,13 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 		++i;
 	}
 	if (transactionsRoot != t.root())
-		throw InvalidTransactionsHash(t.root(), transactionsRoot);
+		BOOST_THROW_EXCEPTION(InvalidTransactionsHash(t.root(), transactionsRoot));
 
 	if (minGasPrice > mgp)
-		throw InvalidMinGasPrice(minGasPrice, mgp);
+		BOOST_THROW_EXCEPTION(InvalidMinGasPrice(minGasPrice, mgp));
 
 	if (sha3Uncles != sha3(root[2].data()))
-		throw InvalidUnclesHash();
+		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
 
 void BlockInfo::populateFromParent(BlockInfo const& _parent)
@@ -193,22 +182,22 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {
 	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
-		throw InvalidDifficulty();
+		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
 	if (gasLimit != calculateGasLimit(_parent))
-		throw InvalidGasLimit(gasLimit, calculateGasLimit(_parent));
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent)));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
 	{
 		if (parentHash != _parent.hash)
-			throw InvalidParentHash();
+			BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 		if (timestamp < _parent.timestamp)
-			throw InvalidTimestamp();
+			BOOST_THROW_EXCEPTION(InvalidTimestamp());
 
 		if (number != _parent.number + 1)
-			throw InvalidNumber();
+			BOOST_THROW_EXCEPTION(InvalidNumber());
 	}
 }
 

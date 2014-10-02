@@ -96,7 +96,7 @@ void Host::start()
 		{
 			if (i)
 			{
-				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?";
+				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
 				return;
 			}
 			m_acceptor.close();
@@ -238,14 +238,14 @@ void Host::populateAddresses()
 #ifdef _WIN32
 	WSAData wsaData;
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
-		throw NoNetworking();
+		BOOST_THROW_EXCEPTION(NoNetworking());
 
 	char ac[80];
 	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
 	{
 		clog(NetWarn) << "Error " << WSAGetLastError() << " when getting local host name.";
 		WSACleanup();
-		throw NoNetworking();
+		BOOST_THROW_EXCEPTION(NoNetworking());
 	}
 
 	struct hostent* phe = gethostbyname(ac);
@@ -253,7 +253,7 @@ void Host::populateAddresses()
 	{
 		clog(NetWarn) << "Bad host lookup.";
 		WSACleanup();
-		throw NoNetworking();
+		BOOST_THROW_EXCEPTION(NoNetworking());
 	}
 
 	for (int i = 0; phe->h_addr_list[i] != 0; ++i)
@@ -273,7 +273,7 @@ void Host::populateAddresses()
 #else
 	ifaddrs* ifaddr;
 	if (getifaddrs(&ifaddr) == -1)
-		throw NoNetworking();
+		BOOST_THROW_EXCEPTION(NoNetworking());
 
 	bi::tcp::resolver r(m_ioService);
 
@@ -341,6 +341,7 @@ void Host::ensureAccepting()
 		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
 		{
 			if (!ec)
+			{
 				try
 				{
 					try {
@@ -351,10 +352,15 @@ void Host::ensureAccepting()
 					auto p = std::make_shared<Session>(this, std::move(m_socket), remoteAddress);
 					p->start();
 				}
+				catch (Exception const& _e)
+				{
+					clog(NetWarn) << "ERROR: " << diagnostic_information(_e);
+				}
 				catch (std::exception const& _e)
 				{
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
+			}
 			m_accepting = false;
 			if (ec.value() < 1)
 				ensureAccepting();
@@ -372,6 +378,7 @@ string Host::pocHost()
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	for (int i = 0; i < 2; ++i)
+	{
 		try
 		{
 			if (i == 0)
@@ -383,11 +390,17 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 				connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
 			break;
 		}
+		catch (Exception const& _e)
+		{
+			// Couldn't connect
+			clog(NetConnect) << "Bad host " << _addr << "\n" << diagnostic_information(_e);
+		}
 		catch (exception const& e)
 		{
 			// Couldn't connect
 			clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
 		}
+	}
 }
 
 void Host::connect(bi::tcp::endpoint const& _ep)

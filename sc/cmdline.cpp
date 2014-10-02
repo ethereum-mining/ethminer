@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <libserpent/funcs.h>
+#include <libdevcore/Exceptions.h>
 
 int main(int argv, char** argc) {
     if (argv == 1) {
@@ -28,7 +29,7 @@ int main(int argv, char** argc) {
     else {
         if (argv == 2) {
             std::cerr << "Not enough arguments for serpent cmdline\n";
-            throw(0);
+			BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Not enough arguments for serpent cmdline"));
         }
         input = argc[2];
         secondInput = argv == 3 ? "" : argc[3];

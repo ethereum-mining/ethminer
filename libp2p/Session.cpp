@@ -418,7 +418,7 @@ void Session::doRead()
 			}
 			catch (Exception const& _e)
 			{
-				clogS(NetWarn) << "ERROR: " << _e.description();
+				clogS(NetWarn) << "ERROR: " << diagnostic_information(_e);
 				dropped();
 			}
 			catch (std::exception const& _e)

@@ -47,7 +47,10 @@ void VersionChecker::setOk()
 		{
 			boost::filesystem::create_directory(m_path);
 		}
-		catch (...) {}
+		catch (...)
+		{
+			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
+		}
 		writeFile(m_path + "/protocol", rlp(c_protocolVersion));
 		writeFile(m_path + "/database", rlp(c_databaseVersion));
 	}

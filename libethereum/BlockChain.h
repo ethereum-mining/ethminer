@@ -28,6 +28,7 @@
 
 #include <mutex>
 #include <libdevcore/Log.h>
+#include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 #include <libdevcore/Guards.h>
@@ -46,9 +47,9 @@ static const h256s NullH256s;
 class State;
 class OverlayDB;
 
-class AlreadyHaveBlock: public std::exception {};
-class UnknownParent: public std::exception {};
-class FutureTime: public std::exception {};
+struct AlreadyHaveBlock: virtual Exception {};
+struct UnknownParent: virtual Exception {};
+struct FutureTime: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
