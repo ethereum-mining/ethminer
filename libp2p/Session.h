@@ -71,6 +71,8 @@ public:
 
 	void addRating(unsigned _r) { m_rating += _r; }
 
+	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
+
 private:
 	void dropped();
 	void doRead();
