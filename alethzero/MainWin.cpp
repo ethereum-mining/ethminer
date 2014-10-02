@@ -597,7 +597,7 @@ void Main::on_importKeyFile_triggered()
 			}
 		}
 		else
-			throw 0;
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type") );
 		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 		{
 			m_myKeys.append(k);
@@ -609,6 +609,9 @@ void Main::on_importKeyFile_triggered()
 	}
 	catch (...)
 	{
+		cerr << "Unhandled exception!" << endl <<
+			boost::current_exception_diagnostic_information();
+
 		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
 	}
 }
@@ -821,10 +824,8 @@ static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 
 	}
 	catch (...)
 	{
-		std::cerr << "Unhandled exception!" << std::endl <<
+		cerr << "Unhandled exception!" << endl <<
 			boost::current_exception_diagnostic_information();
-		// possible output would include: function name, __FILE__, __LINE__ (at throw) and all added information,
-		// such has the block header info added in BlockInfo.cpp line 101-102.
 	}
 	if (toHex(_h.ref()).find(_f) != string::npos)
 		return true;
@@ -1284,6 +1285,14 @@ void Main::on_contracts_currentItemChanged()
 		{
 			ui->contractInfo->appendHtml("Corrupted trie.");
 		}
+		catch (dev::Exception &_e)
+		{
+			_e << dev::errinfo_comment("Could not get contract info.");
+			cerr << "Unhandled exception!" << endl <<
+				boost::diagnostic_information(_e);
+			throw;
+		}
+
 		ui->contractInfo->moveCursor(QTextCursor::Start);
 	}
 }
@@ -1623,7 +1632,8 @@ void Main::on_debug_clicked()
 	}
 	catch (dev::Exception const& _e)
 	{
-		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(_e.description()));
+		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(diagnostic_information(_e)));
+		// this output is aimed at developers, reconsider using _e.what for more user friendly output.
 	}
 }
 
@@ -1909,6 +1919,8 @@ void Main::updateDebugger()
 					}
 					catch (...)
 					{
+						cerr << "Unhandled exception!" << endl <<
+									boost::current_exception_diagnostic_information();
 						break;	// probably hit data segment
 					}
 				}
