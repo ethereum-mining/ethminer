@@ -28,7 +28,7 @@
 #include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/EthereumHost.h>
-#include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -45,8 +45,8 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 	if (_interfaces.count("eth"))
 		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean));
 
-//	if (_interfaces.count("shh"))
-//		m_whisper = new eth::Whisper(m_net.get());
+	if (_interfaces.count("shh"))
+		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
 }
 
 WebThreeDirect::~WebThreeDirect()
