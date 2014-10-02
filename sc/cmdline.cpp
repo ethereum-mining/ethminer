@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <string>
 #include <libserpent/funcs.h>
 
 int main(int argv, char** argc) {
@@ -64,7 +65,7 @@ int main(int argv, char** argc) {
         std::cout << assemble(parseLLL(input, true)) << "\n";
     }
     else if (command == "serialize") {
-        std::cout << binToHex(serialize(tokenize(input))) << "\n";
+        std::cout << binToHex(serialize(tokenize(input, Metadata(), false))) << "\n";
     }
     else if (command == "flatten") {
         std::cout << printTokens(flatten(parseLLL(input, true))) << "\n";
@@ -96,7 +97,7 @@ int main(int argv, char** argc) {
     else if (command == "biject") {
         if (argv == 3)
              std::cerr << "Not enough arguments for biject\n";
-        int pos = decimalToInt(secondInput);
+        int pos = decimalToUnsigned(secondInput);
         std::vector<Node> n = prettyCompile(input);
         if (pos >= (int)n.size())
              std::cerr << "Code position too high\n";

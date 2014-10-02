@@ -26,11 +26,13 @@
 #include <list>
 #include <atomic>
 #include <boost/utility.hpp>
-#include <libethential/Common.h>
-#include <libethential/CommonIO.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
 #include <libevm/FeeStructure.h>
 #include <libethcore/Dagger.h>
-#include <libethential/Guards.h>
+#include <libp2p/Common.h>
 #include "BlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
@@ -38,17 +40,27 @@
 #include "PastMessage.h"
 #include "MessageFilter.h"
 #include "Miner.h"
+#include "Interface.h"
 
+namespace dev
+{
 namespace eth
 {
 
 class Client;
+class DownloadMan;
 
 enum ClientWorkState
 {
 	Active = 0,
 	Deleting,
 	Deleted
+};
+
+enum class NodeMode
+{
+	PeerServer,
+	Full
 };
 
 class VersionChecker
@@ -87,24 +99,24 @@ struct ClientWatch
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
-#define cwatch eth::LogOutputStream<eth::WatchChannel, true>()
+#define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
 struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
 struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
 struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
-#define cwork eth::LogOutputStream<eth::WorkChannel, true>()
-#define cworkin eth::LogOutputStream<eth::WorkInChannel, true>()
-#define cworkout eth::LogOutputStream<eth::WorkOutChannel, true>()
+#define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
+#define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
+#define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client: public MinerHost
+class Client: public MinerHost, public Interface, Worker
 {
 	friend class Miner;
 
 public:
-	/// Constructor.
-	explicit Client(std::string const& _clientVersion, Address _us = Address(), std::string const& _dbPath = std::string(), bool _forceClean = false);
+	/// New-style Constructor.
+	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
 
 	/// Destructor.
 	~Client();
@@ -129,14 +141,11 @@ public:
 
 	// [NEW API]
 
-	int getDefault() const { return m_default; }
-	void setDefault(int _block) { m_default = _block; }
-
-	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
-	u256 countAt(Address _a) const { return countAt(_a, m_default); }
-	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
-	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
-	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
+	using Interface::balanceAt;
+	using Interface::countAt;
+	using Interface::stateAt;
+	using Interface::codeAt;
+	using Interface::storageAt;
 
 	u256 balanceAt(Address _a, int _block) const;
 	u256 countAt(Address _a, int _block) const;
@@ -155,61 +164,35 @@ public:
 
 	// [EXTRA API]:
 
+	/// @returns the length of the chain.
+	virtual unsigned number() const { return m_bc.number(); }
+
 	/// Get a map containing each of the pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	Transactions pending() const { return m_postMine.pending(); }
 
 	/// Differences between transactions.
-	StateDiff diff(unsigned _txi) const { return diff(_txi, m_default); }
+	using Interface::diff;
 	StateDiff diff(unsigned _txi, h256 _block) const;
 	StateDiff diff(unsigned _txi, int _block) const;
 
 	/// Get a list of all active addresses.
-	std::vector<Address> addresses() const { return addresses(m_default); }
+	using Interface::addresses;
 	std::vector<Address> addresses(int _block) const;
-
-	/// Get the fee associated for a transaction with the given data.
-	static u256 txGas(uint _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 
-	eth::State state(unsigned _txi, h256 _block) const;
-	eth::State state(h256 _block) const;
-	eth::State state(unsigned _txi) const;
+	dev::eth::State state(unsigned _txi, h256 _block) const;
+	dev::eth::State state(h256 _block) const;
+	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return m_bc; }
-
-	// Misc stuff:
-
-	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
-
-	// Network stuff:
-
-	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers();
-	/// Same as peers().size(), but more efficient.
-	size_t peerCount() const;
-	/// Same as peers().size(), but more efficient.
-	void setIdealPeerCount(size_t _n) const;
-
-	/// Start the network subsystem.
-	void startNetwork(unsigned short _listenPort = 30303, std::string const& _remoteHost = std::string(), unsigned short _remotePort = 30303, NodeMode _mode = NodeMode::Full, unsigned _peers = 5, std::string const& _publicIP = std::string(), bool _upnp = true, u256 _networkId = 0);
-	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, unsigned short _port = 30303);
-	/// Stop the network subsystem.
-	void stopNetwork();
-	/// Is the network subsystem up?
-	bool haveNetwork() { ReadGuard l(x_net); return !!m_net; }
-	/// Save peers
-	bytes savePeers();
-	/// Restore peers
-	void restorePeers(bytesConstRef _saved);
 
 	// Mining stuff:
 
@@ -220,7 +203,7 @@ public:
 	/// Should we force mining to happen, even without transactions?
 	bool forceMining() const { return m_forceMining; }
 	/// Enable/disable forcing of mining to happen, even without transactions.
-	void setForceMining(bool _enable) { m_forceMining = _enable; }
+	void setForceMining(bool _enable);
 	/// Are we mining as fast as we can?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable fast mining.
@@ -236,7 +219,7 @@ public:
 	unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() { ensureWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
+	void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
 	/// Stop mining.
 	/// NOT thread-safe
 	void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
@@ -247,19 +230,22 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
+	// Debug stuff:
+
+	DownloadMan const* downloadMan() const;
+	bool isSyncing() const;
+	/// Sets the network id.
+	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
+	/// Kills the blockchain. Just for debug use.
+	void killChain();
 
 private:
-	/// Ensure the worker thread is running. Needed for blockchain maintenance & mining.
-	void ensureWorking();
-
 	/// Do some work. Handles blockchain maintenance and mining.
-	/// @param _justQueue If true will only processing the transaction queues.
-	void work();
+	virtual void doWork();
 
-	/// Do some work on the network.
-	void workNet();
+	virtual void doneWorking();
 
 	/// Overrides for being a mining host.
 	virtual void setupState(State& _s);
@@ -284,24 +270,17 @@ private:
 	State asOf(int _h) const;
 	State asOf(unsigned _h) const;
 
-	std::string m_clientVersion;			///< Our end-application client's name/version.
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	BlockChain m_bc;						///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
-	// TODO: remove in favour of copying m_stateDB as required and thread-safing/copying State. Have a good think about what state objects there should be. Probably want 4 (pre, post, mining, user-visible).
+
 	mutable boost::shared_mutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
-	std::unique_ptr<std::thread> m_workNet;	///< The network thread.
-	std::atomic<ClientWorkState> m_workNetState;
-	mutable boost::shared_mutex x_net;		///< Lock for the network existance.
-	std::unique_ptr<EthereumHost> m_net;		///< Should run in background and send us events when blocks found and allow us to send blocks as required.
-
-	std::unique_ptr<std::thread> m_work;	///< The work thread.
-	std::atomic<ClientWorkState> m_workState;
+	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	std::vector<Miner> m_miners;
 	mutable boost::shared_mutex x_miners;
@@ -312,47 +291,7 @@ private:
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
-
-	int m_default = -1;
-};
-
-class Watch;
-
-}
-
-namespace std { void swap(eth::Watch& _a, eth::Watch& _b); }
-
-namespace eth
-{
-
-class Watch: public boost::noncopyable
-{
-	friend void std::swap(Watch& _a, Watch& _b);
-
-public:
-	Watch() {}
-	Watch(Client& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
-	Watch(Client& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
-	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
-
-	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
-	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
-	PastMessages messages() const { return m_c->messages(m_id); }
-
-private:
-	Client* m_c;
-	unsigned m_id;
 };
 
 }
-
-namespace std
-{
-
-inline void swap(eth::Watch& _a, eth::Watch& _b)
-{
-	swap(_a.m_c, _b.m_c);
-	swap(_a.m_id, _b.m_id);
-}
-
 }

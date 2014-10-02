@@ -30,11 +30,14 @@
 #include <libethential/CommonIO.h>
 #include <libethential/Guards.h>
 #include <libevm/FeeStructure.h>
+#include <libp2p/Common.h>
 #include <libethcore/Dagger.h>
 #include <libethereum/PastMessage.h>
 #include <libethereum/MessageFilter.h>
 #include <libethereum/CommonNet.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -119,7 +122,7 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<PeerInfo> peers();
+	std::vector<p2p::PeerInfo> peers();
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;
 
@@ -132,13 +135,14 @@ private:
 	/// Check to see if the client/server connection is open.
 	bool connectionOpen() const;
 	/// Start the API client.
-	void startClient();
+	void connectToRPCServer();
 	/// Start the API server.
-	void startServer();
+	void startRPCServer();
 
 	std::unique_ptr<Client> m_client;
 
 	int m_default = -1;
 };
 
+}
 }

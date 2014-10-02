@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include <libethential/Common.h>
-#include <libethential/FixedHash.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
 
-namespace eth
+namespace dev
 {
 
 class MemTrieNode;

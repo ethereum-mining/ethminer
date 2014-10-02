@@ -29,17 +29,18 @@
 using namespace std;
 using namespace lb;
 
-// do *not* use eth since eth::uint conflicts with Qt's global unit definition
-// using namespace eth;
+// do *not* use eth since unsigned conflicts with Qt's global unit definition
+// using namespace dev;
+using namespace dev::eth;
 
 // types
 
-using eth::MineInfo;
-using eth::MineProgress;
+using dev::eth::MineInfo;
+using dev::eth::MineProgress;
 
 // functions
-using eth::toString;
-using eth::trimFront;
+using dev::toString;
+using dev::trimFront;
 
 string id(float _y) { return toString(_y); }
 string s(float _x){ return toString(round(_x * 1000) / 1000) + (!_x ? "s" : ""); }

@@ -33,7 +33,8 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ctrace clog(StateTrace)
 
@@ -72,7 +73,7 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 
 	paranoia("beginning of normal construction.", true);
 
-	eth::commit(genesisState(), m_db, m_state);
+	dev::eth::commit(genesisState(), m_db, m_state);
 	m_db.commit();
 
 	paranoia("after DB commit of normal construction.", true);
@@ -151,8 +152,13 @@ State& State::operator=(State const& _s)
 	m_currentBlock = _s.m_currentBlock;
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
+	m_lastTx = _s.m_lastTx;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
+}
+
+State::~State()
+{
 }
 
 struct CachedAddressState
@@ -300,7 +306,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 
 void State::commit()
 {
-	eth::commit(m_cache, m_db, m_state);
+	dev::eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
@@ -314,22 +320,29 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 	bool ret = false;
 	// BLOCK
 	BlockInfo bi = _bi;
-	try
-	{
-		if (!bi)
+	if (!bi)
+		while (1)
 		{
-			auto b = _bc.block(_block);
-			bi.populate(b);
-//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+			try
+			{
+				auto b = _bc.block(_block);
+				bi.populate(b);
+	//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+				break;
+			}
+			catch (Exception const& _e)
+			{
+				// TODO: Slightly nicer handling? :-)
+				cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+				cerr << _e.description() << endl;
+			}
+			catch (std::exception const& _e)
+			{
+				// TODO: Slightly nicer handling? :-)
+				cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+				cerr << _e.what() << endl;
+			}
 		}
-	}
-	catch (...)
-	{
-		// TODO: Slightly nicer handling? :-)
-		cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-		exit(1);
-	}
-
 	if (bi == m_currentBlock)
 	{
 		// We mined the last block.
@@ -564,6 +577,9 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
 	for (auto const& i: RLP(_block)[2])
 	{
+		if (knownUncles.count(sha3(i.data())))
+			throw UncleInChain(knownUncles, sha3(i.data()));
+
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))
 			throw DuplicateUncleNonce();
@@ -572,8 +588,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 			BlockInfo uncleParent(_bc->block(uncle.parentHash));
 			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
 				throw UncleTooOld();
-			if (knownUncles.count(sha3(i.data())))
-				throw UncleInChain();
 			uncle.verifyParent(uncleParent);
 		}
 
@@ -712,7 +726,7 @@ void State::commitToMine(BlockChain const& _bc)
 			auto us = _bc.details(p).children;
 			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
 			for (auto const& u: us)
-				if (!knownUncles.count(BlockInfo::headerHash(_bc.block(u))))	// ignore any uncles/mainline blocks that we know about. We use header-hash for this.
+				if (!knownUncles.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
 					ubi.fillStream(unclesData, true);
@@ -761,7 +775,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash;
 }
 
-MineInfo State::mine(uint _msTimeout, bool _turbo)
+MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 {
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
@@ -1037,7 +1051,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1053,10 +1067,10 @@ bool State::call(Address _receiveAddress, Address _senderAddress, u256 _value, u
 		o_ms->input = _data.toBytes();
 	}
 
-	if (addressHasCode(_receiveAddress))
+	if (addressHasCode(_codeAddress))
 	{
 		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_receiveAddress), o_ms, _level);
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
 		try
@@ -1119,7 +1133,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, _endowment, h256(), h256());
+	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
 	VM vm(*_gas);
@@ -1200,7 +1214,7 @@ void State::applyRewards(Addresses const& _uncleAddresses)
 	addBalance(m_currentBlock.coinbaseAddress, r);
 }
 
-std::ostream& eth::operator<<(std::ostream& _out, State const& _s)
+std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 {
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;

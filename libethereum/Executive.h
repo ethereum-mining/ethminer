@@ -22,13 +22,15 @@
 #pragma once
 
 #include <functional>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libevm/ExtVMFace.h>
 #include "Transaction.h"
 #include "Manifest.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -77,4 +79,5 @@ private:
 	u256 m_endGas;
 };
 
+}
 }

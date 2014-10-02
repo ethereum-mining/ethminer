@@ -22,20 +22,21 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/FileSystem.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/Dagger.h>
 #include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 #define ETH_CATCH 1
 
-std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
+std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
 	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
@@ -49,7 +50,7 @@ std::ostream& eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-std::map<Address, AddressState> const& eth::genesisState()
+std::map<Address, AddressState> const& dev::eth::genesisState()
 {
 	static std::map<Address, AddressState> s_ret;
 	if (s_ret.empty())
@@ -71,7 +72,7 @@ std::map<Address, AddressState> const& eth::genesisState()
 BlockInfo* BlockChain::s_genesis = nullptr;
 boost::shared_mutex BlockChain::x_genesis;
 
-ldb::Slice eth::toSlice(h256 _h, unsigned _sub)
+ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local h256 h = _h ^ h256(u256(_sub));
@@ -95,18 +96,32 @@ bytes BlockChain::createGenesisBlock()
 		MemoryDB db;
 		TrieDB<Address, MemoryDB> state(&db);
 		state.init();
-		eth::commit(genesisState(), db, state);
+		dev::eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
 	}
 
 	block.appendList(13) << h256() << sha3EmptyList << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (uint)0 << string() << sha3(bytes(1, 42));
+	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
 }
 
 BlockChain::BlockChain(std::string _path, bool _killExisting)
+{
+	// Initialise with the genesis as the last block on the longest chain.
+	m_genesisHash = BlockChain::genesis().hash;
+	m_genesisBlock = BlockChain::createGenesisBlock();
+
+	open(_path, _killExisting);
+}
+
+BlockChain::~BlockChain()
+{
+	close();
+}
+
+void BlockChain::open(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
@@ -126,16 +141,12 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	if (!m_extrasDB)
 		throw DatabaseAlreadyOpen();
 
-	// Initialise with the genesis as the last block on the longest chain.
-	m_genesisHash = BlockChain::genesis().hash;
-	m_genesisBlock = BlockChain::createGenesisBlock();
-
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
 		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
 		auto r = m_details[m_genesisHash].rlp();
-		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)eth::ref(r));
+		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
 	}
 
 	checkConsistency();
@@ -149,11 +160,16 @@ BlockChain::BlockChain(std::string _path, bool _killExisting)
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
 
-BlockChain::~BlockChain()
+void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
 	delete m_extrasDB;
 	delete m_db;
+	m_lastBlockHash = m_genesisHash;
+	m_details.clear();
+	m_blooms.clear();
+	m_traces.clear();
+	m_cache.clear();
 }
 
 template <class T, class V>
@@ -165,8 +181,20 @@ bool contains(T const& _t, V const& _v)
 	return false;
 }
 
+inline string toString(h256s const& _bs)
+{
+	ostringstream out;
+	out << "[ ";
+	for (auto i: _bs)
+		out << i.abridged() << ", ";
+	out << "]";
+	return out.str();
+}
+
 h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
+	_bq.tick(*this);
+
 	vector<bytes> blocks;
 	_bq.drain(blocks);
 
@@ -183,10 +211,16 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << eth::sha3(block).abridged();
+			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
 			_bq.import(&block, *this);
 		}
-		catch (...){}
+		catch (Exception const& _e)
+		{
+			cwarn << "Unexpected exception!" << _e.description();
+			_bq.import(&block, *this);
+		}
+		catch (...)
+		{}
 	}
 	_bq.doneDrain();
 	return ret;
@@ -223,22 +257,28 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		throw;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
+	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
-	if (details(newHash))
+	if (isKnown(newHash))
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
 		throw AlreadyHaveBlock();
 	}
 
 	// Work out its number as the parent's number + 1
-	auto pd = details(bi.parentHash);
-	if (!pd)
+	if (!isKnown(bi.parentHash))
 	{
 		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
 		throw UnknownParent();
+	}
+
+	auto pd = details(bi.parentHash);
+	if (!pd)
+	{
+		cwarn << "Odd: details is returning false despite block known:" << RLP(pd.rlp());
+		cwarn << "Block:" << RLP(block(bi.parentHash));
 	}
 
 	// Check it's not crazy
@@ -277,7 +317,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// All ok - insert into DB
 		{
 			WriteGuard l(x_details);
-			m_details[newHash] = BlockDetails((uint)pd.number + 1, td, bi.parentHash, {}, b);
+			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}, b);
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
@@ -289,10 +329,10 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_traces[newHash] = bt;
 		}
 
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)eth::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)eth::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)eth::ref(m_blooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)eth::ref(m_traces[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)dev::ref(m_blooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)dev::ref(m_traces[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 
 #if ETH_PARANOIA
@@ -320,20 +360,18 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_lastBlockHash = newHash;
 		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		clog(BlockChainNote) << "   Imported and best. Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:";
-		for (auto r: ret)
-			clog(BlockChainNote) << r.abridged();
+		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << ", TD:" << td << ")";
+		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 	return ret;
 }
 
 h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
 {
-	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
 	{
 		return h256s();
@@ -342,14 +380,14 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-	cdebug << "treeRoute" << fn << "..." << tn;
+//	cdebug << "treeRoute" << fn << "..." << tn;
 	while (fn > tn)
 	{
 		if (_pre)
 			ret.push_back(_from);
 		_from = details(_from).parent;
 		fn--;
-		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from.abridged();
 	}
 	while (fn < tn)
 	{
@@ -357,7 +395,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		_to = details(_to).parent;
 		tn--;
-		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (_from != _to)
 	{
@@ -371,7 +409,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		fn--;
 		tn--;
-		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
 	if (o_common)
 		*o_common = _from;
@@ -408,11 +446,25 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	h256 p = _parent;
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
-		ret.insert(sha3(RLP(block(p))[0].data()));
+		ret.insert(p);		// TODO: check: should this be details(p).parent?
 		for (auto i: RLP(block(p))[2])
 			ret.insert(sha3(i.data()));
 	}
 	return ret;
+}
+
+bool BlockChain::isKnown(h256 _hash) const
+{
+	if (_hash == m_genesisHash)
+		return true;
+	{
+		ReadGuard l(x_cache);
+		if (m_cache.count(_hash))
+			return true;
+	}
+	string d;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	return !!d.size();
 }
 
 bytes BlockChain::block(h256 _hash) const
@@ -430,12 +482,15 @@ bytes BlockChain::block(h256 _hash) const
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
+	if (!d.size())
+	{
+		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		return bytes();
+	}
+
 	WriteGuard l(x_cache);
 	m_cache[_hash].resize(d.size());
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
-
-	if (!d.size())
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
 
 	return m_cache[_hash];
 }

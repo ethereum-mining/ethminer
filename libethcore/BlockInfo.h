@@ -21,10 +21,12 @@
 
 #pragma once
 
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
 #include "CommonEth.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -48,13 +50,13 @@ extern u256 c_genesisDifficulty;
  * and calculateGasLimit() and the object serialised to RLP with fillStream. To determine the
  * header hash without the nonce (for mining), the method headerHashWithoutNonce() is provided.
  *
- * The defualt constructor creates an empty object, which can be tested against with the boolean
+ * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
  */
 struct BlockInfo
 {
 public:
-	h256 hash;						///< SHA3 hash of the entire block! Not serialised (the only member not contained in a block header).
+	h256 hash;						///< SHA3 hash of the block header! Not serialised (the only member not contained in a block header).
 	h256 parentHash;
 	h256 sha3Uncles;
 	Address coinbaseAddress;
@@ -121,5 +123,4 @@ inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 }
 
 }
-
-
+}

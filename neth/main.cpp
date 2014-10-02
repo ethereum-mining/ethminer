@@ -29,7 +29,7 @@
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
 #endif
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
@@ -39,6 +39,7 @@
 #include <eth/CommonJS.h>
 #include <eth/CommonJS.cpp>
 #endif
+#include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -48,9 +49,11 @@
 #undef OK
 
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
+using namespace p2p;
 using namespace boost::algorithm;
-using eth::Instruction;
+using dev::eth::Instruction;
 
 bool isTrue(std::string const& _m)
 {
@@ -120,11 +123,11 @@ string credits()
 {
 	std::ostringstream ccout;
 	ccout
-		<< "NEthereum (++) " << eth::EthVersion << endl
+		<< "NEthereum (++) " << dev::Version << endl
 		<< "  Code by Gav Wood & , (c) 2013, 2014." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
-	string vs = toString(eth::EthVersion);
+	string vs = toString(dev::Version);
 	vs = vs.substr(vs.find_first_of('.') + 1)[0];
 	int pocnumber = stoi(vs);
 	string m_servers;
@@ -141,14 +144,14 @@ string credits()
 
 void version()
 {
-	cout << "neth version " << eth::EthVersion << endl;
-	cout << "Build: " << ETH_QUOTED(ETH_BUILD_PLATFORM) << "/" << ETH_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "neth version " << dev::Version << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
-string pretty(h160 _a, eth::State _st)
+string pretty(h160 _a, dev::eth::State _st)
 {
 	string ns;
 	h256 n;
@@ -302,7 +305,6 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	string dbPath;
 	bool mining = false;
-	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
@@ -387,19 +389,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
-		{
-			string m = argv[++i];
-			if (m == "full")
-				mode = NodeMode::Full;
-			else if (m == "peer")
-				mode = NodeMode::PeerServer;
-			else
-			{
-				cerr << "Unknown mode: " << m << endl;
-				return -1;
-			}
-		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -411,7 +400,8 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	Client c("NEthereum(++)/" + clientName + "v" + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM), coinbase, dbPath);
+	WebThreeDirect web3("NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath);
+	Client& c = *web3.ethereum();
 
 	c.setForceMining(true);
 
@@ -477,7 +467,12 @@ int main(int argc, char** argv)
 	wmove(mainwin, 1, 4);
 
 	if (!remoteHost.empty())
-		c.startNetwork(listenPort, remoteHost, remotePort, mode, peers, publicIP, upnp);
+	{
+		web3.setIdealPeerCount(peers);
+		web3.setNetworkPreferences(NetworkPreferences(listenPort, publicIP, upnp));
+		web3.startNetwork();
+		web3.connect(remoteHost, remotePort);
+	}
 	if (mining)
 		c.startMining();
 
@@ -485,7 +480,7 @@ int main(int argc, char** argv)
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -524,20 +519,21 @@ int main(int argc, char** argv)
 
 		if (cmd == "netstart")
 		{
-			eth::uint port;
+			unsigned port;
 			iss >> port;
-			c.startNetwork((short)port);
+			web3.setNetworkPreferences(NetworkPreferences((short)port, publicIP, upnp));
+			web3.startNetwork();
 		}
 		else if (cmd == "connect")
 		{
 			string addr;
-			eth::uint port;
+			unsigned port;
 			iss >> addr >> port;
-			c.connect(addr, (short)port);
+			web3.connect(addr, (short)port);
 		}
 		else if (cmd == "netstop")
 		{
-			c.stopNetwork();
+			web3.stopNetwork();
 		}
 		else if (cmd == "minestart")
 		{
@@ -558,7 +554,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), c));
+			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 			jsonrpcServer->setKeys({us});
 			jsonrpcServer->StartListening();
 		}
@@ -581,13 +577,13 @@ int main(int argc, char** argv)
 		}
 		else if (cmd == "block")
 		{
-			eth::uint n = c.blockChain().details().number;
+			unsigned n = c.blockChain().details().number;
 			ccout << "Current block # ";
 			ccout << toString(n) << endl;
 		}
 		else if (cmd == "peers")
 		{
-			for (auto it: c.peers())
+			for (auto it: web3.peers())
 				cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 					<< endl;
@@ -644,7 +640,7 @@ int main(int argc, char** argv)
 				string sdata = fields[5];
 				cnote << "Data:";
 				cnote << sdata;
-				bytes data = eth::parseData(sdata);
+				bytes data = dev::eth::parseData(sdata);
 				cnote << "Bytes:";
 				string sbd = asString(data);
 				bytes bbd = asBytes(sbd);
@@ -809,7 +805,7 @@ int main(int argc, char** argv)
 
 					cnote << "Saved" << rechex << "to" << outFile;
 				}
-				catch (eth::InvalidTrie)
+				catch (dev::eth::InvalidTrie)
 				{
 					cwarn << "Corrupted trie.";
 				}
@@ -923,7 +919,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		y = 1;
-		for (PeerInfo const& i: c.peers())
+		for (PeerInfo const& i: web3.peers())
 		{
 			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
 				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
@@ -954,7 +950,7 @@ int main(int argc, char** argv)
 
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
-		eth::uint n = c.blockChain().details().number;
+		unsigned n = c.blockChain().details().number;
 		mvwprintw(blockswin, 0, 10, toString(n).c_str());
 
 		// Pending
@@ -969,13 +965,13 @@ int main(int argc, char** argv)
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
-		mvwprintw(peerswin, 0, 9, toString(c.peers().size()).c_str());
+		mvwprintw(peerswin, 0, 9, toString(web3.peers().size()).c_str());
 
 		// Mining flag
 		if (c.isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
-			eth::MineProgress p = c.miningProgress();
+			dev::eth::MineProgress p = c.miningProgress();
 			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
 			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
 		}

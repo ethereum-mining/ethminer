@@ -11,7 +11,7 @@ const std::string tt255 =
 "57896044618658097711785492504343953926634992332820282019728792003956564819968"
 ;
 
-std::string intToDecimal(int branch);
+std::string unsignedToDecimal(unsigned branch);
 
 std::string decimalAdd(std::string a, std::string b);
 
@@ -25,6 +25,6 @@ std::string decimalMod(std::string a, std::string b);
 
 bool decimalGt(std::string a, std::string b, bool eqAllowed=false);
 
-int decimalToInt(std::string a);
+unsigned decimalToUnsigned(std::string a);
 
 #endif

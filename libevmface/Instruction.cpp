@@ -21,11 +21,12 @@
 
 #include "Instruction.h"
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-const std::map<std::string, Instruction> eth::c_instructions =
+const std::map<std::string, Instruction> dev::eth::c_instructions =
 {
 	{ "STOP", Instruction::STOP },
 	{ "ADD", Instruction::ADD },
@@ -61,6 +62,8 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "CODESIZE", Instruction::CODESIZE },
 	{ "CODECOPY", Instruction::CODECOPY },
 	{ "GASPRICE", Instruction::GASPRICE },
+	{ "EXTCODESIZE", Instruction::EXTCODESIZE },
+	{ "EXTCODECOPY", Instruction::EXTCODECOPY },
 	{ "PREVHASH", Instruction::PREVHASH },
 	{ "COINBASE", Instruction::COINBASE },
 	{ "TIMESTAMP", Instruction::TIMESTAMP },
@@ -144,6 +147,7 @@ const std::map<std::string, Instruction> eth::c_instructions =
 	{ "SWAP16", Instruction::SWAP16 },
 	{ "CREATE", Instruction::CREATE },
 	{ "CALL", Instruction::CALL },
+	{ "CALLSTATELESS", Instruction::CALLSTATELESS },
 	{ "RETURN", Instruction::RETURN },
 	{ "POST", Instruction::POST },
 	{ "SUICIDE", Instruction::SUICIDE }
@@ -185,6 +189,8 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::CODESIZE,	{ "CODESIZE",		0, 0, 1 } },
 	{ Instruction::CODECOPY,	{ "CODECOPY",		0, 3, 0 } },
 	{ Instruction::GASPRICE,	{ "GASPRICE",		0, 0, 1 } },
+	{ Instruction::EXTCODESIZE,	{ "EXTCODESIZE",	0, 1, 1 } },
+	{ Instruction::EXTCODECOPY,	{ "EXTCODECOPY",	0, 4, 0 } },
 	{ Instruction::PREVHASH,	{ "PREVHASH",		0, 0, 1 } },
 	{ Instruction::COINBASE,	{ "COINBASE",		0, 0, 1 } },
 	{ Instruction::TIMESTAMP,	{ "TIMESTAMP",		0, 0, 1 } },
@@ -268,15 +274,16 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SWAP16,		{ "SWAP16",			0, 17, 17 } },
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1 } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1 } },
+	{ Instruction::CALLSTATELESS, { "CALLSTATELESS",0, 7, 1 } },
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0 } },
 	{ Instruction::POST,		{ "POST",			0, 5, 0 } },
 	{ Instruction::SUICIDE,		{ "SUICIDE",		0, 1, 0} }
 };
 
-string eth::disassemble(bytes const& _mem)
+string dev::eth::disassemble(bytes const& _mem)
 {
 	stringstream ret;
-	uint numerics = 0;
+	unsigned numerics = 0;
 	for (auto it = _mem.begin(); it != _mem.end(); ++it)
 	{
 		byte n = *it;
@@ -297,7 +304,7 @@ string eth::disassemble(bytes const& _mem)
 	return ret.str();
 }
 
-InstructionInfo eth::instructionInfo(Instruction _inst)
+InstructionInfo dev::eth::instructionInfo(Instruction _inst)
 {
 	try
 	{

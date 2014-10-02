@@ -20,14 +20,15 @@
  */
 
 #include <secp256k1/secp256k1.h>
-#include <libethential/vector_ref.h>
-#include <libethential/Log.h>
+#include <libdevcore/vector_ref.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-#define ETH_ADDRESS_DEBUG 1
+#define ETH_ADDRESS_DEBUG 0
 
 Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 {
@@ -78,7 +79,7 @@ Address Transaction::sender() const
 			throw InvalidSignature();
 
 		// TODO: check right160 is correct and shouldn't be left160.
-		m_sender = right160(eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+		m_sender = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
 
 #if ETH_ADDRESS_DEBUG
 		cout << "---- RECOVER -------------------------------" << endl;

@@ -8,8 +8,14 @@
 
 #define PYMETHOD(name, FROM, method, TO) \
     static PyObject * name(PyObject *, PyObject *args) { \
+        try { \
         FROM(med) \
         return TO(method(med)); \
+        } \
+        catch (std::string e) { \
+           PyErr_SetString(PyExc_Exception, e.c_str()); \
+           return NULL; \
+        } \
     }
 
 #define FROMSTR(v) \
@@ -149,7 +155,7 @@ static PyMethodDef PyextMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC initpyext(void)
+PyMODINIT_FUNC initserpent_pyext(void)
 {
-     Py_InitModule( "pyext", PyextMethods );
+     Py_InitModule( "serpent_pyext", PyextMethods );
 }

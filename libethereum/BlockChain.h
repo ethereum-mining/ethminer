@@ -21,16 +21,23 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <mutex>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
-#include <libethential/Guards.h>
+#include <libdevcore/Guards.h>
 #include "BlockDetails.h"
 #include "AddressState.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -63,6 +70,8 @@ public:
 	BlockChain(std::string _path, bool _killExisting = false);
 	~BlockChain();
 
+	void reopen(std::string _path, bool _killExisting = false) { close(); open(_path, _killExisting); }
+
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
 	void process();
@@ -77,6 +86,9 @@ public:
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	h256s import(bytes const& _block, OverlayDB const& _stateDB);
+
+	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
+	bool isKnown(h256 _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
@@ -95,8 +107,8 @@ public:
 	bytes block() const { return block(currentHash()); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
-	uint number(h256 _hash) const { return details(_hash).number; }
-	uint number() const { return number(currentHash()); }
+	unsigned number(h256 _hash) const { return details(_hash).number; }
+	unsigned number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { ReadGuard l(x_lastBlockHash); return m_lastBlockHash; }
@@ -136,6 +148,9 @@ public:
 	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
 
 private:
+	void open(std::string _path, bool _killExisting = false);
+	void close();
+
 	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
 	{
 		{
@@ -194,4 +209,5 @@ private:
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 
+}
 }

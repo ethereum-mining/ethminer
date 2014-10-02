@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libevmface/Instruction.h>
 #include "Assembly.h"
 #include "Exceptions.h"
@@ -29,6 +29,8 @@
 namespace boost { namespace spirit { class utree; } }
 namespace sp = boost::spirit;
 
+namespace dev
+{
 namespace eth
 {
 
@@ -57,4 +59,5 @@ private:
 
 static const CodeFragment NullCodeFragment;
 
+}
 }

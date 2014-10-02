@@ -21,10 +21,12 @@
 
 #pragma once
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libethcore/CommonEth.h>
 #include "Manifest.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -50,4 +52,5 @@ struct PastMessage
 
 typedef std::vector<PastMessage> PastMessages;
 
+}
 }

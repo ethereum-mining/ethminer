@@ -130,8 +130,11 @@
     <property name="title">
      <string>&amp;Network</string>
     </property>
+    <addaction name="go"/>
+    <addaction name="separator"/>
     <addaction name="upnp"/>
     <addaction name="usePast"/>
+    <addaction name="localNetworking"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -140,14 +143,11 @@
      <string>T&amp;ools</string>
     </property>
     <addaction name="mine"/>
-    <addaction name="preview"/>
     <addaction name="separator"/>
     <addaction name="create"/>
     <addaction name="importKey"/>
+    <addaction name="importKeyFile"/>
     <addaction name="exportKey"/>
-    <addaction name="separator"/>
-    <addaction name="showAll"/>
-    <addaction name="showAllAccounts"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
    </widget>
@@ -161,25 +161,8 @@
     <property name="title">
      <string>Deb&amp;ug</string>
     </property>
-    <widget class="QMenu" name="menuDump_Trace">
-     <property name="title">
-      <string>&amp;Dump Trace</string>
-     </property>
-     <addaction name="dumpTrace"/>
-     <addaction name="dumpTraceStorage"/>
-     <addaction name="dumpTracePretty"/>
-    </widget>
-    <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
-    <addaction name="separator"/>
-    <addaction name="debugStep"/>
-    <addaction name="debugStepInto"/>
-    <addaction name="debugStepOut"/>
-    <addaction name="debugStepBack"/>
-    <addaction name="debugStepBackInto"/>
-    <addaction name="debugStepBackOut"/>
-    <addaction name="menuDump_Trace"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="killBlockchain"/>
@@ -190,9 +173,42 @@
     <addaction name="separator"/>
     <addaction name="usePrivate"/>
    </widget>
+   <widget class="QMenu" name="menu_View">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="showAll"/>
+    <addaction name="showAllAccounts"/>
+    <addaction name="separator"/>
+    <addaction name="preview"/>
+   </widget>
+   <widget class="QMenu" name="menuDebugger">
+    <property name="title">
+     <string>D&amp;ebugger</string>
+    </property>
+    <widget class="QMenu" name="menu_Dump_Trace">
+     <property name="title">
+      <string>&amp;Dump Trace</string>
+     </property>
+     <addaction name="dumpTrace"/>
+     <addaction name="dumpTraceStorage"/>
+     <addaction name="dumpTracePretty"/>
+    </widget>
+    <addaction name="debugCurrent"/>
+    <addaction name="menu_Dump_Trace"/>
+    <addaction name="separator"/>
+    <addaction name="debugStep"/>
+    <addaction name="debugStepInto"/>
+    <addaction name="debugStepOut"/>
+    <addaction name="debugStepBack"/>
+    <addaction name="debugStepBackInto"/>
+    <addaction name="debugStepBackOut"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menu_View"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menuDebugger"/>
    <addaction name="menu_Debug"/>
    <addaction name="menu_Help"/>
   </widget>
@@ -506,8 +522,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="net"/>
-   <addaction name="connect"/>
+   <addaction name="go"/>
    <addaction name="preview"/>
    <addaction name="mine"/>
    <addaction name="refresh"/>
@@ -1432,6 +1447,39 @@ font-size: 14pt</string>
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="dockWidget_12">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFeatureMask</set>
+   </property>
+   <property name="windowTitle">
+    <string>Blockchain Download</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_12">
+    <layout class="QHBoxLayout" name="horizontalLayout_8">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="DownloadView" name="downloadView" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="quit">
    <property name="text">
     <string>&amp;Quit</string>
@@ -1487,7 +1535,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Preview</string>
+    <string>&amp;Preview Pending Transactions</string>
    </property>
   </action>
   <action name="debugStep">
@@ -1698,6 +1746,24 @@ font-size: 14pt</string>
     <string>Reserved Debug 1</string>
    </property>
   </action>
+  <action name="localNetworking">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable Local Addresses</string>
+   </property>
+  </action>
+  <action name="importKeyFile">
+   <property name="text">
+    <string>Claim Ether Presale &amp;Wallet...</string>
+   </property>
+  </action>
+  <action name="go">
+   <property name="text">
+    <string>Go!</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -1710,6 +1776,12 @@ font-size: 14pt</string>
    <class>MiningView</class>
    <extends>QWidget</extends>
    <header>MiningView.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DownloadView</class>
+   <extends>QWidget</extends>
+   <header>DownloadView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

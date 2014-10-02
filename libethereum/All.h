@@ -8,7 +8,7 @@
 #include "ExtVM.h"
 #include "CommonNet.h"
 #include "EthereumHost.h"
-#include "EthereumSession.h"
+#include "EthereumPeer.h"
 #include "State.h"
 #include "Transaction.h"
 #include "TransactionQueue.h"

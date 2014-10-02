@@ -21,25 +21,32 @@
 
 #pragma once
 
-#include <libethential/Log.h>
-#include <libethential/RLP.h>
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
+#include <libdevcore/Log.h>
+#include <libdevcore/RLP.h>
 #include "Manifest.h"
 namespace ldb = leveldb;
 
+namespace dev
+{
 namespace eth
 {
 
 struct BlockDetails
 {
 	BlockDetails(): number(0), totalDifficulty(0) {}
-	BlockDetails(uint _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
+	BlockDetails(unsigned _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
 	BlockDetails(RLP const& _r);
 	bytes rlp() const;
 
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	uint number;			// TODO: remove?
+	unsigned number;			// TODO: remove?
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
@@ -73,4 +80,5 @@ static const BlockDetails NullBlockDetails;
 static const BlockBlooms NullBlockBlooms;
 static const BlockTraces NullBlockTraces;
 
+}
 }

@@ -22,11 +22,14 @@
 #pragma once
 
 #include <string>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 
+namespace dev
+{
 namespace eth
 {
 
 bytes parseData(std::string const& _args);
 
+}
 }

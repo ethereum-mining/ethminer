@@ -31,6 +31,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libethcore/Dagger.h>
+#include <libdevcrypto/FileSystem.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>
@@ -38,51 +39,16 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
+#include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
 using namespace std;
+using namespace dev;
+using namespace dev::eth;
+using namespace dev::p2p;
 
-// types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using eth::BlockChain;
-using eth::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
-using eth::Executive;
-
-// functions
-using eth::toHex;
-using eth::compileLLL;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::sha3;
-using eth::left160;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
-using eth::operator<<;
-
-// vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
-
-static QString fromRaw(eth::h256 _n, unsigned* _inc = nullptr)
+static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 {
 	if (_n)
 	{
@@ -121,8 +87,8 @@ Main::Main(QWidget *parent) :
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
     cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
-	cerr << "Network protocol version: " << eth::c_protocolVersion << endl;
-	cerr << "Client database version: " << eth::c_databaseVersion << endl;
+	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
 	ui->ownedAccountsDock->hide();
 
@@ -133,17 +99,20 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_client.reset(new Client("Third"));
+	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
+	m_web3->connect(Host::pocHost());
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_ethereum = new QEthereum(this, m_client.get(), owned());
+		m_ethereum = new QEthereum(this, ethereum(), owned());
+		m_whisper = new QWhisper(this, whisper());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, this));
+		auto qshh = m_whisper;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -181,52 +150,62 @@ Main::~Main()
 	writeSettings();
 }
 
+eth::Client* Main::ethereum() const
+{
+	return m_web3->ethereum();
+}
+
+std::shared_ptr<dev::shh::WhisperHost> Main::whisper() const
+{
+	return m_web3->whisper();
+}
+
 void Main::onKeysChanged()
 {
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(eth::MessageFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
-unsigned Main::installWatch(eth::h256 _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
-	auto ret = m_client->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
 void Main::installWatches()
 {
-	installWatch(eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
-	installWatch(eth::ChainChangedFilter, [=](){ onNewBlock(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
 
 void Main::installNameRegWatch()
 {
-	m_client->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	ethereum()->uninstallWatch(m_nameRegFilter);
+	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
-	m_client->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(eth::MessageFilter().altered((u160)m_client->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	ethereum()->uninstallWatch(m_currenciesFilter);
+	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	eth::MessageFilter tf;
+	dev::eth::MessageFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
-		altCoins.push_back(right160(m_client->stateAt(coinsAddr, i + 1)));
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 	{
 		tf.altered(i.address());
@@ -234,7 +213,7 @@ void Main::installBalancesWatch()
 			tf.altered(c, (u160)i.address());
 	}
 
-	m_client->uninstallWatch(m_balancesFilter);
+	ethereum()->uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
 }
 
@@ -291,17 +270,17 @@ void Main::eval(QString const& _js)
 	ui->webView->page()->currentFrame()->evaluateJavaScript("___RET=(" + _js + ")");
 }
 
-QString Main::pretty(eth::Address _a) const
+QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-		n = m_client->stateAt(nameReg, (u160)(_a));
+	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+		n = ethereum()->stateAt(nameReg, (u160)(_a));
 
 	return fromRaw(n);
 }
 
-QString Main::render(eth::Address _a) const
+QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
 	if (!p.isNull())
@@ -322,8 +301,8 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0))
-			if (h256 a = m_client->stateAt(nameReg, n))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
 	}
 	if (_a.size() == 40)
@@ -351,11 +330,11 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)m_client->stateAt(c_config, 4, 0))
-		ret = m_client->stateAt(dnsReg, n);
+	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
-		if (h160 nameReg = (u160)m_client->stateAt(c_config, 0, 0))
-			ret = m_client->stateAt(nameReg, n2);
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
+			ret = ethereum()->stateAt(nameReg, n2);
 */
 	if (ret && !((u256)ret >> 32))
 		return QString("%1.%2.%3.%4").arg((int)ret[28]).arg((int)ret[29]).arg((int)ret[30]).arg((int)ret[31]);
@@ -368,7 +347,7 @@ QString Main::lookup(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Third PoC-" + QString(eth::EthVersion).section('.', 1, 1), QString("Third/v") + eth::EthVersion + "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM) "\n" ETH_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
+	QMessageBox::about(this, "About Third PoC-" + QString(dev::Version).section('.', 1, 1), QString("Third/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::writeSettings()
@@ -385,7 +364,7 @@ void Main::writeSettings()
 	s.setValue("address", b);
 	s.setValue("url", ui->urlEdit->text());
 
-	bytes d = m_client->savePeers();
+	bytes d = m_web3->savePeers();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -416,7 +395,7 @@ void Main::readSettings(bool _skipGeometry)
 				m_myKeys.append(KeyPair(k));
 		}
 	}
-	m_client->setAddress(m_myKeys.back().address());
+	ethereum()->setAddress(m_myKeys.back().address());
 	m_peers = s.value("peers").toByteArray();
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -466,8 +445,8 @@ void Main::on_urlEdit_returnPressed()
 
 void Main::refreshMining()
 {
-	eth::MineProgress p = m_client->miningProgress();
-	ui->mineStatus->setText(m_client->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
+	dev::eth::MineProgress p = ethereum()->miningProgress();
+	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 }
 
 void Main::refreshBalances()
@@ -477,18 +456,18 @@ void Main::refreshBalances()
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
 	map<Address, pair<QString, u256>> altCoins;
-	Address coinsAddr = right160(m_client->stateAt(c_config, 1));
-	for (unsigned i = 0; i < m_client->stateAt(coinsAddr, 0); ++i)
-		altCoins[right160(m_client->stateAt(coinsAddr, m_client->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(m_client->stateAt(coinsAddr, i + 1)), 0);
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+		altCoins[right160(ethereum()->stateAt(coinsAddr, ethereum()->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(ethereum()->stateAt(coinsAddr, i + 1)), 0);
 	for (auto i: m_myKeys)
 	{
-		u256 b = m_client->balanceAt(i.address());
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)m_client->countAt(i.address())), ui->ourAccounts))
+		u256 b = ethereum()->balanceAt(i.address());
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(render(i.address())).arg((unsigned)ethereum()->countAt(i.address())), ui->ourAccounts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 		totalBalance += b;
 
 		for (auto& c: altCoins)
-			c.second.second += (u256)m_client->stateAt(c.first, (u160)i.address());
+			c.second.second += (u256)ethereum()->stateAt(c.first, (u160)i.address());
 	}
 
 	QString b;
@@ -500,7 +479,7 @@ void Main::refreshBalances()
 
 void Main::refreshNetwork()
 {
-	auto ps = m_client->peers();
+	auto ps = m_web3->peers();
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 }
@@ -514,9 +493,9 @@ void Main::refreshAll()
 void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
-	auto d = m_client->blockChain().details();
-	auto diff = BlockInfo(m_client->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(eth::c_protocolVersion).arg(eth::c_databaseVersion));
+	auto d = ethereum()->blockChain().details();
+	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
+	ui->blockCount->setText(QString("#%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion));
 }
 
 void Main::timerEvent(QTimerEvent*)
@@ -543,7 +522,7 @@ void Main::timerEvent(QTimerEvent*)
 		m_ethereum->poll();
 
 	for (auto const& i: m_handlers)
-		if (m_client->checkWatch(i.first))
+		if (ethereum()->checkWatch(i.first))
 			i.second();
 }
 
@@ -572,24 +551,27 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::ensureNetwork()
 {
-	string n = string("Third/v") + eth::EthVersion;
-	n +=  "/" ETH_QUOTED(ETH_BUILD_TYPE) "/" ETH_QUOTED(ETH_BUILD_PLATFORM);
-	m_client->setClientVersion(n);
+	string n = string("Third/v") + dev::Version;
+	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
+	web3()->setClientVersion(n);
 
-	int pocnumber = QString(eth::EthVersion).section('.', 1, 1).toInt();
+	int pocnumber = QString(dev::Version).section('.', 1, 1).toInt();
 	string defPeer;
 	if (pocnumber == 5)
 		defPeer = "54.72.69.180";
 	else if (pocnumber == 6)
 		defPeer = "54.76.56.74";
 
-	if (!m_client->haveNetwork())
-		m_client->startNetwork(30303, defPeer);
+	if (!web3()->haveNetwork())
+	{
+		web3()->startNetwork();
+		web3()->connect(defPeer);
+	}
 	else
-		if (!m_client->peerCount())
-			m_client->connect(defPeer);
+		if (!m_web3->peerCount())
+			m_web3->connect(defPeer);
 	if (m_peers.size())
-		m_client->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+		m_web3->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 }
 
 void Main::on_connect_triggered()
@@ -600,7 +582,7 @@ void Main::on_connect_triggered()
 	{
 		string host = s.section(":", 0, 0).toStdString();
 		unsigned short port = s.section(":", 1).toInt();
-		m_client->connect(host, port);
+		web3()->connect(host, port);
 	}
 }
 
@@ -608,11 +590,11 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		m_client->setAddress(m_myKeys.last().address());
-		m_client->startMining();
+		ethereum()->setAddress(m_myKeys.last().address());
+		ethereum()->startMining();
 	}
 	else
-		m_client->stopMining();
+		ethereum()->stopMining();
 }
 
 // extra bits needed to link on VS

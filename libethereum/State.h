@@ -24,9 +24,9 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
-#include <libethcore/TrieDB.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Dagger.h>
@@ -38,6 +38,8 @@
 #include "Executive.h"
 #include "AccountDiff.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -88,6 +90,8 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
+	~State();
+
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
 	void setAddress(Address _coinbaseAddress) { m_ourAddress = _coinbaseAddress; resetCurrent(); }
@@ -120,7 +124,7 @@ public:
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns Information on the mining.
-	MineInfo mine(uint _msTimeout = 1000, bool _turbo = false);
+	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -275,7 +279,7 @@ private:
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -363,5 +367,5 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 }
 
 }
-
+}
 

@@ -22,14 +22,20 @@
 #pragma once
 
 #include <boost/thread.hpp>
-#include <libethential/Common.h>
-#include "libethcore/CommonEth.h"
-#include <libethential/Guards.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
+#include <libethcore/CommonEth.h>
+#include <libdevcore/Guards.h>
 
+namespace dev
+{
 namespace eth
 {
 
 class BlockChain;
+
+struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
+#define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
@@ -42,9 +48,12 @@ public:
 	/// Import a block into the queue.
 	bool import(bytesConstRef _tx, BlockChain const& _bc);
 
+	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
+	void tick(BlockChain const& _bc);
+
 	/// Grabs the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<bytes>& o_out) { WriteGuard l(m_lock); if (m_drainingSet.empty()) { swap(o_out, m_ready); swap(m_drainingSet, m_readySet); } }
+	void drain(std::vector<bytes>& o_out);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	void doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); }
@@ -53,19 +62,23 @@ public:
 	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }
 
 	/// Get information on the items queued.
-	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_future.size()); }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
+
+	/// Clear everything.
+	void clear() { WriteGuard l(m_lock); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
 
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);
+	void notePresentWithoutWriteGuard(bytesConstRef _block);
 
 	mutable boost::shared_mutex m_lock;						///< General lock.
 	std::set<h256> m_readySet;								///< All blocks ready for chain-import.
 	std::set<h256> m_drainingSet;							///< All blocks being imported.
 	std::vector<bytes> m_ready;								///< List of blocks, in correct order, ready for chain-import.
-	std::set<h256> m_futureSet;								///< Set of all blocks whose parents are not ready/in-chain.
-	std::multimap<h256, std::pair<h256, bytes>> m_future;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
+	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
+	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
+	std::multimap<unsigned, bytes> m_future;	///< Set of blocks that are not yet valid.
 };
 
 }
-
-
+}
