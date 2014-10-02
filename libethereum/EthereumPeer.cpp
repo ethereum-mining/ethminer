@@ -38,6 +38,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
 	Capability(_s, _h),
 	m_sub(host()->m_man)
 {
+	setGrabbing(Grabbing::State);
 	sendStatus();
 }
 
@@ -120,11 +121,11 @@ void EthereumPeer::giveUpOnFetch()
 	if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
 	{
 		host()->noteDoneBlocks(this);
-		m_grabbing = Grabbing::Nothing;
+		setGrabbing(Grabbing::Nothing);
 	}
 
-	m_sub.doneFetch();
 	// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
+	m_sub.doneFetch();
 }
 
 bool EthereumPeer::interpret(RLP const& _r)
@@ -244,8 +245,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 		if (_r.itemCount() == 1)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
-			m_sub.doneFetch();
-			giveUpOnFetch();
+			if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+				giveUpOnFetch();
 			break;
 		}
 
@@ -283,7 +284,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 			}
 		}
 		clogS(NetMessageSummary) << dec << knownParents << "known parents," << unknownParents << "unknown," << used << "used.";
-		continueGettingChain();
+		if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+			continueGettingChain();
 		break;
 	}
 	default:
@@ -297,13 +299,18 @@ void EthereumPeer::ensureGettingChain()
 	if (m_grabbing == Grabbing::ChainHelper)
 		return;	// Already asked & waiting for some.
 
+	// Switch to ChainHelper otherwise, unless we're already the Chain grabber.
+	if (m_grabbing != Grabbing::Chain)
+		setGrabbing(Grabbing::ChainHelper);
+
 	continueGettingChain();
 }
 
 void EthereumPeer::continueGettingChain()
 {
-	if (m_grabbing != Grabbing::Chain)
-		m_grabbing = Grabbing::ChainHelper;
+	// If we're getting the hashes already, then we shouldn't be asking for the chain.
+	if (m_grabbing == Grabbing::Hashes)
+		return;
 
 	auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 
@@ -318,4 +325,10 @@ void EthereumPeer::continueGettingChain()
 	}
 	else
 		giveUpOnFetch();
+}
+
+void EthereumPeer::setGrabbing(Grabbing _g)
+{
+	m_grabbing = _g;
+	session()->addNote("grab", _g == Grabbing::Nothing ? "nothing" : _g == Grabbing::State ? "state" : _g == Grabbing::Hashes ? "hashes" : _g == Grabbing::Chain ? "chain" : _g == Grabbing::ChainHelper ? "chainhelper" : "?");
 }
