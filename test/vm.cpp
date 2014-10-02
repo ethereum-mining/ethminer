@@ -22,7 +22,7 @@
 
 #include <fstream>
 #include <cstdint>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libevmface/Instruction.h>
 #include <libevm/ExtVMFace.h>
 #include <libevm/VM.h>
@@ -33,9 +33,10 @@
 
 using namespace std;
 using namespace json_spirit;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
-namespace eth { namespace test {
+namespace dev { namespace test {
 
 class FakeExtVM: public ExtVMFace
 {
@@ -80,7 +81,7 @@ public:
 		return na;
 	}
 
-	bool call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc)
+	bool call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc, Address, Address)
 	{
 /*		if (get<0>(addresses[myAddress]) >= _value)
 		{
@@ -218,13 +219,13 @@ public:
 						if (li)
 							store[curKey] = curVal;
 						li = s.first;
-						curKey = toString(li);
+						curKey = "0x"+toHex(toCompactBigEndian(li));
 						curVal = mArray();
 					}
 					else
 						for (; li != s.first; ++li)
 							curVal.push_back(0);
-					push(curVal, s.second);
+					curVal.push_back("0x"+toHex(toCompactBigEndian(s.second)));
 					++li;
 				}
 				if (li)
@@ -387,7 +388,7 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		BOOST_REQUIRE(o.count("exec") > 0);
 
 		VM vm;
-		eth::test::FakeExtVM fev;
+		dev::test::FakeExtVM fev;
 		fev.importEnv(o["env"].get_obj());
 		fev.importState(o["pre"].get_obj());
 
@@ -419,7 +420,7 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 			BOOST_REQUIRE(o.count("out") > 0);
 			BOOST_REQUIRE(o.count("gas") > 0);
 
-			eth::test::FakeExtVM test;
+			dev::test::FakeExtVM test;
 			test.importState(o["post"].get_obj());
 			test.importCallCreates(o["callcreates"].get_array());
 			int i = 0;
@@ -473,18 +474,19 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 
 BOOST_AUTO_TEST_CASE(vm_tests)
 {
+	/*
 	// Populate tests first:
-//	try
+	try
 	{
 		cnote << "Populating VM tests...";
 		json_spirit::mValue v;
 		string s = asString(contents("../../../cpp-ethereum/test/vmtests.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty.");
 		json_spirit::read_string(s, v);
-		eth::test::doTests(v, true);
+		dev::test::doTests(v, true);
 		writeFile("../../../tests/vmtests.json", asBytes(json_spirit::write_string(v, true)));
 	}
-/*	catch (std::exception const& e)
+	catch (std::exception const& e)
 	{
 		BOOST_ERROR("Failed VM Test with Exception: " << e.what());
 	}*/
@@ -496,10 +498,37 @@ BOOST_AUTO_TEST_CASE(vm_tests)
 		string s = asString(contents("../../../tests/vmtests.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty. Have you cloned the 'tests' repo branch develop?");
 		json_spirit::read_string(s, v);
-		eth::test::doTests(v, false);
+		dev::test::doTests(v, false);
 	}
 	catch (std::exception const& e)
 	{
 		BOOST_ERROR("Failed VM Test with Exception: " << e.what()); 
+	}
+}
+
+BOOST_AUTO_TEST_CASE(vmArithmeticTest)
+{
+	/*
+			cnote << "Populating VM tests...";
+			json_spirit::mValue v;
+			string s = asString(contents("../../../cpp-ethereum/test/vmArithmeticTestFiller.json"));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmtests.json' is empty.");
+			json_spirit::read_string(s, v);
+			dev::test::doTests(v, true);
+			writeFile("../../../tests/vmArithmeticTest.json", asBytes(json_spirit::write_string(v, true)));
+	*/
+
+	try
+	{
+		cnote << "Testing VM arithmetic commands...";
+		json_spirit::mValue v;
+		string s = asString(contents("../../../tests/vmArithmeticTest.json"));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'vmArithmeticTest.json' is empty. Have you cloned the 'tests' repo branch develop?");
+		json_spirit::read_string(s, v);
+		dev::test::doTests(v, false);
+	}
+	catch (std::exception const& e)
+	{
+		BOOST_ERROR("Failed VM arithmetic test with Exception: " << e.what());
 	}
 }

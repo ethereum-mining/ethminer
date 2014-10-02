@@ -103,4 +103,7 @@ std::string hexToBin(std::string inp);
 //Lower to upper
 std::string upperCase(std::string inp);
 
+//Three-int vector
+std::vector<int> triple(int a, int b, int c);
+
 #endif

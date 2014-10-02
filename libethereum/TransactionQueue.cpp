@@ -21,11 +21,12 @@
 
 #include "TransactionQueue.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 bool TransactionQueue::import(bytesConstRef _transactionRLP)
 {
@@ -68,17 +69,17 @@ void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
 	if (m_current.count(_t.first))
 	{
 		m_current.erase(_t.first);
-		m_future.insert(make_pair(Transaction(_t.second).sender(), _t));
+		m_unknown.insert(make_pair(Transaction(_t.second).sender(), _t));
 	}
 }
 
 void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 {
 	WriteGuard l(m_lock);
-	auto r = m_future.equal_range(Transaction(_t.second).sender());
+	auto r = m_unknown.equal_range(Transaction(_t.second).sender());
 	for (auto it = r.first; it != r.second; ++it)
 		m_current.insert(it->second);
-	m_future.erase(r.first, r.second);
+	m_unknown.erase(r.first, r.second);
 }
 
 void TransactionQueue::drop(h256 _txHash)
@@ -95,10 +96,10 @@ void TransactionQueue::drop(h256 _txHash)
 		m_current.erase(_txHash);
 	else
 	{
-		for (auto i = m_future.begin(); i != m_future.end(); ++i)
+		for (auto i = m_unknown.begin(); i != m_unknown.end(); ++i)
 			if (i->second.first == _txHash)
 			{
-				m_future.erase(i);
+				m_unknown.erase(i);
 				break;
 			}
 	}

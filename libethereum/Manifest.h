@@ -21,9 +21,13 @@
 
 #pragma once
 
-#include <libethential/RLP.h>
+#include <iostream>
+#include <sstream>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -41,6 +45,21 @@ struct Manifest
 
 	h256 bloom() const { h256 ret = from.bloom() | to.bloom(); for (auto const& i: internal) ret |= i.bloom(); for (auto const& i: altered) ret |= h256(i).bloom(); return ret; }
 
+	std::string toString(unsigned _indent = 0) const
+	{
+		std::ostringstream oss;
+		oss << std::string(_indent * 3, ' ') << from << " -> " << to << " [" << value << "]: {";
+		if (internal.size())
+		{
+			oss << std::endl;
+			for (auto const& m: internal)
+				oss << m.toString(_indent + 1) << std::endl;
+			oss << std::string(_indent * 3, ' ');
+		}
+		oss << "} I:" << toHex(input) << "; O:" << toHex(output);
+		return oss.str();
+	}
+
 	Address from;
 	Address to;
 	u256 value;
@@ -50,4 +69,5 @@ struct Manifest
 	Manifests internal;
 };
 
+}
 }

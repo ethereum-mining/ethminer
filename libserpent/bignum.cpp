@@ -5,9 +5,9 @@
 #include "bignum.h"
 
 //Integer to string conversion
-std::string intToDecimal(int branch) {
+std::string unsignedToDecimal(unsigned branch) {
     if (branch < 10) return nums.substr(branch, 1);
-    else return intToDecimal(branch / 10) + nums.substr(branch % 10,1);
+    else return unsignedToDecimal(branch / 10) + nums.substr(branch % 10,1);
 }
 
 //Add two strings representing decimal values
@@ -91,8 +91,8 @@ std::string decimalMod(std::string a, std::string b) {
 }
 
 //String to int conversion
-int decimalToInt(std::string a) {
+unsigned decimalToUnsigned(std::string a) {
     if (a.size() == 0) return 0;
     else return (a[a.size() - 1] - '0') 
-        + decimalToInt(a.substr(0,a.size()-1)) * 10;
+        + decimalToUnsigned(a.substr(0,a.size()-1)) * 10;
 }

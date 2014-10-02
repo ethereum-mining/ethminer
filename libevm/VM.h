@@ -22,14 +22,16 @@
 #pragma once
 
 #include <unordered_map>
-#include <libethential/Exceptions.h>
+#include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libevmface/Instruction.h>
-#include <libethcore/SHA3.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
 #include "ExtVMFace.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -39,7 +41,6 @@ class BreakPointHit: public VMException {};
 class BadInstruction: public VMException {};
 class OutOfGas: public VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
-class OperandOutOfRange: public VMException { public: OperandOutOfRange(u256 _min, u256 _max, u256 _got): mn(_min), mx(_max), got(_got) {} u256 mn; u256 mx; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -87,8 +88,10 @@ private:
 }
 
 // INLINE:
-template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
@@ -138,22 +141,26 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		case Instruction::RETURN:
 			require(2);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::SHA3:
 			require(2);
 			runGas = c_sha3Gas;
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::CODECOPY:
 			require(3);
-			newTempSize = m_stack.back() + m_stack[m_stack.size() - 3];
+			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
-
+		case Instruction::EXTCODECOPY:
+			require(4);
+			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
+			break;
+			
 		case Instruction::BALANCE:
 			runGas = c_balanceGas;
 			break;
@@ -161,13 +168,19 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		case Instruction::CALL:
 			require(7);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = std::max(m_stack[m_stack.size() - 6] + m_stack[m_stack.size() - 7], m_stack[m_stack.size() - 4] + m_stack[m_stack.size() - 5]);
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+			break;
+
+		case Instruction::CALLSTATELESS:
+			require(7);
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
 		case Instruction::POST:
 			require(5);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = m_stack[m_stack.size() - 4] + m_stack[m_stack.size() - 5];
+			newTempSize = memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]);
 			break;
 
 		case Instruction::CREATE:
@@ -302,7 +315,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		case Instruction::BYTE:
 			require(2);
-			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (uint)(8 * (31 - m_stack.back()))) & 0xff : 0;
+			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (unsigned)(8 * (31 - m_stack.back()))) & 0xff : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::ADDMOD:
@@ -390,6 +403,26 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			m_stack.pop_back();
 			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() < cf ? 0 : _ext.code.size() - cf : l;
 			memcpy(m_temp.data() + mf, _ext.code.data() + cf, el);
+			memset(m_temp.data() + mf + el, 0, l - el);
+			break;
+		}
+		case Instruction::EXTCODESIZE:
+			require(1);
+			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
+			break;
+		case Instruction::EXTCODECOPY:
+		{
+			require(4);
+			Address a = asAddress(m_stack.back());
+			m_stack.pop_back();
+			unsigned mf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned cf = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned l = (unsigned)m_stack.back();
+			m_stack.pop_back();
+			unsigned el = cf + l > _ext.codeAt(a).size() ? _ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - cf : l;
+			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
@@ -578,12 +611,13 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			break;
 		}
 		case Instruction::CALL:
+		case Instruction::CALLSTATELESS:
 		{
 			require(7);
 
 			u256 gas = m_stack.back();
 			m_stack.pop_back();
-			u160 receiveAddress = asAddress(m_stack.back());
+			Address receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
 			u256 value = m_stack.back();
 			m_stack.pop_back();
@@ -600,7 +634,7 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp));
+				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
 			}
 			else
 				m_stack.push_back(0);
@@ -659,4 +693,4 @@ template <class Ext> eth::bytesConstRef eth::VM::go(Ext& _ext, OnOpFunc const& _
 		throw StepsDone();
 	return bytesConstRef();
 }
-
+}

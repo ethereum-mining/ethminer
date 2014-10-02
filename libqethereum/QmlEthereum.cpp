@@ -3,7 +3,7 @@
 #endif
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethcore/Dagger.h>
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -13,44 +13,44 @@
 using namespace std;
 
 // types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::u256s;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using eth::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
+using dev::bytes;
+using dev::bytesConstRef;
+using dev::h160;
+using dev::h256;
+using dev::u160;
+using dev::u256;
+using dev::u256s;
+using dev::RLP;
+using dev::Address;
+using dev::eth::BlockInfo;
+using dev::eth::Client;
+using dev::eth::Instruction;
+using dev::KeyPair;
+using dev::eth::NodeMode;
+using dev::Secret;
+using dev::eth::Transaction;
+using dev::p2p::PeerInfo;
 
 // functions
-using eth::toHex;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
+using dev::toHex;
+using dev::fromHex;
+using dev::right160;
+using dev::simpleDebugOut;
+using dev::toLog2;
+using dev::toString;
+using dev::eth::disassemble;
+using dev::eth::formatBalance;
+using dev::eth::units;
 
 // vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
+using dev::g_logPost;
+using dev::g_logVerbosity;
 
 // Horrible global for the mainwindow. Needed for the QmlEthereums to find the Main window which acts as multiplexer for now.
 // Can get rid of this once we've sorted out ITC for signalling & multiplexed querying.
-eth::Client* g_qmlClient;
+dev::eth::Client* g_qmlClient;
 QObject* g_qmlMain;
-
+#if 0
 QmlAccount::QmlAccount(QObject*)
 {
 }
@@ -72,7 +72,7 @@ void QmlAccount::setEthereum(QmlEthereum* _eth)
 //	changed();
 }
 
-eth::u256 QmlAccount::balance() const
+dev::u256 QmlAccount::balance() const
 {
 	if (m_eth)
 		return m_eth->balanceAt(m_address);
@@ -176,6 +176,8 @@ void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _ga
 {
 	client()->transact(_secret, _amount, _dest, bytes(_data.data(), _data.data() + _data.size()), _gas, _gasPrice);
 }
+
+#endif
 
 // extra bits needed to link on VS
 #ifdef _MSC_VER

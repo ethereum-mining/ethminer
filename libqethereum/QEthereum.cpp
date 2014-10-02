@@ -1,6 +1,6 @@
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethcore/Dagger.h>
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -8,50 +8,17 @@
 #include <libethereum/EthereumHost.h>
 #include "QEthereum.h"
 using namespace std;
+using namespace dev;
+using namespace dev::eth;
 
-// types
-using eth::bytes;
-using eth::bytesConstRef;
-using eth::h160;
-using eth::h256;
-using eth::u160;
-using eth::u256;
-using eth::u256s;
-using eth::Address;
-using eth::BlockInfo;
-using eth::Client;
-using eth::Instruction;
-using eth::KeyPair;
-using eth::NodeMode;
-using eth::PeerInfo;
-using eth::RLP;
-using eth::Secret;
-using eth::Transaction;
-
-// functions
-using eth::toHex;
-using eth::disassemble;
-using eth::formatBalance;
-using eth::fromHex;
-using eth::right160;
-using eth::simpleDebugOut;
-using eth::toLog2;
-using eth::toString;
-using eth::units;
-using eth::operator +;
-
-// vars
-using eth::g_logPost;
-using eth::g_logVerbosity;
-
-eth::bytes toBytes(QString const& _s)
+dev::bytes toBytes(QString const& _s)
 {
 	if (_s.startsWith("0x"))
 		// Hex
-		return eth::fromHex(_s.mid(2).toStdString());
+		return dev::fromHex(_s.mid(2).toStdString());
 	else if (!_s.contains(QRegExp("[^0-9]")))
 		// Decimal
-		return eth::toCompactBigEndian(eth::bigint(_s.toStdString()));
+		return dev::toCompactBigEndian(dev::bigint(_s.toStdString()));
 	else
 	{
 		// Binary
@@ -62,12 +29,12 @@ eth::bytes toBytes(QString const& _s)
 
 QString padded(QString const& _s, unsigned _l, unsigned _r)
 {
-	eth::bytes b = toBytes(_s);
+	dev::bytes b = toBytes(_s);
 	while (b.size() < _l)
 		b.insert(b.begin(), 0);
 	while (b.size() < _r)
 		b.push_back(0);
-	return asQString(eth::asBytes(eth::asString(b).substr(b.size() - max(_l, _r))));
+	return asQString(dev::asBytes(dev::asString(b).substr(b.size() - max(_l, _r))));
 }
 
 //"0xff".bin().unbin()
@@ -89,7 +56,8 @@ QString unpadded(QString _s)
 	return _s;
 }
 
-QEthereum::QEthereum(QObject* _p, Client* _c, QList<eth::KeyPair> _accounts): QObject(_p), m_client(_c), m_accounts(_accounts)
+QEthereum::QEthereum(QObject* _p, eth::Interface* _c, QList<dev::KeyPair> _accounts):
+	QObject(_p), m_client(_c), m_accounts(_accounts)
 {
 	// required to prevent crash on osx when performing addto/evaluatejavascript calls
 	moveToThread(_p->thread());
@@ -119,34 +87,34 @@ QString QEthereum::secretToAddress(QString _s) const
 	return toQJS(KeyPair(toSecret(_s)).address());
 }
 
-Client* QEthereum::client() const
+eth::Interface* QEthereum::client() const
 {
 	return m_client;
 }
 
 QString QEthereum::lll(QString _s) const
 {
-	return toQJS(eth::compileLLL(_s.toStdString()));
+	return toQJS(dev::eth::compileLLL(_s.toStdString()));
 }
 
 QString QEthereum::sha3(QString _s) const
 {
-	return toQJS(eth::sha3(toBytes(_s)));
+	return toQJS(dev::eth::sha3(toBytes(_s)));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2) const
 {
-	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
+	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
 {
-	return toQJS(eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
+	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
 QString QEthereum::sha3old(QString _s) const
 {
-	return toQJS(eth::sha3(asBytes(_s)));
+	return toQJS(dev::eth::sha3(asBytes(_s)));
 }
 
 QString QEthereum::offset(QString _s, int _i) const
@@ -161,7 +129,7 @@ QString QEthereum::coinbase() const
 
 QString QEthereum::number() const
 {
-	return m_client ? QString::number(client()->blockChain().number() + 1) : "";
+	return m_client ? QString::number(client()->number() + 1) : "";
 }
 
 QString QEthereum::account() const
@@ -254,9 +222,9 @@ double QEthereum::countAt(QString _a, int _block) const
 	return m_client ? (double)(uint64_t)client()->countAt(toAddress(_a), _block) : 0;
 }
 
-static eth::MessageFilter toMessageFilter(QString _json)
+static dev::eth::MessageFilter toMessageFilter(QString _json)
 {
-	eth::MessageFilter filter;
+	dev::eth::MessageFilter filter;
 
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	if (f.contains("earliest"))
@@ -333,21 +301,21 @@ static TransactionSkeleton toTransaction(QString _json)
 			ret.data = toBytes(f["code"].toString());
 		else if (f["data"].isArray())
 			for (auto i: f["data"].toArray())
-				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
+				dev::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["code"].isArray())
 			for (auto i: f["code"].toArray())
-				eth::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
+				dev::operator +=(ret.data, asBytes(padded(i.toString(), 32)));
 		else if (f["dataclose"].isArray())
 			for (auto i: f["dataclose"].toArray())
-				eth::operator +=(ret.data, toBytes(i.toString()));
+				dev::operator +=(ret.data, toBytes(i.toString()));
 	}
 	return ret;
 }
 
-static QString toJson(eth::PastMessages const& _pms)
+static QString toJson(dev::eth::PastMessages const& _pms)
 {
 	QJsonArray jsonArray;
-	for (eth::PastMessage const& t: _pms)
+	for (dev::eth::PastMessage const& t: _pms)
 	{
 		QJsonObject v;
 		v["input"] = ::fromBinary(t.input);
@@ -380,7 +348,7 @@ bool QEthereum::isMining() const
 
 bool QEthereum::isListening() const
 {
-	return m_client ? client()->haveNetwork() : false;
+	return /*m_client ? client()->haveNetwork() :*/ false;
 }
 
 void QEthereum::setMining(bool _l)
@@ -394,19 +362,19 @@ void QEthereum::setMining(bool _l)
 	}
 }
 
-void QEthereum::setListening(bool _l)
+void QEthereum::setListening(bool)
 {
 	if (!m_client)
 		return;
-	if (_l)
+/*	if (_l)
 		client()->startNetwork();
 	else
-		client()->stopNetwork();
+		client()->stopNetwork();*/
 }
 
 unsigned QEthereum::peerCount() const
 {
-	return m_client ? (unsigned)client()->peerCount() : 0;
+	return /*m_client ? (unsigned)client()->peerCount() :*/ 0;
 }
 
 QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
@@ -441,7 +409,7 @@ QString QEthereum::doTransact(QString _json)
 		t.from = b.secret();
 	}
 	if (!t.gasPrice)
-		t.gasPrice = 10 * eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
 	if (t.to)
@@ -462,7 +430,7 @@ QString QEthereum::doCall(QString _json)
 	if (!t.from && m_accounts.size())
 		t.from = m_accounts[0].secret();
 	if (!t.gasPrice)
-		t.gasPrice = 10 * eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
 	bytes out = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
@@ -475,9 +443,9 @@ unsigned QEthereum::newWatch(QString _json)
 		return (unsigned)-1;
 	unsigned ret;
 	if (_json == "chain")
-		ret = m_client->installWatch(eth::ChainChangedFilter);
+		ret = m_client->installWatch(dev::eth::ChainChangedFilter);
 	else if (_json == "pending")
-		ret = m_client->installWatch(eth::PendingChangedFilter);
+		ret = m_client->installWatch(dev::eth::PendingChangedFilter);
 	else
 		ret = m_client->installWatch(toMessageFilter(_json));
 	m_watches.push_back(ret);
@@ -506,6 +474,65 @@ void QEthereum::poll()
 	for (auto w: m_watches)
 		if (m_client->checkWatch(w))
 			emit watchChanged(w);
+}
+
+// TODO: repot and hook all these up.
+
+QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c): QObject(_p), m_face(_c)
+{
+}
+
+QWhisper::~QWhisper()
+{
+}
+
+// probably want a better way of doing this. somehow guarantee that the face() will always be available as long as this object is.
+struct NoInterface: public Exception {};
+
+std::shared_ptr<dev::shh::Interface> QWhisper::face() const
+{
+	auto ret = m_face.lock();
+	if (!ret)
+		throw NoInterface();
+	return ret;
+}
+
+void QWhisper::faceDieing()
+{
+
+}
+
+void QWhisper::send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload)
+{
+	(void)_dest;
+	(void)_from;
+	(void)_topic;
+	(void)_payload;
+}
+
+unsigned QWhisper::newWatch(QString _json)
+{
+	(void)_json;
+	return 0;
+}
+
+QString QWhisper::watchMessages(unsigned _w)
+{
+	(void)_w;
+	return "";
+}
+
+void QWhisper::killWatch(unsigned _w)
+{
+	(void)_w;
+}
+
+void QWhisper::clearWatches()
+{
+}
+
+void QWhisper::poll()
+{
 }
 
 // extra bits needed to link on VS

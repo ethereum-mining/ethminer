@@ -21,11 +21,13 @@
 
 #pragma once
 
-#include <libethential/Common.h>
-#include <libethential/RLP.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include "PastMessage.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -70,4 +72,5 @@ private:
 	unsigned m_skip;
 };
 
+}
 }

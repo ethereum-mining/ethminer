@@ -23,10 +23,12 @@
 
 #include <iostream>
 #include <sstream>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libevmface/Instruction.h>
 #include "Exceptions.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -129,4 +131,5 @@ inline std::ostream& operator<<(std::ostream& _out, Assembly const& _a)
 	return _out;
 }
 
+}
 }

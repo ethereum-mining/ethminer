@@ -21,9 +21,10 @@
 
 #include "Defaults.h"
 
-#include <libethcore/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 Defaults* Defaults::s_this = nullptr;
 

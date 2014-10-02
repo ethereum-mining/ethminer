@@ -25,10 +25,13 @@
 #include <thread>
 #include <list>
 #include <atomic>
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/Worker.h>
 #include <libethcore/CommonEth.h>
 #include "State.h"
 
+namespace dev
+{
 namespace eth
 {
 
@@ -41,8 +44,8 @@ struct MineProgress
 	double requirement = 0;	///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
 	double best = 1e99;		///< The PoW achievement - as the second logarithm of the minimum found hash.
 	double current = 0;		///< The most recent PoW achievement - as the second logarithm of the presently found hash.
-	uint hashes = 0;		///< Total number of hashes computed.
-	uint ms = 0;			///< Total number of milliseconds of mining thus far.
+	unsigned hashes = 0;		///< Total number of hashes computed.
+	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
 /**
@@ -72,38 +75,38 @@ public:
  * @threadsafe
  * @todo Signal Miner to restart once with condition variables.
  */
-class Miner
+class Miner: Worker
 {
 public:
 	/// Null constructor.
-	Miner(): m_host(nullptr), m_id(0) {}
+	Miner(): m_host(nullptr) {}
 
 	/// Constructor.
 	Miner(MinerHost* _host, unsigned _id = 0);
 
 	/// Move-constructor.
-	Miner(Miner&& _m) { std::swap(m_host, _m.m_host); std::swap(m_id, _m.m_id); }
+	Miner(Miner&& _m): Worker((Worker&&)_m) { std::swap(m_host, _m.m_host); }
 
 	/// Move-assignment.
-	Miner& operator=(Miner&& _m) { std::swap(m_host, _m.m_host); std::swap(m_id, _m.m_id); return *this; }
+	Miner& operator=(Miner&& _m) { Worker::operator=((Worker&&)_m); std::swap(m_host, _m.m_host); return *this; }
 
 	/// Destructor. Stops miner.
 	~Miner() { stop(); }
 
 	/// Setup its basics.
-	void setup(MinerHost* _host, unsigned _id = 0) { m_host = _host; m_id = _id; }
+	void setup(MinerHost* _host, unsigned _id = 0) { m_host = _host; setName("miner-" + toString(_id)); }
 
 	/// Start mining.
-	void start();
+	void start() { startWorking(); }
 
 	/// Stop mining.
-	void stop();
+	void stop() { stopWorking(); }
 
 	/// Call to notify Miner of a state change.
 	void noteStateChange() { m_miningStatus = Preparing; }
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
-	bool isRunning() { return !!m_work; }
+	bool isRunning() { return isWorking(); }
 
 	/// @returns true if mining is complete.
 	bool isComplete() const { return m_miningStatus == Mined; }
@@ -119,23 +122,18 @@ public:
 
 private:
 	/// Do some work on the mining.
-	void work();
+	virtual void doWork();
 
 	MinerHost* m_host = nullptr;			///< Our host.
-	unsigned m_id = 0;						///< Our identity.
 
-	std::mutex x_work;						///< Mutex protecting the creation of the work thread.
-	std::unique_ptr<std::thread> m_work;	///< The work thread.
-	bool m_stop = false;					///< Stop working?
-
-	enum MiningStatus { Preparing, Mining, Mined, Stopping, Stopped };
-	MiningStatus m_miningStatus = Preparing;///< TODO: consider mutex/atomic variable.
+	enum MiningStatus { Waiting, Preparing, Mining, Mined, Stopping, Stopped };
+	MiningStatus m_miningStatus = Waiting;	///< TODO: consider mutex/atomic variable.
 	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
-	mutable unsigned m_pendingCount = 0;	///< How many pending transactions are there in m_mineState?
 
 	mutable std::mutex x_mineInfo;			///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;			///< What's our progress?
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
 };
 
+}
 }

@@ -23,55 +23,27 @@
 #include "Miner.h"
 #include "State.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 Miner::Miner(MinerHost* _host, unsigned _id):
-	m_host(_host),
-	m_id(_id)
+	Worker("miner-" + toString(_id)),
+	m_host(_host)
 {
 }
 
-void Miner::start()
-{
-	if (!m_host)
-		return;
-
-	Guard l(x_work);
-	if (!m_work)
-	{
-		m_stop = false;
-		m_work.reset(new thread([&]()
-		{
-			setThreadName(("miner-" + toString(m_id)).c_str());
-			m_miningStatus = Preparing;
-			while (!m_stop)
-				work();
-		}));
-	}
-}
-
-void Miner::stop()
-{
-	Guard l(x_work);
-	if (m_work)
-	{
-		m_stop = true;
-		m_work->join();
-		m_work.reset(nullptr);
-	}
-}
-
-void Miner::work()
+void Miner::doWork()
 {
 	// Do some mining.
-	if ((m_pendingCount || m_host->force()) && m_miningStatus != Mined)
+	if (m_miningStatus != Waiting && m_miningStatus != Mined)
 	{
 		if (m_miningStatus == Preparing)
 		{
-			m_miningStatus = Mining;
-
 			m_host->setupState(m_mineState);
-			m_pendingCount = m_mineState.pending().size();
+			if (m_host->force() || m_mineState.pending().size())
+				m_miningStatus = Mining;
+			else
+				m_miningStatus = Waiting;
 
 			{
 				Guard l(x_mineInfo);
@@ -81,26 +53,29 @@ void Miner::work()
 			}
 		}
 
+		if (m_miningStatus == Mining)
+		{
 		// Mine for a while.
-		MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
+			MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
 
-		{
-			Guard l(x_mineInfo);
-			m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
-			m_mineProgress.current = mineInfo.best;
-			m_mineProgress.requirement = mineInfo.requirement;
-			m_mineProgress.ms += 100;
-			m_mineProgress.hashes += mineInfo.hashes;
-			m_mineHistory.push_back(mineInfo);
+			{
+				Guard l(x_mineInfo);
+				m_mineProgress.best = min(m_mineProgress.best, mineInfo.best);
+				m_mineProgress.current = mineInfo.best;
+				m_mineProgress.requirement = mineInfo.requirement;
+				m_mineProgress.ms += 100;
+				m_mineProgress.hashes += mineInfo.hashes;
+				m_mineHistory.push_back(mineInfo);
+			}
+			if (mineInfo.completed)
+			{
+				m_mineState.completeMine();
+				m_host->onComplete();
+				m_miningStatus = Mined;
+			}
+			else
+				m_host->onProgressed();
 		}
-		if (mineInfo.completed)
-		{
-			m_mineState.completeMine();
-			m_host->onComplete();
-			m_miningStatus = Mined;
-		}
-		else
-			m_host->onProgressed();
 	}
 	else
 	{

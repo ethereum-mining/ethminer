@@ -21,23 +21,29 @@
 
 #include "BlockQueue.h"
 
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
 using namespace std;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 {
 	// Check if we already know this block.
-	h256 h = sha3(_block);
+	h256 h = BlockInfo::headerHash(_block);
+
+	cblockq << "Queuing block" << h.abridged() << "for import...";
 
 	UpgradableGuard l(m_lock);
 
-	if (m_readySet.count(h) || m_drainingSet.count(h) || m_futureSet.count(h))
+	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h))
+	{
 		// Already know about this one.
+		cblockq << "Already known.";
 		return false;
+	}
 
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
@@ -56,29 +62,36 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 		return false;
 	}
 #endif
-	auto newHash = eth::sha3(_block);
 
 	// Check block doesn't already exist first!
-	if (_bc.details(newHash))
-		return false;
-
-	// Check it's not crazy
-	if (bi.timestamp > (u256)time(0))
-		return false;
-
+	if (_bc.details(h))
 	{
-		UpgradeGuard ul(l);
+		cblockq << "Already known in chain.";
+		return false;
+	}
 
+	UpgradeGuard ul(l);
+
+	// Check it's not in the future
+	if (bi.timestamp > (u256)time(0))
+	{
+		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
+		cblockq << "OK - queued for future.";
+	}
+	else
+	{
 		// We now know it.
-		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.details(bi.parentHash))
+		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			m_future.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
-			m_futureSet.insert(h);
+			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
+			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
+			m_unknownSet.insert(h);
 		}
 		else
 		{
 			// If valid, append to blocks.
+			cblockq << "OK - ready for chain insertion.";
 			m_ready.push_back(_block.toBytes());
 			m_readySet.insert(h);
 
@@ -89,21 +102,41 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	return true;
 }
 
+void BlockQueue::tick(BlockChain const& _bc)
+{
+	unsigned t = time(0);
+	for (auto i = m_future.begin(); i != m_future.end() && i->first < time(0); ++i)
+		import(&(i->second), _bc);
+
+	WriteGuard l(m_lock);
+	m_future.erase(m_future.begin(), m_future.upper_bound(t));
+}
+
+void BlockQueue::drain(std::vector<bytes>& o_out)
+{
+	WriteGuard l(m_lock);
+	if (m_drainingSet.empty())
+	{
+		swap(o_out, m_ready);
+		swap(m_drainingSet, m_readySet);
+	}
+}
+
 void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 {
 	list<h256> goodQueue(1, _good);
 	while (goodQueue.size())
 	{
-		auto r = m_future.equal_range(goodQueue.front());
+		auto r = m_unknown.equal_range(goodQueue.front());
 		goodQueue.pop_front();
 		for (auto it = r.first; it != r.second; ++it)
 		{
 			m_ready.push_back(it->second.second);
 			auto newReady = it->second.first;
-			m_futureSet.erase(newReady);
+			m_unknownSet.erase(newReady);
 			m_readySet.insert(newReady);
 			goodQueue.push_back(newReady);
 		}
-		m_future.erase(r.first, r.second);
+		m_unknown.erase(r.first, r.second);
 	}
 }

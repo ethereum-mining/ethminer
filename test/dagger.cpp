@@ -21,11 +21,12 @@
  */
 
 #include <chrono>
-#include <libethential/Log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/Dagger.h>
 using namespace std;
 using namespace std::chrono;
-using namespace eth;
+using namespace dev;
+using namespace dev::eth;
 
 int daggerTest()
 {

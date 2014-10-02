@@ -21,11 +21,13 @@
 
 #pragma once
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -39,6 +41,8 @@ struct Post
 };
 
 using PostList = std::list<Post>;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
 
 /**
  * @brief A null implementation of the class for specifying VM externalities.
@@ -64,6 +68,9 @@ public:
 	/// Read address's balance.
 	u256 balance(Address) { return 0; }
 
+	/// Read address's code.
+	bytes const& codeAt(Address) { return NullBytes; }
+
 	/// Subtract amount from account's balance.
 	void subBalance(u256) {}
 
@@ -77,7 +84,7 @@ public:
 	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
 
 	/// Make a new message call.
-	bool call(Address, u256, bytesConstRef, u256*, bytesRef) { return false; }
+	bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Post a new message call.
 	void post(Address _to, u256 _value, bytesConstRef _data, u256 _gas) { posts.push_back(Post({myAddress, _to, _value, _data.toBytes(), _gas})); }
@@ -101,6 +108,5 @@ public:
 	std::list<Post> posts;		///< Any posts that have been made.
 };
 
-typedef std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)> OnOpFunc;
-
+}
 }

@@ -21,8 +21,10 @@
 
 #pragma once
 
-#include <libethential/Common.h>
+#include <libdevcore/Common.h>
 
+namespace dev
+{
 namespace eth
 {
 
@@ -44,4 +46,5 @@ private:
 	static Defaults* s_this;
 };
 
+}
 }
