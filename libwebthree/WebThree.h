@@ -32,7 +32,7 @@
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
 
-#include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 #include <libethereum/Client.h>
 
 namespace dev
@@ -118,7 +118,7 @@ private:
 	std::string m_clientVersion;					///< Our end-application client's name/version.
 
 	std::unique_ptr<eth::Client> m_ethereum;		///< Main interface for Ethereum ("eth") protocol.
-	std::unique_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
+	std::weak_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
 
 	p2p::Host m_net;								///< Should run in background and send us events when blocks found and allow us to send blocks as required.
 };
