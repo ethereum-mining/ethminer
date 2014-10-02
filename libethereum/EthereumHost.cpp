@@ -102,7 +102,7 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 
 	if (_from->m_neededBlocks.empty())
 	{
-		_from->m_grabbing = Grabbing::Nothing;
+		_from->setGrabbing(Grabbing::Nothing);
 		updateGrabbing(Grabbing::Nothing);
 		return;
 	}
@@ -112,7 +112,7 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
 	{
 		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-		_from->m_grabbing = Grabbing::Nothing;
+		_from->setGrabbing(Grabbing::Nothing);
 		updateGrabbing(Grabbing::Nothing);
 		return;
 	}
@@ -123,7 +123,7 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	m_man.resetToChain(_from->m_neededBlocks);
 	m_latestBlockSent = _from->m_latestHash;
 
-	_from->m_grabbing = Grabbing::Chain;
+	_from->setGrabbing(Grabbing::Chain);
 	updateGrabbing(Grabbing::Chain);
 }
 
@@ -266,7 +266,11 @@ void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 		}
 		clog(NetMessageSummary) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 		if (c > 1000)
-			cwarn << "Gaa sending an awful lot of new blocks. Sure this is right?";
+		{
+			cwarn << "Gaa this would be an awful lot of new blocks. Not bothering";
+			return;
+		}
+
 		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
 		bytes b;
 		ts.swapOut(b);
