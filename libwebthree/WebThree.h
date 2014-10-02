@@ -74,7 +74,7 @@ public:
 	// The mainline interfaces:
 
 	eth::Client* ethereum() const { if (!m_ethereum) BOOST_THROW_EXCEPTION(InterfaceNotSupported("eth")); return m_ethereum.get(); }
-	shh::WhisperHost* whisper() const { if (!m_whisper) BOOST_THROW_EXCEPTION(InterfaceNotSupported("shh")); return m_whisper.get(); }
+	std::shared_ptr<shh::WhisperHost> whisper() const { auto w = m_whisper.lock(); if (!w) BOOST_THROW_EXCEPTION(InterfaceNotSupported("shh")); return w; }
 	bzz::Interface* swarm() const { BOOST_THROW_EXCEPTION(InterfaceNotSupported("bzz")); }
 
 	// Misc stuff:
