@@ -361,10 +361,10 @@ public:
 	void clear() { m_out.clear(); m_listStack.clear(); }
 
 	/// Read the byte stream.
-	bytes const& out() const { assert(m_listStack.empty()); return m_out; }
+	bytes const& out() const { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return m_out; }
 
 	/// Swap the contents of the output stream out for some other byte array.
-	void swapOut(bytes& _dest) { assert(m_listStack.empty()); swap(m_out, _dest); }
+	void swapOut(bytes& _dest) { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); swap(m_out, _dest); }
 
 private:
 	void noteAppended(unsigned _itemCount = 1);

@@ -176,7 +176,8 @@ void RLPStream::noteAppended(unsigned _itemCount)
 //	cdebug << "noteAppended(" << _itemCount << ")";
 	while (m_listStack.size())
 	{
-		assert(m_listStack.back().first >= _itemCount);
+		if (m_listStack.back().first < _itemCount)
+			BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("itemCount too large"));
 		m_listStack.back().first -= _itemCount;
 		if (m_listStack.back().first)
 			break;
