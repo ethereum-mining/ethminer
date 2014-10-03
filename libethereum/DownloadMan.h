@@ -54,8 +54,8 @@ public:
 	/// Nothing doing here.
 	void doneFetch() { resetFetch(); }
 
-	RangeMask<unsigned> const& asked() const { return m_asked; }
-	RangeMask<unsigned> const& attemped() const { return m_attempted; }
+	RangeMask<unsigned> const& asked() const { Guard l(m_fetch); return m_asked; }
+	RangeMask<unsigned> const& attemped() const { Guard l(m_fetch); return m_attempted; }
 
 private:
 	void resetFetch()		// Called by DownloadMan when we need to reset the download.
@@ -69,7 +69,7 @@ private:
 
 	DownloadMan* m_man = nullptr;
 
-	Mutex m_fetch;
+	mutable Mutex m_fetch;
 	h256Set m_remaining;
 	std::map<h256, unsigned> m_indices;
 	RangeMask<unsigned> m_asked;
@@ -94,11 +94,14 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
-		m_chain.clear();
-		m_chain.reserve(_chain.size());
-		for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
-			m_chain.push_back(*i);
-		m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
+		{
+			WriteGuard l(x_chain);
+			m_chain.clear();
+			m_chain.reserve(_chain.size());
+			for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
+				m_chain.push_back(*i);
+			m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
+		}
 	}
 
 	void reset()
@@ -108,8 +111,11 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
-		m_chain.clear();
-		m_blocksGot.clear();
+		{
+			WriteGuard l(x_chain);
+			m_chain.clear();
+			m_blocksGot.clear();
+		}
 	}
 
 	RangeMask<unsigned> taken(bool _desperate = false) const
@@ -129,12 +135,13 @@ public:
 		return m_blocksGot.full();
 	}
 
-	h256s chain() const { return m_chain; }
+	h256s chain() const { ReadGuard l(x_chain); return m_chain; }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
 	RangeMask<unsigned> blocksGot() const { return m_blocksGot; }
 
 private:
+	mutable SharedMutex x_chain;
 	h256s m_chain;
 	RangeMask<unsigned> m_blocksGot;
 
