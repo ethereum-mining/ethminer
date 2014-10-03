@@ -109,8 +109,9 @@ Main::Main(QWidget *parent) :
 
     cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
     cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	auto block = BlockChain::createGenesisBlock();
+	cerr << "Block RLP: " << RLP(block) << endl;
+	cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
 	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
