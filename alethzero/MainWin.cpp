@@ -25,7 +25,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtWebKitWidgets/QWebFrame>
-#include <QWebSettings>
+#include <QtWebKit/QWebSettings>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
