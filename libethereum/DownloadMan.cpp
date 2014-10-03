@@ -42,6 +42,7 @@ DownloadSub::~DownloadSub()
 h256Set DownloadSub::nextFetch(unsigned _n)
 {
 	Guard l(m_fetch);
+	ReadGuard cl(m_man->x_chain);
 
 	if (m_remaining.size())
 		return m_remaining;
@@ -50,7 +51,7 @@ h256Set DownloadSub::nextFetch(unsigned _n)
 	m_indices.clear();
 	m_remaining.clear();
 
-	if (!m_man || m_man->chain().empty())
+	if (!m_man || m_man->m_chain.empty())
 		return h256Set();
 
 	m_asked = (~(m_man->taken() + m_attempted)).lowest(_n);
