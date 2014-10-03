@@ -8,6 +8,7 @@
     <ClCompile Include="..\evmcc\Ext.cpp" />
     <ClCompile Include="..\evmcc\Memory.cpp" />
     <ClCompile Include="..\evmcc\Utils.cpp" />
+    <ClCompile Include="..\evmcc\Runtime.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
@@ -16,5 +17,6 @@
     <ClInclude Include="..\evmcc\Ext.h" />
     <ClInclude Include="..\evmcc\Memory.h" />
     <ClInclude Include="..\evmcc\Utils.h" />
+    <ClInclude Include="..\evmcc\Runtime.h" />
   </ItemGroup>
 </Project>
