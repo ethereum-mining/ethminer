@@ -73,6 +73,8 @@ public:
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
+	PeerInfo const& info() const { return m_info; }
+
 private:
 	void dropped();
 	void doRead();

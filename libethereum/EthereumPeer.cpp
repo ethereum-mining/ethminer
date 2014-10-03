@@ -95,7 +95,7 @@ void EthereumPeer::tryGrabbingHashChain()
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
-		m_grabbing = Grabbing::Nothing;
+		setGrabbing(Grabbing::Nothing);
 		return;	// All good - we have the better chain.
 	}
 
@@ -104,7 +104,7 @@ void EthereumPeer::tryGrabbingHashChain()
 		clogS(NetAllDetail) << "Yes. Their chain is better.";
 
 		host()->updateGrabbing(Grabbing::Hashes);
-		m_grabbing = Grabbing::Hashes;
+		setGrabbing(Grabbing::Hashes);
 		RLPStream s;
 		prep(s).appendList(3);
 		s << GetBlockHashesPacket << m_latestHash << c_maxHashesAsk;
@@ -144,12 +144,14 @@ bool EthereumPeer::interpret(RLP const& _r)
 
 		if (genesisHash != host()->m_chain.genesisHash())
 			disable("Invalid genesis hash");
-		if (m_protocolVersion != host()->protocolVersion())
+		else if (m_protocolVersion != host()->protocolVersion())
 			disable("Invalid protocol version.");
-		if (m_networkId != host()->networkId())
+		else if (m_networkId != host()->networkId())
 			disable("Invalid network identifier.");
-
-		startInitialSync();
+		else if (session()->info().clientVersion.find("/v0.6.9/") != string::npos)
+			disable("Blacklisted client version.");
+		else
+			startInitialSync();
 		break;
 	}
 	case GetTransactionsPacket:
