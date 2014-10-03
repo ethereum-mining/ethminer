@@ -36,7 +36,9 @@ using namespace p2p;
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
-	m_ok = RLP(contents(m_path + "/protocol")).toInt<unsigned>(RLP::LaisezFaire) == c_protocolVersion && RLP(contents(m_path + "/database")).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
+	auto protocolContents = contents(m_path + "/protocol");
+	auto databaseContents = contents(m_path + "/database");
+	m_ok = RLP(protocolContents).toInt<unsigned>(RLP::LaisezFaire) == c_protocolVersion && RLP(databaseContents).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
 }
 
 void VersionChecker::setOk()

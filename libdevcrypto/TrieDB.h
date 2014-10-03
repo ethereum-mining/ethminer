@@ -552,12 +552,18 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 		auto sh = _k.shared(k);
 //		std::cout << _k << " sh " << k << " = " << sh << std::endl;
-		if (sh)
+        if (sh)
+		{
 			// shared stuff - cleve at disagreement.
-			return mergeAt(RLP(cleve(_orig, sh)), _k, _v, true);
+			auto cleved = cleve(_orig, sh);
+			return mergeAt(RLP(cleved), _k, _v, true);
+		}
 		else
+		{
 			// nothing shared - branch
-			return mergeAt(RLP(branch(_orig)), _k, _v, true);
+			auto branched = branch(_orig);
+			return mergeAt(RLP(branched), _k, _v, true);
+		}
 	}
 	else
 	{
@@ -685,8 +691,11 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 			byte used = uniqueInUse(_orig, 16);
 			if (used != 255)
-				if (isTwoItemNode(_orig[used]))
-					return graft(RLP(merge(_orig, used)));
+                if (isTwoItemNode(_orig[used]))
+				{
+					auto merged = merge(_orig, used);
+					return graft(RLP(merged));
+				}
 				else
 					return merge(_orig, used);
 			else
@@ -721,8 +730,11 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 				return r.out();
 
 			// yes; merge
-			if (isTwoItemNode(rlp[used]))
-				return graft(RLP(merge(rlp, used)));
+            if (isTwoItemNode(rlp[used]))
+			{
+				auto merged = merge(rlp, used);
+				return graft(RLP(merged));
+			}
 			else
 				return merge(rlp, used);
 		}

@@ -307,6 +307,9 @@ private:
 	mutable unsigned m_lastIndex = (unsigned)-1;
 	mutable unsigned m_lastEnd = 0;
 	mutable bytesConstRef m_lastItem;
+
+	/// Disable construction from rvalue
+	explicit RLP(bytes const&& _d) {}
 };
 
 /**
