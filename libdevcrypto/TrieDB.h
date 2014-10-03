@@ -552,7 +552,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 		auto sh = _k.shared(k);
 //		std::cout << _k << " sh " << k << " = " << sh << std::endl;
-        if (sh)
+		if (sh)
 		{
 			// shared stuff - cleve at disagreement.
 			auto cleved = cleve(_orig, sh);
@@ -691,7 +691,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 			byte used = uniqueInUse(_orig, 16);
 			if (used != 255)
-                if (isTwoItemNode(_orig[used]))
+				if (isTwoItemNode(_orig[used]))
 				{
 					auto merged = merge(_orig, used);
 					return graft(RLP(merged));
@@ -730,7 +730,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 				return r.out();
 
 			// yes; merge
-            if (isTwoItemNode(rlp[used]))
+			if (isTwoItemNode(rlp[used]))
 			{
 				auto merged = merge(rlp, used);
 				return graft(RLP(merged));
