@@ -54,6 +54,7 @@ public:
 	/// Nothing doing here.
 	void doneFetch() { resetFetch(); }
 
+	bool askedContains(unsigned _i) const { Guard l(m_fetch); return m_asked.contains(_i); }
 	RangeMask<unsigned> const& asked() const { return m_asked; }
 	RangeMask<unsigned> const& attemped() const { return m_attempted; }
 
@@ -69,7 +70,7 @@ private:
 
 	DownloadMan* m_man = nullptr;
 
-	Mutex m_fetch;
+	mutable Mutex m_fetch;
 	h256Set m_remaining;
 	std::map<h256, unsigned> m_indices;
 	RangeMask<unsigned> m_asked;
