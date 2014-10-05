@@ -63,8 +63,8 @@ private:
 		Guard l(m_fetch);
 		m_remaining.clear();
 		m_indices.clear();
-		m_asked.clear();
-		m_attempted.clear();
+		m_asked.reset();
+		m_attempted.reset();
 	}
 
 	DownloadMan* m_man = nullptr;
@@ -109,7 +109,7 @@ public:
 				i->resetFetch();
 		}
 		m_chain.clear();
-		m_blocksGot.clear();
+		m_blocksGot.reset();
 	}
 
 	RangeMask<unsigned> taken(bool _desperate = false) const
