@@ -63,7 +63,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 			unsigned h = 0;
 			m_man->foreachSub([&](DownloadSub const& sub)
 			{
-				if (sub.asked().contains(i))
+				if (sub.askedContains(i))
 					s = h;
 				h++;
 			});
