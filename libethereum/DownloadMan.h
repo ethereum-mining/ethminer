@@ -94,6 +94,7 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
+		WriteGuard l(m_lock);
 		m_chain.clear();
 		m_chain.reserve(_chain.size());
 		for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
@@ -108,12 +109,14 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
+		WriteGuard l(m_lock);
 		m_chain.clear();
 		m_blocksGot.reset();
 	}
 
 	RangeMask<unsigned> taken(bool _desperate = false) const
 	{
+		ReadGuard l(m_lock);
 		auto ret = m_blocksGot;
 		if (!_desperate)
 		{
@@ -126,15 +129,17 @@ public:
 
 	bool isComplete() const
 	{
+		ReadGuard l(m_lock);
 		return m_blocksGot.full();
 	}
 
-	h256s chain() const { return m_chain; }
+	h256s chain() const { ReadGuard l(m_lock); return m_chain; }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
-	RangeMask<unsigned> blocksGot() const { return m_blocksGot; }
+	RangeMask<unsigned> blocksGot() const { ReadGuard l(m_lock); return m_blocksGot; }
 
 private:
+	mutable SharedMutex m_lock;
 	h256s m_chain;
 	RangeMask<unsigned> m_blocksGot;
 
