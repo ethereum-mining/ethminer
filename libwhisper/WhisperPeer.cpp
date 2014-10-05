@@ -92,15 +92,17 @@ void WhisperPeer::sendMessages()
 		n++;
 	}
 
-	// pause before sending if no messages to send
-	if (!n)
+	if (n)
+	{
+		RLPStream s;
+		prep(s);
+		s.appendList(n + 1) << MessagesPacket;
+		s.appendRaw(amalg.out(), n);
+		sealAndSend(s);
+	}
+	else
+		// just pause if no messages to send
 		this_thread::sleep_for(chrono::milliseconds(100));
-
-	RLPStream s;
-	prep(s);
-	s.appendList(n + 1) << MessagesPacket;
-	s.appendRaw(amalg.out(), n);
-	sealAndSend(s);
 }
 
 void WhisperPeer::noteNewMessage(h256 _h, Message const& _m)
