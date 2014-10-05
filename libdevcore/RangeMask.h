@@ -43,7 +43,7 @@ public:
 	using Range = std::pair<T, T>;
 	using Ranges = std::vector<Range>;
 
-	RangeMask() {}
+	RangeMask(): m_all(0, 0) {}
 	RangeMask(T _begin, T _end): m_all(_begin, _end) {}
 	RangeMask(Range const& _c): m_all(_c) {}
 
@@ -150,12 +150,18 @@ public:
 
 	bool full() const
 	{
-		return m_ranges.size() == 1 && m_ranges.begin()->first == m_all.first && m_ranges.begin()->second == m_all.second;
+		return m_all.first == m_all.second || (m_ranges.size() == 1 && m_ranges.begin()->first == m_all.first && m_ranges.begin()->second == m_all.second);
 	}
 
 	void clear()
 	{
 		m_ranges.clear();
+	}
+
+	void reset()
+	{
+		m_ranges.clear();
+		m_all = std::make_pair(0, 0);
 	}
 
 	std::pair<T, T> const& all() const { return m_all; }
