@@ -54,8 +54,9 @@ public:
 	/// Nothing doing here.
 	void doneFetch() { resetFetch(); }
 
-	RangeMask<unsigned> const& asked() const { Guard l(m_fetch); return m_asked; }
-	RangeMask<unsigned> const& attemped() const { Guard l(m_fetch); return m_attempted; }
+	bool askedContains(unsigned _i) const { Guard l(m_fetch); return m_asked.contains(_i); }
+	RangeMask<unsigned> const& asked() const { return m_asked; }
+	RangeMask<unsigned> const& attemped() const { return m_attempted; }
 
 private:
 	void resetFetch()		// Called by DownloadMan when we need to reset the download.
@@ -63,8 +64,8 @@ private:
 		Guard l(m_fetch);
 		m_remaining.clear();
 		m_indices.clear();
-		m_asked.clear();
-		m_attempted.clear();
+		m_asked.reset();
+		m_attempted.reset();
 	}
 
 	DownloadMan* m_man = nullptr;
@@ -94,14 +95,12 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
-		{
-			WriteGuard l(x_chain);
-			m_chain.clear();
-			m_chain.reserve(_chain.size());
-			for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
-				m_chain.push_back(*i);
-			m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
-		}
+		WriteGuard l(m_lock);
+		m_chain.clear();
+		m_chain.reserve(_chain.size());
+		for (auto i = _chain.rbegin(); i != _chain.rend(); ++i)
+			m_chain.push_back(*i);
+		m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
 	}
 
 	void reset()
@@ -111,15 +110,14 @@ public:
 			for (auto i: m_subs)
 				i->resetFetch();
 		}
-		{
-			WriteGuard l(x_chain);
-			m_chain.clear();
-			m_blocksGot.clear();
-		}
+		WriteGuard l(m_lock);
+		m_chain.clear();
+		m_blocksGot.reset();
 	}
 
 	RangeMask<unsigned> taken(bool _desperate = false) const
 	{
+		ReadGuard l(m_lock);
 		auto ret = m_blocksGot;
 		if (!_desperate)
 		{
@@ -132,16 +130,17 @@ public:
 
 	bool isComplete() const
 	{
+		ReadGuard l(m_lock);
 		return m_blocksGot.full();
 	}
 
-	h256s chain() const { ReadGuard l(x_chain); return m_chain; }
+	h256s chain() const { ReadGuard l(m_lock); return m_chain; }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
-	RangeMask<unsigned> blocksGot() const { return m_blocksGot; }
+	RangeMask<unsigned> blocksGot() const { ReadGuard l(m_lock); return m_blocksGot; }
 
 private:
-	mutable SharedMutex x_chain;
+	mutable SharedMutex m_lock;
 	h256s m_chain;
 	RangeMask<unsigned> m_blocksGot;
 
