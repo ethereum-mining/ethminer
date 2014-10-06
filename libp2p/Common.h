@@ -96,6 +96,7 @@ struct PeerInfo
 	std::chrono::steady_clock::duration lastPing;
 	std::set<std::string> caps;
 	unsigned socket;
+	std::map<std::string, std::string> notes;
 };
 
 }

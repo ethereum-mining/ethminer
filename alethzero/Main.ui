@@ -1756,7 +1756,7 @@ font-size: 14pt</string>
   </action>
   <action name="importKeyFile">
    <property name="text">
-    <string>Import Key &amp;File...</string>
+    <string>Claim Ether Presale &amp;Wallet...</string>
    </property>
   </action>
   <action name="go">
