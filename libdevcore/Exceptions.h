@@ -22,27 +22,29 @@
 #pragma once
 
 #include <exception>
+#include <boost/exception/all.hpp>
+#include <boost/throw_exception.hpp>
+#include <libdevcrypto/Common.h>
 #include "CommonIO.h"
 #include "CommonData.h"
 #include "FixedHash.h"
 
 namespace dev
 {
+// base class for all exceptions
+struct Exception: virtual std::exception, virtual boost::exception {};
 
-class Exception: public std::exception
-{
-public:
-	virtual std::string description() const { return typeid(*this).name(); }
-	virtual char const* what() const noexcept { return typeid(*this).name(); }
-};
+struct BadHexCharacter: virtual Exception {};
+struct RLPException: virtual Exception {};
+struct BadCast: virtual RLPException {};
+struct BadRLP: virtual RLPException {};
+struct NoNetworking: virtual Exception {};
+struct NoUPnPDevice: virtual Exception {};
+struct RootNotFound: virtual Exception {};
+struct FileError: virtual Exception {};
 
-class BadHexCharacter: public Exception {};
-
-class RLPException: public Exception {};
-class BadCast: public RLPException {};
-class BadRLP: public RLPException {};
-class NoNetworking: public Exception {};
-class NoUPnPDevice: public Exception {};
-class RootNotFound: public Exception {};
-
+// error information to be added to exceptions
+typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;
+typedef boost::error_info<struct tag_comment, Address> errinfo_wrongAddress;
+typedef boost::error_info<struct tag_comment, std::string> errinfo_comment;
 }

@@ -54,7 +54,7 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
 	if (!db)
-		throw DatabaseAlreadyOpen();
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 
 	cnote << "Opened state DB.";
 	return OverlayDB(db);
@@ -133,7 +133,7 @@ void State::paranoia(std::string const& _when, bool _enforceRefs) const
 	if (!isTrieGood(_enforceRefs, false))
 	{
 		cwarn << "BAD TRIE" << _when;
-		throw InvalidTrie();
+		BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 #else
 	(void)_when;
@@ -334,7 +334,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			{
 				// TODO: Slightly nicer handling? :-)
 				cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-				cerr << _e.description() << endl;
+				cerr << diagnostic_information(_e) << endl;
 			}
 			catch (std::exception const& _e)
 			{
@@ -386,6 +386,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 		{
 			// TODO: Slightly nicer handling? :-)
 			cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+			cerr << boost::current_exception_diagnostic_information() << endl;
 			exit(1);
 		}
 
@@ -503,6 +504,14 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 					else
 						_tq.setFuture(i);
 				}
+				catch (Exception const& _e)
+				{
+					// Something else went wrong - drop it.
+					_tq.drop(i.first);
+					if (o_transactionQueueChanged)
+						*o_transactionQueueChanged = true;
+					cwarn << "Sync went wrong\n" << diagnostic_information(_e);
+				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
@@ -527,7 +536,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 #endif
 
 	if (m_currentBlock.parentHash != m_previousBlock.hash)
-		throw InvalidParentHash();
+		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
 	m_currentBlock.populate(_block, _checkNonce);
@@ -553,10 +562,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 			cnote << m_state.root() << "\n" << m_state;
 			cnote << *this;
 			cnote << "INVALID: " << tr[1].toHash<h256>();
-			throw InvalidTransactionStateRoot();
+			BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
-			throw InvalidTransactionGasUsed();
+			BOOST_THROW_EXCEPTION(InvalidTransactionGasUsed());
 		bytes k = rlp(i);
 		transactionManifest.insert(&k, tr.data());
 		++i;
@@ -565,7 +574,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	if (m_currentBlock.transactionsRoot && transactionManifest.root() != m_currentBlock.transactionsRoot)
 	{
 		cwarn << "Bad transactions state root!";
-		throw InvalidTransactionStateRoot();
+		BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
 	}
 
 	// Initialise total difficulty calculation.
@@ -578,16 +587,16 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	for (auto const& i: RLP(_block)[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
-			throw UncleInChain(knownUncles, sha3(i.data()));
+			BOOST_THROW_EXCEPTION(UncleInChain(knownUncles, sha3(i.data()) ));
 
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))
-			throw DuplicateUncleNonce();
+			BOOST_THROW_EXCEPTION(DuplicateUncleNonce());
 		if (_bc)
 		{
 			BlockInfo uncleParent(_bc->block(uncle.parentHash));
 			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
-				throw UncleTooOld();
+				BOOST_THROW_EXCEPTION(UncleTooOld());
 			uncle.verifyParent(uncleParent);
 		}
 
@@ -611,7 +620,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		cnote << *this;
 		// Rollback the trie.
 		m_db.rollback();
-		throw InvalidStateRoot();
+		BOOST_THROW_EXCEPTION(InvalidStateRoot());
 	}
 
 	return tdIncrease;
@@ -677,13 +686,13 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		s.cleanup(false);
 		return true;
 	}
-	catch (Exception const& e)
+	catch (Exception const& _e)
 	{
-		cwarn << "Bad block: " << e.description();
+		cwarn << "Bad block: " << diagnostic_information(_e);
 	}
-	catch (std::exception const& e)
+	catch (std::exception const& _e)
 	{
-		cwarn << "Bad block: " << e.what();
+		cwarn << "Bad block: " << _e.what();
 	}
 
 	return false;
@@ -863,7 +872,7 @@ void State::subBalance(Address _id, bigint _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end() || (bigint)it->second.balance() < _amount)
-		throw NotEnoughCash();
+		BOOST_THROW_EXCEPTION(NotEnoughCash());
 	else
 		it->second.addBalance(-_amount);
 }
@@ -1038,7 +1047,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 		if (storageRoot(e.t().receiveAddress) && m_db.lookup(storageRoot(e.t().receiveAddress)).empty())
 		{
 			cwarn << "TRIE immediately after execution; no node for receiveAddress";
-			throw InvalidTrie();
+			BOOST_THROW_EXCEPTION(InvalidTrie());
 		}
 	}
 #endif
@@ -1093,11 +1102,11 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << _e.description();
+			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << _e.description();
+			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
 		}
 		catch (std::exception const& _e)
 		{
@@ -1160,11 +1169,11 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	}
 	catch (VMException const& _e)
 	{
-		clog(StateChat) << "VM Exception: " << _e.description();
+		clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
 	}
 	catch (Exception const& _e)
 	{
-		clog(StateChat) << "Exception in VM: " << _e.description();
+		clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
 	}
 	catch (std::exception const& _e)
 	{
