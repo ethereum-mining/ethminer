@@ -277,8 +277,10 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	auto pd = details(bi.parentHash);
 	if (!pd)
 	{
-		cwarn << "Odd: details is returning false despite block known:" << RLP(pd.rlp());
-		cwarn << "Block:" << RLP(block(bi.parentHash));
+		auto pdata = pd.rlp();
+		cwarn << "Odd: details is returning false despite block known:" << RLP(pdata);
+		auto parentBlock = block(bi.parentHash);
+		cwarn << "Block:" << RLP(parentBlock);
 	}
 
 	// Check it's not crazy
@@ -447,7 +449,8 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
 		ret.insert(p);		// TODO: check: should this be details(p).parent?
-		for (auto i: RLP(block(p))[2])
+		auto b = block(p);
+		for (auto i: RLP(b)[2])
 			ret.insert(sha3(i.data()));
 	}
 	return ret;
