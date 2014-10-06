@@ -70,7 +70,7 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { return m_grabbing == Grabbing::Chain; }
+	bool isSyncing() const { return m_grabbing == Asking::Chain; }
 
 private:
 	void noteHavePeerState(EthereumPeer* _who);
@@ -103,7 +103,7 @@ private:
 	virtual void onStopping() { stopWorking(); }
 
 	void readyForSync();
-	void updateGrabbing(Grabbing _g);
+	void updateGrabbing(Asking _g);
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
@@ -111,7 +111,7 @@ private:
 
 	u256 m_networkId;
 
-	Grabbing m_grabbing = Grabbing::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
+	Asking m_grabbing = Asking::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
 
 	DownloadMan m_man;
 

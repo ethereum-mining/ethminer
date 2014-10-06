@@ -64,26 +64,43 @@ private:
 	void tryGrabbingHashChain();
 
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
-	void ensureGettingChain();
+	void ensureAskingBlocks();
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
-	void continueGettingChain();
+	void continueSync();
 
-	void giveUpOnFetch();
+	void finishSync();
 
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
-	void setAsking(Asking _g, bool _helping = false);
-	void setHelping(bool _helping = false) { setAsking(m_asking, _helping); }
+	void setAsking(Asking _g, bool _isSyncing);
+
+	void setNeedsSyncing(h256 _latestHash, u256 _td) { m_latestHash = _latestHash; m_totalDifficulty = _td; }
+	bool needsSyncing() const { return !!m_latestHash; }
+	bool isSyncing() const { return m_isSyncing; }
 	
+	/// Peer's protocol version.
 	unsigned m_protocolVersion;
+	/// Peer's network id.
 	u256 m_networkId;
 
+	/// What, if anything, we last asked the other peer for.
 	Asking m_asking;
-	Syncing m_syncing;
 
+	/// Whether this peer is in the process of syncing or not. Only one peer can be syncing at once.
+	bool m_isSyncing = false;
+
+	/// These are determined through either a Status message or from NewBlock.
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
+	/// Once a sync is started on this peer, they are cleared.
+
+	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
+	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
 	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
 
+	/// Once we're asking for blocks, this becomes in use.
+	DownloadSub m_sub;
+
+	/// Have we received a GetTransactions packet that we haven't yet answered?
 	bool m_requireTransactions;
 
 	Mutex x_knownBlocks;
@@ -91,7 +108,6 @@ private:
 	std::set<h256> m_knownTransactions;
 	std::mutex x_knownTransactions;
 
-	DownloadSub m_sub;
 };
 
 }
