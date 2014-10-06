@@ -77,8 +77,10 @@ private:
 	/// Session wants to pass us a block that we might not have.
 	/// @returns true if we didn't have it.
 	bool noteBlock(h256 _hash, bytesConstRef _data);
+
 	/// Session has finished getting the chain of hashes.
-	void noteHaveChain(EthereumPeer* _who);
+	bool shouldGrabBlocks(EthereumPeer* _who);
+
 	/// Called when the peer can no longer provide us with any needed blocks.
 	void noteDoneBlocks(EthereumPeer* _who);
 
@@ -103,7 +105,7 @@ private:
 	virtual void onStopping() { stopWorking(); }
 
 	void readyForSync();
-	void updateGrabbing(Asking _g);
+	void updateGrabbing(Asking _g, EthereumPeer* _ignore);
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
