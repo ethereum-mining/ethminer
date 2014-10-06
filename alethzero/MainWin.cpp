@@ -107,10 +107,11 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
-    cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-    cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
+	cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
+	auto block = BlockChain::createGenesisBlock();
+	cerr << "Block RLP: " << RLP(block) << endl;
+	cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
 	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
@@ -462,7 +463,7 @@ QString Main::lookup(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About AlethZero PoC-" + QString(dev::Version).section('.', 1, 1), QString("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nThis software wouldn't be where it is today without the many leaders & contributors including:\n\nVitalik Buterin, Tim Hughes, caktux, Nick Savers, Eric Lombrozo, Marko Simovic, the many testers and the Berlin \304\220\316\236V team.");
+	QMessageBox::about(this, "About AlethZero PoC-" + QString(dev::Version).section('.', 1, 1), QString("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
 }
 
 void Main::on_paranoia_triggered()
