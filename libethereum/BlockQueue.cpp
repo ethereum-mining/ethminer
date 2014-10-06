@@ -58,7 +58,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 #if ETH_CATCH
 	catch (Exception const& _e)
 	{
-		cwarn << "Ignoring malformed block: " << _e.description();
+		cwarn << "Ignoring malformed block: " << diagnostic_information(_e);
 		return false;
 	}
 #endif

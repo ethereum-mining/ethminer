@@ -30,6 +30,7 @@
 #include <memory>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/Exceptions.h>
 #include <libdevcrypto/SHA3.h>
 #include "MemoryDB.h"
 #include "OverlayDB.h"
@@ -44,7 +45,7 @@ namespace eth
 struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 6; };
 #define tdebug clog(TrieDBChannel)
 
-class InvalidTrie: public std::exception {};
+struct InvalidTrie: virtual dev::Exception {};
 extern const h256 c_shaNull;
 
 /**
@@ -81,7 +82,7 @@ public:
 
 		/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
 		if (!node(m_root).size())
-			throw RootNotFound();
+			BOOST_THROW_EXCEPTION(RootNotFound());
 	}
 	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == h256() ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
@@ -109,7 +110,7 @@ public:
 		else if (_r.isList())
 			descendList(_r, _keyMask, _wasExt, _out, _indent);
 		else
-			throw InvalidTrie();
+			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
 	void descendList(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
@@ -130,7 +131,7 @@ public:
 					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
 		}
 		else
-			throw InvalidTrie();
+			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
 	std::set<h256> leftOvers(std::ostream* _out = nullptr) const
@@ -153,6 +154,7 @@ public:
 		}
 		catch (...)
 		{
+			cwarn << boost::current_exception_diagnostic_information();
 			return false;
 		}
 	}
@@ -374,7 +376,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next()
 				cwarn << rlp;
 				auto c = rlp.itemCount();
 				cwarn << c;
-				throw InvalidTrie();
+				BOOST_THROW_EXCEPTION(InvalidTrie());
 #else
 				m_that = nullptr;
 				return;

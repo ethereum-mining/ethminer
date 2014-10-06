@@ -46,9 +46,10 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		if (_checkSender)
 			m_sender = sender();
 	}
-	catch (RLPException const&)
+	catch (Exception & _e)
 	{
-		throw InvalidTransactionFormat(field, rlp[field].data());
+		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
+		throw;
 	}
 }
 
@@ -60,6 +61,7 @@ Address Transaction::safeSender() const noexcept
 	}
 	catch (...)
 	{
+		cwarn << "safeSender() did throw an exception: " <<  boost::current_exception_diagnostic_information();
 		return Address();
 	}
 }
@@ -76,7 +78,7 @@ Address Transaction::sender() const
 		byte pubkey[65];
 		int pubkeylen = 65;
 		if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig[0].data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
-			throw InvalidSignature();
+			BOOST_THROW_EXCEPTION(InvalidSignature());
 
 		// TODO: check right160 is correct and shouldn't be left160.
 		m_sender = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
@@ -103,7 +105,7 @@ void Transaction::sign(Secret _priv)
 	h256 nonce = kFromMessage(msg, _priv);
 
 	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig[0].data(), _priv.data(), nonce.data(), &v))
-		throw InvalidSignature();
+		BOOST_THROW_EXCEPTION(InvalidSignature());
 #if ETH_ADDRESS_DEBUG
 	cout << "---- SIGN -------------------------------" << endl;
 	cout << "MSG: " << msg << endl;
