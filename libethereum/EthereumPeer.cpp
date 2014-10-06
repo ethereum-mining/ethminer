@@ -115,7 +115,7 @@ void EthereumPeer::tryGrabbingHashChain()
 
 void EthereumPeer::giveUpOnFetch()
 {
-	clogS(NetNote) << "GIVE UP FETCH";
+	clogS(NetNote) << "Finishing fetch...";
 
 	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 	if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)

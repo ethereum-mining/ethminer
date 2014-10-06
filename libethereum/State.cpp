@@ -975,7 +975,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 				RLP r(i.second);
 				TrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
 				for (auto const& j: storageDB) { (void)j; }
-				if (!e && r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+				if (!e && r[3].toHash<h256>() && m_db.lookup(r[3].toHash<h256>()).empty())
 					return false;
 			}
 		}
