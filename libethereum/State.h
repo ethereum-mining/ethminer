@@ -40,6 +40,8 @@
 
 namespace dev
 {
+namespace test{ class FakeExtVM;}
+
 namespace eth
 {
 
@@ -75,6 +77,7 @@ struct TransactionReceipt
 class State
 {
 	friend class ExtVM;
+	friend class test::FakeExtVM;
 	friend class Executive;
 
 public:

@@ -23,6 +23,7 @@
 
 #include <random>
 #include "Exceptions.h"
+#include <libdevcore/Log.h>
 using namespace std;
 using namespace dev;
 
@@ -67,7 +68,7 @@ int dev::fromHex(char _i)
 		return _i - 'a' + 10;
 	if (_i >= 'A' && _i <= 'F')
 		return _i - 'A' + 10;
-	throw BadHexCharacter();
+	BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
 }
 
 bytes dev::fromHex(std::string const& _s)
@@ -81,13 +82,13 @@ bytes dev::fromHex(std::string const& _s)
 		{
 			ret.push_back(fromHex(_s[s++]));
 		}
-		catch (...){ ret.push_back(0); }
+		catch (...){ ret.push_back(0); cwarn << boost::current_exception_diagnostic_information(); }
 	for (unsigned i = s; i < _s.size(); i += 2)
 		try
 		{
 			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 		}
-		catch (...){ ret.push_back(0); }
+		catch (...){ ret.push_back(0); cwarn << boost::current_exception_diagnostic_information(); }
 	return ret;
 }
 
