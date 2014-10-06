@@ -54,14 +54,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_t.nonce != nonceReq)
 	{
 		clog(StateChat) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
-		throw InvalidNonce(nonceReq, m_t.nonce);
+		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce));
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
 	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
 	{
 		clog(StateChat) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
-		throw GasPriceTooLow();
+		BOOST_THROW_EXCEPTION(GasPriceTooLow());
 	}
 
 	// Check gas cost is enough.
@@ -70,7 +70,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_t.gas < gasCost)
 	{
 		clog(StateChat) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
-		throw OutOfGas();
+		BOOST_THROW_EXCEPTION(OutOfGas());
 	}
 
 	u256 cost = m_t.value + m_t.gas * m_t.gasPrice;
@@ -79,14 +79,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_s.balance(m_sender) < cost)
 	{
 		clog(StateChat) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
-		throw NotEnoughCash();
+		BOOST_THROW_EXCEPTION(NotEnoughCash());
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
-		throw BlockGasLimitReached();
+		BOOST_THROW_EXCEPTION(BlockGasLimitReached());
 	}
 
 	// Increment associated nonce for sender.
@@ -184,12 +184,12 @@ bool Executive::go(OnOpFunc const& _onOp)
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << _e.description();
+			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
 			m_endGas = m_vm->gas();
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << _e.description();
+			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
 		}
 		catch (std::exception const& _e)
 		{

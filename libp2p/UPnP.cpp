@@ -87,7 +87,7 @@ UPnP::UPnP()
 #endif
 	{
 		cnote << "UPnP device not found.";
-		throw NoUPnPDevice();
+		BOOST_THROW_EXCEPTION(NoUPnPDevice());
 	}
 }
 
