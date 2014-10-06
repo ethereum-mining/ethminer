@@ -183,6 +183,7 @@ private:
 
 	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
 
