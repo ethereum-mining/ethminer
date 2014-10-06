@@ -476,6 +476,65 @@ void QEthereum::poll()
 			emit watchChanged(w);
 }
 
+// TODO: repot and hook all these up.
+
+QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c): QObject(_p), m_face(_c)
+{
+}
+
+QWhisper::~QWhisper()
+{
+}
+
+// probably want a better way of doing this. somehow guarantee that the face() will always be available as long as this object is.
+struct NoInterface: public Exception {};
+
+std::shared_ptr<dev::shh::Interface> QWhisper::face() const
+{
+	auto ret = m_face.lock();
+	if (!ret)
+		throw NoInterface();
+	return ret;
+}
+
+void QWhisper::faceDieing()
+{
+
+}
+
+void QWhisper::send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload)
+{
+	(void)_dest;
+	(void)_from;
+	(void)_topic;
+	(void)_payload;
+}
+
+unsigned QWhisper::newWatch(QString _json)
+{
+	(void)_json;
+	return 0;
+}
+
+QString QWhisper::watchMessages(unsigned _w)
+{
+	(void)_w;
+	return "";
+}
+
+void QWhisper::killWatch(unsigned _w)
+{
+	(void)_w;
+}
+
+void QWhisper::clearWatches()
+{
+}
+
+void QWhisper::poll()
+{
+}
+
 // extra bits needed to link on VS
 #ifdef _MSC_VER
 

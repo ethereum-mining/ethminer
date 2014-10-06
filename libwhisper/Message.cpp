@@ -14,28 +14,15 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CryptoHeaders.h
- * @author Tim Hughes <tim@twistedfury.com>
+/** @file Message.cpp
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
-#pragma once
 
-// need to leave this one disabled
-#pragma GCC diagnostic ignored "-Wunused-function"
+#include "Message.h"
 
-#pragma warning(push)
-#pragma warning(disable:4100 4244)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#include <aes.h>
-#include <pwdbased.h>
-#include <modes.h>
-#include <filters.h>
-#include <secp256k1/secp256k1.h>
-#pragma warning(pop)
-#pragma GCC diagnostic pop
+using namespace std;
+using namespace dev;
+using namespace dev::p2p;
+using namespace dev::shh;
+#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "

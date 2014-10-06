@@ -35,7 +35,7 @@ namespace eth
 {
 
 const unsigned c_protocolVersion = 33;
-const unsigned c_databaseVersion = 1;
+const unsigned c_databaseVersion = 2;
 
 static const vector<pair<u256, string>> g_units =
 {

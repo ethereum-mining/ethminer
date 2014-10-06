@@ -276,7 +276,10 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 	auto pd = details(bi.parentHash);
 	if (!pd)
+	{
 		cwarn << "Odd: details is returning false despite block known:" << RLP(pd.rlp());
+		cwarn << "Block:" << RLP(block(bi.parentHash));
+	}
 
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
@@ -479,12 +482,15 @@ bytes BlockChain::block(h256 _hash) const
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
+	if (!d.size())
+	{
+		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		return bytes();
+	}
+
 	WriteGuard l(x_cache);
 	m_cache[_hash].resize(d.size());
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
-
-	if (!d.size())
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
 
 	return m_cache[_hash];
 }

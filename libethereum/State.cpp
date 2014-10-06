@@ -577,6 +577,9 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
 	for (auto const& i: RLP(_block)[2])
 	{
+		if (knownUncles.count(sha3(i.data())))
+			throw UncleInChain(knownUncles, sha3(i.data()));
+
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))
 			throw DuplicateUncleNonce();
@@ -585,8 +588,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 			BlockInfo uncleParent(_bc->block(uncle.parentHash));
 			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
 				throw UncleTooOld();
-			if (knownUncles.count(sha3(i.data())))
-				throw UncleInChain();
 			uncle.verifyParent(uncleParent);
 		}
 
@@ -725,7 +726,7 @@ void State::commitToMine(BlockChain const& _bc)
 			auto us = _bc.details(p).children;
 			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
 			for (auto const& u: us)
-				if (!knownUncles.count(BlockInfo::headerHash(_bc.block(u))))	// ignore any uncles/mainline blocks that we know about. We use header-hash for this.
+				if (!knownUncles.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
 					ubi.fillStream(unclesData, true);
@@ -965,7 +966,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 				RLP r(i.second);
 				TrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
 				for (auto const& j: storageDB) { (void)j; }
-				if (!e && r[3].toHash<h256>() != EmptySHA3 &&  m_db.lookup(r[3].toHash<h256>()).empty())
+				if (!e && r[3].toHash<h256>() && m_db.lookup(r[3].toHash<h256>()).empty())
 					return false;
 			}
 		}
@@ -1132,7 +1133,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, _endowment, h256(), h256());
+	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
 	VM vm(*_gas);
