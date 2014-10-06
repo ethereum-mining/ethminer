@@ -90,48 +90,43 @@ void EthereumHost::notePeerStateChanged(EthereumPeer* _who)
 	}
 
 	// otherwise check to see if we should be downloading...
-	_who->tryGrabbingHashChain();
+	_who->attemptSyncing();
 }
 
-void EthereumHost::updateGrabbing(Asking _g)
+void EthereumHost::updateGrabbing(Asking _g, EthereumPeer* _ignore)
 {
 	m_grabbing = _g;
 	if (_g == Asking::Nothing)
 		readyForSync();
-	else if (_g == Asking::Chain)
+	else if (_g == Asking::Blocks)
 		for (auto j: peers())
-			j->cap<EthereumPeer>()->ensureGettingChain();
+			if (j->cap<EthereumPeer>().get() != _ignore && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
+				j->cap<EthereumPeer>()->transition(Asking::Blocks);
 }
 
-void EthereumHost::noteHaveChain(EthereumPeer* _from)
+bool EthereumHost::shouldGrabBlocks(EthereumPeer* _from)
 {
-	auto td = _from->m_totalDifficulty;
+	auto td = _from->m_syncingTotalDifficulty;
+	auto lh = _from->m_syncingLatestHash;
 
-	if (_from->m_neededBlocks.empty())
+	if (_from->m_syncingNeededBlocks.empty())
 	{
-		_from->setGrabbing(Asking::Nothing);
 		updateGrabbing(Asking::Nothing);
-		return;
+		return false;
 	}
 
-	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain.details().totalDifficulty << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
+	clog(NetNote) << "Hash-chain COMPLETE:" << td << "vs" << m_chain.details().totalDifficulty << ";" << _from->m_syncingNeededBlocks.size() << " blocks, ends" << _from->m_syncingNeededBlocks.back().abridged();
 
-	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
+	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == lh))
 	{
 		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-		_from->setGrabbing(Asking::Nothing);
 		updateGrabbing(Asking::Nothing);
-		return;
+		return false;
 	}
 
-	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << _from->m_latestHash.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
+	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << lh.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
 
-	// Looks like it's the best yet for total difficulty. Set to download.
-	m_man.resetToChain(_from->m_neededBlocks);
-	m_latestBlockSent = _from->m_latestHash;
-
-	_from->setGrabbing(Asking::Chain);
-	updateGrabbing(Asking::Chain);
+	return true;
 }
 
 void EthereumHost::readyForSync()
@@ -139,7 +134,7 @@ void EthereumHost::readyForSync()
 	// start grabbing next hash chain if there is one.
 	for (auto j: peers())
 	{
-		j->cap<EthereumPeer>()->tryGrabbingHashChain();
+		j->cap<EthereumPeer>()->attemptSyncing();
 		if (j->cap<EthereumPeer>()->m_grabbing == Asking::Hashes)
 		{
 			m_grabbing = Asking::Hashes;
@@ -158,7 +153,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
 		updateGrabbing(Asking::Nothing);
 		m_man.reset();
 	}
-	if (_who->m_grabbing == Asking::Chain)
+	if (_who->isSyncing())
 	{
 		// Done our chain-get.
 		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";

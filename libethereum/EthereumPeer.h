@@ -42,6 +42,7 @@ namespace eth
 /**
  * @brief The EthereumPeer class
  * @todo Document fully.
+ * @todo make state transitions thread-safe.
  */
 class EthereumPeer: public p2p::Capability
 {
@@ -59,21 +60,20 @@ private:
 	virtual bool interpret(RLP const& _r);
 
 	void sendStatus();
-	void startInitialSync();
 
-	void tryGrabbingHashChain();
+	void transition(Asking _wantState);
+
+	void attemptSyncing();
 
 	/// Ensure that we are waiting for a bunch of blocks from our peer.
 	void ensureAskingBlocks();
-	/// Ensure that we are waiting for a bunch of blocks from our peer.
-	void continueSync();
 
 	void finishSync();
 
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
 	void setAsking(Asking _g, bool _isSyncing);
 
-	void setNeedsSyncing(h256 _latestHash, u256 _td) { m_latestHash = _latestHash; m_totalDifficulty = _td; }
+	void setNeedsSyncing(h256 _latestHash, u256 _td);
 	bool needsSyncing() const { return !!m_latestHash; }
 	bool isSyncing() const { return m_isSyncing; }
 	
@@ -89,13 +89,15 @@ private:
 	bool m_isSyncing = false;
 
 	/// These are determined through either a Status message or from NewBlock.
-	h256 m_latestHash;						///< Peer's latest block's hash.
+	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
-	/// Once a sync is started on this peer, they are cleared.
+	/// Once a sync is started on this peer, they are cleared and moved into m_syncing*.
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
-	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
+	h256s m_syncingNeededBlocks;					///< The blocks that we should download from this peer.
+	h256 m_syncingLatestHash;						///< Peer's latest block's hash, as of the current sync.
+	u256 m_syncingTotalDifficulty;					///< Peer's latest block's total difficulty, as of the current sync.
 
 	/// Once we're asking for blocks, this becomes in use.
 	DownloadSub m_sub;
