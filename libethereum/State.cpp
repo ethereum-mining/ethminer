@@ -1138,8 +1138,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	}
 
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-	while (addressInUse(newAddress))
-		newAddress = (u160)newAddress + 1;
 
 	// Set up new account...
 	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
