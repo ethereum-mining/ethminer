@@ -59,9 +59,10 @@ enum EthereumPacket
 	BlockHashesPacket,
 	GetBlocksPacket,
 	BlocksPacket,
+	NewBlockPacket,
 };
 
-enum class Grabbing
+enum class Asking
 {
 	State,
 	Hashes,

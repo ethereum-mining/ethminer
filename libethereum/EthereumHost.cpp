@@ -77,28 +77,28 @@ void EthereumHost::notePeerStateChanged(EthereumPeer* _who)
 	// TODO: FIX: BUG: Better state management!
 
 	// if already downloading hash-chain, ignore.
-	if (m_grabbing != Grabbing::Nothing)
+	if (m_grabbing != Asking::Nothing)
 	{
 		for (auto const& i: peers())
-			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Grabbing::Presync)
+			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Asking::Presync)
 			{
 				clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
 				_who->ensureGettingChain();
 				return;
 			}
-		m_grabbing = Grabbing::Nothing;
+		m_grabbing = Asking::Nothing;
 	}
 
 	// otherwise check to see if we should be downloading...
 	_who->tryGrabbingHashChain();
 }
 
-void EthereumHost::updateGrabbing(Grabbing _g)
+void EthereumHost::updateGrabbing(Asking _g)
 {
 	m_grabbing = _g;
-	if (_g == Grabbing::Nothing)
+	if (_g == Asking::Nothing)
 		readyForSync();
-	else if (_g == Grabbing::Chain)
+	else if (_g == Asking::Chain)
 		for (auto j: peers())
 			j->cap<EthereumPeer>()->ensureGettingChain();
 }
@@ -109,8 +109,8 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 
 	if (_from->m_neededBlocks.empty())
 	{
-		_from->setGrabbing(Grabbing::Nothing);
-		updateGrabbing(Grabbing::Nothing);
+		_from->setGrabbing(Asking::Nothing);
+		updateGrabbing(Asking::Nothing);
 		return;
 	}
 
@@ -119,8 +119,8 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
 	{
 		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-		_from->setGrabbing(Grabbing::Nothing);
-		updateGrabbing(Grabbing::Nothing);
+		_from->setGrabbing(Asking::Nothing);
+		updateGrabbing(Asking::Nothing);
 		return;
 	}
 
@@ -130,8 +130,8 @@ void EthereumHost::noteHaveChain(EthereumPeer* _from)
 	m_man.resetToChain(_from->m_neededBlocks);
 	m_latestBlockSent = _from->m_latestHash;
 
-	_from->setGrabbing(Grabbing::Chain);
-	updateGrabbing(Grabbing::Chain);
+	_from->setGrabbing(Asking::Chain);
+	updateGrabbing(Asking::Chain);
 }
 
 void EthereumHost::readyForSync()
@@ -140,9 +140,9 @@ void EthereumHost::readyForSync()
 	for (auto j: peers())
 	{
 		j->cap<EthereumPeer>()->tryGrabbingHashChain();
-		if (j->cap<EthereumPeer>()->m_grabbing == Grabbing::Hashes)
+		if (j->cap<EthereumPeer>()->m_grabbing == Asking::Hashes)
 		{
-			m_grabbing = Grabbing::Hashes;
+			m_grabbing = Asking::Hashes;
 			return;
 		}
 	}
@@ -155,15 +155,15 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
 	{
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
-		updateGrabbing(Grabbing::Nothing);
+		updateGrabbing(Asking::Nothing);
 		m_man.reset();
 	}
-	if (_who->m_grabbing == Grabbing::Chain)
+	if (_who->m_grabbing == Asking::Chain)
 	{
 		// Done our chain-get.
 		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
 		// TODO: note that peer is BADBADBAD!
-		updateGrabbing(Grabbing::Nothing);
+		updateGrabbing(Asking::Nothing);
 		m_man.reset();
 	}
 }
@@ -192,7 +192,7 @@ void EthereumHost::doWork()
 
 void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
 {
-	bool resendAll = (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
+	bool resendAll = (m_grabbing == Asking::Nothing && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
 	{
 		lock_guard<recursive_mutex> l(m_incomingLock);
 		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
@@ -218,7 +218,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 				}
 			ep->clearKnownTransactions();
 			
-			if (n)
+			if (n || ep->m_requireTransactions)
 			{
 				RLPStream ts;
 				EthereumPeer::prep(ts);
@@ -233,7 +233,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 
 void EthereumHost::reset()
 {
-	m_grabbing = Grabbing::Nothing;
+	m_grabbing = Asking::Nothing;
 
 	m_man.resetToChain(h256s());
 
@@ -247,7 +247,7 @@ void EthereumHost::reset()
 void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 {
 	// If we've finished our initial sync send any new blocks.
-	if (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	if (m_grabbing == Asking::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
 		// TODO: clean up
 		h256s hs;
