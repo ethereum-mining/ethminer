@@ -168,9 +168,6 @@
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="LibCryptoPP.vcxproj">
-      <Project>{1cc213a4-3482-4211-b47b-172e90dac7de}</Project>
-    </ProjectReference>
     <ProjectReference Include="LibQEthereum.vcxproj">
       <Project>{df3c5b07-a1a2-4f16-b37f-a27333622cdd}</Project>
     </ProjectReference>

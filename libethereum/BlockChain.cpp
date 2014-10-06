@@ -449,8 +449,8 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
 		ret.insert(p);		// TODO: check: should this be details(p).parent?
-		auto bl = block(p);
-		for (auto i: RLP(bl)[2])
+		auto b = block(p);
+		for (auto i: RLP(b)[2])
 			ret.insert(sha3(i.data()));
 	}
 	return ret;
