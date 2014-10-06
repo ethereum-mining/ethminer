@@ -288,6 +288,9 @@ public:
 	unsigned actualSize() const;
 
 private:
+	/// Disable construction from rvalue
+	explicit RLP(bytes const&& _d) {}
+
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
@@ -307,9 +310,6 @@ private:
 	mutable unsigned m_lastIndex = (unsigned)-1;
 	mutable unsigned m_lastEnd = 0;
 	mutable bytesConstRef m_lastItem;
-
-	/// Disable construction from rvalue
-	explicit RLP(bytes const&& _d) {}
 };
 
 /**
