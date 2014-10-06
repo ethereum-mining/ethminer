@@ -35,11 +35,11 @@ namespace dev
 namespace eth
 {
 
-class VMException: public Exception {};
-class StepsDone: public VMException {};
-class BreakPointHit: public VMException {};
-class BadInstruction: public VMException {};
-class OutOfGas: public VMException {};
+struct VMException: virtual Exception {};
+struct StepsDone: virtual VMException {};
+struct BreakPointHit: virtual VMException {};
+struct BadInstruction: virtual VMException {};
+struct OutOfGas: virtual VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
@@ -70,7 +70,7 @@ public:
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
-	void require(u256 _n) { if (m_stack.size() < _n) throw StackTooSmall(_n, m_stack.size()); }
+	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall(_n, m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
@@ -208,7 +208,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			// Out of gas!
 			m_gas = 0;
-			throw OutOfGas();
+			BOOST_THROW_EXCEPTION(OutOfGas());
 		}
 
 		m_gas = (u256)((bigint)m_gas - runGas);
@@ -686,11 +686,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 		default:
-			throw BadInstruction();
+			BOOST_THROW_EXCEPTION(BadInstruction());
 		}
 	}
 	if (_steps == (uint64_t)-1)
-		throw StepsDone();
+		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();
 }
 }

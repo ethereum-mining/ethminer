@@ -137,9 +137,9 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	ldb::DB::Open(o, _path + "/blocks", &m_db);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
 	if (!m_db)
-		throw DatabaseAlreadyOpen();
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 	if (!m_extrasDB)
-		throw DatabaseAlreadyOpen();
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 
 	if (!details(m_genesisHash))
 	{
@@ -211,12 +211,12 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
+			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged() << boost::current_exception_diagnostic_information();
 			_bq.import(&block, *this);
 		}
 		catch (Exception const& _e)
 		{
-			cwarn << "Unexpected exception!" << _e.description();
+			cwarn << "Unexpected exception!" << diagnostic_information(_e);
 			_bq.import(&block, *this);
 		}
 		catch (...)
@@ -234,6 +234,7 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) 
 	}
 	catch (...)
 	{
+		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
 		return h256s();
 	}
 }
@@ -253,7 +254,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #if ETH_CATCH
 	catch (Exception const& _e)
 	{
-		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
 		throw;
 	}
 #endif
@@ -263,7 +265,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	if (isKnown(newHash))
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
-		throw AlreadyHaveBlock();
+		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
 	}
 
 	// Work out its number as the parent's number + 1
@@ -271,7 +273,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
-		throw UnknownParent();
+		BOOST_THROW_EXCEPTION(UnknownParent());
 	}
 
 	auto pd = details(bi.parentHash);
@@ -288,7 +290,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
 		// Block has a timestamp in the future. This is no good.
-		throw FutureTime();
+		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 
 	clog(BlockChainNote) << "Attempting import of " << newHash.abridged() << "...";
@@ -344,7 +346,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #if ETH_CATCH
 	catch (Exception const& _e)
 	{
-		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
 		throw;
 	}
 #endif
