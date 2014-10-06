@@ -6,7 +6,6 @@
 #include "bignum.h"
 #include <fstream>
 #include <cerrno>
-#include <libdevcore/Exceptions.h>
 
 //Token or value node constructor
 Node token(std::string val, Metadata met) {
@@ -212,7 +211,7 @@ std::string get_file_contents(std::string filename)
     in.close();
     return(contents);
   }
-  BOOST_THROW_EXCEPTION(dev::FileError() << boost::errinfo_file_name(filename) << boost::errinfo_errno(errno));
+  throw(errno);
 }
 
 //Report error
@@ -220,8 +219,8 @@ void err(std::string errtext, Metadata met) {
     std::string err = "Error (file \"" + met.file + "\", line " +
         unsignedToDecimal(met.ln + 1) + ", char " + unsignedToDecimal(met.ch) +
         "): " + errtext;
-    std::cerr << err << "\n";
-	BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment(err));
+	std::cerr << err << "\n";
+	throw(err);
 }
 
 //Bin to hex
