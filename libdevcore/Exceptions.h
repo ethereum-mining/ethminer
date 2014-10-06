@@ -24,6 +24,7 @@
 #include <exception>
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
+#include <libdevcrypto/Common.h>
 #include "CommonIO.h"
 #include "CommonData.h"
 #include "FixedHash.h"
@@ -44,5 +45,6 @@ struct FileError: virtual Exception {};
 
 // error information to be added to exceptions
 typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;
+typedef boost::error_info<struct tag_comment, Address> errinfo_wrongAddress;
 typedef boost::error_info<struct tag_comment, std::string> errinfo_comment;
 }
