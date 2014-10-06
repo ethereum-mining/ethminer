@@ -38,6 +38,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
 	Capability(_s, _h),
 	m_sub(host()->m_man)
 {
+	setGrabbing(Grabbing::State);
 	sendStatus();
 }
 
@@ -94,7 +95,7 @@ void EthereumPeer::tryGrabbingHashChain()
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
-		m_grabbing = Grabbing::Nothing;
+		setGrabbing(Grabbing::Nothing);
 		return;	// All good - we have the better chain.
 	}
 
@@ -103,7 +104,7 @@ void EthereumPeer::tryGrabbingHashChain()
 		clogS(NetAllDetail) << "Yes. Their chain is better.";
 
 		host()->updateGrabbing(Grabbing::Hashes);
-		m_grabbing = Grabbing::Hashes;
+		setGrabbing(Grabbing::Hashes);
 		RLPStream s;
 		prep(s).appendList(3);
 		s << GetBlockHashesPacket << m_latestHash << c_maxHashesAsk;
@@ -114,17 +115,17 @@ void EthereumPeer::tryGrabbingHashChain()
 
 void EthereumPeer::giveUpOnFetch()
 {
-	clogS(NetNote) << "GIVE UP FETCH";
+	clogS(NetNote) << "Finishing fetch...";
 
 	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 	if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
 	{
 		host()->noteDoneBlocks(this);
-		m_grabbing = Grabbing::Nothing;
+		setGrabbing(Grabbing::Nothing);
 	}
 
-	m_sub.doneFetch();
 	// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
+	m_sub.doneFetch();
 }
 
 bool EthereumPeer::interpret(RLP const& _r)
@@ -143,12 +144,14 @@ bool EthereumPeer::interpret(RLP const& _r)
 
 		if (genesisHash != host()->m_chain.genesisHash())
 			disable("Invalid genesis hash");
-		if (m_protocolVersion != host()->protocolVersion())
+		else if (m_protocolVersion != host()->protocolVersion())
 			disable("Invalid protocol version.");
-		if (m_networkId != host()->networkId())
+		else if (m_networkId != host()->networkId())
 			disable("Invalid network identifier.");
-
-		startInitialSync();
+		else if (session()->info().clientVersion.find("/v0.6.9/") != string::npos)
+			disable("Blacklisted client version.");
+		else
+			startInitialSync();
 		break;
 	}
 	case GetTransactionsPacket:
@@ -176,12 +179,12 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned limit = _r[2].toInt<unsigned>();
 		clogS(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
 
-		unsigned c = min<unsigned>(max<unsigned>(1, host()->m_chain.number(later)) - 1, limit);
+		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
 
 		RLPStream s;
 		prep(s).appendList(1 + c).append(BlockHashesPacket);
 		h256 p = host()->m_chain.details(later).parent;
-		for (unsigned i = 0; i < c; ++i, p = host()->m_chain.details(p).parent)
+		for (unsigned i = 0; i < c && p; ++i, p = host()->m_chain.details(p).parent)
 			s << p;
 		sealAndSend(s);
 		break;
@@ -203,7 +206,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = _r[i].toHash<h256>();
-			if (host()->m_chain.details(h))
+			if (host()->m_chain.isKnown(h))
 			{
 				host()->noteHaveChain(this);
 				return true;
@@ -244,8 +247,9 @@ bool EthereumPeer::interpret(RLP const& _r)
 		if (_r.itemCount() == 1)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
-			m_sub.doneFetch();
-			giveUpOnFetch();
+			if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+				giveUpOnFetch();
+			break;
 		}
 
 		unsigned used = 0;
@@ -263,7 +267,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned unknownParents = 0;
 		if (g_logVerbosity >= NetMessageSummary::verbosity)
 		{
-			for (unsigned i = 1; i < _r.itemCount(); ++i)
+			unsigned ic = _r.itemCount();
+			for (unsigned i = 1; i < ic; ++i)
 			{
 				auto h = BlockInfo::headerHash(_r[i].data());
 				BlockInfo bi(_r[i].data());
@@ -281,7 +286,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 			}
 		}
 		clogS(NetMessageSummary) << dec << knownParents << "known parents," << unknownParents << "unknown," << used << "used.";
-		continueGettingChain();
+		if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+			continueGettingChain();
 		break;
 	}
 	default:
@@ -295,13 +301,18 @@ void EthereumPeer::ensureGettingChain()
 	if (m_grabbing == Grabbing::ChainHelper)
 		return;	// Already asked & waiting for some.
 
+	// Switch to ChainHelper otherwise, unless we're already the Chain grabber.
+	if (m_grabbing != Grabbing::Chain)
+		setGrabbing(Grabbing::ChainHelper);
+
 	continueGettingChain();
 }
 
 void EthereumPeer::continueGettingChain()
 {
-	if (m_grabbing != Grabbing::Chain)
-		m_grabbing = Grabbing::ChainHelper;
+	// If we're getting the hashes already, then we shouldn't be asking for the chain.
+	if (m_grabbing == Grabbing::Hashes)
+		return;
 
 	auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 
@@ -316,4 +327,10 @@ void EthereumPeer::continueGettingChain()
 	}
 	else
 		giveUpOnFetch();
+}
+
+void EthereumPeer::setGrabbing(Grabbing _g)
+{
+	m_grabbing = _g;
+	session()->addNote("grab", _g == Grabbing::Nothing ? "nothing" : _g == Grabbing::State ? "state" : _g == Grabbing::Hashes ? "hashes" : _g == Grabbing::Chain ? "chain" : _g == Grabbing::ChainHelper ? "chainhelper" : "?");
 }

@@ -51,7 +51,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 	QSizeF area(n, n);
 	QPointF pos(0, 0);
 
-	auto const& bg = m_man->blocksGot();
+	auto bg = m_man->blocksGot();
 
 	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
 	{
@@ -63,7 +63,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 			unsigned h = 0;
 			m_man->foreachSub([&](DownloadSub const& sub)
 			{
-				if (sub.asked().contains(i))
+				if (sub.askedContains(i))
 					s = h;
 				h++;
 			});
