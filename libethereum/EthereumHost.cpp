@@ -74,12 +74,19 @@ void EthereumHost::noteHavePeerState(EthereumPeer* _who)
 {
 	clog(NetAllDetail) << "Have peer state.";
 
+	// TODO: FIX: BUG: Better state management!
+
 	// if already downloading hash-chain, ignore.
 	if (m_grabbing != Grabbing::Nothing)
 	{
-		clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
-		_who->ensureGettingChain();
-		return;
+		for (auto const& i: peers())
+			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Grabbing::State)
+			{
+				clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
+				_who->ensureGettingChain();
+				return;
+			}
+		m_grabbing = Grabbing::Nothing;
 	}
 
 	// otherwise check to see if we should be downloading...

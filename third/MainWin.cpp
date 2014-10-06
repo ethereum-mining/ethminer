@@ -347,7 +347,7 @@ QString Main::lookup(QString const& _a) const
 
 void Main::on_about_triggered()
 {
-	QMessageBox::about(this, "About Third PoC-" + QString(dev::Version).section('.', 1, 1), QString("Third/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nBased on a design by Vitalik Buterin.\n\nThanks to the various contributors including: Alex Leverington, Tim Hughes, caktux, Eric Lombrozo, Marko Simovic.");
+	QMessageBox::about(this, "About Third PoC-" + QString(dev::Version).section('.', 1, 1), QString("Third/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) "\n" DEV_QUOTED(ETH_COMMIT_HASH) + (ETH_CLEAN_REPO ? "\nCLEAN" : "\n+ LOCAL CHANGES") + "\n\nBy Gav Wood, 2014.\nThis software wouldn't be where it is today without the many leaders & contributors including:\n\nVitalik Buterin, Tim Hughes, caktux, Nick Savers, Eric Lombrozo, Marko Simovic, the many testers and the Berlin \304\220\316\236V team.");
 }
 
 void Main::writeSettings()
