@@ -65,9 +65,15 @@ enum class Grabbing
 {
 	State,
 	Hashes,
-	Chain,
-	ChainHelper,
+	Blocks,
 	Nothing
+};
+
+enum class Syncing
+{
+	Waiting,
+	Executing,
+	Done
 };
 
 }

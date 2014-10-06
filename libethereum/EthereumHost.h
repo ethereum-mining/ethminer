@@ -85,9 +85,6 @@ private:
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
 
-	/// Called by peer to add incoming transactions.
-	void addIncomingTransaction(bytes const& _bytes) { std::lock_guard<std::recursive_mutex> l(m_incomingLock); m_incomingTransactions.push_back(_bytes); }
-
 	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
 	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
 
@@ -115,10 +112,6 @@ private:
 	u256 m_networkId;
 
 	Grabbing m_grabbing = Grabbing::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
-
-	mutable std::recursive_mutex m_incomingLock;
-	std::vector<bytes> m_incomingTransactions;
-	std::vector<bytes> m_incomingBlocks;
 
 	DownloadMan m_man;
 

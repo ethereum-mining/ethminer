@@ -71,12 +71,14 @@ private:
 	void giveUpOnFetch();
 
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
-	void setGrabbing(Grabbing _g);
+	void setAsking(Asking _g, bool _helping = false);
+	void setHelping(bool _helping = false) { setAsking(m_asking, _helping); }
 	
 	unsigned m_protocolVersion;
 	u256 m_networkId;
 
-	Grabbing m_grabbing;
+	Asking m_asking;
+	Syncing m_syncing;
 
 	h256 m_latestHash;						///< Peer's latest block's hash.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.

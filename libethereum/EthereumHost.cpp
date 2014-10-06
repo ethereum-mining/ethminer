@@ -70,9 +70,9 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 	return false;
 }
 
-void EthereumHost::noteHavePeerState(EthereumPeer* _who)
+void EthereumHost::notePeerStateChanged(EthereumPeer* _who)
 {
-	clog(NetAllDetail) << "Have peer state.";
+	clog(NetAllDetail) << "Peer state changed.";
 
 	// TODO: FIX: BUG: Better state management!
 
@@ -80,7 +80,7 @@ void EthereumHost::noteHavePeerState(EthereumPeer* _who)
 	if (m_grabbing != Grabbing::Nothing)
 	{
 		for (auto const& i: peers())
-			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Grabbing::State)
+			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Grabbing::Presync)
 			{
 				clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
 				_who->ensureGettingChain();
@@ -205,9 +205,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 
 	// Send any new transactions.
 	for (auto const& p: peers())
-	{
-		auto ep = p->cap<EthereumPeer>();
-		if (ep)
+		if (auto ep = p->cap<EthereumPeer>())
 		{
 			bytes b;
 			unsigned n = 0;
@@ -231,7 +229,6 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 			}
 			ep->m_requireTransactions = false;
 		}
-	}
 }
 
 void EthereumHost::reset()
@@ -249,36 +246,20 @@ void EthereumHost::reset()
 
 void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 {
-	// Import new blocks
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		for (auto it = m_incomingBlocks.rbegin(); it != m_incomingBlocks.rend(); ++it)
-			if (_bq.import(&*it, m_chain))
-			{}
-			else{} // TODO: don't forward it.
-		m_incomingBlocks.clear();
-	}
-
 	// If we've finished our initial sync send any new blocks.
 	if (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
+		// TODO: clean up
+		h256s hs;
+		hs.push_back(_currentHash);
 		RLPStream ts;
 		EthereumPeer::prep(ts);
 		bytes bs;
-		unsigned c = 0;
-		for (auto h: m_chain.treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
-		{
+		for (auto h: hs)
 			bs += m_chain.block(h);
-			++c;
-		}
-		clog(NetMessageSummary) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
-		if (c > 1000)
-		{
-			cwarn << "Gaa this would be an awful lot of new blocks. Not bothering";
-			return;
-		}
+		clog(NetMessageSummary) << "Sending" << hs.size() << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
+		ts.appendList(1 + hs.size()).append(BlocksPacket).appendRaw(bs, hs.size());
 		bytes b;
 		ts.swapOut(b);
 		seal(b);

@@ -38,7 +38,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
 	Capability(_s, _h),
 	m_sub(host()->m_man)
 {
-	setGrabbing(Grabbing::State);
+	setAsking(Asking::State, Syncing::Done);
 	sendStatus();
 }
 
@@ -75,13 +75,19 @@ void EthereumPeer::startInitialSync()
 		sealAndSend(s);
 	}
 
-	host()->noteHavePeerState(this);
+	host()->notePeerStateChanged(this);
 }
 
 void EthereumPeer::tryGrabbingHashChain()
 {
+	if (m_asking != Asking::Nothing)
+	{
+		clogS(NetAllDetail) << "Can't synced with this peer - outstanding asks.";
+		return;
+	}
+
 	// if already done this, then ignore.
-	if (m_grabbing != Grabbing::State)
+	if (m_syncing == Syncing::Done)
 	{
 		clogS(NetAllDetail) << "Already synced with this peer.";
 		return;
@@ -95,7 +101,7 @@ void EthereumPeer::tryGrabbingHashChain()
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
-		setGrabbing(Grabbing::Nothing);
+		setAsking(Asking::Nothing, Syncing::Done);
 		return;	// All good - we have the better chain.
 	}
 
@@ -103,8 +109,8 @@ void EthereumPeer::tryGrabbingHashChain()
 	{
 		clogS(NetAllDetail) << "Yes. Their chain is better.";
 
-		host()->updateGrabbing(Grabbing::Hashes);
-		setGrabbing(Grabbing::Hashes);
+		host()->updateGrabbing(Asking::Hashes);
+		setAsking(Asking::Hashes, Syncing::Executing);
 		RLPStream s;
 		prep(s).appendList(3);
 		s << GetBlockHashesPacket << m_latestHash << c_maxHashesAsk;
@@ -118,10 +124,10 @@ void EthereumPeer::giveUpOnFetch()
 	clogS(NetNote) << "Finishing fetch...";
 
 	// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
-	if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+	if (m_asking == Asking::Blocks || m_asking == Asking::ChainHelper)
 	{
 		host()->noteDoneBlocks(this);
-		setGrabbing(Grabbing::Nothing);
+		setAsking(Asking::Nothing);
 	}
 
 	// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
@@ -163,12 +169,11 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << "entries)";
 		addRating(_r.itemCount() - 1);
-		lock_guard<recursive_mutex> l(host()->m_incomingLock);
+		RecursiveGuard l(m_incomingLock);
+		Guard l(x_knownTransactions);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			host()->addIncomingTransaction(_r[i].data().toBytes());
-			
-			lock_guard<mutex> l(x_knownTransactions);
+			m_incomingTransactions.push_back(_r[i].data().toBytes());
 			m_knownTransactions.insert(sha3(_r[i].data()));
 		}
 		break;
@@ -193,7 +198,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreHashes");
 
-		if (m_grabbing != Grabbing::Hashes)
+		if (m_asking != Asking::Hashes)
 		{
 			cwarn << "Peer giving us hashes when we didn't ask for them.";
 			break;
@@ -247,21 +252,62 @@ bool EthereumPeer::interpret(RLP const& _r)
 		if (_r.itemCount() == 1)
 		{
 			// Couldn't get any from last batch - probably got to this peer's latest block - just give up.
-			if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+			if (m_asking == Asking::Blocks || m_asking == Asking::ChainHelper)
 				giveUpOnFetch();
 			break;
 		}
 
-		unsigned used = 0;
+		unsigned success = 0;
+		unsigned got = 0;
+		unsigned bad = 0;
+		unsigned unknown = 0;
+		unsigned future = 0;
+
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
 			m_sub.noteBlock(h);
-			if (host()->noteBlock(h, _r[i].data()))
-				used++;
-			Guard l(x_knownBlocks);
-			m_knownBlocks.insert(h);
+
+			{
+				Guard l(x_knownBlocks);
+				m_knownBlocks.insert(h);
+			}
+
+			switch (host()->m_bq.import(_r[i].data(), host()->m_chain))
+			{
+			case ImportResult::Success:
+				success++;
+				break;
+
+			case ImportResult::Malformed:
+				bad++;
+				break;
+
+			case ImportResult::FutureTime:
+				future++;
+				break;
+
+			case ImportResult::AlreadyInChain:
+			case ImportResult::AlreadyKnown:
+				got++;
+				break;
+
+			case ImportResult::UnknownParent:
+				unknown++;
+				break;
+			}
 		}
+
+		if (unknown && m_asking == Asking::Nothing)
+		{
+			// TODO: kick off resync.
+		}
+
+		if (bad)
+		{
+			// TODO: punish peer
+		}
+
 		addRating(used);
 		unsigned knownParents = 0;
 		unsigned unknownParents = 0;
@@ -286,7 +332,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			}
 		}
 		clogS(NetMessageSummary) << dec << knownParents << "known parents," << unknownParents << "unknown," << used << "used.";
-		if (m_grabbing == Grabbing::Chain || m_grabbing == Grabbing::ChainHelper)
+		if (m_asking == Asking::Blocks || m_asking == Asking::ChainHelper)
 			continueGettingChain();
 		break;
 	}
@@ -298,20 +344,18 @@ bool EthereumPeer::interpret(RLP const& _r)
 
 void EthereumPeer::ensureGettingChain()
 {
-	if (m_grabbing == Grabbing::ChainHelper)
+	if (m_helping)
 		return;	// Already asked & waiting for some.
 
-	// Switch to ChainHelper otherwise, unless we're already the Chain grabber.
-	if (m_grabbing != Grabbing::Chain)
-		setGrabbing(Grabbing::ChainHelper);
-
+	// Help otherwise, unless we're already the Chain grabber.
+	setHelping(true);
 	continueGettingChain();
 }
 
 void EthereumPeer::continueGettingChain()
 {
 	// If we're getting the hashes already, then we shouldn't be asking for the chain.
-	if (m_grabbing == Grabbing::Hashes)
+	if (m_asking == Asking::Hashes)
 		return;
 
 	auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
@@ -329,8 +373,24 @@ void EthereumPeer::continueGettingChain()
 		giveUpOnFetch();
 }
 
-void EthereumPeer::setGrabbing(Grabbing _g)
+/*
+ * Possible asking/syncing states for two peers:
+ * state/		presync
+ * presync		hashes
+ * presync		chain		(transiently)
+ * presync+		chain
+ * presync		nothing
+ * hashes		nothing
+ * chain		hashes
+ * presync		chain		(transiently)
+ * presync+		chain
+ * presync		nothing
+ */
+
+void EthereumPeer::setAsking(Asking _a, Syncing _s)
 {
-	m_grabbing = _g;
-	session()->addNote("grab", _g == Grabbing::Nothing ? "nothing" : _g == Grabbing::State ? "state" : _g == Grabbing::Hashes ? "hashes" : _g == Grabbing::Chain ? "chain" : _g == Grabbing::ChainHelper ? "chainhelper" : "?");
+	m_asking = _a;
+	m_syncing = _s;
+	session()->addNote("ask", _a == Asking::Nothing ? "nothing" : _a == Asking::State ? "state" : _a == Asking::Hashes ? "hashes" : _a == Asking::Blocks ? "blocks" : "?");
+	session()->addNote("sync", _s == Syncing::Done ? "done" : _s == Syncing::Waiting ? "wait" : _s == Syncing::Executing ? "exec" : "?");
 }
