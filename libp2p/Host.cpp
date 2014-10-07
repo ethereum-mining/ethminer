@@ -36,6 +36,7 @@
 #include <thread>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
 #include "Common.h"

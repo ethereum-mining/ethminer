@@ -20,6 +20,7 @@
  */
 
 #include <boost/timer.hpp>
+#include <libdevcore/CommonIO.h>
 #include <libevm/VM.h>
 #include "Executive.h"
 #include "State.h"

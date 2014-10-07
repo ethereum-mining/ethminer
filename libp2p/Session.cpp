@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"
