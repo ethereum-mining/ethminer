@@ -52,7 +52,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 EthereumHost::~EthereumHost()
 {
 	for (auto const& i: peers())
-		i->cap<EthereumPeer>()->giveUpOnFetch();
+		i->cap<EthereumPeer>()->abortSync();
 }
 
 bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
@@ -70,108 +70,76 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 	return false;
 }
 
-void EthereumHost::notePeerStateChanged(EthereumPeer* _who)
+void EthereumHost::noteNeedsSyncing(EthereumPeer* _who)
 {
-	clog(NetAllDetail) << "Peer state changed.";
-
-	// TODO: FIX: BUG: Better state management!
-
 	// if already downloading hash-chain, ignore.
-	if (m_grabbing != Asking::Nothing)
+	if (isSyncing())
 	{
-		for (auto const& i: peers())
-			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Asking::Presync)
-			{
-				clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
-				_who->ensureGettingChain();
-				return;
-			}
-		m_grabbing = Asking::Nothing;
+		clog(NetAllDetail) << "Sync in progress: Just set to help out.";
+		if (m_syncer->m_asking == Asking::Blocks)
+			_who->transition(Asking::Blocks);
 	}
-
-	// otherwise check to see if we should be downloading...
-	_who->attemptSyncing();
+	else
+		// otherwise check to see if we should be downloading...
+		_who->attemptSync();
 }
 
-void EthereumHost::updateGrabbing(Asking _g, EthereumPeer* _ignore)
+void EthereumHost::updateSyncer(EthereumPeer* _syncer)
 {
-	m_grabbing = _g;
-	if (_g == Asking::Nothing)
-		readyForSync();
-	else if (_g == Asking::Blocks)
+	if (_syncer)
+	{
 		for (auto j: peers())
-			if (j->cap<EthereumPeer>().get() != _ignore && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
+			if (j->cap<EthereumPeer>().get() != _syncer && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
 				j->cap<EthereumPeer>()->transition(Asking::Blocks);
-}
-
-bool EthereumHost::shouldGrabBlocks(EthereumPeer* _from)
-{
-	auto td = _from->m_syncingTotalDifficulty;
-	auto lh = _from->m_syncingLatestHash;
-
-	if (_from->m_syncingNeededBlocks.empty())
-	{
-		updateGrabbing(Asking::Nothing);
-		return false;
 	}
-
-	clog(NetNote) << "Hash-chain COMPLETE:" << td << "vs" << m_chain.details().totalDifficulty << ";" << _from->m_syncingNeededBlocks.size() << " blocks, ends" << _from->m_syncingNeededBlocks.back().abridged();
-
-	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == lh))
+	else
 	{
-		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-		updateGrabbing(Asking::Nothing);
-		return false;
-	}
-
-	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << lh.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
-
-	return true;
-}
-
-void EthereumHost::readyForSync()
-{
-	// start grabbing next hash chain if there is one.
-	for (auto j: peers())
-	{
-		j->cap<EthereumPeer>()->attemptSyncing();
-		if (j->cap<EthereumPeer>()->m_grabbing == Asking::Hashes)
+		// start grabbing next hash chain if there is one.
+		for (auto j: peers())
 		{
-			m_grabbing = Asking::Hashes;
-			return;
+			j->cap<EthereumPeer>()->attemptSync();
+			if (isSyncing())
+				return;
 		}
+		clog(NetNote) << "No more peers to sync with.";
 	}
-	clog(NetNote) << "No more peers to sync with.";
 }
 
-void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
+void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 {
 	if (m_man.isComplete())
 	{
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
-		updateGrabbing(Asking::Nothing);
+		// 1/100th for each useful block hash.
+		_who->addRating(m_man.chain().size() / 100);
 		m_man.reset();
 	}
 	if (_who->isSyncing())
 	{
-		// Done our chain-get.
-		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
-		// TODO: note that peer is BADBADBAD!
-		updateGrabbing(Asking::Nothing);
+		if (_clemency)
+			clog(NetNote) << "Chain download failed. Aborted while incomplete.";
+		else
+		{
+			// Done our chain-get.
+			clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
+
+			m_banned.insert(_who->session()->id());			// We know who you are!
+			_who->disable("Peer sent hashes but was unable to provide the blocks.");
+		}
 		m_man.reset();
 	}
 }
 
-bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
+void EthereumHost::reset()
 {
-	if (!m_chain.details(_hash))
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		m_incomingBlocks.push_back(_data.toBytes());
-		return true;
-	}
-	return false;
+	if (m_syncer)
+		m_syncer->abortSync();
+
+	m_man.resetToChain(h256s());
+
+	m_latestBlockSent = h256();
+	m_transactionsSent.clear();
 }
 
 void EthereumHost::doWork()
@@ -187,16 +155,7 @@ void EthereumHost::doWork()
 
 void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
 {
-	bool resendAll = (m_grabbing == Asking::Nothing && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-			if (_tq.import(&*it))
-			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
-			else
-				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-		m_incomingTransactions.clear();
-	}
+	bool resendAll = (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
 
 	// Send any new transactions.
 	for (auto const& p: peers())
@@ -226,23 +185,10 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 		}
 }
 
-void EthereumHost::reset()
-{
-	m_grabbing = Asking::Nothing;
-
-	m_man.resetToChain(h256s());
-
-	m_incomingTransactions.clear();
-	m_incomingBlocks.clear();
-
-	m_latestBlockSent = h256();
-	m_transactionsSent.clear();
-}
-
 void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
 {
 	// If we've finished our initial sync send any new blocks.
-	if (m_grabbing == Asking::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
 		// TODO: clean up
 		h256s hs;

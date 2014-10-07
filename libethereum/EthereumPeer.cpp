@@ -27,6 +27,8 @@
 #include <libp2p/Session.h>
 #include "BlockChain.h"
 #include "EthereumHost.h"
+#include "TransactionQueue.h"
+#include "BlockQueue.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -38,13 +40,18 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
 	Capability(_s, _h),
 	m_sub(host()->m_man)
 {
-	setAsking(Asking::State, false);
-	sendStatus();
+	transition(Asking::State);
 }
 
 EthereumPeer::~EthereumPeer()
 {
-	finishSync();
+	abortSync();
+}
+
+void EthereumPeer::abortSync()
+{
+	if (isSyncing())
+		transition(Asking::Nothing, true);
 }
 
 EthereumHost* EthereumPeer::host() const
@@ -54,26 +61,46 @@ EthereumHost* EthereumPeer::host() const
 
 void EthereumPeer::sendStatus()
 {
-	RLPStream s;
-	prep(s);
-	s.appendList(6) << StatusPacket
-					<< host()->protocolVersion()
-					<< host()->networkId()
-					<< host()->m_chain.details().totalDifficulty
-					<< host()->m_chain.currentHash()
-					<< host()->m_chain.genesisHash();
-	sealAndSend(s);
 }
 
 /*
  * Possible asking/syncing states for two peers:
  */
 
-void EthereumPeer::transition(Asking _a)
+string toString(Asking _a)
 {
+	switch (_a)
+	{
+	case Asking::Blocks: return "Blocks";
+	case Asking::Hashes: return "Hashes";
+	case Asking::Nothing: return "Nothing";
+	case Asking::State: return "State";
+	}
+	return "?";
+}
+
+void EthereumPeer::transition(Asking _a, bool _force)
+{
+	clogS(NetMessageSummary) << "Transition!" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
+
 	RLPStream s;
 	prep(s);
-	if (_a == Asking::Hashes)
+	if (_a == Asking::State)
+	{
+		if (m_asking == Asking::Nothing)
+		{
+			setAsking(Asking::State, false);
+			s.appendList(6) << StatusPacket
+							<< host()->protocolVersion()
+							<< host()->networkId()
+							<< host()->m_chain.details().totalDifficulty
+							<< host()->m_chain.currentHash()
+							<< host()->m_chain.genesisHash();
+			sealAndSend(s);
+			return;
+		}
+	}
+	else if (_a == Asking::Hashes)
 	{
 		if (m_asking == Asking::State || m_asking == Asking::Nothing)
 		{
@@ -87,7 +114,6 @@ void EthereumPeer::transition(Asking _a)
 			setAsking(_a, true);
 			s.appendList(3) << GetBlockHashesPacket << m_syncingLatestHash << c_maxHashesAsk;
 			m_syncingNeededBlocks = h256s(1, m_syncingLatestHash);
-			host()->updateGrabbing(Asking::Hashes);
 			sealAndSend(s);
 			return;
 		}
@@ -106,15 +132,17 @@ void EthereumPeer::transition(Asking _a)
 	{
 		if (m_asking == Asking::Hashes)
 		{
-			if (host()->shouldGrabBlocks(this))
+			if (shouldGrabBlocks())
 			{
+				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash.abridged() << ", was" << host()->m_latestBlockSent.abridged() << "]";
+
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
 				host()->m_latestBlockSent = m_syncingLatestHash;
-
-				host()->updateGrabbing(Asking::Blocks, this);
 			}
 			else
 			{
+				clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
+
 				setAsking(Asking::Nothing, false);
 				return;
 			}
@@ -145,7 +173,7 @@ void EthereumPeer::transition(Asking _a)
 
 			// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 			if (isSyncing())
-				host()->noteDoneBlocks(this);
+				host()->noteDoneBlocks(this, _force);
 
 			// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
 			m_sub.doneFetch();
@@ -156,28 +184,28 @@ void EthereumPeer::transition(Asking _a)
 		{
 			clogS(NetNote) << "Finishing hashes fetch...";
 
-			if (isSyncing())
-				host()->noteDoneBlocks(this);
-
 			setAsking(Asking::Nothing, false);
 		}
 		else if (m_asking == Asking::State)
 		{
 			setAsking(Asking::Nothing, false);
-			// TODO: Just got the state - should check to see if we can be of help downloading the chain if any.
-			// TODO: Otherwise, should put ourselves up for sync.
+			// Just got the state - should check to see if we can be of help downloading the chain if any.
+			// Otherwise, should put ourselves up for sync.
+			setNeedsSyncing(m_latestHash, m_totalDifficulty);
 		}
 		// Otherwise it's fine. We don't care if it's Nothing->Nothing.
 		return;
 	}
 
-	clogS(NetWarn) << "Invalid state transition:" << (int)_a << "from" << (int)m_asking << "/" << boolalpha << isSyncing() << needsSyncing();
+	clogS(NetWarn) << "Invalid state transition:" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
 }
 
 void EthereumPeer::setAsking(Asking _a, bool _isSyncing)
 {
 	m_asking = _a;
-	m_isSyncing = _isSyncing;
+	if (_isSyncing != (host()->m_syncer == this))
+		host()->updateSyncer(_isSyncing ? this : nullptr);
+
 	session()->addNote("ask", _a == Asking::Nothing ? "nothing" : _a == Asking::State ? "state" : _a == Asking::Hashes ? "hashes" : _a == Asking::Blocks ? "blocks" : "?");
 	session()->addNote("sync", string(isSyncing() ? "ongoing" : "holding") + (needsSyncing() ? " & needed" : ""));
 }
@@ -187,11 +215,32 @@ void EthereumPeer::setNeedsSyncing(h256 _latestHash, u256 _td)
 	m_latestHash = _latestHash;
 	m_totalDifficulty = _td;
 
-	// TODO: should be "noteNeedsSyncing" or some such.
-	host()->notePeerStateChanged(this);
+	host()->noteNeedsSyncing(this);
 }
 
-void EthereumPeer::attemptSyncing()
+bool EthereumPeer::isSyncing() const
+{
+	return host()->m_syncer == this;
+}
+
+bool EthereumPeer::shouldGrabBlocks() const
+{
+	auto td = m_syncingTotalDifficulty;
+	auto lh = m_syncingLatestHash;
+	auto ctd = host()->m_chain.details().totalDifficulty;
+
+	if (m_syncingNeededBlocks.empty())
+		return false;
+
+	clog(NetNote) << "Should grab blocks? " << td << "vs" << ctd << ";" << m_syncingNeededBlocks.size() << " blocks, ends" << m_syncingNeededBlocks.back().abridged();
+
+	if (td < ctd || (td == ctd && host()->m_chain.currentHash() == lh))
+		return false;
+
+	return true;
+}
+
+void EthereumPeer::attemptSync()
 {
 	if (m_asking != Asking::Nothing)
 	{
@@ -231,8 +280,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		m_networkId = _r[2].toInt<u256>();
-		auto totalDifficulty = _r[3].toInt<u256>();
-		auto latestHash = _r[4].toHash<h256>();
+		m_totalDifficulty = _r[3].toInt<u256>();
+		m_latestHash = _r[4].toHash<h256>();
 		auto genesisHash = _r[5].toHash<h256>();
 
 		clogS(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
@@ -245,6 +294,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 			disable("Invalid network identifier.");
 		else if (session()->info().clientVersion.find("/v0.6.9/") != string::npos)
 			disable("Blacklisted client version.");
+		else if (host()->isBanned(session()->id()))
+			disable("Peer banned for previous bad behaviour.");
 		else
 		{
 			// Grab transactions off them.
@@ -252,8 +303,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 			prep(s).appendList(1);
 			s << GetTransactionsPacket;
 			sealAndSend(s);
-
-			setNeedsSyncing(latestHash, totalDifficulty);
+			transition(Asking::Nothing);
 		}
 		break;
 	}
@@ -269,9 +319,11 @@ bool EthereumPeer::interpret(RLP const& _r)
 		Guard l(x_knownTransactions);
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			m_knownTransactions.insert(sha3(_r[i].data()));
-			if (!_tq.import(_r[i].data()))	// if we already had the transaction, then don't bother sending it on.
-				host()->m_transactionsSent.insert(sha3(*it));
+			auto h = sha3(_r[i].data());
+			m_knownTransactions.insert(h);
+			if (!host()->m_tq.import(_r[i].data()))
+				// if we already had the transaction, then don't bother sending it on.
+				host()->m_transactionsSent.insert(h);
 		}
 		break;
 	}
@@ -402,7 +454,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 	}
 	case NewBlockPacket:
 	{
-		auto h = BlockInfo::headerHash(bd(_r[1].data()));
+		auto h = BlockInfo::headerHash(_r[1].data());
 		clogS(NetMessageSummary) << "NewBlock: " << h.abridged();
 
 		if (_r.itemCount() != 3)
