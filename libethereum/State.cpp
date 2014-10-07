@@ -25,6 +25,7 @@
 #include <time.h>
 #include <random>
 #include <secp256k1/secp256k1.h>
+#include <libdevcore/CommonIO.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/Dagger.h>

@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <list>
+#include <functional>
 #include <libdevcore/Common.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>

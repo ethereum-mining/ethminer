@@ -22,6 +22,7 @@
 #include "Instruction.h"
 
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 using namespace std;
 using namespace dev;
