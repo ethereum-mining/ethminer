@@ -72,7 +72,7 @@ bi::tcp::endpoint Session::endpoint() const
 bool Session::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
-	switch (_r[0].toInt<unsigned>())
+	switch ((PacketType)_r[0].toInt<unsigned>())
 	{
 	case HelloPacket:
 	{
@@ -130,7 +130,7 @@ bool Session::interpret(RLP const& _r)
 	{
         clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
-		sealAndSend(prep(s).appendList(1) << PongPacket);
+		sealAndSend(prep(s, PongPacket));
 		break;
 	}
 	case PongPacket:
@@ -142,8 +142,7 @@ bool Session::interpret(RLP const& _r)
         clogS(NetTriviaSummary) << "GetPeers";
 		auto peers = m_server->potentialPeers();
 		RLPStream s;
-		prep(s).appendList(peers.size() + 1);
-		s << PeersPacket;
+		prep(s, PeersPacket, peers.size());
 		for (auto i: peers)
 		{
 			clogS(NetTriviaDetail) << "Sending peer " << i.first.abridged() << i.second;
@@ -185,10 +184,13 @@ bool Session::interpret(RLP const& _r)
 		}
 		break;
 	default:
+	{
+		auto id = _r[0].toInt<unsigned>();
 		for (auto const& i: m_capabilities)
-			if (i.second->m_enabled && i.second->interpret(_r))
+			if (i.second->m_enabled && id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount() && i.second->interpret(id - i.second->m_idOffset, _r))
 				return true;
 		return false;
+	}
 	}
 	return true;
 }
@@ -196,14 +198,19 @@ bool Session::interpret(RLP const& _r)
 void Session::ping()
 {
 	RLPStream s;
-	sealAndSend(prep(s).appendList(1) << PingPacket);
+	sealAndSend(prep(s, PingPacket));
 	m_ping = std::chrono::steady_clock::now();
 }
 
 void Session::getPeers()
 {
 	RLPStream s;
-	sealAndSend(prep(s).appendList(1) << GetPeersPacket);
+	sealAndSend(prep(s, GetPeersPacket));
+}
+
+RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
+{
+	return prep(_s).appendList(_args + 1).append((unsigned)_id);
 }
 
 RLPStream& Session::prep(RLPStream& _s)
@@ -323,8 +330,7 @@ void Session::disconnect(int _reason)
 		if (m_disconnect == chrono::steady_clock::time_point::max())
 		{
 			RLPStream s;
-			prep(s);
-			s.appendList(2) << DisconnectPacket << _reason;
+			prep(s, DisconnectPacket, 1) << _reason;
 			sealAndSend(s);
 			m_disconnect = chrono::steady_clock::now();
 		}
@@ -336,8 +342,7 @@ void Session::disconnect(int _reason)
 void Session::start()
 {
 	RLPStream s;
-	prep(s);
-	s.appendList(6) << HelloPacket
+	prep(s, HelloPacket, 5)
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()

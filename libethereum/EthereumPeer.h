@@ -50,7 +50,7 @@ class EthereumPeer: public p2p::Capability
 
 public:
 	/// Basic constructor.
-	EthereumPeer(p2p::Session* _s, p2p::HostCapabilityFace* _h);
+	EthereumPeer(p2p::Session* _s, p2p::HostCapabilityFace* _h, unsigned _i);
 
 	/// Basic destructor.
 	virtual ~EthereumPeer();
@@ -61,12 +61,17 @@ public:
 	/// What is our version?
 	static u256 version() { return c_protocolVersion; }
 
+	/// How many message types do we have?
+	static unsigned messageCount() { return PacketCount; }
+
 	/// What is the ethereum subprotocol host object.
 	EthereumHost* host() const;
 
 private:
+	using p2p::Capability::sealAndSend;
+
 	/// Interpret an incoming message.
-	virtual bool interpret(RLP const& _r);
+	virtual bool interpret(unsigned _id, RLP const& _r);
 
 	/// Transition state in a particular direction.
 	void transition(Asking _wantState, bool _force = false);

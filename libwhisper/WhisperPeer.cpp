@@ -30,11 +30,10 @@ using namespace dev::p2p;
 using namespace dev::shh;
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h): Capability(_s, _h)
+WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i): Capability(_s, _h, _i)
 {
 	RLPStream s;
-	prep(s);
-	sealAndSend(s.appendList(2) << StatusPacket << host()->protocolVersion());
+	sealAndSend(prep(s, StatusPacket, 1) << host()->protocolVersion());
 }
 
 WhisperPeer::~WhisperPeer()
@@ -46,9 +45,9 @@ WhisperHost* WhisperPeer::host() const
 	return static_cast<WhisperHost*>(Capability::hostCapability());
 }
 
-bool WhisperPeer::interpret(RLP const& _r)
+bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 {
-	switch (_r[0].toInt<unsigned>())
+	switch (_id)
 	{
 	case StatusPacket:
 	{
@@ -95,9 +94,7 @@ void WhisperPeer::sendMessages()
 	if (n)
 	{
 		RLPStream s;
-		prep(s);
-		s.appendList(n + 1) << MessagesPacket;
-		s.appendRaw(amalg.out(), n);
+		prep(s, MessagesPacket, n).appendRaw(amalg.out(), n);
 		sealAndSend(s);
 	}
 	else

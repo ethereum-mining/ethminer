@@ -36,8 +36,8 @@ using namespace p2p;
 
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h):
-	Capability(_s, _h),
+EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i):
+	Capability(_s, _h, _i),
 	m_sub(host()->m_man)
 {
 	transition(Asking::State);
@@ -80,13 +80,12 @@ void EthereumPeer::transition(Asking _a, bool _force)
 	clogS(NetMessageSummary) << "Transition!" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
 
 	RLPStream s;
-	prep(s);
 	if (_a == Asking::State)
 	{
 		if (m_asking == Asking::Nothing)
 		{
 			setAsking(Asking::State, false);
-			s.appendList(6) << StatusPacket
+			prep(s, StatusPacket, 5)
 							<< host()->protocolVersion()
 							<< host()->networkId()
 							<< host()->m_chain.details().totalDifficulty
@@ -108,7 +107,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 			resetNeedsSyncing();
 
 			setAsking(_a, true);
-			s.appendList(3) << GetBlockHashesPacket << m_syncingLatestHash << c_maxHashesAsk;
+			prep(s, GetBlockHashesPacket, 2) << m_syncingLatestHash << c_maxHashesAsk;
 			m_syncingNeededBlocks = h256s(1, m_syncingLatestHash);
 			sealAndSend(s);
 			return;
@@ -119,7 +118,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 				clogS(NetWarn) << "Bad state: asking for Hashes yet not syncing!";
 
 			setAsking(_a, true);
-			s.appendList(3) << GetBlockHashesPacket << m_syncingNeededBlocks.back() << c_maxHashesAsk;
+			prep(s, GetBlockHashesPacket, 2) << m_syncingNeededBlocks.back() << c_maxHashesAsk;
 			sealAndSend(s);
 			return;
 		}
@@ -154,7 +153,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 			auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 			if (blocks.size())
 			{
-				s.appendList(blocks.size() + 1) << GetBlocksPacket;
+				prep(s, GetBlocksPacket, blocks.size());
 				for (auto const& i: blocks)
 					s << i;
 				sealAndSend(s);
@@ -284,9 +283,9 @@ void EthereumPeer::attemptSync()
 	}
 }
 
-bool EthereumPeer::interpret(RLP const& _r)
+bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 {
-	switch (_r[0].toInt<unsigned>())
+	switch (_id)
 	{
 	case StatusPacket:
 	{
@@ -314,8 +313,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		{
 			// Grab transactions off them.
 			RLPStream s;
-			prep(s).appendList(1);
-			s << GetTransactionsPacket;
+			prep(s, GetTransactionsPacket);
 			sealAndSend(s);
 			transition(Asking::Nothing);
 		}
@@ -350,7 +348,7 @@ bool EthereumPeer::interpret(RLP const& _r)
 		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
 
 		RLPStream s;
-		prep(s).appendList(1 + c).append(BlockHashesPacket);
+		prep(s, BlockHashesPacket, c);
 		h256 p = host()->m_chain.details(later).parent;
 		for (unsigned i = 0; i < c && p; ++i, p = host()->m_chain.details(p).parent)
 			s << p;
@@ -402,7 +400,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 			}
 		}
 		RLPStream s;
-		sealAndSend(prep(s).appendList(n + 1).append(BlocksPacket).appendRaw(rlp, n));
+		prep(s, BlocksPacket, n).appendRaw(rlp, n);
+		sealAndSend(s);
 		break;
 	}
 	case BlocksPacket:
