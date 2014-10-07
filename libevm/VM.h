@@ -39,6 +39,7 @@ struct VMException: virtual Exception {};
 struct StepsDone: virtual VMException {};
 struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
+struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
 class StackTooSmall: public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
 
@@ -83,6 +84,8 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
+	bool m_jumpLatch = false;
+	u256Set m_destinations;
 };
 
 }
@@ -565,11 +568,17 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			require(1);
+			m_jumpLatch = true;
+			if (!m_destinations.count(m_stack.back()))
+				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			nextPC = m_stack.back();
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
 			require(2);
+			m_jumpLatch = true;
+			if (!m_destinations.count(m_stack.back()))
+				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			if (m_stack[m_stack.size() - 2])
 				nextPC = m_stack.back();
 			m_stack.pop_back();
@@ -583,6 +592,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::GAS:
 			m_stack.push_back(m_gas);
+			break;
+		case Instruction::JUMPDEST:
+			require(1);
+			if (!m_jumpLatch)
+				m_destinations.insert(m_stack.back());
+			m_stack.pop_back();
 			break;
 		case Instruction::CREATE:
 		{

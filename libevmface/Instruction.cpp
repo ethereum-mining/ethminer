@@ -82,6 +82,7 @@ const std::map<std::string, Instruction> dev::eth::c_instructions =
 	{ "PC", Instruction::PC },
 	{ "MSIZE", Instruction::MSIZE },
 	{ "GAS", Instruction::GAS },
+	{ "JUMPDEST", Instruction::JUMPDEST },
 	{ "PUSH1", Instruction::PUSH1 },
 	{ "PUSH2", Instruction::PUSH2 },
 	{ "PUSH3", Instruction::PUSH3 },
@@ -208,6 +209,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::PC,			{ "PC",				0, 0, 1 } },
 	{ Instruction::MSIZE,		{ "MSIZE",			0, 0, 1 } },
 	{ Instruction::GAS,			{ "GAS",			0, 0, 1 } },
+	{ Instruction::JUMPDEST,	{ "JUMPDEST",		0, 1, 0 } },
 	{ Instruction::PUSH1,		{ "PUSH1",			1, 0, 1 } },
 	{ Instruction::PUSH2,		{ "PUSH2",			2, 0, 1 } },
 	{ Instruction::PUSH3,		{ "PUSH3",			3, 0, 1 } },
@@ -274,7 +276,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SWAP16,		{ "SWAP16",			0, 17, 17 } },
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1 } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1 } },
-	{ Instruction::CALLCODE, { "CALLCODE",0, 7, 1 } },
+	{ Instruction::CALLCODE,	{ "CALLCODE",		0, 7, 1 } },
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0 } },
 	{ Instruction::SUICIDE,		{ "SUICIDE",		0, 1, 0} }
 };
