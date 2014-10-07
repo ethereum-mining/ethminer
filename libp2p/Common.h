@@ -24,6 +24,8 @@
 #pragma once
 
 #include <string>
+#include <set>
+#include <vector>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
@@ -88,13 +90,17 @@ enum DisconnectReason
 /// @returns the string form of the given disconnection reason.
 std::string reasonOf(DisconnectReason _r);
 
+typedef std::pair<std::string, u256> CapDesc;
+typedef std::set<CapDesc> CapDescSet;
+typedef std::vector<CapDesc> CapDescs;
+
 struct PeerInfo
 {
 	std::string clientVersion;
 	std::string host;
 	unsigned short port;
 	std::chrono::steady_clock::duration lastPing;
-	std::set<std::string> caps;
+	std::set<CapDesc> caps;
 	unsigned socket;
 	std::map<std::string, std::string> notes;
 };

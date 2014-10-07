@@ -62,7 +62,7 @@ public:
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 	template <class PeerCap>
-	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(PeerCap::name())); } catch (...) { return nullptr; } }
+	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
 
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
@@ -108,7 +108,7 @@ private:
 
 	unsigned m_rating;
 
-	std::map<std::string, std::shared_ptr<Capability>> m_capabilities;
+	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

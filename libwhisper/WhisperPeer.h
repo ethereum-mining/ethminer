@@ -53,6 +53,7 @@ public:
 	virtual ~WhisperPeer();
 
 	static std::string name() { return "shh"; }
+	static u256 version() { return 1; }
 
 	WhisperHost* host() const;
 

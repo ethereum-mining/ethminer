@@ -31,6 +31,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include "HostCapability.h"
+#include "Common.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -75,11 +76,11 @@ public:
 	unsigned protocolVersion() const;
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[T::staticName()] = ret; return ret; }
+	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
 
-	bool haveCapability(std::string const& _name) const { return m_capabilities.count(_name) != 0; }
-	std::vector<std::string> caps() const { std::vector<std::string> ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
-	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(T::staticName())); } catch (...) { return nullptr; } }
+	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
+	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
+	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 
 	/// Connect to a peer explicitly.
 	static std::string pocHost();
@@ -118,7 +119,7 @@ public:
 
 	h512 id() const { return m_id; }
 
-	void registerPeer(std::shared_ptr<Session> _s, std::vector<std::string> const& _caps);
+	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
 private:
 	/// Called when the session has provided us with a new peer we can connect to.
@@ -166,7 +167,7 @@ private:
 	std::vector<bi::address_v4> m_addresses;
 	std::vector<bi::address_v4> m_peerAddresses;
 
-	std::map<std::string, std::shared_ptr<HostCapabilityFace>> m_capabilities;
+	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;
 
 	bool m_accepting = false;
 };
