@@ -110,6 +110,7 @@ private:
 	unsigned m_rating;
 
 	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;
+	std::set<h512> m_knownPeers;
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

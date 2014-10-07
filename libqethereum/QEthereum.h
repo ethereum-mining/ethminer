@@ -148,6 +148,10 @@ public:
 	Q_INVOKABLE QString/*dev::u256*/ stateAt(QString/*dev::Address*/ _a, QString/*dev::u256*/ _p) const;
 	Q_INVOKABLE QString/*dev::u256*/ codeAt(QString/*dev::Address*/ _a) const;
 
+	Q_INVOKABLE QString/*json*/ getBlock(QString _numberOrHash/*unsigned if < number(), hash otherwise*/) const;
+	Q_INVOKABLE QString/*json*/ getTransaction(QString _numberOrHash/*unsigned if < number(), hash otherwise*/, int _index) const;
+	Q_INVOKABLE QString/*json*/ getUncle(QString _numberOrHash/*unsigned if < number(), hash otherwise*/, int _index) const;
+
 	Q_INVOKABLE QString/*json*/ getMessages(QString _attribs/*json*/) const;
 
 	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
@@ -255,20 +259,12 @@ private:
 	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.watchChain = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('chain') INSTEAD.'); return eth.makeWatch('chain') }"); \
-	frame->evaluateJavaScript("eth.watchPending = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('pending') INSTEAD.'); return eth.makeWatch('pending') }"); \
-	frame->evaluateJavaScript("eth.create = function(s, v, c, g, p, f) { env.warn('THIS CALL IS DEPRECATED. USE eth.transact INSTEAD.'); var v = eth.doCreate(s, v, c, g, p); if (f) f(v) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a_s, f_v, t, d, g, p, f) { if (t == null) { var r = eth.doTransact(JSON.stringify(a_s)); if (f_v) f_v(r); } else { env.warn('THIS FORM OF THIS CALL IS DEPRECATED.'); eth.doTransact(a_s, f_v, t, d, g, p); if (f) f() } }"); \
+	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
 	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-	frame->evaluateJavaScript("eth.transactions = function(a) { env.warn('THIS CALL IS DEPRECATED. USE eth.messages INSTEAD.'); return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-	frame->evaluateJavaScript("String.prototype.pad = function(l, r) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.pad(this, l, r) }"); \
-	frame->evaluateJavaScript("String.prototype.bin = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toAscii(this) }"); \
-	frame->evaluateJavaScript("String.prototype.unbin = function(l) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.fromAscii(this) }"); \
-	frame->evaluateJavaScript("String.prototype.unpad = function(l) { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.unpad(this) }"); \
-	frame->evaluateJavaScript("String.prototype.dec = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toDecimal(this) }"); \
-	frame->evaluateJavaScript("String.prototype.fix = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toFixed(this) }"); \
-	frame->evaluateJavaScript("String.prototype.sha3 = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.sha3old(this) }"); \
+	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
+	frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
+	frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
 	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 }

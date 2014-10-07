@@ -232,12 +232,9 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 if (!m_host.lock())
-	 {
-		 ReadGuard l(x_miners);
-		 for (auto& m: m_miners)
-			 m.noteStateChange();
-	 }
+	 ReadGuard l(x_miners);
+	 for (auto& m: m_miners)
+		 m.noteStateChange();
 }
 
 void Client::setMiningThreads(unsigned _threads)
@@ -548,6 +545,20 @@ u256 Client::stateAt(Address _a, u256 _l, int _block) const
 bytes Client::codeAt(Address _a, int _block) const
 {
 	return asOf(_block).code(_a);
+}
+
+Transaction Client::transaction(h256 _blockHash, unsigned _i) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return Transaction(b[1][_i].data());
+}
+
+BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return BlockInfo::fromHeader(b[2][_i].data());
 }
 
 PastMessages Client::messages(MessageFilter const& _f) const
