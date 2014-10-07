@@ -31,6 +31,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
 Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):

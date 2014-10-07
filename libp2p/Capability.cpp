@@ -27,6 +27,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_host(_h), m_idOffset(_idOffset)

@@ -28,6 +28,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
+
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i): Capability(_s, _h, _i)
