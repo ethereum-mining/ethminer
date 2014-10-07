@@ -42,8 +42,6 @@ struct Post
 	u256 gas;
 };
 
-using PostList = std::list<Post>;
-
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
 
 /**
@@ -88,14 +86,8 @@ public:
 	/// Make a new message call.
 	bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
-	/// Post a new message call.
-	void post(Address _to, u256 _value, bytesConstRef _data, u256 _gas) { posts.push_back(Post({myAddress, _to, _value, _data.toBytes(), _gas})); }
-
 	/// Revert any changes made (by any of the other calls).
 	void revert() {}
-
-	/// Execute any posts that may exist, including those that are incurred as a result of earlier posts.
-	void doPosts() {}
 
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).
@@ -107,7 +99,6 @@ public:
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	std::set<Address> suicides;	///< Any accounts that have suicided.
-	std::list<Post> posts;		///< Any posts that have been made.
 };
 
 }

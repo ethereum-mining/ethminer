@@ -41,6 +41,50 @@ using namespace dev::eth;
 
 static const u256 c_blockReward = 1500 * finney;
 
+void ecrecoverCode(bytesConstRef _in, bytesRef _out)
+{
+	struct inType
+	{
+		h256 hash;
+		h256 v;
+		h256 r;
+		h256 s;
+	} in;
+
+	h256 ret;
+
+	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
+
+	byte pubkey[65];
+	int pubkeylen = 65;
+	secp256k1_start();
+	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
+		ret = dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64));
+
+	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+}
+
+void sha256Code(bytesConstRef _in, bytesRef _out)
+{
+	h256 ret;
+	sha256(_in, bytesRef(ret.data(), 32));
+	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+}
+
+void ripemd160Code(bytesConstRef _in, bytesRef _out)
+{
+	h256 ret;
+	ripemd160(_in, bytesRef(ret.data(), 32));
+	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+}
+
+const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
+{
+	{ 1, { 500, ecrecoverCode }},
+	{ 2, { 100, sha256Code }},
+	{ 3, { 100, ripemd160Code }}
+};
+
 OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
 	if (_path.empty())
@@ -1061,7 +1105,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1077,7 +1121,16 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		o_ms->input = _data.toBytes();
 	}
 
-	if (addressHasCode(_codeAddress))
+	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
+	if (it != c_precompiled.end())
+	{
+		if (*_gas >= it->second.gas)
+		{
+			*_gas -= it->second.gas;
+			it->second.exec(_data, _out);
+		}
+	}
+	else if (addressHasCode(_codeAddress))
 	{
 		VM vm(*_gas);
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
@@ -1090,9 +1143,6 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 			if (o_suicides)
 				for (auto i: evm.suicides)
 					o_suicides->insert(i);
-			if (o_posts)
-				for (auto i: evm.posts)
-					o_posts->push_back(i);
 			if (o_ms)
 				o_ms->output = out.toBytes();
 		}
@@ -1125,7 +1175,7 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, PostList* o_posts, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1157,9 +1207,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		if (o_suicides)
 			for (auto i: evm.suicides)
 				o_suicides->insert(i);
-		if (o_posts)
-			for (auto i: evm.posts)
-				o_posts->push_back(i);
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
