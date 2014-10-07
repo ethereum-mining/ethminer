@@ -70,19 +70,16 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { return m_grabbing == Asking::Chain; }
+	bool isSyncing() const { return !!m_syncer; }
+
+	bool isBanned(h512 _id) const { return m_banned.count(_id); }
 
 private:
-	void noteHavePeerState(EthereumPeer* _who);
-	/// Session wants to pass us a block that we might not have.
-	/// @returns true if we didn't have it.
-	bool noteBlock(h256 _hash, bytesConstRef _data);
-
-	/// Session has finished getting the chain of hashes.
-	bool shouldGrabBlocks(EthereumPeer* _who);
+	/// Session is tell us that we may need (re-)syncing with the peer.
+	void noteNeedsSyncing(EthereumPeer* _who);
 
 	/// Called when the peer can no longer provide us with any needed blocks.
-	void noteDoneBlocks(EthereumPeer* _who);
+	void noteDoneBlocks(EthereumPeer* _who, bool _clemency);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
@@ -104,8 +101,7 @@ private:
 	virtual void onStarting() { startWorking(); }
 	virtual void onStopping() { stopWorking(); }
 
-	void readyForSync();
-	void updateGrabbing(Asking _g, EthereumPeer* _ignore);
+	void updateSyncer(EthereumPeer* _ignore);
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
@@ -113,12 +109,14 @@ private:
 
 	u256 m_networkId;
 
-	Asking m_grabbing = Asking::Nothing;	// TODO: needs to be thread-safe & switch to just having a peer id.
+	EthereumPeer* m_syncer = nullptr;	// TODO: switch to weak_ptr
 
 	DownloadMan m_man;
 
 	h256 m_latestBlockSent;
 	h256Set m_transactionsSent;
+
+	std::set<h512> m_banned;
 };
 
 }
