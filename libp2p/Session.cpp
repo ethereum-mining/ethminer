@@ -146,7 +146,10 @@ bool Session::interpret(RLP const& _r)
 		for (auto i: peers)
 		{
 			clogS(NetTriviaDetail) << "Sending peer " << i.first.abridged() << i.second;
-			s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
+			if (i.second.address().is_v4())
+				s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
+			else// if (i.second.address().is_v6()) - assumed
+				s.appendList(3) << bytesConstRef(i.second.address().to_v6().to_bytes().data(), 16) << i.second.port() << i.first;
 		}
 		sealAndSend(s);
 		break;
@@ -155,7 +158,16 @@ bool Session::interpret(RLP const& _r)
         clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
+			bi::address peerAddress;
+			if (_r[i][0].size() == 16)
+				peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
+			else if (_r[i][0].size() == 4)
+				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
+			else
+			{
+				disconnect(BadProtocol);
+				return false;
+			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << m_id.abridged() << isPrivateAddress(endpoint().address()) << m_server->m_incomingPeers.count(id) << (m_server->m_incomingPeers.count(id) ? isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()) : -1);

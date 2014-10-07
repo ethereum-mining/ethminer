@@ -44,7 +44,7 @@ class RLPStream;
 namespace p2p
 {
 
-bool isPrivateAddress(bi::address _addressToCheck);
+bool isPrivateAddress(bi::address const& _addressToCheck);
 
 class UPnP;
 class Capability;
