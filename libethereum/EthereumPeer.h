@@ -42,54 +42,90 @@ namespace eth
 /**
  * @brief The EthereumPeer class
  * @todo Document fully.
+ * @todo make state transitions thread-safe.
  */
 class EthereumPeer: public p2p::Capability
 {
 	friend class EthereumHost;
 
 public:
+	/// Basic constructor.
 	EthereumPeer(p2p::Session* _s, p2p::HostCapabilityFace* _h);
+
+	/// Basic destructor.
 	virtual ~EthereumPeer();
 
+	/// What is our name?
 	static std::string name() { return "eth"; }
 
+	/// What is the ethereum subprotocol host object.
 	EthereumHost* host() const;
 
 private:
+	/// Interpret an incoming message.
 	virtual bool interpret(RLP const& _r);
 
-	void sendStatus();
-	void startInitialSync();
+	/// Transition state in a particular direction.
+	void transition(Asking _wantState, bool _force = false);
 
-	void tryGrabbingHashChain();
+	/// Attempt to begin syncing with this peer; first check the peer has a more difficlult chain to download, then start asking for hashes, then move to blocks.
+	void attemptSync();
 
-	/// Ensure that we are waiting for a bunch of blocks from our peer.
-	void ensureGettingChain();
-	/// Ensure that we are waiting for a bunch of blocks from our peer.
-	void continueGettingChain();
+	/// Abort the sync operation.
+	void abortSync();
 
-	void giveUpOnFetch();
-
+	/// Clear all known transactions.
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
-	void setGrabbing(Grabbing _g);
-	
+
+	/// Update our asking state.
+	void setAsking(Asking _g, bool _isSyncing);
+
+	/// Update our syncing requirements state.
+	void setNeedsSyncing(h256 _latestHash, u256 _td);
+	void resetNeedsSyncing() { setNeedsSyncing(h256(), 0); }
+
+	/// Do we presently need syncing with this peer?
+	bool needsSyncing() const { return !!m_latestHash; }
+
+	/// Are we presently syncing with this peer?
+	bool isSyncing() const;
+
+	/// Check whether the session should bother grabbing the peer's blocks.
+	bool shouldGrabBlocks() const;
+
+	/// Peer's protocol version.
 	unsigned m_protocolVersion;
+	/// Peer's network id.
 	u256 m_networkId;
 
-	Grabbing m_grabbing;
+	/// What, if anything, we last asked the other peer for.
+	Asking m_asking = Asking::Nothing;
 
-	h256 m_latestHash;						///< Peer's latest block's hash.
+	/// Whether this peer is in the process of syncing or not. Only one peer can be syncing at once.
+	bool m_isSyncing = false;
+
+	/// These are determined through either a Status message or from NewBlock.
+	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
-	h256s m_neededBlocks;					///< The blocks that we should download from this peer.
+	/// Once a sync is started on this peer, they are cleared and moved into m_syncing*.
 
+	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
+	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
+	h256s m_syncingNeededBlocks;				///< The blocks that we should download from this peer.
+	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
+	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
+
+	/// Once we're asking for blocks, this becomes in use.
+	DownloadSub m_sub;
+
+	/// Have we received a GetTransactions packet that we haven't yet answered?
 	bool m_requireTransactions;
 
 	Mutex x_knownBlocks;
-	std::set<h256> m_knownBlocks;
-	std::set<h256> m_knownTransactions;
-	std::mutex x_knownTransactions;
+	h256Set m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
+	Mutex x_knownTransactions;
+	h256Set m_knownTransactions;			///< Transactions that the peer already knows of.
 
-	DownloadSub m_sub;
 };
 
 }
