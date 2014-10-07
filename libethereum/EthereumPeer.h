@@ -82,6 +82,7 @@ private:
 
 	/// Update our syncing requirements state.
 	void setNeedsSyncing(h256 _latestHash, u256 _td);
+	void resetNeedsSyncing() { setNeedsSyncing(h256(), 0); }
 
 	/// Do we presently need syncing with this peer?
 	bool needsSyncing() const { return !!m_latestHash; }

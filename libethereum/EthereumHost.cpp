@@ -84,13 +84,15 @@ void EthereumHost::noteNeedsSyncing(EthereumPeer* _who)
 		_who->attemptSync();
 }
 
-void EthereumHost::updateSyncer(EthereumPeer* _syncer)
+void EthereumHost::changeSyncer(EthereumPeer* _syncer)
 {
-	if (_syncer)
+	m_syncer = _syncer;
+	if (isSyncing())
 	{
-		for (auto j: peers())
-			if (j->cap<EthereumPeer>().get() != _syncer && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
-				j->cap<EthereumPeer>()->transition(Asking::Blocks);
+		if (_syncer->m_asking == Asking::Blocks)
+			for (auto j: peers())
+				if (j->cap<EthereumPeer>().get() != _syncer && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
+					j->cap<EthereumPeer>()->transition(Asking::Blocks);
 	}
 	else
 	{
@@ -115,7 +117,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		_who->addRating(m_man.chain().size() / 100);
 		m_man.reset();
 	}
-	if (_who->isSyncing())
+	else if (_who->isSyncing())
 	{
 		if (_clemency)
 			clog(NetNote) << "Chain download failed. Aborted while incomplete.";

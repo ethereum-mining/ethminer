@@ -105,7 +105,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 
 			m_syncingLatestHash = m_latestHash;
 			m_syncingTotalDifficulty = m_totalDifficulty;
-			m_latestHash = h256();
+			resetNeedsSyncing();
 
 			setAsking(_a, true);
 			s.appendList(3) << GetBlockHashesPacket << m_syncingLatestHash << c_maxHashesAsk;
@@ -134,15 +134,14 @@ void EthereumPeer::transition(Asking _a, bool _force)
 			{
 				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash.abridged() << ", was" << host()->m_latestBlockSent.abridged() << "]";
 
-				m_syncingLatestHash = h256();
-
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
 				host()->m_latestBlockSent = m_syncingLatestHash;
+
 			}
 			else
 			{
 				clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-				m_latestHash = h256();
+				m_syncingLatestHash = h256();
 				setAsking(Asking::Nothing, false);
 				return;
 			}
@@ -151,7 +150,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 		if (m_asking == Asking::Nothing || m_asking == Asking::Hashes || m_asking == Asking::Blocks)
 		{
 			// Looks like it's the best yet for total difficulty. Set to download.
-			setAsking(Asking::Blocks, true);
+			setAsking(Asking::Blocks, true);		// will kick off other peers to help if available.
 			auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 			if (blocks.size())
 			{
@@ -202,9 +201,12 @@ void EthereumPeer::transition(Asking _a, bool _force)
 
 void EthereumPeer::setAsking(Asking _a, bool _isSyncing)
 {
+	bool changedAsking = (m_asking != _a);
 	m_asking = _a;
-	if (_isSyncing != (host()->m_syncer == this))
-		host()->updateSyncer(_isSyncing ? this : nullptr);
+
+	if (_isSyncing != (host()->m_syncer == this) || (_isSyncing && changedAsking))
+		host()->changeSyncer(_isSyncing ? this : nullptr);
+
 	if (!_isSyncing)
 	{
 		m_syncingLatestHash = h256();
@@ -221,7 +223,10 @@ void EthereumPeer::setNeedsSyncing(h256 _latestHash, u256 _td)
 	m_latestHash = _latestHash;
 	m_totalDifficulty = _td;
 
-	host()->noteNeedsSyncing(this);
+	if (m_latestHash)
+		host()->noteNeedsSyncing(this);
+
+	session()->addNote("sync", string(isSyncing() ? "ongoing" : "holding") + (needsSyncing() ? " & needed" : ""));
 }
 
 bool EthereumPeer::isSyncing() const
@@ -269,7 +274,7 @@ void EthereumPeer::attemptSync()
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
-		m_latestHash = h256();
+		resetNeedsSyncing();
 		transition(Asking::Nothing);
 	}
 	else
@@ -287,6 +292,8 @@ bool EthereumPeer::interpret(RLP const& _r)
 	{
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		m_networkId = _r[2].toInt<u256>();
+
+		// a bit dirty as we're misusing these to communicate the values to transition, but harmless.
 		m_totalDifficulty = _r[3].toInt<u256>();
 		m_latestHash = _r[4].toHash<h256>();
 		auto genesisHash = _r[5].toHash<h256>();
