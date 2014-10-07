@@ -64,6 +64,7 @@ public:
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
 
+	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);

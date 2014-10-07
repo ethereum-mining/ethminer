@@ -50,9 +50,9 @@ class TransactionQueue;
 class EthereumHost;
 class EthereumPeer;
 
-enum EthereumPacket
+enum
 {
-	StatusPacket = 0x10,
+	StatusPacket = 0,
 	GetTransactionsPacket,
 	TransactionsPacket,
 	GetBlockHashesPacket,
@@ -60,6 +60,7 @@ enum EthereumPacket
 	GetBlocksPacket,
 	BlocksPacket,
 	NewBlockPacket,
+	PacketCount
 };
 
 enum class Asking

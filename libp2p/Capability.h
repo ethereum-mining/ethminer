@@ -34,22 +34,23 @@ class Capability
 	friend class Session;
 
 public:
-	Capability(Session* _s, HostCapabilityFace* _h): m_session(_s), m_host(_h) {}
+	Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset);
 	virtual ~Capability() {}
 
-	/// Must return the capability name.
-	static std::string name() { return ""; }
+	// Implement these in the derived class.
+/*	static std::string name() { return ""; }
 	static u256 version() { return 0; }
-
+	static unsigned messageCount() { return 0; }
+*/
 	Session* session() const { return m_session; }
 	HostCapabilityFace* hostCapability() const { return m_host; }
 
 protected:
-	virtual bool interpret(RLP const&) = 0;
+	virtual bool interpret(unsigned _id, RLP const&) = 0;
 
 	void disable(std::string const& _problem);
 
-	static RLPStream& prep(RLPStream& _s);
+	RLPStream& prep(RLPStream& _s, unsigned _id, unsigned _args = 0);
 	void sealAndSend(RLPStream& _s);
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
@@ -60,6 +61,7 @@ private:
 	Session* m_session;
 	HostCapabilityFace* m_host;
 	bool m_enabled = true;
+	unsigned m_idOffset;
 };
 
 }

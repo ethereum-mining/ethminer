@@ -177,11 +177,8 @@ void EthereumHost::maintainTransactions(h256 _currentHash)
 			if (n || ep->m_requireTransactions)
 			{
 				RLPStream ts;
-				EthereumPeer::prep(ts);
-				ts.appendList(n + 1) << TransactionsPacket;
-				ts.appendRaw(b, n).swapOut(b);
-				seal(b);
-				ep->send(&b);
+				ep->prep(ts, TransactionsPacket, n).appendRaw(b, n);
+				ep->sealAndSend(ts);
 			}
 			ep->m_requireTransactions = false;
 		}
@@ -195,24 +192,21 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 		// TODO: clean up
 		h256s hs;
 		hs.push_back(_currentHash);
-		RLPStream ts;
-		EthereumPeer::prep(ts);
 		bytes bs;
 		for (auto h: hs)
 			bs += m_chain.block(h);
 		clog(NetMessageSummary) << "Sending" << hs.size() << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-		ts.appendList(1 + hs.size()).append(BlocksPacket).appendRaw(bs, hs.size());
-		bytes b;
-		ts.swapOut(b);
-		seal(b);
-
 		for (auto j: peers())
 		{
 			auto p = j->cap<EthereumPeer>();
+
+			RLPStream ts;
+			p->prep(ts, BlocksPacket, hs.size()).appendRaw(bs, hs.size());
+
 			Guard l(p->x_knownBlocks);
 			if (!p->m_knownBlocks.count(_currentHash))
-				p->send(&b);
+				p->sealAndSend(ts);
 			p->m_knownBlocks.clear();
 		}
 		m_latestBlockSent = _currentHash;

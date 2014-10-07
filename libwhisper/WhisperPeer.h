@@ -49,16 +49,17 @@ class WhisperPeer: public Capability
 	friend class WhisperHost;
 
 public:
-	WhisperPeer(Session* _s, HostCapabilityFace* _h);
+	WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i);
 	virtual ~WhisperPeer();
 
 	static std::string name() { return "shh"; }
 	static u256 version() { return 1; }
+	static unsigned messageCount() { return PacketCount; }
 
 	WhisperHost* host() const;
 
 private:
-	virtual bool interpret(RLP const&);
+	virtual bool interpret(unsigned _id, RLP const&);
 
 	void sendMessages();
 
