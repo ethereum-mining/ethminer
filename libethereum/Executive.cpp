@@ -218,14 +218,11 @@ u256 Executive::gas() const
 	return m_vm ? m_vm->gas() : m_endGas;
 }
 
-void Executive::finalize(OnOpFunc const& _onOp)
+void Executive::finalize(OnOpFunc const&)
 {
 	if (m_t.isCreation() && m_newAddress && m_out.size())
 		// non-reverted creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
-
-	if (m_ext)
-		m_endGas += m_ext->doPosts(_onOp);
 
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice);
