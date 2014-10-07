@@ -34,6 +34,9 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i):
