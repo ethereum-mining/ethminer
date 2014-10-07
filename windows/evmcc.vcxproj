@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\evmcc\BasicBlock.cpp" />
     <ClCompile Include="..\evmcc\Compiler.cpp" />
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
@@ -29,6 +30,7 @@
     <ClCompile Include="..\evmcc\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\evmcc\BasicBlock.h" />
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
     <ClInclude Include="..\evmcc\Ext.h" />
