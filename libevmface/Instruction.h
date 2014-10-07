@@ -163,8 +163,7 @@ enum class Instruction: uint8_t
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account
 	RETURN,				///< halt execution returning output data
-	POST,				///< asynchronous call without output (adds a message to the post queue)
-	CALLSTATELESS,
+	CALLCODE,
 	SUICIDE = 0xff		///< halt execution and register account for later deletion
 };
 

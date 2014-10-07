@@ -148,9 +148,8 @@ const std::map<std::string, Instruction> dev::eth::c_instructions =
 	{ "SWAP16", Instruction::SWAP16 },
 	{ "CREATE", Instruction::CREATE },
 	{ "CALL", Instruction::CALL },
-	{ "CALLSTATELESS", Instruction::CALLSTATELESS },
+	{ "CALLCODE", Instruction::CALLCODE },
 	{ "RETURN", Instruction::RETURN },
-	{ "POST", Instruction::POST },
 	{ "SUICIDE", Instruction::SUICIDE }
 };
 
@@ -275,9 +274,8 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SWAP16,		{ "SWAP16",			0, 17, 17 } },
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1 } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1 } },
-	{ Instruction::CALLSTATELESS, { "CALLSTATELESS",0, 7, 1 } },
+	{ Instruction::CALLCODE, { "CALLCODE",0, 7, 1 } },
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0 } },
-	{ Instruction::POST,		{ "POST",			0, 5, 0 } },
 	{ Instruction::SUICIDE,		{ "SUICIDE",		0, 1, 0} }
 };
 
