@@ -87,7 +87,7 @@ bool Session::interpret(RLP const& _r)
 		if (m_server->havePeer(m_id))
 		{
 			// Already connected.
-			cwarn << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
+			clogS(NetWarn) << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
 			disconnect(DuplicatePeer);
 			return false;
 		}
@@ -240,7 +240,7 @@ void Session::sendDestroy(bytes& _msg)
 
 	if (!checkPacket(bytesConstRef(&_msg)))
 	{
-		cwarn << "INVALID PACKET CONSTRUCTED!";
+		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 	}
 
 	bytes buffer = bytes(std::move(_msg));
@@ -253,7 +253,7 @@ void Session::send(bytesConstRef _msg)
 	
 	if (!checkPacket(_msg))
 	{
-		cwarn << "INVALID PACKET CONSTRUCTED!";
+		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 	}
 
 	bytes buffer = bytes(_msg.toBytes());
@@ -288,7 +288,7 @@ void Session::write()
 		// must check queue, as write callback can occur following dropped()
 		if (ec)
 		{
-			cwarn << "Error sending: " << ec.message();
+			clogS(NetWarn) << "Error sending: " << ec.message();
 			dropped();
 			return;
 		}
@@ -363,7 +363,7 @@ void Session::doRead()
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
 			// got here with length of 1241...
-			cwarn << "Error reading: " << ec.message();
+			clogS(NetWarn) << "Error reading: " << ec.message();
 			dropped();
 		}
 		else if (ec && length == 0)
@@ -380,7 +380,7 @@ void Session::doRead()
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 					{
-						cwarn << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
+						clogS(NetWarn) << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
 						disconnect(BadProtocol);
 						return;
 					}
@@ -396,7 +396,7 @@ void Session::doRead()
 						if (!checkPacket(data))
 						{
 							cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-							cwarn << "INVALID MESSAGE RECEIVED";
+							clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
 							disconnect(BadProtocol);
 							return;
 						}

@@ -29,7 +29,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
+ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 {
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
@@ -42,7 +42,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	{
 		// Already know about this one.
 		cblockq << "Already known.";
-		return false;
+		return ImportResult::AlreadyKnown;
 	}
 
 	// VERIFY: populates from the block and checks the block is internally coherent.
@@ -60,6 +60,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	{
 		cwarn << "Ignoring malformed block: " << diagnostic_information(_e);
 		return false;
+		return ImportResult::Malformed;
 	}
 #endif
 
@@ -67,7 +68,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	if (_bc.details(h))
 	{
 		cblockq << "Already known in chain.";
-		return false;
+		return ImportResult::AlreadyInChain;
 	}
 
 	UpgradeGuard ul(l);
@@ -77,6 +78,7 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
 		cblockq << "OK - queued for future.";
+		return ImportResult::FutureTime;
 	}
 	else
 	{
@@ -87,6 +89,8 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
+
+			return ImportResult::UnknownParent;
 		}
 		else
 		{
@@ -96,10 +100,9 @@ bool BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			m_readySet.insert(h);
 
 			noteReadyWithoutWriteGuard(h);
+			return ImportResult::Success;
 		}
 	}
-
-	return true;
 }
 
 void BlockQueue::tick(BlockChain const& _bc)

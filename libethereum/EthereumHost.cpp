@@ -52,10 +52,10 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 EthereumHost::~EthereumHost()
 {
 	for (auto const& i: peers())
-		i->cap<EthereumPeer>()->giveUpOnFetch();
+		i->cap<EthereumPeer>()->abortSync();
 }
 
-bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
+bool EthereumHost::ensureInitialised()
 {
 	if (!m_latestBlockSent)
 	{
@@ -63,155 +63,109 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 		m_latestBlockSent = m_chain.currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
 
-		for (auto const& i: _tq.transactions())
+		for (auto const& i: m_tq.transactions())
 			m_transactionsSent.insert(i.first);
 		return true;
 	}
 	return false;
 }
 
-void EthereumHost::noteHavePeerState(EthereumPeer* _who)
+void EthereumHost::noteNeedsSyncing(EthereumPeer* _who)
 {
-	clog(NetAllDetail) << "Have peer state.";
-
-	// TODO: FIX: BUG: Better state management!
-
 	// if already downloading hash-chain, ignore.
-	if (m_grabbing != Grabbing::Nothing)
+	if (isSyncing())
 	{
-		for (auto const& i: peers())
-			if (i->cap<EthereumPeer>()->m_grabbing == m_grabbing || m_grabbing == Grabbing::State)
-			{
-				clog(NetAllDetail) << "Already downloading chain. Just set to help out.";
-				_who->ensureGettingChain();
-				return;
-			}
-		m_grabbing = Grabbing::Nothing;
+		clog(NetAllDetail) << "Sync in progress: Just set to help out.";
+		if (m_syncer->m_asking == Asking::Blocks)
+			_who->transition(Asking::Blocks);
 	}
-
-	// otherwise check to see if we should be downloading...
-	_who->tryGrabbingHashChain();
+	else
+		// otherwise check to see if we should be downloading...
+		_who->attemptSync();
 }
 
-void EthereumHost::updateGrabbing(Grabbing _g)
+void EthereumHost::changeSyncer(EthereumPeer* _syncer)
 {
-	m_grabbing = _g;
-	if (_g == Grabbing::Nothing)
-		readyForSync();
-	else if (_g == Grabbing::Chain)
+	m_syncer = _syncer;
+	if (isSyncing())
+	{
+		if (_syncer->m_asking == Asking::Blocks)
+			for (auto j: peers())
+				if (j->cap<EthereumPeer>().get() != _syncer && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
+					j->cap<EthereumPeer>()->transition(Asking::Blocks);
+	}
+	else
+	{
+		// start grabbing next hash chain if there is one.
 		for (auto j: peers())
-			j->cap<EthereumPeer>()->ensureGettingChain();
-}
-
-void EthereumHost::noteHaveChain(EthereumPeer* _from)
-{
-	auto td = _from->m_totalDifficulty;
-
-	if (_from->m_neededBlocks.empty())
-	{
-		_from->setGrabbing(Grabbing::Nothing);
-		updateGrabbing(Grabbing::Nothing);
-		return;
-	}
-
-	clog(NetNote) << "Hash-chain COMPLETE:" << _from->m_totalDifficulty << "vs" << m_chain.details().totalDifficulty << ";" << _from->m_neededBlocks.size() << " blocks, ends" << _from->m_neededBlocks.back().abridged();
-
-	if (td < m_chain.details().totalDifficulty || (td == m_chain.details().totalDifficulty && m_chain.currentHash() == _from->m_latestHash))
-	{
-		clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-		_from->setGrabbing(Grabbing::Nothing);
-		updateGrabbing(Grabbing::Nothing);
-		return;
-	}
-
-	clog(NetNote) << "Difficulty of hashchain HIGHER. Replacing fetch queue [latest now" << _from->m_latestHash.abridged() << ", was" << m_latestBlockSent.abridged() << "]";
-
-	// Looks like it's the best yet for total difficulty. Set to download.
-	m_man.resetToChain(_from->m_neededBlocks);
-	m_latestBlockSent = _from->m_latestHash;
-
-	_from->setGrabbing(Grabbing::Chain);
-	updateGrabbing(Grabbing::Chain);
-}
-
-void EthereumHost::readyForSync()
-{
-	// start grabbing next hash chain if there is one.
-	for (auto j: peers())
-	{
-		j->cap<EthereumPeer>()->tryGrabbingHashChain();
-		if (j->cap<EthereumPeer>()->m_grabbing == Grabbing::Hashes)
 		{
-			m_grabbing = Grabbing::Hashes;
-			return;
+			j->cap<EthereumPeer>()->attemptSync();
+			if (isSyncing())
+				return;
 		}
+		clog(NetNote) << "No more peers to sync with.";
 	}
-	clog(NetNote) << "No more peers to sync with.";
 }
 
-void EthereumHost::noteDoneBlocks(EthereumPeer* _who)
+void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 {
 	if (m_man.isComplete())
 	{
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
-		updateGrabbing(Grabbing::Nothing);
+		// 1/100th for each useful block hash.
+		_who->addRating(m_man.chain().size() / 100);
 		m_man.reset();
 	}
-	if (_who->m_grabbing == Grabbing::Chain)
+	else if (_who->isSyncing())
 	{
-		// Done our chain-get.
-		clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
-		// TODO: note that peer is BADBADBAD!
-		updateGrabbing(Grabbing::Nothing);
+		if (_clemency)
+			clog(NetNote) << "Chain download failed. Aborted while incomplete.";
+		else
+		{
+			// Done our chain-get.
+			clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
+
+			m_banned.insert(_who->session()->id());			// We know who you are!
+			_who->disable("Peer sent hashes but was unable to provide the blocks.");
+		}
 		m_man.reset();
 	}
 }
 
-bool EthereumHost::noteBlock(h256 _hash, bytesConstRef _data)
+void EthereumHost::reset()
 {
-	if (!m_chain.details(_hash))
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		m_incomingBlocks.push_back(_data.toBytes());
-		return true;
-	}
-	return false;
+	if (m_syncer)
+		m_syncer->abortSync();
+
+	m_man.resetToChain(h256s());
+
+	m_latestBlockSent = h256();
+	m_transactionsSent.clear();
 }
 
 void EthereumHost::doWork()
 {
-	bool netChange = ensureInitialised(m_tq);
+	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
-	maintainTransactions(m_tq, h);
-	maintainBlocks(m_bq, h);
+	maintainTransactions(h);
+	maintainBlocks(h);
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
 }
 
-void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
+void EthereumHost::maintainTransactions(h256 _currentHash)
 {
-	bool resendAll = (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		for (auto it = m_incomingTransactions.begin(); it != m_incomingTransactions.end(); ++it)
-			if (_tq.import(&*it))
-			{}//ret = true;		// just putting a transaction in the queue isn't enough to change the state - it might have an invalid nonce...
-			else
-				m_transactionsSent.insert(sha3(*it));	// if we already had the transaction, then don't bother sending it on.
-		m_incomingTransactions.clear();
-	}
+	bool resendAll = (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
 
 	// Send any new transactions.
 	for (auto const& p: peers())
-	{
-		auto ep = p->cap<EthereumPeer>();
-		if (ep)
+		if (auto ep = p->cap<EthereumPeer>())
 		{
 			bytes b;
 			unsigned n = 0;
-			for (auto const& i: _tq.transactions())
+			for (auto const& i: m_tq.transactions())
 				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
 				{
 					b += i.second;
@@ -220,7 +174,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 				}
 			ep->clearKnownTransactions();
 			
-			if (n)
+			if (n || ep->m_requireTransactions)
 			{
 				RLPStream ts;
 				EthereumPeer::prep(ts);
@@ -231,54 +185,24 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 			}
 			ep->m_requireTransactions = false;
 		}
-	}
 }
 
-void EthereumHost::reset()
+void EthereumHost::maintainBlocks(h256 _currentHash)
 {
-	m_grabbing = Grabbing::Nothing;
-
-	m_man.resetToChain(h256s());
-
-	m_incomingTransactions.clear();
-	m_incomingBlocks.clear();
-
-	m_latestBlockSent = h256();
-	m_transactionsSent.clear();
-}
-
-void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
-{
-	// Import new blocks
-	{
-		lock_guard<recursive_mutex> l(m_incomingLock);
-		for (auto it = m_incomingBlocks.rbegin(); it != m_incomingBlocks.rend(); ++it)
-			if (_bq.import(&*it, m_chain))
-			{}
-			else{} // TODO: don't forward it.
-		m_incomingBlocks.clear();
-	}
-
 	// If we've finished our initial sync send any new blocks.
-	if (m_grabbing == Grabbing::Nothing && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
+		// TODO: clean up
+		h256s hs;
+		hs.push_back(_currentHash);
 		RLPStream ts;
 		EthereumPeer::prep(ts);
 		bytes bs;
-		unsigned c = 0;
-		for (auto h: m_chain.treeRoute(m_latestBlockSent, _currentHash, nullptr, false, true))
-		{
+		for (auto h: hs)
 			bs += m_chain.block(h);
-			++c;
-		}
-		clog(NetMessageSummary) << "Sending" << c << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
-		if (c > 1000)
-		{
-			cwarn << "Gaa this would be an awful lot of new blocks. Not bothering";
-			return;
-		}
+		clog(NetMessageSummary) << "Sending" << hs.size() << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-		ts.appendList(1 + c).append(BlocksPacket).appendRaw(bs, c);
+		ts.appendList(1 + hs.size()).append(BlocksPacket).appendRaw(bs, hs.size());
 		bytes b;
 		ts.swapOut(b);
 		seal(b);

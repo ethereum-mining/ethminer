@@ -59,15 +59,22 @@ enum EthereumPacket
 	BlockHashesPacket,
 	GetBlocksPacket,
 	BlocksPacket,
+	NewBlockPacket,
 };
 
-enum class Grabbing
+enum class Asking
 {
 	State,
 	Hashes,
-	Chain,
-	ChainHelper,
+	Blocks,
 	Nothing
+};
+
+enum class Syncing
+{
+	Waiting,
+	Executing,
+	Done
 };
 
 }

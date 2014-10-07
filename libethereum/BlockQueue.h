@@ -37,6 +37,16 @@ class BlockChain;
 struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
+enum class ImportResult
+{
+	Success = 0,
+	UnknownParent,
+	FutureTime,
+	AlreadyInChain,
+	AlreadyKnown,
+	Malformed
+};
+
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
@@ -46,7 +56,7 @@ class BlockQueue
 {
 public:
 	/// Import a block into the queue.
-	bool import(bytesConstRef _tx, BlockChain const& _bc);
+	ImportResult import(bytesConstRef _tx, BlockChain const& _bc);
 
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
@@ -67,6 +77,9 @@ public:
 	/// Clear everything.
 	void clear() { WriteGuard l(m_lock); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
 
+	/// Return first block with an unknown parent.
+	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
+
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);
 	void notePresentWithoutWriteGuard(bytesConstRef _block);
@@ -77,7 +90,7 @@ private:
 	std::vector<bytes> m_ready;								///< List of blocks, in correct order, ready for chain-import.
 	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
 	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
-	std::multimap<unsigned, bytes> m_future;	///< Set of blocks that are not yet valid.
+	std::multimap<unsigned, bytes> m_future;				///< Set of blocks that are not yet valid.
 };
 
 }
