@@ -171,16 +171,10 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
-		case Instruction::CALLSTATELESS:
+		case Instruction::CALLCODE:
 			require(7);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
-			break;
-
-		case Instruction::POST:
-			require(5);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]);
 			break;
 
 		case Instruction::CREATE:
@@ -611,7 +605,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 		case Instruction::CALL:
-		case Instruction::CALLSTATELESS:
+		case Instruction::CALLCODE:
 		{
 			require(7);
 
@@ -662,29 +656,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
-		case Instruction::POST:
-		{
-			require(5);
-
-			u256 gas = m_stack.back();
-			m_stack.pop_back();
-			u160 receiveAddress = asAddress(m_stack.back());
-			m_stack.pop_back();
-			u256 value = m_stack.back();
-			m_stack.pop_back();
-
-			unsigned inOff = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned inSize = (unsigned)m_stack.back();
-			m_stack.pop_back();
-
-			if (_ext.balance(_ext.myAddress) >= value)
-			{
-				_ext.subBalance(value);
-				_ext.post(receiveAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas);
-			}
-			break;
-		}
 		default:
 			BOOST_THROW_EXCEPTION(BadInstruction());
 		}
