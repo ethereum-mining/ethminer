@@ -58,6 +58,9 @@ public:
 	/// What is our name?
 	static std::string name() { return "eth"; }
 
+	/// What is our version?
+	static u256 version() { return c_protocolVersion; }
+
 	/// What is the ethereum subprotocol host object.
 	EthereumHost* host() const;
 

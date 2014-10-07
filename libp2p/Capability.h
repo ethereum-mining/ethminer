@@ -39,6 +39,7 @@ public:
 
 	/// Must return the capability name.
 	static std::string name() { return ""; }
+	static u256 version() { return 0; }
 
 	Session* session() const { return m_session; }
 	HostCapabilityFace* hostCapability() const { return m_host; }

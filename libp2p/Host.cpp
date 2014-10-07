@@ -38,6 +38,7 @@
 #include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
+#include "Common.h"
 #include "Capability.h"
 #include "UPnP.h"
 using namespace std;
@@ -145,7 +146,7 @@ unsigned Host::protocolVersion() const
 	return 0;
 }
 
-void Host::registerPeer(std::shared_ptr<Session> _s, vector<string> const& _caps)
+void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		Guard l(x_peers);
