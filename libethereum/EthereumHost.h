@@ -72,7 +72,7 @@ public:
 	DownloadMan const& downloadMan() const { return m_man; }
 	bool isSyncing() const { return !!m_syncer; }
 
-	bool isBanned(h512 _id) const { return m_banned.count(_id); }
+	bool isBanned(h512 _id) const { return !!m_banned.count(_id); }
 
 private:
 	/// Session is tell us that we may need (re-)syncing with the peer.
