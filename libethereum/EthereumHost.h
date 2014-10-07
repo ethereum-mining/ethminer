@@ -84,8 +84,8 @@ private:
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
 
-	void maintainTransactions(TransactionQueue& _tq, h256 _currentBlock);
-	void maintainBlocks(BlockQueue& _bq, h256 _currentBlock);
+	void maintainTransactions(h256 _currentBlock);
+	void maintainBlocks(h256 _currentBlock);
 
 	/// Get a bunch of needed blocks.
 	/// Removes them from our list of needed blocks.
@@ -96,7 +96,7 @@ private:
 	bool isInitialised() const { return m_latestBlockSent; }
 
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
-	bool ensureInitialised(TransactionQueue& _tq);
+	bool ensureInitialised();
 
 	virtual void onStarting() { startWorking(); }
 	virtual void onStopping() { stopWorking(); }

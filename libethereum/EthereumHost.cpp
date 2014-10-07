@@ -55,7 +55,7 @@ EthereumHost::~EthereumHost()
 		i->cap<EthereumPeer>()->abortSync();
 }
 
-bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
+bool EthereumHost::ensureInitialised()
 {
 	if (!m_latestBlockSent)
 	{
@@ -63,7 +63,7 @@ bool EthereumHost::ensureInitialised(TransactionQueue& _tq)
 		m_latestBlockSent = m_chain.currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
 
-		for (auto const& i: _tq.transactions())
+		for (auto const& i: m_tq.transactions())
 			m_transactionsSent.insert(i.first);
 		return true;
 	}
@@ -144,16 +144,16 @@ void EthereumHost::reset()
 
 void EthereumHost::doWork()
 {
-	bool netChange = ensureInitialised(m_tq);
+	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
-	maintainTransactions(m_tq, h);
-	maintainBlocks(m_bq, h);
+	maintainTransactions(h);
+	maintainBlocks(h);
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
 }
 
-void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash)
+void EthereumHost::maintainTransactions(h256 _currentHash)
 {
 	bool resendAll = (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
 
@@ -163,7 +163,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 		{
 			bytes b;
 			unsigned n = 0;
-			for (auto const& i: _tq.transactions())
+			for (auto const& i: m_tq.transactions())
 				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
 				{
 					b += i.second;
@@ -185,7 +185,7 @@ void EthereumHost::maintainTransactions(TransactionQueue& _tq, h256 _currentHash
 		}
 }
 
-void EthereumHost::maintainBlocks(BlockQueue& _bq, h256 _currentHash)
+void EthereumHost::maintainBlocks(h256 _currentHash)
 {
 	// If we've finished our initial sync send any new blocks.
 	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)

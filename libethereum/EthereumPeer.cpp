@@ -59,10 +59,6 @@ EthereumHost* EthereumPeer::host() const
 	return static_cast<EthereumHost*>(Capability::hostCapability());
 }
 
-void EthereumPeer::sendStatus()
-{
-}
-
 /*
  * Possible asking/syncing states for two peers:
  */
@@ -132,9 +128,13 @@ void EthereumPeer::transition(Asking _a, bool _force)
 	{
 		if (m_asking == Asking::Hashes)
 		{
+			if (!isSyncing())
+				clogS(NetWarn) << "Bad state: asking for Hashes yet not syncing!";
 			if (shouldGrabBlocks())
 			{
 				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash.abridged() << ", was" << host()->m_latestBlockSent.abridged() << "]";
+
+				m_syncingLatestHash = h256();
 
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
 				host()->m_latestBlockSent = m_syncingLatestHash;
@@ -142,7 +142,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 			else
 			{
 				clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
-
+				m_latestHash = h256();
 				setAsking(Asking::Nothing, false);
 				return;
 			}
@@ -169,7 +169,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 	{
 		if (m_asking == Asking::Blocks)
 		{
-			clogS(NetNote) << "Finishing block fetch...";
+			clogS(NetNote) << "Finishing blocks fetch...";
 
 			// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 			if (isSyncing())
@@ -205,6 +205,12 @@ void EthereumPeer::setAsking(Asking _a, bool _isSyncing)
 	m_asking = _a;
 	if (_isSyncing != (host()->m_syncer == this))
 		host()->updateSyncer(_isSyncing ? this : nullptr);
+	if (!_isSyncing)
+	{
+		m_syncingLatestHash = h256();
+		m_syncingTotalDifficulty = 0;
+		m_syncingNeededBlocks.clear();
+	}
 
 	session()->addNote("ask", _a == Asking::Nothing ? "nothing" : _a == Asking::State ? "state" : _a == Asking::Hashes ? "hashes" : _a == Asking::Blocks ? "blocks" : "?");
 	session()->addNote("sync", string(isSyncing() ? "ongoing" : "holding") + (needsSyncing() ? " & needed" : ""));
@@ -263,6 +269,7 @@ void EthereumPeer::attemptSync()
 	if (td >= m_totalDifficulty)
 	{
 		clogS(NetAllDetail) << "No. Our chain is better.";
+		m_latestHash = h256();
 		transition(Asking::Nothing);
 	}
 	else
