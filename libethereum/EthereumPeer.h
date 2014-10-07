@@ -65,9 +65,6 @@ private:
 	/// Interpret an incoming message.
 	virtual bool interpret(RLP const& _r);
 
-	/// Send our status to peer.
-	void sendStatus();
-
 	/// Transition state in a particular direction.
 	void transition(Asking _wantState, bool _force = false);
 
