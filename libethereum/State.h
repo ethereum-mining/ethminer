@@ -69,6 +69,12 @@ struct TransactionReceipt
 	Manifest changes;
 };
 
+struct PrecompiledAddress
+{
+	unsigned gas;
+	std::function<void(bytesConstRef, bytesRef)> exec;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -277,12 +283,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, PostList* o_posts = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -320,6 +326,8 @@ private:
 	u256 m_blockReward;
 
 	static std::string c_defaultPath;
+
+	static const std::map<unsigned, PrecompiledAddress> c_precompiled;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

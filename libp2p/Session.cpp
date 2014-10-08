@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"
@@ -30,6 +31,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
 Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
@@ -40,7 +44,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, un
 {
 	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
-	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0), set<string>(), 0, map<string, string>()});
+	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
 Session::~Session()
@@ -72,22 +76,28 @@ bi::tcp::endpoint Session::endpoint() const
 bool Session::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
-	switch (_r[0].toInt<unsigned>())
+	switch ((PacketType)_r[0].toInt<unsigned>())
 	{
 	case HelloPacket:
 	{
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
-		auto caps = _r[3].toVector<string>();
+		auto caps = _r[3].toVector<CapDesc>();
 		m_listenPort = _r[4].toInt<unsigned short>();
 		m_id = _r[5].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << caps << dec << m_listenPort;
+		// clang error (previously: ... << hex << caps ...)
+		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
+		stringstream capslog;
+		for (auto cap: caps)
+			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
+
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << capslog.str() << dec << m_listenPort;
 
 		if (m_server->havePeer(m_id))
 		{
 			// Already connected.
-			cwarn << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
+			clogS(NetWarn) << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
 			disconnect(DuplicatePeer);
 			return false;
 		}
@@ -102,7 +112,7 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<string>(), (unsigned)m_socket.native_handle(), map<string, string>() }); }
+			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() }); }
 		catch (...)
 		{
 			disconnect(BadProtocol);
@@ -130,7 +140,7 @@ bool Session::interpret(RLP const& _r)
 	{
         clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
-		sealAndSend(prep(s).appendList(1) << PongPacket);
+		sealAndSend(prep(s, PongPacket));
 		break;
 	}
 	case PongPacket:
@@ -142,12 +152,14 @@ bool Session::interpret(RLP const& _r)
         clogS(NetTriviaSummary) << "GetPeers";
 		auto peers = m_server->potentialPeers();
 		RLPStream s;
-		prep(s).appendList(peers.size() + 1);
-		s << PeersPacket;
+		prep(s, PeersPacket, peers.size());
 		for (auto i: peers)
 		{
 			clogS(NetTriviaDetail) << "Sending peer " << i.first.abridged() << i.second;
-			s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
+			if (i.second.address().is_v4())
+				s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
+			else// if (i.second.address().is_v6()) - assumed
+				s.appendList(3) << bytesConstRef(i.second.address().to_v6().to_bytes().data(), 16) << i.second.port() << i.first;
 		}
 		sealAndSend(s);
 		break;
@@ -156,7 +168,16 @@ bool Session::interpret(RLP const& _r)
         clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
-			bi::address_v4 peerAddress(_r[i][0].toHash<FixedHash<4>>().asArray());
+			bi::address peerAddress;
+			if (_r[i][0].size() == 16)
+				peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
+			else if (_r[i][0].size() == 4)
+				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
+			else
+			{
+				disconnect(BadProtocol);
+				return false;
+			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			h512 id = _r[i][2].toHash<h512>();
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << m_id.abridged() << isPrivateAddress(endpoint().address()) << m_server->m_incomingPeers.count(id) << (m_server->m_incomingPeers.count(id) ? isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()) : -1);
@@ -185,10 +206,13 @@ bool Session::interpret(RLP const& _r)
 		}
 		break;
 	default:
+	{
+		auto id = _r[0].toInt<unsigned>();
 		for (auto const& i: m_capabilities)
-			if (i.second->m_enabled && i.second->interpret(_r))
+			if (i.second->m_enabled && id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount() && i.second->interpret(id - i.second->m_idOffset, _r))
 				return true;
 		return false;
+	}
 	}
 	return true;
 }
@@ -196,14 +220,19 @@ bool Session::interpret(RLP const& _r)
 void Session::ping()
 {
 	RLPStream s;
-	sealAndSend(prep(s).appendList(1) << PingPacket);
+	sealAndSend(prep(s, PingPacket));
 	m_ping = std::chrono::steady_clock::now();
 }
 
 void Session::getPeers()
 {
 	RLPStream s;
-	sealAndSend(prep(s).appendList(1) << GetPeersPacket);
+	sealAndSend(prep(s, GetPeersPacket));
+}
+
+RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
+{
+	return prep(_s).appendList(_args + 1).append((unsigned)_id);
 }
 
 RLPStream& Session::prep(RLPStream& _s)
@@ -240,7 +269,7 @@ void Session::sendDestroy(bytes& _msg)
 
 	if (!checkPacket(bytesConstRef(&_msg)))
 	{
-		cwarn << "INVALID PACKET CONSTRUCTED!";
+		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 	}
 
 	bytes buffer = bytes(std::move(_msg));
@@ -253,7 +282,7 @@ void Session::send(bytesConstRef _msg)
 	
 	if (!checkPacket(_msg))
 	{
-		cwarn << "INVALID PACKET CONSTRUCTED!";
+		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 	}
 
 	bytes buffer = bytes(_msg.toBytes());
@@ -288,7 +317,7 @@ void Session::write()
 		// must check queue, as write callback can occur following dropped()
 		if (ec)
 		{
-			cwarn << "Error sending: " << ec.message();
+			clogS(NetWarn) << "Error sending: " << ec.message();
 			dropped();
 			return;
 		}
@@ -323,8 +352,7 @@ void Session::disconnect(int _reason)
 		if (m_disconnect == chrono::steady_clock::time_point::max())
 		{
 			RLPStream s;
-			prep(s);
-			s.appendList(2) << DisconnectPacket << _reason;
+			prep(s, DisconnectPacket, 1) << _reason;
 			sealAndSend(s);
 			m_disconnect = chrono::steady_clock::now();
 		}
@@ -336,8 +364,7 @@ void Session::disconnect(int _reason)
 void Session::start()
 {
 	RLPStream s;
-	prep(s);
-	s.appendList(6) << HelloPacket
+	prep(s, HelloPacket, 5)
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
@@ -363,7 +390,7 @@ void Session::doRead()
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
 			// got here with length of 1241...
-			cwarn << "Error reading: " << ec.message();
+			clogS(NetWarn) << "Error reading: " << ec.message();
 			dropped();
 		}
 		else if (ec && length == 0)
@@ -380,7 +407,7 @@ void Session::doRead()
 				{
 					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
 					{
-						cwarn << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
+						clogS(NetWarn) << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
 						disconnect(BadProtocol);
 						return;
 					}
@@ -396,7 +423,7 @@ void Session::doRead()
 						if (!checkPacket(data))
 						{
 							cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-							cwarn << "INVALID MESSAGE RECEIVED";
+							clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
 							disconnect(BadProtocol);
 							return;
 						}
