@@ -15,7 +15,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <MinimalRebuild>false</MinimalRebuild>
       <AdditionalIncludeDirectories>include/$(ProjectName);$(IntDir);../../cryptopp;..;../libethcore;../libethereum;../libethsupport;$(BoostDir);../../leveldb/include;../secp256k1;../../miniupnp</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>ETH_BUILD_PLATFORM=Windows/VS2013;ETH_BUILD_TYPE=$(Configuration)-$(Platform);STATICLIB;LEVELDB_PLATFORM_WINDOWS;USE_NUM_BOOST;USE_FIELD_10X26;USE_FIELD_INV_BUILTIN;_WIN32_WINNT=0x0501;WIN32;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ETH_BUILD_PLATFORM=Windows/VS2013;ETH_BUILD_TYPE=$(Configuration)-$(Platform);ETH_MINIUPNPC=1;STATICLIB;LEVELDB_PLATFORM_WINDOWS;USE_NUM_BOOST;USE_FIELD_10X26;USE_FIELD_INV_BUILTIN;_WIN32_WINNT=0x0501;WIN32;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WarningLevel>Level3</WarningLevel>
