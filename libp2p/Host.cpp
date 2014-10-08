@@ -182,6 +182,7 @@ void Host::disconnectPeers()
 	}
 
 	delete m_upnp;
+	m_upnp = nullptr;
 }
 
 void Host::seal(bytes& _b)
@@ -210,7 +211,10 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
 		clog(NetNote) << "External addr:" << m_upnp->externalIP();
-		int p = m_upnp->addRedirect(m_peerAddresses[0].to_string().c_str(), m_listenPort);
+		int p;
+		for (auto const& addr : m_peerAddresses)
+			if ((p = m_upnp->addRedirect(addr.to_string().c_str(), m_listenPort)))
+				break;
 		if (p)
 			clog(NetNote) << "Punched through NAT and mapped local port" << m_listenPort << "onto external port" << p << ".";
 		else
