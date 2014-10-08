@@ -627,7 +627,7 @@ int main(int argc, char** argv)
 							f << "    STORAGE" << endl;
 							for (auto const& i: ext->state().storage(ext->myAddress))
 								f << showbase << hex << i.first << ": " << i.second << endl;
-							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+							f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
 						};
 					else if (format == "standard")
 						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)

@@ -25,7 +25,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ExtVMFace::ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock):
+ExtVMFace::ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth):
 	myAddress(_myAddress),
 	caller(_caller),
 	origin(_origin),
@@ -34,6 +34,7 @@ ExtVMFace::ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 
 	data(_data),
 	code(_code),
 	previousBlock(_previousBlock),
-	currentBlock(_currentBlock)
+	currentBlock(_currentBlock),
+	depth(_depth)
 {}
 
