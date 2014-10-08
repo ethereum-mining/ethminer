@@ -66,10 +66,12 @@ h256Set DownloadSub::nextFetch(unsigned _n)
 	return m_remaining;
 }
 
-void DownloadSub::noteBlock(h256 _hash)
+bool DownloadSub::noteBlock(h256 _hash)
 {
 	Guard l(m_fetch);
 	if (m_man && m_indices.count(_hash))
 		m_man->m_blocksGot += m_indices[_hash];
+	bool ret = m_remaining.count(_hash);
 	m_remaining.erase(_hash);
+	return ret;
 }
