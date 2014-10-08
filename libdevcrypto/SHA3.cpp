@@ -58,6 +58,22 @@ void sha3(bytesConstRef _input, bytesRef _output)
 	ctx.Final(_output.data());
 }
 
+void ripemd160(bytesConstRef _input, bytesRef _output)
+{
+	CryptoPP::RIPEMD160 ctx;
+	ctx.Update((byte*)_input.data(), _input.size());
+	assert(_output.size() >= 32);
+	ctx.Final(_output.data());
+}
+
+void sha256(bytesConstRef _input, bytesRef _output)
+{
+	CryptoPP::SHA256 ctx;
+	ctx.Update((byte*)_input.data(), _input.size());
+	assert(_output.size() >= 32);
+	ctx.Final(_output.data());
+}
+
 bytes sha3Bytes(bytesConstRef _input)
 {
 	bytes ret(32);

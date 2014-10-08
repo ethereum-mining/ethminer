@@ -29,6 +29,7 @@
 #include "MessageFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
+#include "BlockDetails.h"
 #include "Miner.h"
 
 namespace dev
@@ -95,7 +96,13 @@ public:
 	virtual bool peekWatch(unsigned _watchId) const = 0;
 	virtual bool checkWatch(unsigned _watchId) = 0;
 
-	// TODO: Block query API.
+	// [BLOCK QUERY API]
+
+	virtual h256 hashFromNumber(unsigned _number) const = 0;
+	virtual BlockInfo blockInfo(h256 _hash) const = 0;
+	virtual BlockDetails blockDetails(h256 _hash) const = 0;
+	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
+	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 
 	// [EXTRA API]:
 
