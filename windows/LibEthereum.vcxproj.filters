@@ -190,6 +190,9 @@
     <ClCompile Include="..\libwebthree\WebThree.cpp">
       <Filter>libwebthree</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethcore\Exceptions.cpp">
+      <Filter>libethcore</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
