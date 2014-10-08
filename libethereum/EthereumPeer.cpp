@@ -308,7 +308,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			disable("Invalid protocol version.");
 		else if (m_networkId != host()->networkId())
 			disable("Invalid network identifier.");
-		else if (session()->info().clientVersion.find("/v0.6.9/") != string::npos)
+		else if (session()->info().clientVersion.find("/v0.7.0/") != string::npos)
 			disable("Blacklisted client version.");
 		else if (host()->isBanned(session()->id()))
 			disable("Peer banned for previous bad behaviour.");
