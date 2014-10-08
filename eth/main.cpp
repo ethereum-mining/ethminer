@@ -612,7 +612,14 @@ int main(int argc, char** argv)
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();
-					e.setup(&r);
+					try
+					{
+						e.setup(&r);
+					}
+					catch(Exception const& _e)
+					{
+						cwarn << diagnostic_information(_e);
+					}
 
 					OnOpFunc oof;
 					if (format == "pretty")
