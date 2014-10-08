@@ -1257,10 +1257,10 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 				if (!m_codes.count(lastDataHash))
 					m_codes[lastDataHash] = ext.data.toBytes();
 			}
-			if (levels.size() < ext.level)
+			if (levels.size() < ext.depth)
 				levels.push_back(&m_history.back());
 			else
-				levels.resize(ext.level);
+				levels.resize(ext.depth);
 			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 		};
 		m_currentExecution->go(onOp);

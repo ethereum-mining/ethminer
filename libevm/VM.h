@@ -606,6 +606,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
@@ -636,6 +638,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
 			}
