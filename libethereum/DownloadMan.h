@@ -48,8 +48,8 @@ public:
 	/// Finished last fetch - grab the next bunch of block hashes to download.
 	h256Set nextFetch(unsigned _n);
 
-	/// Note that we've received a particular block.
-	void noteBlock(h256 _hash);
+	/// Note that we've received a particular block. @returns true if we had asked for it but haven't received it yet.
+	bool noteBlock(h256 _hash);
 
 	/// Nothing doing here.
 	void doneFetch() { resetFetch(); }
