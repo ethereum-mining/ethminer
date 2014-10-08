@@ -24,6 +24,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/CommonIO.h>
 #include <libp2p/All.h>
 #include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>

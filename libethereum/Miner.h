@@ -94,7 +94,7 @@ public:
 	~Miner() { stop(); }
 
 	/// Setup its basics.
-	void setup(MinerHost* _host, unsigned _id = 0) { m_host = _host; setName("miner-" + toString(_id)); }
+	void setup(MinerHost* _host, unsigned _id = 0);
 
 	/// Start mining.
 	void start() { startWorking(); }

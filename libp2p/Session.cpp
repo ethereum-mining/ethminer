@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"
@@ -30,6 +31,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+#if defined(clogS)
+#undef clogS
+#endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
 Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
@@ -82,7 +86,13 @@ bool Session::interpret(RLP const& _r)
 		m_listenPort = _r[4].toInt<unsigned short>();
 		m_id = _r[5].toHash<h512>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << caps << dec << m_listenPort;
+		// clang error (previously: ... << hex << caps ...)
+		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
+		stringstream capslog;
+		for (auto cap: caps)
+			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
+
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << capslog.str() << dec << m_listenPort;
 
 		if (m_server->havePeer(m_id))
 		{
