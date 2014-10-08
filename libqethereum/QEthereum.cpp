@@ -336,6 +336,93 @@ static QString toJson(dev::eth::PastMessages const& _pms)
 	return QString::fromUtf8(QJsonDocument(jsonArray).toJson());
 }
 
+static QString toJson(dev::eth::BlockInfo const& _bi, dev::eth::BlockDetails const& _bd)
+{
+	QJsonObject v;
+	v["hash"] = toQJS(_bi.hash);
+
+	v["parentHash"] = toQJS(_bi.parentHash);
+	v["sha3Uncles"] = toQJS(_bi.sha3Uncles);
+	v["miner"] = toQJS(_bi.coinbaseAddress);
+	v["stateRoot"] = toQJS(_bi.stateRoot);
+	v["transactionsRoot"] = toQJS(_bi.transactionsRoot);
+	v["difficulty"] = toQJS(_bi.difficulty);
+	v["number"] = (int)_bi.number;
+	v["minGasPrice"] = toQJS(_bi.minGasPrice);
+	v["gasLimit"] = (int)_bi.gasLimit;
+	v["gasUsed"] = (int)_bi.gasUsed;
+	v["timestamp"] = (int)_bi.timestamp;
+	v["extraData"] = ::fromBinary(_bi.extraData);
+	v["nonce"] = toQJS(_bi.nonce);
+
+	QJsonArray children;
+	for (auto c: _bd.children)
+		children.append(toQJS(c));
+	v["children"] = children;
+	v["totalDifficulty"] = toQJS(_bd.totalDifficulty);
+	v["bloom"] = toQJS(_bd.bloom);
+	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+static QString toJson(dev::eth::BlockInfo const& _bi)
+{
+	QJsonObject v;
+	v["hash"] = toQJS(_bi.hash);
+
+	v["parentHash"] = toQJS(_bi.parentHash);
+	v["sha3Uncles"] = toQJS(_bi.sha3Uncles);
+	v["miner"] = toQJS(_bi.coinbaseAddress);
+	v["stateRoot"] = toQJS(_bi.stateRoot);
+	v["transactionsRoot"] = toQJS(_bi.transactionsRoot);
+	v["difficulty"] = toQJS(_bi.difficulty);
+	v["number"] = (int)_bi.number;
+	v["minGasPrice"] = toQJS(_bi.minGasPrice);
+	v["gasLimit"] = (int)_bi.gasLimit;
+	v["gasUsed"] = (int)_bi.gasUsed;
+	v["timestamp"] = (int)_bi.timestamp;
+	v["extraData"] = ::fromBinary(_bi.extraData);
+	v["nonce"] = toQJS(_bi.nonce);
+
+	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+static QString toJson(dev::eth::Transaction const& _bi)
+{
+	QJsonObject v;
+	v["hash"] = toQJS(_bi.sha3());
+
+	v["input"] = ::fromBinary(_bi.data);
+	v["to"] = toQJS(_bi.receiveAddress);
+	v["from"] = toQJS(_bi.sender());
+	v["gas"] = (int)_bi.gas;
+	v["gasPrice"] = toQJS(_bi.gasPrice);
+	v["nonce"] = toQJS(_bi.nonce);
+	v["value"] = toQJS(_bi.value);
+
+	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+QString QEthereum::getUncle(QString _numberOrHash, int _i) const
+{
+	auto n = toU256(_numberOrHash);
+	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
+	return m_client ? toJson(m_client->uncle(h, _i)) : "";
+}
+
+QString QEthereum::getTransaction(QString _numberOrHash, int _i) const
+{
+	auto n = toU256(_numberOrHash);
+	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
+	return m_client ? toJson(m_client->transaction(h, _i)) : "";
+}
+
+QString QEthereum::getBlock(QString _numberOrHash) const
+{
+	auto n = toU256(_numberOrHash);
+	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
+	return m_client ? toJson(m_client->blockInfo(h), m_client->blockDetails(h)) : "";
+}
+
 QString QEthereum::getMessages(QString _json) const
 {
 	return m_client ? toJson(m_client->messages(toMessageFilter(_json))) : "";

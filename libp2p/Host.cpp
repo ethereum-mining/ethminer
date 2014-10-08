@@ -36,8 +36,10 @@
 #include <thread>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Session.h"
+#include "Common.h"
 #include "Capability.h"
 #include "UPnP.h"
 using namespace std;
@@ -142,18 +144,22 @@ void Host::stop()
 
 unsigned Host::protocolVersion() const
 {
-	return 0;
+	return 1;
 }
 
-void Host::registerPeer(std::shared_ptr<Session> _s, vector<string> const& _caps)
+void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		Guard l(x_peers);
 		m_peers[_s->m_id] = _s;
 	}
+	unsigned o = (unsigned)UserPacket;
 	for (auto const& i: _caps)
 		if (haveCapability(i))
-			_s->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(_s.get()));
+		{
+			_s->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(_s.get(), o));
+			o += m_capabilities[i]->messageCount();
+		}
 }
 
 void Host::disconnectPeers()
@@ -457,7 +463,7 @@ void Host::growPeers()
 			{
 				RLPStream s;
 				bytes b;
-				(Session::prep(s).appendList(1) << GetPeersPacket).swapOut(b);
+				Session::prep(s, GetPeersPacket).swapOut(b);
 				seal(b);
 				for (auto const& i: m_peers)
 					if (auto p = i.second.lock())

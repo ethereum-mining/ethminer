@@ -38,7 +38,7 @@ std::vector<std::shared_ptr<Session> > HostCapabilityFace::peers() const
 	std::vector<std::shared_ptr<Session> > ret;
 	for (auto const& i: m_host->m_peers)
 		if (std::shared_ptr<Session> p = i.second.lock())
-			if (p->m_capabilities.count(name()))
+			if (p->m_capabilities.count(capDesc()))
 				ret.push_back(p);
 	return ret;
 }

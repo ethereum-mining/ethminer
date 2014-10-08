@@ -129,7 +129,7 @@ ostream& dev::eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 			_out << " PUSH[tag" << i.data() << "]";
 			break;
 		case Tag:
-			_out << " tag" << i.data() << ":";
+			_out << " tag" << i.data() << ": JUMPDEST";
 			break;
 		case PushData:
 			_out << " PUSH*[" << hex << (unsigned)i.data() << "]";
@@ -172,7 +172,7 @@ ostream& Assembly::streamOut(ostream& _out, string const& _prefix) const
 			_out << _prefix << "  PUSH #[$" << h256(i.m_data).abridged() << "]" << endl;
 			break;
 		case Tag:
-			_out << _prefix << "tag" << i.m_data << ": " << endl;
+			_out << _prefix << "tag" << i.m_data << ": " << endl << _prefix << "  JUMPDEST" << endl;
 			break;
 		case PushData:
 			_out << _prefix << "  PUSH [" << hex << (unsigned)i.m_data << "]" << endl;
@@ -414,6 +414,7 @@ bytes Assembly::assemble() const
 		}
 		case Tag:
 			tagPos[(unsigned)i.m_data] = ret.size();
+			ret.push_back((byte)Instruction::JUMPDEST);
 			break;
 		default:;
 		}
