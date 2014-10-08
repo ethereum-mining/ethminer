@@ -26,7 +26,6 @@
     <ClCompile Include="..\evmcc\Ext.cpp" />
     <ClCompile Include="..\evmcc\Memory.cpp" />
     <ClCompile Include="..\evmcc\Runtime.cpp" />
-    <ClCompile Include="..\evmcc\Stack.cpp" />
     <ClCompile Include="..\evmcc\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -36,7 +35,6 @@
     <ClInclude Include="..\evmcc\Ext.h" />
     <ClInclude Include="..\evmcc\Memory.h" />
     <ClInclude Include="..\evmcc\Runtime.h" />
-    <ClInclude Include="..\evmcc\Stack.h" />
     <ClInclude Include="..\evmcc\Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
