@@ -139,7 +139,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 	}
 
 	// Failed. Try asking the router to give us a free external port.
-	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, NULL, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+	if (UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, NULL, _addr, "ethereum", "TCP", NULL, NULL))
 		// Failed. Exit.
 		return 0;
 
