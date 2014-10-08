@@ -51,10 +51,11 @@ class Whisper;
 
 enum WhisperPacket
 {
-	StatusPacket = 0x20,
+	StatusPacket = 0,
 	MessagesPacket,
 	AddFilterPacket,
-	RemoveFilterPacket
+	RemoveFilterPacket,
+	PacketCount
 };
 
 }

@@ -92,6 +92,7 @@ enum class Instruction: uint8_t
 	PC,					///< get the program counter
 	MSIZE,				///< get the size of active memory
 	GAS,				///< get the amount of available gas
+	JUMPDEST,			///< set a potential jump destination
 
 	PUSH1 = 0x60,		///< place 1 byte item on stack
 	PUSH2,				///< place 2 byte item on stack
@@ -163,8 +164,7 @@ enum class Instruction: uint8_t
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account
 	RETURN,				///< halt execution returning output data
-	POST,				///< asynchronous call without output (adds a message to the post queue)
-	CALLSTATELESS,
+	CALLCODE,
 	SUICIDE = 0xff		///< halt execution and register account for later deletion
 };
 

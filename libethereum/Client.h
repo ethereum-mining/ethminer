@@ -119,23 +119,23 @@ public:
 	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
 
 	/// Destructor.
-	~Client();
+	virtual ~Client();
 
 	/// Submits the given message-call transaction.
-	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	virtual void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	virtual Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	void inject(bytesConstRef _rlp);
+	virtual void inject(bytesConstRef _rlp);
 
 	/// Blocks until all pending transactions have been processed.
-	void flushTransactions();
+	virtual void flushTransactions();
 
 	/// Makes the given call. Nothing is recorded into the state.
-	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	// Informational stuff
 
@@ -147,20 +147,20 @@ public:
 	using Interface::codeAt;
 	using Interface::storageAt;
 
-	u256 balanceAt(Address _a, int _block) const;
-	u256 countAt(Address _a, int _block) const;
-	u256 stateAt(Address _a, u256 _l, int _block) const;
-	bytes codeAt(Address _a, int _block) const;
-	std::map<u256, u256> storageAt(Address _a, int _block) const;
+	virtual u256 balanceAt(Address _a, int _block) const;
+	virtual u256 countAt(Address _a, int _block) const;
+	virtual u256 stateAt(Address _a, u256 _l, int _block) const;
+	virtual bytes codeAt(Address _a, int _block) const;
+	virtual std::map<u256, u256> storageAt(Address _a, int _block) const;
 
-	unsigned installWatch(MessageFilter const& _filter);
-	unsigned installWatch(h256 _filterId);
-	void uninstallWatch(unsigned _watchId);
-	bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
-	bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+	virtual unsigned installWatch(MessageFilter const& _filter);
+	virtual unsigned installWatch(h256 _filterId);
+	virtual void uninstallWatch(unsigned _watchId);
+	virtual bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
+	virtual bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
-	PastMessages messages(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return messages(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
-	PastMessages messages(MessageFilter const& _filter) const;
+	virtual PastMessages messages(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return messages(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
+	virtual PastMessages messages(MessageFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -169,19 +169,25 @@ public:
 
 	/// Get a map containing each of the pending transactions.
 	/// @TODO: Remove in favour of transactions().
-	Transactions pending() const { return m_postMine.pending(); }
+	virtual Transactions pending() const { return m_postMine.pending(); }
+
+	virtual h256 hashFromNumber(unsigned _number) const { return m_bc.numberHash(_number); }
+	virtual BlockInfo blockInfo(h256 _hash) const { return BlockInfo(m_bc.block(_hash)); }
+	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
+	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
+	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
 
 	/// Differences between transactions.
 	using Interface::diff;
-	StateDiff diff(unsigned _txi, h256 _block) const;
-	StateDiff diff(unsigned _txi, int _block) const;
+	virtual StateDiff diff(unsigned _txi, h256 _block) const;
+	virtual StateDiff diff(unsigned _txi, int _block) const;
 
 	/// Get a list of all active addresses.
 	using Interface::addresses;
-	std::vector<Address> addresses(int _block) const;
+	virtual std::vector<Address> addresses(int _block) const;
 
 	/// Get the remaining gas limit in this block.
-	u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
+	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 
@@ -210,23 +216,23 @@ public:
 	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
 
 	/// Set the coinbase address.
-	void setAddress(Address _us) { m_preMine.setAddress(_us); }
+	virtual void setAddress(Address _us) { m_preMine.setAddress(_us); }
 	/// Get the coinbase address.
-	Address address() const { return m_preMine.address(); }
+	virtual Address address() const { return m_preMine.address(); }
 	/// Stops mining and sets the number of mining threads (0 for automatic).
-	void setMiningThreads(unsigned _threads = 0);
+	virtual void setMiningThreads(unsigned _threads = 0);
 	/// Get the effective number of mining threads.
-	unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
+	virtual unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
+	virtual void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
+	virtual void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
 	/// Are we mining now?
-	bool isMining() { ReadGuard l(x_miners); return m_miners.size() && m_miners[0].isRunning(); }
+	virtual bool isMining() { ReadGuard l(x_miners); return m_miners.size() && m_miners[0].isRunning(); }
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const;
+	virtual MineProgress miningProgress() const;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 

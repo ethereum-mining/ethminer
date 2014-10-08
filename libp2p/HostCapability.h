@@ -36,6 +36,7 @@ class HostCapabilityFace
 	friend class Host;
 	template <class T> friend class HostCapability;
 	friend class Capability;
+	friend class Session;
 
 public:
 	HostCapabilityFace() {}
@@ -47,7 +48,10 @@ public:
 
 protected:
 	virtual std::string name() const = 0;
-	virtual Capability* newPeerCapability(Session* _s) = 0;
+	virtual u256 version() const = 0;
+	CapDesc capDesc() const { return std::make_pair(name(), version()); }
+	virtual unsigned messageCount() const = 0;
+	virtual Capability* newPeerCapability(Session* _s, unsigned _idOffset) = 0;
 
 	virtual void onStarting() {}
 	virtual void onStopping() {}
@@ -66,10 +70,14 @@ public:
 	virtual ~HostCapability() {}
 
 	static std::string staticName() { return PeerCap::name(); }
+	static u256 staticVersion() { return PeerCap::version(); }
+	static unsigned staticMessageCount() { return PeerCap::messageCount(); }
 
 protected:
 	virtual std::string name() const { return PeerCap::name(); }
-	virtual Capability* newPeerCapability(Session* _s) { return new PeerCap(_s, this); }
+	virtual u256 version() const { return PeerCap::version(); }
+	virtual unsigned messageCount() const { return PeerCap::messageCount(); }
+	virtual Capability* newPeerCapability(Session* _s, unsigned _idOffset) { return new PeerCap(_s, this, _idOffset); }
 };
 
 }

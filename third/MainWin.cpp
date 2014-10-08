@@ -84,9 +84,10 @@ Main::Main(QWidget *parent) :
 	ui->setupUi(this);
 
     cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-    cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block RLP: " << RLP(BlockChain::createGenesisBlock()) << endl;
-    cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	auto gb = BlockChain::createGenesisBlock();
+	cerr << "Block Hash: " << sha3(gb) << endl;
+	cerr << "Block RLP: " << RLP(gb) << endl;
+	cerr << "Block Hex: " << toHex(gb) << endl;
 	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
