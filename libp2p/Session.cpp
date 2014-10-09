@@ -179,7 +179,8 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 
-		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, m_node->id == id ? NodeId() : m_node->id);
+		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
+		m_knownNodes.extendAll(m_node->index);
 		m_knownNodes.unionWith(m_node->index);
 
 		if (m_protocolVersion != m_server->protocolVersion())
@@ -233,6 +234,7 @@ bool Session::interpret(RLP const& _r)
 				s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
 			else// if (i.second.address().is_v6()) - assumed
 				s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
+			m_knownNodes.extendAll(i.index);
 			m_knownNodes.unionWith(i.index);
 		}
 		sealAndSend(s);
