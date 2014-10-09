@@ -1298,7 +1298,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			if ((!cache || cache->codeBearing()) && (!r || r[3].toHash<h256>() != EmptySHA3))
+			/// For POC6, 3rd value of account is code and will be empty if code is not present.
+			if ((!cache || cache->codeBearing()) && (!r || !r[3].isEmpty()))
 			{
 				std::map<u256, u256> mem;
 				std::set<u256> back;
