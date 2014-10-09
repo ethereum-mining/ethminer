@@ -1054,7 +1054,14 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	Manifest ms;
 
 	Executive e(*this, &ms);
-	e.setup(_rlp);
+	try
+	{
+		e.setup(_rlp);
+	}
+	catch (Exception const & _e)
+	{
+		cwarn << diagnostic_information(_e);
+	}
 
 	u256 startGasUsed = gasUsed();
 
@@ -1300,6 +1307,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
+			/// For POC6, 3rd value of account is code and will be empty if code is not present.
 			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
 			{
 				std::map<u256, u256> mem;
