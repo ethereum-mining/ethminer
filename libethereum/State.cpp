@@ -75,7 +75,9 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 {
 	h256 ret;
 	ripemd160(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+	memset(_out.data(), 0, std::min<int>(12, _out.size()));
+	if (_out.size() > 12)
+		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
 }
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
@@ -1284,8 +1286,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	{
 		auto it = _s.m_cache.find(i);
 		AddressState* cache = it != _s.m_cache.end() ? &it->second : nullptr;
-		auto rlpString = trie.at(i);
-		RLP r(dtr.count(i) ? rlpString : "");
+		string rlpString = dtr.count(i) ? trie.at(i) : "";
+		RLP r(rlpString);
 		assert(cache || r);
 
 		if (cache && !cache->isAlive())
@@ -1298,7 +1300,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			if ((!cache || cache->codeBearing()) && (!r || r[3].toHash<h256>() != EmptySHA3))
+			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
 			{
 				std::map<u256, u256> mem;
 				std::set<u256> back;

@@ -47,6 +47,7 @@ public:
 	RangeMask(T _begin, T _end): m_all(_begin, _end) {}
 	RangeMask(Range const& _c): m_all(_c) {}
 
+	RangeMask unionedWith(RangeMask const& _m) const { return operator+(_m); }
 	RangeMask operator+(RangeMask const& _m) const { return RangeMask(*this) += _m; }
 
 	RangeMask lowest(T _items) const
@@ -57,7 +58,9 @@ public:
 		return ret;
 	}
 
-	RangeMask operator~() const
+	RangeMask operator~() const { return inverted(); }
+
+	RangeMask inverted() const
 	{
 		RangeMask ret(m_all);
 		T last = m_all.first;
@@ -72,13 +75,23 @@ public:
 		return ret;
 	}
 
-	RangeMask& operator+=(RangeMask const& _m)
+	RangeMask& invert() { return *this = inverted(); }
+
+	template <class S> RangeMask operator-(S const& _m) const { auto ret = *this; return ret -= _m; }
+	template <class S> RangeMask& operator-=(S const& _m) { return invert().unionWith(_m).invert(); }
+
+	RangeMask& operator+=(RangeMask const& _m) { return unionWith(_m); }
+
+	RangeMask& unionWith(RangeMask const& _m)
 	{
+		m_all.first = std::min(_m.m_all.first, m_all.first);
+		m_all.second = std::max(_m.m_all.second, m_all.second);
 		for (auto const& i: _m.m_ranges)
-			operator+=(i);
+			unionWith(i);
 		return *this;
 	}
-	RangeMask& operator+=(UnsignedRange const& _m)
+	RangeMask& operator+=(Range const& _m) { return unionWith(_m); }
+	RangeMask& unionWith(Range const& _m)
 	{
 		for (auto i = _m.first; i < _m.second;)
 		{
@@ -130,7 +143,8 @@ public:
 		return *this;
 	}
 
-	RangeMask& operator+=(T _i)
+	RangeMask& operator+=(T _m) { return unionWith(_m); }
+	RangeMask& unionWith(T _i)
 	{
 		return operator+=(Range(_i, _i + 1));
 	}
@@ -165,6 +179,7 @@ public:
 	}
 
 	std::pair<T, T> const& all() const { return m_all; }
+	void extendAll(T _max) { m_all.second = _max; }
 
 	class const_iterator
 	{

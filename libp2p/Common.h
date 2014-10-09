@@ -44,6 +44,8 @@ class RLPStream;
 namespace p2p
 {
 
+using NodeId = h512;
+
 bool isPrivateAddress(bi::address const& _addressToCheck);
 
 class UPnP;
@@ -82,8 +84,9 @@ enum DisconnectReason
 	TooManyPeers,
 	DuplicatePeer,
 	IncompatibleProtocol,
-	InvalidIdentity,
+	NullIdentity,
 	ClientQuit,
+	UnexpectedIdentity,
 	UserReason = 0x10
 };
 
@@ -96,6 +99,7 @@ typedef std::vector<CapDesc> CapDescs;
 
 struct PeerInfo
 {
+	NodeId id;
 	std::string clientVersion;
 	std::string host;
 	unsigned short port;

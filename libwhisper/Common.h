@@ -35,7 +35,6 @@ namespace shh
 
 /* this makes these symbols ambiguous on VS2013
 using h256 = dev::h256;
-using h512 = dev::h512;
 using h256s = dev::h256s;
 using bytes = dev::bytes;
 using RLPStream = dev::RLPStream;

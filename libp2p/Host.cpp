@@ -63,11 +63,11 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_netPrefs(_n),
 	m_acceptor(m_ioService),
 	m_socket(m_ioService),
-	m_id(h512::random())
+	m_key(KeyPair::create())
 {
 	populateAddresses();
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
+	clog(NetNote) << "Id:" << id().abridged();
 	if (_start)
 		start();
 }
@@ -109,11 +109,16 @@ void Host::start()
 	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
 	ensureAccepting();
 
-	m_incomingPeers.clear();
+	m_nodes.clear();
 	m_freePeers.clear();
+	m_nodesList.clear();
+	m_ready.reset();
+
+	if (!m_public.address().is_unspecified())
+		noteNode(id(), m_public, Origin::Perfect, false);
 
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
-	clog(NetNote) << "Id:" << m_id.abridged();
+	clog(NetNote) << "Id:" << id().abridged();
 
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
@@ -149,9 +154,15 @@ unsigned Host::protocolVersion() const
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
+	if (!_s->m_node || !_s->m_node->id)
 	{
-		Guard l(x_peers);
-		m_peers[_s->m_id] = _s;
+		cwarn << "Attempting to register a peer without node information!";
+		return;
+	}
+
+	{
+		RecursiveGuard l(x_peers);
+		m_peers[_s->m_node->id] = _s;
 	}
 	unsigned o = (unsigned)UserPacket;
 	for (auto const& i: _caps)
@@ -167,7 +178,7 @@ void Host::disconnectPeers()
 	for (unsigned n = 0;; n = 0)
 	{
 		{
-			Guard l(x_peers);
+			RecursiveGuard l(x_peers);
 			for (auto i: m_peers)
 				if (auto p = i.second.lock())
 				{
@@ -230,7 +241,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		else
 		{
 			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), (unsigned short)p);
-			m_addresses.push_back(m_public.address().to_v4());
+			m_addresses.push_back(m_public.address());
 		}
 	}
 	else
@@ -239,7 +250,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		m_public = bi::tcp::endpoint(_publicAddress.size() ? bi::address::from_string(_publicAddress)
 									: m_peerAddresses.size() ? m_peerAddresses[0]
 									: bi::address(), m_listenPort);
-		m_addresses.push_back(m_public.address().to_v4());
+		m_addresses.push_back(m_public.address());
 	}
 }
 
@@ -312,33 +323,83 @@ void Host::populateAddresses()
 				clog(NetNote) << "Couldn't resolve: " << host;
 			}
 		}
+		else if (ifa->ifa_addr->sa_family == AF_INET6)
+		{
+			char host[NI_MAXHOST];
+			if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST))
+				continue;
+			try
+			{
+				auto it = r.resolve({host, "30303"});
+				bi::tcp::endpoint ep = it->endpoint();
+				bi::address ad = ep.address();
+				m_addresses.push_back(ad.to_v6());
+				bool isLocal = std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), ad) != c_rejectAddresses.end();
+				if (!isLocal)
+					m_peerAddresses.push_back(ad);
+				clog(NetNote) << "Address: " << host << " = " << m_addresses.back() << (isLocal ? " [LOCAL]" : " [PEER]");
+			}
+			catch (...)
+			{
+				clog(NetNote) << "Couldn't resolve: " << host;
+			}
+		}
 	}
 
 	freeifaddrs(ifaddr);
 #endif
 }
 
-std::map<h512, bi::tcp::endpoint> Host::potentialPeers()
+shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId)
 {
-	std::map<h512, bi::tcp::endpoint> ret;
-	if (!m_public.address().is_unspecified())
-		ret.insert(make_pair(m_id, m_public));
-	Guard l(x_peers);
-	for (auto i: m_peers)
-		if (auto j = i.second.lock())
+	RecursiveGuard l(x_peers);
+	unsigned i;
+	if (!m_nodes.count(_id))
+	{
+		shared_ptr<Node> old;
+		if (m_nodes.count(_oldId))
 		{
-			auto ep = j->endpoint();
-//			cnote << "Checking potential peer" << j->m_listenPort << j->endpoint() << isPrivateAddress(ep.address()) << ep.port() << j->m_id.abridged();
-			// Skip peers with a listen port of zero or are on a private network
-			bool peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
-			if (!peerOnNet && m_incomingPeers.count(j->m_id))
-			{
-				ep = m_incomingPeers.at(j->m_id).first;
-				peerOnNet = (j->m_listenPort != 0 && (!isPrivateAddress(ep.address()) || m_netPrefs.localNetworking));
-			}
-			if (peerOnNet && ep.port() && j->m_id)
-				ret.insert(make_pair(i.first, ep));
+			old = m_nodes[_oldId];
+			i = old->index;
+			m_nodes.erase(_oldId);
+			m_nodesList[i] = _id;
+			m_nodes[id()] = make_shared<Node>();
 		}
+		else
+		{
+			i = m_nodesList.size();
+			m_nodesList.push_back(_id);
+			m_nodes[_id] = make_shared<Node>();
+		}
+		m_nodes[_id]->address = m_public;
+		m_nodes[_id]->index = i;
+		m_nodes[_id]->id = _id;
+		m_nodes[_id]->idOrigin = _o;
+	}
+	else
+	{
+		i = m_nodes[_id]->index;
+		m_nodes[_id]->idOrigin = max(m_nodes[_id]->idOrigin, _o);
+	}
+	m_ready.extendAll(i);
+	m_private.extendAll(i);
+	if (_ready)
+		m_ready += i;
+	else
+		m_ready -= i;
+	if (!_a.port() || (isPrivateAddress(_a.address()) && !m_netPrefs.localNetworking))
+		m_private += i;
+	else
+		m_private -= i;
+	return m_nodes[_id];
+}
+
+Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
+{
+	RecursiveGuard l(x_peers);
+	Nodes ret;
+	for (auto i: m_ready - (m_private + _known))
+		ret.push_back(*m_nodes[m_nodesList[i]]);
 	return ret;
 }
 
@@ -359,7 +420,7 @@ void Host::ensureAccepting()
 					} catch (...){}
 					bi::address remoteAddress = m_socket.remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<Session>(this, std::move(m_socket), remoteAddress);
+					auto p = std::make_shared<Session>(this, std::move(m_socket), bi::tcp::endpoint(remoteAddress, 0));
 					p->start();
 				}
 				catch (Exception const& _e)
@@ -415,26 +476,15 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 
 void Host::connect(bi::tcp::endpoint const& _ep)
 {
-	clog(NetConnect) << "Attempting connection to " << _ep;
+	clog(NetConnect) << "Attempting single-shot connection to " << _ep;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
-		{
 			clog(NetConnect) << "Connection refused to " << _ep << " (" << ec.message() << ")";
-			for (auto i = m_incomingPeers.begin(); i != m_incomingPeers.end(); ++i)
-				if (i->second.first == _ep && i->second.second < 3)
-				{
-					m_freePeers.push_back(i->first);
-					goto OK;
-				}
-			// for-else
-			clog(NetConnect) << "Giving up.";
-			OK:;
-		}
 		else
 		{
-			auto p = make_shared<Session>(this, std::move(*s), _ep.address(), _ep.port());
+			auto p = make_shared<Session>(this, std::move(*s), _ep);
 			clog(NetConnect) << "Connected to " << _ep;
 			p->start();
 		}
@@ -442,9 +492,35 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-bool Host::havePeer(h512 _id) const
+void Node::connect(Host* _h)
 {
-	Guard l(x_peers);
+	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address;
+	_h->m_ready -= index;
+	bi::tcp::socket* s = new bi::tcp::socket(_h->m_ioService);
+	s->async_connect(address, [=](boost::system::error_code const& ec)
+	{
+		if (ec)
+		{
+			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
+			failedAttempts++;
+			lastAttempted = std::chrono::system_clock::now();
+			_h->m_ready += index;
+		}
+		else
+		{
+			clog(NetConnect) << "Connected to" << id.abridged() << "@" << address;
+			failedAttempts = 0;
+			lastConnected = std::chrono::system_clock::now();
+			auto p = make_shared<Session>(_h, std::move(*s), _h->node(id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+			p->start();
+		}
+		delete s;
+	});
+}
+
+bool Host::havePeer(NodeId _id) const
+{
+	RecursiveGuard l(x_peers);
 
 	// Remove dead peers from list.
 	for (auto i = m_peers.begin(); i != m_peers.end();)
@@ -458,7 +534,7 @@ bool Host::havePeer(h512 _id) const
 
 void Host::growPeers()
 {
-	Guard l(x_peers);
+	RecursiveGuard l(x_peers);
 	while (m_peers.size() < m_idealPeerCount)
 	{
 		if (m_freePeers.empty())
@@ -483,16 +559,15 @@ void Host::growPeers()
 		}
 
 		auto x = time(0) % m_freePeers.size();
-		m_incomingPeers[m_freePeers[x]].second++;
 		if (!m_peers.count(m_freePeers[x]))
-			connect(m_incomingPeers[m_freePeers[x]].first);
+			connect(m_nodes[m_freePeers[x]]->address);
 		m_freePeers.erase(m_freePeers.begin() + x);
 	}
 }
 
 void Host::prunePeers()
 {
-	Guard l(x_peers);
+	RecursiveGuard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
 	for (unsigned old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
 		while (m_peers.size() > m_idealPeerCount)
@@ -506,7 +581,7 @@ void Host::prunePeers()
 					if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
 					{
 						++agedPeers;
-						if ((!worst || p->m_rating < worst->m_rating || (p->m_rating == worst->m_rating && p->m_connect > worst->m_connect)))	// kill older ones
+						if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
 							worst = p;
 					}
 			if (!worst || agedPeers <= m_idealPeerCount)
@@ -524,10 +599,12 @@ void Host::prunePeers()
 
 std::vector<PeerInfo> Host::peers(bool _updatePing) const
 {
-	Guard l(x_peers);
+	RecursiveGuard l(x_peers);
     if (_updatePing)
+	{
 		const_cast<Host*>(this)->pingAll();
-	this_thread::sleep_for(chrono::milliseconds(200));
+		this_thread::sleep_for(chrono::milliseconds(200));
+	}
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
@@ -545,36 +622,82 @@ void Host::doWork()
 
 void Host::pingAll()
 {
-	Guard l(x_peers);
+	RecursiveGuard l(x_peers);
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
 }
 
-bytes Host::savePeers() const
+bytes Host::saveNodes() const
 {
-	Guard l(x_peers);
-	RLPStream ret;
-	int n = 0;
-	for (auto& i: m_peers)
-		if (auto p = i.second.lock())
-			if (p->m_socket.is_open() && p->endpoint().port())
-			{
-				ret.appendList(3) << p->endpoint().address().to_v4().to_bytes() << p->endpoint().port() << p->m_id;
-				n++;
-			}
-	return RLPStream(n).appendRaw(ret.out(), n).out();
-}
-
-void Host::restorePeers(bytesConstRef _b)
-{
-	for (auto i: RLP(_b))
+	RLPStream nodes;
+	int count = 0;
 	{
-		auto k = (h512)i[2];
-		if (!m_incomingPeers.count(k))
+		RecursiveGuard l(x_peers);
+		for (auto const& i: m_nodes)
 		{
-			m_incomingPeers.insert(make_pair(k, make_pair(bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>()), 0)));
-			m_freePeers.push_back(k);
+			Node const& n = *(i.second);
+			nodes.appendList(4);
+			if (n.address.address().is_v4())
+				nodes << n.address.address().to_v4().to_bytes();
+			else
+				nodes << n.address.address().to_v6().to_bytes();
+			nodes << n.address.port() << n.id << (int)n.idOrigin
+				<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
+				<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
+				<< n.failedAttempts << n.lastDisconnect << n.score << n.rating;
+			count++;
 		}
 	}
+	RLPStream ret(3);
+	ret << 0 << m_key.secret();
+	ret.appendList(count).appendRaw(nodes.out(), count);
+	return ret.out();
+}
+
+void Host::restoreNodes(bytesConstRef _b)
+{
+	RecursiveGuard l(x_peers);
+	RLP r(_b);
+	if (r.itemCount() == 2 && r[0].isInt())
+		switch (r[0].toInt<int>())
+		{
+		case 0:
+			m_key = KeyPair(r[1].toHash<Secret>());
+			for (auto i: r[2])
+			{
+				auto id = (NodeId)i[2];
+				auto o = (Origin)i[3].toInt<int>();
+				if (!m_nodes.count(id))
+				{
+					bi::tcp::endpoint ep;
+					if (i[0].size() == 4)
+						ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+					else
+						ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+					auto n = noteNode(id, ep, o, true);
+					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
+					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+					n->failedAttempts = i[6].toInt<unsigned>();
+					n->lastDisconnect = (int)i[7].toInt<unsigned>();
+					n->score = (int)i[8].toInt<unsigned>();
+					n->rating = (int)i[9].toInt<unsigned>();
+				}
+			}
+		default:;
+		}
+	else
+		for (auto i: r)
+		{
+			auto id = (NodeId)i[2];
+			if (!m_nodes.count(id))
+			{
+				bi::tcp::endpoint ep;
+				if (i[0].size() == 4)
+					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+				else
+					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+				auto n = noteNode(id, ep, Origin::Self, true);
+			}
+		}
 }
