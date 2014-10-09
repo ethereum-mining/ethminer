@@ -500,7 +500,7 @@ void Main::writeSettings()
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
 
-	bytes d = m_webThree->savePeers();
+	bytes d = m_webThree->saveNodes();
 	if (d.size())
 		m_peers = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_peers);
@@ -1542,7 +1542,7 @@ void Main::on_net_triggered()
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 		if (m_peers.size() && ui->usePast->isChecked())
-			web3()->restorePeers(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
 	{

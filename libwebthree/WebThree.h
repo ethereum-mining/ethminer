@@ -96,10 +96,10 @@ public:
 	bool haveNetwork() { return peerCount() != 0; }
 
 	/// Save peers
-	dev::bytes savePeers();
+	dev::bytes saveNodes();
 
 	/// Restore peers
-	void restorePeers(bytesConstRef _saved);
+	void restoreNodes(bytesConstRef _saved);
 
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);

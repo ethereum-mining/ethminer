@@ -473,7 +473,7 @@ template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesCons
 	assert(rv.size());
 	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
 
-	// mergeAt won't attempt to delete the node is it's less than 32 bytes
+	// mergeAt won't attempt to delete the node if it's less than 32 bytes
 	// However, we know it's the root node and thus always hashed.
 	// So, if it's less than 32 (and thus should have been deleted but wasn't) then we delete it here.
 	if (rv.size() < 32)
