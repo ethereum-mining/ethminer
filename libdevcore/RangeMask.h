@@ -181,7 +181,7 @@ public:
 	}
 
 	std::pair<T, T> const& all() const { return m_all; }
-	void extendAll(T _max) { m_all.second = _max + 1; }
+	void extendAll(T _i) { m_all = std::make_pair(std::min(m_all.first, _i), std::max(m_all.second, _i + 1)); }
 
 	class const_iterator
 	{

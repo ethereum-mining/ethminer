@@ -69,7 +69,27 @@ struct Node
 	unsigned failedAttempts = 0;
 	int lastDisconnect = -1;						///< Reason for disconnect that happened last.
 
-	Origin idOrigin = Origin::Unknown;			///< Thirdparty
+	Origin idOrigin = Origin::Unknown;				///< Thirdparty
+
+	bool offline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
+	bool operator<(Node const& _n) const
+	{
+		if (offline() != _n.offline())
+			return offline();
+		else if (offline())
+			if (lastAttempted == _n.lastAttempted)
+				return failedAttempts < _n.failedAttempts;
+			else
+				return lastAttempted < _n.lastAttempted;
+		else
+			if (score == _n.score)
+				if (rating == _n.rating)
+					return failedAttempts < _n.failedAttempts;
+				else
+					return rating < _n.rating;
+			else
+				return score < _n.score;
+	}
 
 	void connect(Host* _h);
 };
@@ -174,6 +194,8 @@ private:
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId = h256());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
+	void requestPeers();
+
 	std::string m_clientVersion;											///< Our version string.
 
 	NetworkPreferences m_netPrefs;											///< Network settings.
@@ -205,8 +227,7 @@ private:
 	RangeMask<unsigned> m_ready;											///< Indices into m_nodesList over to which nodes we are not currently connected, connecting or otherwise ignoring.
 	RangeMask<unsigned> m_private;											///< Indices into m_nodesList over to which nodes are private.
 
-	std::vector<NodeId> m_freePeers;// TODO: Kill
-	std::chrono::steady_clock::time_point m_lastPeersRequest;// TODO: Kill
+	std::chrono::steady_clock::time_point m_lastPeersRequest;				///< Last time we asked for some peers - don't want to do this too often. TODO: peers should be pushed, not polled.
 
 	unsigned m_idealPeerCount = 5;											///< Ideal number of peers to be connected to.
 

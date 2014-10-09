@@ -396,6 +396,7 @@ Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
 {
 	RecursiveGuard l(x_peers);
 	Nodes ret;
+
 	for (auto i: m_ready - (m_private + _known))
 		ret.push_back(*m_nodes[m_nodesList[i]]);
 	return ret;
@@ -530,38 +531,57 @@ bool Host::havePeer(NodeId _id) const
 	return !!m_peers.count(_id);
 }
 
+unsigned cumulativeFallback(unsigned _failed)
+{
+	if (_failed < 5)
+		return _failed * 5;
+	else if (_failed < 15)
+		return 25 + (_failed - 5) * 10;
+	else
+		return 25 + 100 + (_failed - 15) * 20;
+}
+
 void Host::growPeers()
 {
 	RecursiveGuard l(x_peers);
-	while (m_peers.size() < m_idealPeerCount)
+	int morePeers = (int)m_idealPeerCount - m_peers.size();
+	if (morePeers > 0)
 	{
-		// TODO: Make work with m_ready/m_private using all the Node information.
-		if (m_freePeers.empty())
-		{
-			if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+		auto toTry = m_ready;
+		if (m_netPrefs.localNetworking)
+			toTry -= m_private;
+		set<Node> ns;
+		for (auto i: toTry)
+			if (chrono::system_clock::now() > m_nodes[m_nodesList[i]]->lastAttempted + chrono::seconds(cumulativeFallback(m_nodes[m_nodesList[i]]->failedAttempts)))
+				ns.insert(*m_nodes[m_nodesList[i]]);
+
+		if (ns.size())
+			for (Node const& i: ns)
 			{
-				RLPStream s;
-				bytes b;
-				Session::prep(s, GetPeersPacket).swapOut(b);
-				seal(b);
-				for (auto const& i: m_peers)
-					if (auto p = i.second.lock())
-						if (p->isOpen())
-							p->send(&b);
-				m_lastPeersRequest = chrono::steady_clock::now();
+				m_nodes[i.id]->connect(this);
+				if (!--morePeers)
+					return;
 			}
-
-			if (!m_accepting)
-				ensureAccepting();
-
-			break;
+		else
+		{
+			ensureAccepting();
+			if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
+				requestPeers();
 		}
-
-		auto x = time(0) % m_freePeers.size();
-		if (!m_peers.count(m_freePeers[x]))
-			connect(m_nodes[m_freePeers[x]]->address);
-		m_freePeers.erase(m_freePeers.begin() + x);
 	}
+}
+
+void Host::requestPeers()
+{
+	RLPStream s;
+	bytes b;
+	Session::prep(s, GetPeersPacket).swapOut(b);
+	seal(b);
+	for (auto const& i: m_peers)
+		if (auto p = i.second.lock())
+			if (p->isOpen())
+				p->send(&b);
+	m_lastPeersRequest = chrono::steady_clock::now();
 }
 
 void Host::prunePeers()
