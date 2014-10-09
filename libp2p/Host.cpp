@@ -109,8 +109,6 @@ void Host::start()
 	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
 	ensureAccepting();
 
-	m_nodes.clear();
-	m_freePeers.clear();
 	m_nodesList.clear();
 	m_ready.reset();
 
@@ -537,6 +535,7 @@ void Host::growPeers()
 	RecursiveGuard l(x_peers);
 	while (m_peers.size() < m_idealPeerCount)
 	{
+		// TODO: Make work with m_ready/m_private using all the Node information.
 		if (m_freePeers.empty())
 		{
 			if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
@@ -637,7 +636,7 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_nodes)
 		{
 			Node const& n = *(i.second);
-			nodes.appendList(4);
+			nodes.appendList(10);
 			if (n.address.address().is_v4())
 				nodes << n.address.address().to_v4().to_bytes();
 			else
@@ -659,22 +658,22 @@ void Host::restoreNodes(bytesConstRef _b)
 {
 	RecursiveGuard l(x_peers);
 	RLP r(_b);
-	if (r.itemCount() == 2 && r[0].isInt())
+	if (r.itemCount() > 0 && r[0].isInt())
 		switch (r[0].toInt<int>())
 		{
 		case 0:
 			m_key = KeyPair(r[1].toHash<Secret>());
 			for (auto i: r[2])
 			{
+				bi::tcp::endpoint ep;
+				if (i[0].itemCount() == 4)
+					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+				else
+					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
 				auto id = (NodeId)i[2];
-				auto o = (Origin)i[3].toInt<int>();
 				if (!m_nodes.count(id))
 				{
-					bi::tcp::endpoint ep;
-					if (i[0].size() == 4)
-						ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
-					else
-						ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+					auto o = (Origin)i[3].toInt<int>();
 					auto n = noteNode(id, ep, o, true);
 					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));

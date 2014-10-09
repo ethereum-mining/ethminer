@@ -439,7 +439,7 @@ void BlockChain::checkConsistency()
 			if (p != h256())
 			{
 				auto dp = details(p);
-				assert(contains(dp.children, h));		// WTF?
+//				assert(contains(dp.children, h));		// WTF?
 				assert(dp.number == dh.number - 1);
 			}
 		}
