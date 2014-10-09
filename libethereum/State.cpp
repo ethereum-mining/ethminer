@@ -1284,8 +1284,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	{
 		auto it = _s.m_cache.find(i);
 		AddressState* cache = it != _s.m_cache.end() ? &it->second : nullptr;
-		auto rlpString = trie.at(i);
-		RLP r(dtr.count(i) ? rlpString : "");
+		string rlpString = dtr.count(i) ? trie.at(i) : "";
+		RLP r(rlpString);
 		assert(cache || r);
 
 		if (cache && !cache->isAlive())
