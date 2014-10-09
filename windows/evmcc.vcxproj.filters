@@ -9,6 +9,7 @@
     <ClCompile Include="..\evmcc\Utils.cpp" />
     <ClCompile Include="..\evmcc\Runtime.cpp" />
     <ClCompile Include="..\evmcc\BasicBlock.cpp" />
+    <ClCompile Include="..\evmcc\GasMeter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmcc\Compiler.h" />
@@ -18,5 +19,6 @@
     <ClInclude Include="..\evmcc\Utils.h" />
     <ClInclude Include="..\evmcc\Runtime.h" />
     <ClInclude Include="..\evmcc\BasicBlock.h" />
+    <ClInclude Include="..\evmcc\GasMeter.h" />
   </ItemGroup>
 </Project>
