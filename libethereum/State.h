@@ -40,7 +40,7 @@
 
 namespace dev
 {
-namespace test{ class FakeExtVM;}
+namespace test{ class FakeExtVM; class FakeState;}
 
 namespace eth
 {
@@ -84,6 +84,7 @@ class State
 {
 	friend class ExtVM;
 	friend class test::FakeExtVM;
+	friend class test::FakeState;
 	friend class Executive;
 
 public:
