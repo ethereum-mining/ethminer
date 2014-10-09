@@ -207,6 +207,12 @@ unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 	return ret;
 }
 
+void Main::uninstallWatch(unsigned _w)
+{
+	ethereum()->uninstallWatch(_w);
+	m_handlers.erase(_w);
+}
+
 void Main::installWatches()
 {
 	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
@@ -217,13 +223,13 @@ void Main::installWatches()
 
 void Main::installNameRegWatch()
 {
-	ethereum()->uninstallWatch(m_nameRegFilter);
+	uninstallWatch(m_nameRegFilter);
 	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
-	ethereum()->uninstallWatch(m_currenciesFilter);
+	uninstallWatch(m_currenciesFilter);
 	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
@@ -242,7 +248,7 @@ void Main::installBalancesWatch()
 			tf.altered(c, (u160)i.address());
 	}
 
-	ethereum()->uninstallWatch(m_balancesFilter);
+	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
 }
 
