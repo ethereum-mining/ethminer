@@ -109,10 +109,7 @@ void Host::start()
 	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
 	ensureAccepting();
 
-	m_nodesList.clear();
-	m_ready.reset();
-
-	if (!m_public.address().is_unspecified())
+	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
 		noteNode(id(), m_public, Origin::Perfect, false);
 
 	m_lastPeersRequest = chrono::steady_clock::time_point::min();
@@ -351,6 +348,7 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
+	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
 	unsigned i;
 	if (!m_nodes.count(_id))
 	{
@@ -389,6 +387,9 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin 
 		m_private += i;
 	else
 		m_private -= i;
+
+	cnote << m_nodes[_id]->index << ":" << m_ready;
+
 	return m_nodes[_id];
 }
 
@@ -548,7 +549,7 @@ void Host::growPeers()
 	if (morePeers > 0)
 	{
 		auto toTry = m_ready;
-		if (m_netPrefs.localNetworking)
+		if (!m_netPrefs.localNetworking)
 			toTry -= m_private;
 		set<Node> ns;
 		for (auto i: toTry)
@@ -656,16 +657,19 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_nodes)
 		{
 			Node const& n = *(i.second);
-			nodes.appendList(10);
-			if (n.address.address().is_v4())
-				nodes << n.address.address().to_v4().to_bytes();
-			else
-				nodes << n.address.address().to_v6().to_bytes();
-			nodes << n.address.port() << n.id << (int)n.idOrigin
-				<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
-				<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
-				<< n.failedAttempts << n.lastDisconnect << n.score << n.rating;
-			count++;
+			if (n.id != id() && !isPrivateAddress(n.address.address()))
+			{
+				nodes.appendList(10);
+				if (n.address.address().is_v4())
+					nodes << n.address.address().to_v4().to_bytes();
+				else
+					nodes << n.address.address().to_v6().to_bytes();
+				nodes << n.address.port() << n.id << (int)n.idOrigin
+					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
+					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
+					<< n.failedAttempts << n.lastDisconnect << n.score << n.rating;
+				count++;
+			}
 		}
 	}
 	RLPStream ret(3);
