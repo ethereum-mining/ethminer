@@ -95,6 +95,8 @@ public:
 	{
 		for (auto i = _m.first; i < _m.second;)
 		{
+			assert(i >= m_all.first);
+			assert(i < m_all.second);
 			// for each number, we find the element equal or next lower. this, if any, must contain the value.
 			auto uit = m_ranges.upper_bound(i);
 			auto it = uit == m_ranges.begin() ? m_ranges.end() : std::prev(uit);
@@ -179,7 +181,7 @@ public:
 	}
 
 	std::pair<T, T> const& all() const { return m_all; }
-	void extendAll(T _max) { m_all.second = _max; }
+	void extendAll(T _max) { m_all.second = _max + 1; }
 
 	class const_iterator
 	{
