@@ -872,7 +872,7 @@ void Main::refreshBlockChain()
 	string filter = ui->blockChainFilter->text().toLower().toStdString();
 	auto const& bc = ethereum()->blockChain();
 	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
-	for (auto h = bc.currentHash(); h != bc.genesisHash() && bc.details(h) && i; h = bc.details(h).parent, --i)
+	for (auto h = bc.currentHash(); bc.details(h) && i; h = bc.details(h).parent, --i)
 	{
 		auto d = bc.details(h);
 		auto bm = blockMatch(filter, d, h, bc);
@@ -912,6 +912,8 @@ void Main::refreshBlockChain()
 			}
 			n++;
 		}
+		if (h == bc.genesisHash())
+			break;
 	}
 
 	if (!ui->blocks->currentItem())
@@ -1138,7 +1140,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
-			s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
+			if (info.parentHash)
+				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
+			else
+				s << "<br/>Pre: <i>Nothing is before the Gensesis</i>";
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i[0].data()).abridged() << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
@@ -1545,10 +1550,10 @@ void Main::on_net_triggered()
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
+		if (m_peers.size()/* && ui->usePast->isChecked()*/)
+			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
-		if (m_peers.size() && ui->usePast->isChecked())
-			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
 	}
 	else
 	{
