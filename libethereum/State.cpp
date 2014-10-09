@@ -1052,7 +1052,14 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	Manifest ms;
 
 	Executive e(*this, &ms);
-	e.setup(_rlp);
+	try
+	{
+		e.setup(_rlp);
+	}
+	catch (Exception const & _e)
+	{
+		cwarn << diagnostic_information(_e);
+	}
 
 	u256 startGasUsed = gasUsed();
 
