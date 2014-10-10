@@ -62,8 +62,8 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const&
 
 Session::~Session()
 {
-	if (id())
-		m_server->noteNode(id(), m_manualEndpoint, Origin::Unknown, true);
+	if (id() && !isPermanentProblem(m_node->lastDisconnect))
+		m_server->m_ready += m_node->index;
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -125,6 +125,47 @@ template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 	return ret;
 }
 
+void Session::ensureNodesRequested()
+{
+	if (isOpen() && !m_weRequestedNodes)
+	{
+		m_weRequestedNodes = true;
+		RLPStream s;
+		sealAndSend(prep(s, GetPeersPacket));
+	}
+}
+
+void Session::serviceNodesRequest()
+{
+	if (!m_theyRequestedNodes)
+		return;
+
+	auto peers = m_server->potentialPeers(m_knownNodes);
+	if (peers.empty())
+	{
+		addNote("peers", "requested");
+		return;
+	}
+
+	// note this should cost them...
+	RLPStream s;
+	prep(s, PeersPacket, min<unsigned>(10, peers.size()));
+	auto rs = randomSelection(peers, 10);
+	for (auto const& i: rs)
+	{
+		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.address;
+		if (i.address.address().is_v4())
+			s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
+		else// if (i.second.address().is_v6()) - assumed
+			s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
+		m_knownNodes.extendAll(i.index);
+		m_knownNodes.unionWith(i.index);
+	}
+	sealAndSend(s);
+	m_theyRequestedNodes = false;
+	addNote("peers", "done");
+}
+
 bool Session::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
@@ -136,7 +177,7 @@ bool Session::interpret(RLP const& _r)
 	case HelloPacket:
 	{
 		if (m_node)
-			m_node->lastDisconnect = -1;
+			m_node->lastDisconnect = NoDisconnect;
 
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
@@ -151,6 +192,14 @@ bool Session::interpret(RLP const& _r)
 			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
+
+		if (m_server->id() == id)
+		{
+			// Already connected.
+			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << m_info.id.abridged();
+			disconnect(LocalIdentity);
+			return false;
+		}
 
 		if (m_server->havePeer(id))
 		{
@@ -221,27 +270,13 @@ bool Session::interpret(RLP const& _r)
 	case GetPeersPacket:
 	{
         clogS(NetTriviaSummary) << "GetPeers";
-		auto peers = m_server->potentialPeers(m_knownNodes);
-		if (peers.empty())
-			break;
-		RLPStream s;
-		prep(s, PeersPacket, min<unsigned>(10, peers.size()));
-		auto rs = randomSelection(peers, 10);
-		for (auto const& i: rs)
-		{
-			clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.address;
-			if (i.address.address().is_v4())
-				s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
-			else// if (i.second.address().is_v6()) - assumed
-				s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
-			m_knownNodes.extendAll(i.index);
-			m_knownNodes.unionWith(i.index);
-		}
-		sealAndSend(s);
+		m_theyRequestedNodes = true;
+		serviceNodesRequest();
 		break;
 	}
 	case PeersPacket:
         clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+		m_weRequestedNodes = false;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			bi::address peerAddress;
@@ -327,12 +362,6 @@ void Session::ping()
 	RLPStream s;
 	sealAndSend(prep(s, PingPacket));
 	m_ping = std::chrono::steady_clock::now();
-}
-
-void Session::getPeers()
-{
-	RLPStream s;
-	sealAndSend(prep(s, GetPeersPacket));
 }
 
 RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
@@ -449,7 +478,7 @@ void Session::dropped()
 		catch (...) {}
 }
 
-void Session::disconnect(int _reason)
+void Session::disconnect(DisconnectReason _reason)
 {
 	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
 
@@ -481,8 +510,6 @@ void Session::start()
 					<< m_server->id();
 	sealAndSend(s);
 	ping();
-	getPeers();
-
 	doRead();
 }
 

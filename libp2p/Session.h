@@ -55,7 +55,7 @@ public:
 	virtual ~Session();
 
 	void start();
-	void disconnect(int _reason);
+	void disconnect(DisconnectReason _reason);
 
 	void ping();
 
@@ -82,6 +82,9 @@ public:
 
 	PeerInfo const& info() const { return m_info; }
 
+	void ensureNodesRequested();
+	void serviceNodesRequest();
+
 private:
 	void dropped();
 	void doRead();
@@ -89,7 +92,6 @@ private:
 	void writeImpl(bytes& _buffer);
 	void write();
 
-	void getPeers();
 	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
@@ -109,6 +111,9 @@ private:
 	std::shared_ptr<Node> m_node;
 	bi::tcp::endpoint m_manualEndpoint;
 	bool m_force = false;					/// If true, ignore IDs being different. This could open you up to MitM attacks.
+
+	bool m_theyRequestedNodes = false;
+	bool m_weRequestedNodes = false;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
