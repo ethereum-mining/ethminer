@@ -354,24 +354,21 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin 
 	unsigned i;
 	if (!m_nodes.count(_id))
 	{
-		shared_ptr<Node> old;
 		if (m_nodes.count(_oldId))
 		{
-			old = m_nodes[_oldId];
-			i = old->index;
+			i = m_nodes[_oldId]->index;
 			m_nodes.erase(_oldId);
 			m_nodesList[i] = _id;
-			m_nodes[id()] = make_shared<Node>();
 		}
 		else
 		{
 			i = m_nodesList.size();
 			m_nodesList.push_back(_id);
-			m_nodes[_id] = make_shared<Node>();
 		}
+		m_nodes[_id] = make_shared<Node>();
+		m_nodes[_id]->id = _id;
 		m_nodes[_id]->address = _a;
 		m_nodes[_id]->index = i;
-		m_nodes[_id]->id = _id;
 		m_nodes[_id]->idOrigin = _o;
 	}
 	else
@@ -665,7 +662,7 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_nodes)
 		{
 			Node const& n = *(i.second);
-			if (n.id != id() && !isPrivateAddress(n.address.address()))
+			if (!n.dead && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
