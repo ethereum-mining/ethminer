@@ -1,38 +1,58 @@
 # cmake global
-project(ethereum)
 cmake_minimum_required(VERSION 2.8.9)
-set(CMAKE_AUTOMOC ON)
-cmake_policy(SET CMP0015 NEW)
+
+project(ethereum)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+
+######################################################################################################
 
 # user defined, defaults
 # Normally, set(...CACHE...) creates cache variables, but does not modify them.
+function(createDefaultCacheConfig)
+	set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
+	set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
+	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
+	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
+endfunction()
 
-set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
-set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
-set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
-set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 
-if (LANGUAGES)
-	add_definitions(-DETH_LANGUAGES)
-endif ()
-
-if (PARANOIA)
-	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-		add_definitions(-DETH_PARANOIA)
-	else ()
-		message(FATAL_ERROR "Paranoia requires debug.")
+# propagates CMake configuration options to the compiler
+function(configureProject)
+	if (LANGUAGES)
+		add_definitions(-DETH_LANGUAGES)
 	endif ()
-endif ()
 
-if (VMTRACE)
-	if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-		add_definitions(-DETH_VMTRACE)
-	else ()
-		message(FATAL_ERROR "VM tracing requires debug.")
+	if (PARANOIA)
+		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+			add_definitions(-DETH_PARANOIA)
+		else ()
+			message(FATAL_ERROR "Paranoia requires debug.")
+		endif ()
 	endif ()
-endif ()
 
-message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+	if (VMTRACE)
+		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+			add_definitions(-DETH_VMTRACE)
+		else ()
+			message(FATAL_ERROR "VM tracing requires debug.")
+		endif ()
+	endif ()
+
+	message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+endfunction()
+
+######################################################################################################
+
+
+set(CMAKE_AUTOMOC ON)
+cmake_policy(SET CMP0015 NEW)
+
+
+createDefaultCacheConfig()
+configureProject()
+
 
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
@@ -49,44 +69,9 @@ endif ()
 #    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 # endif()
 
-# Initialize CXXFLAGS
-set(CMAKE_CXX_FLAGS                "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -DSHAREDLIB")
-set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG -DETH_RELEASE")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
 
-# Windows 
-if ("${TARGET_PLATFORM}" STREQUAL "w64")
-	set(CMAKE_SYSTEM_NAME Windows)
+include(EthCompilerSettings)
 
-	set(CMAKE_CXX_LIBRARY_ARCHITECTURE	x86_64-w64-mingw32)
-	set(CMAKE_C_COMPILER			x86_64-w64-mingw32-gcc)
-	set(CMAKE_CXX_COMPILER			x86_64-w64-mingw32-g++)
-	set(CMAKE_RC_COMPILER			x86_64-w64-mingw32-windres)
-	set(CMAKE_AR				x86_64-w64-mingw32-ar)
-	set(CMAKE_RANLIB			x86_64-w64-mingw32-ranlib)
-
-	set(CMAKE_EXECUTABLE_SUFFIX		.exe)
-
-	set(CMAKE_FIND_ROOT_PATH
-		/usr/x86_64-w64-mingw32
-	)
-
-	include_directories(/usr/x86_64-w64-mingw32/include/cryptopp)
-
-	set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-	set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-	set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-
-	set(CMAKE_INSTALL_PREFIX	/usr/x86_64-w64-mingw32)
-	set(ETH_BUILD_PLATFORM "windows")
-	set(ETH_STATIC 1)
-else ()
-	set(ETH_BUILD_PLATFORM ${CMAKE_SYSTEM_NAME})
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-	set(ETH_SHARED 1)
-endif()
 
 # Set build platform; to be written to BuildInfo.h
 if (CMAKE_COMPILER_IS_MINGW)
