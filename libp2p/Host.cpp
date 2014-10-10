@@ -716,7 +716,7 @@ void Host::restoreNodes(bytesConstRef _b)
 			if (!m_nodes.count(id))
 			{
 				bi::tcp::endpoint ep;
-				if (i[0].size() == 4)
+				if (i[0].itemCount() == 4)
 					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
 				else
 					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
