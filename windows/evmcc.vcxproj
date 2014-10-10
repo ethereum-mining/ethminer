@@ -24,8 +24,10 @@
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
     <ClCompile Include="..\evmcc\Ext.cpp" />
+    <ClCompile Include="..\evmcc\GasMeter.cpp" />
     <ClCompile Include="..\evmcc\Memory.cpp" />
     <ClCompile Include="..\evmcc\Runtime.cpp" />
+    <ClCompile Include="..\evmcc\Type.cpp" />
     <ClCompile Include="..\evmcc\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -33,8 +35,10 @@
     <ClInclude Include="..\evmcc\Compiler.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
     <ClInclude Include="..\evmcc\Ext.h" />
+    <ClInclude Include="..\evmcc\GasMeter.h" />
     <ClInclude Include="..\evmcc\Memory.h" />
     <ClInclude Include="..\evmcc\Runtime.h" />
+    <ClInclude Include="..\evmcc\Type.h" />
     <ClInclude Include="..\evmcc\Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
