@@ -24,6 +24,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
@@ -164,6 +165,13 @@ string pretty(h160 _a, dev::eth::State _st)
 		ns = " " + s;
 	}
 	return ns;
+}
+
+bool g_exit = false;
+
+void sighandler(int)
+{
+	g_exit = true;
 }
 
 int main(int argc, char** argv)
@@ -316,6 +324,9 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
+	auto nodesState = contents(dbPath + "/nodeState.rlp");
+	web3.restoreNodes(&nodesState);
+
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
 
@@ -334,11 +345,15 @@ int main(int argc, char** argv)
 	}
 #endif
 
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
+
 	if (interactive)
 	{
 		string logbuf;
 		string l;
-		while (true)
+		while (!g_exit)
 		{
 			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
 			cout << logbuf << "Press Enter" << flush;
@@ -764,7 +779,7 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
-		while (true)
+		while (!g_exit)
 		{
 			if ( c->isMining() &&c->blockChain().details().number - n == mining)
 				c->stopMining();
@@ -772,9 +787,10 @@ int main(int argc, char** argv)
 		}
 	}
 	else
-		while (true)
+		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
+	writeFile(dbPath + "/nodeState.rlp", web3.saveNodes());
 	return 0;
 }
 
