@@ -19,6 +19,9 @@ ipch
 *.opensdf
 *.suo
 
+# VIM stuff
+*.swp
+
 #Xcode stuff
 build_xc
 

@@ -1,3 +1,5 @@
+// https://github.com/ethereum/cpp-ethereum/wiki/PoC-6-JS-API
+
 if (typeof(window.eth) === "undefined")
 {
 if (typeof(require) !== "undefined")
@@ -15,23 +17,48 @@ else if (typeof(String.prototype.pad) === "undefined")
 }
 
 var spec = [
-            { "method": "procedures", "params": null, "order": [], "returns": [] },
+            // properties
             { "method": "coinbase", "params": null, "order": [], "returns" : "" },
             { "method": "isListening", "params": null, "order": [], "returns" : false },
+            { "method": "setListening", "params": { "l": "" }, "order" : ["l"], "returns" : ""},
             { "method": "isMining", "params": null, "order": [], "returns" : false },
+            { "method": "setMining", "params": { "l": "" }, "order" : ["l"], "returns" : ""},
             { "method": "gasPrice", "params": null, "order": [], "returns" : "" },
             { "method": "key", "params": null, "order": [], "returns" : "" },
             { "method": "keys", "params": null, "order": [], "returns" : [] },
             { "method": "peerCount", "params": null, "order": [], "returns" : 0 },
-            { "method": "balanceAt", "params": { "a": "" }, "order": ["a"], "returns" : "" },
-            { "method": "storageAt", "params": { "a": "", "x": "" }, "order": ["a", "x"], "returns" : "" },
-            { "method": "stateAt", "params": { "a": "", "x": "", "s": "" }, "order": ["a", "x", "s"], "returns" : "" },
-            { "method": "txCountAt", "params": { "a": "" },"order": ["a"], "returns" : "" },
-            { "method": "isContractAt", "params": { "a": "" }, "order": ["a"], "returns" : false },
-            { "method": "create", "params": { "sec": "", "xEndowment": "", "bCode": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xEndowment", "bCode", "xGas", "xGasPrice"] , "returns": "" },
-            { "method": "transact", "params": { "sec": "", "xValue": "", "aDest": "", "bData": "", "xGas": "", "xGasPrice": "" }, "order": ["sec", "xValue", "aDest", "bData", "xGas", "xGasPrice"], "returns": {} },
-            { "method": "secretToAddress", "params": { "a": "" }, "order": ["a"], "returns" : "" },
-            { "method": "lll", "params": { "s": "" }, "order": ["s"], "returns" : "" }
+            { "method": "defaultBlock", "params": null, "order": [], "returns" : 0},
+            { "method": "number", "params": null, "order": [], "returns" : 0},
+
+            // synchronous getters
+            { "method": "balanceAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns" : ""},
+            { "method": "stateAt", "params": { "a": "", "p": "", "block": ""}, "order": ["a", "p", "block"], "returns": ""},
+            { "method": "countAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns" : 0},
+            { "method": "codeAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns": ""},
+
+            // transactions
+            { "method": "transact", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "call", "params": { "json": ""}, "order": ["json"], "returns": ""},
+
+            // blockchain
+            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": ""},
+            { "method": "transaction", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
+            { "method": "uncle", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
+
+            // watches and message filtering
+            { "method": "messages", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
+
+            // misc
+            { "method": "secretToAddress", "params": { "s": ""}, "order": ["s"], "returns": ""},
+            { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},
+            { "method": "sha3", "params": { "s": ""}, "order": ["s"], "returns": ""},   // TODO other sha3
+            { "method": "toAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},
+            { "method": "fromAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},  // TODO padding
+            { "method": "toDecimal", "params": {"s": ""}, "order": ["s"], "returns" : ""},
+            { "method": "toFixed", "params": {"s": ""}, "order": ["s"], "returns" : ""},
+            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : ""},
+            { "method": "offset", "params": {"s": "", "offset": ""}, "order": ["s", "offset"], "returns" : ""},
 ];
 
 window.eth = (function ethScope() {
