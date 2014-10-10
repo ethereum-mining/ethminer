@@ -62,7 +62,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const&
 
 Session::~Session()
 {
-	if (id() && !isPermanentProblem(m_node->lastDisconnect))
+	if (id() && (!m_node || (!isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)))
 		m_server->m_ready += m_node->index;
 
 	// Read-chain finished for one reason or another.
@@ -201,14 +201,6 @@ bool Session::interpret(RLP const& _r)
 			return false;
 		}
 
-		if (m_server->havePeer(id))
-		{
-			// Already connected.
-			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
-			disconnect(DuplicatePeer);
-			return false;
-		}
-
 		if (m_node && m_node->id != id)
 		{
 			if (m_force || m_node->idOrigin <= Origin::SelfThird)
@@ -220,6 +212,21 @@ bool Session::interpret(RLP const& _r)
 				disconnect(UnexpectedIdentity);
 				return false;
 			}
+
+			if (m_server->havePeer(id))
+			{
+				m_node->dead = true;
+				disconnect(DuplicatePeer);
+				return false;
+			}
+		}
+
+		if (m_server->havePeer(id))
+		{
+			// Already connected.
+			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
+			disconnect(DuplicatePeer);
+			return false;
 		}
 
 		if (!id)

@@ -64,6 +64,7 @@ struct Node
 	bi::tcp::endpoint address;						///< As reported from the node itself.
 	int score = 0;									///< All time cumulative.
 	int rating = 0;									///< Trending.
+	bool dead = false;								///< If true, we believe this node is permanently dead - forget all about it.
 	std::chrono::system_clock::time_point lastConnected;
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;

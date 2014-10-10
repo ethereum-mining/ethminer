@@ -766,10 +766,11 @@ void Main::refreshNetwork()
 	auto ns = web3()->nodes();
 	ui->nodes->clear();
 	for (p2p::Node const& i: ns)
-		ui->nodes->addItem(QString("[%1%3] %2 - ( =%5s | /%4s | %6 | %7x ) - *%8 $%9")
+		if (!i.dead)
+			ui->nodes->addItem(QString("[%1%3] %2 - ( =%5s | /%4s | %6 | %7x ) - *%8 $%9")
 						   .arg(QString::fromStdString(i.id.abridged()))
 						   .arg(QString::fromStdString(toString(i.address)))
-						   .arg(i.id == web3()->id() ? " self" : i.isOffline() ? "" : " PEER")
+						   .arg(i.id == web3()->id() ? " self" : i.isOffline() ? " ripe" : " ----")
 						   .arg(i.secondsSinceLastAttempted())
 						   .arg(i.secondsSinceLastConnected())
 						   .arg(QString::fromStdString(reasonOf(i.lastDisconnect)))
