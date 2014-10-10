@@ -67,16 +67,19 @@ struct Node
 	std::chrono::system_clock::time_point lastConnected;
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;
-	int lastDisconnect = -1;						///< Reason for disconnect that happened last.
+	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
 
-	Origin idOrigin = Origin::Unknown;				///< Thirdparty
+	Origin idOrigin = Origin::Unknown;				///< How did we get to know this node's id?
 
-	bool offline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
+	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
+	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
+
+	bool isOffline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
 	bool operator<(Node const& _n) const
 	{
-		if (offline() != _n.offline())
-			return offline();
-		else if (offline())
+		if (isOffline() != _n.isOffline())
+			return isOffline();
+		else if (isOffline())
 			if (lastAttempted == _n.lastAttempted)
 				return failedAttempts < _n.failedAttempts;
 			else
@@ -165,6 +168,8 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restoreNodes(bytesConstRef _b);
 
+	Nodes nodes() const { RecursiveGuard l(x_peers); Nodes ret; for (auto const& i: m_nodes) ret.push_back(*i.second); return ret; }
+
 	void setNetworkPreferences(NetworkPreferences const& _p) { stop(); m_netPrefs = _p; start(); }
 
 	void start();
@@ -194,7 +199,7 @@ private:
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId = h256());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
-	void requestPeers();
+	void requestNodes();
 
 	std::string m_clientVersion;											///< Our version string.
 
@@ -211,6 +216,8 @@ private:
 	bi::tcp::endpoint m_public;												///< Our public listening endpoint.
 	KeyPair m_key;															///< Our unique ID.
 
+	bool m_hadNewNodes = false;
+
 	mutable RecursiveMutex x_peers;
 
 	/// The nodes to which we are currently connected.
@@ -226,8 +233,6 @@ private:
 
 	RangeMask<unsigned> m_ready;											///< Indices into m_nodesList over to which nodes we are not currently connected, connecting or otherwise ignoring.
 	RangeMask<unsigned> m_private;											///< Indices into m_nodesList over to which nodes are private.
-
-	std::chrono::steady_clock::time_point m_lastPeersRequest;				///< Last time we asked for some peers - don't want to do this too often. TODO: peers should be pushed, not polled.
 
 	unsigned m_idealPeerCount = 5;											///< Ideal number of peers to be connected to.
 
