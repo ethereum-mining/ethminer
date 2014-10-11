@@ -200,7 +200,7 @@ private:
 	/// This won't touch alter the blockchain.
 	virtual void doWork();
 
-	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId = h256());
+	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = h256());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
 	std::string m_clientVersion;											///< Our version string.
