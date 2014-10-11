@@ -44,7 +44,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _ma
 {
 	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 
-	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), m_manualEndpoint.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
+	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
 Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force):
@@ -317,7 +317,7 @@ bool Session::interpret(RLP const& _r)
 				// See if it's any better that ours or not...
 				// This could be the public address of a known node.
 				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
-				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()))
+				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()) && ep.port() != 0)
 					// Update address if the node if we now have a public IP for it.
 					m_server->m_nodes[id]->address = ep;
 				goto CONTINUE;
