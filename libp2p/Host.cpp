@@ -506,6 +506,7 @@ void Node::connect(Host* _h)
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
+			lastDisconnect = TCPError;
 			_h->m_ready += index;
 		}
 		else
@@ -533,24 +534,31 @@ bool Host::havePeer(NodeId _id) const
 	return !!m_peers.count(_id);
 }
 
-unsigned cumulativeFallback(unsigned _failed, DisconnectReason _r)
+unsigned Node::fallbackSeconds() const
 {
-	switch (_r)
+	switch (lastDisconnect)
 	{
 	case BadProtocol:
-		return 30 * (_failed + 1);
+		return 30 * (failedAttempts + 1);
 	case UselessPeer:
 	case TooManyPeers:
 	case ClientQuit:
-		return 15 * (_failed + 1);
+		return 15 * (failedAttempts + 1);
+	case NoDisconnect:
+		return 0;
 	default:
-		if (_failed < 5)
-			return _failed * 5;
-		else if (_failed < 15)
-			return 25 + (_failed - 5) * 10;
+		if (failedAttempts < 5)
+			return failedAttempts * 5;
+		else if (failedAttempts < 15)
+			return 25 + (failedAttempts - 5) * 10;
 		else
-			return 25 + 100 + (_failed - 15) * 20;
+			return 25 + 100 + (failedAttempts - 15) * 20;
 	}
+}
+
+bool Node::shouldReconnect() const
+{
+	return chrono::system_clock::now() > lastAttempted + chrono::seconds(fallbackSeconds());
 }
 
 void Host::growPeers()
@@ -564,7 +572,7 @@ void Host::growPeers()
 			toTry -= m_private;
 		set<Node> ns;
 		for (auto i: toTry)
-			if (chrono::system_clock::now() > m_nodes[m_nodesList[i]]->lastAttempted + chrono::seconds(cumulativeFallback(m_nodes[m_nodesList[i]]->failedAttempts, m_nodes[m_nodesList[i]]->lastDisconnect)))
+			if (m_nodes[m_nodesList[i]]->shouldReconnect())
 				ns.insert(*m_nodes[m_nodesList[i]]);
 
 		if (ns.size())
@@ -577,16 +585,11 @@ void Host::growPeers()
 		else
 		{
 			ensureAccepting();
-			requestNodes();
+			for (auto const& i: m_peers)
+				if (auto p = i.second.lock())
+					p->ensureNodesRequested();
 		}
 	}
-}
-
-void Host::requestNodes()
-{
-	for (auto const& i: m_peers)
-		if (auto p = i.second.lock())
-			p->ensureNodesRequested();
 }
 
 void Host::prunePeers()

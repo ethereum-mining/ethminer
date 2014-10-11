@@ -75,6 +75,9 @@ struct Node
 	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
 	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
 
+	unsigned fallbackSeconds() const;
+	bool shouldReconnect() const;
+
 	bool isOffline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
 	bool operator<(Node const& _n) const
 	{
@@ -199,8 +202,6 @@ private:
 
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId = h256());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
-
-	void requestNodes();
 
 	std::string m_clientVersion;											///< Our version string.
 

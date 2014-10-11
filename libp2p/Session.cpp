@@ -249,12 +249,15 @@ bool Session::interpret(RLP const& _r)
 	{
 		string reason = "Unspecified";
 		auto r = (DisconnectReason)_r[1].toInt<int>();
-		if (_r[1].isInt())
+		if (!_r[1].isInt())
+			drop(BadProtocol);
+		else
+		{
 			reason = reasonOf(r);
-
-		clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
-		drop(DisconnectRequested);
-		return true;
+			clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
+			drop(DisconnectRequested);
+		}
+		break;
 	}
 	case PingPacket:
 	{

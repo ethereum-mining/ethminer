@@ -93,9 +93,6 @@ private:
 	/// Perform a read on the socket.
 	void doRead();
 
-	/// The
-	void writeImpl(bytes& _buffer);
-
 	/// Perform a single round of the write operation. This could end up calling itself asynchronously.
 	void write();
 
