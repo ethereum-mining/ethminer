@@ -313,6 +313,7 @@ bool Session::interpret(RLP const& _r)
 			// check that it's not us or one we already know:
 			if (m_server->m_nodes.count(id))
 			{
+				/*	MEH. Far from an ideal solution. Leave alone for now.
 				// Already got this node.
 				// See if it's any better that ours or not...
 				// This could be the public address of a known node.
@@ -320,6 +321,7 @@ bool Session::interpret(RLP const& _r)
 				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()) && ep.port() != 0)
 					// Update address if the node if we now have a public IP for it.
 					m_server->m_nodes[id]->address = ep;
+				*/
 				goto CONTINUE;
 			}
 
