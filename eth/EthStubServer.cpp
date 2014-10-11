@@ -20,7 +20,7 @@
  * @date 2014
  */
 
-#if ETH_JSONRPC
+//#if ETH_JSONRPC
 #include "EthStubServer.h"
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -37,69 +37,141 @@ EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDi
 {
 }
 
-dev::eth::Client& EthStubServer::ethereum() const
+dev::eth::Interface* EthStubServer::client() const
 {
-	return *m_web3.ethereum();
+    return &(*m_web3.ethereum());
 }
 
-std::string EthStubServer::balanceAt(const string &a, const string &block)
+std::string EthStubServer::balanceAt(const string &a, const int& block)
 {
-
+    return toJS(client()->balanceAt(jsToAddress(a), block));
 }
 
-std::string EthStubServer::block(const string &numberOrHash)
+//TODO BlockDetails?
+Json::Value EthStubServer::block(const string &numberOrHash)
 {
+    auto n = jsToU256(numberOrHash);
+    auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : ::jsToFixed<32>(numberOrHash);
 
+    Json::Value res;
+    BlockInfo bi = client()->blockInfo(h);
+    res["hash"] = boost::lexical_cast<string>(bi.hash);
+
+    res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
+    res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
+    res["miner"] = boost::lexical_cast<string>(bi.coinbaseAddress);
+    res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
+    res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
+    res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
+    res["number"] = boost::lexical_cast<string>(bi.number);
+    res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
+    res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
+    res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
+    res["extraData"] = jsFromBinary(bi.extraData);
+    res["nonce"] = boost::lexical_cast<string>(bi.nonce);
+    return res;
 }
 
-std::string EthStubServer::call(const string &json)
+static TransactionJS toTransaction(const Json::Value &json)
 {
+    TransactionJS ret;
+    if (!json.isObject() || json.empty()){
+        return ret;
+    }
 
+    if (!json["from"].empty())
+        ret.from = jsToSecret(json["from"].asString());
+    if (!json["to"].empty())
+        ret.to = jsToAddress(json["to"].asString());
+    if (!json["value"].empty())
+        ret.value = jsToU256(json["value"].asString());
+    if (!json["gas"].empty())
+        ret.gas = jsToU256(json["gas"].asString());
+    if (!json["gasPrice"].empty())
+        ret.gasPrice = jsToU256(json["gasPrice"].asString());
+
+    if (!json["data"].empty() || json["code"].empty() || json["dataclose"].empty())
+    {
+        if (json["data"].isString())
+            ret.data = jsToBytes(json["data"].asString());
+        else if (json["code"].isString())
+            ret.data = jsToBytes(json["code"].asString());
+        else if (json["data"].isArray())
+            for (auto i: json["data"])
+                dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
+        else if (json["code"].isArray())
+            for (auto i: json["code"])
+                dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
+        else if (json["dataclose"].isArray())
+            for (auto i: json["dataclose"])
+                dev::operator +=(ret.data, jsToBytes(i.asString()));
+    }
+
+    return ret;
 }
 
-std::string EthStubServer::codeAt(const string &a, const string &block)
+std::string EthStubServer::call(const Json::Value &json)
 {
+    std::string ret;
+    if (!client())
+        return ret;
+    TransactionJS t = toTransaction(json);
+    if (!t.to)
+        return ret;
+    if (!t.from && m_keys.size())
+        t.from = m_keys[0].secret();
+    if (!t.gasPrice)
+        t.gasPrice = 10 * dev::eth::szabo;
+    if (!t.gas)
+        t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
+    ret = toJS(client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice));
+    return ret;
+}
 
+std::string EthStubServer::codeAt(const string &a, const int& block)
+{
+    return client() ? jsFromBinary(client()->codeAt(jsToAddress(a), block)) : "";
 }
 
 std::string EthStubServer::coinbase()
 {
-
+    return client() ? toJS(client()->address()) : "";
 }
 
-int EthStubServer::countAt(const string &a, const string &block)
+std::string EthStubServer::countAt(const string &a, const int& block)
 {
-
+    return client() ? toJS(client()->countAt(jsToAddress(a), block)) : "";
 }
 
 int EthStubServer::defaultBlock()
 {
-
+    return client() ? client()->getDefault() : 0;
 }
 
-std::string EthStubServer::fromAscii(const string &s)
+std::string EthStubServer::fromAscii(const int& padding, const std::string& s)
 {
-
+    return jsFromBinary(s, padding);
 }
 
-std::string EthStubServer::fromFixed(const string &s)
+double EthStubServer::fromFixed(const string &s)
 {
-
+    return jsFromFixed(s);
 }
 
 std::string EthStubServer::gasPrice()
 {
-
+    return toJS(10 * dev::eth::szabo);
 }
 
+//TODO
 bool EthStubServer::isListening()
 {
-
+    return /*client() ? client()->haveNetwork() :*/ false;
 }
 
 bool EthStubServer::isMining()
 {
-
+    return client() ? client()->isMining() : false;
 }
 
 std::string EthStubServer::key()
@@ -119,7 +191,7 @@ Json::Value EthStubServer::keys()
 
 std::string EthStubServer::lll(const string &s)
 {
-
+    return toJS(dev::eth::compileLLL(s));
 }
 
 std::string EthStubServer::messages(const string &json)
@@ -157,7 +229,7 @@ std::string EthStubServer::sha3(const string &s)
 
 }
 
-std::string EthStubServer::stateAt(const string &a, const string &block, const string &p)
+std::string EthStubServer::stateAt(const string &a, const int& block, const string &p)
 {
 
 }
@@ -200,24 +272,24 @@ std::string EthStubServer::watch(const string &json)
 Json::Value EthStubServer::blockJson(const std::string& _hash)
 {
 	Json::Value res;
-	auto const& bc = ethereum().blockChain();
+//    auto const& bc = client()->blockChain();
 	
-	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
+//	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
 	
-	auto bi = BlockInfo(b);
-	res["number"] = boost::lexical_cast<string>(bi.number);
-	res["hash"] = boost::lexical_cast<string>(bi.hash);
-	res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
-	res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
-	res["coinbaseAddress"] = boost::lexical_cast<string>(bi.coinbaseAddress);
-	res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
-	res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
-	res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
-	res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
-	res["gasUsed"] = boost::lexical_cast<string>(bi.gasUsed);
-	res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
-	res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
-	res["nonce"] = boost::lexical_cast<string>(bi.nonce);
+//	auto bi = BlockInfo(b);
+//	res["number"] = boost::lexical_cast<string>(bi.number);
+//	res["hash"] = boost::lexical_cast<string>(bi.hash);
+//	res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
+//	res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
+//	res["coinbaseAddress"] = boost::lexical_cast<string>(bi.coinbaseAddress);
+//	res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
+//	res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
+//	res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
+//	res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
+//	res["gasUsed"] = boost::lexical_cast<string>(bi.gasUsed);
+//	res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
+//	res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
+//	res["nonce"] = boost::lexical_cast<string>(bi.nonce);
 
 	return res;
 }
@@ -236,4 +308,4 @@ Json::Value EthStubServer::jsontypeToValue(int _jsontype)
 	}
 }
 
-#endif
+//#endif

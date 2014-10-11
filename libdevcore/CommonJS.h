@@ -65,6 +65,22 @@ inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
     return jsFromBinary(asBytes(_s), _padding);
 }
 
+inline double jsFromFixed(std::string const& _s)
+{
+    return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
+}
+
+struct TransactionJS
+{
+    Secret from;
+    Address to;
+    u256 value;
+    bytes data;
+    u256 gas;
+    u256 gasPrice;
+};
+
+
 
 }
 }

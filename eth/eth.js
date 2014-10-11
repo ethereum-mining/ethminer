@@ -31,17 +31,17 @@ var spec = [
             { "method": "number", "params": null, "order": [], "returns" : 0},
 
             // synchronous getters
-            { "method": "balanceAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns" : ""},
-            { "method": "stateAt", "params": { "a": "", "p": "", "block": ""}, "order": ["a", "p", "block"], "returns": ""},
-            { "method": "countAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns" : 0},
-            { "method": "codeAt", "params": { "a": "", "block": ""}, "order": ["a", "block"], "returns": ""},
+            { "method": "balanceAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
+            { "method": "stateAt", "params": { "a": "", "p": "", "block": 0}, "order": ["a", "p", "block"], "returns": ""},
+            { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
+            { "method": "codeAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns": ""},
 
             // transactions
             { "method": "transact", "params": { "json": ""}, "order": ["json"], "returns": ""},
-            { "method": "call", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "call", "params": { "json": []}, "order": ["json"], "returns": ""},
 
             // blockchain
-            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": ""},
+            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": []},
             { "method": "transaction", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
             { "method": "uncle", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
 
@@ -54,10 +54,10 @@ var spec = [
             { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "sha3", "params": { "s": ""}, "order": ["s"], "returns": ""},   // TODO other sha3
             { "method": "toAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},
-            { "method": "fromAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},  // TODO padding
+            { "method": "fromAscii", "params": { "s": "", "padding": 0}, "order": ["s", "padding"], "returns": ""}, 
             { "method": "toDecimal", "params": {"s": ""}, "order": ["s"], "returns" : ""},
             { "method": "toFixed", "params": {"s": ""}, "order": ["s"], "returns" : ""},
-            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : ""},
+            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0},
             { "method": "offset", "params": {"s": "", "offset": ""}, "order": ["s", "offset"], "returns" : ""},
 ];
 
