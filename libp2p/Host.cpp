@@ -687,7 +687,8 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_nodes)
 		{
 			Node const& n = *(i.second);
-			if (!n.dead && n.address.port() > 0 && n.address.port() >= 30300 && n.address.port() <= 30305 && n.id != id() && !isPrivateAddress(n.address.address()))
+			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
+			if (!n.dead && n.address.port() > 0 && n.address.port() < 49152 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
