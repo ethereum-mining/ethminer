@@ -396,7 +396,7 @@ static QString toJson(dev::eth::Transaction const& _bi)
 	v["from"] = toQJS(_bi.sender());
 	v["gas"] = (int)_bi.gas;
 	v["gasPrice"] = toQJS(_bi.gasPrice);
-	v["nonce"] = toQJS(_bi.nonce);
+	v["nonce"] = (int)_bi.nonce;
 	v["value"] = toQJS(_bi.value);
 
 	return QString::fromUtf8(QJsonDocument(v).toJson());

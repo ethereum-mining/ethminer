@@ -673,6 +673,7 @@ void Host::pingAll()
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
+	m_lastPing = chrono::steady_clock::now();
 }
 
 bytes Host::saveNodes() const
