@@ -36,8 +36,7 @@
 #include <eth/EthStubServer.h>
 #include <eth/EthStubServer.cpp>
 #include <eth/abstractethstubserver.h>
-#include <eth/CommonJS.h>
-#include <eth/CommonJS.cpp>
+#include <libdevcore/CommonJS.h>
 #endif
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"

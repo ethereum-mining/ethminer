@@ -36,27 +36,38 @@ class EthStubServer: public AbstractEthStubServer
 public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
-	virtual Json::Value procedures();
-	virtual std::string balanceAt(std::string const& _a);
-	virtual Json::Value check(Json::Value const& _as);
-	virtual std::string coinbase();
-	virtual std::string create(const std::string& bCode, const std::string& sec, const std::string& xEndowment, const std::string& xGas, const std::string& xGasPrice);
-	virtual std::string gasPrice();
-	virtual bool isContractAt(const std::string& a);
-	virtual bool isListening();
-	virtual bool isMining();
-	virtual std::string key();
-	virtual Json::Value keys();
-	virtual int peerCount();
-	virtual std::string storageAt(const std::string& a, const std::string& x);
-	virtual std::string stateAt(const std::string& a, const std::string& x, const std::string& s);
-	virtual Json::Value transact(const std::string& aDest, const std::string& bData, const std::string& sec, const std::string& xGas, const std::string& xGasPrice, const std::string& xValue);
-	virtual std::string txCountAt(const std::string& a);
-	virtual std::string secretToAddress(const std::string& a);
-	virtual Json::Value lastBlock();
-	virtual std::string lll(const std::string& s);
-	virtual Json::Value block(const std::string&);
-	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
+    virtual std::string balanceAt(const std::string& a, const std::string& block);
+    virtual std::string block(const std::string& numberOrHash);
+    virtual std::string call(const std::string& json);
+    virtual std::string codeAt(const std::string& a, const std::string& block);
+    virtual std::string coinbase();
+    virtual int countAt(const std::string& a, const std::string& block);
+    virtual int defaultBlock();
+    virtual std::string fromAscii(const std::string& s);
+    virtual std::string fromFixed(const std::string& s);
+    virtual std::string gasPrice();
+    virtual bool isListening();
+    virtual bool isMining();
+    virtual std::string key();
+    virtual Json::Value keys();
+    virtual std::string lll(const std::string& s);
+    virtual std::string messages(const std::string& json);
+    virtual int number();
+    virtual int peerCount();
+    virtual std::string secretToAddress(const std::string& s);
+    virtual std::string setListening(const std::string& l);
+    virtual std::string setMining(const std::string& l);
+    virtual std::string sha3(const std::string& s);
+    virtual std::string stateAt(const std::string& a, const std::string& block, const std::string& p);
+    virtual std::string toAscii(const std::string& s);
+    virtual std::string toDecimal(const std::string& s);
+    virtual std::string toFixed(const std::string& s);
+    virtual std::string transact(const std::string& json);
+    virtual std::string transaction(const std::string& i, const std::string& numberOrHash);
+    virtual std::string uncle(const std::string& i, const std::string& numberOrHash);
+    virtual std::string watch(const std::string& json);
+
+    void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
 	dev::eth::Client& ethereum() const;
 	dev::WebThreeDirect& m_web3;
