@@ -29,22 +29,22 @@
 #include "abstractethstubserver.h"
 #pragma GCC diagnostic pop
 
-namespace dev { class WebThreeDirect; namespace eth { class Client; } class KeyPair; }
+namespace dev { class WebThreeDirect; namespace eth { class Interface; } class KeyPair; }
 
 class EthStubServer: public AbstractEthStubServer
 {
 public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
-    virtual std::string balanceAt(const std::string& a, const std::string& block);
-    virtual std::string block(const std::string& numberOrHash);
-    virtual std::string call(const std::string& json);
-    virtual std::string codeAt(const std::string& a, const std::string& block);
+    virtual std::string balanceAt(const std::string& a, const int& block);
+    virtual Json::Value block(const std::string& numberOrHash);
+    virtual std::string call(const Json::Value& json);
+    virtual std::string codeAt(const std::string& a, const int& block);
     virtual std::string coinbase();
-    virtual int countAt(const std::string& a, const std::string& block);
+    virtual std::string countAt(const std::string& a, const int& block);
     virtual int defaultBlock();
-    virtual std::string fromAscii(const std::string& s);
-    virtual std::string fromFixed(const std::string& s);
+    virtual std::string fromAscii(const int& padding, const std::string& s);
+    virtual double fromFixed(const std::string& s);
     virtual std::string gasPrice();
     virtual bool isListening();
     virtual bool isMining();
@@ -58,7 +58,7 @@ public:
     virtual std::string setListening(const std::string& l);
     virtual std::string setMining(const std::string& l);
     virtual std::string sha3(const std::string& s);
-    virtual std::string stateAt(const std::string& a, const std::string& block, const std::string& p);
+    virtual std::string stateAt(const std::string& a, const int& block, const std::string& p);
     virtual std::string toAscii(const std::string& s);
     virtual std::string toDecimal(const std::string& s);
     virtual std::string toFixed(const std::string& s);
@@ -69,7 +69,7 @@ public:
 
     void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
-	dev::eth::Client& ethereum() const;
+    dev::eth::Interface* client() const;
 	dev::WebThreeDirect& m_web3;
 	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
