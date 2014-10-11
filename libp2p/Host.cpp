@@ -142,7 +142,7 @@ void Host::stop()
 
 unsigned Host::protocolVersion() const
 {
-	return 1;
+	return 2;
 }
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
