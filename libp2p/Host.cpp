@@ -356,10 +356,16 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 	}
 
 	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
-	if (!_a.port())
-	{
-		cwarn << "PORT IS INVALID!";
-	}
+
+	// First check for another node with the same connection credentials, and put it in oldId if found.
+	if (!_oldId)
+		for (pair<h512, shared_ptr<Node>> const& n: m_nodes)
+			if (n.second->address == _a && n.second->id != _id)
+			{
+				_oldId = n.second->id;
+				break;
+			}
+
 	unsigned i;
 	if (!m_nodes.count(_id))
 	{
