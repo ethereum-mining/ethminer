@@ -26,7 +26,7 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
-#include "CommonJS.h"
+#include <libdevcore/CommonJS.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -37,142 +37,164 @@ EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDi
 {
 }
 
-//only works with a json spec that doesn't have notifications for now
-Json::Value EthStubServer::procedures()
-{
-	Json::Value ret;
-	
-	for (auto proc: this->GetProtocolHanlder()->GetProcedures())
-	{
-		Json::Value proc_j;
-
-		proc_j[proc.second->GetProcedureType() == 0 ? "method" : "notification"] = proc.first;
-
-		Json::Value params_j;
-		for (auto params: proc.second->GetParameters())
-			params_j[params.first] = jsontypeToValue(params.second);
-		proc_j["params"] = params_j;
-		
-		proc_j["returns"] = jsontypeToValue(proc.second->GetReturnType());
-
-		ret.append(proc_j);
-	}
-	return ret;
-}
-
 dev::eth::Client& EthStubServer::ethereum() const
 {
 	return *m_web3.ethereum();
 }
 
+std::string EthStubServer::balanceAt(const string &a, const string &block)
+{
+
+}
+
+std::string EthStubServer::block(const string &numberOrHash)
+{
+
+}
+
+std::string EthStubServer::call(const string &json)
+{
+
+}
+
+std::string EthStubServer::codeAt(const string &a, const string &block)
+{
+
+}
+
 std::string EthStubServer::coinbase()
 {
-	return toJS(ethereum().address());
+
 }
 
-std::string EthStubServer::balanceAt(std::string const& _a)
+int EthStubServer::countAt(const string &a, const string &block)
 {
-	return toJS(ethereum().balanceAt(jsToAddress(_a), 0));
+
 }
 
-Json::Value EthStubServer::check(Json::Value const& _as)
+int EthStubServer::defaultBlock()
 {
-	// TODO
-//	if (ethereum().changed())
-		return _as;
-/*	else
-	{
-		Json::Value ret;
-		ret.resize(0);
-		return ret;
-	}*/
+
 }
 
-std::string EthStubServer::create(const std::string& _bCode, const std::string& _sec, const std::string& _xEndowment, const std::string& _xGas, const std::string& _xGasPrice)
+std::string EthStubServer::fromAscii(const string &s)
 {
-	Address ret = ethereum().transact(jsToSecret(_sec), jsToU256(_xEndowment), jsToBytes(_bCode), jsToU256(_xGas), jsToU256(_xGasPrice));
-	return toJS(ret);
+
 }
 
-std::string EthStubServer::lll(const std::string& _s)
+std::string EthStubServer::fromFixed(const string &s)
 {
-	return "0x" + toHex(dev::eth::compileLLL(_s));
+
 }
 
 std::string EthStubServer::gasPrice()
 {
-	return "100000000000000";
-}
 
-bool EthStubServer::isContractAt(const std::string& _a)
-{
-	return ethereum().codeAt(jsToAddress(_a), 0).size();
 }
 
 bool EthStubServer::isListening()
 {
-	return m_web3.haveNetwork();
+
 }
 
 bool EthStubServer::isMining()
 {
-	return ethereum().isMining();
+
 }
 
 std::string EthStubServer::key()
 {
-	if (!m_keys.size())
-		return std::string();
-	return toJS(m_keys[0].sec());
+    if (!m_keys.size())
+        return std::string();
+    return toJS(m_keys[0].sec());
 }
 
 Json::Value EthStubServer::keys()
 {
-	Json::Value ret;
-	for (auto i: m_keys)
-		ret.append(toJS(i.secret()));
-	return ret;
+    Json::Value ret;
+    for (auto i: m_keys)
+        ret.append(toJS(i.secret()));
+    return ret;
+}
+
+std::string EthStubServer::lll(const string &s)
+{
+
+}
+
+std::string EthStubServer::messages(const string &json)
+{
+
+}
+
+int EthStubServer::number()
+{
+
 }
 
 int EthStubServer::peerCount()
 {
-	return m_web3.peerCount();
+    return m_web3.peerCount();
 }
 
-std::string EthStubServer::storageAt(const std::string& _a, const std::string& x)
+std::string EthStubServer::secretToAddress(const string &s)
 {
-	return toJS(ethereum().stateAt(jsToAddress(_a), jsToU256(x), 0));
+
 }
 
-std::string EthStubServer::stateAt(const std::string& _a, const std::string& x, const std::string& s)
+std::string EthStubServer::setListening(const string &l)
 {
-	return toJS(ethereum().stateAt(jsToAddress(_a), jsToU256(x), std::atol(s.c_str())));
+
 }
 
-Json::Value EthStubServer::transact(const std::string& _aDest, const std::string& _bData, const std::string& _sec, const std::string& _xGas, const std::string& _xGasPrice, const std::string& _xValue)
+std::string EthStubServer::setMining(const string &l)
 {
-	ethereum().transact(jsToSecret(_sec), jsToU256(_xValue), jsToAddress(_aDest), jsToBytes(_bData), jsToU256(_xGas), jsToU256(_xGasPrice));
-	return Json::Value();
+
 }
 
-std::string EthStubServer::txCountAt(const std::string& _a)
+std::string EthStubServer::sha3(const string &s)
 {
-	return toJS(ethereum().countAt(jsToAddress(_a), 0));
+
 }
 
-std::string EthStubServer::secretToAddress(const std::string& _a)
+std::string EthStubServer::stateAt(const string &a, const string &block, const string &p)
 {
-	return toJS(KeyPair(jsToSecret(_a)).address());
+
 }
 
-Json::Value EthStubServer::lastBlock()
+std::string EthStubServer::toAscii(const string &s)
 {
-	return blockJson("");
+
 }
 
-Json::Value EthStubServer::block(const std::string& _hash)
+std::string EthStubServer::toDecimal(const string &s)
 {
-	return blockJson(_hash);
+
+}
+
+std::string EthStubServer::toFixed(const string &s)
+{
+
+}
+
+std::string EthStubServer::transact(const string &json)
+{
+
+}
+
+std::string EthStubServer::transaction(const string &i, const string &numberOrHash)
+{
+
+}
+
+std::string EthStubServer::uncle(const string &i, const string &numberOrHash)
+{
+
+}
+
+std::string EthStubServer::watch(const string &json)
+{
+
 }
 
 Json::Value EthStubServer::blockJson(const std::string& _hash)
