@@ -40,7 +40,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _ma
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_node(nullptr),
-	m_manualEndpoint(_manual)
+	m_manualEndpoint(_manual)	// NOTE: the port on this shouldn't be used if it's zero.
 {
 	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 

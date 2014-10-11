@@ -346,6 +346,8 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
+	if (_a.port() < 30300 && _a.port() > 30303)
+		cwarn << "Wierd port being recorded!";
 	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
 	if (!_a.port())
 	{
