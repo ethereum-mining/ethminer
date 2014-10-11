@@ -326,6 +326,11 @@ bool Session::interpret(RLP const& _r)
 			if (!ep.port())
 				goto CONTINUE;	// Zero port? Don't think so.
 
+			// TODO: PoC-7:
+			// Technically fine, but ignore for now to avoid peers passing on incoming ports until we can be sure that doesn't happen any more.
+			if (ep.port() < 30300 || ep.port() > 30305)
+				goto CONTINUE;	// Wierd port.
+
 			// Avoid our random other addresses that they might end up giving us.
 			for (auto i: m_server->m_addresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
