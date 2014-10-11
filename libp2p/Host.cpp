@@ -655,6 +655,15 @@ void Host::doWork()
 		m_hadNewNodes = false;
 	}
 
+	if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
+	{
+		for (auto p: m_peers)
+			if (auto pp = p.second.lock())
+				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(30))
+					pp->disconnect(PingTimeout);
+		pingAll();
+	}
+
 	m_ioService.poll();
 }
 
