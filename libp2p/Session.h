@@ -39,7 +39,7 @@ namespace dev
 namespace p2p
 {
 
-class Node;
+struct Node;
 
 /**
  * @brief The Session class
@@ -121,8 +121,9 @@ private:
 	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
 	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 
-	std::chrono::steady_clock::time_point m_ping;		///< Time point of last ping.
-	std::chrono::steady_clock::time_point m_connect;	///< Time point of connection.
+	std::chrono::steady_clock::time_point m_connect;		///< Time point of connection.
+	std::chrono::steady_clock::time_point m_ping;			///< Time point of last ping.
+	std::chrono::steady_clock::time_point m_lastReceived;	///< Time point of last message.
 
 	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;	///< The peer's capability set.
 	RangeMask<unsigned> m_knownNodes;		///< Nodes we already know about as indices into Host's nodesList. These shouldn't be resent to peer.

@@ -78,7 +78,7 @@ struct Node
 	unsigned fallbackSeconds() const;
 	bool shouldReconnect() const;
 
-	bool isOffline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
+	bool isOffline() const { return lastAttempted > lastConnected; }
 	bool operator<(Node const& _n) const
 	{
 		if (isOffline() != _n.isOffline())
@@ -121,7 +121,7 @@ class Host: public Worker
 {
 	friend class Session;
 	friend class HostCapabilityFace;
-	friend class Node;
+	friend struct Node;
 
 public:
 	/// Start server, listening for connections on the given port.
@@ -244,6 +244,8 @@ private:
 
 	// Our capabilities.
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
+
+	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 
 	bool m_accepting = false;
 };

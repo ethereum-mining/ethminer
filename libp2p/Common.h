@@ -88,6 +88,7 @@ enum DisconnectReason
 	ClientQuit,
 	UnexpectedIdentity,
 	LocalIdentity,
+	PingTimeout,
 	UserReason = 0x10,
 	NoDisconnect = 0xffff
 };
@@ -96,7 +97,6 @@ inline bool isPermanentProblem(DisconnectReason _r)
 {
 	switch (_r)
 	{
-	case DisconnectRequested:
 	case DuplicatePeer:
 	case IncompatibleProtocol:
 	case NullIdentity:

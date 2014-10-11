@@ -750,6 +750,9 @@ void Main::refreshBalances()
 void Main::refreshNetwork()
 {
 	auto ps = web3()->peers();
+
+	map<h512, QString> clients;
+
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
 	for (PeerInfo const& i: ps)
@@ -757,7 +760,7 @@ void Main::refreshNetwork()
 						   .arg(QString::fromStdString(i.host))
 						   .arg(i.port)
 						   .arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count())
-						   .arg(QString::fromStdString(i.clientVersion))
+						   .arg(clients[i.id] = QString::fromStdString(i.clientVersion))
 						   .arg(QString::fromStdString(toString(i.caps)))
 						   .arg(QString::fromStdString(toString(i.notes)))
 						   .arg(i.socket)
@@ -767,13 +770,13 @@ void Main::refreshNetwork()
 	ui->nodes->clear();
 	for (p2p::Node const& i: ns)
 		if (!i.dead)
-			ui->nodes->addItem(QString("[%1%3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+			ui->nodes->addItem(QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
 						   .arg(QString::fromStdString(i.id.abridged()))
 						   .arg(QString::fromStdString(toString(i.address)))
-						   .arg(i.id == web3()->id() ? " self" : i.isOffline() ? QString::number(i.fallbackSeconds() - i.secondsSinceLastAttempted()) + "s" : " ----")
+						   .arg(i.id == web3()->id() ? "self" : i.isOffline() ? i.secondsSinceLastAttempted() > -1 ? "retry-" + QString::number(i.fallbackSeconds() - i.secondsSinceLastAttempted()) + "s" : "session-fail" : clients[i.id])
 						   .arg(i.secondsSinceLastAttempted())
 						   .arg(i.secondsSinceLastConnected())
-						   .arg(i.lastDisconnect == NoDisconnect ? QString("") : (" | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x"))
+						   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x" : "")
 						   .arg(i.rating)
 						   .arg((int)i.idOrigin)
 						   );

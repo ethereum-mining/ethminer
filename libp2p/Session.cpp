@@ -42,7 +42,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _ma
 	m_node(nullptr),
 	m_manualEndpoint(_manual)
 {
-	m_connect = std::chrono::steady_clock::now();
+	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 
 	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), m_manualEndpoint.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
@@ -54,7 +54,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const&
 	m_manualEndpoint(_n->address),
 	m_force(_force)
 {
-	m_connect = std::chrono::steady_clock::now();
+	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
@@ -167,6 +167,8 @@ void Session::serviceNodesRequest()
 
 bool Session::interpret(RLP const& _r)
 {
+	m_lastReceived = chrono::steady_clock::now();
+
 	clogS(NetRight) << _r;
 	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
 	{
