@@ -630,46 +630,47 @@ int main(int argc, char** argv)
 					try
 					{
 						e.setup(&r);
+
+						OnOpFunc oof;
+						if (format == "pretty")
+							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								f << endl << "    STACK" << endl;
+								for (auto i: vm->stack())
+									f << (h256)i << endl;
+								f << "    MEMORY" << endl << dev::memDump(vm->memory());
+								f << "    STORAGE" << endl;
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << showbase << hex << i.first << ": " << i.second << endl;
+								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+							};
+						else if (format == "standard")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						else if (format == "standard+")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+									for (auto const& i: ext->state().storage(ext->myAddress))
+										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						e.go(oof);
+						e.finalize(oof);
 					}
 					catch(Exception const& _e)
 					{
+						// TODO: a bit more information here. this is probably quite worrying as the transaction is already in the blockchain.
 						cwarn << diagnostic_information(_e);
 					}
-
-					OnOpFunc oof;
-					if (format == "pretty")
-						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << endl << "    STACK" << endl;
-							for (auto i: vm->stack())
-								f << (h256)i << endl;
-							f << "    MEMORY" << endl << dev::memDump(vm->memory());
-							f << "    STORAGE" << endl;
-							for (auto const& i: ext->state().storage(ext->myAddress))
-								f << showbase << hex << i.first << ": " << i.second << endl;
-							f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
-						};
-					else if (format == "standard")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					else if (format == "standard+")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
-								for (auto const& i: ext->state().storage(ext->myAddress))
-									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					e.go(oof);
-					e.finalize(oof);
 				}
 			}
 			else if (c && cmd == "inspect")
