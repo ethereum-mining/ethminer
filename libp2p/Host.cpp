@@ -674,7 +674,7 @@ void Host::doWork()
 	{
 		for (auto p: m_peers)
 			if (auto pp = p.second.lock())
-				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(30))
+				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(60))
 					pp->disconnect(PingTimeout);
 		pingAll();
 	}
