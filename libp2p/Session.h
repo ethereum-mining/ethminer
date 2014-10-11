@@ -30,6 +30,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/RangeMask.h>
+#include <libdevcore/Guards.h>
 #include "Common.h"
 
 namespace dev
@@ -72,7 +73,7 @@ public:
 	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
-	void sendDestroy(bytes& _msg);
+	void send(bytes&& _msg);
 	void send(bytesConstRef _msg);
 
 	int rating() const;
@@ -86,43 +87,48 @@ public:
 	void serviceNodesRequest();
 
 private:
-	void dropped();
+	/// Drop the connection for the reason @a _r.
+	void drop(DisconnectReason _r);
+
+	/// Perform a read on the socket.
 	void doRead();
-	void doWrite(std::size_t length);
+
+	/// The
 	void writeImpl(bytes& _buffer);
+
+	/// Perform a single round of the write operation. This could end up calling itself asynchronously.
 	void write();
 
+	/// Interpret an incoming message.
 	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
 
-	Host* m_server;
+	Host* m_server;							///< The host that owns us. Never null.
 
-	std::mutex m_writeLock;
-	std::deque<bytes> m_writeQueue;
+	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
+	Mutex x_writeQueue;						///< Mutex for the write queue.
+	std::deque<bytes> m_writeQueue;			///< The write queue.
+	std::array<byte, 65536> m_data;			///< Data buffer for the write queue.
+	bytes m_incoming;						///< The incoming read queue of bytes.
 
-	mutable bi::tcp::socket m_socket;		///< Mutable to ask for native_handle().
-	std::array<byte, 65536> m_data;
-	PeerInfo m_info;
+	PeerInfo m_info;						///< Dyanamic information about this peer.
 
-	bytes m_incoming;
-	unsigned m_protocolVersion;
-	std::shared_ptr<Node> m_node;
-	bi::tcp::endpoint m_manualEndpoint;
-	bool m_force = false;					/// If true, ignore IDs being different. This could open you up to MitM attacks.
+	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
+	std::shared_ptr<Node> m_node;			///< The Node object. Might be null if we constructed using a bare address/port.
+	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
+	bool m_force = false;					///< If true, ignore IDs being different. This could open you up to MitM attacks.
+	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
-	bool m_theyRequestedNodes = false;
-	bool m_weRequestedNodes = false;
+	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
+	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 
-	std::chrono::steady_clock::time_point m_ping;
-	std::chrono::steady_clock::time_point m_connect;
-	std::chrono::steady_clock::time_point m_disconnect;
+	std::chrono::steady_clock::time_point m_ping;		///< Time point of last ping.
+	std::chrono::steady_clock::time_point m_connect;	///< Time point of connection.
 
-	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;
+	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;	///< The peer's capability set.
 	RangeMask<unsigned> m_knownNodes;		///< Nodes we already know about as indices into Host's nodesList. These shouldn't be resent to peer.
-
-	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };
 
 }

@@ -42,7 +42,6 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _ma
 	m_node(nullptr),
 	m_manualEndpoint(_manual)
 {
-	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
 
 	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), m_manualEndpoint.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
@@ -55,15 +54,15 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const&
 	m_manualEndpoint(_n->address),
 	m_force(_force)
 {
-	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
 	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
 Session::~Session()
 {
-	if (id() && (!m_node || (!isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)))
-		m_server->m_ready += m_node->index;
+	if (m_node)
+		if (id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)
+			m_server->m_ready += m_node->index;
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -176,9 +175,6 @@ bool Session::interpret(RLP const& _r)
 	{
 	case HelloPacket:
 	{
-		if (m_node)
-			m_node->lastDisconnect = NoDisconnect;
-
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
 		auto caps = _r[3].toVector<CapDesc>();
@@ -198,7 +194,7 @@ bool Session::interpret(RLP const& _r)
 			// Already connected.
 			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << m_info.id.abridged();
 			disconnect(LocalIdentity);
-			return false;
+			return true;
 		}
 
 		if (m_node && m_node->id != id)
@@ -210,14 +206,14 @@ bool Session::interpret(RLP const& _r)
 			{
 				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Disconnecting.";
 				disconnect(UnexpectedIdentity);
-				return false;
+				return true;
 			}
 
 			if (m_server->havePeer(id))
 			{
 				m_node->dead = true;
 				disconnect(DuplicatePeer);
-				return false;
+				return true;
 			}
 		}
 
@@ -226,13 +222,13 @@ bool Session::interpret(RLP const& _r)
 			// Already connected.
 			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
 			disconnect(DuplicatePeer);
-			return false;
+			return true;
 		}
 
 		if (!id)
 		{
 			disconnect(NullIdentity);
-			return false;
+			return true;
 		}
 
 		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
@@ -242,7 +238,7 @@ bool Session::interpret(RLP const& _r)
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
 			disconnect(IncompatibleProtocol);
-			return false;
+			return true;
 		}
 		m_info = PeerInfo({id, clientVersion, m_socket.remote_endpoint().address().to_string(), listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() });
 
@@ -252,16 +248,13 @@ bool Session::interpret(RLP const& _r)
 	case DisconnectPacket:
 	{
 		string reason = "Unspecified";
+		auto r = (DisconnectReason)_r[1].toInt<int>();
 		if (_r[1].isInt())
-			reason = reasonOf((DisconnectReason)_r[1].toInt<int>());
+			reason = reasonOf(r);
 
 		clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
-		if (m_socket.is_open())
-			clogS(NetNote) << "Closing " << m_socket.remote_endpoint();
-		else
-			clogS(NetNote) << "Remote closed.";
-		m_socket.close();
-		return false;
+		drop(DisconnectRequested);
+		return true;
 	}
 	case PingPacket:
 	{
@@ -294,7 +287,7 @@ bool Session::interpret(RLP const& _r)
 			else
 			{
 				disconnect(BadProtocol);
-				return false;
+				return true;
 			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			NodeId id = _r[i][2].toHash<NodeId>();
@@ -356,10 +349,11 @@ bool Session::interpret(RLP const& _r)
 	}
 	}
 	}
-	catch (...)
+	catch (std::exception const& _e)
 	{
+		clogS(NetWarn) << "Peer causing an exception:" << _e.what();
 		disconnect(BadProtocol);
-		return false;
+		return true;
 	}
 	return true;
 }
@@ -386,7 +380,7 @@ void Session::sealAndSend(RLPStream& _s)
 	bytes b;
 	_s.swapOut(b);
 	m_server->seal(b);
-	sendDestroy(b);
+	send(move(b));
 }
 
 bool Session::checkPacket(bytesConstRef _msg)
@@ -404,42 +398,26 @@ bool Session::checkPacket(bytesConstRef _msg)
 	return true;
 }
 
-void Session::sendDestroy(bytes& _msg)
+void Session::send(bytesConstRef _msg)
+{
+	send(_msg.toBytes());
+}
+
+void Session::send(bytes&& _msg)
 {
 	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
 
 	if (!checkPacket(bytesConstRef(&_msg)))
-	{
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
-	}
 
-	bytes buffer = bytes(std::move(_msg));
-	writeImpl(buffer);
-}
-
-void Session::send(bytesConstRef _msg)
-{
-	clogS(NetLeft) << RLP(_msg.cropped(8));
-	
-	if (!checkPacket(_msg))
-	{
-		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
-	}
-
-	bytes buffer = bytes(_msg.toBytes());
-	writeImpl(buffer);
-}
-
-void Session::writeImpl(bytes& _buffer)
-{
 //	cerr << (void*)this << " writeImpl" << endl;
 	if (!m_socket.is_open())
 		return;
 
 	bool doWrite = false;
 	{
-		lock_guard<mutex> l(m_writeLock);
-		m_writeQueue.push_back(_buffer);
+		Guard l(x_writeQueue);
+		m_writeQueue.push_back(_msg);
 		doWrite = (m_writeQueue.size() == 1);
 	}
 
@@ -453,18 +431,16 @@ void Session::write()
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
-//		cerr << (void*)this << " write.callback" << endl;
-
 		// must check queue, as write callback can occur following dropped()
 		if (ec)
 		{
 			clogS(NetWarn) << "Error sending: " << ec.message();
-			dropped();
+			drop(TCPError);
 			return;
 		}
 		else
 		{
-			lock_guard<mutex> l(m_writeLock);
+			Guard l(x_writeQueue);
 			m_writeQueue.pop_front();
 			if (m_writeQueue.empty())
 				return;
@@ -473,37 +449,43 @@ void Session::write()
 	});
 }
 
-void Session::dropped()
+void Session::drop(DisconnectReason _reason)
 {
-//	cerr << (void*)this << " dropped" << endl;
+	if (m_dropped)
+		return;
+	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
 		try
 		{
-			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint();
+			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
 			m_socket.close();
 		}
 		catch (...) {}
+
+	if (m_node)
+	{
+		if (_reason != m_node->lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
+			m_node->failedAttempts = 0;
+		m_node->lastDisconnect = _reason;
+		if (_reason == BadProtocol)
+		{
+			m_node->rating /= 2;
+			m_node->score /= 2;
+		}
+	}
+	m_dropped = true;
 }
 
 void Session::disconnect(DisconnectReason _reason)
 {
-	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
-
-	if (m_node)
-		m_node->lastDisconnect = _reason;
-
+	clogS(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
 	if (m_socket.is_open())
 	{
-		if (m_disconnect == chrono::steady_clock::time_point::max())
-		{
-			RLPStream s;
-			prep(s, DisconnectPacket, 1) << _reason;
-			sealAndSend(s);
-			m_disconnect = chrono::steady_clock::now();
-		}
-		else
-			dropped();
+		RLPStream s;
+		prep(s, DisconnectPacket, 1) << (int)_reason;
+		sealAndSend(s);
 	}
+	drop(_reason);
 }
 
 void Session::start()
@@ -523,7 +505,7 @@ void Session::start()
 void Session::doRead()
 {
 	// ignore packets received while waiting to disconnect
-	if (chrono::steady_clock::now() - m_disconnect > chrono::seconds(0))
+	if (m_dropped)
 		return;
 	
 	auto self(shared_from_this());
@@ -534,7 +516,7 @@ void Session::doRead()
 		{
 			// got here with length of 1241...
 			clogS(NetWarn) << "Error reading: " << ec.message();
-			dropped();
+			drop(TCPError);
 		}
 		else if (ec && length == 0)
 		{
@@ -575,8 +557,8 @@ void Session::doRead()
 							RLP r(data.cropped(8));
 							if (!interpret(r))
 							{
-								// error
-								dropped();
+								// error - bad protocol
+								disconnect(BadProtocol);
 								return;
 							}
 						}
@@ -589,12 +571,12 @@ void Session::doRead()
 			catch (Exception const& _e)
 			{
 				clogS(NetWarn) << "ERROR: " << diagnostic_information(_e);
-				dropped();
+				drop(BadProtocol);
 			}
 			catch (std::exception const& _e)
 			{
 				clogS(NetWarn) << "ERROR: " << _e.what();
-				dropped();
+				drop(BadProtocol);
 			}
 		}
 	});
