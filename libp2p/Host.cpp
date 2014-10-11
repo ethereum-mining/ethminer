@@ -507,6 +507,7 @@ void Node::connect(Host* _h)
 		{
 			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
 			lastDisconnect = TCPError;
+			lastAttempted = std::chrono::system_clock::now();
 			_h->m_ready += index;
 		}
 		else
