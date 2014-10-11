@@ -53,6 +53,11 @@ void CommonJS::setAccounts(std::vector<dev::KeyPair> _accounts)
     m_accounts = _accounts;
 }
 
+std::string CommonJS::ethTest() const
+{
+    return "Hello World!";
+}
+
 std::string CommonJS::coinbase() const
 {
     return m_client ? toJS(client()->address()) : "";
@@ -144,6 +149,55 @@ std::string CommonJS::codeAt(const std::string &_a, int _block) const
     return m_client ? jsFromBinary(client()->codeAt(jsToAddress(_a), _block)) : "";
 }
 
+std::string CommonJS::transact(TransactionSkeleton _t)
+{
+    std::string ret;
+    if (!m_client)
+        return ret;
+    // what if there is no from accout specified?
+    if (!_t.from.secret() && m_accounts.size())
+    {
+        auto b = m_accounts.front();
+        for (auto a: m_accounts)
+            if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
+                b = a;
+        _t.from = b;
+    }
+    if (!_t.gasPrice)
+        _t.gasPrice = 10 * dev::eth::szabo;
+    if (!_t.gas)
+        _t.gas = std::min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(_t.from).address()) / _t.gasPrice);
+    if (_t.to)
+        client()->transact(_t.from.secret(), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
+    else
+        ret = toJS(client()->transact(_t.from.secret(), _t.value, _t.data, _t.gas, _t.gasPrice));
+    client()->flushTransactions();
+    return ret;
+}
+
+std::string CommonJS::call(TransactionSkeleton _t)
+{
+    std::string ret;
+    if (!m_client)
+        return ret;
+    if (!_t.to)
+        return ret;
+    if (!_t.from.secret() && m_accounts.size())
+        _t.from = m_accounts[0];
+    if (!_t.gasPrice)
+        _t.gasPrice = 10 * dev::eth::szabo;
+    if (!_t.gas)
+        _t.gas = client()->balanceAt(_t.from.address()) / _t.gasPrice;
+    ret = toJS(client()->call(_t.from.secret(), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice));
+    return ret;
+}
+
+std::tuple<BlockInfo, BlockDetails> CommonJS::block(const std::string &_numberOrHash) const
+{
+    auto n = jsToU256(_numberOrHash);
+    auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : jsToFixed<32>(_numberOrHash);
+    return std::make_tuple(m_client->blockInfo(h), m_client->blockDetails(h));
+}
 
 
 

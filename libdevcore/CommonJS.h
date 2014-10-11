@@ -2,12 +2,17 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 #include <libethereum/Interface.h>
 #include "Common.h"
 #include "CommonData.h"
 
 namespace dev {
 namespace eth {
+
+template <unsigned S> std::string toJS(FixedHash<S> const& _h) { return "0x" + toHex(_h.ref()); }
+template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return "0x" + toHex(toCompactBigEndian(_n)); }
+inline std::string toJS(dev::bytes const& _n) { return "0x" + dev::toHex(_n); }
 
 bytes jsToBytes(std::string const& _s);
 std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r);
@@ -26,6 +31,12 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
         // Binary
         return FixedHash<N>(asBytes(jsPadded(_s, N)));
 }
+
+inline std::string jsToFixed(double _s)
+{
+    return toJS(dev::u256(_s * (double)(dev::u256(1) << 128)));
+}
+
 
 template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> jsToInt(std::string const& _s)
 {
@@ -55,9 +66,18 @@ inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
     return jsFromBinary(asBytes(_s), _padding);
 }
 
+// we note really need KeyPair from
+// but it usefull for checking the balance
+struct TransactionSkeleton
+{
+    dev::KeyPair from;
+    Address to;
+    u256 value;
+    bytes data;
+    u256 gas;
+    u256 gasPrice;
+};
 
-template <unsigned S> std::string toJS(FixedHash<S> const& _h) { return "0x" + toHex(_h.ref()); }
-template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return "0x" + toHex(toCompactBigEndian(_n)); }
 
 class CommonJS
 {
@@ -88,10 +108,23 @@ public:
     std::string codeAt(std::string const &_a, int _block) const;
 
     // transactions
-    void transact(std::string const &_json);
-    void call(std::string const &_json);
+    std::string transact(dev::eth::TransactionSkeleton _t);
+    std::string call(dev::eth::TransactionSkeleton _t);
 
     // blockchain
+    std::tuple<BlockInfo, BlockDetails> block(std::string const &_numberOrHash) const;
+    std::string transaction(std::string const &_numberOrHash, int _index) const;
+    std::string uncle(std::string const &_numberOrHash, int _index) const;
+
+    // watches and messages filtering
+    std::string messages(std::string const &_attribs) const;
+    // TODO watch
+
+    // misc
+    std::string secretToAddress(std::string const &_a) const;
+    std::string lll(std::string const &_l) const;
+    std::string sha3(std::string const &_s) const;
+
 
 
 private:
