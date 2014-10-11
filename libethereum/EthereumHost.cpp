@@ -189,20 +189,14 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 	// If we've finished our initial sync send any new blocks.
 	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
-		// TODO: clean up
-		h256s hs;
-		hs.push_back(_currentHash);
-		bytes bs;
-		for (auto h: hs)
-			bs += m_chain.block(h);
-		clog(NetMessageSummary) << "Sending" << hs.size() << "new blocks (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
 		for (auto j: peers())
 		{
 			auto p = j->cap<EthereumPeer>();
 
 			RLPStream ts;
-			p->prep(ts, NewBlockPacket, hs.size()).appendRaw(bs, hs.size());
+			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
 
 			Guard l(p->x_knownBlocks);
 			if (!p->m_knownBlocks.count(_currentHash))
