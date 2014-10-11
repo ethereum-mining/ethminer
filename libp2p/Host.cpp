@@ -497,6 +497,8 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 void Node::connect(Host* _h)
 {
 	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address << "from" << _h->id().abridged();
+	lastAttempted = std::chrono::system_clock::now();
+	failedAttempts++;
 	_h->m_ready -= index;
 	bi::tcp::socket* s = new bi::tcp::socket(_h->m_ioService);
 	s->async_connect(address, [=](boost::system::error_code const& ec)
@@ -504,14 +506,11 @@ void Node::connect(Host* _h)
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
-			failedAttempts++;
-			lastAttempted = std::chrono::system_clock::now();
 			_h->m_ready += index;
 		}
 		else
 		{
 			clog(NetConnect) << "Connected to" << id.abridged() << "@" << address;
-			failedAttempts = 0;
 			lastConnected = std::chrono::system_clock::now();
 			auto p = make_shared<Session>(_h, std::move(*s), _h->node(id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
 			p->start();
@@ -534,14 +533,24 @@ bool Host::havePeer(NodeId _id) const
 	return !!m_peers.count(_id);
 }
 
-unsigned cumulativeFallback(unsigned _failed)
+unsigned cumulativeFallback(unsigned _failed, DisconnectReason _r)
 {
-	if (_failed < 5)
-		return _failed * 5;
-	else if (_failed < 15)
-		return 25 + (_failed - 5) * 10;
-	else
-		return 25 + 100 + (_failed - 15) * 20;
+	switch (_r)
+	{
+	case BadProtocol:
+		return 30 * (_failed + 1);
+	case UselessPeer:
+	case TooManyPeers:
+	case ClientQuit:
+		return 15 * (_failed + 1);
+	default:
+		if (_failed < 5)
+			return _failed * 5;
+		else if (_failed < 15)
+			return 25 + (_failed - 5) * 10;
+		else
+			return 25 + 100 + (_failed - 15) * 20;
+	}
 }
 
 void Host::growPeers()
@@ -555,7 +564,7 @@ void Host::growPeers()
 			toTry -= m_private;
 		set<Node> ns;
 		for (auto i: toTry)
-			if (chrono::system_clock::now() > m_nodes[m_nodesList[i]]->lastAttempted + chrono::seconds(cumulativeFallback(m_nodes[m_nodesList[i]]->failedAttempts)))
+			if (chrono::system_clock::now() > m_nodes[m_nodesList[i]]->lastAttempted + chrono::seconds(cumulativeFallback(m_nodes[m_nodesList[i]]->failedAttempts, m_nodes[m_nodesList[i]]->lastDisconnect)))
 				ns.insert(*m_nodes[m_nodesList[i]]);
 
 		if (ns.size())
