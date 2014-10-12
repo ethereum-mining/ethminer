@@ -42,7 +42,7 @@ namespace dev
 namespace eth
 {
 
-struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 6; };
+struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 17; };
 #define tdebug clog(TrieDBChannel)
 
 struct InvalidTrie: virtual dev::Exception {};
