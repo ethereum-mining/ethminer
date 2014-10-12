@@ -31,6 +31,54 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+static Json::Value toJson(const dev::eth::BlockInfo& bi)
+{
+    Json::Value res;
+    res["hash"] = boost::lexical_cast<string>(bi.hash);
+
+    res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
+    res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
+    res["miner"] = boost::lexical_cast<string>(bi.coinbaseAddress);
+    res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
+    res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
+    res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
+    res["number"] = boost::lexical_cast<string>(bi.number);
+    res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
+    res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
+    res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
+    res["extraData"] = jsFromBinary(bi.extraData);
+    res["nonce"] = boost::lexical_cast<string>(bi.nonce);
+    return res;
+}
+
+static Json::Value toJson(const dev::eth::PastMessage& t)
+{
+    Json::Value res;
+    res["input"] = jsFromBinary(t.input);
+    res["output"] = jsFromBinary(t.output);
+    res["to"] = boost::lexical_cast<string>(t.to);
+    res["from"] = boost::lexical_cast<string>(t.from);
+    res["origin"] = boost::lexical_cast<string>(t.origin);
+    res["timestamp"] = boost::lexical_cast<string>(t.timestamp);
+    res["coinbase"] = boost::lexical_cast<string>(t.coinbase);
+    res["block"] =  boost::lexical_cast<string>(t.block);
+    Json::Value path;
+    for (int i: t.path)
+        path.append(i);
+    res["path"] = path;
+    res["number"] = (int)t.number;
+    return res;
+}
+
+static Json::Value toJson(const dev::eth::PastMessages& pms)
+{
+    Json::Value res;
+    for (dev::eth::PastMessage const & t: pms)
+        res.append(toJson(t));
+
+    return res;
+}
+
 EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3):
 	AbstractEthStubServer(_conn),
 	m_web3(_web3)
@@ -52,24 +100,7 @@ Json::Value EthStubServer::block(const string &numberOrHash)
 {
     auto n = jsToU256(numberOrHash);
     auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : ::jsToFixed<32>(numberOrHash);
-
-    Json::Value res;
-    BlockInfo bi = client()->blockInfo(h);
-    res["hash"] = boost::lexical_cast<string>(bi.hash);
-
-    res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
-    res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
-    res["miner"] = boost::lexical_cast<string>(bi.coinbaseAddress);
-    res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
-    res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
-    res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
-    res["number"] = boost::lexical_cast<string>(bi.number);
-    res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
-    res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
-    res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
-    res["extraData"] = jsFromBinary(bi.extraData);
-    res["nonce"] = boost::lexical_cast<string>(bi.nonce);
-    return res;
+    return toJson(client()->blockInfo(h));
 }
 
 static TransactionJS toTransaction(const Json::Value &json)
@@ -247,26 +278,7 @@ Json::Value EthStubServer::messages(const Json::Value &json)
     Json::Value res;
     if (!client())
         return  res;
-    dev::eth::PastMessages pms = client()->messages(toMessageFilter(json));
-
-    for (dev::eth::PastMessage const & t: pms)
-    {
-        res["input"] = jsFromBinary(t.input);
-        res["output"] = jsFromBinary(t.output);
-        res["to"] = boost::lexical_cast<string>(t.to);
-        res["from"] = boost::lexical_cast<string>(t.from);
-        res["origin"] = boost::lexical_cast<string>(t.origin);
-        res["timestamp"] = boost::lexical_cast<string>(t.timestamp);
-        res["coinbase"] = boost::lexical_cast<string>(t.coinbase);
-        res["block"] =  boost::lexical_cast<string>(t.block);
-        Json::Value path;
-        for (int i: t.path)
-            path.append(i);
-        res["path"] = path;
-        res["number"] = (int)t.number;
-    }
-
-    return res;
+    return toJson(client()->messages(toMessageFilter(json)));
 }
 
 int EthStubServer::number()
@@ -289,25 +301,25 @@ std::string EthStubServer::secretToAddress(const string &s)
 Json::Value EthStubServer::setListening(const bool &l)
 {
     if (!client())
-        return Json::Value();
+        return Json::nullValue;
 
 /*	if (l)
         client()->startNetwork();
     else
         client()->stopNetwork();*/
-    return Json::Value();
+    return Json::nullValue;
 }
 
 Json::Value EthStubServer::setMining(const bool &l)
 {
     if (!client())
-        return Json::Value();
+        return Json::nullValue;
 
     if (l)
         client()->startMining();
     else
         client()->stopMining();
-    return Json::Value();
+    return Json::nullValue;
 }
 
 std::string EthStubServer::sha3(const string &s)
@@ -384,38 +396,17 @@ Json::Value EthStubServer::transaction(const int &i, const string &numberOrHash)
 
 Json::Value EthStubServer::uncle(const int &i, const string &numberOrHash)
 {
-
+    auto n = jsToU256(numberOrHash);
+    auto h  = n < client()->number() ? client()->hashFromNumber((unsigned)n) : jsToFixed<32>(numberOrHash);
+    return client() ? toJson(client()->uncle(h, i)) : Json::Value();
 }
 
+//TODO watch!
 std::string EthStubServer::watch(const string &json)
 {
 
 }
 
-Json::Value EthStubServer::blockJson(const std::string& _hash)
-{
-	Json::Value res;
-//    auto const& bc = client()->blockChain();
-	
-//	auto b = _hash.length() ? bc.block(h256(_hash)) : bc.block();
-	
-//	auto bi = BlockInfo(b);
-//	res["number"] = boost::lexical_cast<string>(bi.number);
-//	res["hash"] = boost::lexical_cast<string>(bi.hash);
-//	res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
-//	res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
-//	res["coinbaseAddress"] = boost::lexical_cast<string>(bi.coinbaseAddress);
-//	res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
-//	res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
-//	res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
-//	res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
-//	res["gasUsed"] = boost::lexical_cast<string>(bi.gasUsed);
-//	res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
-//	res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
-//	res["nonce"] = boost::lexical_cast<string>(bi.nonce);
-
-	return res;
-}
 
 Json::Value EthStubServer::jsontypeToValue(int _jsontype)
 {

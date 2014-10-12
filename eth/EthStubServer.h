@@ -73,5 +73,4 @@ private:
 	dev::WebThreeDirect& m_web3;
 	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
-	Json::Value blockJson(const std::string&);
 };
