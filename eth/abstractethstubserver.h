@@ -28,20 +28,20 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::keyI);
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::lllI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::messagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "json",jsonrpc::JSON_ARRAY, NULL), &AbstractEthStubServer::messagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "l",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::setListeningI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "l",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::setMiningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setListeningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("sha3", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::sha3I);
             this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER,"p",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::stateAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toAsciiI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toDecimal", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toDecimalI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("toFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toFixedI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("toFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_REAL, NULL), &AbstractEthStubServer::toFixedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "i",jsonrpc::JSON_STRING,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "i",jsonrpc::JSON_STRING,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
             this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
 
         }
@@ -123,7 +123,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void messagesI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->messages(request["json"].asString());
+            response = this->messages(request["json"]);
         }
 
         inline virtual void numberI(const Json::Value& request, Json::Value& response) 
@@ -143,12 +143,12 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void setListeningI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->setListening(request["l"].asString());
+            response = this->setListening(request["l"].asBool());
         }
 
         inline virtual void setMiningI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->setMining(request["l"].asString());
+            response = this->setMining(request["l"].asBool());
         }
 
         inline virtual void sha3I(const Json::Value& request, Json::Value& response) 
@@ -173,7 +173,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void toFixedI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->toFixed(request["s"].asString());
+            response = this->toFixed(request["s"].asDouble());
         }
 
         inline virtual void transactI(const Json::Value& request, Json::Value& response) 
@@ -183,12 +183,12 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void transactionI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->transaction(request["i"].asString(), request["numberOrHash"].asString());
+            response = this->transaction(request["i"].asInt(), request["numberOrHash"].asString());
         }
 
         inline virtual void uncleI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->uncle(request["i"].asString(), request["numberOrHash"].asString());
+            response = this->uncle(request["i"].asInt(), request["numberOrHash"].asString());
         }
 
         inline virtual void watchI(const Json::Value& request, Json::Value& response) 
@@ -212,20 +212,20 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string key() = 0;
         virtual Json::Value keys() = 0;
         virtual std::string lll(const std::string& s) = 0;
-        virtual std::string messages(const std::string& json) = 0;
+        virtual Json::Value messages(const Json::Value& json) = 0;
         virtual int number() = 0;
         virtual int peerCount() = 0;
         virtual std::string secretToAddress(const std::string& s) = 0;
-        virtual std::string setListening(const std::string& l) = 0;
-        virtual std::string setMining(const std::string& l) = 0;
+        virtual Json::Value setListening(const bool& l) = 0;
+        virtual Json::Value setMining(const bool& l) = 0;
         virtual std::string sha3(const std::string& s) = 0;
         virtual std::string stateAt(const std::string& a, const int& block, const std::string& p) = 0;
         virtual std::string toAscii(const std::string& s) = 0;
         virtual std::string toDecimal(const std::string& s) = 0;
-        virtual std::string toFixed(const std::string& s) = 0;
+        virtual std::string toFixed(const double& s) = 0;
         virtual std::string transact(const std::string& json) = 0;
-        virtual std::string transaction(const std::string& i, const std::string& numberOrHash) = 0;
-        virtual std::string uncle(const std::string& i, const std::string& numberOrHash) = 0;
+        virtual Json::Value transaction(const int& i, const std::string& numberOrHash) = 0;
+        virtual Json::Value uncle(const int& i, const std::string& numberOrHash) = 0;
         virtual std::string watch(const std::string& json) = 0;
 
 };

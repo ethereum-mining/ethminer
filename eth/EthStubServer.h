@@ -51,20 +51,20 @@ public:
     virtual std::string key();
     virtual Json::Value keys();
     virtual std::string lll(const std::string& s);
-    virtual std::string messages(const std::string& json);
+    virtual Json::Value messages(const Json::Value& json);
     virtual int number();
     virtual int peerCount();
     virtual std::string secretToAddress(const std::string& s);
-    virtual std::string setListening(const std::string& l);
-    virtual std::string setMining(const std::string& l);
+    virtual Json::Value setListening(const bool& l);
+    virtual Json::Value setMining(const bool& l);
     virtual std::string sha3(const std::string& s);
     virtual std::string stateAt(const std::string& a, const int& block, const std::string& p);
     virtual std::string toAscii(const std::string& s);
     virtual std::string toDecimal(const std::string& s);
-    virtual std::string toFixed(const std::string& s);
+    virtual std::string toFixed(const double& s);
     virtual std::string transact(const std::string& json);
-    virtual std::string transaction(const std::string& i, const std::string& numberOrHash);
-    virtual std::string uncle(const std::string& i, const std::string& numberOrHash);
+    virtual Json::Value transaction(const int& i, const std::string& numberOrHash);
+    virtual Json::Value uncle(const int& i, const std::string& numberOrHash);
     virtual std::string watch(const std::string& json);
 
     void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }

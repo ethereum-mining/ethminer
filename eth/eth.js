@@ -20,9 +20,9 @@ var spec = [
             // properties
             { "method": "coinbase", "params": null, "order": [], "returns" : "" },
             { "method": "isListening", "params": null, "order": [], "returns" : false },
-            { "method": "setListening", "params": { "l": "" }, "order" : ["l"], "returns" : ""},
+            { "method": "setListening", "params": { "l": "" }, "order" : ["l"], "returns" : undefined},
             { "method": "isMining", "params": null, "order": [], "returns" : false },
-            { "method": "setMining", "params": { "l": "" }, "order" : ["l"], "returns" : ""},
+            { "method": "setMining", "params": { "l": "" }, "order" : ["l"], "returns" : undefined},
             { "method": "gasPrice", "params": null, "order": [], "returns" : "" },
             { "method": "key", "params": null, "order": [], "returns" : "" },
             { "method": "keys", "params": null, "order": [], "returns" : [] },
@@ -42,11 +42,11 @@ var spec = [
 
             // blockchain
             { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": []},
-            { "method": "transaction", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
-            { "method": "uncle", "params": { "numberOrHash": "", "i": ""}, "order": ["numberOrHash", "i"], "returns": ""},
+            { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": []},
+            { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": []},
 
             // watches and message filtering
-            { "method": "messages", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "messages", "params": { "json": []}, "order": ["json"], "returns": []},
             { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
 
             // misc
@@ -56,7 +56,7 @@ var spec = [
             { "method": "toAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "fromAscii", "params": { "s": "", "padding": 0}, "order": ["s", "padding"], "returns": ""}, 
             { "method": "toDecimal", "params": {"s": ""}, "order": ["s"], "returns" : ""},
-            { "method": "toFixed", "params": {"s": ""}, "order": ["s"], "returns" : ""},
+            { "method": "toFixed", "params": {"s": 0.0}, "order": ["s"], "returns" : ""},
             { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0},
             { "method": "offset", "params": {"s": "", "offset": ""}, "order": ["s", "offset"], "returns" : ""},
 ];
