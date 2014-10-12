@@ -54,6 +54,16 @@ inline Address jsToAddress(std::string const& _s) { return jsToFixed<20>(_s); }
 inline Secret jsToSecret(std::string const& _s) { return jsToFixed<32>(_s); }
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
+inline std::string jsToBinary(std::string const& _s)
+{
+    return jsUnpadded(dev::toString(jsToBytes(_s)));
+}
+
+inline std::string jsToDecimal(std::string const& _s)
+{
+    return dev::toString(jsToU256(_s));
+}
+
 inline std::string jsFromBinary(dev::bytes _s, unsigned _padding = 32)
 {
     _s.resize(std::max<unsigned>(_s.size(), _padding));

@@ -194,72 +194,195 @@ std::string EthStubServer::lll(const string &s)
     return toJS(dev::eth::compileLLL(s));
 }
 
-std::string EthStubServer::messages(const string &json)
+static dev::eth::MessageFilter toMessageFilter(const Json::Value &json)
 {
+    dev::eth::MessageFilter filter;
+    if (!json.isObject() || json.empty()){
+        return filter;
+    }
 
+    if (!json["earliest"].empty())
+        filter.withEarliest(json["earliest"].asInt());
+    if (!json["latest"].empty())
+        filter.withLatest(json["lastest"].asInt());
+    if (!json["max"].empty())
+        filter.withMax(json["max"].asInt());
+    if (!json["skip"].empty())
+        filter.withSkip(json["skip"].asInt());
+    if (!json["from"].empty())
+    {
+        if (json["from"].isArray())
+            for (auto i : json["from"])
+                filter.from(jsToAddress(i.asString()));
+        else
+            filter.from(jsToAddress(json["from"].asString()));
+    }
+    if (!json["to"].empty())
+    {
+        if (json["to"].isArray())
+            for (auto i : json["to"])
+                filter.from(jsToAddress(i.asString()));
+        else
+            filter.from(jsToAddress(json["to"].asString()));
+    }
+    if (!json["altered"].empty())
+    {
+        if (json["altered"].isArray())
+            for (auto i: json["altered"])
+                if (i.isObject())
+                    filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
+                else
+                    filter.altered((jsToAddress(i.asString())));
+        else if (json["altered"].isObject())
+            filter.altered(jsToAddress(json["altered"]["id"].asString()), jsToU256(json["altered"]["at"].asString()));
+        else
+            filter.altered(jsToAddress(json["altered"].asString()));
+    }
+
+    return filter;
+}
+
+Json::Value EthStubServer::messages(const Json::Value &json)
+{
+    Json::Value res;
+    if (!client())
+        return  res;
+    dev::eth::PastMessages pms = client()->messages(toMessageFilter(json));
+
+    for (dev::eth::PastMessage const & t: pms)
+    {
+        res["input"] = jsFromBinary(t.input);
+        res["output"] = jsFromBinary(t.output);
+        res["to"] = boost::lexical_cast<string>(t.to);
+        res["from"] = boost::lexical_cast<string>(t.from);
+        res["origin"] = boost::lexical_cast<string>(t.origin);
+        res["timestamp"] = boost::lexical_cast<string>(t.timestamp);
+        res["coinbase"] = boost::lexical_cast<string>(t.coinbase);
+        res["block"] =  boost::lexical_cast<string>(t.block);
+        Json::Value path;
+        for (int i: t.path)
+            path.append(i);
+        res["path"] = path;
+        res["number"] = (int)t.number;
+    }
+
+    return res;
 }
 
 int EthStubServer::number()
 {
-
+    return client() ? client()->number() + 1 : 0;
 }
 
+//TODO!
 int EthStubServer::peerCount()
 {
-    return m_web3.peerCount();
+    return /*client() ? (unsigned)client()->peerCount() :*/ 0;
+    //return m_web3.peerCount();
 }
 
 std::string EthStubServer::secretToAddress(const string &s)
 {
-
+    return toJS(KeyPair(jsToSecret(s)).address());
 }
 
-std::string EthStubServer::setListening(const string &l)
+Json::Value EthStubServer::setListening(const bool &l)
 {
+    if (!client())
+        return Json::Value();
 
+/*	if (l)
+        client()->startNetwork();
+    else
+        client()->stopNetwork();*/
+    return Json::Value();
 }
 
-std::string EthStubServer::setMining(const string &l)
+Json::Value EthStubServer::setMining(const bool &l)
 {
+    if (!client())
+        return Json::Value();
 
+    if (l)
+        client()->startMining();
+    else
+        client()->stopMining();
+    return Json::Value();
 }
 
 std::string EthStubServer::sha3(const string &s)
 {
-
+    return toJS(dev::eth::sha3(jsToBytes(s)));
 }
 
 std::string EthStubServer::stateAt(const string &a, const int& block, const string &p)
 {
-
+    return client() ? toJS(client()->stateAt(jsToAddress(a), jsToU256(p), block)) : "";
 }
 
 std::string EthStubServer::toAscii(const string &s)
 {
-
+    return jsToBinary(s);
 }
 
 std::string EthStubServer::toDecimal(const string &s)
 {
-
+    return jsToDecimal(s);
 }
 
-std::string EthStubServer::toFixed(const string &s)
+std::string EthStubServer::toFixed(const double &s)
 {
-
+    return jsToFixed(s);
 }
 
 std::string EthStubServer::transact(const string &json)
 {
-
+    std::string ret;
+    if (!client())
+        return ret;
+    TransactionJS t = toTransaction(json);
+    if (!t.from && m_keys.size())
+    {
+        auto b = m_keys.front();
+        for (auto a: m_keys)
+            if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
+                b = a;
+        t.from = b.secret();
+    }
+    if (!t.gasPrice)
+        t.gasPrice = 10 * dev::eth::szabo;
+    if (!t.gas)
+        t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
+    if (t.to)
+        client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+    else
+        ret = toJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
+    client()->flushTransactions();
+    return ret;
 }
 
-std::string EthStubServer::transaction(const string &i, const string &numberOrHash)
+Json::Value EthStubServer::transaction(const int &i, const string &numberOrHash)
 {
+    if (!client()){
+        return Json::Value();
+    }
+    auto n = jsToU256(numberOrHash);
+    auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : jsToFixed<32>(numberOrHash);
+    dev::eth::Transaction t = client()->transaction(h, i);
+    Json::Value res;
+    res["hash"] = boost::lexical_cast<string>(t.sha3());
+    res["input"] = jsFromBinary(t.data);
+    res["to"] = boost::lexical_cast<string>(t.receiveAddress);
+    res["from"] = boost::lexical_cast<string>(t.sender());
+    res["gas"] = (int)t.gas;
+    res["gasPrice"] = boost::lexical_cast<string>(t.gasPrice);
+    res["nonce"] = boost::lexical_cast<string>(t.nonce);
+    res["value"] = boost::lexical_cast<string>(t.value);
 
+    return res;
 }
 
-std::string EthStubServer::uncle(const string &i, const string &numberOrHash)
+Json::Value EthStubServer::uncle(const int &i, const string &numberOrHash)
 {
 
 }
