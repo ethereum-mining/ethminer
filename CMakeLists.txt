@@ -39,8 +39,31 @@ function(configureProject)
 			message(FATAL_ERROR "VM tracing requires debug.")
 		endif ()
 	endif ()
+endfunction()
 
-	message("LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+
+function(createBuildInfo)
+	# Set build platform; to be written to BuildInfo.h
+	if (CMAKE_COMPILER_IS_MINGW)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
+	elseif (CMAKE_COMPILER_IS_MSYS)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msys")
+	elseif (CMAKE_COMPILER_IS_GNUCXX)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
+	elseif (CMAKE_COMPILER_IS_MSVC)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
+	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
+	else ()
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
+	endif ()
+
+	# Generate header file containing useful build information
+	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
+	include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+	set(CMAKE_INCLUDE_CURRENT_DIR ON)
+	set(SRC_LIST BuildInfo.h)
 endfunction()
 
 ######################################################################################################
@@ -52,6 +75,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -71,39 +95,13 @@ endif ()
 
 
 include(EthCompilerSettings)
+message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
 
-# Set build platform; to be written to BuildInfo.h
-if (CMAKE_COMPILER_IS_MINGW)
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
-elseif (CMAKE_COMPILER_IS_MSYS)
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msys")
-elseif (CMAKE_COMPILER_IS_GNUCXX)
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
-elseif (CMAKE_COMPILER_IS_MSVC)
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
-else ()
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
-endif ()
 
-message("CXXFLAGS: ${CMAKE_CXX_FLAGS}")
+
 #add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
 #add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
-
-# C++11 check and activation
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
-	execute_process(
-		COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-	if (NOT (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7))
-		message(FATAL_ERROR "${PROJECT_NAME} requires g++ 4.7 or greater.")
-	endif ()
-elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-else ()
-	message(FATAL_ERROR "Your C++ compiler does not support C++11.")
-endif ()
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
@@ -300,14 +298,15 @@ if(JSONRPC_ID)
 	include_directories(${JSONRPC_ID})
 endif()
 
-# Generate header file containing useful build information
-add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
 endif()
+
+createBuildInfo()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libevmface)
@@ -359,8 +358,6 @@ if (NOT LANGUAGES)
 	endif()
 endif()
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(SRC_LIST BuildInfo.h)
 
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
