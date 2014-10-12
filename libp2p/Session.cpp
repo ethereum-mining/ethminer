@@ -61,8 +61,12 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const&
 Session::~Session()
 {
 	if (m_node)
+	{
 		if (id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)
 			m_server->m_ready += m_node->index;
+		else
+			m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
+	}
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
