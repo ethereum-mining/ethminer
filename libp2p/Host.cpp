@@ -382,7 +382,6 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 		}
 		m_nodes[_id] = make_shared<Node>();
 		m_nodes[_id]->id = _id;
-		m_nodes[_id]->address = _a;
 		m_nodes[_id]->index = i;
 		m_nodes[_id]->idOrigin = _o;
 	}
@@ -391,6 +390,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 		i = m_nodes[_id]->index;
 		m_nodes[_id]->idOrigin = max(m_nodes[_id]->idOrigin, _o);
 	}
+	m_nodes[_id]->address = _a;
 	m_ready.extendAll(i);
 	m_private.extendAll(i);
 	if (_ready)
