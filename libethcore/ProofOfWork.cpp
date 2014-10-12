@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Dagger.cpp
+/** @file ProofOfWork.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -28,7 +28,7 @@
 #include <thread>
 #include <libethcore/CryptoHeaders.h>
 #include <libdevcore/Common.h>
-#include "Dagger.h"
+#include "ProofOfWork.h"
 using namespace std;
 using namespace std::chrono;
 
@@ -37,88 +37,8 @@ namespace dev
 namespace eth
 {
 
-#if FAKE_DAGGER
-
-MineInfo Dagger::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
-{
-	MineInfo ret;
-	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
-	u256 s = (m_last = h256::random(s_eng));
-
-	bigint d = (bigint(1) << 256) / _difficulty;
-	ret.requirement = log2((double)d);
-
-	// 2^ 0      32      64      128      256
-	//   [--------*-------------------------]
-	//
-	// evaluate until we run out of time
-	auto startTime = steady_clock::now();
-	if (!_turbo)
-		this_thread::sleep_for(chrono::milliseconds(_msTimeout * 90 / 100));
-	for (; (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; s++, ret.hashes++)
-	{
-		o_solution = (h256)s;
-		auto e = (bigint)(u256)eval(_root, o_solution);
-		ret.best = min<double>(ret.best, log2((double)e));
-		if (e <= d)
-		{
-			ret.completed = true;
-			break;
-		}
-	}
-
-	if (ret.completed)
-		assert(verify(_root, o_solution, _difficulty));
-
-	return ret;
-}
-
-#else
-
-Dagger::Dagger()
-{
-}
-
-Dagger::~Dagger()
-{
-}
-
-u256 Dagger::bound(u256 const& _difficulty)
-{
-	return (u256)((bigint(1) << 256) / _difficulty);
-}
-
-bool Dagger::verify(h256 const& _root, u256 const& _nonce, u256 const& _difficulty)
-{
-	return eval(_root, _nonce) < bound(_difficulty);
-}
-
-bool Dagger::mine(u256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool const& _continue)
-{
-	// restart search if root has changed
-	if (m_root != _root)
-	{
-		m_root = _root;
-		m_nonce = 0;
-	}
-
-	// compute bound
-	u256 const b = bound(_difficulty);
-
-	// evaluate until we run out of time
-	for (auto startTime = steady_clock::now(); (steady_clock::now() - startTime) < milliseconds(_msTimeout) && _continue; m_nonce += 1)
-	{
-		if (eval(_root, m_nonce) < b)
-		{
-			o_solution = m_nonce;
-			return true;
-		}
-	}
-	return false;
-}
-
 template <class _T>
-inline void update(_T& _sha, u256 const& _value)
+static inline void update(_T& _sha, u256 const& _value)
 {
 	int i = 0;
 	for (u256 v = _value; v; ++i, v >>= 8) {}
@@ -129,7 +49,7 @@ inline void update(_T& _sha, u256 const& _value)
 }
 
 template <class _T>
-inline void update(_T& _sha, h256 const& _value)
+static inline void update(_T& _sha, h256 const& _value)
 {
 	int i = 0;
 	byte const* data = _value.data();
@@ -138,14 +58,14 @@ inline void update(_T& _sha, h256 const& _value)
 }
 
 template <class _T>
-inline h256 get(_T& _sha)
+static inline h256 get(_T& _sha)
 {
 	h256 ret;
 	_sha.TruncatedFinal(&ret[0], 32);
 	return ret;
 }
 
-h256 Dagger::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
+h256 DaggerEvaluator::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
 {
 	if (_L == _i)
 		return _root;
@@ -166,9 +86,9 @@ h256 Dagger::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fas
 	return get(bsha);
 }
 
-h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
+h256 DaggerEvaluator::eval(h256 const& _root, h256 const& _nonce)
 {
-	h256 extranonce = _nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
+	h256 extranonce = (u256)_nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
 	CryptoPP::SHA3_256 bsha;
 	for (uint_fast32_t k = 0; k < 4; ++k)
 	{
@@ -185,7 +105,6 @@ h256 Dagger::eval(h256 const& _root, u256 const& _nonce)
 	return get(bsha);
 }
 
-#endif
 }
 }
 #endif

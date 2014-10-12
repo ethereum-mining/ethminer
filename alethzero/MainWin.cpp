@@ -33,7 +33,6 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Dagger.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>

@@ -26,7 +26,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/Dagger.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
