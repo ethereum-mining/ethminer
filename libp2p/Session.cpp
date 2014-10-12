@@ -234,6 +234,8 @@ bool Session::interpret(RLP const& _r)
 		}
 
 		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
+		if (m_node->isOffline())
+			m_node->lastConnected = chrono::system_clock::now();
 		m_knownNodes.extendAll(m_node->index);
 		m_knownNodes.unionWith(m_node->index);
 

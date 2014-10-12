@@ -28,7 +28,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/Dagger.h>
 #include <libevm/VM.h>
 #include "BlockChain.h"
 #include "Defaults.h"
@@ -837,7 +836,7 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();

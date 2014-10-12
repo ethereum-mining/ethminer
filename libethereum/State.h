@@ -29,7 +29,7 @@
 #include <libdevcrypto/TrieDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Dagger.h>
+#include <libethcore/ProofOfWork.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
@@ -322,7 +322,7 @@ private:
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
-	Dagger m_dagger;
+	ProofOfWork m_pow;
 
 	u256 m_blockReward;
 

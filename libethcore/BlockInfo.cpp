@@ -24,7 +24,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
-#include "Dagger.h"
+#include "ProofOfWork.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 using namespace std;
@@ -99,7 +99,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_checkNonce && parentHash && !Dagger::verify(headerHashWithoutNonce(), nonce, difficulty))
+	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHashWithoutNonce(), nonce, difficulty))
 		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty));
 
 	if (gasUsed > gasLimit)

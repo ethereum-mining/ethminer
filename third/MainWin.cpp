@@ -30,7 +30,6 @@
 #include <boost/algorithm/string.hpp>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
-#include <libethcore/Dagger.h>
 #include <libdevcrypto/FileSystem.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
