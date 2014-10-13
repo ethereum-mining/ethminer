@@ -1740,9 +1740,9 @@ void Main::on_debugStepBack_triggered()
 
 void Main::on_debugStepBackOut_triggered()
 {
-	if (ui->debugTimeline->value() > 0)
+	if (ui->debugTimeline->value() > 0 && m_history.size() > 0)
 	{
-		auto ls = m_history[ui->debugTimeline->value()].levels.size();
+		auto ls = m_history[min(ui->debugTimeline->value(), m_history.size() - 1)].levels.size();
 		int l = ui->debugTimeline->value();
 		for (; l > 0 && m_history[l].levels.size() >= ls; --l) {}
 		ui->debugTimeline->setValue(l);
