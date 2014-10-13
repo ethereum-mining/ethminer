@@ -48,7 +48,7 @@ class InvalidBlockFormat: public dev::Exception { public: InvalidBlockFormat(int
 struct InvalidUnclesHash: virtual dev::Exception {};
 struct InvalidUncle: virtual dev::Exception {};
 struct UncleTooOld: virtual dev::Exception {};
-class UncleInChain: public dev::Exception { public: UncleInChain(h256Set _uncles, h256 _block): m_uncles(_uncles), m_block(_block) {} h256Set m_uncles; h256 m_block;virtual const char* what() const noexcept; };
+class UncleInChain: public dev::Exception { public: UncleInChain(h256Set _uncles, h256 _block): m_uncles(_uncles), m_block(_block) {} h256Set m_uncles; h256 m_block; virtual const char* what() const noexcept; };
 struct DuplicateUncleNonce: virtual dev::Exception {};
 struct InvalidStateRoot: virtual dev::Exception {};
 class InvalidTransactionsHash: public dev::Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual const char* what() const noexcept; };

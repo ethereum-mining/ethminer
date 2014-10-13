@@ -84,8 +84,6 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
-	bool m_jumpLatch = false;
-	u256Set m_destinations;
 };
 
 }
@@ -190,8 +188,116 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 
-		default:
+		case Instruction::ADD:
+		case Instruction::MUL:
+		case Instruction::SUB:
+		case Instruction::DIV:
+		case Instruction::SDIV:
+		case Instruction::MOD:
+		case Instruction::SMOD:
+		case Instruction::EXP:
+		case Instruction::NEG:
+		case Instruction::LT:
+		case Instruction::GT:
+		case Instruction::SLT:
+		case Instruction::SGT:
+		case Instruction::EQ:
+		case Instruction::NOT:
+		case Instruction::AND:
+		case Instruction::OR:
+		case Instruction::XOR:
+		case Instruction::BYTE:
+		case Instruction::ADDMOD:
+		case Instruction::MULMOD:
+		case Instruction::ADDRESS:
+		case Instruction::ORIGIN:
+		case Instruction::CALLER:
+		case Instruction::CALLVALUE:
+		case Instruction::CALLDATALOAD:
+		case Instruction::CALLDATASIZE:
+		case Instruction::CODESIZE:
+		case Instruction::EXTCODESIZE:
+		case Instruction::GASPRICE:
+		case Instruction::PREVHASH:
+		case Instruction::COINBASE:
+		case Instruction::TIMESTAMP:
+		case Instruction::NUMBER:
+		case Instruction::DIFFICULTY:
+		case Instruction::GASLIMIT:
+		case Instruction::PUSH1:
+		case Instruction::PUSH2:
+		case Instruction::PUSH3:
+		case Instruction::PUSH4:
+		case Instruction::PUSH5:
+		case Instruction::PUSH6:
+		case Instruction::PUSH7:
+		case Instruction::PUSH8:
+		case Instruction::PUSH9:
+		case Instruction::PUSH10:
+		case Instruction::PUSH11:
+		case Instruction::PUSH12:
+		case Instruction::PUSH13:
+		case Instruction::PUSH14:
+		case Instruction::PUSH15:
+		case Instruction::PUSH16:
+		case Instruction::PUSH17:
+		case Instruction::PUSH18:
+		case Instruction::PUSH19:
+		case Instruction::PUSH20:
+		case Instruction::PUSH21:
+		case Instruction::PUSH22:
+		case Instruction::PUSH23:
+		case Instruction::PUSH24:
+		case Instruction::PUSH25:
+		case Instruction::PUSH26:
+		case Instruction::PUSH27:
+		case Instruction::PUSH28:
+		case Instruction::PUSH29:
+		case Instruction::PUSH30:
+		case Instruction::PUSH31:
+		case Instruction::PUSH32:
+		case Instruction::POP:
+		case Instruction::DUP1:
+		case Instruction::DUP2:
+		case Instruction::DUP3:
+		case Instruction::DUP4:
+		case Instruction::DUP5:
+		case Instruction::DUP6:
+		case Instruction::DUP7:
+		case Instruction::DUP8:
+		case Instruction::DUP9:
+		case Instruction::DUP10:
+		case Instruction::DUP11:
+		case Instruction::DUP12:
+		case Instruction::DUP13:
+		case Instruction::DUP14:
+		case Instruction::DUP15:
+		case Instruction::DUP16:
+		case Instruction::SWAP1:
+		case Instruction::SWAP2:
+		case Instruction::SWAP3:
+		case Instruction::SWAP4:
+		case Instruction::SWAP5:
+		case Instruction::SWAP6:
+		case Instruction::SWAP7:
+		case Instruction::SWAP8:
+		case Instruction::SWAP9:
+		case Instruction::SWAP10:
+		case Instruction::SWAP11:
+		case Instruction::SWAP12:
+		case Instruction::SWAP13:
+		case Instruction::SWAP14:
+		case Instruction::SWAP15:
+		case Instruction::SWAP16:
+		case Instruction::JUMP:
+		case Instruction::JUMPI:
+		case Instruction::PC:
+		case Instruction::MSIZE:
+		case Instruction::GAS:
+		case Instruction::JUMPDEST:
 			break;
+		default:
+			BOOST_THROW_EXCEPTION(BadInstruction());
 		}
 
 		newTempSize = (newTempSize + 31) / 32 * 32;
@@ -568,19 +674,19 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			require(1);
-			m_jumpLatch = true;
-			if (!m_destinations.count(m_stack.back()))
-				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			nextPC = m_stack.back();
+			if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
 			require(2);
-			m_jumpLatch = true;
-			if (!m_destinations.count(m_stack.back()))
-				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			if (m_stack[m_stack.size() - 2])
+			{
 				nextPC = m_stack.back();
+				if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+					BOOST_THROW_EXCEPTION(BadJumpDestination());
+			}
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
@@ -594,10 +700,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.push_back(m_gas);
 			break;
 		case Instruction::JUMPDEST:
-			require(1);
-			if (!m_jumpLatch)
-				m_destinations.insert(m_stack.back());
-			m_stack.pop_back();
 			break;
 		case Instruction::CREATE:
 		{
@@ -612,6 +714,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
@@ -642,6 +746,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
 			}
@@ -671,8 +777,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
-		default:
-			BOOST_THROW_EXCEPTION(BadInstruction());
 		}
 	}
 	if (_steps == (uint64_t)-1)

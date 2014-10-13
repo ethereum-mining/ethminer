@@ -28,8 +28,11 @@
 #include <memory>
 #include <utility>
 #include <thread>
+#include <chrono>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
+#include <libdevcore/RangeMask.h>
+#include <libdevcrypto/Common.h>
 #include "HostCapability.h"
 #include "Common.h"
 namespace ba = boost::asio;
@@ -42,6 +45,60 @@ class RLPStream;
 
 namespace p2p
 {
+
+class Host;
+
+enum class Origin
+{
+	Unknown,
+	Self,
+	SelfThird,
+	PerfectThird,
+	Perfect,
+};
+
+struct Node
+{
+	NodeId id;										///< Their id/public key.
+	unsigned index;									///< Index into m_nodesList
+	bi::tcp::endpoint address;						///< As reported from the node itself.
+	int score = 0;									///< All time cumulative.
+	int rating = 0;									///< Trending.
+	bool dead = false;								///< If true, we believe this node is permanently dead - forget all about it.
+	std::chrono::system_clock::time_point lastConnected;
+	std::chrono::system_clock::time_point lastAttempted;
+	unsigned failedAttempts = 0;
+	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
+
+	Origin idOrigin = Origin::Unknown;				///< How did we get to know this node's id?
+
+	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
+	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
+
+	bool isOffline() const { return lastDisconnect == -1 || lastAttempted > lastConnected; }
+	bool operator<(Node const& _n) const
+	{
+		if (isOffline() != _n.isOffline())
+			return isOffline();
+		else if (isOffline())
+			if (lastAttempted == _n.lastAttempted)
+				return failedAttempts < _n.failedAttempts;
+			else
+				return lastAttempted < _n.lastAttempted;
+		else
+			if (score == _n.score)
+				if (rating == _n.rating)
+					return failedAttempts < _n.failedAttempts;
+				else
+					return rating < _n.rating;
+			else
+				return score < _n.score;
+	}
+
+	void connect(Host* _h);
+};
+
+using Nodes = std::vector<Node>;
 
 struct NetworkPreferences
 {
@@ -61,6 +118,7 @@ class Host: public Worker
 {
 	friend class Session;
 	friend class HostCapabilityFace;
+	friend class Node;
 
 public:
 	/// Start server, listening for connections on the given port.
@@ -88,7 +146,7 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 
 	/// @returns true iff we have the a peer of the given id.
-	bool havePeer(h512 _id) const;
+	bool havePeer(NodeId _id) const;
 
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -97,7 +155,7 @@ public:
 	std::vector<PeerInfo> peers(bool _updatePing = false) const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	size_t peerCount() const { Guard l(x_peers); return m_peers.size(); }
+	size_t peerCount() const { RecursiveGuard l(x_peers); return m_peers.size(); }
 
 	/// Ping the peers, to update the latency information.
 	void pingAll();
@@ -106,10 +164,12 @@ public:
 	unsigned short listenPort() const { return m_public.port(); }
 
 	/// Serialise the set of known peers.
-	bytes savePeers() const;
+	bytes saveNodes() const;
 
 	/// Deserialise the data and populate the set of known peers.
-	void restorePeers(bytesConstRef _b);
+	void restoreNodes(bytesConstRef _b);
+
+	Nodes nodes() const { RecursiveGuard l(x_peers); Nodes ret; for (auto const& i: m_nodes) ret.push_back(*i.second); return ret; }
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { stop(); m_netPrefs = _p; start(); }
 
@@ -117,14 +177,13 @@ public:
 	void stop();
 	bool isStarted() const { return isWorking(); }
 
-	h512 id() const { return m_id; }
+	NodeId id() const { return m_key.pub(); }
 
 	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
-private:
-	/// Called when the session has provided us with a new peer we can connect to.
-	void noteNewPeers() {}
+	std::shared_ptr<Node> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<Node>(); }
 
+private:
 	void seal(bytes& _b);
 	void populateAddresses();
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
@@ -138,36 +197,52 @@ private:
 	/// This won't touch alter the blockchain.
 	virtual void doWork();
 
-	std::map<h512, bi::tcp::endpoint> potentialPeers();
+	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId = h256());
+	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
-	std::string m_clientVersion;
+	void requestNodes();
 
-	NetworkPreferences m_netPrefs;
+	std::string m_clientVersion;											///< Our version string.
 
-	static const int NetworkStopped = -1;
-	int m_listenPort = NetworkStopped;
+	NetworkPreferences m_netPrefs;											///< Network settings.
 
-	ba::io_service m_ioService;
-	bi::tcp::acceptor m_acceptor;
-	bi::tcp::socket m_socket;
+	static const int NetworkStopped = -1;									///< The value meaning we're not actually listening.
+	int m_listenPort = NetworkStopped;										///< What port are we listening on?
 
-	UPnP* m_upnp = nullptr;
-	bi::tcp::endpoint m_public;
-	h512 m_id;
+	ba::io_service m_ioService;												///< IOService for network stuff.
+	bi::tcp::acceptor m_acceptor;											///< Listening acceptor.
+	bi::tcp::socket m_socket;												///< Listening socket.
 
-	mutable std::mutex x_peers;
-	mutable std::map<h512, std::weak_ptr<Session>> m_peers;	// mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
+	UPnP* m_upnp = nullptr;													///< UPnP helper.
+	bi::tcp::endpoint m_public;												///< Our public listening endpoint.
+	KeyPair m_key;															///< Our unique ID.
 
-	std::map<h512, std::pair<bi::tcp::endpoint, unsigned>> m_incomingPeers;	// TODO: does this need a lock?
-	std::vector<h512> m_freePeers;
+	bool m_hadNewNodes = false;
 
-	std::chrono::steady_clock::time_point m_lastPeersRequest;
-	unsigned m_idealPeerCount = 5;
+	mutable RecursiveMutex x_peers;
 
-	std::vector<bi::address_v4> m_addresses;
-	std::vector<bi::address_v4> m_peerAddresses;
+	/// The nodes to which we are currently connected.
+	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
+	mutable std::map<NodeId, std::weak_ptr<Session>> m_peers;
 
-	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;
+	/// Nodes to which we may connect (or to which we have connected).
+	/// TODO: does this need a lock?
+	std::map<NodeId, std::shared_ptr<Node> > m_nodes;
+
+	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
+	std::vector<NodeId> m_nodesList;
+
+	RangeMask<unsigned> m_ready;											///< Indices into m_nodesList over to which nodes we are not currently connected, connecting or otherwise ignoring.
+	RangeMask<unsigned> m_private;											///< Indices into m_nodesList over to which nodes are private.
+
+	unsigned m_idealPeerCount = 5;											///< Ideal number of peers to be connected to.
+
+	// Our addresses.
+	std::vector<bi::address> m_addresses;									///< Addresses for us.
+	std::vector<bi::address> m_peerAddresses;								///< Addresses that peers (can) know us by.
+
+	// Our capabilities.
+	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 
 	bool m_accepting = false;
 };

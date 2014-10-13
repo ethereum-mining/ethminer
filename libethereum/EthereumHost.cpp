@@ -202,7 +202,7 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 			auto p = j->cap<EthereumPeer>();
 
 			RLPStream ts;
-			p->prep(ts, BlocksPacket, hs.size()).appendRaw(bs, hs.size());
+			p->prep(ts, NewBlockPacket, hs.size()).appendRaw(bs, hs.size());
 
 			Guard l(p->x_knownBlocks);
 			if (!p->m_knownBlocks.count(_currentHash))

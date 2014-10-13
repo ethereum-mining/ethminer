@@ -72,7 +72,7 @@ public:
 	DownloadMan const& downloadMan() const { return m_man; }
 	bool isSyncing() const { return !!m_syncer; }
 
-	bool isBanned(h512 _id) const { return !!m_banned.count(_id); }
+	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
 private:
 	/// Session is tell us that we may need (re-)syncing with the peer.
@@ -116,7 +116,7 @@ private:
 	h256 m_latestBlockSent;
 	h256Set m_transactionsSent;
 
-	std::set<h512> m_banned;
+	std::set<p2p::NodeId> m_banned;
 };
 
 }

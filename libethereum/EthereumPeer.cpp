@@ -308,7 +308,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			disable("Invalid protocol version.");
 		else if (m_networkId != host()->networkId())
 			disable("Invalid network identifier.");
-		else if (session()->info().clientVersion.find("/v0.6.9/") != string::npos)
+		else if (session()->info().clientVersion.find("/v0.7.0/") != string::npos)
 			disable("Blacklisted client version.");
 		else if (host()->isBanned(session()->id()))
 			disable("Peer banned for previous bad behaviour.");
@@ -425,44 +425,46 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned future = 0;
 		unsigned unknown = 0;
 		unsigned got = 0;
+		unsigned repeated = 0;
 
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
-			m_sub.noteBlock(h);
-
+			if (m_sub.noteBlock(h))
 			{
-				Guard l(x_knownBlocks);
-				m_knownBlocks.insert(h);
+				addRating(10);
+				switch (host()->m_bq.import(_r[i].data(), host()->m_chain))
+				{
+				case ImportResult::Success:
+					success++;
+					break;
+
+				case ImportResult::Malformed:
+					disable("Malformed block received.");
+					return true;
+
+				case ImportResult::FutureTime:
+					future++;
+					break;
+
+				case ImportResult::AlreadyInChain:
+				case ImportResult::AlreadyKnown:
+					got++;
+					break;
+
+				case ImportResult::UnknownParent:
+					unknown++;
+					break;
+				}
 			}
-
-			switch (host()->m_bq.import(_r[i].data(), host()->m_chain))
+			else
 			{
-			case ImportResult::Success:
-				addRating(1);
-				success++;
-				break;
-
-			case ImportResult::Malformed:
-				disable("Malformed block received.");
-				return true;
-
-			case ImportResult::FutureTime:
-				future++;
-				break;
-
-			case ImportResult::AlreadyInChain:
-			case ImportResult::AlreadyKnown:
-				got++;
-				break;
-
-			case ImportResult::UnknownParent:
-				unknown++;
-				break;
+				addRating(0);	// -1?
+				repeated++;
 			}
 		}
 
-		clogS(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known.";
+		clogS(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known," << repeated << " repeats received.";
 
 		if (m_asking == Asking::Blocks)
 			transition(Asking::Blocks);
@@ -480,8 +482,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			switch (host()->m_bq.import(_r[1].data(), host()->m_chain))
 			{
 			case ImportResult::Success:
+				addRating(100);
+				break;
 			case ImportResult::FutureTime:
-				addRating(1);
+				//TODO: Rating dependent on how far in future it is.
 				break;
 
 			case ImportResult::Malformed:

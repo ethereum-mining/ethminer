@@ -17,6 +17,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
+target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 if(MINIUPNPC_LS)
