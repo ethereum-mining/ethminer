@@ -581,7 +581,7 @@ void Session::doRead()
 							{
 								// error - bad protocol
 								clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
-								disconnect(BadProtocol);
+								// Just wasting our bandwidth - perhaps reduce rating?
 								return;
 							}
 						}
