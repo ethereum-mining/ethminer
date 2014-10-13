@@ -43,7 +43,9 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
-			BlockDetails d(RLP(it->value().ToString()));
+			string rlpString = it->value().ToString();
+			RLP r(rlpString);
+			BlockDetails d(r);
 			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
 		}
 	delete it;
@@ -437,7 +439,7 @@ void BlockChain::checkConsistency()
 			if (p != h256())
 			{
 				auto dp = details(p);
-				assert(contains(dp.children, h));
+//				assert(contains(dp.children, h));		// WTF?
 				assert(dp.number == dh.number - 1);
 			}
 		}

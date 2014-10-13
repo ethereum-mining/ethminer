@@ -29,6 +29,7 @@
 #include <utility>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/RangeMask.h>
 #include "Common.h"
 
 namespace dev
@@ -36,6 +37,8 @@ namespace dev
 
 namespace p2p
 {
+
+class Node;
 
 /**
  * @brief The Session class
@@ -47,17 +50,18 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force = false);
+	Session(Host* _server, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual);
 	virtual ~Session();
 
 	void start();
-	void disconnect(int _reason);
+	void disconnect(DisconnectReason _reason);
 
 	void ping();
 
 	bool isOpen() const { return m_socket.is_open(); }
 
-	h512 id() const { return m_id; }
+	NodeId id() const;
 	unsigned socketId() const { return m_socket.native_handle(); }
 
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
@@ -71,11 +75,15 @@ public:
 	void sendDestroy(bytes& _msg);
 	void send(bytesConstRef _msg);
 
-	void addRating(unsigned _r) { m_rating += _r; }
+	int rating() const;
+	void addRating(unsigned _r);
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
 	PeerInfo const& info() const { return m_info; }
+
+	void ensureNodesRequested();
+	void serviceNodesRequest();
 
 private:
 	void dropped();
@@ -84,7 +92,6 @@ private:
 	void writeImpl(bytes& _buffer);
 	void write();
 
-	void getPeers();
 	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
@@ -95,23 +102,25 @@ private:
 	std::mutex m_writeLock;
 	std::deque<bytes> m_writeQueue;
 
-	mutable bi::tcp::socket m_socket;	///< Mutable to ask for native_handle().
+	mutable bi::tcp::socket m_socket;		///< Mutable to ask for native_handle().
 	std::array<byte, 65536> m_data;
 	PeerInfo m_info;
-	h512 m_id;
 
 	bytes m_incoming;
 	unsigned m_protocolVersion;
-	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
+	std::shared_ptr<Node> m_node;
+	bi::tcp::endpoint m_manualEndpoint;
+	bool m_force = false;					/// If true, ignore IDs being different. This could open you up to MitM attacks.
+
+	bool m_theyRequestedNodes = false;
+	bool m_weRequestedNodes = false;
 
 	std::chrono::steady_clock::time_point m_ping;
 	std::chrono::steady_clock::time_point m_connect;
 	std::chrono::steady_clock::time_point m_disconnect;
 
-	unsigned m_rating;
-
 	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;
-	std::set<h512> m_knownPeers;
+	RangeMask<unsigned> m_knownNodes;		///< Nodes we already know about as indices into Host's nodesList. These shouldn't be resent to peer.
 
 	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
 };

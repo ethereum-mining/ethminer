@@ -36,19 +36,35 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort):
+Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_listenPort(_peerPort),
-	m_rating(0)
+	m_node(nullptr),
+	m_manualEndpoint(_manual)
 {
 	m_disconnect = std::chrono::steady_clock::time_point::max();
 	m_connect = std::chrono::steady_clock::now();
-	m_info = PeerInfo({"?", _peerAddress.to_string(), m_listenPort, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
+
+	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), m_manualEndpoint.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
+}
+
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force):
+	m_server(_s),
+	m_socket(std::move(_socket)),
+	m_node(_n),
+	m_manualEndpoint(_n->address),
+	m_force(_force)
+{
+	m_disconnect = std::chrono::steady_clock::time_point::max();
+	m_connect = std::chrono::steady_clock::now();
+	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
 Session::~Session()
 {
+	if (id() && (!m_node || (!isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)))
+		m_server->m_ready += m_node->index;
+
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
 		i.second.reset();
@@ -61,57 +77,174 @@ Session::~Session()
 	catch (...){}
 }
 
+NodeId Session::id() const
+{
+	return m_node ? m_node->id : NodeId();
+}
+
+void Session::addRating(unsigned _r)
+{
+	if (m_node)
+	{
+		m_node->rating += _r;
+		m_node->score += _r;
+	}
+}
+
+int Session::rating() const
+{
+	return m_node->rating;
+}
+
 bi::tcp::endpoint Session::endpoint() const
 {
-	if (m_socket.is_open())
+	if (m_socket.is_open() && m_node)
 		try
 		{
-			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_listenPort);
+			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_node->address.port());
 		}
-		catch (...){}
+		catch (...) {}
 
-	return bi::tcp::endpoint();
+	if (m_node)
+		return m_node->address;
+
+	return m_manualEndpoint;
+}
+
+template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
+{
+	if (_t.size() <= _n)
+		return _t;
+	vector<T> ret = _t;
+	while (ret.size() > _n)
+	{
+		auto i = ret.begin();
+		advance(i, rand() % ret.size());
+		ret.erase(i);
+	}
+	return ret;
+}
+
+void Session::ensureNodesRequested()
+{
+	if (isOpen() && !m_weRequestedNodes)
+	{
+		m_weRequestedNodes = true;
+		RLPStream s;
+		sealAndSend(prep(s, GetPeersPacket));
+	}
+}
+
+void Session::serviceNodesRequest()
+{
+	if (!m_theyRequestedNodes)
+		return;
+
+	auto peers = m_server->potentialPeers(m_knownNodes);
+	if (peers.empty())
+	{
+		addNote("peers", "requested");
+		return;
+	}
+
+	// note this should cost them...
+	RLPStream s;
+	prep(s, PeersPacket, min<unsigned>(10, peers.size()));
+	auto rs = randomSelection(peers, 10);
+	for (auto const& i: rs)
+	{
+		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.address;
+		if (i.address.address().is_v4())
+			s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
+		else// if (i.second.address().is_v6()) - assumed
+			s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
+		m_knownNodes.extendAll(i.index);
+		m_knownNodes.unionWith(i.index);
+	}
+	sealAndSend(s);
+	m_theyRequestedNodes = false;
+	addNote("peers", "done");
 }
 
 bool Session::interpret(RLP const& _r)
 {
 	clogS(NetRight) << _r;
+	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
+	{
+
 	switch ((PacketType)_r[0].toInt<unsigned>())
 	{
 	case HelloPacket:
 	{
+		if (m_node)
+			m_node->lastDisconnect = NoDisconnect;
+
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
 		auto caps = _r[3].toVector<CapDesc>();
-		m_listenPort = _r[4].toInt<unsigned short>();
-		m_id = _r[5].toHash<h512>();
+		auto listenPort = _r[4].toInt<unsigned short>();
+		auto id = _r[5].toHash<NodeId>();
 
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << m_id.abridged() << showbase << hex << caps << dec << m_listenPort;
+		// clang error (previously: ... << hex << caps ...)
+		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
+		stringstream capslog;
+		for (auto cap: caps)
+			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
 
-		if (m_server->havePeer(m_id))
+		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
+
+		if (m_server->id() == id)
 		{
 			// Already connected.
-			clogS(NetWarn) << "Already have peer id" << m_id.abridged();// << "at" << l->endpoint() << "rather than" << endpoint();
+			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << m_info.id.abridged();
+			disconnect(LocalIdentity);
+			return false;
+		}
+
+		if (m_node && m_node->id != id)
+		{
+			if (m_force || m_node->idOrigin <= Origin::SelfThird)
+				// SECURITY: We're forcing through the new ID, despite having been told
+				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Allowing anyway...";
+			else
+			{
+				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Disconnecting.";
+				disconnect(UnexpectedIdentity);
+				return false;
+			}
+
+			if (m_server->havePeer(id))
+			{
+				m_node->dead = true;
+				disconnect(DuplicatePeer);
+				return false;
+			}
+		}
+
+		if (m_server->havePeer(id))
+		{
+			// Already connected.
+			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
 			disconnect(DuplicatePeer);
 			return false;
 		}
-		if (!m_id)
+
+		if (!id)
 		{
-			disconnect(InvalidIdentity);
+			disconnect(NullIdentity);
 			return false;
 		}
+
+		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
+		m_knownNodes.extendAll(m_node->index);
+		m_knownNodes.unionWith(m_node->index);
+
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
 			disconnect(IncompatibleProtocol);
 			return false;
 		}
-		try
-			{ m_info = PeerInfo({clientVersion, m_socket.remote_endpoint().address().to_string(), m_listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() }); }
-		catch (...)
-		{
-			disconnect(BadProtocol);
-			return false;
-		}
+		m_info = PeerInfo({id, clientVersion, m_socket.remote_endpoint().address().to_string(), listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() });
 
 		m_server->registerPeer(shared_from_this(), caps);
 		break;
@@ -144,22 +277,13 @@ bool Session::interpret(RLP const& _r)
 	case GetPeersPacket:
 	{
         clogS(NetTriviaSummary) << "GetPeers";
-		auto peers = m_server->potentialPeers();
-		RLPStream s;
-		prep(s, PeersPacket, peers.size());
-		for (auto i: peers)
-		{
-			clogS(NetTriviaDetail) << "Sending peer " << i.first.abridged() << i.second;
-			if (i.second.address().is_v4())
-				s.appendList(3) << bytesConstRef(i.second.address().to_v4().to_bytes().data(), 4) << i.second.port() << i.first;
-			else// if (i.second.address().is_v6()) - assumed
-				s.appendList(3) << bytesConstRef(i.second.address().to_v6().to_bytes().data(), 16) << i.second.port() << i.first;
-		}
-		sealAndSend(s);
+		m_theyRequestedNodes = true;
+		serviceNodesRequest();
 		break;
 	}
 	case PeersPacket:
         clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+		m_weRequestedNodes = false;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
 			bi::address peerAddress;
@@ -173,28 +297,51 @@ bool Session::interpret(RLP const& _r)
 				return false;
 			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-			h512 id = _r[i][2].toHash<h512>();
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << m_id.abridged() << isPrivateAddress(endpoint().address()) << m_server->m_incomingPeers.count(id) << (m_server->m_incomingPeers.count(id) ? isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()) : -1);
+			NodeId id = _r[i][2].toHash<NodeId>();
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_nodes.count(id) << (m_server->m_nodes.count(id) ? isPrivateAddress(m_server->m_nodes.at(id)->address.address()) : -1);
 
 			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
-				goto CONTINUE;
+				goto CONTINUE;	// Private address. Ignore.
+
+			if (!id)
+				goto CONTINUE;	// Null identity. Ignore.
+
+			if (m_server->id() == id)
+				goto CONTINUE;	// Just our info - we already have that.
+
+			if (id == this->id())
+				goto CONTINUE;	// Just their info - we already have that.
 
 			// check that it's not us or one we already know:
-			if (!(m_id == id && isPrivateAddress(endpoint().address()) && (!m_server->m_incomingPeers.count(id) || isPrivateAddress(m_server->m_incomingPeers.at(id).first.address()))) && (!id || m_server->m_id == id || m_server->m_incomingPeers.count(id)))
+			if (m_server->m_nodes.count(id))
+			{
+				// Already got this node.
+				// See if it's any better that ours or not...
+				// This could be the public address of a known node.
+				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
+				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()))
+					// Update address if the node if we now have a public IP for it.
+					m_server->m_nodes[id]->address = ep;
 				goto CONTINUE;
+			}
 
-			// check that we're not already connected to addr:
 			if (!ep.port())
-				goto CONTINUE;
+				goto CONTINUE;	// Zero port? Don't think so.
+
+			// Avoid our random other addresses that they might end up giving us.
 			for (auto i: m_server->m_addresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
-			for (auto i: m_server->m_incomingPeers)
-				if (i.second.first == ep)
-					goto CONTINUE;
-			m_server->m_incomingPeers[id] = make_pair(ep, 0);
-			m_server->m_freePeers.push_back(id);
-			m_server->noteNewPeers();
+
+			// Check that we don't already know about this addr:port combination. If we are, assume the original is best.
+			// SECURITY: Not a valid assumption in general. Should compare ID origins and pick the best or note uncertainty and weight each equally.
+			for (auto const& i: m_server->m_nodes)
+				if (i.second->address == ep)
+					goto CONTINUE;		// Same address but a different node.
+
+			// OK passed all our checks. Assume it's good.
+			addRating(1000);
+			m_server->noteNode(id, ep, m_node->idOrigin == Origin::Perfect ? Origin::PerfectThird : Origin::SelfThird, true);
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}
@@ -208,6 +355,12 @@ bool Session::interpret(RLP const& _r)
 		return false;
 	}
 	}
+	}
+	catch (...)
+	{
+		disconnect(BadProtocol);
+		return false;
+	}
 	return true;
 }
 
@@ -216,12 +369,6 @@ void Session::ping()
 	RLPStream s;
 	sealAndSend(prep(s, PingPacket));
 	m_ping = std::chrono::steady_clock::now();
-}
-
-void Session::getPeers()
-{
-	RLPStream s;
-	sealAndSend(prep(s, GetPeersPacket));
 }
 
 RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
@@ -338,9 +485,13 @@ void Session::dropped()
 		catch (...) {}
 }
 
-void Session::disconnect(int _reason)
+void Session::disconnect(DisconnectReason _reason)
 {
 	clogS(NetConnect) << "Disconnecting (reason:" << reasonOf((DisconnectReason)_reason) << ")";
+
+	if (m_node)
+		m_node->lastDisconnect = _reason;
+
 	if (m_socket.is_open())
 	{
 		if (m_disconnect == chrono::steady_clock::time_point::max())
@@ -363,11 +514,9 @@ void Session::start()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
 					<< m_server->m_public.port()
-					<< m_server->m_id;
+					<< m_server->id();
 	sealAndSend(s);
 	ping();
-	getPeers();
-
 	doRead();
 }
 
