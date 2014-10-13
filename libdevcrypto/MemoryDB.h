@@ -32,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-struct DBChannel: public LogChannel  { static const char* name() { return "TDB"; } static const int verbosity = 12; };
+struct DBChannel: public LogChannel  { static const char* name() { return "TDB"; } static const int verbosity = 18; };
 
 #define dbdebug clog(DBChannel)
 

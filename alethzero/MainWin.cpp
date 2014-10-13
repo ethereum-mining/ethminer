@@ -33,7 +33,6 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Dagger.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>
@@ -751,10 +750,39 @@ void Main::refreshNetwork()
 {
 	auto ps = web3()->peers();
 
+
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
-	for (PeerInfo const& i: ps)
-		ui->peers->addItem(QString("[%7] %3 ms - %1:%2 - %4 %5 %6").arg(i.host.c_str()).arg(i.port).arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()).arg(i.clientVersion.c_str()).arg(QString::fromStdString(toString(i.caps))).arg(QString::fromStdString(toString(i.notes))).arg(i.socket));
+	ui->nodes->clear();
+
+	if (web3()->haveNetwork())
+	{
+		map<h512, QString> clients;
+		for (PeerInfo const& i: ps)
+			ui->peers->addItem(QString("[%8 %7] %3 ms - %1:%2 - %4 %5 %6")
+							   .arg(QString::fromStdString(i.host))
+							   .arg(i.port)
+							   .arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count())
+							   .arg(clients[i.id] = QString::fromStdString(i.clientVersion))
+							   .arg(QString::fromStdString(toString(i.caps)))
+							   .arg(QString::fromStdString(toString(i.notes)))
+							   .arg(i.socket)
+							   .arg(QString::fromStdString(i.id.abridged())));
+
+		auto ns = web3()->nodes();
+		for (p2p::Node const& i: ns)
+			if (!i.dead)
+				ui->nodes->insertItem(clients.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+							   .arg(QString::fromStdString(i.id.abridged()))
+							   .arg(QString::fromStdString(toString(i.address)))
+							   .arg(i.id == web3()->id() ? "self" : clients.count(i.id) ? clients[i.id] : i.secondsSinceLastAttempted() == -1 ? "session-fail" : i.secondsSinceLastAttempted() >= (int)i.fallbackSeconds() ? "retrying..." : "retry-" + QString::number(i.fallbackSeconds() - i.secondsSinceLastAttempted()) + "s")
+							   .arg(i.secondsSinceLastAttempted())
+							   .arg(i.secondsSinceLastConnected())
+							   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x" : "")
+							   .arg(i.rating)
+							   .arg((int)i.idOrigin)
+							   );
+	}
 }
 
 void Main::refreshAll()
@@ -948,7 +976,7 @@ void Main::timerEvent(QTimerEvent*)
 	if (interval / 100 % 2 == 0)
 		refreshMining();
 
-	if (interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing())
+	if ((interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing()) || interval == 1000)
 		ui->downloadView->update();
 
 	if (m_logChanged)
@@ -1712,9 +1740,9 @@ void Main::on_debugStepBack_triggered()
 
 void Main::on_debugStepBackOut_triggered()
 {
-	if (ui->debugTimeline->value() > 0)
+	if (ui->debugTimeline->value() > 0 && m_history.size() > 0)
 	{
-		auto ls = m_history[ui->debugTimeline->value()].levels.size();
+		auto ls = m_history[min(ui->debugTimeline->value(), m_history.size() - 1)].levels.size();
 		int l = ui->debugTimeline->value();
 		for (; l > 0 && m_history[l].levels.size() >= ls; --l) {}
 		ui->debugTimeline->setValue(l);
