@@ -120,19 +120,8 @@ inline unsigned int toLog2(u256 _x)
 #if defined(__GNUC__)
 __attribute__((gnu_inline, always_inline))
 #endif
-inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func)
-{
-	bool ret = _a;
-	if (!ret)
-	{
-		std::cerr << "Assertion failed:" << _aStr << " [func=" << _func << ", line=" << _line << ", file=" << _file << "]" << std::endl;
-#if ETH_DEBUG
-		debug_break();
-#endif
-	}
-	return !ret;
-}
-
+inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func);
+	
 template<class A, class B>
 #if defined(__GNUC__)
 __attribute__((gnu_inline, always_inline))
