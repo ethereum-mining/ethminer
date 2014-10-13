@@ -92,7 +92,7 @@ dev::eth::Interface* EthStubServer::client() const
 
 std::string EthStubServer::balanceAt(const string &a, const int& block)
 {
-    return toJS(client()->balanceAt(jsToAddress(a), block));
+    return jsToDecimal(toJS(client()->balanceAt(jsToAddress(a), block)));
 }
 
 //TODO BlockDetails?

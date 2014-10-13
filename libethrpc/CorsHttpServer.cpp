@@ -14,15 +14,9 @@ bool CorsHttpServer::SendResponse(const std::string &response, void *addInfo)
                   "Access-Control-Allow-Headers: Content-Type\r\n"
                   "\r\n"
                   "%s",(int)response.length(), response.c_str()) > 0)
-
-
-    {
         return true;
-    }
-    else
-    {
-        return false;
-    }
+
+    return false;
 }
 
 
