@@ -439,7 +439,7 @@ void BlockChain::checkConsistency()
 			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
-			if (p != h256() && p != m_genesisHash)
+			if (p != h256() && p != m_genesisHash)	// TODO: for some reason the genesis details with the children get squished. not sure why.
 			{
 				auto dp = details(p);
 				if (asserts(contains(dp.children, h)))

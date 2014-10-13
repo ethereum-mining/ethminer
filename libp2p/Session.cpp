@@ -297,6 +297,7 @@ bool Session::interpret(RLP const& _r)
 				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
 			else
 			{
+				cwarn << "Received bad peer packet:" << _r;
 				disconnect(BadProtocol);
 				return true;
 			}
@@ -372,7 +373,7 @@ bool Session::interpret(RLP const& _r)
 	}
 	catch (std::exception const& _e)
 	{
-		clogS(NetWarn) << "Peer causing an exception:" << _e.what();
+		clogS(NetWarn) << "Peer causing an exception:" << _e.what() << _r;
 		disconnect(BadProtocol);
 		return true;
 	}
@@ -579,6 +580,7 @@ void Session::doRead()
 							if (!interpret(r))
 							{
 								// error - bad protocol
+								clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
 								disconnect(BadProtocol);
 								return;
 							}
