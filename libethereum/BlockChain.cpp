@@ -439,11 +439,17 @@ void BlockChain::checkConsistency()
 			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
-			if (p != h256())
+			if (p != h256() && p != m_genesisHash)
 			{
 				auto dp = details(p);
-//				assert(contains(dp.children, h));		// WTF?
-				assert(dp.number == dh.number - 1);
+				if (asserts(contains(dp.children, h)))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
+				if (assertsEqual(dp.number, dh.number - 1))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
 			}
 		}
 	delete it;
