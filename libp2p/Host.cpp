@@ -66,7 +66,6 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_key(KeyPair::create())
 {
 	populateAddresses();
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << id().abridged();
 	if (_start)
 		start();
@@ -112,7 +111,6 @@ void Host::start()
 	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
 		noteNode(id(), m_public, Origin::Perfect, false);
 
-	m_lastPeersRequest = chrono::steady_clock::time_point::min();
 	clog(NetNote) << "Id:" << id().abridged();
 
 	for (auto const& h: m_capabilities)
@@ -144,7 +142,7 @@ void Host::stop()
 
 unsigned Host::protocolVersion() const
 {
-	return 1;
+	return 2;
 }
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
@@ -345,31 +343,46 @@ void Host::populateAddresses()
 #endif
 }
 
-shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin _o, bool _ready, NodeId _oldId)
+shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
+	if (_a.port() < 30300 && _a.port() > 30303)
+		cwarn << "Wierd port being recorded!";
+
+	if (_a.port() >= 49152)
+	{
+		cwarn << "Private port being recorded - setting to 0";
+		_a = bi::tcp::endpoint(_a.address(), 0);
+	}
+
 	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
+
+	// First check for another node with the same connection credentials, and put it in oldId if found.
+	if (!_oldId)
+		for (pair<h512, shared_ptr<Node>> const& n: m_nodes)
+			if (n.second->address == _a && n.second->id != _id)
+			{
+				_oldId = n.second->id;
+				break;
+			}
+
 	unsigned i;
 	if (!m_nodes.count(_id))
 	{
-		shared_ptr<Node> old;
 		if (m_nodes.count(_oldId))
 		{
-			old = m_nodes[_oldId];
-			i = old->index;
+			i = m_nodes[_oldId]->index;
 			m_nodes.erase(_oldId);
 			m_nodesList[i] = _id;
-			m_nodes[id()] = make_shared<Node>();
 		}
 		else
 		{
 			i = m_nodesList.size();
 			m_nodesList.push_back(_id);
-			m_nodes[_id] = make_shared<Node>();
 		}
-		m_nodes[_id]->address = m_public;
-		m_nodes[_id]->index = i;
+		m_nodes[_id] = make_shared<Node>();
 		m_nodes[_id]->id = _id;
+		m_nodes[_id]->index = i;
 		m_nodes[_id]->idOrigin = _o;
 	}
 	else
@@ -377,6 +390,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin 
 		i = m_nodes[_id]->index;
 		m_nodes[_id]->idOrigin = max(m_nodes[_id]->idOrigin, _o);
 	}
+	m_nodes[_id]->address = _a;
 	m_ready.extendAll(i);
 	m_private.extendAll(i);
 	if (_ready)
@@ -390,6 +404,8 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint const& _a, Origin 
 
 	cnote << m_nodes[_id]->index << ":" << m_ready;
 
+	m_hadNewNodes = true;
+
 	return m_nodes[_id];
 }
 
@@ -398,7 +414,8 @@ Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
 	RecursiveGuard l(x_peers);
 	Nodes ret;
 
-	for (auto i: m_ready - (m_private + _known))
+	auto ns = (m_netPrefs.localNetworking ? _known : (m_private + _known)).inverted();
+	for (auto i: ns)
 		ret.push_back(*m_nodes[m_nodesList[i]]);
 	return ret;
 }
@@ -494,7 +511,9 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 
 void Node::connect(Host* _h)
 {
-	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address;
+	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address << "from" << _h->id().abridged();
+	lastAttempted = std::chrono::system_clock::now();
+	failedAttempts++;
 	_h->m_ready -= index;
 	bi::tcp::socket* s = new bi::tcp::socket(_h->m_ioService);
 	s->async_connect(address, [=](boost::system::error_code const& ec)
@@ -502,14 +521,13 @@ void Node::connect(Host* _h)
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
-			failedAttempts++;
+			lastDisconnect = TCPError;
 			lastAttempted = std::chrono::system_clock::now();
 			_h->m_ready += index;
 		}
 		else
 		{
 			clog(NetConnect) << "Connected to" << id.abridged() << "@" << address;
-			failedAttempts = 0;
 			lastConnected = std::chrono::system_clock::now();
 			auto p = make_shared<Session>(_h, std::move(*s), _h->node(id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
 			p->start();
@@ -532,14 +550,31 @@ bool Host::havePeer(NodeId _id) const
 	return !!m_peers.count(_id);
 }
 
-unsigned cumulativeFallback(unsigned _failed)
+unsigned Node::fallbackSeconds() const
 {
-	if (_failed < 5)
-		return _failed * 5;
-	else if (_failed < 15)
-		return 25 + (_failed - 5) * 10;
-	else
-		return 25 + 100 + (_failed - 15) * 20;
+	switch (lastDisconnect)
+	{
+	case BadProtocol:
+		return 30 * (failedAttempts + 1);
+	case UselessPeer:
+	case TooManyPeers:
+	case ClientQuit:
+		return 15 * (failedAttempts + 1);
+	case NoDisconnect:
+		return 0;
+	default:
+		if (failedAttempts < 5)
+			return failedAttempts * 5;
+		else if (failedAttempts < 15)
+			return 25 + (failedAttempts - 5) * 10;
+		else
+			return 25 + 100 + (failedAttempts - 15) * 20;
+	}
+}
+
+bool Node::shouldReconnect() const
+{
+	return chrono::system_clock::now() > lastAttempted + chrono::seconds(fallbackSeconds());
 }
 
 void Host::growPeers()
@@ -553,7 +588,7 @@ void Host::growPeers()
 			toTry -= m_private;
 		set<Node> ns;
 		for (auto i: toTry)
-			if (chrono::system_clock::now() > m_nodes[m_nodesList[i]]->lastAttempted + chrono::seconds(cumulativeFallback(m_nodes[m_nodesList[i]]->failedAttempts)))
+			if (m_nodes[m_nodesList[i]]->shouldReconnect())
 				ns.insert(*m_nodes[m_nodesList[i]]);
 
 		if (ns.size())
@@ -566,23 +601,11 @@ void Host::growPeers()
 		else
 		{
 			ensureAccepting();
-			if (chrono::steady_clock::now() > m_lastPeersRequest + chrono::seconds(10))
-				requestPeers();
+			for (auto const& i: m_peers)
+				if (auto p = i.second.lock())
+					p->ensureNodesRequested();
 		}
 	}
-}
-
-void Host::requestPeers()
-{
-	RLPStream s;
-	bytes b;
-	Session::prep(s, GetPeersPacket).swapOut(b);
-	seal(b);
-	for (auto const& i: m_peers)
-		if (auto p = i.second.lock())
-			if (p->isOpen())
-				p->send(&b);
-	m_lastPeersRequest = chrono::steady_clock::now();
 }
 
 void Host::prunePeers()
@@ -637,6 +660,25 @@ void Host::doWork()
 {
 	growPeers();
 	prunePeers();
+
+	if (m_hadNewNodes)
+	{
+		for (auto p: m_peers)
+			if (auto pp = p.second.lock())
+				pp->serviceNodesRequest();
+
+		m_hadNewNodes = false;
+	}
+
+	if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
+	{
+		for (auto p: m_peers)
+			if (auto pp = p.second.lock())
+				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(60))
+					pp->disconnect(PingTimeout);
+		pingAll();
+	}
+
 	m_ioService.poll();
 }
 
@@ -646,6 +688,7 @@ void Host::pingAll()
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			j->ping();
+	m_lastPing = chrono::steady_clock::now();
 }
 
 bytes Host::saveNodes() const
@@ -657,7 +700,8 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_nodes)
 		{
 			Node const& n = *(i.second);
-			if (n.id != id() && !isPrivateAddress(n.address.address()))
+			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
+			if (!n.dead && n.address.port() > 0 && n.address.port() < 49152 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
@@ -667,7 +711,7 @@ bytes Host::saveNodes() const
 				nodes << n.address.port() << n.id << (int)n.idOrigin
 					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
 					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
-					<< n.failedAttempts << n.lastDisconnect << n.score << n.rating;
+					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
 				count++;
 			}
 		}
@@ -686,7 +730,11 @@ void Host::restoreNodes(bytesConstRef _b)
 		switch (r[0].toInt<int>())
 		{
 		case 0:
+		{
+			auto oldId = id();
 			m_key = KeyPair(r[1].toHash<Secret>());
+			noteNode(id(), m_public, Origin::Perfect, false, oldId);
+
 			for (auto i: r[2])
 			{
 				bi::tcp::endpoint ep;
@@ -702,11 +750,12 @@ void Host::restoreNodes(bytesConstRef _b)
 					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 					n->failedAttempts = i[6].toInt<unsigned>();
-					n->lastDisconnect = (int)i[7].toInt<unsigned>();
+					n->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
 					n->score = (int)i[8].toInt<unsigned>();
 					n->rating = (int)i[9].toInt<unsigned>();
 				}
 			}
+		}
 		default:;
 		}
 	else

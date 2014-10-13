@@ -24,6 +24,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
@@ -164,6 +165,13 @@ string pretty(h160 _a, dev::eth::State _st)
 		ns = " " + s;
 	}
 	return ns;
+}
+
+bool g_exit = false;
+
+void sighandler(int)
+{
+	g_exit = true;
 }
 
 int main(int argc, char** argv)
@@ -316,6 +324,9 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
+	auto nodesState = contents(dbPath + "/nodeState.rlp");
+	web3.restoreNodes(&nodesState);
+
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
 
@@ -334,11 +345,15 @@ int main(int argc, char** argv)
 	}
 #endif
 
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
+
 	if (interactive)
 	{
 		string logbuf;
 		string l;
-		while (true)
+		while (!g_exit)
 		{
 			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
 			cout << logbuf << "Press Enter" << flush;
@@ -615,46 +630,47 @@ int main(int argc, char** argv)
 					try
 					{
 						e.setup(&r);
+
+						OnOpFunc oof;
+						if (format == "pretty")
+							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								f << endl << "    STACK" << endl;
+								for (auto i: vm->stack())
+									f << (h256)i << endl;
+								f << "    MEMORY" << endl << dev::memDump(vm->memory());
+								f << "    STORAGE" << endl;
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << showbase << hex << i.first << ": " << i.second << endl;
+								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+							};
+						else if (format == "standard")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						else if (format == "standard+")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+									for (auto const& i: ext->state().storage(ext->myAddress))
+										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						e.go(oof);
+						e.finalize(oof);
 					}
 					catch(Exception const& _e)
 					{
+						// TODO: a bit more information here. this is probably quite worrying as the transaction is already in the blockchain.
 						cwarn << diagnostic_information(_e);
 					}
-
-					OnOpFunc oof;
-					if (format == "pretty")
-						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << endl << "    STACK" << endl;
-							for (auto i: vm->stack())
-								f << (h256)i << endl;
-							f << "    MEMORY" << endl << dev::memDump(vm->memory());
-							f << "    STORAGE" << endl;
-							for (auto const& i: ext->state().storage(ext->myAddress))
-								f << showbase << hex << i.first << ": " << i.second << endl;
-							f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
-						};
-					else if (format == "standard")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					else if (format == "standard+")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
-								for (auto const& i: ext->state().storage(ext->myAddress))
-									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					e.go(oof);
-					e.finalize(oof);
 				}
 			}
 			else if (c && cmd == "inspect")
@@ -764,7 +780,7 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
-		while (true)
+		while (!g_exit)
 		{
 			if ( c->isMining() &&c->blockChain().details().number - n == mining)
 				c->stopMining();
@@ -772,9 +788,10 @@ int main(int argc, char** argv)
 		}
 	}
 	else
-		while (true)
+		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
+	writeFile(dbPath + "/nodeState.rlp", web3.saveNodes());
 	return 0;
 }
 
