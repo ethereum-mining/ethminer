@@ -33,9 +33,8 @@
 #include <libevmface/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
-#include <eth/EthStubServer.h>
-#include <eth/EthStubServer.cpp>
-#include <eth/abstractethstubserver.h>
+#include <libethrpc/EthStubServer.h>
+#include <libethrpc/abstractethstubserver.h>
 #include <libdevcore/CommonJS.h>
 #endif
 #include <libwebthree/WebThree.h>

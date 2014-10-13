@@ -22,6 +22,7 @@ target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 if(JSONRPC_LS)
 target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
+target_link_libraries(${EXECUTABLE} ethrpc)
 endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")

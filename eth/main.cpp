@@ -39,7 +39,7 @@
 #include <readline/history.h>
 #endif
 #if ETH_JSONRPC
-#include "EthStubServer.h"
+#include <libethrpc/EthStubServer.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;

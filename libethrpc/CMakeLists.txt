@@ -6,9 +6,15 @@ include_directories(..)
 link_directories(../libethcore)
 link_directories(../libwebthree)
 
-set(EXECUTABLE eth)
+set(EXECUTABLE ethrpc)
 
-add_executable(${EXECUTABLE} ${SRC_LIST})
+if(ETH_STATIC)
+    add_library(${EXECUTABLE} STATIC ${SRC_LIST})
+else()
+    add_library(${EXECUTABLE} SHARED ${SRC_LIST})
+endif()
+
+file(GLOB HEADERS "*.h")
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
@@ -20,7 +26,6 @@ target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 if(JSONRPC_LS)
 target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
-target_link_libraries(${EXECUTABLE} ethrpc)
 endif()
 if(READLINE_LS)
 target_link_libraries(${EXECUTABLE} ${READLINE_LS})
@@ -46,5 +51,7 @@ else ()
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-install( TARGETS ${EXECUTABLE} DESTINATION bin )
+install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
+
 
