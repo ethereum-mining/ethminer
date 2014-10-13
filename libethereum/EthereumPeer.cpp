@@ -288,6 +288,8 @@ void EthereumPeer::attemptSync()
 
 bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 {
+	try
+	{
 	switch (_id)
 	{
 	case StatusPacket:
@@ -509,5 +511,11 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	default:
 		return false;
 	}
+	}
+	catch (std::exception const& _e)
+	{
+		clogS(NetWarn) << "Peer causing an exception:" << _e.what() << _r;
+	}
+
 	return true;
 }
