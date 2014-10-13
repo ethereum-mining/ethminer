@@ -58,7 +58,7 @@ public:
     virtual Json::Value setListening(const bool& l);
     virtual Json::Value setMining(const bool& l);
     virtual std::string sha3(const std::string& s);
-    virtual std::string stateAt(const std::string& a, const int& block, const std::string& p);
+    virtual std::string stateAt(const std::string& a, const int& block, const std::string& s);
     virtual std::string toAscii(const std::string& s);
     virtual std::string toDecimal(const std::string& s);
     virtual std::string toFixed(const double& s);

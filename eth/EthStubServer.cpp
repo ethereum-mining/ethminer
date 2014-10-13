@@ -20,7 +20,7 @@
  * @date 2014
  */
 
-//#if ETH_JSONRPC
+#if ETH_JSONRPC
 #include "EthStubServer.h"
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -327,9 +327,9 @@ std::string EthStubServer::sha3(const string &s)
     return toJS(dev::eth::sha3(jsToBytes(s)));
 }
 
-std::string EthStubServer::stateAt(const string &a, const int& block, const string &p)
+std::string EthStubServer::stateAt(const string &a, const int& block, const string &s)
 {
-    return client() ? toJS(client()->stateAt(jsToAddress(a), jsToU256(p), block)) : "";
+    return client() ? toJS(client()->stateAt(jsToAddress(a), jsToU256(s), block)) : "";
 }
 
 std::string EthStubServer::toAscii(const string &s)
@@ -422,4 +422,4 @@ Json::Value EthStubServer::jsontypeToValue(int _jsontype)
 	}
 }
 
-//#endif
+#endif

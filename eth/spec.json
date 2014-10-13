@@ -13,7 +13,7 @@
 
 
             { "method": "balanceAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
-            { "method": "stateAt", "params": { "a": "", "p": "", "block": 0}, "order": ["a", "p", "block"], "returns": ""},
+            { "method": "stateAt", "params": { "a": "", "s": "", "block": 0}, "order": ["a", "s", "block"], "returns": ""},
             { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
             { "method": "codeAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns": ""},
 
