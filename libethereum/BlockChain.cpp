@@ -428,8 +428,10 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 
 void BlockChain::checkConsistency()
 {
-	WriteGuard l(x_details);
-	m_details.clear();
+	{
+		WriteGuard l(x_details);
+		m_details.clear();
+	}
 	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
