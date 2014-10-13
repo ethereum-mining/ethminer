@@ -29,6 +29,7 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
+#include <libethrpc/CorsHttpServer.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
@@ -339,7 +340,7 @@ int main(int argc, char** argv)
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+        jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -427,7 +428,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+                jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
