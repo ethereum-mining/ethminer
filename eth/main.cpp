@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 	unsigned peers = 5;
 	bool interactive = false;
 #if ETH_JSONRPC
-	int jsonrpc = -1;
+    int jsonrpc = -1;
 #endif
 	string publicIP;
 	bool bootstrap = false;
