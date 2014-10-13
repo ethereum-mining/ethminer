@@ -1,4 +1,4 @@
-#pragma once
+    #pragma once
 
 #include <string>
 #include <vector>
@@ -10,9 +10,17 @@
 namespace dev {
 namespace eth {
 
-template <unsigned S> std::string toJS(FixedHash<S> const& _h) { return "0x" + toHex(_h.ref()); }
-template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return "0x" + toHex(toCompactBigEndian(_n)); }
-inline std::string toJS(dev::bytes const& _n) { return "0x" + dev::toHex(_n); }
+template <unsigned S> std::string toJS(FixedHash<S> const& _h)
+{
+    return "0x" + toHex(_h.ref());
+}
+template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
+{
+    return "0x" + toHex(toCompactBigEndian(_n));
+}
+inline std::string toJS(dev::bytes const& _n) {
+    return "0x" + dev::toHex(_n);
+}
 
 bytes jsToBytes(std::string const& _s);
 std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r);
