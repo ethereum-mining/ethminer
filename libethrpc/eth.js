@@ -82,7 +82,8 @@ window.eth = (function ethScope() {
         request.send(JSON.stringify(req))
 		request.onreadystatechange = function() {
 			if (request.readyState === 4)
-                f(reformat(m, JSON.parse(request.responseText).result))
+                if (f)
+                    f(reformat(m, JSON.parse(request.responseText).result));
 	    };
 	}
 	function isEmpty(obj) {
