@@ -180,9 +180,9 @@ public:
 	unsigned peerCount() const;
 
 public slots:
-	void setCoinbase(QString/*dev::Address*/);
-	void setMining(bool _l);
-	void setListening(bool _l);
+	void _private_setCoinbase(QString/*dev::Address*/);
+	void _private_setMining(bool _l);
+	void _private_setListening(bool _l);
 	void setDefault(int _block);
 
 	/// Check to see if anything has changed, fire off signals if so.
@@ -197,15 +197,15 @@ signals:
 	void miningChanged();
 
 private:
-	Q_PROPERTY(QString number READ number NOTIFY watchChanged)
-	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbase NOTIFY coinbaseChanged)
+	Q_PROPERTY(QString coinbase READ coinbase WRITE _private_setCoinbase NOTIFY coinbaseChanged)
+	Q_PROPERTY(bool listening READ isListening WRITE _private_setListening NOTIFY netChanged)
+	Q_PROPERTY(bool mining READ isMining WRITE _private_setMining NOTIFY netChanged)
 	Q_PROPERTY(QString gasPrice READ gasPrice)
 	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
 	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
-	Q_PROPERTY(bool mining READ isMining WRITE setMining NOTIFY netChanged)
-	Q_PROPERTY(bool listening READ isListening WRITE setListening NOTIFY netChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
+    Q_PROPERTY(QString number READ number NOTIFY watchChanged)
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
@@ -257,6 +257,18 @@ private:
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
 	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
+    frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.getDefaultBlock);}}, 0); }"); \
+    frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.getNumber);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \

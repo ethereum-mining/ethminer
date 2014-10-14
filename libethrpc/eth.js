@@ -107,7 +107,7 @@ window.eth = (function ethScope() {
         { name: "coinbase", getter: "coinbase", setter: "setCoinbase" },
         { name: "listening", getter: "listening", setter: "setListening" },
         { name: "mining", getter: "mining", setter: "setMining" },
-        { name: "gasPrice", getter: "gasPrice", setter: "setGasPrice" },
+        { name: "gasPrice", getter: "gasPrice"},
         { name: "key", getter: "key" },
         { name: "keys", getter: "keys" },
         { name: "peerCount", getter: "peerCount" },
