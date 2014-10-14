@@ -23,12 +23,12 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("fromAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "padding",jsonrpc::JSON_INTEGER,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::fromAsciiI);
             this->bindAndAddMethod(new jsonrpc::Procedure("fromFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::fromFixedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("gasPrice", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::gasPriceI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("isListening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::isListeningI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("isMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::isMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::keyI);
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::lllI);
             this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("mining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
@@ -96,16 +96,6 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->gasPrice();
         }
 
-        inline virtual void isListeningI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->isListening();
-        }
-
-        inline virtual void isMiningI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->isMining();
-        }
-
         inline virtual void keyI(const Json::Value& request, Json::Value& response) 
         {
             response = this->key();
@@ -116,6 +106,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->keys();
         }
 
+        inline virtual void listeningI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->listening();
+        }
+
         inline virtual void lllI(const Json::Value& request, Json::Value& response) 
         {
             response = this->lll(request["s"].asString());
@@ -124,6 +119,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         inline virtual void messagesI(const Json::Value& request, Json::Value& response) 
         {
             response = this->messages(request["json"]);
+        }
+
+        inline virtual void miningI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->mining();
         }
 
         inline virtual void numberI(const Json::Value& request, Json::Value& response) 
@@ -207,12 +207,12 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string fromAscii(const int& padding, const std::string& s) = 0;
         virtual double fromFixed(const std::string& s) = 0;
         virtual std::string gasPrice() = 0;
-        virtual bool isListening() = 0;
-        virtual bool isMining() = 0;
         virtual std::string key() = 0;
         virtual Json::Value keys() = 0;
+        virtual bool listening() = 0;
         virtual std::string lll(const std::string& s) = 0;
         virtual Json::Value messages(const Json::Value& json) = 0;
+        virtual bool mining() = 0;
         virtual int number() = 0;
         virtual int peerCount() = 0;
         virtual std::string secretToAddress(const std::string& s) = 0;

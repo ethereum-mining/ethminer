@@ -46,8 +46,8 @@ public:
     virtual std::string fromAscii(const int& padding, const std::string& s);
     virtual double fromFixed(const std::string& s);
     virtual std::string gasPrice();
-    virtual bool isListening();
-    virtual bool isMining();
+    virtual bool listening();
+    virtual bool mining();
     virtual std::string key();
     virtual Json::Value keys();
     virtual std::string lll(const std::string& s);
