@@ -101,7 +101,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
 		// FEES...
-		bigint runGas = c_stepGas;
+		bigint runGas = FeeStructure::c_stepGas;
 		bigint newTempSize = m_temp.size();
 		switch (inst)
 		{
@@ -116,15 +116,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreGas * 2;
+				runGas = FeeStructure::c_sstoreGas * 2;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
 				runGas = 0;
 			else
-				runGas = c_sstoreGas;
+				runGas = FeeStructure::c_sstoreGas;
 			break;
 
 		case Instruction::SLOAD:
-            runGas = c_sloadGas;
+			runGas = FeeStructure::c_sloadGas;
 			break;
 
 		// These all operate on memory and therefore potentially expand it:
@@ -146,7 +146,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SHA3:
 			require(2);
-			runGas = c_sha3Gas;
+			runGas = FeeStructure::c_sha3Gas;
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
@@ -163,18 +163,18 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 			
 		case Instruction::BALANCE:
-			runGas = c_balanceGas;
+			runGas = FeeStructure::c_balanceGas;
 			break;
 
 		case Instruction::CALL:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas = FeeStructure::c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas = FeeStructure::c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
@@ -184,7 +184,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			auto inOff = m_stack[m_stack.size() - 2];
 			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
-            runGas = c_createGas;
+			runGas = FeeStructure::c_createGas;
 			break;
 		}
 
@@ -302,7 +302,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
-			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+			runGas += FeeStructure::c_memoryGas * (newTempSize - m_temp.size()) / 32;
 
 		if (_onOp)
 			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);

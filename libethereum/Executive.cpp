@@ -66,7 +66,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	}
 
 	// Check gas cost is enough.
-	u256 gasCost = m_t.data.size() * c_txDataGas + c_txGas;
+	u256 gasCost = u256(m_t.data.size()) * FeeStructure::c_txDataGas + FeeStructure::c_txGas;
 
 	if (m_t.gas < gasCost)
 	{
