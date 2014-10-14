@@ -33,20 +33,20 @@ var spec = [
             // synchronous getters
             { "method": "balanceAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
             { "method": "stateAt", "params": { "a": "", "s": "", "block": 0}, "order": ["a", "s", "block"], "returns": ""},
-            { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
+            { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : 0.0},
             { "method": "codeAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns": ""},
 
             // transactions
-            { "method": "transact", "params": { "json": ""}, "order": ["json"], "returns": ""},
-            { "method": "call", "params": { "json": []}, "order": ["json"], "returns": ""},
+            { "method": "transact", "params": { "json": {}}, "order": ["json"], "returns": ""},
+            { "method": "call", "params": { "json": {}}, "order": ["json"], "returns": ""},
 
             // blockchain
-            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": []},
-            { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": []},
-            { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": []},
+            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": {}},
+            { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
+            { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
 
             // watches and message filtering
-            { "method": "messages", "params": { "json": []}, "order": ["json"], "returns": []},
+            { "method": "messages", "params": { "json": {}}, "order": ["json"], "returns": []},
             { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
 
             // misc
