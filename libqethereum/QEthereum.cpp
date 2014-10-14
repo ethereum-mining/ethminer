@@ -161,7 +161,7 @@ QStringList QEthereum::keys() const
 	return ret;
 }
 
-void QEthereum::setCoinbase(QString _a)
+void QEthereum::_private_setCoinbase(QString _a)
 {
 	if (m_client && client()->address() != toAddress(_a))
 	{
@@ -437,7 +437,7 @@ bool QEthereum::isListening() const
 	return /*m_client ? client()->haveNetwork() :*/ false;
 }
 
-void QEthereum::setMining(bool _l)
+void QEthereum::_private_setMining(bool _l)
 {
 	if (m_client)
 	{
@@ -448,7 +448,7 @@ void QEthereum::setMining(bool _l)
 	}
 }
 
-void QEthereum::setListening(bool)
+void QEthereum::_private_setListening(bool)
 {
 	if (!m_client)
 		return;
