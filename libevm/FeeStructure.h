@@ -31,19 +31,19 @@ enum class Instruction: uint8_t;
 
 struct FeeStructure
 {
+	static uint32_t const c_stepGas = 1;	///< Once per operation, except for SSTORE, SLOAD, BALANCE, SHA3, CREATE, CALL.
+	static uint32_t const c_balanceGas = 20;	///< Once per BALANCE operation.
+	static uint32_t const c_sha3Gas = 20;	///< Once per SHA3 operation.
+	static uint32_t const c_sloadGas = 20;	///< Once per SLOAD operation.
+	static uint32_t const c_sstoreGas = 100;	///< Once per non-zero storage element in a CREATE call/transaction. Also, once/twice per SSTORE operation depending on whether the zeroness changes (twice iff it changes from zero; nothing at all if to zero) or doesn't (once).
+	static uint32_t const c_createGas = 100;	///< Once per CREATE operation & contract-creation transaction.
+	static uint32_t const c_callGas = 20;	///< Once per CALL operation & message call transaction.
+	static uint32_t const c_memoryGas = 1;	///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
+	static uint32_t const c_txDataGas = 5;	///< Per byte of data attached to a transaction. NOTE: Not payable on data of calls between transactions.
+	static uint32_t const c_txGas = 500;	///< Per transaction. NOTE: Not payable on data of calls between transactions.
+
 	static uint32_t getInstructionFee(Instruction _inst);
 };
-
-static uint32_t const c_stepGas		= 1;	///< Once per operation, except for SSTORE, SLOAD, BALANCE, SHA3, CREATE, CALL.
-static uint32_t const c_balanceGas	= 20;	///< Once per BALANCE operation.
-static uint32_t const c_sha3Gas		= 20;	///< Once per SHA3 operation.
-static uint32_t const c_sloadGas	= 20;	///< Once per SLOAD operation.
-static uint32_t const c_sstoreGas	= 100;	///< Once per non-zero storage element in a CREATE call/transaction. Also, once/twice per SSTORE operation depending on whether the zeroness changes (twice iff it changes from zero; nothing at all if to zero) or doesn't (once).
-static uint32_t const c_createGas	= 100;	///< Once per CREATE operation & contract-creation transaction.
-static uint32_t const c_callGas		= 20;	///< Once per CALL operation & message call transaction.
-static uint32_t const c_memoryGas	= 1;	///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
-static uint32_t const c_txDataGas	= 5;	///< Per byte of data attached to a transaction. NOTE: Not payable on data of calls between transactions.
-static uint32_t const c_txGas		= 500;	///< Per transaction. NOTE: Not payable on data of calls between transactions.
 
 }
 }
