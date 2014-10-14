@@ -79,6 +79,20 @@ static Json::Value toJson(const dev::eth::PastMessages& pms)
     return res;
 }
 
+static Json::Value toJson(const dev::eth::Transaction& t)
+{
+    Json::Value res;
+    res["hash"] = toJS(t.sha3());
+    res["input"] = jsFromBinary(t.data);
+    res["to"] = toJS(t.receiveAddress);
+    res["from"] = toJS(t.sender());
+    res["gas"] = (int)t.gas;
+    res["gasPrice"] = toJS(t.gasPrice);
+    res["nonce"] = toJS(t.nonce);
+    res["value"] = toJS(t.value);
+    return res;
+}
+
 EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3):
 	AbstractEthStubServer(_conn),
 	m_web3(_web3)
@@ -380,18 +394,7 @@ Json::Value EthStubServer::transaction(const int &i, const string &numberOrHash)
     }
     auto n = jsToU256(numberOrHash);
     auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : jsToFixed<32>(numberOrHash);
-    dev::eth::Transaction t = client()->transaction(h, i);
-    Json::Value res;
-    res["hash"] = boost::lexical_cast<string>(t.sha3());
-    res["input"] = jsFromBinary(t.data);
-    res["to"] = boost::lexical_cast<string>(t.receiveAddress);
-    res["from"] = boost::lexical_cast<string>(t.sender());
-    res["gas"] = (int)t.gas;
-    res["gasPrice"] = boost::lexical_cast<string>(t.gasPrice);
-    res["nonce"] = boost::lexical_cast<string>(t.nonce);
-    res["value"] = boost::lexical_cast<string>(t.value);
-
-    return res;
+    return toJson(client()->transaction(h, i));
 }
 
 Json::Value EthStubServer::uncle(const int &i, const string &numberOrHash)
