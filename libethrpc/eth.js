@@ -19,10 +19,11 @@ else if (typeof(String.prototype.pad) === "undefined")
 var spec = [
             // properties
             { "method": "coinbase", "params": null, "order": [], "returns" : "" },
+            { "method": "setCoinbase", "params": { "address": "" }, "order": ["address"], "returns" : true },
             { "method": "listening", "params": null, "order": [], "returns" : false },
-            { "method": "setListening", "params": { "l": "" }, "order" : ["l"], "returns" : undefined},
+            { "method": "setListening", "params": { "l": false }, "order" : ["l"], "returns" : true},
             { "method": "mining", "params": null, "order": [], "returns" : false },
-            { "method": "setMining", "params": { "l": "" }, "order" : ["l"], "returns" : undefined},
+            { "method": "setMining", "params": { "l": false }, "order" : ["l"], "returns" : true},
             { "method": "gasPrice", "params": null, "order": [], "returns" : "" },
             { "method": "key", "params": null, "order": [], "returns" : "" },
             { "method": "keys", "params": null, "order": [], "returns" : [] },

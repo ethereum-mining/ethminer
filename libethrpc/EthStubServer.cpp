@@ -313,7 +313,13 @@ std::string EthStubServer::secretToAddress(const string &s)
     return toJS(KeyPair(jsToSecret(s)).address());
 }
 
-Json::Value EthStubServer::setListening(const bool &l)
+bool EthStubServer::setCoinbase(const std::string &address)
+{
+    client()->setAddress(jsToAddress(address));
+    return true;
+}
+
+bool EthStubServer::setListening(const bool &l)
 {
     if (!client())
         return Json::nullValue;
@@ -322,10 +328,10 @@ Json::Value EthStubServer::setListening(const bool &l)
         client()->startNetwork();
     else
         client()->stopNetwork();*/
-    return Json::nullValue;
+    return false;
 }
 
-Json::Value EthStubServer::setMining(const bool &l)
+bool EthStubServer::setMining(const bool &l)
 {
     if (!client())
         return Json::nullValue;
@@ -334,7 +340,7 @@ Json::Value EthStubServer::setMining(const bool &l)
         client()->startMining();
     else
         client()->stopMining();
-    return Json::nullValue;
+    return true;
 }
 
 std::string EthStubServer::sha3(const string &s)

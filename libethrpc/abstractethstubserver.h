@@ -32,8 +32,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setListeningI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setMiningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("setCoinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "address",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::setCoinbaseI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setListeningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "l",jsonrpc::JSON_BOOLEAN, NULL), &AbstractEthStubServer::setMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("sha3", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::sha3I);
             this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::stateAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toAsciiI);
@@ -141,6 +142,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->secretToAddress(request["s"].asString());
         }
 
+        inline virtual void setCoinbaseI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->setCoinbase(request["address"].asString());
+        }
+
         inline virtual void setListeningI(const Json::Value& request, Json::Value& response) 
         {
             response = this->setListening(request["l"].asBool());
@@ -216,8 +222,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual int number() = 0;
         virtual int peerCount() = 0;
         virtual std::string secretToAddress(const std::string& s) = 0;
-        virtual Json::Value setListening(const bool& l) = 0;
-        virtual Json::Value setMining(const bool& l) = 0;
+        virtual bool setCoinbase(const std::string& address) = 0;
+        virtual bool setListening(const bool& l) = 0;
+        virtual bool setMining(const bool& l) = 0;
         virtual std::string sha3(const std::string& s) = 0;
         virtual std::string stateAt(const std::string& a, const int& block, const std::string& s) = 0;
         virtual std::string toAscii(const std::string& s) = 0;
