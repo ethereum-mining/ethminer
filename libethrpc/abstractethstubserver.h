@@ -18,7 +18,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_ARRAY, NULL), &AbstractEthStubServer::callI);
             this->bindAndAddMethod(new jsonrpc::Procedure("codeAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("coinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::coinbaseI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("countAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::countAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("countAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("defaultBlock", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::defaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("fromAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "padding",jsonrpc::JSON_INTEGER,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::fromAsciiI);
             this->bindAndAddMethod(new jsonrpc::Procedure("fromFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::fromFixedI);
@@ -39,7 +39,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("toAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toAsciiI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toDecimal", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toDecimalI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_REAL, NULL), &AbstractEthStubServer::toFixedI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
             this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
             this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
@@ -178,7 +178,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void transactI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->transact(request["json"].asString());
+            response = this->transact(request["json"]);
         }
 
         inline virtual void transactionI(const Json::Value& request, Json::Value& response) 
@@ -202,7 +202,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string call(const Json::Value& json) = 0;
         virtual std::string codeAt(const std::string& a, const int& block) = 0;
         virtual std::string coinbase() = 0;
-        virtual std::string countAt(const std::string& a, const int& block) = 0;
+        virtual double countAt(const std::string& a, const int& block) = 0;
         virtual int defaultBlock() = 0;
         virtual std::string fromAscii(const int& padding, const std::string& s) = 0;
         virtual double fromFixed(const std::string& s) = 0;
@@ -223,7 +223,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string toAscii(const std::string& s) = 0;
         virtual std::string toDecimal(const std::string& s) = 0;
         virtual std::string toFixed(const double& s) = 0;
-        virtual std::string transact(const std::string& json) = 0;
+        virtual std::string transact(const Json::Value& json) = 0;
         virtual Json::Value transaction(const int& i, const std::string& numberOrHash) = 0;
         virtual Json::Value uncle(const int& i, const std::string& numberOrHash) = 0;
         virtual std::string watch(const std::string& json) = 0;

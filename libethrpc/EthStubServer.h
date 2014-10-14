@@ -41,7 +41,7 @@ public:
     virtual std::string call(const Json::Value& json);
     virtual std::string codeAt(const std::string& a, const int& block);
     virtual std::string coinbase();
-    virtual std::string countAt(const std::string& a, const int& block);
+    virtual double countAt(const std::string& a, const int& block);
     virtual int defaultBlock();
     virtual std::string fromAscii(const int& padding, const std::string& s);
     virtual double fromFixed(const std::string& s);
@@ -62,7 +62,7 @@ public:
     virtual std::string toAscii(const std::string& s);
     virtual std::string toDecimal(const std::string& s);
     virtual std::string toFixed(const double& s);
-    virtual std::string transact(const std::string& json);
+    virtual std::string transact(const Json::Value& json);
     virtual Json::Value transaction(const int& i, const std::string& numberOrHash);
     virtual Json::Value uncle(const int& i, const std::string& numberOrHash);
     virtual std::string watch(const std::string& json);

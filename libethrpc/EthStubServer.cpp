@@ -36,18 +36,18 @@ static Json::Value toJson(const dev::eth::BlockInfo& bi)
     Json::Value res;
     res["hash"] = boost::lexical_cast<string>(bi.hash);
 
-    res["parentHash"] = boost::lexical_cast<string>(bi.parentHash);
-    res["sha3Uncles"] = boost::lexical_cast<string>(bi.sha3Uncles);
-    res["miner"] = boost::lexical_cast<string>(bi.coinbaseAddress);
-    res["stateRoot"] = boost::lexical_cast<string>(bi.stateRoot);
-    res["transactionsRoot"] = boost::lexical_cast<string>(bi.transactionsRoot);
-    res["difficulty"] = boost::lexical_cast<string>(bi.difficulty);
-    res["number"] = boost::lexical_cast<string>(bi.number);
-    res["minGasPrice"] = boost::lexical_cast<string>(bi.minGasPrice);
-    res["gasLimit"] = boost::lexical_cast<string>(bi.gasLimit);
-    res["timestamp"] = boost::lexical_cast<string>(bi.timestamp);
+    res["parentHash"] = toJS(bi.parentHash);
+    res["sha3Uncles"] = toJS(bi.sha3Uncles);
+    res["miner"] = toJS(bi.coinbaseAddress);
+    res["stateRoot"] = toJS(bi.stateRoot);
+    res["transactionsRoot"] = toJS(bi.transactionsRoot);
+    res["difficulty"] = toJS(bi.difficulty);
+    res["number"] = (int)bi.number;
+    res["minGasPrice"] = toJS(bi.minGasPrice);
+    res["gasLimit"] = (int)bi.gasLimit;
+    res["timestamp"] = (int)bi.timestamp;
     res["extraData"] = jsFromBinary(bi.extraData);
-    res["nonce"] = boost::lexical_cast<string>(bi.nonce);
+    res["nonce"] = toJS(bi.nonce);
     return res;
 }
 
@@ -56,12 +56,12 @@ static Json::Value toJson(const dev::eth::PastMessage& t)
     Json::Value res;
     res["input"] = jsFromBinary(t.input);
     res["output"] = jsFromBinary(t.output);
-    res["to"] = boost::lexical_cast<string>(t.to);
-    res["from"] = boost::lexical_cast<string>(t.from);
-    res["origin"] = boost::lexical_cast<string>(t.origin);
-    res["timestamp"] = boost::lexical_cast<string>(t.timestamp);
-    res["coinbase"] = boost::lexical_cast<string>(t.coinbase);
-    res["block"] =  boost::lexical_cast<string>(t.block);
+    res["to"] = toJS(t.to);
+    res["from"] = toJS(t.from);
+    res["origin"] = toJS(t.origin);
+    res["timestamp"] = toJS(t.timestamp);
+    res["coinbase"] = toJS(t.coinbase);
+    res["block"] =  toJS(t.block);
     Json::Value path;
     for (int i: t.path)
         path.append(i);
@@ -169,9 +169,9 @@ std::string EthStubServer::coinbase()
     return client() ? toJS(client()->address()) : "";
 }
 
-std::string EthStubServer::countAt(const string &a, const int& block)
+double EthStubServer::countAt(const string &a, const int& block)
 {
-    return client() ? toJS(client()->countAt(jsToAddress(a), block)) : "";
+    return client() ? (double)(uint64_t)client()->countAt(jsToAddress(a), block) : 0;
 }
 
 int EthStubServer::defaultBlock()
@@ -347,7 +347,7 @@ std::string EthStubServer::toFixed(const double &s)
     return jsToFixed(s);
 }
 
-std::string EthStubServer::transact(const string &json)
+std::string EthStubServer::transact(const Json::Value &json)
 {
     std::string ret;
     if (!client())
