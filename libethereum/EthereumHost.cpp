@@ -148,17 +148,19 @@ void EthereumHost::doWork()
 {
 	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
-	maintainTransactions(h);
-	maintainBlocks(h);
+	// If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
+	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
+	{
+		maintainTransactions();
+		maintainBlocks(h);
+	}
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
 }
 
-void EthereumHost::maintainTransactions(h256 _currentHash)
+void EthereumHost::maintainTransactions()
 {
-	bool resendAll = (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && _currentHash != m_latestBlockSent);
-
 	// Send any new transactions.
 	for (auto const& p: peers())
 		if (auto ep = p->cap<EthereumPeer>())
@@ -166,14 +168,14 @@ void EthereumHost::maintainTransactions(h256 _currentHash)
 			bytes b;
 			unsigned n = 0;
 			for (auto const& i: m_tq.transactions())
-				if ((!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)) || ep->m_requireTransactions || resendAll)
+				if (ep->m_requireTransactions || (!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)))
 				{
 					b += i.second;
 					++n;
 					m_transactionsSent.insert(i.first);
 				}
 			ep->clearKnownTransactions();
-			
+
 			if (n || ep->m_requireTransactions)
 			{
 				RLPStream ts;
@@ -186,8 +188,8 @@ void EthereumHost::maintainTransactions(h256 _currentHash)
 
 void EthereumHost::maintainBlocks(h256 _currentHash)
 {
-	// If we've finished our initial sync send any new blocks.
-	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent) && m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	// Send any new blocks.
+	if (m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
 	{
 		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
