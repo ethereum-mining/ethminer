@@ -56,8 +56,8 @@ public:
     virtual int peerCount();
     virtual std::string secretToAddress(const std::string& s);
     virtual bool setCoinbase(const std::string& address);
-    virtual bool setListening(const bool& l);
-    virtual bool setMining(const bool& l);
+    virtual bool setListening(const bool& listening);
+    virtual bool setMining(const bool& mining);
     virtual std::string sha3(const std::string& s);
     virtual std::string stateAt(const std::string& a, const int& block, const std::string& s);
     virtual std::string toAscii(const std::string& s);

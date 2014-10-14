@@ -319,7 +319,7 @@ bool EthStubServer::setCoinbase(const std::string &address)
     return true;
 }
 
-bool EthStubServer::setListening(const bool &l)
+bool EthStubServer::setListening(const bool &listening)
 {
     if (!client())
         return Json::nullValue;
@@ -331,12 +331,12 @@ bool EthStubServer::setListening(const bool &l)
     return false;
 }
 
-bool EthStubServer::setMining(const bool &l)
+bool EthStubServer::setMining(const bool &mining)
 {
     if (!client())
         return Json::nullValue;
 
-    if (l)
+    if (mining)
         client()->startMining();
     else
         client()->stopMining();
