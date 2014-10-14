@@ -210,12 +210,12 @@ std::string EthStubServer::gasPrice()
 }
 
 //TODO
-bool EthStubServer::isListening()
+bool EthStubServer::listening()
 {
     return /*client() ? client()->haveNetwork() :*/ false;
 }
 
-bool EthStubServer::isMining()
+bool EthStubServer::mining()
 {
     return client() ? client()->isMining() : false;
 }
