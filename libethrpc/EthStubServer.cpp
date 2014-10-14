@@ -58,6 +58,7 @@ static Json::Value toJson(const dev::eth::PastMessage& t)
     res["output"] = jsFromBinary(t.output);
     res["to"] = toJS(t.to);
     res["from"] = toJS(t.from);
+    res["value"] = jsToDecimal(toJS(t.value));
     res["origin"] = toJS(t.origin);
     res["timestamp"] = toJS(t.timestamp);
     res["coinbase"] = toJS(t.coinbase);
