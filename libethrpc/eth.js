@@ -17,13 +17,12 @@ else if (typeof(String.prototype.pad) === "undefined")
 }
 
 var spec = [
-            // properties
             { "method": "coinbase", "params": null, "order": [], "returns" : "" },
             { "method": "setCoinbase", "params": { "address": "" }, "order": ["address"], "returns" : true },
             { "method": "listening", "params": null, "order": [], "returns" : false },
-            { "method": "setListening", "params": { "l": false }, "order" : ["l"], "returns" : true},
+            { "method": "setListening", "params": { "listening": false }, "order" : ["listening"], "returns" : true },
             { "method": "mining", "params": null, "order": [], "returns" : false },
-            { "method": "setMining", "params": { "l": false }, "order" : ["l"], "returns" : true},
+            { "method": "setMining", "params": { "mining": false }, "order" : ["mining"], "returns" : true },
             { "method": "gasPrice", "params": null, "order": [], "returns" : "" },
             { "method": "key", "params": null, "order": [], "returns" : "" },
             { "method": "keys", "params": null, "order": [], "returns" : [] },
@@ -31,41 +30,40 @@ var spec = [
             { "method": "defaultBlock", "params": null, "order": [], "returns" : 0},
             { "method": "number", "params": null, "order": [], "returns" : 0},
 
-            // synchronous getters
+
             { "method": "balanceAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
             { "method": "stateAt", "params": { "a": "", "s": "", "block": 0}, "order": ["a", "s", "block"], "returns": ""},
             { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : 0.0},
             { "method": "codeAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns": ""},
 
-            // transactions
             { "method": "transact", "params": { "json": {}}, "order": ["json"], "returns": ""},
             { "method": "call", "params": { "json": {}}, "order": ["json"], "returns": ""},
 
-            // blockchain
             { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": {}},
             { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
             { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
 
-            // watches and message filtering
             { "method": "messages", "params": { "json": {}}, "order": ["json"], "returns": []},
             { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
 
-            // misc
             { "method": "secretToAddress", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},
-            { "method": "sha3", "params": { "s": ""}, "order": ["s"], "returns": ""},   // TODO other sha3
+            { "method": "sha3", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "toAscii", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "fromAscii", "params": { "s": "", "padding": 0}, "order": ["s", "padding"], "returns": ""}, 
             { "method": "toDecimal", "params": {"s": ""}, "order": ["s"], "returns" : ""},
             { "method": "toFixed", "params": {"s": 0.0}, "order": ["s"], "returns" : ""},
-            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0},
-            { "method": "offset", "params": {"s": "", "offset": ""}, "order": ["s", "offset"], "returns" : ""},
+            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0}
 ];
+
+
+
+
 
 window.eth = (function ethScope() {
 	var m_reqId = 0
 	var ret = {}
-    function reformat(m, d) { return m == "lll" ? d.bin() : d; }
+    function reformat(m, d) { return m == "lll" ? d.bin() : d; };
 	function reqSync(m, p) {
 		var req = { "jsonrpc": "2.0", "method": m, "params": p, "id": m_reqId }
 		m_reqId++
@@ -73,7 +71,7 @@ window.eth = (function ethScope() {
         request.open("POST", "http://localhost:8080", false)
         request.send(JSON.stringify(req))
         return reformat(m, JSON.parse(request.responseText).result)
-	}
+	};
 	function reqAsync(m, p, f) {
 		var req = { "jsonrpc": "2.0", "method": m, "params": p, "id": m_reqId }
 		m_reqId++
@@ -85,23 +83,96 @@ window.eth = (function ethScope() {
                 if (f)
                     f(reformat(m, JSON.parse(request.responseText).result));
 	    };
-	}
+	};
+    
+    var getParams = function (spec, name, args) {
+        var setup = spec.filter(function (s) {
+            return s.method === name;
+        });
+
+        if (setup.length === 0) {
+            return {};
+        }
+
+        var paramSetup = setup[0];
+
+        var p = paramSetup.params ? {} : null;
+        for (j in paramSetup.order)
+            p[paramSetup.order[j]] = args[j];
+        return p;
+    };
+
+    var setupProperties = function (root, spec) {
+        var properties = [
+        { name: "coinbase", getter: "coinbase", setter: "setCoinbase" },
+        { name: "listening", getter: "listening", setter: "setListening" },
+        { name: "mining", getter: "mining", setter: "setMining" },
+        { name: "gasPrice", getter: "gasPrice", setter: "setGasPrice" },
+        { name: "key", getter: "key" },
+        { name: "keys", getter: "keys" },
+        { name: "peerCount", getter: "peerCount" },
+        { name: "defaultBlock", getter: "defaultBlock" },
+        { name: "number", getter: "number" }];
+    
+        var addPrefix = function (s, prefix) {
+            if (!s) {
+                return s;
+            }
+            return prefix + s.slice(0, 1).toUpperCase() + s.slice(1);
+        };
+
+        var toGetter = function (s) {
+            return addPrefix(s, "get");
+        };
+
+        var toSetter = function (s) {
+            return addPrefix(s, "set");
+        };
+        
+        properties.forEach(function (property) {
+            var p = {};
+            if (property.getter) {
+                p.get = function () {
+                    return reqSync(property.getter, {});
+                };
+                root[toGetter(property.name)] = function (f) {
+                    return reqAsync(property.getter, null, f);
+                };
+            }
+            if (property.setter) {
+                p.set = function (newVal) {
+                    return reqSync(property.setter, getParams(spec, property.setter, arguments));
+                };
+                root[toSetter(property.name)] = function (newVal, f) {
+                    return reqAsync(property.setter, getParams(spec, property.setter, arguments), f);
+                };
+            }
+
+            Object.defineProperty(root, property.name, p);
+        });
+    };
+
+    setupProperties(ret, window.spec);
+
+    /*
+
 	function isEmpty(obj) {
 		for (var prop in obj)
 		    if (obj.hasOwnProperty(prop))
 		        return false
 		return true
-	}
+	};
 
+    
 	var m_watching = {};
 	
 	for (si in spec) (function(s) {
 		var m = s.method;
 		var am = "get" + m.slice(0, 1).toUpperCase() + m.slice(1);
 		var getParams = function(a) {
-			var p = s.params ? {} : null;
-			for (j in s.order)
-				p[s.order[j]] = a[j];
+            var p = s.params ? {} : null;
+            for (j in s.order)
+                p[s.order[j]] = a[j];
 			return p
 		};
 		if (m == "create" || m == "transact")
@@ -119,6 +190,7 @@ window.eth = (function ethScope() {
 		}
 	})(spec[si]);
 
+    
 	ret.check = function(force) {
 		if (!force && isEmpty(m_watching))
 			return
@@ -153,6 +225,7 @@ window.eth = (function ethScope() {
 		if (isEmpty(m_watching) != old)
 			this.check()
 	}
+    */
 	return ret;
 }());
 
