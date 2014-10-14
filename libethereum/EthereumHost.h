@@ -84,7 +84,7 @@ private:
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
 
-	void maintainTransactions(h256 _currentBlock);
+	void maintainTransactions();
 	void maintainBlocks(h256 _currentBlock);
 
 	/// Get a bunch of needed blocks.
