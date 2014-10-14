@@ -29,9 +29,6 @@ namespace dev
 
 char const* Version = "0.7.4";
 
-#if defined(__GNUC__)
-__attribute__((gnu_inline, always_inline))
-#endif
 inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func)
 {
 	bool ret = _a;
