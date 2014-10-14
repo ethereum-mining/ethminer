@@ -70,7 +70,6 @@ window.eth = (function ethScope() {
 		m_reqId++
 		var request = new XMLHttpRequest();	
         request.open("POST", "http://localhost:8080", false)
-//		console.log("Sending " + JSON.stringify(req))
         request.send(JSON.stringify(req))
         return reformat(m, JSON.parse(request.responseText).result)
 	}
@@ -100,13 +99,8 @@ window.eth = (function ethScope() {
 		var am = "get" + m.slice(0, 1).toUpperCase() + m.slice(1);
 		var getParams = function(a) {
 			var p = s.params ? {} : null;
-			if (m == "stateAt")
-				if (a.length == 2)
-					a[2] = "0";
-				else
-					a[2] = String(a[2]);
 			for (j in s.order)
-				p[s.order[j]] = (s.order[j][0] === "b") ? a[j].unbin() : a[j];
+				p[s.order[j]] = a[j];
 			return p
 		};
 		if (m == "create" || m == "transact")
