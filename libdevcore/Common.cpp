@@ -27,7 +27,7 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.7.3";
+char const* Version = "0.7.4";
 
 #if defined(__GNUC__)
 __attribute__((gnu_inline, always_inline))
