@@ -14,8 +14,8 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             jsonrpc::AbstractServer<AbstractEthStubServer>(conn) 
         {
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::balanceAtI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::blockI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_ARRAY, NULL), &AbstractEthStubServer::callI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::blockI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::callI);
             this->bindAndAddMethod(new jsonrpc::Procedure("codeAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("coinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::coinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("countAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "a",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::countAtI);
@@ -28,7 +28,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::keyI);
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::lllI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "json",jsonrpc::JSON_ARRAY, NULL), &AbstractEthStubServer::messagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
@@ -40,8 +40,8 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("toDecimal", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toDecimalI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_REAL, NULL), &AbstractEthStubServer::toFixedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
             this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
 
         }
