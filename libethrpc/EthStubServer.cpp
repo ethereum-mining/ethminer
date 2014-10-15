@@ -105,9 +105,9 @@ dev::eth::Interface* EthStubServer::client() const
     return &(*m_web3.ethereum());
 }
 
-std::string EthStubServer::balanceAt(const string &a, const int& block)
+std::string EthStubServer::balanceAt(const string &address, const int& block)
 {
-    return jsToDecimal(toJS(client()->balanceAt(jsToAddress(a), block)));
+    return jsToDecimal(toJS(client()->balanceAt(jsToAddress(address), block)));
 }
 
 //TODO BlockDetails?
@@ -174,9 +174,9 @@ std::string EthStubServer::call(const Json::Value &json)
     return ret;
 }
 
-std::string EthStubServer::codeAt(const string &a, const int& block)
+std::string EthStubServer::codeAt(const string &address, const int& block)
 {
-    return client() ? jsFromBinary(client()->codeAt(jsToAddress(a), block)) : "";
+    return client() ? jsFromBinary(client()->codeAt(jsToAddress(address), block)) : "";
 }
 
 std::string EthStubServer::coinbase()
@@ -184,9 +184,9 @@ std::string EthStubServer::coinbase()
     return client() ? toJS(client()->address()) : "";
 }
 
-double EthStubServer::countAt(const string &a, const int& block)
+double EthStubServer::countAt(const string &address, const int& block)
 {
-    return client() ? (double)(uint64_t)client()->countAt(jsToAddress(a), block) : 0;
+    return client() ? (double)(uint64_t)client()->countAt(jsToAddress(address), block) : 0;
 }
 
 int EthStubServer::defaultBlock()
@@ -348,9 +348,9 @@ std::string EthStubServer::sha3(const string &s)
     return toJS(dev::eth::sha3(jsToBytes(s)));
 }
 
-std::string EthStubServer::stateAt(const string &a, const int& block, const string &s)
+std::string EthStubServer::stateAt(const string &address, const int& block, const string &storage)
 {
-    return client() ? toJS(client()->stateAt(jsToAddress(a), jsToU256(s), block)) : "";
+    return client() ? toJS(client()->stateAt(jsToAddress(address), jsToU256(storage), block)) : "";
 }
 
 std::string EthStubServer::toAscii(const string &s)
