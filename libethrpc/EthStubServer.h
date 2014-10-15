@@ -36,12 +36,12 @@ class EthStubServer: public AbstractEthStubServer
 public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
-    virtual std::string balanceAt(const std::string& a, const int& block);
+    virtual std::string balanceAt(const std::string& address, const int& block);
     virtual Json::Value block(const std::string& numberOrHash);
     virtual std::string call(const Json::Value& json);
-    virtual std::string codeAt(const std::string& a, const int& block);
+    virtual std::string codeAt(const std::string& address, const int& block);
     virtual std::string coinbase();
-    virtual double countAt(const std::string& a, const int& block);
+    virtual double countAt(const std::string& address, const int& block);
     virtual int defaultBlock();
     virtual std::string fromAscii(const int& padding, const std::string& s);
     virtual double fromFixed(const std::string& s);
@@ -59,7 +59,7 @@ public:
     virtual bool setListening(const bool& listening);
     virtual bool setMining(const bool& mining);
     virtual std::string sha3(const std::string& s);
-    virtual std::string stateAt(const std::string& a, const int& block, const std::string& s);
+    virtual std::string stateAt(const std::string& address, const int& block, const std::string& storage);
     virtual std::string toAscii(const std::string& s);
     virtual std::string toDecimal(const std::string& s);
     virtual std::string toFixed(const double& s);

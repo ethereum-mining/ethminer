@@ -30,11 +30,10 @@ var spec = [
             { "method": "defaultBlock", "params": null, "order": [], "returns" : 0},
             { "method": "number", "params": null, "order": [], "returns" : 0},
 
-
-            { "method": "balanceAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : ""},
-            { "method": "stateAt", "params": { "a": "", "s": "", "block": 0}, "order": ["a", "s", "block"], "returns": ""},
-            { "method": "countAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns" : 0.0},
-            { "method": "codeAt", "params": { "a": "", "block": 0}, "order": ["a", "block"], "returns": ""},
+            { "method": "balanceAt", "params": { "address": "", "block": 0}, "order": ["address", "block"], "returns" : ""},
+            { "method": "stateAt", "params": { "address": "", "storage": "", "block": 0}, "order": ["address", "storage", "block"], "returns": ""},
+            { "method": "countAt", "params": { "address": "", "block": 0}, "order": ["address", "block"], "returns" : 0.0},
+            { "method": "codeAt", "params": { "address": "", "block": 0}, "order": ["address", "block"], "returns": ""},
 
             { "method": "transact", "params": { "json": {}}, "order": ["json"], "returns": ""},
             { "method": "call", "params": { "json": {}}, "order": ["json"], "returns": ""},
