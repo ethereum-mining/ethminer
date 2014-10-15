@@ -275,10 +275,12 @@ private:
 	frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth.doTransact(JSON.stringify(a)); return ret; }"); \
+	frame->evaluateJavaScript("eth.makeTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallJson(JSON.stringify(a)); return ret; }"); \
+	frame->evaluateJavaScript("eth.makeCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
-	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
 	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
 	frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
 	frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
