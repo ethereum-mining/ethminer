@@ -102,6 +102,21 @@ window.eth = (function ethScope() {
         return p;
     };
 
+    var addPrefix = function (s, prefix) {
+        if (!s) {
+            return s;
+        }
+        return prefix + s.slice(0, 1).toUpperCase() + s.slice(1);
+    };
+
+    var toGetter = function (s) {
+        return addPrefix(s, "get");
+    };
+
+    var toSetter = function (s) {
+        return addPrefix(s, "set");
+    };
+
     var setupProperties = function (root, spec) {
         var properties = [
         { name: "coinbase", getter: "coinbase", setter: "setCoinbase" },
@@ -113,21 +128,6 @@ window.eth = (function ethScope() {
         { name: "peerCount", getter: "peerCount" },
         { name: "defaultBlock", getter: "defaultBlock" },
         { name: "number", getter: "number" }];
-    
-        var addPrefix = function (s, prefix) {
-            if (!s) {
-                return s;
-            }
-            return prefix + s.slice(0, 1).toUpperCase() + s.slice(1);
-        };
-
-        var toGetter = function (s) {
-            return addPrefix(s, "get");
-        };
-
-        var toSetter = function (s) {
-            return addPrefix(s, "set");
-        };
         
         properties.forEach(function (property) {
             var p = {};
@@ -152,7 +152,32 @@ window.eth = (function ethScope() {
         });
     };
 
+    var setupMethods = function (root, spec) {
+        var methods = [
+        { name: "balanceAt", async: "getBalanceAt" },
+        { name: "stateAt", async: "getStateAt" },
+        { name: "countAt", async: "getCountAt" },
+        { name: "codeAt", async: "getCodeAt" },
+        { name: "transact", async: "makeTransact" },
+        { name: "call", async: "makeCall" },
+        { name: "messages", async: "getMessages" },
+        { name: "transaction", async: "getTransaction" }
+        ];
+
+        methods.forEach(function (method) {
+            root[method.name] = function () {
+                return reqSync(method.name, getParams(spec, method.name, arguments));
+            };
+            if (method.async) {
+                root[method.async] = function () {
+                    return reqAsync(method.name, getParams(spec, method.name, arguments), arguments[arguments.length - 1]);
+                };
+            };
+        });
+    };
+
     setupProperties(ret, window.spec);
+    setupMethods(ret, window.spec);
 
     /*
 
