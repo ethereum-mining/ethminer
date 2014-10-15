@@ -422,7 +422,7 @@ QString QEthereum::getBlock(QString _numberOrHash) const
 	return m_client ? toJson(m_client->blockInfo(h), m_client->blockDetails(h)) : "";
 }
 
-QString QEthereum::getMessages(QString _json) const
+QString QEthereum::_private_getMessages(QString _json) const
 {
 	return m_client ? toJson(m_client->messages(toMessageFilter(_json))) : "";
 }
