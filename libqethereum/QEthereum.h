@@ -265,12 +265,16 @@ private:
     frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
     frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
     frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth._private_getMessages(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.getMessages = function(a, f) { window.setTimeout(function () { if (f) { f(JSON.parse(eth._private_getMessages(JSON.stringify(a)))); }}, 0);}"); \
+	frame->evaluateJavaScript("eth.getBalanceAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.balanceAt.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
