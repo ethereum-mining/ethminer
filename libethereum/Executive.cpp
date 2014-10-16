@@ -54,14 +54,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	auto nonceReq = m_s.transactionsFrom(m_sender);
 	if (m_t.nonce != nonceReq)
 	{
-		clog(StateChat) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
+		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
 		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce));
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
 	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
 	{
-		clog(StateChat) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
+		clog(StateDetail) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
 		BOOST_THROW_EXCEPTION(GasPriceTooLow());
 	}
 
@@ -70,7 +70,7 @@ bool Executive::setup(bytesConstRef _rlp)
 
 	if (m_t.gas < gasCost)
 	{
-		clog(StateChat) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
+		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
 		BOOST_THROW_EXCEPTION(OutOfGas());
 	}
 
@@ -79,14 +79,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	// Avoid unaffordable transactions.
 	if (m_s.balance(m_sender) < cost)
 	{
-		clog(StateChat) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
+		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
 		BOOST_THROW_EXCEPTION(NotEnoughCash());
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
 	{
-		clog(StateChat) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
+		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached());
 	}
 
@@ -94,7 +94,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	m_s.noteSending(m_sender);
 
 	// Pay...
-//	cnote << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
+	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
 	m_s.subBalance(m_sender, cost);
 
 	if (m_ms)

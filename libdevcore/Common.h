@@ -117,9 +117,6 @@ inline unsigned int toLog2(u256 _x)
 #define asserts(A) ::dev::assertAux(A, #A, __LINE__, __FILE__, ETH_FUNC)
 #define assertsEqual(A, B) ::dev::assertEqualAux(A, B, #A, #B, __LINE__, __FILE__, ETH_FUNC)
 
-#if defined(__GNUC__)
-__attribute__((gnu_inline, always_inline))
-#endif
 inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func)
 {
 	bool ret = _a;
@@ -134,9 +131,6 @@ inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _f
 }
 
 template<class A, class B>
-#if defined(__GNUC__)
-__attribute__((gnu_inline, always_inline))
-#endif
 inline bool assertEqualAux(A const& _a, B const& _b, char const* _aStr, char const* _bStr, unsigned _line, char const* _file, char const* _func)
 {
 	bool ret = _a == _b;
