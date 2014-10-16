@@ -1,4 +1,4 @@
-    #pragma once
+#pragma once
 
 #include <string>
 #include <vector>
@@ -12,14 +12,14 @@ namespace eth {
 
 template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 {
-    return "0x" + toHex(_h.ref());
+	return "0x" + toHex(_h.ref());
 }
 template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
 {
-    return "0x" + toHex(toCompactBigEndian(_n));
+	return "0x" + toHex(toCompactBigEndian(_n));
 }
 inline std::string toJS(dev::bytes const& _n) {
-    return "0x" + dev::toHex(_n);
+	return "0x" + dev::toHex(_n);
 }
 
 bytes jsToBytes(std::string const& _s);
@@ -29,15 +29,15 @@ std::string jsUnpadded(std::string _s);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 {
-    if (_s.substr(0, 2) == "0x")
-        // Hex
-        return FixedHash<N>(_s.substr(2));
-    else if (_s.find_first_not_of("0123456789") == std::string::npos)
-        // Decimal
-        return (typename FixedHash<N>::Arith)(_s);
-    else
-        // Binary
-        return FixedHash<N>(asBytes(jsPadded(_s, N)));
+	if (_s.substr(0, 2) == "0x")
+		// Hex
+		return FixedHash<N>(_s.substr(2));
+	else if (_s.find_first_not_of("0123456789") == std::string::npos)
+		// Decimal
+		return (typename FixedHash<N>::Arith)(_s);
+	else
+		// Binary
+		return FixedHash<N>(asBytes(jsPadded(_s, N)));
 }
 
 inline std::string jsToFixed(double _s)

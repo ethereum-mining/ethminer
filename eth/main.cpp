@@ -186,7 +186,7 @@ int main(int argc, char** argv)
 	unsigned peers = 5;
 	bool interactive = false;
 #if ETH_JSONRPC
-    int jsonrpc = -1;
+	int jsonrpc = -1;
 #endif
 	string publicIP;
 	bool bootstrap = false;
@@ -340,7 +340,7 @@ int main(int argc, char** argv)
 	auto_ptr<EthStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-        jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
+		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -428,7 +428,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-                jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
+				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3));
 				jsonrpcServer->setKeys({us});
 				jsonrpcServer->StartListening();
 			}
