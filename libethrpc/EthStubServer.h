@@ -37,7 +37,7 @@ public:
 	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 
     virtual std::string balanceAt(const std::string& address, const int& block);
-    virtual Json::Value block(const std::string& numberOrHash);
+	virtual Json::Value block(const Json::Value& params);
     virtual std::string call(const Json::Value& json);
     virtual std::string codeAt(const std::string& address, const int& block);
     virtual std::string coinbase();
@@ -64,8 +64,8 @@ public:
     virtual std::string toDecimal(const std::string& s);
     virtual std::string toFixed(const double& s);
     virtual std::string transact(const Json::Value& json);
-    virtual Json::Value transaction(const int& i, const std::string& numberOrHash);
-    virtual Json::Value uncle(const int& i, const std::string& numberOrHash);
+	virtual Json::Value transaction(const int& i, const Json::Value& params);
+	virtual Json::Value uncle(const int& i, const Json::Value &params);
     virtual std::string watch(const std::string& json);
 
     void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
@@ -74,4 +74,5 @@ private:
 	dev::WebThreeDirect& m_web3;
 	std::vector<dev::KeyPair> m_keys;
 	Json::Value jsontypeToValue(int);
+	dev::FixedHash<32> numberOrHash(Json::Value const &_json) const;
 };

@@ -38,12 +38,12 @@ var spec = [
             { "method": "transact", "params": { "json": {}}, "order": ["json"], "returns": ""},
             { "method": "call", "params": { "json": {}}, "order": ["json"], "returns": ""},
 
-            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": {}},
-            { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
-            { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
+            { "method": "block", "params": { "params": {}}, "order": ["params"], "returns": {}},
+            { "method": "transaction", "params": { "params": {}, "i": 0}, "order": ["params", "i"], "returns": {}},
+            { "method": "uncle", "params": { "params": {}, "i": 0}, "order": ["params", "i"], "returns": {}},
 
-            { "method": "messages", "params": { "json": {}}, "order": ["json"], "returns": []},
-            { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "messages", "params": { "params": {}}, "order": ["params"], "returns": []},
+            { "method": "watch", "params": { "params": ""}, "order": ["params"], "returns": ""},
 
             { "method": "secretToAddress", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},
@@ -54,8 +54,6 @@ var spec = [
             { "method": "toFixed", "params": {"s": 0.0}, "order": ["s"], "returns" : ""},
             { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0}
 ];
-
-
 
 
 
@@ -116,6 +114,23 @@ window.eth = (function ethScope() {
         return addPrefix(s, "set");
     };
 
+    var defaults = function (def, obj) {
+        if (!def) {
+            return obj;
+        }
+        var rewriteProperties = function (dst, p) {
+            Object.keys(p).forEach(function (key) {
+                if (p[key] !== undefined) {
+                    dst[key] = p[key];
+                }
+            });
+        };
+        var res = {};
+        rewriteProperties(res, def);
+        rewriteProperties(res, obj);
+        return res;
+    };
+
     var setupProperties = function (root, spec) {
         var properties = [
         { name: "coinbase", getter: "coinbase", setter: "setCoinbase" },
@@ -153,11 +168,11 @@ window.eth = (function ethScope() {
 
     var setupMethods = function (root, spec) {
         var methods = [
-        { name: "balanceAt", async: "getBalanceAt" },
-        { name: "stateAt", async: "getStateAt" },
-        { name: "countAt", async: "getCountAt" },
-        { name: "codeAt", async: "getCodeAt" },
-        { name: "transact", async: "makeTransact" },
+        { name: "balanceAt", async: "getBalanceAt", default: {block: 0} },
+        { name: "stateAt", async: "getStateAt", default: {block: 0} },
+        { name: "countAt", async: "getCountAt", default: {block: 0} },
+        { name: "codeAt", async: "getCodeAt", default: {block: 0} },
+        { name: "transact", async: "makeTransact"},
         { name: "call", async: "makeCall" },
         { name: "messages", async: "getMessages" },
         { name: "transaction", async: "getTransaction" }
@@ -165,11 +180,11 @@ window.eth = (function ethScope() {
 
         methods.forEach(function (method) {
             root[method.name] = function () {
-                return reqSync(method.name, getParams(spec, method.name, arguments));
+                return reqSync(method.name, defaults(method.default, getParams(spec, method.name, arguments)));
             };
             if (method.async) {
                 root[method.async] = function () {
-                    return reqAsync(method.name, getParams(spec, method.name, arguments), arguments[arguments.length - 1]);
+                    return reqAsync(method.name, defaults(method.default, getParams(spec, method.name, arguments)), arguments[arguments.length - 1]);
                 };
             };
         });

@@ -126,9 +126,9 @@ QString QEthereum::coinbase() const
 	return m_client ? toQJS(client()->address()) : "";
 }
 
-QString QEthereum::number() const
+unsigned QEthereum::number() const
 {
-	return m_client ? QString::number(client()->number() + 1) : "";
+	return client() ? client()->number() + 1 : 0;
 }
 
 QString QEthereum::account() const
@@ -367,7 +367,6 @@ static QString toJson(dev::eth::BlockInfo const& _bi)
 {
 	QJsonObject v;
 	v["hash"] = toQJS(_bi.hash);
-
 	v["parentHash"] = toQJS(_bi.parentHash);
 	v["sha3Uncles"] = toQJS(_bi.sha3Uncles);
 	v["miner"] = toQJS(_bi.coinbaseAddress);
@@ -389,7 +388,6 @@ static QString toJson(dev::eth::Transaction const& _bi)
 {
 	QJsonObject v;
 	v["hash"] = toQJS(_bi.sha3());
-
 	v["input"] = ::fromBinary(_bi.data);
 	v["to"] = toQJS(_bi.receiveAddress);
 	v["from"] = toQJS(_bi.sender());
@@ -401,25 +399,42 @@ static QString toJson(dev::eth::Transaction const& _bi)
 	return QString::fromUtf8(QJsonDocument(v).toJson());
 }
 
-QString QEthereum::getUncle(QString _numberOrHash, int _i) const
+dev::FixedHash<32> QEthereum::numberOrHash(QString const &_json) const
 {
-	auto n = toU256(_numberOrHash);
-	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
-	return m_client ? toJson(m_client->uncle(h, _i)) : "";
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	dev::FixedHash<32> hash;
+	if (f.contains("hash"))
+		hash = ::toFixed<32>(f["hash"].toString());
+	else if (f.contains("number"))
+		hash = client()->hashFromNumber((unsigned)f["number"].toInt());
+	return hash;
 }
 
-QString QEthereum::getTransaction(QString _numberOrHash, int _i) const
+QString QEthereum::_private_getBlock(QString _json) const
 {
-	auto n = toU256(_numberOrHash);
-	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
-	return m_client ? toJson(m_client->transaction(h, _i)) : "";
+	if (!client())
+		return "";
+	
+	auto hash = numberOrHash(_json);
+	return toJson(client()->blockInfo(hash), client()->blockDetails(hash));
 }
 
-QString QEthereum::getBlock(QString _numberOrHash) const
+QString QEthereum::_private_getTransaction(QString _json, int _i) const
 {
-	auto n = toU256(_numberOrHash);
-	auto h = n < m_client->number() ? m_client->hashFromNumber((unsigned)n) : ::toFixed<32>(_numberOrHash);
-	return m_client ? toJson(m_client->blockInfo(h), m_client->blockDetails(h)) : "";
+	if (!client())
+		return "";
+
+	auto hash = numberOrHash(_json);
+	return toJson(client()->transaction(hash, _i));
+}
+
+QString QEthereum::_private_getUncle(QString _json, int _i) const
+{
+	if (!client())
+		return "";
+	
+	auto hash = numberOrHash(_json);
+	return toJson(client()->uncle(hash, _i));
 }
 
 QString QEthereum::_private_getMessages(QString _json) const

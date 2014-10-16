@@ -14,7 +14,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             jsonrpc::AbstractServer<AbstractEthStubServer>(conn) 
         {
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::balanceAtI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::blockI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::blockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::callI);
             this->bindAndAddMethod(new jsonrpc::Procedure("codeAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("coinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::coinbaseI);
@@ -27,7 +27,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
             this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::lllI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("mining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
@@ -41,9 +41,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("toDecimal", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::toDecimalI);
             this->bindAndAddMethod(new jsonrpc::Procedure("toFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_REAL, NULL), &AbstractEthStubServer::toFixedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::transactionI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"numberOrHash",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::uncleI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactionI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::uncleI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "params",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
 
         }
         
@@ -54,7 +54,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void blockI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->block(request["numberOrHash"].asString());
+            response = this->block(request["params"]);
         }
 
         inline virtual void callI(const Json::Value& request, Json::Value& response) 
@@ -119,7 +119,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void messagesI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->messages(request["json"]);
+            response = this->messages(request["params"]);
         }
 
         inline virtual void miningI(const Json::Value& request, Json::Value& response) 
@@ -189,22 +189,22 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
 
         inline virtual void transactionI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->transaction(request["i"].asInt(), request["numberOrHash"].asString());
+            response = this->transaction(request["i"].asInt(), request["params"]);
         }
 
         inline virtual void uncleI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->uncle(request["i"].asInt(), request["numberOrHash"].asString());
+            response = this->uncle(request["i"].asInt(), request["params"]);
         }
 
         inline virtual void watchI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->watch(request["json"].asString());
+            response = this->watch(request["params"].asString());
         }
 
 
         virtual std::string balanceAt(const std::string& address, const int& block) = 0;
-        virtual Json::Value block(const std::string& numberOrHash) = 0;
+        virtual Json::Value block(const Json::Value& params) = 0;
         virtual std::string call(const Json::Value& json) = 0;
         virtual std::string codeAt(const std::string& address, const int& block) = 0;
         virtual std::string coinbase() = 0;
@@ -217,7 +217,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual Json::Value keys() = 0;
         virtual bool listening() = 0;
         virtual std::string lll(const std::string& s) = 0;
-        virtual Json::Value messages(const Json::Value& json) = 0;
+        virtual Json::Value messages(const Json::Value& params) = 0;
         virtual bool mining() = 0;
         virtual int number() = 0;
         virtual int peerCount() = 0;
@@ -231,9 +231,9 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string toDecimal(const std::string& s) = 0;
         virtual std::string toFixed(const double& s) = 0;
         virtual std::string transact(const Json::Value& json) = 0;
-        virtual Json::Value transaction(const int& i, const std::string& numberOrHash) = 0;
-        virtual Json::Value uncle(const int& i, const std::string& numberOrHash) = 0;
-        virtual std::string watch(const std::string& json) = 0;
+        virtual Json::Value transaction(const int& i, const Json::Value& params) = 0;
+        virtual Json::Value uncle(const int& i, const Json::Value& params) = 0;
+        virtual std::string watch(const std::string& params) = 0;
 
 };
 #endif //_ABSTRACTETHSTUBSERVER_H_
