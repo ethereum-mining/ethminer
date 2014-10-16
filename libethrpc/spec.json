@@ -12,7 +12,6 @@
             { "method": "defaultBlock", "params": null, "order": [], "returns" : 0},
             { "method": "number", "params": null, "order": [], "returns" : 0},
 
-
             { "method": "balanceAt", "params": { "address": "", "block": 0}, "order": ["address", "block"], "returns" : ""},
             { "method": "stateAt", "params": { "address": "", "storage": "", "block": 0}, "order": ["address", "storage", "block"], "returns": ""},
             { "method": "countAt", "params": { "address": "", "block": 0}, "order": ["address", "block"], "returns" : 0.0},
