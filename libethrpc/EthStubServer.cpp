@@ -102,7 +102,7 @@ EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDi
 
 dev::eth::Interface* EthStubServer::client() const
 {
-    return &(*m_web3.ethereum());
+    return m_web3.ethereum();
 }
 
 std::string EthStubServer::balanceAt(const string &address, const int& block)
@@ -220,10 +220,9 @@ std::string EthStubServer::gasPrice()
     return toJS(10 * dev::eth::szabo);
 }
 
-//TODO
 bool EthStubServer::listening()
 {
-    return /*client() ? client()->haveNetwork() :*/ false;
+	return m_web3.isNetworkStarted();
 }
 
 bool EthStubServer::mining()
@@ -312,11 +311,9 @@ int EthStubServer::number()
     return client() ? client()->number() + 1 : 0;
 }
 
-//TODO!
 int EthStubServer::peerCount()
 {
-    return /*client() ? (unsigned)client()->peerCount() :*/ 0;
-    //return m_web3.peerCount();
+	return m_web3.peerCount();
 }
 
 std::string EthStubServer::secretToAddress(const string &s)
@@ -332,14 +329,11 @@ bool EthStubServer::setCoinbase(const std::string &address)
 
 bool EthStubServer::setListening(const bool &listening)
 {
-    if (!client())
-        return Json::nullValue;
-
-/*	if (l)
-        client()->startNetwork();
+	if (listening)
+        m_web3.startNetwork();
     else
-        client()->stopNetwork();*/
-    return false;
+        m_web3.stopNetwork();
+	return true;
 }
 
 bool EthStubServer::setMining(const bool &mining)
@@ -458,15 +452,4 @@ bool EthStubServer::killWatch(const int& id)
 	return true;
 }
 
-
-
-
-
-
 #endif
-
-
-
-
-
-
