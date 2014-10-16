@@ -279,15 +279,15 @@ private:
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
 	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
 	frame->addToJavaScriptWindowObject("p2p", p2p, QWebFrame::ScriptOwnership); \
-    frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.listening = {get listening() {return p2p.listening}, set listening(l) {p2p.listening = l}}"); \
-    frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
-    frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.peerCount = {get peerCount() {return p2p.peerCount}}"); \
 	frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
