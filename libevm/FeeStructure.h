@@ -27,13 +27,6 @@ namespace dev
 namespace eth
 {
 
-enum class Instruction: uint8_t;
-
-struct FeeStructure
-{
-	static uint32_t getInstructionFee(Instruction _inst);
-};
-
 static uint32_t const c_stepGas		= 1;	///< Once per operation, except for SSTORE, SLOAD, BALANCE, SHA3, CREATE, CALL.
 static uint32_t const c_balanceGas	= 20;	///< Once per BALANCE operation.
 static uint32_t const c_sha3Gas		= 20;	///< Once per SHA3 operation.
