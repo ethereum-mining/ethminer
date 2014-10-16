@@ -54,7 +54,7 @@ public:
 	ExtVMFace() {}
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
 
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
@@ -99,6 +99,7 @@ public:
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	std::set<Address> suicides;	///< Any accounts that have suicided.
+	unsigned depth;				///< Depth of the present call.
 };
 
 }

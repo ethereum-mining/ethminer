@@ -101,30 +101,17 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
 		// FEES...
-		bigint runGas = c_stepGas;
+		bigint runGas = FeeStructure::getInstructionFee(inst); // throws BadInstruction
 		bigint newTempSize = m_temp.size();
 		switch (inst)
 		{
-		case Instruction::STOP:
-			runGas = 0;
-			break;
-
-		case Instruction::SUICIDE:
-			runGas = 0;
-			break;
 
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreGas * 2;
+				runGas = FeeStructure::c_sstoreGas * 2;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
 				runGas = 0;
-			else
-				runGas = c_sstoreGas;
-			break;
-
-		case Instruction::SLOAD:
-            runGas = c_sloadGas;
 			break;
 
 		// These all operate on memory and therefore potentially expand it:
@@ -146,7 +133,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SHA3:
 			require(2);
-			runGas = c_sha3Gas;
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
@@ -161,20 +147,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			require(4);
 			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
 			break;
-			
-		case Instruction::BALANCE:
-			runGas = c_balanceGas;
-			break;
 
 		case Instruction::CALL:
-			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
-			break;
-
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas += m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
@@ -184,17 +161,14 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			auto inOff = m_stack[m_stack.size() - 2];
 			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
-            runGas = c_createGas;
 			break;
 		}
 
-		default:
-			break;
 		}
 
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
-			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+			runGas += FeeStructure::c_memoryGas * (newTempSize - m_temp.size()) / 32;
 
 		if (_onOp)
 			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
@@ -567,7 +541,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::JUMP:
 			require(1);
 			nextPC = m_stack.back();
-			if ((Instruction)_ext.getCode(nextPC) != Instruction::JUMPDEST)
+			if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -576,7 +550,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if ((Instruction)_ext.getCode(nextPC) != Instruction::JUMPDEST)
+				if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
@@ -606,6 +580,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
@@ -636,6 +612,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
+				if (_ext.depth == 1024)
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
 			}
@@ -665,8 +643,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::STOP:
 			return bytesConstRef();
-		default:
-			BOOST_THROW_EXCEPTION(BadInstruction());
 		}
 	}
 	if (_steps == (uint64_t)-1)

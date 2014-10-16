@@ -6,17 +6,16 @@ aux_source_directory(. SRC_LIST)
 
 set(EXECUTABLE p2p)
 
-# set(CMAKE_INSTALL_PREFIX ../lib)
+file(GLOB HEADERS "*.h")
 if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST})
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
-
-file(GLOB HEADERS "*.h") 
 
 include_directories(..)
 
+target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 if(MINIUPNPC_LS)

@@ -29,7 +29,7 @@
 #include <libdevcrypto/TrieDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Dagger.h>
+#include <libethcore/ProofOfWork.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
@@ -40,15 +40,16 @@
 
 namespace dev
 {
-namespace test{ class FakeExtVM;}
+namespace test{ class FakeExtVM; class FakeState;}
 
 namespace eth
 {
 
 class BlockChain;
 
-struct StateChat: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 4; };
+struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
+struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 
 struct TransactionReceipt
 {
@@ -84,6 +85,7 @@ class State
 {
 	friend class ExtVM;
 	friend class test::FakeExtVM;
+	friend class test::FakeState;
 	friend class Executive;
 
 public:
@@ -321,7 +323,7 @@ private:
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
-	Dagger m_dagger;
+	ProofOfWork m_pow;
 
 	u256 m_blockReward;
 

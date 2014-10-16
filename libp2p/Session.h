@@ -29,6 +29,8 @@
 #include <utility>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/RangeMask.h>
+#include <libdevcore/Guards.h>
 #include "Common.h"
 
 namespace dev
@@ -36,6 +38,8 @@ namespace dev
 
 namespace p2p
 {
+
+struct Node;
 
 /**
  * @brief The Session class
@@ -47,17 +51,18 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, bi::tcp::socket _socket, bi::address _peerAddress, unsigned short _peerPort = 0);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force = false);
+	Session(Host* _server, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual);
 	virtual ~Session();
 
 	void start();
-	void disconnect(int _reason);
+	void disconnect(DisconnectReason _reason);
 
 	void ping();
 
 	bool isOpen() const { return m_socket.is_open(); }
 
-	h512 id() const { return m_id; }
+	NodeId id() const;
 	unsigned socketId() const { return m_socket.native_handle(); }
 
 	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
@@ -68,52 +73,60 @@ public:
 	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
-	void sendDestroy(bytes& _msg);
+	void send(bytes&& _msg);
 	void send(bytesConstRef _msg);
 
-	void addRating(unsigned _r) { m_rating += _r; }
+	int rating() const;
+	void addRating(unsigned _r);
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
 	PeerInfo const& info() const { return m_info; }
 
+	void ensureNodesRequested();
+	void serviceNodesRequest();
+
 private:
-	void dropped();
+	/// Drop the connection for the reason @a _r.
+	void drop(DisconnectReason _r);
+
+	/// Perform a read on the socket.
 	void doRead();
-	void doWrite(std::size_t length);
-	void writeImpl(bytes& _buffer);
+
+	/// Perform a single round of the write operation. This could end up calling itself asynchronously.
 	void write();
 
-	void getPeers();
+	/// Interpret an incoming message.
 	bool interpret(RLP const& _r);
 
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
 
-	Host* m_server;
+	Host* m_server;							///< The host that owns us. Never null.
 
-	std::mutex m_writeLock;
-	std::deque<bytes> m_writeQueue;
+	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
+	Mutex x_writeQueue;						///< Mutex for the write queue.
+	std::deque<bytes> m_writeQueue;			///< The write queue.
+	std::array<byte, 65536> m_data;			///< Data buffer for the write queue.
+	bytes m_incoming;						///< The incoming read queue of bytes.
 
-	mutable bi::tcp::socket m_socket;	///< Mutable to ask for native_handle().
-	std::array<byte, 65536> m_data;
-	PeerInfo m_info;
-	h512 m_id;
+	PeerInfo m_info;						///< Dyanamic information about this peer.
 
-	bytes m_incoming;
-	unsigned m_protocolVersion;
-	unsigned short m_listenPort;			///< Port that the remote client is listening on for connections. Useful for giving to peers.
+	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
+	std::shared_ptr<Node> m_node;			///< The Node object. Might be null if we constructed using a bare address/port.
+	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
+	bool m_force = false;					///< If true, ignore IDs being different. This could open you up to MitM attacks.
+	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
-	std::chrono::steady_clock::time_point m_ping;
-	std::chrono::steady_clock::time_point m_connect;
-	std::chrono::steady_clock::time_point m_disconnect;
+	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
+	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 
-	unsigned m_rating;
+	std::chrono::steady_clock::time_point m_connect;		///< Time point of connection.
+	std::chrono::steady_clock::time_point m_ping;			///< Time point of last ping.
+	std::chrono::steady_clock::time_point m_lastReceived;	///< Time point of last message.
 
-	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;
-	std::set<h512> m_knownPeers;
-
-	bool m_willBeDeleted = false;			///< True if we already posted a deleter on the strand.
+	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;	///< The peer's capability set.
+	RangeMask<unsigned> m_knownNodes;		///< Nodes we already know about as indices into Host's nodesList. These shouldn't be resent to peer.
 };
 
 }

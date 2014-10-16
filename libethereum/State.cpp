@@ -28,7 +28,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/Dagger.h>
 #include <libevm/VM.h>
 #include "BlockChain.h"
 #include "Defaults.h"
@@ -75,7 +74,9 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 {
 	h256 ret;
 	ripemd160(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+	memset(_out.data(), 0, std::min<int>(12, _out.size()));
+	if (_out.size() > 12)
+		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
 }
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
@@ -835,7 +836,7 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_dagger.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
@@ -1284,8 +1285,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	{
 		auto it = _s.m_cache.find(i);
 		AddressState* cache = it != _s.m_cache.end() ? &it->second : nullptr;
-		auto rlpString = trie.at(i);
-		RLP r(dtr.count(i) ? rlpString : "");
+		string rlpString = dtr.count(i) ? trie.at(i) : "";
+		RLP r(rlpString);
 		assert(cache || r);
 
 		if (cache && !cache->isAlive())
@@ -1298,7 +1299,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			if ((!cache || cache->codeBearing()) && (!r || r[3].toHash<h256>() != EmptySHA3))
+			/// For POC6, 3rd value of account is code and will be empty if code is not present.
+			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
 			{
 				std::map<u256, u256> mem;
 				std::set<u256> back;
