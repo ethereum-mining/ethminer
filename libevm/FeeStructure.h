@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <boost/config.hpp>
 
 namespace dev
