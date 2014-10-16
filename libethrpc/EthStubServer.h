@@ -15,7 +15,9 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file EthStubServer.h
- * @author Gav Wood <i@gavwood.com>
+ * @authors:
+ *   Gav Wood <i@gavwood.com>
+ *   Marek Kotewicz <marek@ethdev.com>
  * @date 2014
  */
 

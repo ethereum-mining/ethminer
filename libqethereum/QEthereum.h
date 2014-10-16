@@ -13,7 +13,11 @@ class Interface;
 namespace shh {
 class Interface;
 }
+namespace p2p {
+class Host;
 }
+}
+
 
 class QJSEngine;
 class QWebFrame;
@@ -164,7 +168,6 @@ public:
 	Q_INVOKABLE void killWatch(unsigned _w);
 	void clearWatches();
 
-	bool isListening() const;
 	bool isMining() const;
 
 	QString/*dev::Address*/ coinbase() const;
@@ -177,12 +180,9 @@ public:
 	QString/*dev::Address*/ account() const;
 	QStringList/*list of dev::Address*/ accounts() const;
 
-	unsigned peerCount() const;
-
 public slots:
 	void _private_setCoinbase(QString/*dev::Address*/);
 	void _private_setMining(bool _l);
-	void _private_setListening(bool _l);
 	void setDefault(int _block);
 
 	/// Check to see if anything has changed, fire off signals if so.
@@ -190,20 +190,17 @@ public slots:
 	void poll();
 
 signals:
+	void netChanged();
 	void watchChanged(unsigned _w);
 	void coinbaseChanged();
 	void keysChanged();
-	void netChanged();
-	void miningChanged();
 
 private:
 	Q_PROPERTY(QString coinbase READ coinbase WRITE _private_setCoinbase NOTIFY coinbaseChanged)
-	Q_PROPERTY(bool listening READ isListening WRITE _private_setListening NOTIFY netChanged)
 	Q_PROPERTY(bool mining READ isMining WRITE _private_setMining NOTIFY netChanged)
 	Q_PROPERTY(QString gasPrice READ gasPrice)
 	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
 	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
-	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
     Q_PROPERTY(unsigned number READ number NOTIFY watchChanged)
 
@@ -211,6 +208,28 @@ private:
 	std::vector<unsigned> m_watches;
 	QList<dev::KeyPair> m_accounts;
 	dev::FixedHash<32> numberOrHash(QString const &_json) const;
+};
+
+class QPeer2Peer : public QObject
+{
+	Q_OBJECT
+	
+public:
+	QPeer2Peer(QObject *_p, dev::p2p::Host *_p2p);
+	virtual ~QPeer2Peer();
+	bool isListening() const;
+	void _private_setListening(bool _l);
+	unsigned peerCount() const;
+	
+signals:
+	void netChanged();
+	void miningChanged();
+	
+private:
+	Q_PROPERTY(bool listening READ isListening WRITE _private_setListening NOTIFY netChanged)
+	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
+	
+	dev::p2p::Host* m_p2p;
 };
 
 class QWhisper: public QObject
@@ -252,14 +271,17 @@ private:
 	std::vector<unsigned> m_watches;
 };
 
-#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, env) [frame, eth, shh, env]() \
+
+#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, p2p, env) [frame, eth, shh, p2p, env]() \
 { \
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
 	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
+	frame->addToJavaScriptWindowObject("p2p", p2p, QWebFrame::ScriptOwnership); \
     frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
     frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.listening = {get listening() {return p2p.listening}, set listening(l) {p2p.listening = l}}"); \
     frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
     frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
     frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
@@ -267,6 +289,7 @@ private:
     frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
     frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
+	frame->evaluateJavaScript("eth.peerCount = {get peerCount() {return p2p.peerCount}}"); \
 	frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
 	frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \

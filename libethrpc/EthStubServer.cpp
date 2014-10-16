@@ -17,6 +17,7 @@
 /** @file EthStubServer.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
+ *   Marek Kotewicz <marek@ethdev.com>
  * @date 2014
  */
 

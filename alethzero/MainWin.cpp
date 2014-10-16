@@ -137,13 +137,15 @@ Main::Main(QWidget *parent) :
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_ethereum = new QEthereum(this, ethereum(), owned());
 		m_whisper = new QWhisper(this, whisper());
+		m_p2p = new QPeer2Peer(this, peer2peer());
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
+		auto qp2p = m_p2p;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, qp2p, this));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
