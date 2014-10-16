@@ -28,6 +28,9 @@
 #include "CommonData.h"
 #include "FixedHash.h"
 
+// for use in what() implementations
+#define ETH_RETURN_STRING(S) static std::string s_what; s_what = S; return s_what.c_str();
+
 namespace dev
 {
 // base class for all exceptions
