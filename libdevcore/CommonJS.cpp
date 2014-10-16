@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file EthStubServer.cpp
+/** @file CommonJS.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
