@@ -51,10 +51,11 @@ if (APPLE)
 	include(BundleUtilities)
 endif ()
 
+file(GLOB HEADERS "*.h")
 if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST})
+	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS})
 else()
-	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST})
+	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS})
 endif()
 
 include_directories(/)
