@@ -188,10 +188,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		// EXECUTE...
 		switch (inst)
 		{
-		default:
-			BOOST_THROW_EXCEPTION(BadInstruction());
-			break;
-
 		case Instruction::ADD:
 			//pops two items and pushes S[-1] + S[-2] mod 2^256.
 			require(2);
