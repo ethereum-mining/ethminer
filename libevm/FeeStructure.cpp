@@ -24,18 +24,22 @@
 
 #include <libevmface/Instruction.h>
 
+#include "VM.h"
+
 namespace dev
 {
 namespace eth
 {
 
-uint32_t FeeStructure::getInstructionFee(Instruction _inst) BOOST_NOEXCEPT_OR_NOTHROW
+uint32_t FeeStructure::getInstructionFee(Instruction _inst)
 {
 	switch (_inst)
 	{
+	default:
+		BOOST_THROW_EXCEPTION(BadInstruction());
+
 	case Instruction::STOP:
 	case Instruction::SUICIDE:
-	default: // In case of bad instruction return 0
 		return 0;
 
 	case Instruction::SSTORE:
