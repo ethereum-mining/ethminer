@@ -162,7 +162,7 @@ QStringList QEthereum::keys() const
 	return ret;
 }
 
-void QEthereum::_private_setCoinbase(QString _a)
+void QEthereum::setCoinbaseImpl(QString _a)
 {
 	if (m_client && client()->address() != toAddress(_a))
 	{
@@ -411,7 +411,7 @@ dev::FixedHash<32> QEthereum::numberOrHash(QString const &_json) const
 	return hash;
 }
 
-QString QEthereum::_private_getBlock(QString _json) const
+QString QEthereum::getBlockImpl(QString _json) const
 {
 	if (!client())
 		return "";
@@ -420,7 +420,7 @@ QString QEthereum::_private_getBlock(QString _json) const
 	return toJson(client()->blockInfo(hash), client()->blockDetails(hash));
 }
 
-QString QEthereum::_private_getTransaction(QString _json, int _i) const
+QString QEthereum::getTransactionImpl(QString _json, int _i) const
 {
 	if (!client())
 		return "";
@@ -429,7 +429,7 @@ QString QEthereum::_private_getTransaction(QString _json, int _i) const
 	return toJson(client()->transaction(hash, _i));
 }
 
-QString QEthereum::_private_getUncle(QString _json, int _i) const
+QString QEthereum::getUncleImpl(QString _json, int _i) const
 {
 	if (!client())
 		return "";
@@ -438,7 +438,7 @@ QString QEthereum::_private_getUncle(QString _json, int _i) const
 	return toJson(client()->uncle(hash, _i));
 }
 
-QString QEthereum::_private_getMessages(QString _json) const
+QString QEthereum::getMessagesImpl(QString _json) const
 {
 	return m_client ? toJson(m_client->messages(toMessageFilter(_json))) : "";
 }
@@ -448,7 +448,7 @@ bool QEthereum::isMining() const
 	return m_client ? client()->isMining() : false;
 }
 
-void QEthereum::_private_setMining(bool _l)
+void QEthereum::setMiningImpl(bool _l)
 {
 	if (m_client)
 	{
@@ -459,7 +459,7 @@ void QEthereum::_private_setMining(bool _l)
 	}
 }
 
-QString QEthereum::_private_doTransact(QString _json)
+QString QEthereum::doTransactImpl(QString _json)
 {
 	QString ret;
 	if (!m_client)
@@ -485,7 +485,7 @@ QString QEthereum::_private_doTransact(QString _json)
 	return ret;
 }
 
-QString QEthereum::_private_doCall(QString _json)
+QString QEthereum::doCallImpl(QString _json)
 {
 	if (!m_client)
 		return QString();
@@ -554,7 +554,7 @@ bool QPeer2Peer::isListening() const
 	return m_p2p ? m_p2p->isStarted() : false;
 }
 
-void QPeer2Peer::_private_setListening(bool _l)
+void QPeer2Peer::setListeningImpl(bool _l)
 {
 	if (!m_p2p)
 		return;
