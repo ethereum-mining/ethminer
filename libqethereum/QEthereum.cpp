@@ -5,6 +5,7 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
+#include <libp2p/Host.h>
 #include "QEthereum.h"
 using namespace std;
 using namespace dev;
@@ -447,11 +448,6 @@ bool QEthereum::isMining() const
 	return m_client ? client()->isMining() : false;
 }
 
-bool QEthereum::isListening() const
-{
-	return /*m_client ? client()->haveNetwork() :*/ false;
-}
-
 void QEthereum::_private_setMining(bool _l)
 {
 	if (m_client)
@@ -461,21 +457,6 @@ void QEthereum::_private_setMining(bool _l)
 		else
 			client()->stopMining();
 	}
-}
-
-void QEthereum::_private_setListening(bool)
-{
-	if (!m_client)
-		return;
-/*	if (_l)
-		client()->startNetwork();
-	else
-		client()->stopNetwork();*/
-}
-
-unsigned QEthereum::peerCount() const
-{
-	return /*m_client ? (unsigned)client()->peerCount() :*/ 0;
 }
 
 QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
@@ -575,6 +556,35 @@ void QEthereum::poll()
 	for (auto w: m_watches)
 		if (m_client->checkWatch(w))
 			emit watchChanged(w);
+}
+
+QPeer2Peer::QPeer2Peer(QObject *_p, dev::p2p::Host *_p2p): QObject(_p), m_p2p(_p2p)
+{
+}
+
+QPeer2Peer::~QPeer2Peer()
+{
+}
+
+bool QPeer2Peer::isListening() const
+{
+	return m_p2p ? m_p2p->isStarted() : false;
+}
+
+void QPeer2Peer::_private_setListening(bool _l)
+{
+	if (!m_p2p)
+		return;
+	if (_l)
+		m_p2p->start();
+	else
+		m_p2p->stop();
+}
+
+
+unsigned QPeer2Peer::peerCount() const
+{
+	return m_p2p ? (unsigned)m_p2p->peerCount() : 0;
 }
 
 // TODO: repot and hook all these up.
