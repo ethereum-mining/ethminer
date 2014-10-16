@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file EthStubServer.h
+/** @file WebThreeStubServer.h
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
@@ -28,15 +28,15 @@
 #include <libdevcrypto/Common.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include "abstractethstubserver.h"
+#include "abstractwebthreestubserver.h"
 #pragma GCC diagnostic pop
 
 namespace dev { class WebThreeDirect; namespace eth { class Interface; } class KeyPair; }
 
-class EthStubServer: public AbstractEthStubServer
+class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
-	EthStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 	
 	virtual std::string balanceAt(const std::string& address, const int& block);
 	virtual Json::Value block(const Json::Value& params);

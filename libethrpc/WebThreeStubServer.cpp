@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthStubServer.cpp
+/** @file WebThreeStubServer.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
@@ -22,7 +22,7 @@
  */
 
 #if ETH_JSONRPC
-#include "EthStubServer.h"
+#include "WebThreeStubServer.h"
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
@@ -96,23 +96,23 @@ static Json::Value toJson(const dev::eth::Transaction& t)
 	return res;
 }
 
-EthStubServer::EthStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3):
-	AbstractEthStubServer(_conn),
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3):
+	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
 {
 }
 
-dev::eth::Interface* EthStubServer::client() const
+dev::eth::Interface* WebThreeStubServer::client() const
 {
 	return m_web3.ethereum();
 }
 
-std::string EthStubServer::balanceAt(const string &address, const int& block)
+std::string WebThreeStubServer::balanceAt(const string &address, const int& block)
 {
 	return toJS(client()->balanceAt(jsToAddress(address), block));
 }
 
-dev::FixedHash<32> EthStubServer::numberOrHash(Json::Value const &json) const
+dev::FixedHash<32> WebThreeStubServer::numberOrHash(Json::Value const &json) const
 {
 	dev::FixedHash<32> hash;
 	if (!json["hash"].empty())
@@ -122,7 +122,7 @@ dev::FixedHash<32> EthStubServer::numberOrHash(Json::Value const &json) const
 	return hash;
 }
 
-Json::Value EthStubServer::block(const Json::Value &params)
+Json::Value WebThreeStubServer::block(const Json::Value &params)
 {
 	if (!client())
 		return "";
@@ -169,7 +169,7 @@ static TransactionJS toTransaction(const Json::Value &json)
 	return ret;
 }
 
-std::string EthStubServer::call(const Json::Value &json)
+std::string WebThreeStubServer::call(const Json::Value &json)
 {
 	std::string ret;
 	if (!client())
@@ -187,59 +187,59 @@ std::string EthStubServer::call(const Json::Value &json)
 	return ret;
 }
 
-std::string EthStubServer::codeAt(const string &address, const int& block)
+std::string WebThreeStubServer::codeAt(const string &address, const int& block)
 {
 	return client() ? jsFromBinary(client()->codeAt(jsToAddress(address), block)) : "";
 }
 
-std::string EthStubServer::coinbase()
+std::string WebThreeStubServer::coinbase()
 {
 	return client() ? toJS(client()->address()) : "";
 }
 
-double EthStubServer::countAt(const string &address, const int& block)
+double WebThreeStubServer::countAt(const string &address, const int& block)
 {
 	return client() ? (double)(uint64_t)client()->countAt(jsToAddress(address), block) : 0;
 }
 
-int EthStubServer::defaultBlock()
+int WebThreeStubServer::defaultBlock()
 {
 	return client() ? client()->getDefault() : 0;
 }
 
-std::string EthStubServer::fromAscii(const int& padding, const std::string& s)
+std::string WebThreeStubServer::fromAscii(const int& padding, const std::string& s)
 {
 	return jsFromBinary(s, padding);
 }
 
-double EthStubServer::fromFixed(const string &s)
+double WebThreeStubServer::fromFixed(const string &s)
 {
 	return jsFromFixed(s);
 }
 
-std::string EthStubServer::gasPrice()
+std::string WebThreeStubServer::gasPrice()
 {
 	return toJS(10 * dev::eth::szabo);
 }
 
-bool EthStubServer::listening()
+bool WebThreeStubServer::listening()
 {
 	return m_web3.isNetworkStarted();
 }
 
-bool EthStubServer::mining()
+bool WebThreeStubServer::mining()
 {
 	return client() ? client()->isMining() : false;
 }
 
-std::string EthStubServer::key()
+std::string WebThreeStubServer::key()
 {
 	if (!m_keys.size())
 		return std::string();
 	return toJS(m_keys[0].sec());
 }
 
-Json::Value EthStubServer::keys()
+Json::Value WebThreeStubServer::keys()
 {
 	Json::Value ret;
 	for (auto i: m_keys)
@@ -247,7 +247,7 @@ Json::Value EthStubServer::keys()
 	return ret;
 }
 
-std::string EthStubServer::lll(const string &s)
+std::string WebThreeStubServer::lll(const string &s)
 {
 	return toJS(dev::eth::compileLLL(s));
 }
@@ -300,7 +300,7 @@ static dev::eth::MessageFilter toMessageFilter(const Json::Value &json)
 	return filter;
 }
 
-Json::Value EthStubServer::messages(const Json::Value &json)
+Json::Value WebThreeStubServer::messages(const Json::Value &json)
 {
 	Json::Value res;
 	if (!client())
@@ -308,33 +308,33 @@ Json::Value EthStubServer::messages(const Json::Value &json)
 	return toJson(client()->messages(toMessageFilter(json)));
 }
 
-int EthStubServer::number()
+int WebThreeStubServer::number()
 {
 	return client() ? client()->number() + 1 : 0;
 }
 
-std::string EthStubServer::offset(const int& o, const std::string& s)
+std::string WebThreeStubServer::offset(const int& o, const std::string& s)
 {
 	return toJS(jsToU256(s) + o);
 }
 
-int EthStubServer::peerCount()
+int WebThreeStubServer::peerCount()
 {
 	return m_web3.peerCount();
 }
 
-std::string EthStubServer::secretToAddress(const string &s)
+std::string WebThreeStubServer::secretToAddress(const string &s)
 {
 	return toJS(KeyPair(jsToSecret(s)).address());
 }
 
-bool EthStubServer::setCoinbase(const std::string &address)
+bool WebThreeStubServer::setCoinbase(const std::string &address)
 {
 	client()->setAddress(jsToAddress(address));
 	return true;
 }
 
-bool EthStubServer::setListening(const bool &listening)
+bool WebThreeStubServer::setListening(const bool &listening)
 {
 	if (listening)
 		m_web3.startNetwork();
@@ -343,7 +343,7 @@ bool EthStubServer::setListening(const bool &listening)
 	return true;
 }
 
-bool EthStubServer::setMining(const bool &mining)
+bool WebThreeStubServer::setMining(const bool &mining)
 {
 	if (!client())
 		return Json::nullValue;
@@ -355,32 +355,32 @@ bool EthStubServer::setMining(const bool &mining)
 	return true;
 }
 
-std::string EthStubServer::sha3(const string &s)
+std::string WebThreeStubServer::sha3(const string &s)
 {
 	return toJS(dev::eth::sha3(jsToBytes(s)));
 }
 
-std::string EthStubServer::stateAt(const string &address, const int& block, const string &storage)
+std::string WebThreeStubServer::stateAt(const string &address, const int& block, const string &storage)
 {
 	return client() ? toJS(client()->stateAt(jsToAddress(address), jsToU256(storage), block)) : "";
 }
 
-std::string EthStubServer::toAscii(const string &s)
+std::string WebThreeStubServer::toAscii(const string &s)
 {
 	return jsToBinary(s);
 }
 
-std::string EthStubServer::toDecimal(const string &s)
+std::string WebThreeStubServer::toDecimal(const string &s)
 {
 	return jsToDecimal(s);
 }
 
-std::string EthStubServer::toFixed(const double &s)
+std::string WebThreeStubServer::toFixed(const double &s)
 {
 	return jsToFixed(s);
 }
 
-std::string EthStubServer::transact(const Json::Value &json)
+std::string WebThreeStubServer::transact(const Json::Value &json)
 {
     std::string ret;
     if (!client())
@@ -406,7 +406,7 @@ std::string EthStubServer::transact(const Json::Value &json)
 	return ret;
 }
 
-Json::Value EthStubServer::transaction(const int &i, const Json::Value &params)
+Json::Value WebThreeStubServer::transaction(const int &i, const Json::Value &params)
 {
 	if (!client())
 		return "";
@@ -415,7 +415,7 @@ Json::Value EthStubServer::transaction(const int &i, const Json::Value &params)
 	return toJson(client()->transaction(hash, i));
 }
 
-Json::Value EthStubServer::uncle(const int &i, const Json::Value &params)
+Json::Value WebThreeStubServer::uncle(const int &i, const Json::Value &params)
 {
 	if (!client())
 		return "";
@@ -424,7 +424,7 @@ Json::Value EthStubServer::uncle(const int &i, const Json::Value &params)
 	return toJson(client()->uncle(hash, i));
 }
 
-int EthStubServer::watch(const string &json)
+int WebThreeStubServer::watch(const string &json)
 {
 	unsigned ret = -1;
 	if (!client())
@@ -444,14 +444,14 @@ int EthStubServer::watch(const string &json)
 	return ret;
 }
 
-bool EthStubServer::check(const int& id)
+bool WebThreeStubServer::check(const int& id)
 {
 	if (!client())
 		return false;
 	return client()->checkWatch(id);
 }
 
-bool EthStubServer::killWatch(const int& id)
+bool WebThreeStubServer::killWatch(const int& id)
 {
 	if (!client())
 		return false;

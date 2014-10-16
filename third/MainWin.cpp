@@ -157,6 +157,11 @@ eth::Client* Main::ethereum() const
 	return m_web3->ethereum();
 }
 
+dev::p2p::Host* Main::peer2peer() const
+{
+	return web3()->peer2peer();
+}
+
 std::shared_ptr<dev::shh::WhisperHost> Main::whisper() const
 {
 	return m_web3->whisper();

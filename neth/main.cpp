@@ -33,8 +33,8 @@
 #include <libevmface/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
-#include <libethrpc/EthStubServer.h>
-#include <libethrpc/abstractethstubserver.h>
+#include <libethrpc/WebThreeStubServer.h>
+#include <libethrpc/abstractwebthreestubserver.h>
 #include <libdevcore/CommonJS.h>
 #endif
 #include <libwebthree/WebThree.h>
@@ -475,10 +475,10 @@ int main(int argc, char** argv)
 		c.startMining();
 
 #if ETH_JSONRPC
-	auto_ptr<EthStubServer> jsonrpcServer;
+	auto_ptr<WebThreeStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 		jsonrpcServer->setKeys({us});
 		jsonrpcServer->StartListening();
 	}
@@ -552,7 +552,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
+			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
 			jsonrpcServer->setKeys({us});
 			jsonrpcServer->StartListening();
 		}
