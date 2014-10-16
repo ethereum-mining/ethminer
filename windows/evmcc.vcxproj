@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="..\evmcc\BasicBlock.cpp" />
     <ClCompile Include="..\evmcc\Compiler.cpp" />
+    <ClCompile Include="..\evmcc\CompilerHelper.cpp" />
     <ClCompile Include="..\evmcc\evmcc.cpp" />
     <ClCompile Include="..\evmcc\ExecutionEngine.cpp" />
     <ClCompile Include="..\evmcc\Ext.cpp" />
@@ -33,6 +34,7 @@
   <ItemGroup>
     <ClInclude Include="..\evmcc\BasicBlock.h" />
     <ClInclude Include="..\evmcc\Compiler.h" />
+    <ClInclude Include="..\evmcc\CompilerHelper.h" />
     <ClInclude Include="..\evmcc\ExecutionEngine.h" />
     <ClInclude Include="..\evmcc\Ext.h" />
     <ClInclude Include="..\evmcc\GasMeter.h" />
@@ -123,8 +125,9 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../llvm-3.5.0/include;../../builds/llvm3.5/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnablePREfast>false</EnablePREfast>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,6 +147,7 @@
       <AdditionalIncludeDirectories>../../llvm-3.5.0/include;../../builds/llvm3.5/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4068;4244;4267;4800</DisableSpecificWarnings>
       <EnablePREfast>false</EnablePREfast>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
