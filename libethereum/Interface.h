@@ -123,7 +123,7 @@ public:
 	virtual Addresses addresses(int _block) const = 0;
 
 	/// Get the fee associated for a transaction with the given data.
-	static u256 txGas(unsigned _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
+	static u256 txGas(unsigned _dataCount, u256 _gas = 0) { return u256(c_txDataGas) * _dataCount + c_txGas + _gas; }
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
