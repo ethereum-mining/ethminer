@@ -45,8 +45,8 @@ struct FeeStructure
 	static uint32_t const c_txGas		= 500;	///< Per transaction. NOTE: Not payable on data of calls between transactions.
 
 	/// Returns step fee of the instruction. 
-	/// In case of bad instruction code, returns 0.
-	static uint32_t getInstructionFee(Instruction _inst) BOOST_NOEXCEPT_OR_NOTHROW;
+	/// In case of bad instruction code, throws BadInstruction exception.
+	static uint32_t getInstructionFee(Instruction _inst);
 };
 
 }
