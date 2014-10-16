@@ -66,13 +66,14 @@ public:
     virtual std::string transact(const Json::Value& json);
 	virtual Json::Value transaction(const int& i, const Json::Value& params);
 	virtual Json::Value uncle(const int& i, const Json::Value &params);
-    virtual std::string watch(const std::string& json);
+    virtual int watch(const std::string& json);
+	virtual bool check(const int& id);
+	virtual bool killWatch(const int& id);
 
     void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:
     dev::eth::Interface* client() const;
 	dev::WebThreeDirect& m_web3;
 	std::vector<dev::KeyPair> m_keys;
-	Json::Value jsontypeToValue(int);
 	dev::FixedHash<32> numberOrHash(Json::Value const &_json) const;
 };

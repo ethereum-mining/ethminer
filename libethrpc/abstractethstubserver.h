@@ -16,6 +16,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::balanceAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::blockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::callI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("check", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "id",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::checkI);
             this->bindAndAddMethod(new jsonrpc::Procedure("codeAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("coinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::coinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("countAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::countAtI);
@@ -25,6 +26,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("gasPrice", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::gasPriceI);
             this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractEthStubServer::keyI);
             this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractEthStubServer::keysI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("killWatch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "id",jsonrpc::JSON_INTEGER, NULL), &AbstractEthStubServer::killWatchI);
             this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::lllI);
             this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
@@ -43,7 +45,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transaction", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::transactionI);
             this->bindAndAddMethod(new jsonrpc::Procedure("uncle", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "i",jsonrpc::JSON_INTEGER,"params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::uncleI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "params",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("watch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER, "params",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::watchI);
 
         }
         
@@ -60,6 +62,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         inline virtual void callI(const Json::Value& request, Json::Value& response) 
         {
             response = this->call(request["json"]);
+        }
+
+        inline virtual void checkI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->check(request["id"].asInt());
         }
 
         inline virtual void codeAtI(const Json::Value& request, Json::Value& response) 
@@ -105,6 +112,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         inline virtual void keysI(const Json::Value& request, Json::Value& response) 
         {
             response = this->keys();
+        }
+
+        inline virtual void killWatchI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->killWatch(request["id"].asInt());
         }
 
         inline virtual void listeningI(const Json::Value& request, Json::Value& response) 
@@ -206,6 +218,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string balanceAt(const std::string& address, const int& block) = 0;
         virtual Json::Value block(const Json::Value& params) = 0;
         virtual std::string call(const Json::Value& json) = 0;
+        virtual bool check(const int& id) = 0;
         virtual std::string codeAt(const std::string& address, const int& block) = 0;
         virtual std::string coinbase() = 0;
         virtual double countAt(const std::string& address, const int& block) = 0;
@@ -215,6 +228,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string gasPrice() = 0;
         virtual std::string key() = 0;
         virtual Json::Value keys() = 0;
+        virtual bool killWatch(const int& id) = 0;
         virtual bool listening() = 0;
         virtual std::string lll(const std::string& s) = 0;
         virtual Json::Value messages(const Json::Value& params) = 0;
@@ -233,7 +247,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual std::string transact(const Json::Value& json) = 0;
         virtual Json::Value transaction(const int& i, const Json::Value& params) = 0;
         virtual Json::Value uncle(const int& i, const Json::Value& params) = 0;
-        virtual std::string watch(const std::string& params) = 0;
+        virtual int watch(const std::string& params) = 0;
 
 };
 #endif //_ABSTRACTETHSTUBSERVER_H_
