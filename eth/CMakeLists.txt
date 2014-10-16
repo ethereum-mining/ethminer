@@ -8,7 +8,8 @@ link_directories(../libwebthree)
 
 set(EXECUTABLE eth)
 
-add_executable(${EXECUTABLE} ${SRC_LIST})
+file(GLOB HEADERS "*.h")
+add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
