@@ -57,5 +57,7 @@ enum WhisperPacket
 	PacketCount
 };
 
+using Topic = h256;
+
 }
 }
