@@ -54,7 +54,8 @@ var spec = [
             { "method": "fromAscii", "params": { "s": "", "padding": 0}, "order": ["s", "padding"], "returns": ""}, 
             { "method": "toDecimal", "params": {"s": ""}, "order": ["s"], "returns" : ""},
             { "method": "toFixed", "params": {"s": 0.0}, "order": ["s"], "returns" : ""},
-            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0}
+            { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0},
+            { "method": "offset", "params": {"s": "", "o": 0}, "order": ["s", "o"], "returns" : ""}
 ];
 
 window.eth = (function ethScope() {

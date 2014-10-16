@@ -55,6 +55,7 @@ public:
 	virtual std::string lll(const std::string& s);
 	virtual Json::Value messages(const Json::Value& json);
 	virtual int number();
+	virtual std::string offset(const int& o, const std::string& s);
 	virtual int peerCount();
 	virtual std::string secretToAddress(const std::string& s);
 	virtual bool setCoinbase(const std::string& address);
