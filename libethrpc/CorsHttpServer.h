@@ -27,9 +27,8 @@ namespace jsonrpc
 class CorsHttpServer : public HttpServer
 {
 public:
-    using HttpServer::HttpServer;
-    bool virtual SendResponse(const std::string& response,
-            void* addInfo = NULL);
+	using HttpServer::HttpServer;
+	bool virtual SendResponse(const std::string& response, void* addInfo = NULL);
 };
 
 }
