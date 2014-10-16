@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <LLVMBuildDir>..\..\builds\llvm3.5</LLVMBuildDir>
+    <LLVMIncludeDir>..\..\llvm-3.5.0\include;$(LLVMBuildDir)\include</LLVMIncludeDir>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(LLVMIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4800;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="LLVMBuildDir">
+      <Value>$(LLVMBuildDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LLVMIncludeDir">
+      <Value>$(LLVMIncludeDir)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
