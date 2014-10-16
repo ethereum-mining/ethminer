@@ -157,11 +157,8 @@ public:
 	Q_INVOKABLE QString/*json*/ _private_getUncle(QString _json, int _index) const;
 
 	Q_INVOKABLE QString/*json*/ _private_getMessages(QString _attribs/*json*/) const;
-
-	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
-	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
-	Q_INVOKABLE QString doTransact(QString _json);
-	Q_INVOKABLE QString doCall(QString _json);
+	Q_INVOKABLE QString _private_doTransact(QString _json);
+	Q_INVOKABLE QString _private_doCall(QString _json);
 
 	Q_INVOKABLE unsigned newWatch(QString _json);
 	Q_INVOKABLE QString watchMessages(unsigned _w);
@@ -299,10 +296,10 @@ private:
 	frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
-	frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth.doTransact(JSON.stringify(a)); return ret; }"); \
-	frame->evaluateJavaScript("eth.makeTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
-	frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallJson(JSON.stringify(a)); return ret; }"); \
-	frame->evaluateJavaScript("eth.makeCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth._private_doTransact(JSON.stringify(a)); return ret; }"); \
+	frame->evaluateJavaScript("eth.doTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.call = function(a) { var ret = eth._private_doCall(JSON.stringify(a)); return ret; }"); \
+	frame->evaluateJavaScript("eth.doCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth._private_getBlock(JSON.stringify(a))); }"); \
 	frame->evaluateJavaScript("eth.getBlock = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.block.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.transaction = function(a, i) { return JSON.parse(eth._private_getTransaction(JSON.stringify(a), i)); }"); \
