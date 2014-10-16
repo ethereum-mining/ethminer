@@ -101,7 +101,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 
 		// FEES...
-		bigint runGas = FeeStructure::getInstructionFee(inst);
+		bigint runGas = FeeStructure::getInstructionFee(inst); // throws BadInstruction
 		bigint newTempSize = m_temp.size();
 		switch (inst)
 		{
