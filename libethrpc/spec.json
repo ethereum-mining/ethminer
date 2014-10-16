@@ -26,7 +26,9 @@
             { "method": "uncle", "params": { "params": {}, "i": 0}, "order": ["params", "i"], "returns": {}},
 
             { "method": "messages", "params": { "params": {}}, "order": ["params"], "returns": []},
-            { "method": "watch", "params": { "params": ""}, "order": ["params"], "returns": ""},
+            { "method": "watch", "params": { "params": ""}, "order": ["params"], "returns": 0},
+            { "method": "check", "params": { "id": 0}, "order": [], "returns": true},
+            { "method": "killWatch", "params": { "id": 0}, "order": ["params"], "returns": true},
 
             { "method": "secretToAddress", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},

@@ -423,25 +423,50 @@ Json::Value EthStubServer::uncle(const int &i, const Json::Value &params)
 	return toJson(client()->uncle(hash, i));
 }
 
-//TODO watch!
-std::string EthStubServer::watch(const string &json)
+int EthStubServer::watch(const string &json)
 {
-
-}
-
-
-Json::Value EthStubServer::jsontypeToValue(int _jsontype)
-{
-	switch (_jsontype)
+	unsigned ret = -1;
+	if (!client())
+		return ret;
+	if (json.compare("chain") == 0)
+		ret = client()->installWatch(dev::eth::ChainChangedFilter);
+	else if (json.compare("pending") == 0)
+		ret = client()->installWatch(dev::eth::PendingChangedFilter);
+	else
 	{
-		case jsonrpc::JSON_STRING: return ""; //Json::stringValue segfault, fuck knows why
-		case jsonrpc::JSON_BOOLEAN: return Json::booleanValue;
-		case jsonrpc::JSON_INTEGER: return Json::intValue;
-		case jsonrpc::JSON_REAL: return Json::realValue;
-		case jsonrpc::JSON_OBJECT: return Json::objectValue;
-		case jsonrpc::JSON_ARRAY: return Json::arrayValue;
-		default: return Json::nullValue;
+		Json::Reader reader;
+		Json::Value object;
+		reader.parse(json, object);
+		ret = client()->installWatch(toMessageFilter(object));
 	}
+
+	return ret;
 }
+
+bool EthStubServer::check(const int& id)
+{
+	if (!client())
+		return false;
+	return client()->checkWatch(id);
+}
+
+bool EthStubServer::killWatch(const int& id)
+{
+	if (!client())
+		return false;
+	client()->uninstallWatch(id);
+	return true;
+}
+
+
+
+
+
 
 #endif
+
+
+
+
+
+
