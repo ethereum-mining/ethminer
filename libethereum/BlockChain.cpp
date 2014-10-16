@@ -159,8 +159,7 @@ void BlockChain::open(std::string _path, bool _killExisting)
 
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
-    cnote << _path;
-    cnote << "Opened blockchain DB. Latest: " << currentHash();
+	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
 
 void BlockChain::close()

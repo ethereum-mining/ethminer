@@ -7,13 +7,13 @@ bytes dev::eth::jsToBytes(std::string const& _s)
 {
 	if (_s.substr(0, 2) == "0x")
 		// Hex
-    	return fromHex(_s.substr(2));
-    else if (_s.find_first_not_of("0123456789") == std::string::npos)
-        // Decimal
-    	return toCompactBigEndian(bigint(_s));
-    else
-        // Binary
-    	return asBytes(_s);
+		return fromHex(_s.substr(2));
+	else if (_s.find_first_not_of("0123456789") == std::string::npos)
+		// Decimal
+		return toCompactBigEndian(bigint(_s));
+	else
+		// Binary
+		return asBytes(_s);
 }
 
 std::string dev::eth::jsPadded(std::string const& _s, unsigned _l, unsigned _r)
