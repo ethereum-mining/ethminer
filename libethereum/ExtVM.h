@@ -39,8 +39,8 @@ class ExtVM: public ExtVMFace
 {
 public:
 	/// Full constructor.
-	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, Manifest* o_ms, unsigned _level = 0):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock), level(_level), m_s(_s), m_origCache(_s.m_cache), m_ms(o_ms)
+	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, Manifest* o_ms, unsigned _depth = 0):
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _depth), m_s(_s), m_origCache(_s.m_cache), m_ms(o_ms)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}
@@ -61,7 +61,7 @@ public:
 		m_s.noteSending(myAddress);
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
+		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
@@ -72,7 +72,7 @@ public:
 	{
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, level + 1);
+		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
@@ -99,9 +99,6 @@ public:
 	void revert() { if (m_ms) *m_ms = Manifest(); m_s.m_cache = m_origCache; }
 
 	State& state() const { return m_s; }
-
-	/// @note not a part of the main API; just for use by tracing/debug stuff.
-	unsigned level = 0;
 
 private:
 	State& m_s;										///< A reference to the base state.
