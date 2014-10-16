@@ -178,7 +178,16 @@ window.eth = (function ethScope() {
         { name: "messages", async: "getMessages" },
         { name: "block", async: "getBlock" },
         { name: "transaction", async: "getTransaction" },
-        { name: "uncle", async: "getUncle" }
+        { name: "uncle", async: "getUncle" },
+        { name: "secretToAddress" },
+        { name: "lll" },
+        { name: "sha3" },
+        { name: "toAscii" },
+        { name: "fromAscii" },
+        { name: "toDecimal" },
+        { name: "toFixed" },
+        { name: "fromFixed" },
+        { name: "offset" }
         ];
 
         methods.forEach(function (method) {
