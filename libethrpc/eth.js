@@ -57,8 +57,6 @@ var spec = [
             { "method": "fromFixed", "params": {"s": ""}, "order": ["s"], "returns" : 0.0}
 ];
 
-
-
 window.eth = (function ethScope() {
 	var m_reqId = 0
 	var ret = {}
