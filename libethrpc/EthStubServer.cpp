@@ -313,6 +313,11 @@ int EthStubServer::number()
 	return client() ? client()->number() + 1 : 0;
 }
 
+std::string EthStubServer::offset(const int& o, const std::string& s)
+{
+	return toJS(jsToU256(s) + o);
+}
+
 int EthStubServer::peerCount()
 {
 	return m_web3.peerCount();

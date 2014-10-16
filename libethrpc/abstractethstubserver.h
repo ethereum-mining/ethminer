@@ -32,6 +32,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             this->bindAndAddMethod(new jsonrpc::Procedure("messages", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractEthStubServer::messagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("mining", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractEthStubServer::miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::numberI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("offset", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "o",jsonrpc::JSON_INTEGER,"s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::offsetI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_INTEGER,  NULL), &AbstractEthStubServer::peerCountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("secretToAddress", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::secretToAddressI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setCoinbase", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "address",jsonrpc::JSON_STRING, NULL), &AbstractEthStubServer::setCoinbaseI);
@@ -144,6 +145,11 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
             response = this->number();
         }
 
+        inline virtual void offsetI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->offset(request["o"].asInt(), request["s"].asString());
+        }
+
         inline virtual void peerCountI(const Json::Value& request, Json::Value& response) 
         {
             response = this->peerCount();
@@ -234,6 +240,7 @@ class AbstractEthStubServer : public jsonrpc::AbstractServer<AbstractEthStubServ
         virtual Json::Value messages(const Json::Value& params) = 0;
         virtual bool mining() = 0;
         virtual int number() = 0;
+        virtual std::string offset(const int& o, const std::string& s) = 0;
         virtual int peerCount() = 0;
         virtual std::string secretToAddress(const std::string& s) = 0;
         virtual bool setCoinbase(const std::string& address) = 0;
