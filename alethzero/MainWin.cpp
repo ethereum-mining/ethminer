@@ -1327,7 +1327,7 @@ void Main::on_contracts_currentItemChanged()
 			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
-		catch (dev::eth::InvalidTrie)
+		catch (dev::InvalidTrie)
 		{
 			ui->contractInfo->appendHtml("Corrupted trie.");
 		}
