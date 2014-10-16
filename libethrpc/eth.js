@@ -177,7 +177,9 @@ window.eth = (function ethScope() {
         { name: "transact", async: "makeTransact"},
         { name: "call", async: "makeCall" },
         { name: "messages", async: "getMessages" },
-        { name: "transaction", async: "getTransaction" }
+        { name: "block", async: "getBlock" },
+        { name: "transaction", async: "getTransaction" },
+        { name: "uncle", async: "getUncle" }
         ];
 
         methods.forEach(function (method) {
@@ -192,81 +194,60 @@ window.eth = (function ethScope() {
         });
     };
 
+    var setupWatch = function (root) {
+        root.watch = function (val) {
+            if (typeof val !== 'string') {
+                val = JSON.stringify(val);
+            }
+    
+            var id;
+            reqAsync('watch', {params: val}, function (result) {
+                id = result;
+            }); // async send watch
+            var callbacks = [];
+            var exist = true;
+            var w = {
+                changed: function (f) {
+                    callbacks.push(f);
+                },
+                uninstall: function (f) {
+                    reqAsync('killWatch', {id: id}); 
+                    exist = false;
+                },
+                messages: function () {
+                    // TODO! 
+                },
+                getMessages: function (f) {
+                    // TODO!
+                }
+            };
+
+            var check = function () {
+                if (!exist) {
+                    return;
+                }
+                if (callbacks.length) {
+                    reqAsync('check', {id: id}, function (res) { 
+                        if (!res) {
+                            return;
+                        }
+                        callbacks.forEach(function (f) {
+                            f();
+                        });
+                    });
+                }
+                window.setTimeout(check, 12000);
+            };
+
+            check();
+            return w;
+        }
+    };
+
     setupProperties(ret, window.spec);
     setupMethods(ret, window.spec);
+    setupWatch(ret);
 
-    /*
-
-	function isEmpty(obj) {
-		for (var prop in obj)
-		    if (obj.hasOwnProperty(prop))
-		        return false
-		return true
-	};
-
-    
-	var m_watching = {};
-	
-	for (si in spec) (function(s) {
-		var m = s.method;
-		var am = "get" + m.slice(0, 1).toUpperCase() + m.slice(1);
-		var getParams = function(a) {
-            var p = s.params ? {} : null;
-            for (j in s.order)
-                p[s.order[j]] = a[j];
-			return p
-		};
-		if (m == "create" || m == "transact")
-			ret[m] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
-		else
-		{
-			ret[am] = function() { return reqAsync(m, getParams(arguments), arguments[s.order.length]) }
-			if (s.params)
-				ret[m] = function() { return reqSync(m, getParams(arguments)) }
-			else
-				Object.defineProperty(ret, m, {
-					get: function() { return reqSync(m, {}); },
-					set: function(v) {}
-				})
-		}
-	})(spec[si]);
-
-    
-	ret.check = function(force) {
-		if (!force && isEmpty(m_watching))
-			return
-		var watching = [];
-		for (var w in m_watching)
-			watching.push(w)
-		var changed = reqSync("check", { "a": watching } );
-//		console.log("Got " + JSON.stringify(changed));
-		for (var c in changed)
-			m_watching[changed[c]]()
-		var that = this;
-		setTimeout(function() { that.check() }, 12000)
-	}
-
-	ret.watch = function(a, fx, f) {
-		var old = isEmpty(m_watching)
-		if (f)
-			m_watching[a + fx] = f
-		else
-			m_watching[a] = fx
-		(f ? f : fx)()
-		if (isEmpty(m_watching) != old)
-			this.check()
-	}
-	ret.unwatch = function(f, fx) {
-		delete m_watching[fx ? f + fx : f];
-	}
-	ret.newBlock = function(f) {
-		var old = isEmpty(m_watching)
-		m_watching[""] = f
-		f()
-		if (isEmpty(m_watching) != old)
-			this.check()
-	}
-    */
 	return ret;
 }());
 
