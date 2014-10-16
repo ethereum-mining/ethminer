@@ -459,24 +459,7 @@ void QEthereum::_private_setMining(bool _l)
 	}
 }
 
-QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
-{
-	if (!m_client)
-		return "";
-	auto ret = toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
-	client()->flushTransactions();
-	return ret;
-}
-
-void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice)
-{
-	if (!m_client)
-		return;
-	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
-	client()->flushTransactions();
-}
-
-QString QEthereum::doTransact(QString _json)
+QString QEthereum::_private_doTransact(QString _json)
 {
 	QString ret;
 	if (!m_client)
@@ -502,7 +485,7 @@ QString QEthereum::doTransact(QString _json)
 	return ret;
 }
 
-QString QEthereum::doCall(QString _json)
+QString QEthereum::_private_doCall(QString _json)
 {
 	if (!m_client)
 		return QString();
