@@ -133,6 +133,7 @@
     <ClCompile Include="..\libevmjit\Runtime.cpp" />
     <ClCompile Include="..\libevmjit\Type.cpp" />
     <ClCompile Include="..\libevmjit\Utils.cpp" />
+    <ClCompile Include="..\libevmjit\VM.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libevmjit\BasicBlock.h" />
@@ -145,6 +146,7 @@
     <ClInclude Include="..\libevmjit\Runtime.h" />
     <ClInclude Include="..\libevmjit\Type.h" />
     <ClInclude Include="..\libevmjit\Utils.h" />
+    <ClInclude Include="..\libevmjit\VM.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -36,6 +36,9 @@
     <ClCompile Include="..\libevmjit\Utils.cpp">
       <Filter>libevmjit</Filter>
     </ClCompile>
+    <ClCompile Include="..\libevmjit\VM.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libevmjit\BasicBlock.h">
@@ -66,6 +69,9 @@
       <Filter>libevmjit</Filter>
     </ClInclude>
     <ClInclude Include="..\libevmjit\Utils.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\VM.h">
       <Filter>libevmjit</Filter>
     </ClInclude>
   </ItemGroup>
