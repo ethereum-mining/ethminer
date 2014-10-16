@@ -110,12 +110,23 @@ std::string EthStubServer::balanceAt(const string &address, const int& block)
     return toJS(client()->balanceAt(jsToAddress(address), block));
 }
 
-//TODO BlockDetails?
-Json::Value EthStubServer::block(const string &numberOrHash)
+dev::FixedHash<32> EthStubServer::numberOrHash(Json::Value const &json) const
 {
-    auto n = jsToU256(numberOrHash);
-    auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : ::jsToFixed<32>(numberOrHash);
-    return toJson(client()->blockInfo(h));
+	dev::FixedHash<32> hash;
+	if (!json["hash"].empty())
+		hash = jsToFixed<32>(json["hash"].asString());
+	else if (!json["number"].empty())
+		hash = client()->hashFromNumber((unsigned)json["number"].asInt());
+	return hash;
+}
+
+Json::Value EthStubServer::block(const Json::Value &params)
+{
+	if (!client())
+		return "";
+	
+	auto hash = numberOrHash(params);
+	return toJson(client()->blockInfo(hash));
 }
 
 static TransactionJS toTransaction(const Json::Value &json)
@@ -394,21 +405,22 @@ std::string EthStubServer::transact(const Json::Value &json)
     return ret;
 }
 
-Json::Value EthStubServer::transaction(const int &i, const string &numberOrHash)
+Json::Value EthStubServer::transaction(const int &i, const Json::Value &params)
 {
-    if (!client()){
-        return Json::Value();
-    }
-    auto n = jsToU256(numberOrHash);
-    auto h = n < client()->number() ? client()->hashFromNumber((unsigned)n) : jsToFixed<32>(numberOrHash);
-    return toJson(client()->transaction(h, i));
+	if (!client())
+		return "";
+	
+	auto hash = numberOrHash(params);
+	return toJson(client()->transaction(hash, i));
 }
 
-Json::Value EthStubServer::uncle(const int &i, const string &numberOrHash)
+Json::Value EthStubServer::uncle(const int &i, const Json::Value &params)
 {
-    auto n = jsToU256(numberOrHash);
-    auto h  = n < client()->number() ? client()->hashFromNumber((unsigned)n) : jsToFixed<32>(numberOrHash);
-    return client() ? toJson(client()->uncle(h, i)) : Json::Value();
+	if (!client())
+		return "";
+	
+	auto hash = numberOrHash(params);
+	return toJson(client()->uncle(hash, i));
 }
 
 //TODO watch!

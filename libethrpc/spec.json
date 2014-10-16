@@ -21,12 +21,12 @@
             { "method": "transact", "params": { "json": {}}, "order": ["json"], "returns": ""},
             { "method": "call", "params": { "json": {}}, "order": ["json"], "returns": ""},
 
-            { "method": "block", "params": { "numberOrHash": ""}, "order": ["numberOrHash"], "returns": {}},
-            { "method": "transaction", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
-            { "method": "uncle", "params": { "numberOrHash": "", "i": 0}, "order": ["numberOrHash", "i"], "returns": {}},
+            { "method": "block", "params": { "params": {}}, "order": ["params"], "returns": {}},
+            { "method": "transaction", "params": { "params": {}, "i": 0}, "order": ["params", "i"], "returns": {}},
+            { "method": "uncle", "params": { "params": {}, "i": 0}, "order": ["params", "i"], "returns": {}},
 
-            { "method": "messages", "params": { "json": {}}, "order": ["json"], "returns": []},
-            { "method": "watch", "params": { "json": ""}, "order": ["json"], "returns": ""},
+            { "method": "messages", "params": { "params": {}}, "order": ["params"], "returns": []},
+            { "method": "watch", "params": { "params": ""}, "order": ["params"], "returns": ""},
 
             { "method": "secretToAddress", "params": { "s": ""}, "order": ["s"], "returns": ""},
             { "method": "lll", "params": { "s": ""}, "order": ["s"], "returns": ""},

@@ -148,9 +148,9 @@ public:
 	Q_INVOKABLE QString/*dev::u256*/ stateAt(QString/*dev::Address*/ _a, QString/*dev::u256*/ _p) const;
 	Q_INVOKABLE QString/*dev::u256*/ codeAt(QString/*dev::Address*/ _a) const;
 
-	Q_INVOKABLE QString/*json*/ getBlock(QString _numberOrHash/*unsigned if < number(), hash otherwise*/) const;
-	Q_INVOKABLE QString/*json*/ getTransaction(QString _numberOrHash/*unsigned if < number(), hash otherwise*/, int _index) const;
-	Q_INVOKABLE QString/*json*/ getUncle(QString _numberOrHash/*unsigned if < number(), hash otherwise*/, int _index) const;
+	Q_INVOKABLE QString/*json*/ _private_getBlock(QString _json) const;
+	Q_INVOKABLE QString/*json*/ _private_getTransaction(QString _json, int _index) const;
+	Q_INVOKABLE QString/*json*/ _private_getUncle(QString _json, int _index) const;
 
 	Q_INVOKABLE QString/*json*/ _private_getMessages(QString _attribs/*json*/) const;
 
@@ -169,7 +169,7 @@ public:
 
 	QString/*dev::Address*/ coinbase() const;
 	QString/*dev::u256*/ gasPrice() const { return toQJS(10 * dev::eth::szabo); }
-	QString/*dev::u256*/ number() const;
+	unsigned/*dev::u256*/ number() const;
 	int getDefault() const;
 
 	QString/*dev::KeyPair*/ key() const;
@@ -205,11 +205,12 @@ private:
 	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
-    Q_PROPERTY(QString number READ number NOTIFY watchChanged)
+    Q_PROPERTY(unsigned number READ number NOTIFY watchChanged)
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
 	QList<dev::KeyPair> m_accounts;
+	dev::FixedHash<32> numberOrHash(QString const &_json) const;
 };
 
 class QWhisper: public QObject
@@ -279,11 +280,14 @@ private:
 	frame->evaluateJavaScript("eth.makeTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallJson(JSON.stringify(a)); return ret; }"); \
 	frame->evaluateJavaScript("eth.makeCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth._private_getBlock(JSON.stringify(a))); }"); \
+	frame->evaluateJavaScript("eth.getBlock = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.block.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.transaction = function(a, i) { return JSON.parse(eth._private_getTransaction(JSON.stringify(a), i)); }"); \
+	frame->evaluateJavaScript("eth.getTransaction = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transaction.apply(null, args)); }},0);}"); \
+	frame->evaluateJavaScript("eth.uncle = function(a, i) { return JSON.parse(eth._private_getUncle(JSON.stringify(a), i)); }"); \
+	frame->evaluateJavaScript("eth.getUncle = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.uncle.apply(null, args)); }},0);}"); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
-	frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
-	frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
 	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 }
