@@ -382,18 +382,18 @@ std::string WebThreeStubServer::toFixed(const double &s)
 
 std::string WebThreeStubServer::transact(const Json::Value &json)
 {
-    std::string ret;
-    if (!client())
-        return ret;
-    TransactionJS t = toTransaction(json);
-    if (!t.from && m_keys.size())
-    {
+	std::string ret;
+	if (!client())
+		return ret;
+	TransactionJS t = toTransaction(json);
+	if (!t.from && m_keys.size())
+	{
 		auto b = m_keys.front();
 		for (auto a: m_keys)
 			if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
 				b = a;
 		t.from = b.secret();
-    }
+	}
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
