@@ -39,5 +39,4 @@ bool CorsHttpServer::SendResponse(const std::string &response, void *addInfo)
     return false;
 }
 
-
 }

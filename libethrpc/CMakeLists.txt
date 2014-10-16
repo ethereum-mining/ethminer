@@ -7,14 +7,13 @@ link_directories(../libethcore)
 link_directories(../libwebthree)
 
 set(EXECUTABLE ethrpc)
+file(GLOB HEADERS "*.h")
 
 if(ETH_STATIC)
-    add_library(${EXECUTABLE} STATIC ${SRC_LIST})
+    add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()
-    add_library(${EXECUTABLE} SHARED ${SRC_LIST})
+    add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
-
-file(GLOB HEADERS "*.h")
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)

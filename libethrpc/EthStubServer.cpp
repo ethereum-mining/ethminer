@@ -28,6 +28,7 @@
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
 #include <libdevcore/CommonJS.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
