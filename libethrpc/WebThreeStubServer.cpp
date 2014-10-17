@@ -357,7 +357,7 @@ bool WebThreeStubServer::setMining(bool const& mining)
 
 std::string WebThreeStubServer::sha3(string const& s)
 {
-	return toJS(dev::eth::sha3(jsToBytes(s)));
+	return toJS(dev::sha3(jsToBytes(s)));
 }
 
 std::string WebThreeStubServer::stateAt(string const& address, int const& block, string const& storage)
