@@ -400,14 +400,14 @@ static QString toJson(dev::eth::Transaction const& _bi)
 	return QString::fromUtf8(QJsonDocument(v).toJson());
 }
 
-dev::FixedHash<32> QEthereum::numberOrHash(QString const& _json) const
+static dev::FixedHash<32>toHash(QString const & _json, dev::eth::Interface* _client)
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	dev::FixedHash<32> hash;
 	if (f.contains("hash"))
 		hash = ::toFixed<32>(f["hash"].toString());
 	else if (f.contains("number"))
-		hash = client()->hashFromNumber((unsigned)f["number"].toInt());
+		hash =_client->hashFromNumber((unsigned)f["number"].toInt());
 	return hash;
 }
 
@@ -416,7 +416,7 @@ QString QEthereum::getBlockImpl(QString _json) const
 	if (!client())
 		return "";
 	
-	auto hash = numberOrHash(_json);
+	auto hash = toHash(_json, client());
 	return toJson(client()->blockInfo(hash), client()->blockDetails(hash));
 }
 
@@ -425,7 +425,7 @@ QString QEthereum::getTransactionImpl(QString _json, int _i) const
 	if (!client())
 		return "";
 
-	auto hash = numberOrHash(_json);
+	auto hash = toHash(_json, client());
 	return toJson(client()->transaction(hash, _i));
 }
 
@@ -434,7 +434,7 @@ QString QEthereum::getUncleImpl(QString _json, int _i) const
 	if (!client())
 		return "";
 	
-	auto hash = numberOrHash(_json);
+	auto hash = toHash(_json, client());
 	return toJson(client()->uncle(hash, _i));
 }
 

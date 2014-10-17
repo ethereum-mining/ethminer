@@ -208,7 +208,6 @@ private:
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
 	QList<dev::KeyPair> m_accounts;
-	dev::FixedHash<32> numberOrHash(QString const& _json) const;
 };
 
 class QPeer2Peer : public QObject
