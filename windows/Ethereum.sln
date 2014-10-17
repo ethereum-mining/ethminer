@@ -16,6 +16,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestSecp256k1", "TestSecp256k1.vcxproj", "{3BF049F8-AF7E-4E1C-9627-3E94C887AF24}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestEthereum", "TestEthereum.vcxproj", "{3F3E389B-88DE-41D5-A73B-4F6036E18B36}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9C816740-5C11-4377-A3A7-46BE12F35FA0} = {9C816740-5C11-4377-A3A7-46BE12F35FA0}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibCryptoPP", "LibCryptoPP.vcxproj", "{1CC213A4-3482-4211-B47B-172E90DAC7DE}"
 EndProject
