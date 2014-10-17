@@ -29,8 +29,6 @@
 
 namespace dev
 {
-namespace eth
-{
 
 // SHA-3 convenience routines.
 
@@ -68,5 +66,4 @@ void sha256(bytesConstRef _input, bytesRef _output);
 
 void ripemd160(bytesConstRef _input, bytesRef _output);
 
-}
 }
