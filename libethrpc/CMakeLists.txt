@@ -10,9 +10,9 @@ set(EXECUTABLE ethrpc)
 file(GLOB HEADERS "*.h")
 
 if(ETH_STATIC)
-    add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()
-    add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
 target_link_libraries(${EXECUTABLE} webthree)

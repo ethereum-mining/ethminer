@@ -1,19 +1,19 @@
 /*
 	This file is part of cpp-ethereum.
- 
+
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
- 
+
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
- 
+
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 /** @file CommonJS.h
  * @authors:
  *   Gav Wood <i@gavwood.com>
@@ -30,17 +30,21 @@
 #include "Common.h"
 #include "CommonData.h"
 
-namespace dev {
+namespace dev
+{
 
 template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 {
 	return "0x" + toHex(_h.ref());
 }
+	
 template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
 {
 	return "0x" + toHex(toCompactBigEndian(_n));
 }
-inline std::string toJS(dev::bytes const& _n) {
+	
+inline std::string toJS(dev::bytes const& _n)
+{
 	return "0x" + dev::toHex(_n);
 }
 
