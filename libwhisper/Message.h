@@ -40,23 +40,23 @@ struct Message
 {
 	unsigned expiry = 0;
 	unsigned ttl = 0;
-	bytes topic;	// TODO: change to h256
+	Topic topic;	// TODO: change to h256
 	bytes payload;
 
 	Message() {}
-	Message(unsigned _exp, unsigned _ttl, bytes const& _topic, bytes const& _payload): expiry(_exp), ttl(_ttl), topic(_topic), payload(_payload) {}
+	Message(unsigned _exp, unsigned _ttl, Topic const& _topic, bytes const& _payload): expiry(_exp), ttl(_ttl), topic(_topic), payload(_payload) {}
 	Message(RLP const& _m)
 	{
 		expiry = _m[0].toInt<unsigned>();
 		ttl = _m[1].toInt<unsigned>();
-		topic = _m[2].toBytes();
+		topic = (Topic)_m[2];
 		payload = _m[3].toBytes();
 	}
 
 	operator bool () const { return !!expiry; }
 
 	void streamOut(RLPStream& _s) const { _s.appendList(4) << expiry << ttl << topic << payload; }
-	h256 sha3() const { RLPStream s; streamOut(s); return dev::eth::sha3(s.out()); }
+	h256 sha3() const { RLPStream s; streamOut(s); return dev::sha3(s.out()); }
 };
 
 }

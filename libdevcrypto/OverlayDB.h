@@ -34,8 +34,6 @@ namespace ldb = leveldb;
 
 namespace dev
 {
-namespace eth
-{
 
 class OverlayDB: public MemoryDB
 {
@@ -62,5 +60,4 @@ private:
 	ldb::WriteOptions m_writeOptions;
 };
 
-}
 }

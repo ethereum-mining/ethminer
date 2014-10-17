@@ -37,20 +37,29 @@ namespace dev
 namespace shh
 {
 
+/*struct TopicMask
+{
+	Topic data;
+	Topic mask;
+};*/
+
+using TopicMask = std::pair<Topic, Topic>;
+using TopicMasks = std::vector<TopicMask>;
+
 class MessageFilter
 {
 public:
 	MessageFilter() {}
-	MessageFilter(std::vector<std::pair<bytes, bytes> > const& _m): m_topicMasks(_m) {}
-	MessageFilter(RLP const& _r): m_topicMasks((std::vector<std::pair<bytes, bytes>>)_r) {}
+	MessageFilter(TopicMasks const& _m): m_topicMasks(_m) {}
+	MessageFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
 
 	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
-	h256 sha3() const { RLPStream s; fillStream(s); return dev::eth::sha3(s.out()); }
+	h256 sha3() const { RLPStream s; fillStream(s); return dev::sha3(s.out()); }
 
 	bool matches(Message const& _m) const;
 
 private:
-	std::vector<std::pair<bytes, bytes> > m_topicMasks;
+	TopicMasks m_topicMasks;
 };
 
 struct InstalledFilter
@@ -85,7 +94,7 @@ public:
 
 	virtual Message message(h256 _m) const = 0;
 
-	virtual void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) = 0;
+	virtual void sendRaw(bytes const& _payload, h256 _topic, unsigned _ttl) = 0;
 };
 
 struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };

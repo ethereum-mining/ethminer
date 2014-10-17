@@ -251,22 +251,29 @@ private:
 	std::vector<unsigned> m_watches;
 };
 
+// TODO: add p2p object
 #define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, env) [frame, eth, shh, env]() \
 { \
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
-	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
-	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
-	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
-	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
-	frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
-	frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
-	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+	if (eth) \
+	{ \
+		frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
+		frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
+		frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
+		frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
+		frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
+		frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
+		frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
+		frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
+		frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
+	} \
+	if (shh) \
+	{ \
+		frame->addToJavaScriptWindowObject("shh", shh, QWebFrame::ScriptOwnership); \
+		frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
+		frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+	} \
 }
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
