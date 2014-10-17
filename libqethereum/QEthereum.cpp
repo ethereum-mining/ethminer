@@ -99,22 +99,22 @@ QString QEthereum::lll(QString _s) const
 
 QString QEthereum::sha3(QString _s) const
 {
-	return toQJS(dev::eth::sha3(toBytes(_s)));
+	return toQJS(dev::sha3(toBytes(_s)));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2) const
 {
-	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
+	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
 QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
 {
-	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
+	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
 QString QEthereum::sha3old(QString _s) const
 {
-	return toQJS(dev::eth::sha3(asBytes(_s)));
+	return toQJS(dev::sha3(asBytes(_s)));
 }
 
 QString QEthereum::offset(QString _s, int _i) const

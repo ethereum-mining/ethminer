@@ -81,7 +81,7 @@ Address Transaction::sender() const
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 
 		// TODO: check right160 is correct and shouldn't be left160.
-		m_sender = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+		m_sender = right160(dev::sha3(bytesConstRef(&(pubkey[1]), 64)));
 
 #if ETH_ADDRESS_DEBUG
 		cout << "---- RECOVER -------------------------------" << endl;
