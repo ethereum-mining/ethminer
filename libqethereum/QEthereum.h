@@ -6,14 +6,18 @@
 #include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
-namespace dev {
-namespace eth {
+namespace dev
+{
+namespace eth
+{
 class Interface;
 }
-namespace shh {
+namespace shh
+{
 class Interface;
 }
-namespace p2p {
+namespace p2p
+{
 class Host;
 }
 }
@@ -199,12 +203,12 @@ private:
 	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
 	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
-    Q_PROPERTY(unsigned number READ number NOTIFY watchChanged)
+	Q_PROPERTY(unsigned number READ number NOTIFY watchChanged)
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
 	QList<dev::KeyPair> m_accounts;
-	dev::FixedHash<32> numberOrHash(QString const &_json) const;
+	dev::FixedHash<32> numberOrHash(QString const& _json) const;
 };
 
 class QPeer2Peer : public QObject

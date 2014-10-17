@@ -400,7 +400,7 @@ static QString toJson(dev::eth::Transaction const& _bi)
 	return QString::fromUtf8(QJsonDocument(v).toJson());
 }
 
-dev::FixedHash<32> QEthereum::numberOrHash(QString const &_json) const
+dev::FixedHash<32> QEthereum::numberOrHash(QString const& _json) const
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	dev::FixedHash<32> hash;
