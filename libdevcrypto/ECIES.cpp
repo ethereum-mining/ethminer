@@ -40,7 +40,7 @@ void ECIESEncryptor::encrypt(bytes& _message)
 	std::string c;
 	StringSource ss(_message.data(), _message.size(), true, new PK_EncryptorFilter(PRNG(), m_encryptor, new StringSink(c)));
 	bzero(_message.data(), _message.size() * sizeof(byte));
-	_message = std::move(bytesRef(c).toBytes());
+	_message = std::move(bytesConstRef(c).toBytes());
 }
 
 ECIESDecryptor::ECIESDecryptor(ECKeyPair* _k)
@@ -53,6 +53,6 @@ bytes ECIESDecryptor::decrypt(bytesConstRef& _c)
 {
 	std::string p;
 	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(PRNG(), m_decryptor, new StringSink(p)));
-	return std::move(bytesRef(p).toBytes());
+	return std::move(bytesConstRef(p).toBytes());
 }
 
