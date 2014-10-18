@@ -1327,7 +1327,7 @@ void Main::on_contracts_currentItemChanged()
 			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
-		catch (dev::eth::InvalidTrie)
+		catch (dev::InvalidTrie)
 		{
 			ui->contractInfo->appendHtml("Corrupted trie.");
 		}
@@ -1864,7 +1864,7 @@ QString Main::prettyU256(dev::u256 _n) const
 		s << "<span style=\"color: #008\">" << (uint64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
 	else if (!~(_n >> 64))
 		s << "<span style=\"color: #008\">" << (int64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (int64_t)_n << ")</span>";
-	else if ((_n >> 200) == 0)
+	else if ((_n >> 160) == 0)
 	{
 		Address a = right160(_n);
 		QString n = pretty(a);

@@ -36,7 +36,7 @@ h256 MessageFilter::sha3() const
 {
 	RLPStream s;
 	fillStream(s);
-	return dev::eth::sha3(s.out());
+	return dev::sha3(s.out());
 }
 
 bool MessageFilter::matches(h256 _bloom) const

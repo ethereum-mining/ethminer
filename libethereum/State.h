@@ -40,7 +40,8 @@
 
 namespace dev
 {
-namespace test{ class FakeExtVM; class FakeState;}
+
+namespace test { class FakeExtVM; class FakeState; }
 
 namespace eth
 {
@@ -115,6 +116,8 @@ public:
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
+
+	Address nextActiveAddress(Address _a) const;
 
 	BlockInfo const& info() const { return m_currentBlock; }
 

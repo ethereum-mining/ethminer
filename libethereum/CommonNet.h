@@ -30,6 +30,9 @@
 
 namespace dev
 {
+
+class OverlayDB;
+
 namespace eth
 {
 
@@ -44,7 +47,7 @@ static const unsigned c_maxHashesAsk = 256;		///< Maximum number of hashes GetBl
 static const unsigned c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send.
 static const unsigned c_maxBlocksAsk = 128;		///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
 #endif
-class OverlayDB;
+
 class BlockChain;
 class TransactionQueue;
 class EthereumHost;

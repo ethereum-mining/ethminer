@@ -58,7 +58,7 @@ public:
 
 	virtual Message message(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
 
-	virtual void sendRaw(bytes const& _payload, bytes const& _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
+	virtual void sendRaw(bytes const& _payload, Topic _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
 
 private:
 	void streamMessage(h256 _m, RLPStream& _s) const;
