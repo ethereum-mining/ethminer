@@ -32,7 +32,7 @@
 #include <files.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
-#include "EC.H"
+#include "EC.h"
 
 using namespace std;
 using namespace dev::crypto;
