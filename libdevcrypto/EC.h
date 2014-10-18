@@ -14,9 +14,11 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file TestHelperCrypto.h
+/** @file EC.h
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
+ *
+ * Ethereum-specific data structures & algorithms.
  */
 
 #pragma once
@@ -29,39 +31,48 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <osrng.h>
-#include <eccrypto.h>		// secp256k1
-#include <oids.h>		// ec domain
-#include <ecp.h>			// ec prime field
-#include <files.h>		// cryptopp buffer
-#include <aes.h>
-#include <modes.h>		// aes modes
+#include <oids.h>
+#include <filters.h>
+#include <eccrypto.h>
+#include <ecp.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "Common.h"
 
-using namespace std;
-using namespace CryptoPP;
-
-void SavePrivateKey(const PrivateKey& key, const string& file = "ecies.private.key")
+namespace dev
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+namespace crypto
+{
+
+inline CryptoPP::AutoSeededRandomPool& PRNG()
+{
+	static CryptoPP::AutoSeededRandomPool prng;
+	return prng;
 }
 
-void SavePublicKey(const PublicKey& key, const string& file = "ecies.public.key")
+inline CryptoPP::OID secp256k1()
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+	return CryptoPP::ASN1::secp256k1();
 }
-
-void LoadPrivateKey(PrivateKey& key, const string& file = "ecies.private.key")
+	
+class ECKeyPair
 {
-	FileSource source(file.c_str(), true);
-	key.Load(source);
+public:
+	static ECKeyPair create();
+	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub() { return m_pub; } // deprecate
+	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> sec() { return m_sec; } // deprecate
+	
+private:
+	ECKeyPair() {}
+	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> m_pub;
+	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> m_sec;
+};
+
+//class ECDHE;
+//bytes ECSign(KeyPair, bytesConstRef);
+//bool ECVerify(Public, bytesConstRef);
+	
 }
-
-void LoadPublicKey(PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
 }

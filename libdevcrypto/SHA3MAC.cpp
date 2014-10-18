@@ -14,13 +14,12 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file TestHelperCrypto.h
+/** @file SHA3MAC.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
-#pragma once
-
+#pragma GCC diagnostic ignored "-Wunused-function"
 #pragma warning(push)
 #pragma warning(disable:4100 4244)
 #pragma GCC diagnostic push
@@ -29,39 +28,21 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
-#include <osrng.h>
-#include <eccrypto.h>		// secp256k1
-#include <oids.h>		// ec domain
-#include <ecp.h>			// ec prime field
-#include <files.h>		// cryptopp buffer
-#include <aes.h>
-#include <modes.h>		// aes modes
+#include <sha3.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "SHA3MAC.h"
 
-using namespace std;
+using namespace dev;
+using namespace dev::crypto;
 using namespace CryptoPP;
 
-void SavePrivateKey(const PrivateKey& key, const string& file = "ecies.private.key")
+void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output)
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+	CryptoPP::SHA3_256 ctx;
+	ctx.Update((byte*)_secret.data(), _secret.size());
+	ctx.Update((byte*)_plain.data(), _plain.size());
+	assert(_output.size() >= 32);
+	ctx.Final(_output.data());
 }
 
-void SavePublicKey(const PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSink sink(file.c_str());
-	key.Save(sink);
-}
-
-void LoadPrivateKey(PrivateKey& key, const string& file = "ecies.private.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
-}
-
-void LoadPublicKey(PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
-}
