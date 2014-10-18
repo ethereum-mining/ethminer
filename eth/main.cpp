@@ -700,7 +700,7 @@ int main(int argc, char** argv)
 
 						cnote << "Saved" << rechex << "to" << outFile;
 					}
-					catch (dev::eth::InvalidTrie)
+					catch (dev::InvalidTrie)
 					{
 						cwarn << "Corrupted trie.";
 					}
