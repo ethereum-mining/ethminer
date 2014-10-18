@@ -38,6 +38,11 @@
 #include <pwdbased.h>
 #include <modes.h>
 #include <filters.h>
+#include <eccrypto.h>
+#include <ecp.h>
+#include <files.h>
+#include <osrng.h>
+#include <oids.h>
 #include <secp256k1/secp256k1.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop

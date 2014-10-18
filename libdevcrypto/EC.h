@@ -23,22 +23,7 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable:4100 4244)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
-#pragma GCC diagnostic ignored "-Wextra"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#include <osrng.h>
-#include <oids.h>
-#include <filters.h>
-#include <eccrypto.h>
-#include <ecp.h>
-#pragma warning(pop)
-#pragma GCC diagnostic pop
+#include "CryptoHeaders.h"
 #include "Common.h"
 
 namespace dev
@@ -46,16 +31,9 @@ namespace dev
 namespace crypto
 {
 
-inline CryptoPP::AutoSeededRandomPool& PRNG()
-{
-	static CryptoPP::AutoSeededRandomPool prng;
-	return prng;
-}
+inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
 
-inline CryptoPP::OID secp256k1()
-{
-	return CryptoPP::ASN1::secp256k1();
-}
+inline CryptoPP::OID secp256k1() { return CryptoPP::ASN1::secp256k1(); }
 
 class ECKeyPair
 {
