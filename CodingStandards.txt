@@ -148,8 +148,17 @@ e. A dictionary and thesaurus are your friends.
 - Find short, memorable & (at least semi-) descriptive names for commonly used classes or name-fragments.
 
 
+10. Type-definitions
 
-10. Commenting
+a. Prefer using to typedef. e.g. using ints = std::vector<int>; rather than typedef std::vector<int> ints;
+b. Generally avoid shortening a standard form that already includes all important information:
+- e.g. stick to shared_ptr<X> rather than shortening to ptr<X>.
+c. Where there are exceptions to this (due to excessive use and clear meaning), note the change prominently and use it consistently.
+- e.g. using Guard = boost::lock_guard<std::mutex>; ///< Guard is used throughout the codebase since it's clear in meaning and used commonly. 
+d. In general expressions should be roughly as important/semantically meaningful as the space they occupy.
+
+
+11. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
 
