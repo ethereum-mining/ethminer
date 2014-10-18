@@ -14,12 +14,12 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file TestHelperCrypto.h
+/** @file EC.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
+ *
+ * Ethereum-specific data structures & algorithms.
  */
-
-#pragma once
 
 #pragma warning(push)
 #pragma warning(disable:4100 4244)
@@ -29,39 +29,21 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
-#include <osrng.h>
-#include <eccrypto.h>		// secp256k1
-#include <oids.h>		// ec domain
-#include <ecp.h>			// ec prime field
-#include <files.h>		// cryptopp buffer
-#include <aes.h>
-#include <modes.h>		// aes modes
+#include <files.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "EC.H"
 
 using namespace std;
+using namespace dev::crypto;
 using namespace CryptoPP;
 
-void SavePrivateKey(const PrivateKey& key, const string& file = "ecies.private.key")
+ECKeyPair ECKeyPair::create()
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
-}
-
-void SavePublicKey(const PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSink sink(file.c_str());
-	key.Save(sink);
-}
-
-void LoadPrivateKey(PrivateKey& key, const string& file = "ecies.private.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
-}
-
-void LoadPublicKey(PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
+	ECKeyPair k;
+	ECIES<ECP>::Decryptor d(PRNG(), secp256k1());
+	k.m_sec = d.GetKey();
+	ECIES<ECP>::Encryptor e(d);
+	k.m_pub = e.GetKey();
+	return k;
 }

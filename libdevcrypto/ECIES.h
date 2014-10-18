@@ -14,9 +14,11 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file TestHelperCrypto.h
+/** @file ECIES.h
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
+ *
+ * Ethereum-specific data structures & algorithms.
  */
 
 #pragma once
@@ -29,39 +31,49 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
-#include <osrng.h>
-#include <eccrypto.h>		// secp256k1
-#include <oids.h>		// ec domain
-#include <ecp.h>			// ec prime field
-#include <files.h>		// cryptopp buffer
-#include <aes.h>
-#include <modes.h>		// aes modes
+#include <eccrypto.h>
+#include <ecp.h>
+#include <files.h>
+#include <filters.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include <libdevcore/Exceptions.h>
+#include "Common.h"
 
-using namespace std;
-using namespace CryptoPP;
-
-void SavePrivateKey(const PrivateKey& key, const string& file = "ecies.private.key")
+namespace dev
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+namespace crypto
+{
+
+/**
+ * @brief ECIES Encryption
+ */
+class ECIESEncryptor
+{
+public:
+	ECIESEncryptor(ECKeyPair* _k);
+	
+	/// Encrypt _message. (object will be resized and replaced with cipher)
+	void encrypt(bytes& _message);
+	
+private:
+	CryptoPP::ECIES<CryptoPP::ECP>::Encryptor m_encryptor;
+};
+
+/**
+ * @brief ECIES Decryption
+ */
+class ECIESDecryptor
+{
+public:
+	ECIESDecryptor(ECKeyPair* _k);
+	
+	/// Decrypt cipher to plain.
+	bytes decrypt(bytesConstRef& _c);
+	
+private:
+	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
+};
+
 }
-
-void SavePublicKey(const PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSink sink(file.c_str());
-	key.Save(sink);
-}
-
-void LoadPrivateKey(PrivateKey& key, const string& file = "ecies.private.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
-}
-
-void LoadPublicKey(PublicKey& key, const string& file = "ecies.public.key")
-{
-	FileSource source(file.c_str(), true);
-	key.Load(source);
 }
