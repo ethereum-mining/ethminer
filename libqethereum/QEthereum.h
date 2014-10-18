@@ -123,12 +123,7 @@ public:
 	Q_INVOKABLE QString sha3(QString _s) const;
 	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
 	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
-	Q_INVOKABLE QString sha3old(QString _s) const;
 	Q_INVOKABLE QString offset(QString _s, int _offset) const;
-
-	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
-	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
-	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
 
 	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
 	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }

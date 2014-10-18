@@ -111,11 +111,6 @@ QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
 	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
-QString QEthereum::sha3old(QString _s) const
-{
-	return toQJS(dev::sha3(asBytes(_s)));
-}
-
 QString QEthereum::offset(QString _s, int _i) const
 {
 	return toQJS(toU256(_s) + _i);
