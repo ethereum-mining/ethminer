@@ -155,7 +155,7 @@ public:
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
 	/// Get peer information.
-	std::vector<PeerInfo> peers(bool _updatePing = false) const;
+	PeerInfos peers(bool _updatePing = false) const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
 	size_t peerCount() const { RecursiveGuard l(x_peers); return m_peers.size(); }
@@ -179,6 +179,8 @@ public:
 	void start();
 	void stop();
 	bool isStarted() const { return isWorking(); }
+
+	void quit();
 
 	NodeId id() const { return m_key.pub(); }
 
@@ -210,7 +212,7 @@ private:
 	static const int NetworkStopped = -1;									///< The value meaning we're not actually listening.
 	int m_listenPort = NetworkStopped;										///< What port are we listening on?
 
-	ba::io_service m_ioService;												///< IOService for network stuff.
+	std::unique_ptr<ba::io_service> m_ioService;							///< IOService for network stuff.
 	bi::tcp::acceptor m_acceptor;											///< Listening acceptor.
 	bi::tcp::socket m_socket;												///< Listening socket.
 
