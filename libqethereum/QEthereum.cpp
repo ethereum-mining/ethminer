@@ -96,22 +96,22 @@ QString QEthereum::lll(QString _s) const
 	return toQJS(dev::eth::compileLLL(_s.toStdString()));
 }
 
-QString QEthereum::sha3(QString _s) const
+QString QDev::sha3(QString _s) const
 {
 	return toQJS(dev::sha3(toBytes(_s)));
 }
 
-QString QEthereum::sha3(QString _s1, QString _s2) const
+QString QDev::sha3(QString _s1, QString _s2) const
 {
 	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
-QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
+QString QDev::sha3(QString _s1, QString _s2, QString _s3) const
 {
 	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
-QString QEthereum::offset(QString _s, int _i) const
+QString QDev::offset(QString _s, int _i) const
 {
 	return toQJS(toU256(_s) + _i);
 }
