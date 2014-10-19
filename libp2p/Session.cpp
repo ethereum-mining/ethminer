@@ -335,7 +335,7 @@ bool Session::interpret(RLP const& _r)
 			if (!ep.port())
 				goto CONTINUE;	// Zero port? Don't think so.
 
-			if (ep.port() >= 49152)
+			if (ep.port() >= /*49152*/32768)
 				goto CONTINUE;	// Private port according to IANA.
 
 			// TODO: PoC-7:

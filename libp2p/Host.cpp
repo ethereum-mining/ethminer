@@ -369,7 +369,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 	if (_a.port() < 30300 && _a.port() > 30303)
 		cwarn << "Wierd port being recorded!";
 
-	if (_a.port() >= 49152)
+	if (_a.port() >= /*49152*/32768)
 	{
 		cwarn << "Private port being recorded - setting to 0";
 		_a = bi::tcp::endpoint(_a.address(), 0);
@@ -756,7 +756,7 @@ bytes Host::saveNodes() const
 		{
 			Node const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
-			if (!n.dead && n.address.port() > 0 && n.address.port() < 49152 && n.id != id() && !isPrivateAddress(n.address.address()))
+			if (!n.dead && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
