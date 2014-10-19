@@ -133,11 +133,10 @@ public:
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
 
-	void setAccounts(QList<dev::KeyPair> _l) { m_accounts = _l; keysChanged(); }
+	void setAccounts(QList<dev::KeyPair> const& _l);
 
 	Q_INVOKABLE QEthereum* self() { return this; }
 
-	Q_INVOKABLE QString secretToAddress(QString _s) const;
 	Q_INVOKABLE QString lll(QString _s) const;
 
 	// [NEW API] - Use this instead.
@@ -157,8 +156,6 @@ public:
 
 	Q_INVOKABLE QString/*json*/ getMessages(QString _attribs/*json*/) const;
 
-	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
-	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
 	Q_INVOKABLE QString doTransact(QString _json);
 	Q_INVOKABLE QString doCall(QString _json);
 
@@ -175,9 +172,6 @@ public:
 	QString/*dev::u256*/ number() const;
 	int getDefault() const;
 
-	QString/*dev::KeyPair*/ key() const;
-	QStringList/*list of dev::KeyPair*/ keys() const;
-	QString/*dev::Address*/ account() const;
 	QStringList/*list of dev::Address*/ accounts() const;
 
 	unsigned peerCount() const;
@@ -203,8 +197,7 @@ private:
 	Q_PROPERTY(QString number READ number NOTIFY watchChanged)
 	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbase NOTIFY coinbaseChanged)
 	Q_PROPERTY(QString gasPrice READ gasPrice)
-	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
-	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
+	Q_PROPERTY(QStringList accounts READ accounts NOTIFY keysChanged)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining NOTIFY netChanged)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening NOTIFY netChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
@@ -212,7 +205,7 @@ private:
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
-	QList<dev::KeyPair> m_accounts;
+	std::map<dev::Address, dev::KeyPair> m_accounts;
 };
 
 class QWhisper: public QObject
