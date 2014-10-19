@@ -582,7 +582,7 @@ void Session::doRead()
 								// error - bad protocol
 								clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
 								// Just wasting our bandwidth - perhaps reduce rating?
-								return;
+								//return;
 							}
 						}
 						memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
