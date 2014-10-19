@@ -110,14 +110,6 @@ void Host::start()
 		}
 	}
 
-	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
-	ensureAccepting();
-
-	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-		noteNode(id(), m_public, Origin::Perfect, false);
-
-	clog(NetNote) << "Id:" << id().abridged();
-
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
 
@@ -549,31 +541,31 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-void Node::connect(Host* _h)
+void Host::connect(std::shared_ptr<Node> const& _n)
 {
 	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
-	if (!_h->m_ioService)
+	if (!m_ioService)
 		return;
 
-	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address << "from" << _h->id().abridged();
-	lastAttempted = std::chrono::system_clock::now();
-	failedAttempts++;
-	_h->m_ready -= index;
-	bi::tcp::socket* s = new bi::tcp::socket(*_h->m_ioService);
-	s->async_connect(address, [=](boost::system::error_code const& ec)
+	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
+	_n->lastAttempted = std::chrono::system_clock::now();
+	_n->failedAttempts++;
+	m_ready -= _n->index;
+	bi::tcp::socket* s = new bi::tcp::socket(*m_ioService);
+	s->async_connect(_n->address, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
-			lastDisconnect = TCPError;
-			lastAttempted = std::chrono::system_clock::now();
-			_h->m_ready += index;
+			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
+			_n->lastDisconnect = TCPError;
+			_n->lastAttempted = std::chrono::system_clock::now();
+			m_ready += _n->index;
 		}
 		else
 		{
-			clog(NetConnect) << "Connected to" << id.abridged() << "@" << address;
-			lastConnected = std::chrono::system_clock::now();
-			auto p = make_shared<Session>(_h, std::move(*s), _h->node(id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
+			_n->lastConnected = std::chrono::system_clock::now();
+			auto p = make_shared<Session>(this, std::move(*s), node(_n->id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
 			p->start();
 		}
 		delete s;
@@ -638,7 +630,7 @@ void Host::growPeers()
 		if (ns.size())
 			for (Node const& i: ns)
 			{
-				m_nodes[i.id]->connect(this);
+				connect(m_nodes[i.id]);
 				if (!--morePeers)
 					return;
 			}
@@ -702,6 +694,17 @@ PeerInfos Host::peers(bool _updatePing) const
 			if (j->m_socket.is_open())
 				ret.push_back(j->m_info);
 	return ret;
+}
+
+void Host::startedWorking()
+{
+	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+	ensureAccepting();
+
+	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
+		noteNode(id(), m_public, Origin::Perfect, false);
+
+	clog(NetNote) << "Id:" << id().abridged();
 }
 
 void Host::doWork()

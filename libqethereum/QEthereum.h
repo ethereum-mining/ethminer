@@ -98,6 +98,27 @@ inline QString fromBinary(QString const& _s, unsigned _padding = 32)
 	return fromBinary(asBytes(_s), _padding);
 }
 
+class QDev: public QObject
+{
+	Q_OBJECT
+
+public:
+	QDev(QObject* _p): QObject(_p) {}
+	virtual ~QDev() {}
+
+	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
+	Q_INVOKABLE QString offset(QString _s, int _offset) const;
+
+	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
+	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
+	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
+	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
+	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
+	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
+};
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -114,23 +135,10 @@ public:
 
 	void setAccounts(QList<dev::KeyPair> _l) { m_accounts = _l; keysChanged(); }
 
-	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
 
 	Q_INVOKABLE QString secretToAddress(QString _s) const;
 	Q_INVOKABLE QString lll(QString _s) const;
-
-	Q_INVOKABLE QString sha3(QString _s) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
-	Q_INVOKABLE QString offset(QString _s, int _offset) const;
-
-	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
-	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
-	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
-	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
-	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
-	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*dev::u256*/ balanceAt(QString/*dev::Address*/ _a, int _block) const;
@@ -247,27 +255,28 @@ private:
 };
 
 // TODO: add p2p object
-#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, env) [frame, eth, shh, env]() \
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh) [_frame, _env, _dev, _eth, _shh]() \
 { \
-	frame->disconnect(); \
-	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
-	if (eth) \
+	_frame->disconnect(); \
+	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
+	_frame->addToJavaScriptWindowObject("dev", _dev, QWebFrame::ScriptOwnership); \
+	if (_eth) \
 	{ \
-		frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-		frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-		frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-		frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
-		frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
-		frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-		frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
-		frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
-		frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
+		_frame->addToJavaScriptWindowObject("eth", _eth, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
+		_frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
+		_frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
+		_frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
+		_frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
+		_frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
+		_frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
 	} \
-	if (shh) \
+	if (_shh) \
 	{ \
-		frame->addToJavaScriptWindowObject("shh", shh, QWebFrame::ScriptOwnership); \
-		frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-		frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+		_frame->addToJavaScriptWindowObject("shh", _shh, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 	} \
 }
 

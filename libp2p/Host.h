@@ -97,8 +97,6 @@ struct Node
 			else
 				return score < _n.score;
 	}
-
-	void connect(Host* _h);
 };
 
 using Nodes = std::vector<Node>;
@@ -147,6 +145,7 @@ public:
 	static std::string pocHost();
 	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
 	void connect(bi::tcp::endpoint const& _ep);
+	void connect(std::shared_ptr<Node> const& _n);
 
 	/// @returns true iff we have the a peer of the given id.
 	bool havePeer(NodeId _id) const;
@@ -196,6 +195,8 @@ private:
 
 	void growPeers();
 	void prunePeers();
+
+	virtual void startedWorking();
 
 	/// Conduct I/O, polling, syncing, whatever.
 	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
