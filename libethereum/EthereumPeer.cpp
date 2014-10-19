@@ -156,7 +156,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 		{
 			// Looks like it's the best yet for total difficulty. Set to download.
 			setAsking(Asking::Blocks, isSyncing());		// will kick off other peers to help if available.
-			auto blocks = m_sub.nextFetch(c_maxBlocksAsk, isSyncing());
+			auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 			if (blocks.size())
 			{
 				prep(s, GetBlocksPacket, blocks.size());
