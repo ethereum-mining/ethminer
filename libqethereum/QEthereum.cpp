@@ -461,7 +461,7 @@ QString QEthereum::doTransact(QString _json)
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
 
-	cwarn << "Silently signing transaction from address" << toAddress(t.from).abridged() << ": User validation hook goes here.";
+	cwarn << "Silently signing transaction from address" << t.from.abridged() << ": User validation hook goes here.";
 	if (t.to)
 		// TODO: insert validification hook here.
 		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
