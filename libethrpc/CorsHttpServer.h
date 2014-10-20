@@ -28,7 +28,7 @@ class CorsHttpServer : public HttpServer
 {
 public:
 	using HttpServer::HttpServer;
-	bool virtual SendResponse(const std::string& response, void* addInfo = NULL);
+	bool virtual SendResponse(std::string const& _response, void* _addInfo = NULL);
 };
 
 }
