@@ -248,6 +248,7 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
+	QDev* m_dev = nullptr;
 	QEthereum* m_ethereum = nullptr;
 	QWhisper* m_whisper = nullptr;
 	QPeer2Peer* m_p2p = nullptr;

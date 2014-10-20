@@ -106,6 +106,27 @@ inline QString fromBinary(QString const& _s, unsigned _padding = 32)
 	return fromBinary(asBytes(_s), _padding);
 }
 
+class QDev: public QObject
+{
+	Q_OBJECT
+
+public:
+	QDev(QObject* _p): QObject(_p) {}
+	virtual ~QDev() {}
+
+	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
+	Q_INVOKABLE QString offset(QString _s, int _offset) const;
+
+	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
+	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
+	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
+	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
+	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
+	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
+};
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -120,30 +141,11 @@ public:
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
 
-	void setAccounts(QList<dev::KeyPair> _l) { m_accounts = _l; keysChanged(); }
+	void setAccounts(QList<dev::KeyPair> const& _l);
 
-	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
 
-	Q_INVOKABLE QString secretToAddress(QString _s) const;
 	Q_INVOKABLE QString lll(QString _s) const;
-
-	Q_INVOKABLE QString sha3(QString _s) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
-	Q_INVOKABLE QString sha3old(QString _s) const;
-	Q_INVOKABLE QString offset(QString _s, int _offset) const;
-
-	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
-	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
-	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
-
-	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
-	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
-	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
-	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
-	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
-	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*dev::u256*/ balanceAt(QString/*dev::Address*/ _a, int _block) const;
@@ -176,9 +178,6 @@ public:
 	unsigned/*dev::u256*/ number() const;
 	int getDefault() const;
 
-	QString/*dev::KeyPair*/ key() const;
-	QStringList/*list of dev::KeyPair*/ keys() const;
-	QString/*dev::Address*/ account() const;
 	QStringList/*list of dev::Address*/ accounts() const;
 
 public slots:
@@ -200,14 +199,13 @@ private:
 	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbaseImpl NOTIFY coinbaseChanged)
 	Q_PROPERTY(bool mining READ isMining WRITE setMiningImpl NOTIFY netChanged)
 	Q_PROPERTY(QString gasPrice READ gasPrice)
-	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
-	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
+	Q_PROPERTY(QStringList accounts READ accounts NOTIFY keysChanged)
 	Q_PROPERTY(int defaultBlock READ getDefault WRITE setDefault)
 	Q_PROPERTY(unsigned number READ number NOTIFY watchChanged)
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
-	QList<dev::KeyPair> m_accounts;
+	std::map<dev::Address, dev::KeyPair> m_accounts;
 };
 
 class QPeer2Peer : public QObject
@@ -272,52 +270,52 @@ private:
 };
 
 // TODO: p2p object condition
-#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, p2p, env) [frame, eth, shh, p2p, env]() \
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh, _p2p) [_frame, _env, _dev, _eth, _shh, _p2p]() \
 { \
-	frame->disconnect(); \
-	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
-	if (eth) \
+	_frame->disconnect(); \
+	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
+	_frame->addToJavaScriptWindowObject("dev", _dev, QWebFrame::ScriptOwnership); \
+	if (_eth) \
 	{ \
-		frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-		frame->addToJavaScriptWindowObject("p2p", p2p, QWebFrame::ScriptOwnership); \
-		frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.listening = {get listening() {return p2p.listening}, set listening(l) {p2p.listening = l}}"); \
-		frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getKey = function(f) { window.setTimeout(function () { if(f) {f(eth.key);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getKeys = function(f) { window.setTimeout(function () { if (f) {f(eth.keys);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.peerCount = {get peerCount() {return p2p.peerCount}}"); \
-		frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \
-		frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessagesImpl(JSON.stringify(a))); }"); \
-		frame->evaluateJavaScript("eth.getMessages = function(a, f) { window.setTimeout(function () { if (f) { f(JSON.parse(eth.getMessagesImpl(JSON.stringify(a)))); }}, 0);}"); \
-		frame->evaluateJavaScript("eth.getBalanceAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.balanceAt.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth.doTransactImpl(JSON.stringify(a)); return ret; }"); \
-		frame->evaluateJavaScript("eth.doTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallImpl(JSON.stringify(a)); return ret; }"); \
-		frame->evaluateJavaScript("eth.doCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlockImpl(JSON.stringify(a))); }"); \
-		frame->evaluateJavaScript("eth.getBlock = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.block.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.transaction = function(a, i) { return JSON.parse(eth.getTransactionImpl(JSON.stringify(a), i)); }"); \
-		frame->evaluateJavaScript("eth.getTransaction = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transaction.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.uncle = function(a, i) { return JSON.parse(eth.getUncleImpl(JSON.stringify(a), i)); }"); \
-		frame->evaluateJavaScript("eth.getUncle = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.uncle.apply(null, args)); }},0);}"); \
-		frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-		frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
+		_frame->addToJavaScriptWindowObject("eth", _eth, QWebFrame::ScriptOwnership); \
+		_frame->addToJavaScriptWindowObject("p2p", _p2p, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.listening = {get listening() {return p2p.listening}, set listening(l) {p2p.listening = l}}"); \
+		_frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getAccounts = function(f) { window.setTimeout(function () { if (f) {f(eth.accounts);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.peerCount = {get peerCount() {return p2p.peerCount}}"); \
+		_frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \
+		_frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessagesImpl(JSON.stringify(a))); }"); \
+		_frame->evaluateJavaScript("eth.getMessages = function(a, f) { window.setTimeout(function () { if (f) { f(JSON.parse(eth.getMessagesImpl(JSON.stringify(a)))); }}, 0);}"); \
+		_frame->evaluateJavaScript("eth.getBalanceAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.balanceAt.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth.doTransactImpl(JSON.stringify(a)); return ret; }"); \
+		_frame->evaluateJavaScript("eth.doTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallImpl(JSON.stringify(a)); return ret; }"); \
+		_frame->evaluateJavaScript("eth.doCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlockImpl(JSON.stringify(a))); }"); \
+		_frame->evaluateJavaScript("eth.getBlock = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.block.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.transaction = function(a, i) { return JSON.parse(eth.getTransactionImpl(JSON.stringify(a), i)); }"); \
+		_frame->evaluateJavaScript("eth.getTransaction = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transaction.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.uncle = function(a, i) { return JSON.parse(eth.getUncleImpl(JSON.stringify(a), i)); }"); \
+		_frame->evaluateJavaScript("eth.getUncle = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.uncle.apply(null, args)); }},0);}"); \
+		_frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	} \
-	if (shh) \
+	if (_shh) \
 	{ \
-		frame->addToJavaScriptWindowObject("shh", shh, QWebFrame::ScriptOwnership); \
-		frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-		frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+		_frame->addToJavaScriptWindowObject("shh", _shh, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 	} \
 }
 
