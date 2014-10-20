@@ -64,7 +64,12 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	case TooManyPeers: return "Peer had too many connections.";
 	case DuplicatePeer: return "Peer was already connected.";
 	case IncompatibleProtocol: return "Peer protocol versions are incompatible.";
+	case NullIdentity: return "Null identity given.";
 	case ClientQuit: return "Peer is exiting.";
+	case UnexpectedIdentity: return "Unexpected identity given.";
+	case LocalIdentity: return "Connected to ourselves.";
+	case UserReason: return "Subprotocol reason.";
+	case NoDisconnect: return "(No disconnect has happened.)";
 	default: return "Unknown reason.";
 	}
 }

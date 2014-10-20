@@ -26,7 +26,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/Dagger.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
@@ -43,7 +43,9 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
-			BlockDetails d(RLP(it->value().ToString()));
+			string rlpString = it->value().ToString();
+			RLP r(rlpString);
+			BlockDetails d(r);
 			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
 		}
 	delete it;
@@ -426,7 +428,10 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 
 void BlockChain::checkConsistency()
 {
-	m_details.clear();
+	{
+		WriteGuard l(x_details);
+		m_details.clear();
+	}
 	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -434,11 +439,17 @@ void BlockChain::checkConsistency()
 			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
-			if (p != h256())
+			if (p != h256() && p != m_genesisHash)	// TODO: for some reason the genesis details with the children get squished. not sure why.
 			{
 				auto dp = details(p);
-				assert(contains(dp.children, h));
-				assert(dp.number == dh.number - 1);
+				if (asserts(contains(dp.children, h)))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
+				if (assertsEqual(dp.number, dh.number - 1))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
 			}
 		}
 	delete it;

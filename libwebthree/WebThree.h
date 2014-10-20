@@ -96,10 +96,10 @@ public:
 	bool haveNetwork() { return peerCount() != 0; }
 
 	/// Save peers
-	dev::bytes savePeers();
+	dev::bytes saveNodes();
 
 	/// Restore peers
-	void restorePeers(bytesConstRef _saved);
+	void restoreNodes(bytesConstRef _saved);
 
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
@@ -107,6 +107,11 @@ public:
 	bool haveNetwork() const { return m_net.isStarted(); }
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_net.setNetworkPreferences(_n); if (had) startNetwork(); }
+
+	p2p::NodeId id() const { return m_net.id(); }
+
+	/// Gets the nodes.
+	p2p::Nodes nodes() const { return m_net.nodes(); }
 
 	/// Start the network subsystem.
 	void startNetwork() { m_net.start(); }

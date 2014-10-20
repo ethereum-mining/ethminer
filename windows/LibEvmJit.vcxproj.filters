@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="libevmjit">
+      <UniqueIdentifier>{9bb7d84d-6d6c-48af-a954-60049208b2f1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\libevmjit\BasicBlock.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Compiler.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\CompilerHelper.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\ExecutionEngine.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Ext.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\GasMeter.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Memory.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Runtime.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Type.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\Utils.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevmjit\VM.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\libevmjit\BasicBlock.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Compiler.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\CompilerHelper.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\ExecutionEngine.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Ext.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\GasMeter.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Memory.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Runtime.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Type.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Utils.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\VM.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

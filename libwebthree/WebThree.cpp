@@ -68,14 +68,14 @@ void WebThreeDirect::setIdealPeerCount(size_t _n)
 	return m_net.setIdealPeerCount(_n);
 }
 
-bytes WebThreeDirect::savePeers()
+bytes WebThreeDirect::saveNodes()
 {
-	return m_net.savePeers();
+	return m_net.saveNodes();
 }
 
-void WebThreeDirect::restorePeers(bytesConstRef _saved)
+void WebThreeDirect::restoreNodes(bytesConstRef _saved)
 {
-	return m_net.restorePeers(_saved);
+	return m_net.restoreNodes(_saved);
 }
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)

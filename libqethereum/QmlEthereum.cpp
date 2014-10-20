@@ -4,7 +4,6 @@
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Dagger.h>
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
