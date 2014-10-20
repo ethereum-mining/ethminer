@@ -38,6 +38,7 @@ void Worker::startWorking()
 	m_work.reset(new thread([&]()
 	{
 		setThreadName(m_name.c_str());
+		startedWorking();
 		while (!m_stop)
 		{
 			this_thread::sleep_for(chrono::milliseconds(30));

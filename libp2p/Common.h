@@ -127,5 +127,7 @@ struct PeerInfo
 	std::map<std::string, std::string> notes;
 };
 
+using PeerInfos = std::vector<PeerInfo>;
+
 }
 }

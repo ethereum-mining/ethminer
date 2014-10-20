@@ -51,6 +51,28 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 
 WebThreeDirect::~WebThreeDirect()
 {
+	// Utterly horrible right now - WebThree owns everything (good), but:
+	// m_net (Host) owns the eth::EthereumHost via a shared_ptr.
+	// The eth::EthereumHost depends on eth::Client (it maintains a reference to the BlockChain field of Client).
+	// eth::Client (owned by us via a unique_ptr) uses eth::EthereumHost (via a weak_ptr).
+	// Really need to work out a clean way of organising ownership and guaranteeing startup/shutdown is perfect.
+
+	// Have to call quit here to get the Host to kill its io_service otherwise we end up with left-over reads,
+	// still referencing Sessions getting deleted *after* m_ethereum is reset, causing bad things to happen, since
+	// the guarantee is that m_ethereum is only reset *after* all sessions have ended (sessions are allowed to
+	// use bits of data owned by m_ethereum).
+	m_net.quit();
+	m_ethereum.reset();
+}
+
+void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
+{
+	auto had = haveNetwork();
+	if (had)
+		stopNetwork();
+	m_net.setNetworkPreferences(_n);
+	if (had)
+		startNetwork();
 }
 
 std::vector<PeerInfo> WebThreeDirect::peers()
