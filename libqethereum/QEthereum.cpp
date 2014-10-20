@@ -462,7 +462,7 @@ QString QEthereum::doTransactImpl(QString _json)
 		// TODO: insert validification hook here.
 		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 	else
-		ret = toQJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
+		ret = toQJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
 	client()->flushTransactions();
 	return ret;
 }
