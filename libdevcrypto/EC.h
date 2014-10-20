@@ -31,12 +31,20 @@ namespace dev
 namespace crypto
 {
 
+//class ECDHETKeyExchange;
+	
+// 256-bit sha3(k) || Public = 84
+using PublicTrustNonce = h256;
+typedef std::pair<PublicTrustNonce,Public> PublicTrust;
+	
 inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
 
 inline CryptoPP::OID secp256k1() { return CryptoPP::ASN1::secp256k1(); }
 
 class ECKeyPair
 {
+	friend class ECDHETKeyExchange;
+	
 public:
 	static ECKeyPair create();
 	
@@ -49,7 +57,11 @@ private:
 	ECKeyPair() {}
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> m_pub;
 	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> m_sec;
+	
+	std::map<Address,PublicTrust> m_trustEgress;
+	std::set<PublicTrustNonce> m_trustIngress;
 };
 
 }
 }
+
