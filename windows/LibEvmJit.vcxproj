@@ -126,6 +126,7 @@
     <ClCompile Include="..\libevmjit\BasicBlock.cpp" />
     <ClCompile Include="..\libevmjit\Compiler.cpp" />
     <ClCompile Include="..\libevmjit\CompilerHelper.cpp" />
+    <ClCompile Include="..\libevmjit\Endianness.cpp" />
     <ClCompile Include="..\libevmjit\ExecutionEngine.cpp" />
     <ClCompile Include="..\libevmjit\Ext.cpp" />
     <ClCompile Include="..\libevmjit\GasMeter.cpp" />
@@ -139,6 +140,7 @@
     <ClInclude Include="..\libevmjit\BasicBlock.h" />
     <ClInclude Include="..\libevmjit\Compiler.h" />
     <ClInclude Include="..\libevmjit\CompilerHelper.h" />
+    <ClInclude Include="..\libevmjit\Endianness.h" />
     <ClInclude Include="..\libevmjit\ExecutionEngine.h" />
     <ClInclude Include="..\libevmjit\Ext.h" />
     <ClInclude Include="..\libevmjit\GasMeter.h" />
