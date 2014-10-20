@@ -53,14 +53,14 @@ void Capability::sealAndSend(RLPStream& _s)
 	m_session->sealAndSend(_s);
 }
 
-void Capability::sendDestroy(bytes& _msg)
-{
-	m_session->sendDestroy(_msg);
-}
-
 void Capability::send(bytesConstRef _msg)
 {
 	m_session->send(_msg);
+}
+
+void Capability::send(bytes&& _msg)
+{
+	m_session->send(move(_msg));
 }
 
 void Capability::addRating(unsigned _r)

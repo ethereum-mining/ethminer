@@ -22,14 +22,17 @@
 #include "Exceptions.h"
 #include <libdevcore/CommonIO.h>
 
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const char* InvalidBlockFormat::what() const noexcept { return ("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")").c_str(); }
-const char* UncleInChain::what() const noexcept { return ("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")").c_str(); }
-const char* InvalidTransactionsHash::what() const noexcept { return ("Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref())).c_str(); }
-const char* InvalidGasLimit::what() const noexcept { return ("Invalid gas limit (provided: " + toString(provided) + " valid:" + toString(valid) + ")").c_str(); }
-const char* InvalidMinGasPrice::what() const noexcept { return ("Invalid minimum gas price (provided: " + toString(provided) + " limit:" + toString(limit) + ")").c_str(); }
-const char* InvalidNonce::what() const noexcept { return ("Invalid nonce (r: " + toString(required) + " c:" + toString(candidate) + ")").c_str(); }
-const char* InvalidBlockNonce::what() const noexcept { return ("Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")").c_str(); }
+#define ETH_RETURN_STRING(S) static string s_what; s_what = S; return s_what.c_str();
+
+const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }
+const char* UncleInChain::what() const noexcept { ETH_RETURN_STRING("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"); }
+const char* InvalidTransactionsHash::what() const noexcept { ETH_RETURN_STRING("Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref())); }
+const char* InvalidGasLimit::what() const noexcept { ETH_RETURN_STRING("Invalid gas limit (provided: " + toString(provided) + " valid:" + toString(valid) + ")"); }
+const char* InvalidMinGasPrice::what() const noexcept { ETH_RETURN_STRING("Invalid minimum gas price (provided: " + toString(provided) + " limit:" + toString(limit) + ")"); }
+const char* InvalidNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (r: " + toString(required) + " c:" + toString(candidate) + ")"); }
+const char* InvalidBlockNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")"); }
 
