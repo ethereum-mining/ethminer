@@ -81,7 +81,7 @@ public:
 	virtual void suicide(Address) { suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
+	virtual h160 create(u256, u256*, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
 	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
