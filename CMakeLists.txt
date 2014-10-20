@@ -157,6 +157,7 @@ if (NOT LANGUAGES)
 endif()
 
 if (EVMCC)
+  add_subdirectory(libevmjit)
   add_subdirectory(evmcc)
 endif()
 
