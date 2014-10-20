@@ -38,40 +38,40 @@ class WebThreeStubServer: public AbstractWebThreeStubServer
 public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
 	
-	virtual std::string balanceAt(std::string const& address, int const& block);
-	virtual Json::Value block(Json::Value const& params);
-	virtual std::string call(Json::Value const& json);
-	virtual std::string codeAt(std::string const& address, int const& block);
+	virtual std::string balanceAt(std::string const& _address, int const& _block);
+	virtual Json::Value block(Json::Value const& _params);
+	virtual std::string call(Json::Value const& _json);
+	virtual std::string codeAt(std::string const& _address, int const& _block);
 	virtual std::string coinbase();
-	virtual double countAt(std::string const& address, int const& block);
+	virtual double countAt(std::string const& _address, int const& _block);
 	virtual int defaultBlock();
-	virtual std::string fromAscii(int const& padding, std::string const& s);
-	virtual double fromFixed(std::string const& s);
+	virtual std::string fromAscii(int const& _padding, std::string const& _s);
+	virtual double fromFixed(std::string const& _s);
 	virtual std::string gasPrice();
 	virtual bool listening();
 	virtual bool mining();
 	virtual std::string key();
 	virtual Json::Value keys();
-	virtual std::string lll(std::string const& s);
-	virtual Json::Value messages(Json::Value const& json);
+	virtual std::string lll(std::string const& _s);
+	virtual Json::Value messages(Json::Value const& _json);
 	virtual int number();
-	virtual std::string offset(int const& o, std::string const& s);
+	virtual std::string offset(int const& _o, std::string const& _s);
 	virtual int peerCount();
-	virtual std::string secretToAddress(std::string const& s);
-	virtual bool setCoinbase(std::string const& address);
-	virtual bool setListening(bool const& listening);
-	virtual bool setMining(bool const& mining);
-	virtual std::string sha3(std::string const& s);
-	virtual std::string stateAt(std::string const& address, int const& block, std::string const& storage);
-	virtual std::string toAscii(std::string const& s);
-	virtual std::string toDecimal(std::string const& s);
-	virtual std::string toFixed(double const& s);
-	virtual std::string transact(Json::Value const & json);
-	virtual Json::Value transaction(int const& i, Json::Value const& params);
-	virtual Json::Value uncle(int const& i, Json::Value const& params);
-	virtual int watch(std::string const& json);
-	virtual bool check(int const& id);
-	virtual bool killWatch(int const& id);
+	virtual std::string secretToAddress(std::string const& _s);
+	virtual bool setCoinbase(std::string const& _address);
+	virtual bool setListening(bool const& _listening);
+	virtual bool setMining(bool const& _mining);
+	virtual std::string sha3(std::string const& _s);
+	virtual std::string stateAt(std::string const& _address, int const& _block, std::string const& _storage);
+	virtual std::string toAscii(std::string const& _s);
+	virtual std::string toDecimal(std::string const& _s);
+	virtual std::string toFixed(double const& _s);
+	virtual std::string transact(Json::Value const& _json);
+	virtual Json::Value transaction(int const& _i, Json::Value const& _params);
+	virtual Json::Value uncle(int const& _i, Json::Value const& _params);
+	virtual int watch(std::string const& _json);
+	virtual bool check(int const& _id);
+	virtual bool killWatch(int const& _id);
 	
 	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
 private:

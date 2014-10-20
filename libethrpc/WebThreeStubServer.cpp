@@ -33,66 +33,66 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-static Json::Value toJson(dev::eth::BlockInfo const& bi)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
-	res["hash"] = boost::lexical_cast<string>(bi.hash);
+	res["hash"] = boost::lexical_cast<string>(_bi.hash);
 	
-	res["parentHash"] = toJS(bi.parentHash);
-	res["sha3Uncles"] = toJS(bi.sha3Uncles);
-	res["miner"] = toJS(bi.coinbaseAddress);
-	res["stateRoot"] = toJS(bi.stateRoot);
-	res["transactionsRoot"] = toJS(bi.transactionsRoot);
-	res["difficulty"] = toJS(bi.difficulty);
-	res["number"] = (int)bi.number;
-	res["minGasPrice"] = toJS(bi.minGasPrice);
-	res["gasLimit"] = (int)bi.gasLimit;
-	res["timestamp"] = (int)bi.timestamp;
-	res["extraData"] = jsFromBinary(bi.extraData);
-	res["nonce"] = toJS(bi.nonce);
+	res["parentHash"] = toJS(_bi.parentHash);
+	res["sha3Uncles"] = toJS(_bi.sha3Uncles);
+	res["miner"] = toJS(_bi.coinbaseAddress);
+	res["stateRoot"] = toJS(_bi.stateRoot);
+	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
+	res["difficulty"] = toJS(_bi.difficulty);
+	res["number"] = (int)_bi.number;
+	res["minGasPrice"] = toJS(_bi.minGasPrice);
+	res["gasLimit"] = (int)_bi.gasLimit;
+	res["timestamp"] = (int)_bi.timestamp;
+	res["extraData"] = jsFromBinary(_bi.extraData);
+	res["nonce"] = toJS(_bi.nonce);
 	return res;
 }
 
-static Json::Value toJson(dev::eth::PastMessage const& t)
+static Json::Value toJson(dev::eth::PastMessage const& _t)
 {
 	Json::Value res;
-	res["input"] = jsFromBinary(t.input);
-	res["output"] = jsFromBinary(t.output);
-	res["to"] = toJS(t.to);
-	res["from"] = toJS(t.from);
-	res["value"] = jsToDecimal(toJS(t.value));
-	res["origin"] = toJS(t.origin);
-	res["timestamp"] = toJS(t.timestamp);
-	res["coinbase"] = toJS(t.coinbase);
-	res["block"] =  toJS(t.block);
+	res["input"] = jsFromBinary(_t.input);
+	res["output"] = jsFromBinary(_t.output);
+	res["to"] = toJS(_t.to);
+	res["from"] = toJS(_t.from);
+	res["value"] = jsToDecimal(toJS(_t.value));
+	res["origin"] = toJS(_t.origin);
+	res["timestamp"] = toJS(_t.timestamp);
+	res["coinbase"] = toJS(_t.coinbase);
+	res["block"] =  toJS(_t.block);
 	Json::Value path;
-	for (int i: t.path)
+	for (int i: _t.path)
 		path.append(i);
 	res["path"] = path;
-	res["number"] = (int)t.number;
+	res["number"] = (int)_t.number;
 	return res;
 }
 
-static Json::Value toJson(dev::eth::PastMessages const& pms)
+static Json::Value toJson(dev::eth::PastMessages const& _pms)
 {
 	Json::Value res;
-	for (dev::eth::PastMessage const& t: pms)
+	for (dev::eth::PastMessage const& t: _pms)
 		res.append(toJson(t));
 	
 	return res;
 }
 
-static Json::Value toJson(dev::eth::Transaction const& t)
+static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
-	res["hash"] = toJS(t.sha3());
-	res["input"] = jsFromBinary(t.data);
-	res["to"] = toJS(t.receiveAddress);
-	res["from"] = toJS(t.sender());
-	res["gas"] = (int)t.gas;
-	res["gasPrice"] = toJS(t.gasPrice);
-	res["nonce"] = toJS(t.nonce);
-	res["value"] = toJS(t.value);
+	res["hash"] = toJS(_t.sha3());
+	res["input"] = jsFromBinary(_t.data);
+	res["to"] = toJS(_t.receiveAddress);
+	res["from"] = toJS(_t.sender());
+	res["gas"] = (int)_t.gas;
+	res["gasPrice"] = toJS(_t.gasPrice);
+	res["nonce"] = toJS(_t.nonce);
+	res["value"] = toJS(_t.value);
 	return res;
 }
 
@@ -107,74 +107,74 @@ dev::eth::Interface* WebThreeStubServer::client() const
 	return m_web3.ethereum();
 }
 
-std::string WebThreeStubServer::balanceAt(string const& address, int const& block)
+std::string WebThreeStubServer::balanceAt(string const& _address, int const& _block)
 {
-	return toJS(client()->balanceAt(jsToAddress(address), block));
+	return toJS(client()->balanceAt(jsToAddress(_address), _block));
 }
 
-dev::FixedHash<32> WebThreeStubServer::numberOrHash(Json::Value const& json) const
+dev::FixedHash<32> WebThreeStubServer::numberOrHash(Json::Value const& _json) const
 {
 	dev::FixedHash<32> hash;
-	if (!json["hash"].empty())
-		hash = jsToFixed<32>(json["hash"].asString());
-	else if (!json["number"].empty())
-		hash = client()->hashFromNumber((unsigned)json["number"].asInt());
+	if (!_json["hash"].empty())
+		hash = jsToFixed<32>(_json["hash"].asString());
+	else if (!_json["number"].empty())
+		hash = client()->hashFromNumber((unsigned)_json["number"].asInt());
 	return hash;
 }
 
-Json::Value WebThreeStubServer::block(Json::Value const& params)
+Json::Value WebThreeStubServer::block(Json::Value const& _params)
 {
 	if (!client())
 		return "";
 	
-	auto hash = numberOrHash(params);
+	auto hash = numberOrHash(_params);
 	return toJson(client()->blockInfo(hash));
 }
 
-static TransactionJS toTransaction(Json::Value const& json)
+static TransactionJS toTransaction(Json::Value const& _json)
 {
 	TransactionJS ret;
-	if (!json.isObject() || json.empty()){
+	if (!_json.isObject() || _json.empty()){
 		return ret;
 	}
 	
-	if (!json["from"].empty())
-		ret.from = jsToSecret(json["from"].asString());
-	if (!json["to"].empty())
-		ret.to = jsToAddress(json["to"].asString());
-	if (!json["value"].empty())
-		ret.value = jsToU256(json["value"].asString());
-	if (!json["gas"].empty())
-		ret.gas = jsToU256(json["gas"].asString());
-	if (!json["gasPrice"].empty())
-		ret.gasPrice = jsToU256(json["gasPrice"].asString());
+	if (!_json["from"].empty())
+		ret.from = jsToSecret(_json["from"].asString());
+	if (!_json["to"].empty())
+		ret.to = jsToAddress(_json["to"].asString());
+	if (!_json["value"].empty())
+		ret.value = jsToU256(_json["value"].asString());
+	if (!_json["gas"].empty())
+		ret.gas = jsToU256(_json["gas"].asString());
+	if (!_json["gasPrice"].empty())
+		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
 	
-	if (!json["data"].empty() || json["code"].empty() || json["dataclose"].empty())
+	if (!_json["data"].empty() || _json["code"].empty() || _json["dataclose"].empty())
 	{
-		if (json["data"].isString())
-			ret.data = jsToBytes(json["data"].asString());
-		else if (json["code"].isString())
-			ret.data = jsToBytes(json["code"].asString());
-		else if (json["data"].isArray())
-			for (auto i: json["data"])
+		if (_json["data"].isString())
+			ret.data = jsToBytes(_json["data"].asString());
+		else if (_json["code"].isString())
+			ret.data = jsToBytes(_json["code"].asString());
+		else if (_json["data"].isArray())
+			for (auto i: _json["data"])
 				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
-		else if (json["code"].isArray())
-			for (auto i: json["code"])
+		else if (_json["code"].isArray())
+			for (auto i: _json["code"])
 				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
-		else if (json["dataclose"].isArray())
-			for (auto i: json["dataclose"])
+		else if (_json["dataclose"].isArray())
+			for (auto i: _json["dataclose"])
 				dev::operator +=(ret.data, jsToBytes(i.asString()));
 	}
 	
 	return ret;
 }
 
-std::string WebThreeStubServer::call(Json::Value const& json)
+std::string WebThreeStubServer::call(Json::Value const& _json)
 {
 	std::string ret;
 	if (!client())
 		return ret;
-	TransactionJS t = toTransaction(json);
+	TransactionJS t = toTransaction(_json);
 	if (!t.to)
 		return ret;
 	if (!t.from && m_keys.size())
@@ -187,9 +187,9 @@ std::string WebThreeStubServer::call(Json::Value const& json)
 	return ret;
 }
 
-std::string WebThreeStubServer::codeAt(string const& address, int const& block)
+std::string WebThreeStubServer::codeAt(string const& _address, int const& _block)
 {
-	return client() ? jsFromBinary(client()->codeAt(jsToAddress(address), block)) : "";
+	return client() ? jsFromBinary(client()->codeAt(jsToAddress(_address), _block)) : "";
 }
 
 std::string WebThreeStubServer::coinbase()
@@ -197,9 +197,9 @@ std::string WebThreeStubServer::coinbase()
 	return client() ? toJS(client()->address()) : "";
 }
 
-double WebThreeStubServer::countAt(string const& address, int const& block)
+double WebThreeStubServer::countAt(string const& _address, int const& _block)
 {
-	return client() ? (double)(uint64_t)client()->countAt(jsToAddress(address), block) : 0;
+	return client() ? (double)(uint64_t)client()->countAt(jsToAddress(_address), _block) : 0;
 }
 
 int WebThreeStubServer::defaultBlock()
@@ -207,14 +207,14 @@ int WebThreeStubServer::defaultBlock()
 	return client() ? client()->getDefault() : 0;
 }
 
-std::string WebThreeStubServer::fromAscii(int const& padding, std::string const& s)
+std::string WebThreeStubServer::fromAscii(int const& _padding, std::string const& _s)
 {
-	return jsFromBinary(s, padding);
+	return jsFromBinary(_s, _padding);
 }
 
-double WebThreeStubServer::fromFixed(string const& s)
+double WebThreeStubServer::fromFixed(string const& _s)
 {
-	return jsFromFixed(s);
+	return jsFromFixed(_s);
 }
 
 std::string WebThreeStubServer::gasPrice()
@@ -247,65 +247,65 @@ Json::Value WebThreeStubServer::keys()
 	return ret;
 }
 
-std::string WebThreeStubServer::lll(string const& s)
+std::string WebThreeStubServer::lll(string const& _s)
 {
-	return toJS(dev::eth::compileLLL(s));
+	return toJS(dev::eth::compileLLL(_s));
 }
 
-static dev::eth::MessageFilter toMessageFilter(Json::Value const& json)
+static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 {
 	dev::eth::MessageFilter filter;
-	if (!json.isObject() || json.empty()){
+	if (!_json.isObject() || _json.empty()){
 		return filter;
 	}
 	
-	if (!json["earliest"].empty())
-		filter.withEarliest(json["earliest"].asInt());
-	if (!json["latest"].empty())
-		filter.withLatest(json["lastest"].asInt());
-	if (!json["max"].empty())
-		filter.withMax(json["max"].asInt());
-	if (!json["skip"].empty())
-		filter.withSkip(json["skip"].asInt());
-	if (!json["from"].empty())
+	if (!_json["earliest"].empty())
+		filter.withEarliest(_json["earliest"].asInt());
+	if (!_json["latest"].empty())
+		filter.withLatest(_json["lastest"].asInt());
+	if (!_json["max"].empty())
+		filter.withMax(_json["max"].asInt());
+	if (!_json["skip"].empty())
+		filter.withSkip(_json["skip"].asInt());
+	if (!_json["from"].empty())
 	{
-		if (json["from"].isArray())
-			for (auto i : json["from"])
+		if (_json["from"].isArray())
+			for (auto i : _json["from"])
 				filter.from(jsToAddress(i.asString()));
 		else
-			filter.from(jsToAddress(json["from"].asString()));
+			filter.from(jsToAddress(_json["from"].asString()));
 	}
-	if (!json["to"].empty())
+	if (!_json["to"].empty())
 	{
-		if (json["to"].isArray())
-			for (auto i : json["to"])
+		if (_json["to"].isArray())
+			for (auto i : _json["to"])
 				filter.from(jsToAddress(i.asString()));
 		else
-			filter.from(jsToAddress(json["to"].asString()));
+			filter.from(jsToAddress(_json["to"].asString()));
 	}
-	if (!json["altered"].empty())
+	if (!_json["altered"].empty())
 	{
-		if (json["altered"].isArray())
-			for (auto i: json["altered"])
+		if (_json["altered"].isArray())
+			for (auto i: _json["altered"])
 				if (i.isObject())
 					filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
 				else
 					filter.altered((jsToAddress(i.asString())));
-		else if (json["altered"].isObject())
-			filter.altered(jsToAddress(json["altered"]["id"].asString()), jsToU256(json["altered"]["at"].asString()));
+		else if (_json["altered"].isObject())
+			filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
 		else
-			filter.altered(jsToAddress(json["altered"].asString()));
+			filter.altered(jsToAddress(_json["altered"].asString()));
 	}
 
 	return filter;
 }
 
-Json::Value WebThreeStubServer::messages(Json::Value const& json)
+Json::Value WebThreeStubServer::messages(Json::Value const& _json)
 {
 	Json::Value res;
 	if (!client())
 		return  res;
-	return toJson(client()->messages(toMessageFilter(json)));
+	return toJson(client()->messages(toMessageFilter(_json)));
 }
 
 int WebThreeStubServer::number()
@@ -313,9 +313,9 @@ int WebThreeStubServer::number()
 	return client() ? client()->number() + 1 : 0;
 }
 
-std::string WebThreeStubServer::offset(int const & o, std::string const& s)
+std::string WebThreeStubServer::offset(int const& _o, std::string const& _s)
 {
-	return toJS(jsToU256(s) + o);
+	return toJS(jsToU256(_s) + _o);
 }
 
 int WebThreeStubServer::peerCount()
@@ -323,69 +323,69 @@ int WebThreeStubServer::peerCount()
 	return m_web3.peerCount();
 }
 
-std::string WebThreeStubServer::secretToAddress(string const& s)
+std::string WebThreeStubServer::secretToAddress(string const& _s)
 {
-	return toJS(KeyPair(jsToSecret(s)).address());
+	return toJS(KeyPair(jsToSecret(_s)).address());
 }
 
-bool WebThreeStubServer::setCoinbase(std::string const& address)
+bool WebThreeStubServer::setCoinbase(std::string const& _address)
 {
-	client()->setAddress(jsToAddress(address));
+	client()->setAddress(jsToAddress(_address));
 	return true;
 }
 
-bool WebThreeStubServer::setListening(bool const& listening)
+bool WebThreeStubServer::setListening(bool const& _listening)
 {
-	if (listening)
+	if (_listening)
 		m_web3.startNetwork();
 	else
 		m_web3.stopNetwork();
 	return true;
 }
 
-bool WebThreeStubServer::setMining(bool const& mining)
+bool WebThreeStubServer::setMining(bool const& _mining)
 {
 	if (!client())
 		return Json::nullValue;
 
-	if (mining)
+	if (_mining)
 		client()->startMining();
 	else
 		client()->stopMining();
 	return true;
 }
 
-std::string WebThreeStubServer::sha3(string const& s)
+std::string WebThreeStubServer::sha3(string const& _s)
 {
-	return toJS(dev::sha3(jsToBytes(s)));
+	return toJS(dev::sha3(jsToBytes(_s)));
 }
 
-std::string WebThreeStubServer::stateAt(string const& address, int const& block, string const& storage)
+std::string WebThreeStubServer::stateAt(string const& _address, int const& _block, string const& _storage)
 {
-	return client() ? toJS(client()->stateAt(jsToAddress(address), jsToU256(storage), block)) : "";
+	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), _block)) : "";
 }
 
-std::string WebThreeStubServer::toAscii(string const& s)
+std::string WebThreeStubServer::toAscii(string const& _s)
 {
-	return jsToBinary(s);
+	return jsToBinary(_s);
 }
 
-std::string WebThreeStubServer::toDecimal(string const& s)
+std::string WebThreeStubServer::toDecimal(string const& _s)
 {
-	return jsToDecimal(s);
+	return jsToDecimal(_s);
 }
 
-std::string WebThreeStubServer::toFixed(double const& s)
+std::string WebThreeStubServer::toFixed(double const& _s)
 {
-	return jsToFixed(s);
+	return jsToFixed(_s);
 }
 
-std::string WebThreeStubServer::transact(Json::Value const& json)
+std::string WebThreeStubServer::transact(Json::Value const& _json)
 {
 	std::string ret;
 	if (!client())
 		return ret;
-	TransactionJS t = toTransaction(json);
+	TransactionJS t = toTransaction(_json);
 	if (!t.from && m_keys.size())
 	{
 		auto b = m_keys.front();
@@ -406,56 +406,56 @@ std::string WebThreeStubServer::transact(Json::Value const& json)
 	return ret;
 }
 
-Json::Value WebThreeStubServer::transaction(int const& i, Json::Value const& params)
+Json::Value WebThreeStubServer::transaction(int const& _i, Json::Value const& _params)
 {
 	if (!client())
 		return "";
 	
-	auto hash = numberOrHash(params);
-	return toJson(client()->transaction(hash, i));
+	auto hash = numberOrHash(_params);
+	return toJson(client()->transaction(hash, _i));
 }
 
-Json::Value WebThreeStubServer::uncle(int const& i, Json::Value const& params)
+Json::Value WebThreeStubServer::uncle(int const& _i, Json::Value const& _params)
 {
 	if (!client())
 		return "";
 	
-	auto hash = numberOrHash(params);
-	return toJson(client()->uncle(hash, i));
+	auto hash = numberOrHash(_params);
+	return toJson(client()->uncle(hash, _i));
 }
 
-int WebThreeStubServer::watch(string const& json)
+int WebThreeStubServer::watch(string const& _json)
 {
 	unsigned ret = -1;
 	if (!client())
 		return ret;
-	if (json.compare("chain") == 0)
+	if (_json.compare("chain") == 0)
 		ret = client()->installWatch(dev::eth::ChainChangedFilter);
-	else if (json.compare("pending") == 0)
+	else if (_json.compare("pending") == 0)
 		ret = client()->installWatch(dev::eth::PendingChangedFilter);
 	else
 	{
 		Json::Reader reader;
 		Json::Value object;
-		reader.parse(json, object);
+		reader.parse(_json, object);
 		ret = client()->installWatch(toMessageFilter(object));
 	}
 
 	return ret;
 }
 
-bool WebThreeStubServer::check(int const& id)
+bool WebThreeStubServer::check(int const& _id)
 {
 	if (!client())
 		return false;
-	return client()->checkWatch(id);
+	return client()->checkWatch(_id);
 }
 
-bool WebThreeStubServer::killWatch(int const& id)
+bool WebThreeStubServer::killWatch(int const& _id)
 {
 	if (!client())
 		return false;
-	client()->uninstallWatch(id);
+	client()->uninstallWatch(_id);
 	return true;
 }
 
