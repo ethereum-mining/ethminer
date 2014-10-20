@@ -31,6 +31,12 @@ namespace dev
 namespace eth
 {
 
+#ifndef _MSC_VER
+uint32_t const FeeStructure::c_memoryGas;
+uint32_t const FeeStructure::c_txDataGas;
+uint32_t const FeeStructure::c_txGas;
+#endif
+
 uint32_t FeeStructure::getInstructionFee(Instruction _inst)
 {
 	switch (_inst)
