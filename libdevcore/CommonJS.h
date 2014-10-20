@@ -24,8 +24,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
-#include <tuple>
 #include <libethereum/Interface.h>
 #include "Common.h"
 #include "CommonData.h"
