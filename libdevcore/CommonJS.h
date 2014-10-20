@@ -116,7 +116,7 @@ inline double jsFromFixed(std::string const& _s)
 
 struct TransactionJS
 {
-	Secret from;
+	Address from;
 	Address to;
 	u256 value;
 	bytes data;

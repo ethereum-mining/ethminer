@@ -13,6 +13,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         AbstractWebThreeStubServer(jsonrpc::AbstractServerConnector* conn) :
             jsonrpc::AbstractServer<AbstractWebThreeStubServer>(conn) 
         {
+            this->bindAndAddMethod(new jsonrpc::Procedure("accounts", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::accountsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "address",jsonrpc::JSON_STRING,"block",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::balanceAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("block", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_OBJECT, "params",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::blockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("call", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "json",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::callI);
@@ -24,8 +25,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("fromAscii", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "padding",jsonrpc::JSON_INTEGER,"s",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::fromAsciiI);
             this->bindAndAddMethod(new jsonrpc::Procedure("fromFixed", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_REAL, "s",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::fromFixedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("gasPrice", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::gasPriceI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("key", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::keyI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("keys", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::keysI);
             this->bindAndAddMethod(new jsonrpc::Procedure("killWatch", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN, "id",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::killWatchI);
             this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("lll", jsonrpc::PARAMS_BY_NAME, jsonrpc::JSON_STRING, "s",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::lllI);
@@ -50,6 +49,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
 
         }
         
+        inline virtual void accountsI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->accounts();
+        }
+
         inline virtual void balanceAtI(const Json::Value& request, Json::Value& response) 
         {
             response = this->balanceAt(request["address"].asString(), request["block"].asInt());
@@ -103,16 +107,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void gasPriceI(const Json::Value& request, Json::Value& response) 
         {
             response = this->gasPrice();
-        }
-
-        inline virtual void keyI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->key();
-        }
-
-        inline virtual void keysI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->keys();
         }
 
         inline virtual void killWatchI(const Json::Value& request, Json::Value& response) 
@@ -221,6 +215,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
 
 
+        virtual Json::Value accounts() = 0;
         virtual std::string balanceAt(const std::string& address, const int& block) = 0;
         virtual Json::Value block(const Json::Value& params) = 0;
         virtual std::string call(const Json::Value& json) = 0;
@@ -232,8 +227,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string fromAscii(const int& padding, const std::string& s) = 0;
         virtual double fromFixed(const std::string& s) = 0;
         virtual std::string gasPrice() = 0;
-        virtual std::string key() = 0;
-        virtual Json::Value keys() = 0;
         virtual bool killWatch(const int& id) = 0;
         virtual bool listening() = 0;
         virtual std::string lll(const std::string& s) = 0;

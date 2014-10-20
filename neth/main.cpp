@@ -478,8 +478,7 @@ int main(int argc, char** argv)
 	auto_ptr<WebThreeStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
-		jsonrpcServer->setKeys({us});
+		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -552,8 +551,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
-			jsonrpcServer->setKeys({us});
+			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
 			jsonrpcServer->StartListening();
 		}
 		else if (cmd == "jsonstop")

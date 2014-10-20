@@ -96,15 +96,31 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3):
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
 {
+	setAccounts(_accounts);
+}
+
+void WebThreeStubServer::setAccounts(std::vector<dev::KeyPair> const& _accounts)
+{
+	m_accounts.clear();
+	for (auto i: _accounts)
+		m_accounts[i.address()] = i.secret();
 }
 
 dev::eth::Interface* WebThreeStubServer::client() const
 {
 	return m_web3.ethereum();
+}
+
+Json::Value WebThreeStubServer::accounts()
+{
+	Json::Value ret;
+	for (auto i: m_accounts)
+		ret.append(toJS(i.first));
+	return ret;
 }
 
 std::string WebThreeStubServer::balanceAt(string const& _address, int const& _block)
@@ -139,7 +155,7 @@ static TransactionJS toTransaction(Json::Value const& _json)
 	}
 	
 	if (!_json["from"].empty())
-		ret.from = jsToSecret(_json["from"].asString());
+		ret.from = jsToAddress(_json["from"].asString());
 	if (!_json["to"].empty())
 		ret.to = jsToAddress(_json["to"].asString());
 	if (!_json["value"].empty())
@@ -175,15 +191,21 @@ std::string WebThreeStubServer::call(Json::Value const& _json)
 	if (!client())
 		return ret;
 	TransactionJS t = toTransaction(_json);
-	if (!t.to)
+	if (!t.from && m_accounts.size())
+	{
+		auto b = m_accounts.begin()->first;
+		for (auto a: m_accounts)
+			if (client()->balanceAt(a.first) > client()->balanceAt(b))
+				b = a.first;
+		t.from = b;
+	}
+	if (!m_accounts.count(t.from))
 		return ret;
-	if (!t.from && m_keys.size())
-		t.from = m_keys[0].secret();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
-	ret = toJS(client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice));
+	ret = toJS(client()->call(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice));
 	return ret;
 }
 
@@ -230,21 +252,6 @@ bool WebThreeStubServer::listening()
 bool WebThreeStubServer::mining()
 {
 	return client() ? client()->isMining() : false;
-}
-
-std::string WebThreeStubServer::key()
-{
-	if (!m_keys.size())
-		return std::string();
-	return toJS(m_keys[0].sec());
-}
-
-Json::Value WebThreeStubServer::keys()
-{
-	Json::Value ret;
-	for (auto i: m_keys)
-		ret.append(toJS(i.secret()));
-	return ret;
 }
 
 std::string WebThreeStubServer::lll(string const& _s)
@@ -386,22 +393,26 @@ std::string WebThreeStubServer::transact(Json::Value const& _json)
 	if (!client())
 		return ret;
 	TransactionJS t = toTransaction(_json);
-	if (!t.from && m_keys.size())
+	if (!t.from && m_accounts.size())
 	{
-		auto b = m_keys.front();
-		for (auto a: m_keys)
-			if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
-				b = a;
-		t.from = b.secret();
+		auto b = m_accounts.begin()->first;
+		for (auto a: m_accounts)
+			if (client()->balanceAt(a.first) > client()->balanceAt(b))
+				b = a.first;
+		t.from = b;
 	}
+	if (!m_accounts.count(t.from))
+		return ret;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
+	cwarn << "Silently signing transaction from address" << t.from.abridged() << ": User validation hook goes here.";
 	if (t.to)
-		client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+		// TODO: from qethereum, insert validification hook here.
+		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 	else
-		ret = toJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
+		ret = toJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
 	client()->flushTransactions();
 	return ret;
 }

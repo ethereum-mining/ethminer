@@ -36,8 +36,9 @@ namespace dev { class WebThreeDirect; namespace eth { class Interface; } class K
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> _accounts);
 	
+	virtual Json::Value accounts();
 	virtual std::string balanceAt(std::string const& _address, int const& _block);
 	virtual Json::Value block(Json::Value const& _params);
 	virtual std::string call(Json::Value const& _json);
@@ -50,8 +51,6 @@ public:
 	virtual std::string gasPrice();
 	virtual bool listening();
 	virtual bool mining();
-	virtual std::string key();
-	virtual Json::Value keys();
 	virtual std::string lll(std::string const& _s);
 	virtual Json::Value messages(Json::Value const& _json);
 	virtual int number();
@@ -73,10 +72,10 @@ public:
 	virtual bool check(int const& _id);
 	virtual bool killWatch(int const& _id);
 	
-	void setKeys(std::vector<dev::KeyPair> _keys) { m_keys = _keys; }
+	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 private:
 	dev::eth::Interface* client() const;
 	dev::WebThreeDirect& m_web3;
-	std::vector<dev::KeyPair> m_keys;
+	std::map<dev::Address, dev::KeyPair> m_accounts;
 	dev::FixedHash<32> numberOrHash(Json::Value const& _json) const;
 };
