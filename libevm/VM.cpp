@@ -25,6 +25,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+uint32_t const dev::eth::FeeStructure::c_memoryGas;
+uint32_t const dev::eth::FeeStructure::c_txDataGas;
+uint32_t const dev::eth::FeeStructure::c_txGas;
+
 void VM::reset(u256 _gas)
 {
 	m_gas = _gas;
