@@ -1,7 +1,7 @@
 0. Formatting
 
 a. Use tabs for indentation!
-- 1 tab is 4 spaces wide.
+- tab stops are every 4 characters.
 - One indentation level -> exactly one byte (i.e. a tab character) in the source file.
 b. Line widths:
 - Don't worry about having lines of code > 80-char wide.
@@ -11,8 +11,9 @@ d. Never place condition bodies on same line as condition.
 e. Space between first paren and keyword, but *not* following first paren or preceeding final paren.
 f. No spaces when fewer than intra-expression three parens together; when three or more, space according to clarity.
 g. No spaces for subscripting.
-h. Space all other operators.
-i. Braces, when used, always have their own lines and are at same indentation level as "parent" scope.
+h. No space before ':' but one after it, except in the ternary operator: one on both sides.
+i. Space all other operators.
+j. Braces, when used, always have their own lines and are at same indentation level as "parent" scope.
 
 (WRONG)
 if( a==b[ i ] ) { printf ("Hello\n"); }
@@ -147,8 +148,17 @@ e. A dictionary and thesaurus are your friends.
 - Find short, memorable & (at least semi-) descriptive names for commonly used classes or name-fragments.
 
 
+10. Type-definitions
 
-10. Commenting
+a. Prefer using to typedef. e.g. using ints = std::vector<int>; rather than typedef std::vector<int> ints;
+b. Generally avoid shortening a standard form that already includes all important information:
+- e.g. stick to shared_ptr<X> rather than shortening to ptr<X>.
+c. Where there are exceptions to this (due to excessive use and clear meaning), note the change prominently and use it consistently.
+- e.g. using Guard = boost::lock_guard<std::mutex>; ///< Guard is used throughout the codebase since it's clear in meaning and used commonly. 
+d. In general expressions should be roughly as important/semantically meaningful as the space they occupy.
+
+
+11. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
 

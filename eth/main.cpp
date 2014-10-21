@@ -324,7 +324,7 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	auto nodesState = contents(dbPath + "/nodeState.rlp");
+	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp");
 	web3.restoreNodes(&nodesState);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
@@ -700,7 +700,7 @@ int main(int argc, char** argv)
 
 						cnote << "Saved" << rechex << "to" << outFile;
 					}
-					catch (dev::eth::InvalidTrie)
+					catch (dev::InvalidTrie)
 					{
 						cwarn << "Corrupted trie.";
 					}
@@ -791,7 +791,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	writeFile(dbPath + "/nodeState.rlp", web3.saveNodes());
+	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp", web3.saveNodes());
 	return 0;
 }
 
