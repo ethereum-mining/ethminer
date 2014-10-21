@@ -56,9 +56,12 @@ h256 BlockInfo::headerHashWithoutNonce() const
 	return sha3(s.out());
 }
 
+auto static const s_sha3EmptyList = sha3(RLPEmptyList);
+
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 13 : 12) << parentHash << sha3Uncles << coinbaseAddress;
+	_s.appendList(_nonce ? 13 : 12) << parentHash;
+	_s.append(sha3Uncles == s_sha3EmptyList ? h256() : sha3Uncles, false, true) << coinbaseAddress;
 	_s.append(stateRoot, false, true).append(transactionsRoot, false, true);
 	_s << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
@@ -78,7 +81,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	try
 	{
 		parentHash = _header[field = 0].toHash<h256>();
-		sha3Uncles = _header[field = 1].isEmpty() ? h256() : _header[field = 1].toHash<h256>();
+		sha3Uncles = _header[field = 1].toHash<h256>();
 		coinbaseAddress = _header[field = 2].toHash<Address>();
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
@@ -148,7 +151,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	if (minGasPrice > mgp)
 		BOOST_THROW_EXCEPTION(InvalidMinGasPrice(minGasPrice, mgp));
 
-	if ((sha3Uncles && root[2].isEmpty()) || (!sha3Uncles && sha3Uncles != sha3(root[2].data())))
+	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
 
