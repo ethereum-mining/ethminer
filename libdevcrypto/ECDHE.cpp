@@ -53,3 +53,16 @@ ECDHETKeyExchange::ECDHETKeyExchange(ECDHE const& _ecdhe, ECKeyPair* _keyTrust, 
 {
 	
 }
+
+dev::bytes ECDHETKeyExchange::exchange()
+{
+	
+}
+
+bool ECDHETKeyExchange::authenticate(bytes _exchangeIn)
+{
+	
+}
+
+
+
