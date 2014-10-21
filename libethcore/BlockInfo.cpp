@@ -61,7 +61,8 @@ auto static const s_sha3EmptyList = sha3(RLPEmptyList);
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
 	_s.appendList(_nonce ? 13 : 12) << parentHash;
-	_s.append(sha3Uncles == s_sha3EmptyList ? h256() : sha3Uncles, false, true) << coinbaseAddress;
+	_s.append(sha3Uncles == s_sha3EmptyList ? h256() : sha3Uncles, false, true);
+	_s << coinbaseAddress;
 	_s.append(stateRoot, false, true).append(transactionsRoot, false, true);
 	_s << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
