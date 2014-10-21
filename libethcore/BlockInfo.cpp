@@ -78,7 +78,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	try
 	{
 		parentHash = _header[field = 0].toHash<h256>();
-		sha3Uncles = _header[field = 1].toHash<h256>();
+		sha3Uncles = _header[field = 1].isEmpty() ? h256() : _header[field = 1].toHash<h256>();
 		coinbaseAddress = _header[field = 2].toHash<Address>();
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
@@ -148,7 +148,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	if (minGasPrice > mgp)
 		BOOST_THROW_EXCEPTION(InvalidMinGasPrice(minGasPrice, mgp));
 
-	if (sha3Uncles != sha3(root[2].data()))
+	if ((sha3Uncles && root[2].isEmpty()) || (!sha3Uncles && sha3Uncles != sha3(root[2].data())))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
 
@@ -179,8 +179,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
-{
-	// Check difficulty is correct given the two timestamps.
+{	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
