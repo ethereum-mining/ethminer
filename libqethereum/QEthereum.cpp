@@ -56,10 +56,11 @@ QString unpadded(QString _s)
 }
 
 QEthereum::QEthereum(QObject* _p, eth::Interface* _c, QList<dev::KeyPair> _accounts):
-	QObject(_p), m_client(_c), m_accounts(_accounts)
+	QObject(_p), m_client(_c)
 {
 	// required to prevent crash on osx when performing addto/evaluatejavascript calls
 	moveToThread(_p->thread());
+	setAccounts(_accounts);
 }
 
 QEthereum::~QEthereum()
@@ -81,11 +82,6 @@ void QEthereum::clearWatches()
 	m_watches.clear();
 }
 
-QString QEthereum::secretToAddress(QString _s) const
-{
-	return toQJS(KeyPair(toSecret(_s)).address());
-}
-
 eth::Interface* QEthereum::client() const
 {
 	return m_client;
@@ -96,27 +92,22 @@ QString QEthereum::lll(QString _s) const
 	return toQJS(dev::eth::compileLLL(_s.toStdString()));
 }
 
-QString QEthereum::sha3(QString _s) const
+QString QDev::sha3(QString _s) const
 {
-	return toQJS(dev::eth::sha3(toBytes(_s)));
+	return toQJS(dev::sha3(toBytes(_s)));
 }
 
-QString QEthereum::sha3(QString _s1, QString _s2) const
+QString QDev::sha3(QString _s1, QString _s2) const
 {
-	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
+	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32))));
 }
 
-QString QEthereum::sha3(QString _s1, QString _s2, QString _s3) const
+QString QDev::sha3(QString _s1, QString _s2, QString _s3) const
 {
-	return toQJS(dev::eth::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
+	return toQJS(dev::sha3(asBytes(padded(_s1, 32)) + asBytes(padded(_s2, 32)) + asBytes(padded(_s3, 32))));
 }
 
-QString QEthereum::sha3old(QString _s) const
-{
-	return toQJS(dev::eth::sha3(asBytes(_s)));
-}
-
-QString QEthereum::offset(QString _s, int _i) const
+QString QDev::offset(QString _s, int _i) const
 {
 	return toQJS(toU256(_s) + _i);
 }
@@ -131,33 +122,11 @@ QString QEthereum::number() const
 	return m_client ? QString::number(client()->number() + 1) : "";
 }
 
-QString QEthereum::account() const
-{
-	if (m_accounts.empty())
-		return toQJS(Address());
-	return toQJS(m_accounts[0].address());
-}
-
 QStringList QEthereum::accounts() const
 {
 	QStringList ret;
 	for (auto i: m_accounts)
-		ret.push_back(toQJS(i.address()));
-	return ret;
-}
-
-QString QEthereum::key() const
-{
-	if (m_accounts.empty())
-		return toQJS(KeyPair().sec());
-	return toQJS(m_accounts[0].sec());
-}
-
-QStringList QEthereum::keys() const
-{
-	QStringList ret;
-	for (auto i: m_accounts)
-		ret.push_back(toQJS(i.sec()));
+		ret.push_back(toQJS(i.first));
 	return ret;
 }
 
@@ -269,7 +238,7 @@ static dev::eth::MessageFilter toMessageFilter(QString _json)
 
 struct TransactionSkeleton
 {
-	Secret from;
+	Address from;
 	Address to;
 	u256 value;
 	bytes data;
@@ -283,7 +252,7 @@ static TransactionSkeleton toTransaction(QString _json)
 
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	if (f.contains("from"))
-		ret.from = toSecret(f["from"].toString());
+		ret.from = toAddress(f["from"].toString());
 	if (f.contains("to"))
 		ret.to = toAddress(f["to"].toString());
 	if (f.contains("value"))
@@ -458,26 +427,17 @@ void QEthereum::setListening(bool)
 		client()->stopNetwork();*/
 }
 
+void QEthereum::setAccounts(QList<dev::KeyPair> const& _l)
+{
+	m_accounts.clear();
+	for (auto i: _l)
+		m_accounts[i.address()] = i.secret();
+	keysChanged();
+}
+
 unsigned QEthereum::peerCount() const
 {
 	return /*m_client ? (unsigned)client()->peerCount() :*/ 0;
-}
-
-QString QEthereum::doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice)
-{
-	if (!m_client)
-		return "";
-	auto ret = toQJS(client()->transact(toSecret(_secret), toU256(_amount), toBytes(_init), toU256(_gas), toU256(_gasPrice)));
-	client()->flushTransactions();
-	return ret;
-}
-
-void QEthereum::doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice)
-{
-	if (!m_client)
-		return;
-	client()->transact(toSecret(_secret), toU256(_amount), toAddress(_dest), toBytes(_data), toU256(_gas), toU256(_gasPrice));
-	client()->flushTransactions();
 }
 
 QString QEthereum::doTransact(QString _json)
@@ -488,18 +448,23 @@ QString QEthereum::doTransact(QString _json)
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
-		auto b = m_accounts.first();
+		auto b = m_accounts.begin()->first;
 		for (auto a: m_accounts)
-			if (client()->balanceAt(KeyPair(a).address()) > client()->balanceAt(KeyPair(b).address()))
-				b = a;
-		t.from = b.secret();
+			if (client()->balanceAt(a.first) > client()->balanceAt(b))
+				b = a.first;
+		t.from = b;
 	}
+	if (!m_accounts.count(t.from))
+		return QString();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+
+	cwarn << "Silently signing transaction from address" << t.from.abridged() << ": User validation hook goes here.";
 	if (t.to)
-		client()->transact(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+		// TODO: insert validification hook here.
+		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 	else
 		ret = toQJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
 	client()->flushTransactions();
@@ -511,15 +476,21 @@ QString QEthereum::doCall(QString _json)
 	if (!m_client)
 		return QString();
 	TransactionSkeleton t = toTransaction(_json);
-	if (!t.to)
-		return QString();
 	if (!t.from && m_accounts.size())
-		t.from = m_accounts[0].secret();
+	{
+		auto b = m_accounts.begin()->first;
+		for (auto a: m_accounts)
+			if (client()->balanceAt(a.first) > client()->balanceAt(b))
+				b = a.first;
+		t.from = b;
+	}
+	if (!m_accounts.count(t.from))
+		return QString();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
-		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
-	bytes out = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice);
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+	bytes out = client()->call(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 	return asQString(out);
 }
 

@@ -108,7 +108,6 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>LibEthereum.lib;LibEvmJit.lib;LibSecp256k1.lib;LibCryptoPP.lib;LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../../builds/llvm3.5/Debug/lib;../../_build/LibEvmJit/x64_Debug;../../_build/LibEthereum/x64_Debug;../../_build/LibSecp256k1/x64_Debug;../../_build/LibCryptoPP/x64_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -156,11 +155,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="LibEthereum.vcxproj">
-      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\test\boostTest.cpp" />
     <ClCompile Include="..\test\crypto.cpp" />
     <ClCompile Include="..\test\dagger.cpp" />
@@ -190,6 +184,11 @@
     <ClInclude Include="..\test\TestHelper.h" />
     <ClInclude Include="..\test\TrieHash.h" />
     <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="LibEvmJit.vcxproj">
+      <Project>{9c816740-5c11-4377-a3a7-46be12f35fa0}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
