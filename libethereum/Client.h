@@ -285,7 +285,7 @@ private:
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
-	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
+	std::weak_ptr<EthereumHost> m_host;	///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	std::vector<Miner> m_miners;
 	mutable boost::shared_mutex x_miners;

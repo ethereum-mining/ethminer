@@ -105,14 +105,16 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
+		m_dev = new QDev(this);
 		m_ethereum = new QEthereum(this, ethereum(), owned());
 		m_whisper = new QWhisper(this, whisper());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()

@@ -46,6 +46,7 @@ protected:
 	void startWorking();
 	void stopWorking();
 	bool isWorking() const { Guard l(x_work); return !!m_work; }
+	virtual void startedWorking() {}
 	virtual void doWork() = 0;
 	virtual void doneWorking() {}
 
