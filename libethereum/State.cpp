@@ -58,7 +58,7 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 	int pubkeylen = 65;
 	secp256k1_start();
 	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
-		ret = dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64));
+		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
 
 	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
 }
@@ -207,6 +207,19 @@ State::~State()
 {
 }
 
+Address State::nextActiveAddress(Address _a) const
+{
+	auto it = m_state.lower_bound(_a);
+	if ((*it).first == _a)
+		++it;
+	if (it == m_state.end())
+		// exchange comments if we want to wraparound
+//		it = m_state.begin();
+		return Address();
+	return (*it).first;
+}
+
+// TODO: repot
 struct CachedAddressState
 {
 	CachedAddressState(std::string const& _rlp, AddressState const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}

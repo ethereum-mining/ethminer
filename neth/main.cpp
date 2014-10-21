@@ -805,7 +805,7 @@ int main(int argc, char** argv)
 
 					cnote << "Saved" << rechex << "to" << outFile;
 				}
-				catch (dev::eth::InvalidTrie const& _e)
+				catch (dev::InvalidTrie const& _e)
 				{
 					cwarn << "Corrupted trie.\n" << diagnostic_information(_e);
 				}

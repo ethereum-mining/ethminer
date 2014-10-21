@@ -132,6 +132,7 @@ private:
 
 	QNetworkAccessManager m_webCtrl;
 
+	QDev* m_dev = nullptr;
 	QEthereum* m_ethereum = nullptr;
 	QWhisper* m_whisper = nullptr;
 };
