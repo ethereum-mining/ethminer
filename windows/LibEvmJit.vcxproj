@@ -132,6 +132,7 @@
     <ClCompile Include="..\libevmjit\GasMeter.cpp" />
     <ClCompile Include="..\libevmjit\Memory.cpp" />
     <ClCompile Include="..\libevmjit\Runtime.cpp" />
+    <ClCompile Include="..\libevmjit\Stack.cpp" />
     <ClCompile Include="..\libevmjit\Type.cpp" />
     <ClCompile Include="..\libevmjit\Utils.cpp" />
     <ClCompile Include="..\libevmjit\VM.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="..\libevmjit\GasMeter.h" />
     <ClInclude Include="..\libevmjit\Memory.h" />
     <ClInclude Include="..\libevmjit\Runtime.h" />
+    <ClInclude Include="..\libevmjit\Stack.h" />
     <ClInclude Include="..\libevmjit\Type.h" />
     <ClInclude Include="..\libevmjit\Utils.h" />
     <ClInclude Include="..\libevmjit\VM.h" />
