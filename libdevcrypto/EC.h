@@ -31,9 +31,6 @@ namespace dev
 namespace crypto
 {
 
-//class ECDHETKeyExchange;
-	
-// 256-bit sha3(k) || Public = 84
 using PublicTrustNonce = h256;
 typedef std::pair<PublicTrustNonce,Public> PublicTrust;
 	

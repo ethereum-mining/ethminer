@@ -65,4 +65,3 @@ bool ECDHETKeyExchange::authenticate(bytes _exchangeIn)
 }
 
 
-
