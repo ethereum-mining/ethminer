@@ -826,7 +826,7 @@ void State::commitToMine(BlockChain const& _bc)
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
 	m_currentBlock.transactionsRoot = transactionReceipts.root();
-	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+	m_currentBlock.sha3Uncles = unclesCount ? sha3(m_currentUncles) : h256();
 
 	// Apply rewards last of all.
 	applyRewards(uncleAddresses);
