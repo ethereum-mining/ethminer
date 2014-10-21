@@ -91,7 +91,6 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 bytes BlockChain::createGenesisBlock()
 {
 	RLPStream block(3);
-	auto sha3EmptyList = sha3(RLPEmptyList);
 
 	h256 stateRoot;
 	{
