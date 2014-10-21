@@ -86,6 +86,11 @@ void EthereumHost::noteNeedsSyncing(EthereumPeer* _who)
 
 void EthereumHost::changeSyncer(EthereumPeer* _syncer)
 {
+	if (_syncer)
+		clog(NetAllDetail) << "Changing syncer to" << _syncer->session()->socketId();
+	else
+		clog(NetAllDetail) << "Clearing syncer.";
+
 	m_syncer = _syncer;
 	if (isSyncing())
 	{
