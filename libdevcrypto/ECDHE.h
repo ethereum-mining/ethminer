@@ -58,10 +58,10 @@ private:
 class ECDHETKeyExchange
 {
 public:
-	/// Blind key exchange. KeyPair trusts will be updated if successful.
+	/// Blind key exchange. KeyPair trusts are updated if successful.
 	ECDHETKeyExchange(ECDHE const& _ecdhe, ECKeyPair* _keyTrust);
 	
-	/// Trusted key exchange. Upon success, KeyPair trusts will be updated.
+	/// Trusted key exchange. Upon success, KeyPair trusts are updated.
 	ECDHETKeyExchange(ECDHE const& _ecdhe, ECKeyPair* _keyTrust, Address _remote);
 	
 	/// Authentication for trusted remote, blind trust, or disconnect.
@@ -87,20 +87,30 @@ public:
 	bytes exchange();
 	
 	/// Decrypts payload, checks mac, checks trust, decrypts exchange, authenticates exchange, verifies version, verifies signature, and if no failures occur, updates or creats trust and derives trusted-shared-secret.
+	/// New ECDH agreement is created with trusted public keys.
+	/// _out = E(m_trustedC, _out)
+	/// E = AES in CTR mode (todo: nonce)
+	/// sigk = k from exchange signature sent
+	/// sigr = r from exchange signature received
+	/// K = sha3(ecdheTrusted.secret||(sha3(sigk)⊕sha3(sigr))
+	/// m_trustedC = K[0..127]
+	/// m_trustedM = K[128..255]
 	bool authenticate(bytes _exchangeIn);
 	
-	/// Encrypts message; @returns e(k,m).
-	void encrypt();
-	
-	/// Signs message then encrypts; @returns e(k,sign(k,sha3(m))||m).
-	bytes signEncrypt(bytes _m);
+	/// Places ciphertext in _out, zeros _in, and upates _mac. MAC is finalized and appended to _out if _finalmac is true.
+	void blockEncrypt(bytes* _in, bytes* _out, h256* _mac, bool _finalmac);
 	
 private:
+	/// Encrypt message using current m_trust public key. During blind trust key exchange the remote ephemeral public key is used.
+	void encrypt();
+	
 	bool blind;
 	ECDHE const& m_ecdhe;
 	ECKeyPair* m_keypair;
 	PublicTrust m_trust;
-	
+	ECDHE m_ecdheTrusted;
+	FixedHash<16> m_trustedC;
+	FixedHash<16> m_trustedM;
 };
 
 }
