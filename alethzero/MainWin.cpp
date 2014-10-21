@@ -107,10 +107,10 @@ Main::Main(QWidget *parent) :
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
 	cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-	cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
 	auto block = BlockChain::createGenesisBlock();
+	cerr << "Block Hash: " << BlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
-	cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
