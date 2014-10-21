@@ -72,7 +72,7 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 
 void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 {
-	hash = dev::eth::sha3(_header.data());
+	hash = dev::sha3(_header.data());
 
 	int field = 0;
 	try

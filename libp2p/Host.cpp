@@ -61,8 +61,9 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	Worker("p2p"),
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
-	m_acceptor(m_ioService),
-	m_socket(m_ioService),
+	m_ioService(new ba::io_service),
+	m_acceptor(*m_ioService),
+	m_socket(*m_ioService),
 	m_key(KeyPair::create())
 {
 	populateAddresses();
@@ -73,11 +74,15 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 
 Host::~Host()
 {
-	stop();
+	quit();
 }
 
 void Host::start()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	if (isWorking())
 		stop();
 
@@ -105,14 +110,6 @@ void Host::start()
 		}
 	}
 
-	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
-	ensureAccepting();
-
-	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-		noteNode(id(), m_public, Origin::Perfect, false);
-
-	clog(NetNote) << "Id:" << id().abridged();
-
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
 
@@ -137,7 +134,18 @@ void Host::stop()
 		m_socket.close();
 	disconnectPeers();
 
+	if (!!m_ioService)
+	{
+		m_ioService->stop();
+		m_ioService->reset();
+	}
+}
+
+void Host::quit()
+{
+	stop();
 	m_ioService.reset();
+	// m_acceptor & m_socket are DANGEROUS now.
 }
 
 unsigned Host::protocolVersion() const
@@ -168,6 +176,10 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 
 void Host::disconnectPeers()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	for (unsigned n = 0;; n = 0)
 	{
 		{
@@ -181,7 +193,7 @@ void Host::disconnectPeers()
 		}
 		if (!n)
 			break;
-		m_ioService.poll();
+		m_ioService->poll();
 		this_thread::sleep_for(chrono::milliseconds(100));
 	}
 
@@ -204,6 +216,10 @@ void Host::seal(bytes& _b)
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	if (_upnp)
 		try
 		{
@@ -211,7 +227,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		}
 		catch (NoUPnPDevice) {}	// let m_upnp continue as null - we handle it properly.
 
-	bi::tcp::resolver r(m_ioService);
+	bi::tcp::resolver r(*m_ioService);
 	if (m_upnp && m_upnp->isValid() && m_peerAddresses.size())
 	{
 		clog(NetNote) << "External addr:" << m_upnp->externalIP();
@@ -249,6 +265,10 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 
 void Host::populateAddresses()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 #ifdef _WIN32
 	WSAData wsaData;
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
@@ -289,7 +309,7 @@ void Host::populateAddresses()
 	if (getifaddrs(&ifaddr) == -1)
 		BOOST_THROW_EXCEPTION(NoNetworking());
 
-	bi::tcp::resolver r(m_ioService);
+	bi::tcp::resolver r(*m_ioService);
 
 	for (ifaddrs* ifa = ifaddr; ifa; ifa = ifa->ifa_next)
 	{
@@ -349,7 +369,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 	if (_a.port() < 30300 && _a.port() > 30303)
 		cwarn << "Wierd port being recorded!";
 
-	if (_a.port() >= 49152)
+	if (_a.port() >= /*49152*/32768)
 	{
 		cwarn << "Private port being recorded - setting to 0";
 		_a = bi::tcp::endpoint(_a.address(), 0);
@@ -422,6 +442,10 @@ Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
 
 void Host::ensureAccepting()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	if (!m_accepting)
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
@@ -465,13 +489,17 @@ string Host::pocHost()
 
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	for (int i = 0; i < 2; ++i)
 	{
 		try
 		{
 			if (i == 0)
 			{
-				bi::tcp::resolver r(m_ioService);
+				bi::tcp::resolver r(*m_ioService);
 				connect(r.resolve({_addr, toString(_port)})->endpoint());
 			}
 			else
@@ -493,8 +521,12 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 
 void Host::connect(bi::tcp::endpoint const& _ep)
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	clog(NetConnect) << "Attempting single-shot connection to " << _ep;
-	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+	bi::tcp::socket* s = new bi::tcp::socket(*m_ioService);
 	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
@@ -509,27 +541,31 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-void Node::connect(Host* _h)
+void Host::connect(std::shared_ptr<Node> const& _n)
 {
-	clog(NetConnect) << "Attempting connection to node" << id.abridged() << "@" << address << "from" << _h->id().abridged();
-	lastAttempted = std::chrono::system_clock::now();
-	failedAttempts++;
-	_h->m_ready -= index;
-	bi::tcp::socket* s = new bi::tcp::socket(_h->m_ioService);
-	s->async_connect(address, [=](boost::system::error_code const& ec)
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
+	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
+	_n->lastAttempted = std::chrono::system_clock::now();
+	_n->failedAttempts++;
+	m_ready -= _n->index;
+	bi::tcp::socket* s = new bi::tcp::socket(*m_ioService);
+	s->async_connect(_n->address, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << id.abridged() << "@" << address << "(" << ec.message() << ")";
-			lastDisconnect = TCPError;
-			lastAttempted = std::chrono::system_clock::now();
-			_h->m_ready += index;
+			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
+			_n->lastDisconnect = TCPError;
+			_n->lastAttempted = std::chrono::system_clock::now();
+			m_ready += _n->index;
 		}
 		else
 		{
-			clog(NetConnect) << "Connected to" << id.abridged() << "@" << address;
-			lastConnected = std::chrono::system_clock::now();
-			auto p = make_shared<Session>(_h, std::move(*s), _h->node(id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
+			_n->lastConnected = std::chrono::system_clock::now();
+			auto p = make_shared<Session>(this, std::move(*s), node(_n->id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
 			p->start();
 		}
 		delete s;
@@ -594,7 +630,7 @@ void Host::growPeers()
 		if (ns.size())
 			for (Node const& i: ns)
 			{
-				m_nodes[i.id]->connect(this);
+				connect(m_nodes[i.id]);
 				if (!--morePeers)
 					return;
 			}
@@ -640,8 +676,12 @@ void Host::prunePeers()
 			i = m_peers.erase(i);
 }
 
-std::vector<PeerInfo> Host::peers(bool _updatePing) const
+PeerInfos Host::peers(bool _updatePing) const
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return PeerInfos();
+
 	RecursiveGuard l(x_peers);
     if (_updatePing)
 	{
@@ -656,8 +696,23 @@ std::vector<PeerInfo> Host::peers(bool _updatePing) const
 	return ret;
 }
 
+void Host::startedWorking()
+{
+	determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+	ensureAccepting();
+
+	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
+		noteNode(id(), m_public, Origin::Perfect, false);
+
+	clog(NetNote) << "Id:" << id().abridged();
+}
+
 void Host::doWork()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (asserts(!!m_ioService))
+		return;
+
 	growPeers();
 	prunePeers();
 
@@ -679,7 +734,7 @@ void Host::doWork()
 		pingAll();
 	}
 
-	m_ioService.poll();
+	m_ioService->poll();
 }
 
 void Host::pingAll()
@@ -701,7 +756,7 @@ bytes Host::saveNodes() const
 		{
 			Node const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
-			if (!n.dead && n.address.port() > 0 && n.address.port() < 49152 && n.id != id() && !isPrivateAddress(n.address.address()))
+			if (!n.dead && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())

@@ -23,6 +23,7 @@
 #include "vm.h"
 #include <libdevcore/CommonIO.h>
 #include <libevmjit/VM.h>
+#include <boost/filesystem/path.hpp>
 
 //#define FILL_TESTS
 
@@ -35,7 +36,7 @@ using namespace dev::test;
 FakeExtVM::FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
 	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytesConstRef(), _previousBlock, _currentBlock, _depth) {}
 
-h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFunc)
+h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFunc const&)
 {
 	Transaction t;
 	t.value = _endowment;
@@ -45,7 +46,7 @@ h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFun
 
 	m_s.noteSending(myAddress);
 	m_ms.internal.resize(m_ms.internal.size() + 1);
-	auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, OnOpFunc(), 1);
+	auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, {}, 1);
 	if (!m_ms.internal.back().from)
 		m_ms.internal.pop_back();
 
@@ -61,7 +62,7 @@ h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFun
 	return ret;
 }
 
-bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc, Address _myAddressOverride = Address(), Address _codeAddressOverride = Address())
+bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc const&, Address _myAddressOverride = Address(), Address _codeAddressOverride = Address())
 {
 
 	u256 contractgas = 0xffff;
@@ -91,14 +92,14 @@ bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, 
 		if (!m_s.addresses().count(myAddress))
 		{
 			m_ms.internal.resize(m_ms.internal.size() + 1);
-			auto na = m_s.createNewAddress(myAddress, myAddress, balance(myAddress), gasPrice, &contractgas, init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, OnOpFunc(), 1);
+			auto na = m_s.createNewAddress(myAddress, myAddress, balance(myAddress), gasPrice, &contractgas, init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, {}, 1);
 			if (!m_ms.internal.back().from)
 				m_ms.internal.pop_back();
 			if (na != myAddress)
 			{
 				cnote << "not able to call to : " << myAddress << "\n";
 				cnote << "in FakeExtVM you can only make a call to " << na << "\n";
-				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(myAddress));
+				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(toString(myAddress)));
 				return false;
 			}
 		}
@@ -124,7 +125,7 @@ bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, 
 			{
 				cnote << "not able to call to : " << (_codeAddressOverride ? _codeAddressOverride : _receiveAddress) << "\n";
 				cnote << "in FakeExtVM you can only make a call to " << na << "\n";
-				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(_codeAddressOverride ? _codeAddressOverride : _receiveAddress));
+				BOOST_THROW_EXCEPTION(FakeExtVMFailure() << errinfo_comment("Address not callable in FakeExtVM\n") << errinfo_wrongAddress(toString(_codeAddressOverride ? _codeAddressOverride : _receiveAddress)));
 				return false;
 			}
 		}
@@ -252,12 +253,13 @@ mObject FakeExtVM::exportEnv()
 
 void FakeExtVM::importEnv(mObject& _o)
 {
-	BOOST_REQUIRE(_o.count("previousHash") > 0);
-	BOOST_REQUIRE(_o.count("currentGasLimit") > 0);
-	BOOST_REQUIRE(_o.count("currentDifficulty") > 0);
-	BOOST_REQUIRE(_o.count("currentTimestamp") > 0);
-	BOOST_REQUIRE(_o.count("currentCoinbase") > 0);
-	BOOST_REQUIRE(_o.count("currentNumber") > 0);
+	// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
+	assert(_o.count("previousHash") > 0);
+	assert(_o.count("currentGasLimit") > 0);
+	assert(_o.count("currentDifficulty") > 0);
+	assert(_o.count("currentTimestamp") > 0);
+	assert(_o.count("currentCoinbase") > 0);
+	assert(_o.count("currentNumber") > 0);
 
 	previousBlock.hash = h256(_o["previousHash"].get_str());
 	currentBlock.number = toInt(_o["currentNumber"]);
@@ -294,10 +296,11 @@ void FakeExtVM::importState(mObject& _object)
 	for (auto const& i: _object)
 	{
 		mObject o = i.second.get_obj();
-		BOOST_REQUIRE(o.count("balance") > 0);
-		BOOST_REQUIRE(o.count("nonce") > 0);
-		BOOST_REQUIRE(o.count("storage") > 0);
-		BOOST_REQUIRE(o.count("code") > 0);
+		// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
+		assert(o.count("balance") > 0);
+		assert(o.count("nonce") > 0);
+		assert(o.count("storage") > 0);
+		assert(o.count("code") > 0);
 
 		auto& a = addresses[Address(i.first)];
 		get<0>(a) = toInt(o["balance"]);
@@ -335,13 +338,14 @@ mObject FakeExtVM::exportExec()
 
 void FakeExtVM::importExec(mObject& _o)
 {
-	BOOST_REQUIRE(_o.count("address")> 0);
-	BOOST_REQUIRE(_o.count("caller") > 0);
-	BOOST_REQUIRE(_o.count("origin") > 0);
-	BOOST_REQUIRE(_o.count("value") > 0);
-	BOOST_REQUIRE(_o.count("data") > 0);
-	BOOST_REQUIRE(_o.count("gasPrice") > 0);
-	BOOST_REQUIRE(_o.count("gas") > 0);
+	// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
+	assert(_o.count("address")> 0);
+	assert(_o.count("caller") > 0);
+	assert(_o.count("origin") > 0);
+	assert(_o.count("value") > 0);
+	assert(_o.count("data") > 0);
+	assert(_o.count("gasPrice") > 0);
+	assert(_o.count("gas") > 0);
 
 	myAddress = Address(_o["address"].get_str());
 	caller = Address(_o["caller"].get_str());
@@ -527,7 +531,7 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 				VM vm(fev.gas);
 				output = vm.go(fev).toVector();
 				gas = vm.gas(); // Get the remaining gas
-			}
+		}
 		}
 		catch (Exception const& _e)
 		{
@@ -588,8 +592,44 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 			else
 				BOOST_CHECK(output == fromHex(o["out"].get_str()));
 
-			BOOST_CHECK(test.toInt(o["gas"]) == gas);
-			BOOST_CHECK(test.addresses == fev.addresses);
+			BOOST_CHECK_EQUAL(test.toInt(o["gas"]), gas);
+
+			auto& expectedAddrs = test.addresses;
+			auto& resultAddrs = fev.addresses;
+			for (auto&& expectedPair : expectedAddrs)
+			{
+				auto& expectedAddr = expectedPair.first;
+				auto resultAddrIt = resultAddrs.find(expectedAddr);
+				if (resultAddrIt == resultAddrs.end())
+					BOOST_ERROR("Missing expected address " << expectedAddr);
+				else
+				{
+					auto& expectedState = expectedPair.second;
+					auto& resultState = resultAddrIt->second;
+					BOOST_CHECK_MESSAGE(std::get<0>(expectedState) == std::get<0>(resultState), expectedAddr << ": incorrect balance " << std::get<0>(resultState) << ", expected " << std::get<0>(expectedState));
+					BOOST_CHECK_MESSAGE(std::get<1>(expectedState) == std::get<1>(resultState), expectedAddr << ": incorrect txCount " << std::get<1>(resultState) << ", expected " << std::get<1>(expectedState));
+					BOOST_CHECK_MESSAGE(std::get<3>(expectedState) == std::get<3>(resultState), expectedAddr << ": incorrect code");
+
+					auto&& expectedStore = std::get<2>(expectedState);
+					auto&& resultStore = std::get<2>(resultState);
+
+					for (auto&& expectedStorePair : expectedStore)
+					{
+						auto& expectedStoreKey = expectedStorePair.first;
+						auto resultStoreIt = resultStore.find(expectedStoreKey);
+						if (resultStoreIt == resultStore.end())
+							BOOST_ERROR(expectedAddr << ": missing store key " << expectedStoreKey);
+						else
+						{
+							auto& expectedStoreValue = expectedStorePair.second;
+							auto& resultStoreValue = resultStoreIt->second;
+							BOOST_CHECK_MESSAGE(expectedStoreValue == resultStoreValue, expectedAddr << ": store[" << expectedStoreKey << "] = " << resultStoreValue << ", expected " << expectedStoreValue);
+						}
+					}
+				}
+			}
+
+			BOOST_CHECK(test.addresses == fev.addresses);	// Just to make sure nothing missed
 			BOOST_CHECK(test.callcreates == fev.callcreates);
 		}
 	}
@@ -625,16 +665,29 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 
 void executeTests(const string& _name)
 {
+	const char* ptestPath = getenv("ETHEREUM_TEST_PATH");
+	string testPath;
+
+	if (ptestPath == NULL)
+	{
+		cnote << " could not find environment variable ETHEREUM_TEST_PATH \n";
+		testPath = "../../../tests/vmtests";
+	}
+	else
+		testPath = ptestPath;
+
 #ifdef FILL_TESTS
 	try
 	{
 		cnote << "Populating VM tests...";
 		json_spirit::mValue v;
-		string s = asString(contents("../../../cpp-ethereum/test/" + _name + "Filler.json"));
+		boost::filesystem::path p(__FILE__);
+		boost::filesystem::path dir = p.parent_path();
+		string s = asString(contents(dir.string() + "/" + _name + "Filler.json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + "Filler.json is empty.");
 		json_spirit::read_string(s, v);
 		dev::test::doTests(v, true);
-		writeFile("../../../tests/vmtests/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
+		writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
 	}
 	catch (Exception const& _e)
 	{
@@ -650,8 +703,8 @@ void executeTests(const string& _name)
 	{
 		cnote << "Testing VM..." << _name;
 		json_spirit::mValue v;
-		string s = asString(contents("../../../tests/vmtests/" + _name + ".json"));
-		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + ".json is empty. Have you cloned the 'tests' repo branch develop?");
+		string s = asString(contents(testPath + "/" + _name + ".json"));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 		json_spirit::read_string(s, v);
 		dev::test::doTests(v, false);
 	}

@@ -150,6 +150,11 @@
     <ClInclude Include="..\libevmjit\Utils.h" />
     <ClInclude Include="..\libevmjit\VM.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="LibEthereum.vcxproj">
+      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

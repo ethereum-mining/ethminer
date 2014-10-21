@@ -36,15 +36,8 @@ using namespace dev::shh;
 
 bool MessageFilter::matches(Message const& _m) const
 {
-	for (auto const& t: m_topicMasks)
-	{
-		if (t.first.size() != t.second.size() || _m.topic.size() < t.first.size())
-			continue;
-		for (unsigned i = 0; i < t.first.size(); ++i)
-			if (((t.first[i] ^ _m.topic[i]) & t.second[i]) != 0)
-				goto NEXT;
-		return true;
-		NEXT:;
-	}
+	for (TopicMask const& t: m_topicMasks)
+		if (((t.first ^ _m.topic) & t.second) == 0)
+			return true;
 	return false;
 }

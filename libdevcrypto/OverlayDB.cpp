@@ -23,11 +23,8 @@
 #include "OverlayDB.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
 
 namespace dev
-{
-namespace eth
 {
 
 OverlayDB::~OverlayDB()
@@ -99,5 +96,4 @@ void OverlayDB::kill(h256 _h)
 #endif
 }
 
-}
 }

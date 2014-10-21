@@ -98,6 +98,27 @@ inline QString fromBinary(QString const& _s, unsigned _padding = 32)
 	return fromBinary(asBytes(_s), _padding);
 }
 
+class QDev: public QObject
+{
+	Q_OBJECT
+
+public:
+	QDev(QObject* _p): QObject(_p) {}
+	virtual ~QDev() {}
+
+	Q_INVOKABLE QString sha3(QString _s) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
+	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
+	Q_INVOKABLE QString offset(QString _s, int _offset) const;
+
+	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
+	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
+	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
+	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
+	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
+	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
+};
+
 class QEthereum: public QObject
 {
 	Q_OBJECT
@@ -112,30 +133,11 @@ public:
 	/// Call when the client() is going to be deleted to make this object useless but safe.
 	void clientDieing();
 
-	void setAccounts(QList<dev::KeyPair> _l) { m_accounts = _l; keysChanged(); }
+	void setAccounts(QList<dev::KeyPair> const& _l);
 
-	Q_INVOKABLE QString ethTest() const { return "Hello world!"; }
 	Q_INVOKABLE QEthereum* self() { return this; }
 
-	Q_INVOKABLE QString secretToAddress(QString _s) const;
 	Q_INVOKABLE QString lll(QString _s) const;
-
-	Q_INVOKABLE QString sha3(QString _s) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2) const;
-	Q_INVOKABLE QString sha3(QString _s1, QString _s2, QString _s3) const;
-	Q_INVOKABLE QString sha3old(QString _s) const;
-	Q_INVOKABLE QString offset(QString _s, int _offset) const;
-
-	Q_INVOKABLE QString pad(QString _s, unsigned _l) const { return padded(_s, _l); }
-	Q_INVOKABLE QString pad(QString _s, unsigned _l, unsigned _r) const { return padded(_s, _l, _r); }
-	Q_INVOKABLE QString unpad(QString _s) const { return unpadded(_s); }
-
-	Q_INVOKABLE QString toAscii(QString _s) const { return ::toBinary(_s); }
-	Q_INVOKABLE QString fromAscii(QString _s) const { return ::fromBinary(_s, 32); }
-	Q_INVOKABLE QString fromAscii(QString _s, unsigned _padding) const { return ::fromBinary(_s, _padding); }
-	Q_INVOKABLE QString toDecimal(QString _s) const { return ::toDecimal(_s); }
-	Q_INVOKABLE double fromFixed(QString _s) const { return ::fromFixed(_s); }
-	Q_INVOKABLE QString toFixed(double _d) const { return ::toFixed(_d); }
 
 	// [NEW API] - Use this instead.
 	Q_INVOKABLE QString/*dev::u256*/ balanceAt(QString/*dev::Address*/ _a, int _block) const;
@@ -154,8 +156,6 @@ public:
 
 	Q_INVOKABLE QString/*json*/ getMessages(QString _attribs/*json*/) const;
 
-	Q_INVOKABLE QString doCreate(QString _secret, QString _amount, QString _init, QString _gas, QString _gasPrice);
-	Q_INVOKABLE void doTransact(QString _secret, QString _amount, QString _dest, QString _data, QString _gas, QString _gasPrice);
 	Q_INVOKABLE QString doTransact(QString _json);
 	Q_INVOKABLE QString doCall(QString _json);
 
@@ -172,9 +172,6 @@ public:
 	QString/*dev::u256*/ number() const;
 	int getDefault() const;
 
-	QString/*dev::KeyPair*/ key() const;
-	QStringList/*list of dev::KeyPair*/ keys() const;
-	QString/*dev::Address*/ account() const;
 	QStringList/*list of dev::Address*/ accounts() const;
 
 	unsigned peerCount() const;
@@ -200,8 +197,7 @@ private:
 	Q_PROPERTY(QString number READ number NOTIFY watchChanged)
 	Q_PROPERTY(QString coinbase READ coinbase WRITE setCoinbase NOTIFY coinbaseChanged)
 	Q_PROPERTY(QString gasPrice READ gasPrice)
-	Q_PROPERTY(QString key READ key NOTIFY keysChanged)
-	Q_PROPERTY(QStringList keys READ keys NOTIFY keysChanged)
+	Q_PROPERTY(QStringList accounts READ accounts NOTIFY keysChanged)
 	Q_PROPERTY(bool mining READ isMining WRITE setMining NOTIFY netChanged)
 	Q_PROPERTY(bool listening READ isListening WRITE setListening NOTIFY netChanged)
 	Q_PROPERTY(unsigned peerCount READ peerCount NOTIFY miningChanged)
@@ -209,7 +205,7 @@ private:
 
 	dev::eth::Interface* m_client;
 	std::vector<unsigned> m_watches;
-	QList<dev::KeyPair> m_accounts;
+	std::map<dev::Address, dev::KeyPair> m_accounts;
 };
 
 class QWhisper: public QObject
@@ -251,22 +247,30 @@ private:
 	std::vector<unsigned> m_watches;
 };
 
-#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, env) [frame, eth, shh, env]() \
+// TODO: add p2p object
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh) [_frame, _env, _dev, _eth, _shh]() \
 { \
-	frame->disconnect(); \
-	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
-	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
-	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
-	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
-	frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
-	frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-	frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
-	frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
-	frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
-	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+	_frame->disconnect(); \
+	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
+	_frame->addToJavaScriptWindowObject("dev", _dev, QWebFrame::ScriptOwnership); \
+	if (_eth) \
+	{ \
+		_frame->addToJavaScriptWindowObject("eth", _eth, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
+		_frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
+		_frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
+		_frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
+		_frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
+		_frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
+		_frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
+	} \
+	if (_shh) \
+	{ \
+		_frame->addToJavaScriptWindowObject("shh", _shh, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+	} \
 }
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)

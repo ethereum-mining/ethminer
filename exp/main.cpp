@@ -29,12 +29,14 @@
 #include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>
 #include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 
+#if 0
 int main()
 {
 	DownloadMan man;
@@ -69,8 +71,8 @@ int main()
 		cnote << i;*/
 	return 0;
 }
+#endif
 
-/*
 int main(int argc, char** argv)
 {
 	g_logVerbosity = 20;
@@ -102,15 +104,16 @@ int main(int argc, char** argv)
 		ph.connect(remoteHost, remotePort);
 
 	/// Only interested in the packet if the lowest bit is 1
-	auto w = wh->installWatch(MessageFilter(std::vector<std::pair<bytes, bytes> >({{fromHex("0000000000000000000000000000000000000000000000000000000000000001"), fromHex("0000000000000000000000000000000000000000000000000000000000000001")}})));
-
+	auto w = wh->installWatch(MessageFilter(TopicMasks({{Topic("0000000000000000000000000000000000000000000000000000000000000001"), Topic("0000000000000000000000000000000000000000000000000000000000000001")}})));
 
 	for (int i = 0; ; ++i)
 	{
-		wh->sendRaw(h256(u256(i * i)).asBytes(), h256(u256(i)).asBytes(), 1000);
+		wh->sendRaw(RLPStream().append(i * i).out(), Topic(u256(i)), 1000);
 		for (auto i: wh->checkWatch(w))
-			cnote << "New message:" << (u256)h256(wh->message(i).payload);
+		{
+			auto p = wh->message(i).payload;
+			cnote << "New message:" << RLP(p).toInt<unsigned>();
+		}
 	}
 	return 0;
 }
-*/
