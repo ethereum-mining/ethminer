@@ -65,18 +65,29 @@ public:
 	ECDHETKeyExchange(ECDHE const& _ecdhe, ECKeyPair* _keyTrust, Address _remote);
 	
 	/// Authentication for trusted remote, blind trust, or disconnect.
-	/// @returns key exchange. encrypted w/aes-ctr. key=ecdhe.m_shared[0-127]
-	/// If blind, plaintext is:
-	///   sha3(newPublicKey) ||
-	///   e(ecdhe.m_remote,sha3(dhe-k)||sign(m_auth.sec,sha3(m))||m)||mac
-	/// If trusted, plaintext is:
-	///   sha3(previous ecdsa k) ||  // trust.second
-	///   e(m_trusted,sha3(dhe-k)||sign(m_auth.sec,sha3(m))||m)||mac
-	/// bytes is encrypted via aes-ctr with ecdhe-derived secret.
+	/// Returns key exchange. encrypted w/aes-ctr. key=ecdhe.m_shared[0-127]
+	///
+	/// @returns E(K,prefix||e(epub,m||v||sign(k,sha3(dhe-k||m)))||mac)
+	///
+	/// E = AES in CTR mode (todo: nonce)
+	/// K = ecdhe.secret[0..127]
+	/// ECDHETKeyExchange(ECDHE const&, ECKeyPair*):
+	///   prefix = sha3(ecdhe.remote)
+	///   epub = ecdhe.remote
+	/// ECDHETKeyExchange(ECDHE const&, ECKeyPair* _k, Address _r):
+	///   trust = _k.m_trustEgress.find(_r)
+	///   sha3(trust.first)
+	///   epub = trust.second
+	/// e = ECIES encrypt()
+	/// m = keypair.public
+	/// v = 0x80
+	/// k = keypair.secret
+	/// mac = sha3(M||prefix||e()); M = ecdhe.secret[128..255]
+	/// K = ecdhe.secret[0..127]
 	bytes exchange();
 	
 	/// Decrypts payload, checks mac, checks trust, decrypts exchange, authenticates exchange, verifies version, verifies signature, and if no failures occur, updates or creats trust and derives trusted-shared-secret.
-	bytes authenticate(bytes _exchangeIn);
+	bool authenticate(bytes _exchangeIn);
 	
 	/// Encrypts message; @returns e(k,m).
 	void encrypt();
