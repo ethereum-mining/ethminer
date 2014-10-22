@@ -14,6 +14,11 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
+
+if(EVMCC)
+	target_link_libraries(${EXECUTABLE} evmjit)
+endif()
+
 if(MINIUPNPC_LS)
 	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
