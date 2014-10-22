@@ -147,7 +147,7 @@ OnOpFunc Executive::simpleTrace()
 	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
 	{
 		ExtVM const& ext = *(ExtVM const*)voidExt;
-		VM& vm = *(VM*)voidVM;
+		VM& vm = *(VM*)voidVM;	// TODO: Ok for now, because only interpeter/VM supports OnOp callback, but safer solution would be nice
 
 		ostringstream o;
 		o << endl << "    STACK" << endl;
