@@ -41,6 +41,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
+#include <libethrpc/WebThreeStubServer.h>
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
@@ -139,15 +140,24 @@ Main::Main(QWidget *parent) :
 		m_ethereum = new QEthereum(this, ethereum(), owned());
 		m_whisper = new QWhisper(this, whisper());
 		m_p2p = new QPeer2Peer(this, peer2peer());
-
+		
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		
+		m_qweb = new QWebThree(this);
+		
 		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
 		auto qp2p = m_p2p;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qp2p));
+		auto qweb = m_qweb;
+
+		auto list = owned().toStdList();
+		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
+		jsonrpcServer->StartListening();
+		
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qp2p, qweb));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
