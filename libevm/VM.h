@@ -27,6 +27,7 @@
 #include <libevmface/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
+#include "VMFace.h"
 #include "FeeStructure.h"
 #include "ExtVMFace.h"
 
@@ -35,52 +36,29 @@ namespace dev
 namespace eth
 {
 
-struct VMException: virtual Exception {};
-struct StepsDone: virtual VMException {};
-struct BreakPointHit: virtual VMException {};
-struct BadInstruction: virtual VMException {};
-struct BadJumpDestination: virtual VMException {};
-struct OutOfGas: virtual VMException {};
-class StackTooSmall: virtual public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
-
-// Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
-// Currently we just pull out the right (low-order in BE) 160-bits.
-inline Address asAddress(u256 _item)
-{
-	return right160(h256(_item));
-}
-
-inline u256 fromAddress(Address _a)
-{
-	return (u160)_a;
-//	h256 ret;
-//	memcpy(&ret, &_a, sizeof(_a));
-//	return ret;
-}
-
 /**
  */
-class VM
+class VM : public VMFace
 {
 public:
 	/// Construct VM object.
-	explicit VM(u256 _gas = 0) { reset(_gas); }
+	explicit VM(u256 _gas = 0): VMFace(_gas) {}
 
-	void reset(u256 _gas = 0);
+	virtual void reset(u256 _gas = 0) override final;
 
-	template <class Ext>
-	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
+	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
 	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall(_n, m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
 
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
 private:
-	u256 m_gas = 0;
+	template <class Ext>
+	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps);
+
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
