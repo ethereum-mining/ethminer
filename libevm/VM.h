@@ -41,10 +41,7 @@ namespace eth
 class VM : public VMFace
 {
 public:
-	/// Construct VM object.
-	explicit VM(u256 _gas = 0): VMFace(_gas) {}
-
-	virtual void reset(u256 _gas = 0) override final;
+	virtual void reset(u256 _gas = 0) noexcept override final;
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
@@ -56,6 +53,9 @@ public:
 	u256s const& stack() const { return m_stack; }
 
 private:
+	friend VMFace;
+	explicit VM(u256 _gas = 0): VMFace(_gas) {}
+
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps);
 
