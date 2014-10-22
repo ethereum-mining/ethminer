@@ -19,9 +19,12 @@
 			{ "method": "transact", "params": [{}], "order": [], "returns": []},
 			{ "method": "call", "params": [{}], "order": [], "returns": ""},
 
-			{ "method": "block", "params": [0, ""],"order": [], "returns": {}},
-			{ "method": "transaction", "params": [0, "", 0], "order": [], "returns": {}},
-			{ "method": "uncle", "params": [0, "", 0], "order": [], "returns": {}},
+			{ "method": "blockByHash", "params": [""],"order": [], "returns": {}},
+			{ "method": "blockByNumber", "params": [0],"order": [], "returns": {}},
+			{ "method": "transactionByHash", "params": ["", 0], "order": [], "returns": {}},
+			{ "method": "transactionByNumber", "params": [0, 0], "order": [], "returns": {}},
+			{ "method": "uncleByHash", "params": ["", 0], "order": [], "returns": {}},
+			{ "method": "uncleByNumber", "params": [0, 0], "order": [], "returns": {}},
 
             { "method": "compile", "params": [""], "order": [], "returns": ""},
 
