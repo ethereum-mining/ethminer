@@ -31,34 +31,86 @@ namespace dev
 namespace crypto
 {
 
-using PublicTrustNonce = h256;
-typedef std::pair<PublicTrustNonce,Public> PublicTrust;
-	
+namespace pp
+// cryptopp wrappers
+{
+/// RNG used by CryptoPP
 inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
 
-inline CryptoPP::OID secp256k1() { return CryptoPP::ASN1::secp256k1(); }
-
+/// EC curve used by CryptoPP
+inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
+	
+Public exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k);
+	
+/**
+ * @brief CryptoPP-specific EC keypair
+ */
 class ECKeyPair
 {
+public:
+	/// Create a new, randomly generated keypair.
+	Address const& address() const { return m_address; }
+	
+	Public const& publicKey() const { return m_public; }
+	
+protected:
+	ECKeyPair();
+	
+	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
+
+	Address m_address;
+	Public m_public;
+};
+}
+	
+/// ECDSA Signature
+using Signature = FixedHash<65>;
+	
+/// Secret nonce from trusted key exchange.
+using Nonce = h256;
+
+/// Public key with nonce corresponding to trusted key exchange.
+typedef std::pair<Nonce,Public> PublicTrust;
+
+/**
+ * @brief EC KeyPair
+ * @todo remove secret access
+ * @todo Integrate and/or replace KeyPair, move to common.h
+ */
+class ECKeyPair: public pp::ECKeyPair
+{
 	friend class ECDHETKeyExchange;
+	friend class ECIESEncryptor;
+	friend class ECIESDecryptor;
 	
 public:
 	static ECKeyPair create();
 	
-	/// deprecate
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub() { return m_pub; }
-	/// deprecate
-	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> sec() { return m_sec; }
-
-private:
-	ECKeyPair() {}
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> m_pub;
-	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> m_sec;
+	/// Replaces text with ciphertext.
+	static void encrypt(bytes& _text, Public _key);
 	
-	std::map<Address,PublicTrust> m_trustEgress;
-	std::set<PublicTrustNonce> m_trustIngress;
-};
+	/// @returns ciphertext.
+	static bytes encrypt(bytesConstRef _text, Public _key);
+	
+	/// Recover public key from signature.
+	static Public recover(Signature _sig, h256 _messageHash);
+	
+	/// Sign message.
+	Signature sign(h256 _messageHash);
+	
+	/// Decrypt ciphertext.
+	bytes decrypt(bytesConstRef _cipher);
+	
+	/// Encrypt using our own public key.
+	void encrypt(bytes& _text);
+	
+private:
+	ECKeyPair() {};
 
+	std::map<Address,PublicTrust> m_trustEgress;
+	std::set<Nonce> m_trustIngress;
+};
+	
 }
 }
 
