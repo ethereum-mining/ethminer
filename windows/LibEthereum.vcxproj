@@ -141,6 +141,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\libevm\VMFace.cpp" />
     <ClCompile Include="..\libevm\_libevm.cpp" />
     <ClCompile Include="..\liblll\Assembly.cpp" />
     <ClCompile Include="..\liblll\CodeFragment.cpp" />
@@ -360,6 +361,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\libevm\VMFace.h" />
     <ClInclude Include="..\liblll\All.h" />
     <ClInclude Include="..\liblll\Assembly.h" />
     <ClInclude Include="..\liblll\CodeFragment.h" />

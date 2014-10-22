@@ -14,27 +14,6 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file VM.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #include "VM.h"
-#include <libethereum/ExtVM.h>
 
-using namespace dev;
-using namespace dev::eth;
-
-void VM::reset(u256 _gas)
-{
-	VMFace::reset(_gas);
-	m_curPC = 0;
-}
-
-bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
-{
-	if (auto defaultExt = dynamic_cast<ExtVM*>(&_ext))
-		return go<ExtVM>(*defaultExt, _onOp, _steps);
-	else
-		return go<ExtVMFace>(_ext, _onOp, _steps);
-}

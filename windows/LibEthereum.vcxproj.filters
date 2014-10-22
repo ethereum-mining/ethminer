@@ -193,6 +193,9 @@
     <ClCompile Include="..\libethcore\Exceptions.cpp">
       <Filter>libethcore</Filter>
     </ClCompile>
+    <ClCompile Include="..\libevm\VMFace.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -416,6 +419,9 @@
     </ClInclude>
     <ClInclude Include="..\libwebthree\webthree.h">
       <Filter>libwebthree</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\VMFace.h">
+      <Filter>libevm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
