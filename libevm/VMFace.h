@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <memory>
 #include <libdevcore/Exceptions.h>
 #include "ExtVMFace.h"
 
@@ -61,11 +62,15 @@ public:
 	VMFace(VMFace const&) = delete;
 	void operator=(VMFace const&) = delete;
 
-	virtual void reset(u256 _gas = 0) { m_gas = _gas; }
+	virtual void reset(u256 _gas = 0) noexcept { m_gas = _gas; }
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
 
 	u256 gas() const { return m_gas; }
+
+	enum Kind: bool { Interpreter, JIT };
+
+	static std::unique_ptr<VMFace> create(Kind, u256 _gas = 0);
 
 protected:
 	u256 m_gas = 0;

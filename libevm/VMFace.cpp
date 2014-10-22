@@ -15,5 +15,16 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "VMFace.h"
 #include "VM.h"
+#include <libevmjit/VM.h>
 
+using namespace dev;
+using namespace dev::eth;
+
+std::unique_ptr<VMFace> VMFace::create(VMFace::Kind _kind, u256 _gas)
+{
+	std::unique_ptr<VMFace> vm(_kind == Kind::JIT ? static_cast<VMFace*>(new jit::VM) : new VM);
+	vm->reset(_gas);
+	return vm;
+}

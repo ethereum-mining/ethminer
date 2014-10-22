@@ -1146,7 +1146,8 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		VM vm(*_gas);
+		auto vmObj = VMFace::create(VMFace::Interpreter, *_gas);
+		VMFace& vm = *vmObj;
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
@@ -1208,7 +1209,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
-	VM vm(*_gas);
+	auto vmObj = VMFace::create(VMFace::Interpreter, *_gas);
+	VMFace& vm = *vmObj;
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;

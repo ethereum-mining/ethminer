@@ -118,7 +118,7 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 	if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm = new VM(_gas);
+		m_vm = VMFace::create(VMFace::Interpreter, _gas).release();
 		bytes const& c = m_s.code(_receiveAddress);
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
@@ -137,7 +137,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = AddressState(0, m_s.balance(m_newAddress) + _endowment, h256(), h256());
 
 	// Execute _init.
-	m_vm = new VM(_gas);
+	m_vm = VMFace::create(VMFace::JIT, _gas).release();
 	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
 	return _init.empty();
 }
