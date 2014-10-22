@@ -56,9 +56,13 @@ h256 BlockInfo::headerHashWithoutNonce() const
 	return sha3(s.out());
 }
 
+auto static const c_sha3EmptyList = sha3(RLPEmptyList);
+
 void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 13 : 12) << parentHash << sha3Uncles << coinbaseAddress;
+	_s.appendList(_nonce ? 13 : 12) << parentHash;
+	_s.append(sha3Uncles == c_sha3EmptyList ? h256() : sha3Uncles, false, true);
+	_s << coinbaseAddress;
 	_s.append(stateRoot, false, true).append(transactionsRoot, false, true);
 	_s << difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
@@ -79,6 +83,8 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	{
 		parentHash = _header[field = 0].toHash<h256>();
 		sha3Uncles = _header[field = 1].toHash<h256>();
+		if (sha3Uncles == h256())
+			sha3Uncles = c_sha3EmptyList;
 		coinbaseAddress = _header[field = 2].toHash<Address>();
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
@@ -179,8 +185,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
-{
-	// Check difficulty is correct given the two timestamps.
+{	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
