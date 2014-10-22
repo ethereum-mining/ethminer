@@ -25,7 +25,7 @@
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas)
+void VM::reset(u256 _gas) noexcept
 {
 	VMFace::reset(_gas);
 	m_curPC = 0;

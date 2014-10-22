@@ -52,9 +52,10 @@ public:
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
-private:
 	friend VMFace;
 	explicit VM(u256 _gas = 0): VMFace(_gas) {}
+
+private:
 
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps);
