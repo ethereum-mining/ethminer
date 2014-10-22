@@ -249,10 +249,6 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	std::auto_ptr<WebThreeStubServer> jsonrpcServer;
-	QDev* m_dev = nullptr;
-	QEthereum* m_ethereum = nullptr;
-	QWhisper* m_whisper = nullptr;
-	QPeer2Peer* m_p2p = nullptr;
+	std::auto_ptr<WebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 };
