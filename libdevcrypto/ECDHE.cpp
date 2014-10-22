@@ -25,6 +25,11 @@
 using namespace dev::crypto;
 using namespace CryptoPP;
 
+ECDHE::ECDHE()
+{
+	
+}
+
 void ECDHE::agree(Public _remote)
 {
 	m_remote = _remote;
