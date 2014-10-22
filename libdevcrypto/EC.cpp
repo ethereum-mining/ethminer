@@ -32,25 +32,30 @@
 #include <files.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "CryptoPP.h"
 #include "SHA3.h"
 #include "EC.h"
 
 // CryptoPP and dev conflict so dev and pp namespace are used explicitly
 using namespace std;
+using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-dev::Public pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k) {
-	Public p;
-	ECP::Point q(_k.GetPublicElement());
-	q.x.Encode(&p.data()[0], 32);
-	q.y.Encode(&p.data()[32], 32);
-	return p;
-}
-
-pp::ECKeyPair::ECKeyPair():
-	m_decryptor(pp::PRNG(), pp::secp256k1())
+void dev::crypto::encrypt(bytes& _plain, Public const& _key)
 {
+	Integer x(&_key.data()[0], 32);
+	Integer y(&_key.data()[32], 32);
+	
+	DL_PublicKey_EC<ECP> p;
+	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
+	
+	ECIES<ECP>::Encryptor e(p);
+	// todo: determine size and use _plain as input and output.
+	std::string c;
+	StringSource ss(_plain.data(), _plain.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
+	bzero(_plain.data(), _plain.size() * sizeof(byte));
+	_plain = std::move(asBytes(c));
 }
 
 ECKeyPair ECKeyPair::create()
@@ -72,25 +77,6 @@ void ECKeyPair::encrypt(bytes& _text)
 	StringSource ss(_text.data(), _text.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
 	bzero(_text.data(), _text.size() * sizeof(byte));
 	_text = std::move(asBytes(c));
-}
-
-void ECKeyPair::encrypt(bytes& _plain, Public _key)
-{
-	const char* xbytes = (char*)&_key[0];
-	Integer x(xbytes);
-	
-	const char* ybytes = (char*)&_key[32];
-	Integer y(ybytes);
-
-	DL_PublicKey_EC<ECP> p;
-	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
-	
-	ECIES<ECP>::Encryptor e(p);
-	// todo: determine size and use _plain as input and output.
-	std::string c;
-	StringSource ss(_plain.data(), _plain.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
-	bzero(_plain.data(), _plain.size() * sizeof(byte));
-	_plain = std::move(asBytes(c));
 }
 
 dev::bytes ECKeyPair::decrypt(bytesConstRef _c)
