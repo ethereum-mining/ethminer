@@ -318,3 +318,8 @@ InstructionInfo dev::eth::instructionInfo(Instruction _inst)
 		return InstructionInfo({"<INVALID_INSTRUCTION: " + toString((unsigned)_inst) + ">", 0, 0, 0});
 	}
 }
+
+bool dev::eth::isValidInstruction(Instruction _inst)
+{
+	return c_instructionInfo.count(_inst);
+}
