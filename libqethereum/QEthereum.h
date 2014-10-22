@@ -5,6 +5,7 @@
 #include <QtCore/QList>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
+#include <jsonrpc/rpc.h>
 
 namespace dev
 {
@@ -269,65 +270,72 @@ private:
 	std::vector<unsigned> m_watches;
 };
 
+class QWebThree: public QObject
+{
+	Q_OBJECT
+	
+public:
+	QWebThree(QObject* _p);
+	virtual ~QWebThree();
+	
+	void installJSNamespace(QWebFrame* _f);
+
+	Q_INVOKABLE void postData(QString _json);
+	
+signals:
+	void processData(QString _json);
+	void send(QString _json);
+	
+private:
+	QObject* m_main = nullptr;
+	QWebFrame* m_frame = nullptr;
+	QDev* m_dev = nullptr;
+	QEthereum* m_ethereum = nullptr;
+	QWhisper* m_whisper = nullptr;
+	QPeer2Peer* m_p2p = nullptr;
+};
+
+class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnector
+{
+	Q_OBJECT
+	
+public:
+	QWebThreeConnector(QWebThree* _q);
+	virtual ~QWebThreeConnector();
+	
+	virtual bool StartListening();
+	virtual bool StopListening();
+	
+	bool virtual SendResponse(std::string const& _response,
+							  void* _addInfo = NULL);
+	
+public slots:
+	void onMessage(QString const& _json);
+	
+private:
+	QWebThree* m_qweb;
+};
+
+
 // TODO: p2p object condition
-#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh, _p2p) [_frame, _env, _dev, _eth, _shh, _p2p]() \
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh, _p2p, qweb) [_frame, _env, _dev, _eth, _shh, _p2p, qweb]() \
 { \
 	_frame->disconnect(); \
-	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
-	_frame->addToJavaScriptWindowObject("dev", _dev, QWebFrame::ScriptOwnership); \
-	if (_eth) \
-	{ \
-		_frame->addToJavaScriptWindowObject("eth", _eth, QWebFrame::ScriptOwnership); \
-		_frame->addToJavaScriptWindowObject("p2p", _p2p, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("eth.setCoinbase = function(a, f) { window.setTimeout(function () { eth.coinbase = a; if (f) {f(true);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getCoinbase = function(f) { window.setTimeout(function () { if (f) {f(eth.coinbase);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.listening = {get listening() {return p2p.listening}, set listening(l) {p2p.listening = l}}"); \
-		_frame->evaluateJavaScript("eth.setListening = function(a, f) { window.setTimeout(function () { eth.listening = a; if (f) {f(true);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getListening = function(f) { window.setTimeout(function () { if (f) {f(eth.listening);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.setMining = function(a, f) { window.setTimeout(function () { eth.mining = a; if (f) {f(true);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getMining = function(f) { window.setTimeout(function () { if (f) { f(eth.mining);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getGasPrice = function(f) { window.setTimeout(function () { if (f) {f(eth.gasPrice);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getAccounts = function(f) { window.setTimeout(function () { if (f) {f(eth.accounts);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.peerCount = {get peerCount() {return p2p.peerCount}}"); \
-		_frame->evaluateJavaScript("eth.getPeerCount = function(f) { window.setTimeout(function () { if (f) {f(eth.peerCount);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getDefaultBlock = function(f) { window.setTimeout(function () { if (f) {f(eth.defaultBlock);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.getNumber = function(f) { window.setTimeout(function () { if (f) {f(eth.number);}}, 0); }"); \
-		_frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessagesImpl(JSON.stringify(a))); }"); \
-		_frame->evaluateJavaScript("eth.getMessages = function(a, f) { window.setTimeout(function () { if (f) { f(JSON.parse(eth.getMessagesImpl(JSON.stringify(a)))); }}, 0);}"); \
-		_frame->evaluateJavaScript("eth.getBalanceAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.balanceAt.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.getStateAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.stateAt.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.getCountAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.countAt.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.getCodeAt = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.codeAt.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.transact = function(a) { var ret = eth.doTransactImpl(JSON.stringify(a)); return ret; }"); \
-		_frame->evaluateJavaScript("eth.doTransact = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transact.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.call = function(a) { var ret = eth.doCallImpl(JSON.stringify(a)); return ret; }"); \
-		_frame->evaluateJavaScript("eth.doCall = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.call.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlockImpl(JSON.stringify(a))); }"); \
-		_frame->evaluateJavaScript("eth.getBlock = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.block.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.transaction = function(a, i) { return JSON.parse(eth.getTransactionImpl(JSON.stringify(a), i)); }"); \
-		_frame->evaluateJavaScript("eth.getTransaction = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.transaction.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.uncle = function(a, i) { return JSON.parse(eth.getUncleImpl(JSON.stringify(a), i)); }"); \
-		_frame->evaluateJavaScript("eth.getUncle = function() { var args = Array.prototype.slice.call(arguments, 0, -1); f = arguments[arguments.length - 1]; window.setTimeout(function () { if (f) { f(eth.uncle.apply(null, args)); }},0);}"); \
-		_frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-		_frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-	} \
-	if (_shh) \
-	{ \
-		_frame->addToJavaScriptWindowObject("shh", _shh, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-		_frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
-	} \
+	_frame->addToJavaScriptWindowObject("_web3", qweb, QWebFrame::ScriptOwnership); \
+	_frame->evaluateJavaScript("navigator.qt = _web3;"); \
+	_frame->evaluateJavaScript("(function () {" \
+							"navigator.qt.handlers = [];" \
+							"Object.defineProperty(navigator.qt, 'onmessage', {" \
+							"	set: function(handler) {" \
+							"		navigator.qt.handlers.push(handler);" \
+							"	}" \
+							"})" \
+							"})()"); \
+	_frame->evaluateJavaScript("navigator.qt.send.connect(function (res) {" \
+							"navigator.qt.handlers.forEach(function (handler) {" \
+							"	handler(res);" \
+							"})" \	
+							"})"); \
 }
 
-template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
-{
-	if (_s.startsWith("0x"))
-		return dev::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(dev::fromHex(_s.toStdString().substr(2)));
-	else if (!_s.contains(QRegExp("[^0-9]")))
-		// Hex or Decimal
-		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s.toStdString());
-	else
-		// Binary
-		return dev::fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(padded(_s, N)));
-}
 
