@@ -180,6 +180,9 @@ struct InstructionInfo
 /// Information on all the instructions.
 InstructionInfo instructionInfo(Instruction _inst);
 
+/// check whether instructions exists
+bool isValidInstruction(Instruction _inst);
+
 /// Convert from string mnemonic to Instruction type.
 extern const std::map<std::string, Instruction> c_instructions;
 
