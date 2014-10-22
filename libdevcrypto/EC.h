@@ -23,45 +23,13 @@
 
 #pragma once
 
-#include "CryptoHeaders.h"
+#include "CryptoPP.h"
 #include "Common.h"
 
 namespace dev
 {
 namespace crypto
 {
-
-namespace pp
-// cryptopp wrappers
-{
-/// RNG used by CryptoPP
-inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
-
-/// EC curve used by CryptoPP
-inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
-	
-Public exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k);
-	
-/**
- * @brief CryptoPP-specific EC keypair
- */
-class ECKeyPair
-{
-public:
-	/// Create a new, randomly generated keypair.
-	Address const& address() const { return m_address; }
-	
-	Public const& publicKey() const { return m_public; }
-	
-protected:
-	ECKeyPair();
-	
-	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
-
-	Address m_address;
-	Public m_public;
-};
-}
 	
 /// ECDSA Signature
 using Signature = FixedHash<65>;
@@ -72,6 +40,15 @@ using Nonce = h256;
 /// Public key with nonce corresponding to trusted key exchange.
 typedef std::pair<Nonce,Public> PublicTrust;
 
+/// Recover public key from signature.
+//Public recover(Signature const& _sig, h256 _messageHash);
+	
+/// Replaces text with ciphertext.
+void encrypt(bytes& _text, Public const& _key);
+	
+/// @returns ciphertext.
+//bytes encrypt(bytesConstRef _text, Public const& _key);
+	
 /**
  * @brief EC KeyPair
  * @todo remove secret access
@@ -85,15 +62,6 @@ class ECKeyPair: public pp::ECKeyPair
 	
 public:
 	static ECKeyPair create();
-	
-	/// Replaces text with ciphertext.
-	static void encrypt(bytes& _text, Public _key);
-	
-	/// @returns ciphertext.
-	static bytes encrypt(bytesConstRef _text, Public _key);
-	
-	/// Recover public key from signature.
-	static Public recover(Signature _sig, h256 _messageHash);
 	
 	/// Sign message.
 	Signature sign(h256 _messageHash);
