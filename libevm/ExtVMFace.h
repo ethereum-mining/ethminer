@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <list>
+#include <set>
 #include <functional>
 #include <libdevcore/Common.h>
 #include <libevmface/Instruction.h>
@@ -45,16 +45,21 @@ struct Post
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
 
 /**
- * @brief A null implementation of the class for specifying VM externalities.
+ * @brief Interface and null implementation of the class for specifying VM externalities.
  */
 class ExtVMFace
 {
 public:
 	/// Null constructor.
-	ExtVMFace() {}
+	ExtVMFace() = default;
 
 	/// Full constructor.
 	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
+
+	virtual ~ExtVMFace() = default;
+
+	ExtVMFace(ExtVMFace const&) = delete;
+	void operator=(ExtVMFace) = delete;
 
 	/// Get the code at the given location in code ROM.
 	virtual byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
