@@ -2,22 +2,32 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
+    <LLVMEnabled>1</LLVMEnabled>
+    <LLVMSrcDir>..\..\llvm</LLVMSrcDir>
     <LLVMBuildDir>..\..\_build\llvm\$(Platform)</LLVMBuildDir>
-    <LLVMIncludeDir>..\..\llvm\include;$(LLVMBuildDir)\include</LLVMIncludeDir>
+    <LLVMIncludeDir>$(LLVMSrcDir)\include;$(LLVMBuildDir)\include</LLVMIncludeDir>
     <LLVMLibDir>$(LLVMBuildDir)\$(Configuration)\lib</LLVMLibDir>
+    <LLVMLibs Condition="'$(LLVMEnabled)' == '1'">LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib</LLVMLibs>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(LLVMIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4800;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>ETH_JIT=$(LLVMEnabled);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(LLVMLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(LLVMLibs);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <BuildMacro Include="LLVMEnabled">
+      <Value>$(LLVMEnabled)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LLVMSrcDir">
+      <Value>$(LLVMSrcDir)</Value>
+    </BuildMacro>
     <BuildMacro Include="LLVMBuildDir">
       <Value>$(LLVMBuildDir)</Value>
     </BuildMacro>
@@ -26,6 +36,9 @@
     </BuildMacro>
     <BuildMacro Include="LLVMLibDir">
       <Value>$(LLVMLibDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LLVMLibs">
+      <Value>$(LLVMLibs)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
