@@ -30,13 +30,6 @@ namespace dev
 namespace eth
 {
 
-struct Signature
-{
-	byte v;
-	u256 r;
-	u256 s;
-};
-
 struct Transaction
 {
 	Transaction() {}
@@ -54,7 +47,7 @@ struct Transaction
 
 	bytes data;			///< The data associated with the transaction, or the initialiser if it's a creation transaction.
 
-	Signature vrs;		///< The signature of the transaction. Encodes the sender.
+	SignatureStruct vrs;		///< The signature of the transaction. Encodes the sender.
 
 	Address safeSender() const noexcept;	///< Like sender() but will never throw.
 	Address sender() const;					///< Determine the sender of the transaction from the signature (and hash).

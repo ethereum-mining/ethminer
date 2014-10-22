@@ -158,6 +158,21 @@ public:
 		return ret;
 	}
 
+	/// Returns the index of the first bit set to one, or size() * 8 if no bits are set.
+	inline unsigned firstBitSet() const
+	{
+		unsigned ret = 0;
+		for (auto d: m_data)
+			if (d)
+				for (;; ++ret, d <<= 1)
+					if (d & 0x80)
+						return ret;
+					else {}
+			else
+				ret += 8;
+		return ret;
+	}
+
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };
@@ -193,6 +208,7 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 }
 
 // Common types of FixedHash.
+using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
