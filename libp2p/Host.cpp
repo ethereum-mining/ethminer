@@ -375,7 +375,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 		_a = bi::tcp::endpoint(_a.address(), 0);
 	}
 
-	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
+//	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
 
 	// First check for another node with the same connection credentials, and put it in oldId if found.
 	if (!_oldId)
@@ -422,7 +422,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 	else
 		m_private -= i;
 
-	cnote << m_nodes[_id]->index << ":" << m_ready;
+//	cnote << m_nodes[_id]->index << ":" << m_ready;
 
 	m_hadNewNodes = true;
 
