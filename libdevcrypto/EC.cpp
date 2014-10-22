@@ -32,19 +32,74 @@
 #include <files.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "SHA3.h"
 #include "EC.h"
 
+// CryptoPP and dev conflict so dev and pp namespace are used explicitly
 using namespace std;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
+dev::Public pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k) {
+	Public p;
+	ECP::Point q(_k.GetPublicElement());
+	q.x.Encode(&p.data()[0], 32);
+	q.y.Encode(&p.data()[32], 32);
+	return p;
+}
+
+pp::ECKeyPair::ECKeyPair():
+	m_decryptor(pp::PRNG(), pp::secp256k1())
+{
+}
+
 ECKeyPair ECKeyPair::create()
 {
 	ECKeyPair k;
-	ECIES<ECP>::Decryptor d(PRNG(), secp256k1());
-	k.m_sec = d.GetKey();
-	ECIES<ECP>::Encryptor e(d);
-	k.m_pub = e.GetKey();
+
+	// export public key and set address
+	ECIES<ECP>::Encryptor e(k.m_decryptor.GetKey());
+	k.m_public = pp::exportPublicKey(e.GetKey());
+	k.m_address = dev::right160(dev::sha3(k.m_public.ref()));
+	
 	return k;
 }
+
+void ECKeyPair::encrypt(bytes& _text)
+{
+	ECIES<ECP>::Encryptor e(m_decryptor);
+	std::string c;
+	StringSource ss(_text.data(), _text.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
+	bzero(_text.data(), _text.size() * sizeof(byte));
+	_text = std::move(asBytes(c));
+}
+
+void ECKeyPair::encrypt(bytes& _plain, Public _key)
+{
+	const char* xbytes = (char*)&_key[0];
+	Integer x(xbytes);
+	
+	const char* ybytes = (char*)&_key[32];
+	Integer y(ybytes);
+
+	DL_PublicKey_EC<ECP> p;
+	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
+	
+	ECIES<ECP>::Encryptor e(p);
+	// todo: determine size and use _plain as input and output.
+	std::string c;
+	StringSource ss(_plain.data(), _plain.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
+	bzero(_plain.data(), _plain.size() * sizeof(byte));
+	_plain = std::move(asBytes(c));
+}
+
+dev::bytes ECKeyPair::decrypt(bytesConstRef _c)
+{
+	std::string p;
+	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(pp::PRNG(), m_decryptor, new StringSink(p)));
+	return std::move(asBytes(p));
+}
+
+
+
 

@@ -29,30 +29,31 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-ECIESEncryptor::ECIESEncryptor(ECKeyPair* _k)
-{
-	m_encryptor.AccessKey().AccessGroupParameters().Initialize(secp256k1());
-	m_encryptor.AccessKey().SetPublicElement(_k->pub().GetPublicElement());
-}
-
-void ECIESEncryptor::encrypt(bytes& _message)
-{
-	std::string c;
-	StringSource ss(_message.data(), _message.size(), true, new PK_EncryptorFilter(PRNG(), m_encryptor, new StringSink(c)));
-	bzero(_message.data(), _message.size() * sizeof(byte));
-	_message = std::move(bytesConstRef(c).toBytes());
-}
-
-ECIESDecryptor::ECIESDecryptor(ECKeyPair* _k)
-{
-	m_decryptor.AccessKey().AccessGroupParameters().Initialize(secp256k1());
-	m_decryptor.AccessKey().SetPrivateExponent(_k->sec().GetPrivateExponent());
-}
-
-bytes ECIESDecryptor::decrypt(bytesConstRef& _c)
-{
-	std::string p;
-	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(PRNG(), m_decryptor, new StringSink(p)));
-	return std::move(bytesConstRef(p).toBytes());
-}
+//ECIESEncryptor::ECIESEncryptor(ECKeyPair* _k)
+//{
+//	m_encryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
+//	m_encryptor.AccessKey().SetPublicElement(_k->pub().GetPublicElement());
+//}
+//
+//void ECIESEncryptor::encrypt(bytes& _message)
+//{
+//	// todo: determine size and use _message as input and output.
+//	std::string c;
+//	StringSource ss(_message.data(), _message.size(), true, new PK_EncryptorFilter(pp::PRNG(), m_encryptor, new StringSink(c)));
+//	bzero(_message.data(), _message.size() * sizeof(byte));
+//	_message = std::move(asBytes(c));
+//}
+//
+//ECIESDecryptor::ECIESDecryptor(ECKeyPair* _k)
+//{
+//	m_decryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
+//	m_decryptor.AccessKey().SetPrivateExponent(_k->sec().GetPrivateExponent());
+//}
+//
+//bytes ECIESDecryptor::decrypt(bytesConstRef& _c)
+//{
+//	std::string p;
+//	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(pp::PRNG(), m_decryptor, new StringSink(p)));
+//	return std::move(asBytes(p));
+//}
 
