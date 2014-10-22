@@ -17,6 +17,10 @@ target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 
+if(EVMCC)
+	target_link_libraries(${EXECUTABLE} evmjit)
+endif()
+
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 	target_link_libraries(${EXECUTABLE} gcc)
