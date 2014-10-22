@@ -280,7 +280,7 @@ env.note('Register my name...')
 eth.transact({ 'to': nameReg, 'data': [ eth.fromAscii('register'), eth.fromAscii('Gav') ] });
 
 env.note('Dole out ETH to other address...')
-eth.transact({ 'value': '100000000000000000000', 'to': eth.secretToAddress(eth.keys[1]) });
+eth.transact({ 'value': '100000000000000000000', 'to': eth.accounts[1] });
 
 env.note('Register my other name...')
 eth.transact({ 'from': eth.keys[1], 'to': nameReg, 'data': [ eth.fromAscii('register'), eth.fromAscii("Gav Would") ] });

@@ -107,10 +107,10 @@ Main::Main(QWidget *parent) :
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
 	cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-	cerr << "Block Hash: " << sha3(BlockChain::createGenesisBlock()) << endl;
 	auto block = BlockChain::createGenesisBlock();
+	cerr << "Block Hash: " << BlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
-	cerr << "Block Hex: " << toHex(BlockChain::createGenesisBlock()) << endl;
+	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
 
@@ -135,15 +135,17 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
+		m_dev = new QDev(this);
 		m_ethereum = new QEthereum(this, ethereum(), owned());
 		m_whisper = new QWhisper(this, whisper());
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, qeth, qshh, this));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()

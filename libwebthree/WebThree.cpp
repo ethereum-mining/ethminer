@@ -65,6 +65,16 @@ WebThreeDirect::~WebThreeDirect()
 	m_ethereum.reset();
 }
 
+void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
+{
+	auto had = haveNetwork();
+	if (had)
+		stopNetwork();
+	m_net.setNetworkPreferences(_n);
+	if (had)
+		startNetwork();
+}
+
 std::vector<PeerInfo> WebThreeDirect::peers()
 {
 	return m_net.peers();
