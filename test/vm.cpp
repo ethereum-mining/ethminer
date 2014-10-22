@@ -35,7 +35,7 @@ using namespace dev::test;
 FakeExtVM::FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
 	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytesConstRef(), _previousBlock, _currentBlock, _depth) {}
 
-h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFunc)
+h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFunc const&)
 {
 	Transaction t;
 	t.value = _endowment;
@@ -45,7 +45,7 @@ h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFun
 
 	m_s.noteSending(myAddress);
 	m_ms.internal.resize(m_ms.internal.size() + 1);
-	auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, OnOpFunc(), 1);
+	auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, {}, 1);
 	if (!m_ms.internal.back().from)
 		m_ms.internal.pop_back();
 
@@ -61,7 +61,7 @@ h160 FakeExtVM::create(u256 _endowment, u256* _gas, bytesConstRef _init, OnOpFun
 	return ret;
 }
 
-bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc, Address _myAddressOverride = Address(), Address _codeAddressOverride = Address())
+bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256* _gas, bytesRef _out, OnOpFunc const&, Address _myAddressOverride, Address _codeAddressOverride)
 {
 
 	u256 contractgas = 0xffff;
@@ -91,7 +91,7 @@ bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, 
 		if (!m_s.addresses().count(myAddress))
 		{
 			m_ms.internal.resize(m_ms.internal.size() + 1);
-			auto na = m_s.createNewAddress(myAddress, myAddress, balance(myAddress), gasPrice, &contractgas, init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, OnOpFunc(), 1);
+			auto na = m_s.createNewAddress(myAddress, myAddress, balance(myAddress), gasPrice, &contractgas, init, origin, &suicides, &m_ms ? &(m_ms.internal.back()) : nullptr, {}, 1);
 			if (!m_ms.internal.back().from)
 				m_ms.internal.pop_back();
 			if (na != myAddress)
