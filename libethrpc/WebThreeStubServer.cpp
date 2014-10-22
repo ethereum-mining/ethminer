@@ -129,18 +129,20 @@ std::string WebThreeStubServer::balanceAt(string const& _address)
 	return toJS(client()->balanceAt(jsToAddress(_address), block));
 }
 
-Json::Value WebThreeStubServer::block(int const& _block, std::string const& _hash)
+Json::Value WebThreeStubServer::blockByHash(std::string const& _hash)
 {
 	if (!client())
 		return "";
 	
-	dev::FixedHash<32> blockHash;
-	if (_hash.compare("") != 0)
-		blockHash = jsToFixed<32>(_hash);
-	else
-		blockHash = client()->hashFromNumber(_block);
+	return toJson(client()->blockInfo(jsToFixed<32>(_hash)));
+}
+
+Json::Value WebThreeStubServer::blockByNumber(int const& _number)
+{
+	if (!client())
+		return "";
 	
-	return toJson(client()->blockInfo(blockHash));
+	return toJson(client()->blockInfo(client()->hashFromNumber(_number)));
 }
 
 static TransactionJS toTransaction(Json::Value const& _json)
@@ -378,32 +380,36 @@ Json::Value WebThreeStubServer::transact(Json::Value const& _json)
 	return ret;
 }
 
-Json::Value WebThreeStubServer::transaction(int const& _block, std::string const& _hash, int const& _i)
+Json::Value WebThreeStubServer::transactionByHash(std::string const& _hash, int const& _i)
 {
 	if (!client())
 		return "";
 	
-	dev::FixedHash<32> blockHash;
-	if (_hash.compare("") != 0)
-		blockHash = jsToFixed<32>(_hash);
-	else
-		blockHash = client()->hashFromNumber(_block);
-	
-	return toJson(client()->transaction(blockHash, _i));
+	return toJson(client()->transaction(jsToFixed<32>(_hash), _i));
 }
 
-Json::Value WebThreeStubServer::uncle(int const& _block, std::string const& _hash, int const& _i)
+Json::Value WebThreeStubServer::transactionByNumber(int const& _number, int const& _i)
 {
 	if (!client())
 		return "";
 	
-	dev::FixedHash<32> blockHash;
-	if (_hash.compare("") != 0)
-		blockHash = jsToFixed<32>(_hash);
-	else
-		blockHash = client()->hashFromNumber(_block);
+	return toJson(client()->transaction(client()->hashFromNumber(_number), _i));
+}
+
+Json::Value WebThreeStubServer::uncleByHash(std::string const& _hash, int const& _i)
+{
+	if (!client())
+		return "";
 	
-	return toJson(client()->uncle(blockHash, _i));
+	return toJson(client()->uncle(jsToFixed<32>(_hash), _i));
+}
+
+Json::Value WebThreeStubServer::uncleByNumber(int const& _number, int const& _i)
+{
+	if (!client())
+		return "";
+	
+	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
 int WebThreeStubServer::watch(string const& _json)

@@ -40,7 +40,8 @@ public:
 	
 	virtual Json::Value accounts();
 	virtual std::string balanceAt(std::string const& _address);
-	virtual Json::Value block(int const& _block, std::string const& _hash);
+	virtual Json::Value blockByHash(std::string const& _hash);
+	virtual Json::Value blockByNumber(int const& _number);
 	virtual std::string call(Json::Value const& _json);
 	virtual bool check(int const& _id);
 	virtual std::string codeAt(std::string const& _address);
@@ -60,8 +61,10 @@ public:
 	virtual bool setMining(bool const& _mining);
 	virtual std::string stateAt(std::string const& _address, std::string const& _storage);
 	virtual Json::Value transact(Json::Value const& _json);
-	virtual Json::Value transaction(int const& _block, std::string const& _hash, int const& _i);
-	virtual Json::Value uncle(int const& _block, std::string const& _hash, int const& _i);
+	virtual Json::Value transactionByHash(std::string const& _hash, int const& _i);
+	virtual Json::Value transactionByNumber(int const& _number, int const& _i);
+	virtual Json::Value uncleByHash(std::string const& _hash, int const& _i);
+	virtual Json::Value uncleByNumber(int const& _number, int const& _i);
 	virtual int watch(std::string const& _json);
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
