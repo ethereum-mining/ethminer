@@ -61,9 +61,6 @@ public:
 	ExtVMFace(ExtVMFace const&) = delete;
 	void operator=(ExtVMFace) = delete;
 
-	/// Get the code at the given location in code ROM.
-	virtual byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
-
 	/// Read storage location.
 	virtual u256 store(u256) { return 0; }
 
@@ -93,6 +90,9 @@ public:
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void revert() {}
+
+	/// Get the code at the given location in code ROM.
+	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }
 
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).
