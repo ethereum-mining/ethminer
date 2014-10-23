@@ -248,28 +248,30 @@ private:
 };
 
 // TODO: add p2p object
-#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _dev, _eth, _shh) [_frame, _env, _dev, _eth, _shh]() \
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _web3, _eth, _shh) [_frame, _env, _web3, _eth, _shh]() \
 { \
 	_frame->disconnect(); \
 	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
-	_frame->addToJavaScriptWindowObject("dev", _dev, QWebFrame::ScriptOwnership); \
+	_frame->addToJavaScriptWindowObject("web3", _web3, QWebFrame::ScriptOwnership); \
 	if (_eth) \
 	{ \
-		_frame->addToJavaScriptWindowObject("eth", _eth, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
-		_frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
-		_frame->evaluateJavaScript("eth.transact = function(a, f) { var r = eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
-		_frame->evaluateJavaScript("eth.call = function(a, f) { var ret = eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
-		_frame->evaluateJavaScript("eth.messages = function(a) { return JSON.parse(eth.getMessages(JSON.stringify(a))); }"); \
-		_frame->evaluateJavaScript("eth.block = function(a) { return JSON.parse(eth.getBlock(a)); }"); \
-		_frame->evaluateJavaScript("eth.transaction = function(a) { return JSON.parse(eth.getTransaction(a)); }"); \
-		_frame->evaluateJavaScript("eth.uncle = function(a) { return JSON.parse(eth.getUncle(a)); }"); \
+		_frame->addToJavaScriptWindowObject("_web3_dot_eth", _eth, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("_web3_dot_eth.makeWatch = function(a) { var ww = _web3_dot_eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_eth.killWatch(w); }; ret.changed = function(f) { _web3_dot_eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(_web3_dot_eth.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.watch = function(a) { return _web3_dot_eth.makeWatch(JSON.stringify(a)) }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.transact = function(a, f) { var r = _web3_dot_eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.call = function(a, f) { var ret = _web3_dot_eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.messages = function(a) { return JSON.parse(_web3_dot_eth.getMessages(JSON.stringify(a))); }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.block = function(a) { return JSON.parse(_web3_dot_eth.getBlock(a)); }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.transaction = function(a) { return JSON.parse(_web3_dot_eth.getTransaction(a)); }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.uncle = function(a) { return JSON.parse(_web3_dot_eth.getUncle(a)); }"); \
+		_frame->evaluateJavaScript("web3.eth = _web3_dot_eth"); \
 	} \
 	if (_shh) \
 	{ \
-		_frame->addToJavaScriptWindowObject("shh", _shh, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
-		_frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
+		_frame->addToJavaScriptWindowObject("_web3_dot_shh", _shh, QWebFrame::ScriptOwnership); \
+		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(a) { var ww = _web3_dot_shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.changed = function(f) { _web3_dot_shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(_web3_dot_shh.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.watch = function(a) { return _web3_dot_shh.makeWatch(JSON.stringify(a)) }"); \
+		_frame->evaluateJavaScript("web3.shh = _web3_dot_shh"); \
 	} \
 }
 

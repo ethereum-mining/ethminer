@@ -71,7 +71,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned n = 0;
 		for (auto i: _r)
 			if (n++)
-				host()->inject(Message(i), this);
+				host()->inject(Envelope(i), this);
 		sendMessages();
 		break;
 	}

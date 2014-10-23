@@ -36,27 +36,88 @@ namespace dev
 namespace shh
 {
 
-struct Message
-{
-	unsigned expiry = 0;
-	unsigned ttl = 0;
-	Topic topic;	// TODO: change to h256
-	bytes payload;
+class Message;
 
-	Message() {}
-	Message(unsigned _exp, unsigned _ttl, Topic const& _topic, bytes const& _payload): expiry(_exp), ttl(_ttl), topic(_topic), payload(_payload) {}
-	Message(RLP const& _m)
+class Envelope
+{
+	friend class Message;
+
+public:
+	Envelope() {}
+	Envelope(RLP const& _m)
 	{
-		expiry = _m[0].toInt<unsigned>();
-		ttl = _m[1].toInt<unsigned>();
-		topic = (Topic)_m[2];
-		payload = _m[3].toBytes();
+		m_expiry = _m[0].toInt<unsigned>();
+		m_ttl = _m[1].toInt<unsigned>();
+		m_topic = (Topic)_m[2];
+		m_data = _m[3].toBytes();
 	}
 
-	operator bool () const { return !!expiry; }
+	operator bool() const { return !!m_expiry; }
 
-	void streamOut(RLPStream& _s) const { _s.appendList(4) << expiry << ttl << topic << payload; }
-	h256 sha3() const { RLPStream s; streamOut(s); return dev::sha3(s.out()); }
+	void streamOut(RLPStream& _s, bool _withNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
+	h256 sha3() const { RLPStream s; streamOut(s, true); return dev::sha3(s.out()); }
+	h256 sha3NoNonce() const { RLPStream s; streamOut(s, false); return dev::sha3(s.out()); }
+
+	unsigned sent() const { return m_expiry - m_ttl; }
+	unsigned expiry() const { return m_expiry; }
+	unsigned ttl() const { return m_ttl; }
+	Topic const& topic() const { return m_topic; }
+	bytes const& data() const { return m_data; }
+
+	Message open(Secret const& _s) const;
+	Message open() const;
+
+	unsigned workProved() const;
+	void proveWork(unsigned _ms);
+
+private:
+	Envelope(unsigned _exp, unsigned _ttl, Topic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
+
+	unsigned m_expiry = 0;
+	unsigned m_ttl = 0;
+	u256 m_nonce;
+
+	Topic m_topic;
+	bytes m_data;
+};
+
+enum /*Message Flags*/
+{
+	ContainsSignature = 0
+};
+
+/// An (unencrypted) message, constructed from the combination of an Envelope, and, potentially,
+/// a Secret key to decrypt the Message.
+class Message
+{
+public:
+	Message() {}
+	Message(Envelope const& _e, Secret const& _s = Secret());
+	Message(bytes const& _payload): m_payload(_payload) {}
+	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
+	Message(bytes&& _payload) { std::swap(_payload, m_payload); }
+
+	Public from() const { return m_from; }
+	Public to() const { return m_to; }
+	bytes const& payload() const { return m_payload; }
+
+	void setTo(Public _to) { m_to = _to; }
+
+	operator bool() const { return !!m_payload.size() || m_from || m_to; }
+
+	/// Turn this message into a ditributable Envelope.
+	Envelope seal(Secret _from, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50);
+	// Overloads for skipping _from or specifying _to.
+	Envelope seal(Topic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { return seal(Secret(), _topic, _workToProve, _ttl); }
+	Envelope seal(Public _to, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(Secret(), _topic, _workToProve, _ttl); }
+	Envelope seal(Secret _from, Public _to, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(_from, _topic, _workToProve, _ttl); }
+
+private:
+	void populate(bytes const& _data);
+
+	Public m_from;
+	Public m_to;
+	bytes m_payload;
 };
 
 }
