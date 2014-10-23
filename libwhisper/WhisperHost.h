@@ -50,8 +50,9 @@ public:
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr);
 
+	using Interface::installWatch;
 	virtual unsigned installWatch(TopicFilter const& _filter);
-	virtual unsigned installWatch(h256 _filterId);
+	virtual unsigned installWatchOnId(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
 	virtual h256s peekWatch(unsigned _watchId) const { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }

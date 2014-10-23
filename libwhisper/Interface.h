@@ -43,25 +43,6 @@ namespace shh
 	Topic mask;
 };*/
 
-using TopicMask = std::pair<Topic, Topic>;
-using TopicMasks = std::vector<TopicMask>;
-
-class TopicFilter
-{
-public:
-	TopicFilter() {}
-	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
-	TopicFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
-
-	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
-	h256 sha3() const { RLPStream s; fillStream(s); return dev::sha3(s.out()); }
-
-	bool matches(Envelope const& _m) const;
-
-private:
-	TopicMasks m_topicMasks;
-};
-
 struct InstalledFilter
 {
 	InstalledFilter(TopicFilter const& _f): filter(_f) {}
@@ -86,18 +67,19 @@ public:
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
+	unsigned installWatch(TopicMask const& _mask) { return installWatch(TopicFilter(_mask)); }
 	virtual unsigned installWatch(TopicFilter const& _filter) = 0;
-	virtual unsigned installWatch(h256 _filterId) = 0;
+	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;
 
 	virtual Envelope envelope(h256 _m) const = 0;
 
-	void sendRaw(bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
-	void sendRaw(Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_to, _topic, _ttl, _workToProve)); }
-	void sendRaw(Secret _from, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
-	void sendRaw(Secret _from, Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _to, _topic, _ttl, _workToProve)); }
+	void post(bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
+	void post(Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_to, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _to, _topic, _ttl, _workToProve)); }
 };
 
 struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
