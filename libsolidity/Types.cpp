@@ -20,6 +20,7 @@
  * Solidity data types
  */
 
+#include <libdevcore/CommonIO.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
@@ -128,6 +129,14 @@ bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
 bool IntegerType::acceptsUnaryOperator(Token::Value _operator) const
 {
 	return _operator == Token::DELETE || (!isAddress() && _operator == Token::BIT_NOT);
+}
+
+std::string IntegerType::toString() const
+{
+	if (isAddress())
+		return "address";
+	std::string prefix = isHash() ? "hash" : (isSigned() ? "int" : "uint");
+	return prefix + dev::toString(m_bits);
 }
 
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
