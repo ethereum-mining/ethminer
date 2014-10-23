@@ -16,8 +16,22 @@
 */
 /** @file FeeStructure.cpp
  * @author Gav Wood <i@gavwood.com>
- * @author Pawel Bylica <chfast@gmail.com>
  * @date 2014
  */
 
 #include "FeeStructure.h"
+
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
+
+u256 const dev::eth::c_stepGas = 1;
+u256 const dev::eth::c_balanceGas = 20;
+u256 const dev::eth::c_sha3Gas = 20;
+u256 const dev::eth::c_sloadGas = 20;
+u256 const dev::eth::c_sstoreGas = 100;
+u256 const dev::eth::c_createGas = 100;
+u256 const dev::eth::c_callGas = 20;
+u256 const dev::eth::c_memoryGas = 1;
+u256 const dev::eth::c_txDataGas = 5;
+u256 const dev::eth::c_txGas = 500;
