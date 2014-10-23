@@ -53,30 +53,39 @@ void encrypt(Public const& _k, bytes& _text);
 void decrypt(Secret const& _k, bytes& _text);
 
 
+class SecretKeyRef
+{
+public:
+	/// Creates random secret
+	SecretKeyRef();
+	
+	/// Creates from secret (move).
+	SecretKeyRef(Secret _s): m_secret(_s) {}
+	
+	/// Retrieve the secret key.
+	Secret sec() const { return m_secret; }
+	
+	/// Retrieve the public key.
+	Public pub() const;
+
+	/// Retrieve the associated address of the public key.
+	Address address() const;
+	
+private:
+	Secret m_secret;
+};
 
 	
 /**
  * @brief EC KeyPair
- * @todo remove secret access
- * @todo Integrate and/or replace KeyPair, move to common.h
+ * @deprecated
  */
-class ECKeyPair: public pp::ECKeyPair
+class ECKeyPair
 {
 	friend class ECDHETKeyExchange;
-	friend class ECIESEncryptor;
-	friend class ECIESDecryptor;
 	
 public:
 	static ECKeyPair create();
-	
-	/// Sign message.
-	Signature sign(h256 _messageHash);
-	
-	/// Decrypt ciphertext (in place).
-	void decrypt(bytes& _cipher);
-	
-	/// Encrypt using public key (in place).
-	void encrypt(bytes& _text);
 	
 private:
 	ECKeyPair() {};
