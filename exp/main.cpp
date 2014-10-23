@@ -102,12 +102,12 @@ int main(int argc, char** argv)
 	if (!remoteHost.empty())
 		ph.connect(remoteHost, remotePort);
 
-	/// Only interested in the packet if the lowest bit is 1
-	auto w = wh->installWatch(TopicFilter(TopicMasks({{Topic("0000000000000000000000000000000000000000000000000000000000000001"), Topic("0000000000000000000000000000000000000000000000000000000000000001")}})));
+	/// Only interested in odd packets
+	auto w = wh->installWatch(BuildTopicMask()("odd"));
 
 	for (int i = 0; ; ++i)
 	{
-		wh->sendRaw(RLPStream().append(i * i).out(), Topic(u256(i)));
+		wh->sendRaw(RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"));
 		for (auto i: wh->checkWatch(w))
 		{
 			auto p = wh->envelope(i).open().payload();
