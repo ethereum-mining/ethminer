@@ -19,9 +19,9 @@
  * @date 2014
  */
 
-#include <secp256k1/secp256k1.h>
 #include <libdevcore/vector_ref.h>
 #include <libdevcore/Log.h>
+#include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
 #include "Transaction.h"
 using namespace std;
@@ -42,7 +42,7 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		receiveAddress = rlp[field = 3].toHash<Address>();
 		value = rlp[field = 4].toInt<u256>();
 		data = rlp[field = 5].toBytes();
-		vrs = Signature{ rlp[field = 6].toInt<byte>(), rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>() };
+		vrs = SignatureStruct{ rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>(), byte(rlp[field = 6].toInt<byte>() - 27) };
 		if (_checkSender)
 			m_sender = sender();
 	}
@@ -70,53 +70,18 @@ Address Transaction::sender() const
 {
 	if (!m_sender)
 	{
-		secp256k1_start();
-
-		h256 sig[2] = { vrs.r, vrs.s };
-		h256 msg = sha3(false);
-
-		byte pubkey[65];
-		int pubkeylen = 65;
-		if (!secp256k1_ecdsa_recover_compact(msg.data(), 32, sig[0].data(), pubkey, &pubkeylen, 0, (int)vrs.v - 27))
+		auto p = recover(*(Signature const*)&vrs, sha3(false));
+		if (!p)
 			BOOST_THROW_EXCEPTION(InvalidSignature());
-
-		// TODO: check right160 is correct and shouldn't be left160.
-		m_sender = right160(dev::sha3(bytesConstRef(&(pubkey[1]), 64)));
-
-#if ETH_ADDRESS_DEBUG
-		cout << "---- RECOVER -------------------------------" << endl;
-		cout << "MSG: " << msg << endl;
-		cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(vrs.v - 27) << "+27" << endl;
-		cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-		cout << "ADR: " << m_sender << endl;
-#endif
+		m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
 	}
 	return m_sender;
 }
 
 void Transaction::sign(Secret _priv)
 {
-	int v = 0;
-
-	secp256k1_start();
-
-	h256 msg = sha3(false);
-	h256 sig[2];
-	h256 nonce = kFromMessage(msg, _priv);
-
-	if (!secp256k1_ecdsa_sign_compact(msg.data(), 32, sig[0].data(), _priv.data(), nonce.data(), &v))
-		BOOST_THROW_EXCEPTION(InvalidSignature());
-#if ETH_ADDRESS_DEBUG
-	cout << "---- SIGN -------------------------------" << endl;
-	cout << "MSG: " << msg << endl;
-	cout << "SEC: " << _priv << endl;
-	cout << "NON: " << nonce << endl;
-	cout << "R S V: " << sig[0] << " " << sig[1] << " " << v << "+27" << endl;
-#endif
-
-	vrs.v = (byte)(v + 27);
-	vrs.r = (u256)sig[0];
-	vrs.s = (u256)sig[1];
+	auto sig = dev::sign(_priv, sha3(false));
+	vrs = *(SignatureStruct const*)&sig;
 }
 
 void Transaction::fillStream(RLPStream& _s, bool _sig) const
@@ -129,26 +94,5 @@ void Transaction::fillStream(RLPStream& _s, bool _sig) const
 		_s << "";
 	_s << value << data;
 	if (_sig)
-		_s << vrs.v << vrs.r << vrs.s;
+		_s << (vrs.v + 27) << (u256)vrs.r << (u256)vrs.s;
 }
-
-// If the h256 return is an integer, store it in bigendian (i.e. u256 ret; ... return (h256)ret; )
-h256 Transaction::kFromMessage(h256 _msg, h256 _priv)
-{
-	// TODO!
-//	bytes v(32, 1);
-//	bytes k(32, 0);
-	/*
-	v = '\x01' * 32
-	k = '\x00' * 32
-	priv = encode_privkey(priv,'bin')
-	msghash = encode(hash_to_int(msghash),256,32)
-	k = hmac.new(k, v+'\x00'+priv+msghash, hashlib.sha256).digest()
-	v = hmac.new(k, v, hashlib.sha256).digest()
-	k = hmac.new(k, v+'\x01'+priv+msghash, hashlib.sha256).digest()
-	v = hmac.new(k, v, hashlib.sha256).digest()
-	return decode(hmac.new(k, v, hashlib.sha256).digest(),256)
-	*/
-	return _msg ^ _priv;
-}
-
