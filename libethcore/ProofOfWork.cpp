@@ -26,7 +26,7 @@
 #include <array>
 #include <random>
 #include <thread>
-#include <libethcore/CryptoHeaders.h>
+#include <libdevcrypto/CryptoPP.h>
 #include <libdevcore/Common.h>
 #include "ProofOfWork.h"
 using namespace std;
