@@ -84,7 +84,7 @@ private:
 
 enum /*Message Flags*/
 {
-	ContainsSignature = 0
+	ContainsSignature = 1
 };
 
 /// An (unencrypted) message, constructed from the combination of an Envelope, and, potentially,
