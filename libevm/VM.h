@@ -110,6 +110,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 
 		case Instruction::SUICIDE:
+			require(1);
 			runGas = 0;
 			break;
 
@@ -124,6 +125,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 
 		case Instruction::SLOAD:
+			require(1);
             runGas = c_sloadGas;
 			break;
 
@@ -163,6 +165,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 			
 		case Instruction::BALANCE:
+			require(1);
 			runGas = c_balanceGas;
 			break;
 
@@ -189,34 +192,82 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 
 		case Instruction::ADD:
+			require(2);
+			break;
 		case Instruction::MUL:
+			require(2);
+			break;
 		case Instruction::SUB:
+			require(2);
+			break;
 		case Instruction::DIV:
+			require(2);
+			break;
 		case Instruction::SDIV:
+			require(2);
+			break;
 		case Instruction::MOD:
+			require(2);
+			break;
 		case Instruction::SMOD:
+			require(2);
+			break;
 		case Instruction::EXP:
+			require(2);
+			break;
 		case Instruction::NEG:
+			require(1);
+			break;
 		case Instruction::LT:
+			require(2);
+			break;
 		case Instruction::GT:
+			require(2);
+			break;
 		case Instruction::SLT:
+			require(2);
+			break;
 		case Instruction::SGT:
+			require(2);
+			break;
 		case Instruction::EQ:
+			require(2);
+			break;
 		case Instruction::NOT:
+			require(1);
+			break;
 		case Instruction::AND:
+			require(2);
+			break;
 		case Instruction::OR:
+			require(2);
+			break;
 		case Instruction::XOR:
+			require(2);
+			break;
 		case Instruction::BYTE:
+			require(2);
+			break;
 		case Instruction::ADDMOD:
+			require(3);
+			break;
 		case Instruction::MULMOD:
+			require(3);
+			break;
 		case Instruction::ADDRESS:
 		case Instruction::ORIGIN:
 		case Instruction::CALLER:
 		case Instruction::CALLVALUE:
+			break;
 		case Instruction::CALLDATALOAD:
+			require(1);
+			break;
 		case Instruction::CALLDATASIZE:
 		case Instruction::CODESIZE:
+			break;
 		case Instruction::EXTCODESIZE:
+			require(1);
+			break;
 		case Instruction::GASPRICE:
 		case Instruction::PREVHASH:
 		case Instruction::COINBASE:
@@ -256,7 +307,10 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH30:
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
+			break;
 		case Instruction::POP:
+			require(1);
+			break;
 		case Instruction::DUP1:
 		case Instruction::DUP2:
 		case Instruction::DUP3:
@@ -273,6 +327,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::DUP14:
 		case Instruction::DUP15:
 		case Instruction::DUP16:
+			require(1 + (int)inst - (int)Instruction::DUP1);
+			break;
 		case Instruction::SWAP1:
 		case Instruction::SWAP2:
 		case Instruction::SWAP3:
@@ -289,8 +345,14 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SWAP14:
 		case Instruction::SWAP15:
 		case Instruction::SWAP16:
+			require((int)inst - (int)Instruction::SWAP1 + 2);
+			break;
 		case Instruction::JUMP:
+			require(1);
+			break;
 		case Instruction::JUMPI:
+			require(2);
+			break;
 		case Instruction::PC:
 		case Instruction::MSIZE:
 		case Instruction::GAS:
