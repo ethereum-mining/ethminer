@@ -23,35 +23,18 @@
 
 #pragma once
 
-#include "CryptoPP.h"
 #include "Common.h"
 
 namespace dev
 {
 namespace crypto
 {
-	
-/// ECDSA Signature
-using Signature = FixedHash<65>;
-	
-/// Secret nonce from trusted key exchange.
-using Nonce = h256;
 
-/// Public key with nonce corresponding to trusted key exchange.
-typedef std::pair<Nonce,Public> PublicTrust;
-
-/// Recover public key from signature.
-//Public recover(Signature const& _sig, h256 _messageHash);
-	
 /// Encrypts text (in place).
 void encrypt(Public const& _k, bytes& _text);
-	
-/// Encrypt _text into _cipher.
-//void encrypt(Public const& _k, bytesConstRef& _text, bytesRef& _cipher);
 
 /// Decrypts text (in place).
 void decrypt(Secret const& _k, bytes& _text);
-
 
 class SecretKeyRef
 {
@@ -75,21 +58,29 @@ private:
 	Secret m_secret;
 };
 
+
 	
+/// [ECDHE Trusted Key Exchange]:
+	
+/// ECDSA Signature
+using Signature = FixedHash<65>;
+
+/// Secret nonce from trusted key exchange.
+using Nonce = h256;
+
+/// Public key with nonce corresponding to trusted key exchange.
+typedef std::pair<Nonce,Public> PublicTrust;
+
 /**
  * @brief EC KeyPair
  * @deprecated
  */
 class ECKeyPair
 {
+	
+	/// TO BE REMOVED
+	
 	friend class ECDHETKeyExchange;
-	
-public:
-	static ECKeyPair create();
-	
-private:
-	ECKeyPair() {};
-
 	std::map<Address,PublicTrust> m_trustEgress;
 	std::set<Nonce> m_trustIngress;
 };
