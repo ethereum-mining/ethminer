@@ -76,10 +76,10 @@ public:
 
 	virtual Envelope envelope(h256 _m) const = 0;
 
-	void sendRaw(bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
-	void sendRaw(Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_to, _topic, _ttl, _workToProve)); }
-	void sendRaw(Secret _from, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
-	void sendRaw(Secret _from, Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _to, _topic, _ttl, _workToProve)); }
+	void post(bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
+	void post(Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_to, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _to, _topic, _ttl, _workToProve)); }
 };
 
 struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
