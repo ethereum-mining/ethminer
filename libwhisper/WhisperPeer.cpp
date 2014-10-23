@@ -71,7 +71,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned n = 0;
 		for (auto i: _r)
 			if (n++)
-				host()->inject(Message(i), this);
+				host()->inject(Envelope(i), this);
 		sendMessages();
 		break;
 	}
@@ -86,24 +86,27 @@ void WhisperPeer::sendMessages()
 	RLPStream amalg;
 	unsigned n = 0;
 
-	Guard l(x_unseen);
-	while (m_unseen.size())
 	{
-		auto p = *m_unseen.begin();
-		m_unseen.erase(m_unseen.begin());
-		host()->streamMessage(p.second, amalg);
-		n++;
+		Guard l(x_unseen);
+		while (m_unseen.size())
+		{
+			auto p = *m_unseen.begin();
+			m_unseen.erase(m_unseen.begin());
+			host()->streamMessage(p.second, amalg);
+			n++;
+		}
 	}
 
-	if (n)
+	if (!n)
+		// pause for a bit if no messages to send - this is horrible and broken.
+		// the message subsystem should really just keep pumping out messages while m_unseen.size() and there's bandwidth for them.
+		this_thread::sleep_for(chrono::milliseconds(20));
+
 	{
 		RLPStream s;
 		prep(s, MessagesPacket, n).appendRaw(amalg.out(), n);
 		sealAndSend(s);
 	}
-	else
-		// just pause if no messages to send
-		this_thread::sleep_for(chrono::milliseconds(100));
 }
 
 void WhisperPeer::noteNewMessage(h256 _h, Message const& _m)
