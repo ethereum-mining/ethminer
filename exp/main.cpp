@@ -95,8 +95,7 @@ int main(int argc, char** argv)
 	}
 
 	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
-	ph.registerCapability(new WhisperHost());
-	auto wh = ph.cap<WhisperHost>();
+	auto wh = ph.registerCapability(new WhisperHost());
 
 	ph.start();
 
