@@ -82,8 +82,8 @@ void QWebThree::clearWatches()
 
 void QWebThree::clientDieing()
 {
-	clearWatches();
 	this->disconnect();
+	clearWatches();
 }
 
 static QString formatInput(QJsonObject const& _object)
