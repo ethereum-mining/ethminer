@@ -146,13 +146,13 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 		case Instruction::CALL:
 			require(7);
-			runGas = bigint(c_callGas) + m_stack[m_stack.size() - 1];
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = bigint(c_callGas) + m_stack[m_stack.size() - 1];
+			runGas = c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
