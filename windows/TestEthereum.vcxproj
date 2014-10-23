@@ -111,7 +111,6 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../builds/llvm3.5/Debug/lib;../../_build/LibEvmJit/x64_Debug;../../_build/LibEthereum/x64_Debug;../../_build/LibSecp256k1/x64_Debug;../../_build/LibCryptoPP/x64_Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -159,7 +158,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\test\boostTest.cpp" />
-    <ClCompile Include="..\test\createRandomTest.cpp" />
     <ClCompile Include="..\test\crypto.cpp" />
     <ClCompile Include="..\test\dagger.cpp" />
     <ClCompile Include="..\test\fork.cpp" />
