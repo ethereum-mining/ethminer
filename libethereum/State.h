@@ -32,6 +32,7 @@
 #include <libethcore/ProofOfWork.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
+#include <libevm/VMFace.h>
 #include "TransactionQueue.h"
 #include "AddressState.h"
 #include "Transaction.h"
@@ -264,6 +265,12 @@ public:
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
 
+	/// Sets VM kind to be used by the state
+	void setVMKind(VMFace::Kind _kind) { m_vmKind = _kind; }
+
+	/// Get the kind of VM used by the state
+	VMFace::Kind getVMKind() const { return m_vmKind; }
+
 private:
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
@@ -329,6 +336,8 @@ private:
 	ProofOfWork m_pow;
 
 	u256 m_blockReward;
+
+	VMFace::Kind m_vmKind = VMFace::Interpreter;	///< The kind of VM used by the state
 
 	static std::string c_defaultPath;
 
