@@ -47,9 +47,9 @@ void exportDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k,
 CryptoPP::ECP::Point PointFromPublic(Public const& _p);
 CryptoPP::Integer ExponentFromSecret(Secret const& _s);
 	
-void ECIESEncrypt(CryptoPP::ECP::Point const& _point);
+void ECIESEncrypt(CryptoPP::ECP::Point const& _point, byte*);
 
-void ECIESDecrypt(CryptoPP::Integer const& _exponent);
+void ECIESDecrypt(CryptoPP::Integer const& _exponent, byte*);
 	
 /**
  * @brief CryptoPP-specific EC keypair

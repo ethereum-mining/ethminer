@@ -44,15 +44,9 @@ using namespace CryptoPP;
 
 void dev::crypto::encrypt(Public const& _key, bytes& _plain)
 {
-	Integer x(&_key.data()[0], 32);
-	Integer y(&_key.data()[32], 32);
-	
-//	DL_PublicKey_EC<ECP> p;
-//	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
-	
 	ECIES<ECP>::Encryptor e;
 	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
-	e.AccessKey().SetPublicElement(ECP::Point(x,y));
+	e.AccessKey().SetPublicElement(pp::PointFromPublic(_key));
 	size_t plen = _plain.size();
 	_plain.resize(e.CiphertextLength(plen));
 	e.Encrypt(pp::PRNG(), _plain.data(), plen, _plain.data());
@@ -96,11 +90,14 @@ void ECKeyPair::encrypt(bytes& _text)
 	_text = std::move(asBytes(c));
 }
 
-dev::bytes ECKeyPair::decrypt(bytesConstRef _c)
+void ECKeyPair::decrypt(bytes& _c)
 {
-	std::string p;
-	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(pp::PRNG(), m_decryptor, new StringSink(p)));
-	return std::move(asBytes(p));
+	DecodingResult r = m_decryptor.Decrypt(pp::PRNG(), _c.data(), _c.size(), _c.data());
+	_c.resize(r.messageLength);
+	
+//	std::string p;
+//	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(pp::PRNG(), m_decryptor, new StringSink(p)));
+//	return std::move(asBytes(p));
 }
 
 

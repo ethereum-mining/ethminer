@@ -72,10 +72,10 @@ public:
 	/// Sign message.
 	Signature sign(h256 _messageHash);
 	
-	/// Decrypt ciphertext.
-	bytes decrypt(bytesConstRef _cipher);
+	/// Decrypt ciphertext (in place).
+	void decrypt(bytes& _cipher);
 	
-	/// Encrypt using our own public key.
+	/// Encrypt using public key (in place).
 	void encrypt(bytes& _text);
 	
 private:
