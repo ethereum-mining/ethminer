@@ -32,7 +32,8 @@ Message::Message(Envelope const& _e, Secret const& _s)
 	{
 		bytes b;
 		if (_s)
-			decrypt(_s, &(_e.data()), b);
+			if (!decrypt(_s, &(_e.data()), b))
+				return;
 		populate(_s ? b : _e.data());
 		m_to = KeyPair(_s).pub();
 	}
@@ -49,9 +50,10 @@ void Message::populate(bytes const& _data)
 	byte flags = _data[0];
 	if (!!(flags & ContainsSignature) && _data.size() > sizeof(Signature) + 1)	// has a signature
 	{
-		bytesConstRef payload = bytesConstRef(&_data).cropped(sizeof(Signature) + 1);
+		bytesConstRef payload = bytesConstRef(&_data).cropped(1, _data.size() - sizeof(Signature) - 1);
 		h256 h = sha3(payload);
-		m_from = recover(*(Signature const*)&(_data[1]), h);
+		Signature const& sig = *(Signature const*)&(_data[1 + payload.size()]);
+		m_from = recover(sig, h);
 		m_payload = payload.toBytes();
 	}
 	else
@@ -71,6 +73,8 @@ Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigne
 		input.resize(1 + m_payload.size() + sizeof(Signature));
 		input[0] |= ContainsSignature;
 		*(Signature*)&(input[1 + m_payload.size()]) = sign(_from, sha3(m_payload));
+		// If this fails, the something is wrong with the sign-recover round-trip.
+		assert(recover(*(Signature*)&(input[1 + m_payload.size()]), sha3(m_payload)) == KeyPair(_from).pub());
 	}
 
 	if (m_to)
