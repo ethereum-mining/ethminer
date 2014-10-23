@@ -121,7 +121,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-//		m_ethereum->poll();
+		m_qweb->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -149,8 +149,7 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-//	m_ethereum->clientDieing();
-
+	m_qweb->clientDieing();
 	writeSettings();
 }
 
@@ -522,8 +521,8 @@ void Main::timerEvent(QTimerEvent*)
 	else
 		interval += 100;
 	
-//	if (m_ethereum)
-//		m_ethereum->poll();
+	if (m_qweb)
+		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -542,8 +541,12 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-//	if (m_ethereum)
-//		m_ethereum->setAccounts(myKeys);
+
+	if (m_server.get())
+	{
+		auto list = owned().toStdList();
+		m_server->setAccounts({std::begin(list), std::end(list)});
+	}
 }
 
 void Main::on_ourAccounts_doubleClicked()

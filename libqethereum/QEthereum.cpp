@@ -35,37 +35,121 @@ QWebThree::~QWebThree()
 {
 }
 
-static QString toJsonRpcMessage(QString _json)
+void QWebThree::poll()
 {
-	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
-	QJsonObject res;
+	if (m_watches.size() == 0)
+		return;
 	
-	res["jsonrpc"] = "2.0";
-	if (f.contains("call"))
-		res["method"] = f["call"];
-	if (f.contains("args"))
-		res["params"] = f["args"];
-	if (f.contains("_id"))
-		res["id"] = f["_id"];
+	QJsonArray batch;
+	for (int w: m_watches)
+	{
+		QJsonObject res;
+		res["jsonrpc"] = "2.0";
+		res["method"] = "changed";
+		
+		QJsonArray params;
+		params.append(w);
+		res["params"] = params;
+		res["id"] = w;
+		batch.append(res);
+	}
 	
-	return QString::fromUtf8(QJsonDocument(res).toJson());
+	emit processData(QString::fromUtf8(QJsonDocument(batch).toJson()), "changed");
 }
 
-static QString formatResponse(QString _json)
+void QWebThree::clearWatches()
 {
-	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
-	QJsonObject res;
-	if (f.contains("id"))
-		res["_id"] = f["id"];
-	if (f.contains("result"))
-		res["data"] = f["result"];
+	if (m_watches.size() == 0)
+		return;
 	
+	QJsonArray batch;
+	for (int w: m_watches)
+	{
+		QJsonObject res;
+		res["jsonrpc"] = "2.0";
+		res["method"] = "uninstallFilter";
+		
+		QJsonArray params;
+		params.append(w);
+		res["params"] = params;
+		res["id"] = w;
+		batch.append(params);
+	}
+	
+	m_watches.clear();
+	emit processData(QString::fromUtf8(QJsonDocument(batch).toJson()), "internal");
+}
+
+void QWebThree::clientDieing()
+{
+	clearWatches();
+	this->disconnect();
+}
+
+static QString formatInput(QJsonObject const& _object)
+{
+	QJsonObject res;
+	res["jsonrpc"] = "2.0";
+	res["method"] = _object["call"];
+	res["params"] = _object["args"];
+	res["id"] = _object["_id"];
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
 void QWebThree::postData(QString _json)
 {
-	emit processData(toJsonRpcMessage(_json));
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+
+	QString method = f["call"].toString();
+	if (!method.compare("uninstallFilter"))
+	{
+		int idToRemove = -1;
+		if (f["args"].isArray())
+			if (f["args"].toArray().size())
+				idToRemove = f["args"].toArray()[0].toInt();;
+		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
+	}
+	
+	emit processData(formatInput(f), method);
+}
+
+static QString formatOutput(QJsonObject const& _object)
+{
+	QJsonObject res;
+	res["_id"] = _object["id"];
+	res["data"] = _object["result"];
+	return QString::fromUtf8(QJsonDocument(res).toJson());
+}
+
+void QWebThree::onDataProcessed(QString _json, QString _addInfo)
+{
+	if (!_addInfo.compare("internal"))
+		return;
+
+	if (!_addInfo.compare("changed"))
+	{
+		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
+		for (int i = 0; i < resultsArray.size(); i++)
+		{
+			QJsonObject elem = resultsArray[i].toObject();
+			if (elem.contains("result") && elem["result"].toBool() == true)
+			{
+				QJsonObject res;
+				res["_event"] = "messages";
+				res["data"] = (int)m_watches[i]; // we can do that couse poll is synchronous
+				response(QString::fromUtf8(QJsonDocument(res).toJson()));
+			}
+		}
+		return;
+	}
+	
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	
+	if (!_addInfo.compare("newFilter") || !_addInfo.compare("newFilterString"))
+		if (f.contains("result"))
+			m_watches.push_back(f["result"].toInt());
+
+	response(formatOutput(f));
 }
 
 QWebThreeConnector::QWebThreeConnector(QWebThree* _q): m_qweb(_q)
@@ -79,7 +163,8 @@ QWebThreeConnector::~QWebThreeConnector()
 
 bool QWebThreeConnector::StartListening()
 {
-	connect(m_qweb, SIGNAL(processData(QString)), this, SLOT(onMessage(QString)));
+	connect(m_qweb, SIGNAL(processData(QString, QString)), this, SLOT(onProcessData(QString, QString)));
+	connect(this, SIGNAL(dataProcessed(QString, QString)), m_qweb, SLOT(onDataProcessed(QString, QString)));
 	return true;
 }
 
@@ -91,16 +176,14 @@ bool QWebThreeConnector::StopListening()
 
 bool QWebThreeConnector::SendResponse(std::string const& _response, void* _addInfo)
 {
-	Q_UNUSED(_addInfo);
-	emit m_qweb->send(formatResponse(QString::fromStdString(_response)));
+	emit dataProcessed(QString::fromStdString(_response), *(QString*)_addInfo);
 	return true;
 }
 
-void QWebThreeConnector::onMessage(QString const& _json)
+void QWebThreeConnector::onProcessData(QString const& _json, QString const& _addInfo)
 {
-	OnRequest(_json.toStdString());
+	OnRequest(_json.toStdString(), (void*)&_addInfo);
 }
-
 
 // extra bits needed to link on VS
 #ifdef _MSC_VER
