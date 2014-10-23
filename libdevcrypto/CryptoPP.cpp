@@ -44,7 +44,8 @@ Integer pp::ExponentFromSecret(Secret const& _s)
 	return std::move(Integer(_s.data(), 32));
 }
 
-void pp::PublicFromExponent(Integer const& _e, Public& _p) {
+void pp::PublicFromExponent(Integer const& _e, Public& _p)
+{
 	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> k;
 	k.AccessGroupParameters().Initialize(secp256k1());
 	k.SetPrivateExponent(_e);
@@ -55,12 +56,14 @@ void pp::PublicFromExponent(Integer const& _e, Public& _p) {
 	pp::PublicFromDL_PublicKey_EC(p, _p);
 }
 
-void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p) {
+void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
+{
 	bytes prefixedKey(65);
 	_k.GetGroupParameters().GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
 	memcpy(_p.data(), &prefixedKey[1], 64);
 }
 
-void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) {
+void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s)
+{
 	_k.GetPrivateExponent().Encode(_s.data(), 32);
 }
