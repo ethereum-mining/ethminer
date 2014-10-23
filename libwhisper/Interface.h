@@ -43,25 +43,6 @@ namespace shh
 	Topic mask;
 };*/
 
-using TopicMask = std::pair<Topic, Topic>;
-using TopicMasks = std::vector<TopicMask>;
-
-class TopicFilter
-{
-public:
-	TopicFilter() {}
-	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
-	TopicFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
-
-	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
-	h256 sha3() const { RLPStream s; fillStream(s); return dev::sha3(s.out()); }
-
-	bool matches(Envelope const& _m) const;
-
-private:
-	TopicMasks m_topicMasks;
-};
-
 struct InstalledFilter
 {
 	InstalledFilter(TopicFilter const& _f): filter(_f) {}
@@ -86,8 +67,9 @@ public:
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
+	unsigned installWatch(TopicMask const& _mask) { return installWatch(TopicFilter(_mask)); }
 	virtual unsigned installWatch(TopicFilter const& _filter) = 0;
-	virtual unsigned installWatch(h256 _filterId) = 0;
+	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;

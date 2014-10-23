@@ -87,7 +87,7 @@ void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
 		}
 }
 
-unsigned WhisperHost::installWatch(h256 _h)
+unsigned WhisperHost::installWatchOnId(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 	m_watches[ret] = ClientWatch(_h);
@@ -104,7 +104,7 @@ unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 	if (!m_filters.count(h))
 		m_filters.insert(make_pair(h, _f));
 
-	return installWatch(h);
+	return installWatchOnId(h);
 }
 
 void WhisperHost::uninstallWatch(unsigned _i)
