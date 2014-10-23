@@ -3,8 +3,8 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <LLVMEnabled>1</LLVMEnabled>
-    <LLVMSrcDir>..\..\llvm</LLVMSrcDir>
-    <LLVMBuildDir>..\..\_build\llvm\$(Platform)</LLVMBuildDir>
+    <LLVMSrcDir>../../llvm</LLVMSrcDir>
+    <LLVMBuildDir>../../_build/llvm/$(Platform)</LLVMBuildDir>
     <LLVMIncludeDir>$(LLVMSrcDir)\include;$(LLVMBuildDir)\include</LLVMIncludeDir>
     <LLVMLibDir>$(LLVMBuildDir)\$(Configuration)\lib</LLVMLibDir>
     <LLVMLibs Condition="'$(LLVMEnabled)' == '1'">LLVMX86Disassembler.lib;LLVMX86AsmParser.lib;LLVMX86CodeGen.lib;LLVMSelectionDAG.lib;LLVMAsmPrinter.lib;LLVMCodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMTransformUtils.lib;LLVMipa.lib;LLVMAnalysis.lib;LLVMX86Desc.lib;LLVMX86Info.lib;LLVMX86AsmPrinter.lib;LLVMX86Utils.lib;LLVMMCJIT.lib;LLVMTarget.lib;LLVMRuntimeDyld.lib;LLVMObject.lib;LLVMMCParser.lib;LLVMBitReader.lib;LLVMExecutionEngine.lib;LLVMMC.lib;LLVMCore.lib;LLVMSupport.lib</LLVMLibs>
