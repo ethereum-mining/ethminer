@@ -49,11 +49,11 @@ Integer pp::ExponentFromSecret(Secret const& _s)
 
 void pp::PublicFromExponent(Integer const& _e, Public& _p) {
 	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> k;
-	k.AccessGroupParameters().Initialize(ASN1::secp256r1());
+	k.AccessGroupParameters().Initialize(secp256k1());
 	k.SetPrivateExponent(_e);
 
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> p;
-	p.AccessGroupParameters().Initialize(ASN1::secp256r1());
+	p.AccessGroupParameters().Initialize(secp256k1());
 	k.MakePublicKey(p);
 	pp::PublicFromDL_PublicKey_EC(p, _p);
 }
