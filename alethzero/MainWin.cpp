@@ -136,16 +136,12 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-
+		m_qweb = new QWebThree(this);
+		auto qweb = m_qweb;
 		
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		
-		m_qweb = new QWebThree(this);
-		
-
-		auto qweb = m_qweb;
 
 		auto list = owned().toStdList();
 		m_server = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
