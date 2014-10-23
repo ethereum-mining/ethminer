@@ -14,11 +14,9 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file CryptoPP.h
+/** @file CryptoPP.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
- *
- * CryptoPP wrappers
  */
 
 #include "CryptoPP.h"

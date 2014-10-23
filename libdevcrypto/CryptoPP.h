@@ -18,13 +18,38 @@
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
- * CryptoPP wrappers
+ * CryptoPP headers and helper methods
  */
 
 #pragma once
 
+// need to leave this one disabled
+//#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma warning(push)
+#pragma warning(disable:4100 4244)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
+#pragma GCC diagnostic ignored "-Wextra"
+#include <sha.h>
+#include <sha3.h>
+#include <ripemd.h>
+#include <aes.h>
+#include <pwdbased.h>
+#include <modes.h>
+#include <filters.h>
+#include <eccrypto.h>
+#include <ecp.h>
+#include <files.h>
+#include <osrng.h>
+#include <oids.h>
+#include <secp256k1/secp256k1.h>
+#pragma warning(pop)
+#pragma GCC diagnostic pop
 #include "Common.h"
-#include "CryptoHeaders.h"
 
 namespace dev
 {
@@ -32,7 +57,6 @@ namespace crypto
 {
 
 namespace pp
-// cryptopp wrappers
 {
 /// RNG used by CryptoPP
 inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
