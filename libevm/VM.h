@@ -191,83 +191,16 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 
-		case Instruction::ADD:
-			require(2);
-			break;
-		case Instruction::MUL:
-			require(2);
-			break;
-		case Instruction::SUB:
-			require(2);
-			break;
-		case Instruction::DIV:
-			require(2);
-			break;
-		case Instruction::SDIV:
-			require(2);
-			break;
-		case Instruction::MOD:
-			require(2);
-			break;
-		case Instruction::SMOD:
-			require(2);
-			break;
-		case Instruction::EXP:
-			require(2);
-			break;
-		case Instruction::NEG:
-			require(1);
-			break;
-		case Instruction::LT:
-			require(2);
-			break;
-		case Instruction::GT:
-			require(2);
-			break;
-		case Instruction::SLT:
-			require(2);
-			break;
-		case Instruction::SGT:
-			require(2);
-			break;
-		case Instruction::EQ:
-			require(2);
-			break;
-		case Instruction::NOT:
-			require(1);
-			break;
-		case Instruction::AND:
-			require(2);
-			break;
-		case Instruction::OR:
-			require(2);
-			break;
-		case Instruction::XOR:
-			require(2);
-			break;
-		case Instruction::BYTE:
-			require(2);
-			break;
-		case Instruction::ADDMOD:
-			require(3);
-			break;
-		case Instruction::MULMOD:
-			require(3);
-			break;
+		case Instruction::PC:
+		case Instruction::MSIZE:
+		case Instruction::GAS:
+		case Instruction::JUMPDEST:
 		case Instruction::ADDRESS:
 		case Instruction::ORIGIN:
 		case Instruction::CALLER:
 		case Instruction::CALLVALUE:
-			break;
-		case Instruction::CALLDATALOAD:
-			require(1);
-			break;
 		case Instruction::CALLDATASIZE:
 		case Instruction::CODESIZE:
-			break;
-		case Instruction::EXTCODESIZE:
-			require(1);
-			break;
 		case Instruction::GASPRICE:
 		case Instruction::PREVHASH:
 		case Instruction::COINBASE:
@@ -308,8 +241,37 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
 			break;
+		case Instruction::NEG:
+		case Instruction::NOT:
+		case Instruction::CALLDATALOAD:
+		case Instruction::EXTCODESIZE:
 		case Instruction::POP:
+		case Instruction::JUMP:
 			require(1);
+			break;
+		case Instruction::ADD:
+		case Instruction::MUL:
+		case Instruction::SUB:
+		case Instruction::DIV:
+		case Instruction::SDIV:
+		case Instruction::MOD:
+		case Instruction::SMOD:
+		case Instruction::EXP:
+		case Instruction::LT:
+		case Instruction::GT:
+		case Instruction::SLT:
+		case Instruction::SGT:
+		case Instruction::EQ:
+		case Instruction::AND:
+		case Instruction::OR:
+		case Instruction::XOR:
+		case Instruction::BYTE:
+		case Instruction::JUMPI:
+			require(2);
+			break;
+		case Instruction::ADDMOD:
+		case Instruction::MULMOD:
+			require(3);
 			break;
 		case Instruction::DUP1:
 		case Instruction::DUP2:
@@ -346,17 +308,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SWAP15:
 		case Instruction::SWAP16:
 			require((int)inst - (int)Instruction::SWAP1 + 2);
-			break;
-		case Instruction::JUMP:
-			require(1);
-			break;
-		case Instruction::JUMPI:
-			require(2);
-			break;
-		case Instruction::PC:
-		case Instruction::MSIZE:
-		case Instruction::GAS:
-		case Instruction::JUMPDEST:
 			break;
 		default:
 			BOOST_THROW_EXCEPTION(BadInstruction());
