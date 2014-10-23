@@ -21,18 +21,7 @@
  * SHA3 MAC
  */
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma warning(push)
-#pragma warning(disable:4100 4244)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
-#pragma GCC diagnostic ignored "-Wextra"
-#include <sha3.h>
-#pragma warning(pop)
-#pragma GCC diagnostic pop
+#include "CryptoPP.h"
 #include "SHA3MAC.h"
 
 using namespace dev;
