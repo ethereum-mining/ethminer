@@ -28,13 +28,13 @@ using namespace dev::crypto;
 using namespace pp;
 using namespace CryptoPP;
 
-void pp::exportDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p) {
+void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p) {
 	bytes prefixedKey(65);
 	_k.GetGroupParameters().GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
 	memcpy(_p.data(), &prefixedKey[1], 64);
 }
 
-void pp::exportDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) {
+void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) {
 	_k.GetPrivateExponent().Encode(_s.data(), 32);
 }
 
@@ -48,14 +48,6 @@ ECP::Point pp::PointFromPublic(Public const& _p)
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub;
 	pub.AccessGroupParameters().Initialize(pp::secp256k1());
 	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), 65);
-	
-	// Manually:
-//	Integer x(_p.data(), 32);
-//	Integer y(&_p.data()[31], 32); // unsure why offset must be 31
-//	ECP::Point p(x,y);
-	
-//	ECP ecp;
-//	ecp.DecodePoint(p, _p.data(), _p.size);
 	return std::move(p);
 }
 
@@ -76,6 +68,6 @@ m_decryptor(pp::PRNG(), pp::secp256k1())
 Secret pp::ECKeyPair::secret()
 {
 	Secret s;
-	exportDL_PrivateKey_EC(m_decryptor.AccessKey(), s);
+	SecretFromDL_PrivateKey_EC(m_decryptor.AccessKey(), s);
 	return std::move(s);
 }
