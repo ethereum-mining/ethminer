@@ -34,5 +34,6 @@
     <ClInclude Include="..\test\MemTrie.h" />
     <ClInclude Include="..\test\JsonSpiritHeaders.h" />
     <ClInclude Include="..\test\TestHelper.h" />
+    <ClInclude Include="..\test\vm.h" />
   </ItemGroup>
 </Project>

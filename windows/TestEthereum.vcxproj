@@ -185,6 +185,7 @@
     <ClInclude Include="..\test\MemTrie.h" />
     <ClInclude Include="..\test\TestHelper.h" />
     <ClInclude Include="..\test\TrieHash.h" />
+    <ClInclude Include="..\test\vm.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
