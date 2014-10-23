@@ -51,6 +51,18 @@ static QString toJsonRpcMessage(QString _json)
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
+static QString formatResponse(QString _json)
+{
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	QJsonObject res;
+	if (f.contains("id"))
+		res["_id"] = f["id"];
+	if (f.contains("result"))
+		res["data"] = f["result"];
+	
+	return QString::fromUtf8(QJsonDocument(res).toJson());
+}
+
 void QWebThree::postData(QString _json)
 {
 	emit processData(toJsonRpcMessage(_json));
@@ -80,7 +92,7 @@ bool QWebThreeConnector::StopListening()
 bool QWebThreeConnector::SendResponse(std::string const& _response, void* _addInfo)
 {
 	Q_UNUSED(_addInfo);
-	emit m_qweb->send(QString::fromStdString(_response));
+	emit m_qweb->send(formatResponse(QString::fromStdString(_response)));
 	return true;
 }
 
