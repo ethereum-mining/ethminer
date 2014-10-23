@@ -37,6 +37,12 @@ using Secret = h256;
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Public = h512;
 
+/// A signature: 65 bytes: r: [0, 32), s: [32, 64), v: 64.
+/// @NOTE This is not endian-specific; it's just a bunch of bytes.
+using Signature = h520;
+
+struct SignatureStruct { h256 r; h256 s; byte v; };
+
 /// An Ethereum address: 20 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Address = h160;
@@ -44,9 +50,17 @@ using Address = h160;
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
 
-/// Convert a private key into the public key equivalent.
-/// @returns 0 if it's not a valid private key.
-Address toAddress(h256 _private);
+/// A vector of secrets.
+using Secrets = h256s;
+
+/// Convert a secret key into the public key equivalent.
+/// @returns 0 if it's not a valid secret key.
+Address toAddress(Secret _secret);
+
+void encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher);
+bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plain);
+Public recover(Signature _sig, h256 _message);
+Signature sign(Secret _k, h256 _message);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
