@@ -448,11 +448,10 @@ QString QEthereum::doTransact(QString _json)
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
-		auto b = m_accounts.begin()->first;
+		u256 b = 0;
 		for (auto a: m_accounts)
-			if (client()->balanceAt(a.first) > client()->balanceAt(b))
-				b = a.first;
-		t.from = b;
+			if (client()->balanceAt(a.first) > b)
+				t.from = a.first, b = client()->balanceAt(a.first);
 	}
 	if (!m_accounts.count(t.from))
 		return QString();
@@ -466,7 +465,7 @@ QString QEthereum::doTransact(QString _json)
 		// TODO: insert validification hook here.
 		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 	else
-		ret = toQJS(client()->transact(t.from, t.value, t.data, t.gas, t.gasPrice));
+		ret = toQJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
 	client()->flushTransactions();
 	return ret;
 }

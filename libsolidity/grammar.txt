@@ -1,0 +1,35 @@
+ContractDefinition = 'contract' Identifier '{' ContractPart* '}'
+ContractPart = VariableDeclaration ';' | StructDefinition |
+               FunctionDefinition | 'public:' | 'private:'
+
+StructDefinition = 'struct' Identifier '{'
+                     ( VariableDeclaration (';' VariableDeclaration)* )? '}
+
+FunctionDefinition = 'function' Identifier ParameterList 'const'?
+                     ( 'returns' ParameterList )? Block
+ParameterList = '(' ( VariableDeclaration (',' VariableDeclaration)* )? ')'
+// semantic restriction: mappings and structs (recursively) containing mappings
+// are not allowed in argument lists
+VariableDeclaration = TypeName Identifier
+TypeName = ElementaryTypeName | Identifier | Mapping
+Mapping = 'mapping' '(' ElementaryTypeName '=>' TypeName ')'
+
+Block = '{' Statement* '}'
+Statement = IfStatement | WhileStatement | Block |
+			( Continue | Break | Return | VariableDefinition | Expression ) ';'
+
+IfStatement = 'if' '(' Expression ')' Statement ( 'else' Statement )?
+WhileStatement = 'while' '(' Expression ')' Statement
+Continue = 'continue' ';'
+Break = 'break' ';'
+Return = 'return' Expression? ';'
+VariableDefinition = VariableDeclaration ( = Expression )? ';'
+
+Expression = Assignment | UnaryOperation | BinaryOperation | FunctionCall | IndexAccess |
+			 MemberAccess | PrimaryExpression
+// The expression syntax is actually much more complicated
+Assignment = Expression (AssignmentOp Expression)
+FunctionCall = Expression '(' ( Expression ( ',' Expression )* ) ')'
+MemberAccess = Expression '.' Identifier
+IndexAccess = Expression '[' Expresison ']'
+PrimaryExpression = Identifier | NumberLiteral | StringLiteral | ElementaryTypeName | '(' Expression ')'

@@ -47,11 +47,11 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	if (m_messages.count(_m))
 	{
 		UpgradeGuard ll(l);
-		m_messages.at(_m).streamOut(_s);
+		m_messages.at(_m).streamOut(_s, true);
 	}
 }
 
-void WhisperHost::inject(Message const& _m, WhisperPeer* _p)
+void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
 	auto h = _m.sha3();
 	{
@@ -87,7 +87,7 @@ void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
 		}
 }
 
-unsigned WhisperHost::installWatch(h256 _h)
+unsigned WhisperHost::installWatchOnId(h256 _h)
 {
 	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 	m_watches[ret] = ClientWatch(_h);
@@ -95,7 +95,7 @@ unsigned WhisperHost::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned WhisperHost::installWatch(shh::MessageFilter const& _f)
+unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 {
 	Guard l(m_filterLock);
 
@@ -104,7 +104,7 @@ unsigned WhisperHost::installWatch(shh::MessageFilter const& _f)
 	if (!m_filters.count(h))
 		m_filters.insert(make_pair(h, _f));
 
-	return installWatch(h);
+	return installWatchOnId(h);
 }
 
 void WhisperHost::uninstallWatch(unsigned _i)

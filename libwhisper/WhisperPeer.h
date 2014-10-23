@@ -59,7 +59,7 @@ public:
 	WhisperHost* host() const;
 
 private:
-	virtual bool interpret(unsigned _id, RLP const&);
+	virtual bool interpret(unsigned _id, RLP const&) override;
 
 	void sendMessages();
 

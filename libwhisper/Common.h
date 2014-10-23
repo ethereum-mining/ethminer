@@ -25,7 +25,7 @@
 #include <chrono>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libethcore/CommonEth.h>
+#include <libdevcore/RLP.h>
 #include <libp2p/Capability.h>
 
 namespace dev
@@ -48,6 +48,8 @@ class WhisperHost;
 class WhisperPeer;
 class Whisper;
 
+class Envelope;
+
 enum WhisperPacket
 {
 	StatusPacket = 0,
@@ -58,6 +60,64 @@ enum WhisperPacket
 };
 
 using Topic = h256;
+
+class BuildTopic
+{
+public:
+	template <class T> BuildTopic(T const& _t) { shift(_t); }
+
+	template <class T> BuildTopic& shift(T const& _r) { return shiftBytes(RLPStream().append(_r).out()); }
+	template <class T> BuildTopic& operator()(T const& _t) { return shift(_t); }
+
+	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
+
+	operator Topic() const { return toTopic(); }
+	Topic toTopic() const { Topic ret; for (auto i = 0; i < 32; ++i) ret[i] = m_parts[i * m_parts.size() / 32][i]; return ret; }
+
+protected:
+	BuildTopic() {}
+
+	BuildTopic& shiftBytes(bytes const& _b);
+
+	h256s m_parts;
+};
+
+using TopicMask = std::pair<Topic, Topic>;
+using TopicMasks = std::vector<TopicMask>;
+
+class TopicFilter
+{
+public:
+	TopicFilter() {}
+	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
+	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
+	TopicFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
+
+	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
+	h256 sha3() const;
+
+	bool matches(Envelope const& _m) const;
+
+private:
+	TopicMasks m_topicMasks;
+};
+
+class BuildTopicMask: BuildTopic
+{
+public:
+	BuildTopicMask() { shift(); }
+	template <class T> BuildTopicMask(T const& _t) { shift(_t); }
+
+	template <class T> BuildTopicMask& shift(T const& _r) { BuildTopic::shift(_r); return *this; }
+	BuildTopicMask& shiftRaw(h256 const& _h) { BuildTopic::shiftRaw(_h); return *this; }
+	BuildTopic& shift() { m_parts.push_back(h256()); return *this; }
+
+	BuildTopicMask& operator()() { shift(); return *this; }
+	template <class T> BuildTopicMask& operator()(T const& _t) { shift(_t); return *this; }
+
+	operator TopicMask() const { return toTopicMask(); }
+	TopicMask toTopicMask() const;
+};
 
 }
 }
