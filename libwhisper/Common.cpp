@@ -21,8 +21,32 @@
 
 #include "Common.h"
 
+#include <libdevcrypto/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
+BuildTopic& BuildTopic::shiftBytes(bytes const& _b)
+{
+	m_parts.push_back(dev::sha3(_b));
+	return *this;
+}
+
+h256 TopicFilter::sha3() const
+{
+	RLPStream s;
+	fillStream(s);
+	return dev::sha3(s.out());
+}
+
+TopicMask BuildTopicMask::toTopicMask() const
+{
+	TopicMask ret;
+	for (auto i = 0; i < 32; ++i)
+	{
+		ret.first[i] = m_parts[i * m_parts.size() / 32][i];
+		ret.second[i] = m_parts[i * m_parts.size() / 32] ? 255 : 0;
+	}
+	return ret;
+}
