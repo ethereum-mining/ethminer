@@ -105,7 +105,7 @@ void Envelope::proveWork(unsigned _ms)
 	// PoW
 	h256 d[2];
 	d[0] = sha3NoNonce();
-	uint32_t& n = *(uint32_t*)&(d[1][30]);
+	uint32_t& n = *(uint32_t*)&(d[1][28]);
 	unsigned bestBitSet = 0;
 	bytesConstRef chuck(d[0].data(), 64);
 
