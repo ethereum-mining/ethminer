@@ -39,6 +39,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libwebthree/WebThree.h>
+#include <libethrpc/WebThreeStubServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -105,23 +106,22 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), owned());
-		m_whisper = new QWhisper(this, whisper());
-		m_p2p = new QPeer2Peer(this, peer2peer());
+		m_qweb = new QWebThree(this);
+		auto qweb = m_qweb;
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		auto qdev = m_dev;
-		auto qeth = m_ethereum;
-		auto qshh = m_whisper;
-		auto qp2p = m_p2p;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qp2p));
+
+		auto list = owned().toStdList();
+		m_server = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
+		m_server->StartListening();
+		
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_ethereum->poll();
+//		m_ethereum->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -149,7 +149,7 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_ethereum->clientDieing();
+//	m_ethereum->clientDieing();
 
 	writeSettings();
 }
@@ -157,11 +157,6 @@ Main::~Main()
 eth::Client* Main::ethereum() const
 {
 	return m_web3->ethereum();
-}
-
-dev::p2p::Host* Main::peer2peer() const
-{
-	return web3()->peer2peer();
 }
 
 std::shared_ptr<dev::shh::WhisperHost> Main::whisper() const
@@ -527,8 +522,8 @@ void Main::timerEvent(QTimerEvent*)
 	else
 		interval += 100;
 	
-	if (m_ethereum)
-		m_ethereum->poll();
+//	if (m_ethereum)
+//		m_ethereum->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -547,8 +542,8 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-	if (m_ethereum)
-		m_ethereum->setAccounts(myKeys);
+//	if (m_ethereum)
+//		m_ethereum->setAccounts(myKeys);
 }
 
 void Main::on_ourAccounts_doubleClicked()
