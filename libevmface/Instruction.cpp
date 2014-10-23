@@ -321,5 +321,5 @@ InstructionInfo dev::eth::instructionInfo(Instruction _inst)
 
 bool dev::eth::isValidInstruction(Instruction _inst)
 {
-	return c_instructionInfo.count(_inst);
+	return !!c_instructionInfo.count(_inst);
 }
