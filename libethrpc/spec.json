@@ -28,10 +28,11 @@
 
             { "method": "compile", "params": [""], "order": [], "returns": ""},
 
-			{ "method": "messages", "params": { "params": {}}, "order": ["params"], "returns": []},
-			{ "method": "watch", "params": { "params": ""}, "order": ["params"], "returns": 0},
-			{ "method": "check", "params": { "id": 0}, "order": [], "returns": true},
-			{ "method": "killWatch", "params": { "id": 0}, "order": ["params"], "returns": true}
+			{ "method": "newFilter", "params": [{}], "order": [], "returns": 0},
+			{ "method": "newFilterString", "params": [""], "order": [], "returns": 0},
+			{ "method": "uninstallFilter", "params": [0], "order": [], "returns": true},
+			{ "method": "changed", "params": [0], "order": [], "returns": true},
+			{ "method": "getMessages", "params": [0], "order": [], "returns": []}
 ]
 
 
