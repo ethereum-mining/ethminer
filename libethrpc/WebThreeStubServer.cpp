@@ -21,7 +21,6 @@
  * @date 2014
  */
 
-#if ETH_JSONRPC
 #include "WebThreeStubServer.h"
 #include <libevmface/Instruction.h>
 #include <liblll/Compiler.h>
@@ -173,7 +172,7 @@ Json::Value WebThreeStubServer::accounts()
 
 std::string WebThreeStubServer::balanceAt(string const& _address)
 {
-	int block = 0; // temporarily
+	int block = 0;
 	return toJS(client()->balanceAt(jsToAddress(_address), block));
 }
 
@@ -264,7 +263,6 @@ bool WebThreeStubServer::changed(int const& _id)
 
 std::string WebThreeStubServer::codeAt(string const& _address)
 {
-	// temp
 	int block = 0;
 	return client() ? jsFromBinary(client()->codeAt(jsToAddress(_address), block)) : "";
 }
@@ -372,7 +370,6 @@ bool WebThreeStubServer::setMining(bool const& _mining)
 
 std::string WebThreeStubServer::stateAt(string const& _address, string const& _storage)
 {
-	// temp
 	int block = 0;
 	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
 }
@@ -447,4 +444,3 @@ bool WebThreeStubServer::uninstallFilter(int const& _id)
 	return true;
 }
 
-#endif

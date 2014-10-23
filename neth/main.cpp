@@ -26,17 +26,13 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
 #include <jsonrpc/connectors/httpserver.h>
-#endif
-#include <libdevcrypto/FileSystem.h>
-#include <libevmface/Instruction.h>
-#include <libethereum/All.h>
-#if ETH_JSONRPC
 #include <libethrpc/WebThreeStubServer.h>
 #include <libethrpc/abstractwebthreestubserver.h>
 #include <libdevcore/CommonJS.h>
-#endif
+#include <libdevcrypto/FileSystem.h>
+#include <libevmface/Instruction.h>
+#include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 
@@ -73,10 +69,8 @@ void help()
         << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
         << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
         << "    -h,--help  Show this help message and exit." << endl
-#if ETH_JSONRPC
         << "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
         << "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
-#endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
         << "    -m,--mining <on/off>  Enable mining (default: off)" << endl
         << "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
@@ -97,10 +91,8 @@ void interactiveHelp()
         << "Commands:" << endl
         << "    netstart <port>  Starts the network sybsystem on a specific port." << endl
         << "    netstop  Stops the network subsystem." << endl
-#if ETH_JSONRPC
         << "    jsonstart <port>  Starts the JSON-RPC server." << endl
         << "    jsonstop  Stops the JSON-RPC server." << endl
-#endif
         << "    connect <addr> <port>  Connects to a specific peer." << endl
         << "    minestart  Starts mining." << endl
         << "    minestop  Stops mining." << endl
@@ -304,9 +296,7 @@ int main(int argc, char** argv)
 	string dbPath;
 	bool mining = false;
 	unsigned peers = 5;
-#if ETH_JSONRPC
 	int jsonrpc = 8080;
-#endif
 	string publicIP;
 	bool upnp = true;
 	string clientName;
@@ -377,12 +367,10 @@ int main(int argc, char** argv)
 				cerr << "Unknown mining option: " << m << endl;
 			}
 		}
-#if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
 			jsonrpc = jsonrpc ? jsonrpc : 8080;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
-#endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -474,14 +462,12 @@ int main(int argc, char** argv)
 	if (mining)
 		c.startMining();
 
-#if ETH_JSONRPC
 	auto_ptr<WebThreeStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
 		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
 		jsonrpcServer->StartListening();
 	}
-#endif
 
 	while (true)
 	{
@@ -540,7 +526,6 @@ int main(int argc, char** argv)
 		{
 			c.stopMining();
 		}
-#if ETH_JSONRPC
 		else if (cmd == "jsonport")
 		{
 			if (iss.peek() != -1)
@@ -560,7 +545,6 @@ int main(int argc, char** argv)
 				jsonrpcServer->StopListening();
 			jsonrpcServer.reset();
 		}
-#endif
 		else if (cmd == "address")
 		{
 			ccout << "Current address:" << endl;
@@ -1002,10 +986,8 @@ int main(int argc, char** argv)
 	endwin();
 	refresh();
 
-#if ETH_JSONRPC
 	if (jsonrpcServer.get())
 		jsonrpcServer->StopListening();
-#endif
 
 	return 0;
 }
