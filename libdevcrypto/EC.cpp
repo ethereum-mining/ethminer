@@ -69,35 +69,3 @@ void dev::crypto::decrypt(Secret const& _k, bytes& _c)
 	memcpy(_c.data(), p.data(), _c.size());
 }
 
-SecretKeyRef::SecretKeyRef()
-{
-	secp256k1_start();
-	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<uint16_t> d(0, 255);
-
-	for (int i = 0; i < 100; ++i)
-	{
-		for (unsigned i = 0; i < 32; ++i)
-			m_secret[i] = (byte)d(s_eng);
-		
-		/// todo: check key validity w/cryptopp
-		KeyPair ret(m_secret);
-		if (ret.address())
-			break;
-	}
-	/// todo: throw exception if key doesn't happen (or run forever?)
-	/// todo: ^ also in KeyPair::create()
-}
-
-Public SecretKeyRef::pub() const
-{
-	Public p;
-	pp::PublicFromExponent(pp::ExponentFromSecret(m_secret), p);
-	return p;
-}
-
-Address SecretKeyRef::address() const
-{
-	return dev::right160(dev::sha3(bytesConstRef(pub().data(), 64)));
-}
-

@@ -35,53 +35,6 @@ void encrypt(Public const& _k, bytes& _text);
 
 /// Decrypts text (in place).
 void decrypt(Secret const& _k, bytes& _text);
-
-class SecretKeyRef
-{
-public:
-	/// Creates random secret
-	SecretKeyRef();
-	
-	/// Creates from secret (move).
-	SecretKeyRef(Secret _s): m_secret(_s) {}
-	
-	/// Retrieve the secret key.
-	Secret sec() const { return m_secret; }
-	
-	/// Retrieve the public key.
-	Public pub() const;
-
-	/// Retrieve the associated address of the public key.
-	Address address() const;
-	
-private:
-	Secret m_secret;
-};
-	
-/// [ECDHE Trusted Key Exchange]:
-	
-/// ECDSA Signature
-using Signature = FixedHash<65>;
-
-/// Secret nonce from trusted key exchange.
-using Nonce = h256;
-
-/// Public key with nonce corresponding to trusted key exchange.
-typedef std::pair<Nonce,Public> PublicTrust;
-
-/**
- * @brief EC KeyPair
- * @deprecated
- */
-class ECKeyPair
-{
-	
-	/// TO BE REMOVED
-	
-	friend class ECDHETKeyExchange;
-	std::map<Address,PublicTrust> m_trustEgress;
-	std::set<Nonce> m_trustIngress;
-};
 	
 }
 }
