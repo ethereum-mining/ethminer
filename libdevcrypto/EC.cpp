@@ -75,7 +75,7 @@ ECKeyPair ECKeyPair::create()
 
 	// export public key and set address
 	ECIES<ECP>::Encryptor e(k.m_decryptor.GetKey());
-	pp::exportDL_PublicKey_EC(e.GetKey(), k.m_public);
+	pp::PublicFromDL_PublicKey_EC(e.GetKey(), k.m_public);
 	k.m_address = dev::right160(dev::sha3(k.m_public.ref()));
 	
 	return k;
