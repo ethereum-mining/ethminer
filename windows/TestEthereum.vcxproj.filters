@@ -20,6 +20,7 @@
     <ClCompile Include="..\test\fork.cpp" />
     <ClCompile Include="..\test\network.cpp" />
     <ClCompile Include="..\test\TestHelper.cpp" />
+    <ClCompile Include="..\test\createRandomTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
