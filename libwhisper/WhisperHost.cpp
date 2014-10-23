@@ -47,11 +47,11 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	if (m_messages.count(_m))
 	{
 		UpgradeGuard ll(l);
-		m_messages.at(_m).streamOut(_s);
+		m_messages.at(_m).streamOut(_s, true);
 	}
 }
 
-void WhisperHost::inject(Message const& _m, WhisperPeer* _p)
+void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
 	auto h = _m.sha3();
 	{
@@ -95,7 +95,7 @@ unsigned WhisperHost::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned WhisperHost::installWatch(shh::MessageFilter const& _f)
+unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 {
 	Guard l(m_filterLock);
 

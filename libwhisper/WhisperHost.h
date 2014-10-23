@@ -48,17 +48,15 @@ public:
 
 	unsigned protocolVersion() const { return 0; }
 
-	virtual void inject(Message const& _m, WhisperPeer* _from = nullptr);
+	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr);
 
-	virtual unsigned installWatch(MessageFilter const& _filter);
+	virtual unsigned installWatch(TopicFilter const& _filter);
 	virtual unsigned installWatch(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
 	virtual h256s peekWatch(unsigned _watchId) const { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
 
-	virtual Message message(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Message(); } }
-
-	virtual void sendRaw(bytes const& _payload, Topic _topic, unsigned _ttl) { inject(Message(time(0) + _ttl, _ttl, _topic, _payload)); }
+	virtual Envelope envelope(h256 _m) const { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
 
 private:
 	void streamMessage(h256 _m, RLPStream& _s) const;
@@ -66,7 +64,7 @@ private:
 	void noteChanged(h256 _messageHash, h256 _filter);
 
 	mutable dev::SharedMutex x_messages;
-	std::map<h256, Message> m_messages;
+	std::map<h256, Envelope> m_messages;
 
 	mutable dev::Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

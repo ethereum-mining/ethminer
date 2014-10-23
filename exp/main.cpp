@@ -104,14 +104,14 @@ int main(int argc, char** argv)
 		ph.connect(remoteHost, remotePort);
 
 	/// Only interested in the packet if the lowest bit is 1
-	auto w = wh->installWatch(MessageFilter(TopicMasks({{Topic("0000000000000000000000000000000000000000000000000000000000000001"), Topic("0000000000000000000000000000000000000000000000000000000000000001")}})));
+	auto w = wh->installWatch(TopicFilter(TopicMasks({{Topic("0000000000000000000000000000000000000000000000000000000000000001"), Topic("0000000000000000000000000000000000000000000000000000000000000001")}})));
 
 	for (int i = 0; ; ++i)
 	{
-		wh->sendRaw(RLPStream().append(i * i).out(), Topic(u256(i)), 1000);
+		wh->sendRaw(RLPStream().append(i * i).out(), Topic(u256(i)));
 		for (auto i: wh->checkWatch(w))
 		{
-			auto p = wh->message(i).payload;
+			auto p = wh->envelope(i).open().payload();
 			cnote << "New message:" << RLP(p).toInt<unsigned>();
 		}
 	}
