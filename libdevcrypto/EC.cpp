@@ -48,58 +48,55 @@ void dev::crypto::encrypt(Public const& _key, bytes& _plain)
 	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
 	e.AccessKey().SetPublicElement(pp::PointFromPublic(_key));
 	size_t plen = _plain.size();
-	_plain.resize(e.CiphertextLength(plen));
-	e.Encrypt(pp::PRNG(), _plain.data(), plen, _plain.data());
+	std::string c;
+	c.resize(e.CiphertextLength(plen));
+	e.Encrypt(pp::PRNG(), _plain.data(), plen, (byte*)c.data());
+	_plain.resize(c.size());
+	memcpy(_plain.data(), c.data(), c.size());
 }
 
 void dev::crypto::decrypt(Secret const& _k, bytes& _c)
 {
-	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
-	m_decryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
-	m_decryptor.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
-	size_t plen = _c.size();
-	DecodingResult r = m_decryptor.Decrypt(pp::PRNG(), _c.data(), plen, _c.data());
+	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor d;
+	d.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
+	d.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
+	size_t clen = _c.size();
+	std::string p;
+	p.resize(d.MaxPlaintextLength(_c.size()));
+	DecodingResult r = d.Decrypt(pp::PRNG(), _c.data(), clen, (byte*)p.data());
+	assert(r.messageLength);
 	_c.resize(r.messageLength);
+	memcpy(_c.data(), p.data(), _c.size());
 }
 
-
-
-
-
-
-/// Old stuff :)
-
-ECKeyPair ECKeyPair::create()
+SecretKeyRef::SecretKeyRef()
 {
-	ECKeyPair k;
+	secp256k1_start();
+	static std::mt19937_64 s_eng(time(0));
+	std::uniform_int_distribution<uint16_t> d(0, 255);
 
-	// export public key and set address
-	ECIES<ECP>::Encryptor e(k.m_decryptor.GetKey());
-	pp::PublicFromDL_PublicKey_EC(e.GetKey(), k.m_public);
-	k.m_address = dev::right160(dev::sha3(k.m_public.ref()));
-	
-	return k;
+	for (int i = 0; i < 100; ++i)
+	{
+		for (unsigned i = 0; i < 32; ++i)
+			m_secret[i] = (byte)d(s_eng);
+		
+		KeyPair ret(m_secret);
+		if (ret.address())
+			break;
+	}
+	/// todo: throw exception if key doesn't happen (or run forever?)
+	/// todo: ^ also in KeyPair::create()
 }
 
-void ECKeyPair::encrypt(bytes& _text)
+Public SecretKeyRef::pub() const
 {
-	ECIES<ECP>::Encryptor e(m_decryptor);
-	std::string c;
-	StringSource ss(_text.data(), _text.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
-	bzero(_text.data(), _text.size() * sizeof(byte));
-	_text = std::move(asBytes(c));
+	Public p;
+	pp::PublicFromExponent(pp::ExponentFromSecret(m_secret), p);
+	return p;
 }
 
-void ECKeyPair::decrypt(bytes& _c)
+Address SecretKeyRef::address() const
 {
-	DecodingResult r = m_decryptor.Decrypt(pp::PRNG(), _c.data(), _c.size(), _c.data());
-	_c.resize(r.messageLength);
-	
-//	std::string p;
-//	StringSource ss(_c.data(), _c.size(), true, new PK_DecryptorFilter(pp::PRNG(), m_decryptor, new StringSink(p)));
-//	return std::move(asBytes(p));
+	return dev::right160(dev::sha3(bytesConstRef(pub().data(), 64)));
 }
-
-
-
 
