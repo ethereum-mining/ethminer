@@ -26,6 +26,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+#define ETH_RETURN_STRING(S) static string s_what; s_what = S; return s_what.c_str();
+
 const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }
 const char* UncleInChain::what() const noexcept { ETH_RETURN_STRING("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"); }
 const char* InvalidTransactionsHash::what() const noexcept { ETH_RETURN_STRING("Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref())); }
