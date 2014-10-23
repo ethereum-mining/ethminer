@@ -57,8 +57,6 @@ public:
 private:
 	Secret m_secret;
 };
-
-
 	
 /// [ECDHE Trusted Key Exchange]:
 	

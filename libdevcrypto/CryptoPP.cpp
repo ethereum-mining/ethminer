@@ -26,7 +26,6 @@ using namespace dev::crypto;
 using namespace pp;
 using namespace CryptoPP;
 
-
 ECP::Point pp::PointFromPublic(Public const& _p)
 {
 	bytes prefixedKey(65);
