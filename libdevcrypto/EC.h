@@ -43,11 +43,17 @@ typedef std::pair<Nonce,Public> PublicTrust;
 /// Recover public key from signature.
 //Public recover(Signature const& _sig, h256 _messageHash);
 	
-/// Replaces text with ciphertext.
-void encrypt(bytes& _text, Public const& _key);
+/// Encrypts text (in place).
+void encrypt(Public const& _k, bytes& _text);
 	
-/// @returns ciphertext.
-//bytes encrypt(bytesConstRef _text, Public const& _key);
+/// Encrypt _text into _cipher.
+//void encrypt(Public const& _k, bytesConstRef& _text, bytesRef& _cipher);
+
+/// Decrypts text (in place).
+void decrypt(Secret const& _k, bytes& _text);
+
+
+
 	
 /**
  * @brief EC KeyPair
