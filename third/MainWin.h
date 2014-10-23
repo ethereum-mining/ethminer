@@ -48,6 +48,7 @@ class WhisperHost;
 }
 
 class QQuickView;
+class WebThreeStubServer;
 
 class Main : public QMainWindow
 {
@@ -59,7 +60,6 @@ public:
 
 	dev::WebThreeDirect* web3() const { return m_web3.get(); }
 	dev::eth::Client* ethereum() const;
-	dev::p2p::Host* peer2peer() const;
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const;
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
@@ -133,8 +133,6 @@ private:
 
 	QNetworkAccessManager m_webCtrl;
 
-	QDev* m_dev = nullptr;
-	QEthereum* m_ethereum = nullptr;
-	QWhisper* m_whisper = nullptr;
-	QPeer2Peer* m_p2p = nullptr;
+	std::auto_ptr<WebThreeStubServer> m_server;
+	QWebThree* m_qweb = nullptr;
 };

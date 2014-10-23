@@ -76,7 +76,6 @@ public:
 
 	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	dev::p2p::Host* peer2peer() const { return m_webThree->peer2peer(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
