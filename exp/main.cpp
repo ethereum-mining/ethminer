@@ -95,23 +95,22 @@ int main(int argc, char** argv)
 	}
 
 	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
-	ph.registerCapability(new WhisperHost());
-	auto wh = ph.cap<WhisperHost>();
+	auto wh = ph.registerCapability(new WhisperHost());
 
 	ph.start();
 
 	if (!remoteHost.empty())
 		ph.connect(remoteHost, remotePort);
 
-	/// Only interested in the packet if the lowest bit is 1
-	auto w = wh->installWatch(MessageFilter(TopicMasks({{Topic("0000000000000000000000000000000000000000000000000000000000000001"), Topic("0000000000000000000000000000000000000000000000000000000000000001")}})));
+	/// Only interested in odd packets
+	auto w = wh->installWatch(BuildTopicMask()("odd"));
 
 	for (int i = 0; ; ++i)
 	{
-		wh->sendRaw(RLPStream().append(i * i).out(), Topic(u256(i)), 1000);
+		wh->sendRaw(RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"));
 		for (auto i: wh->checkWatch(w))
 		{
-			auto p = wh->message(i).payload;
+			auto p = wh->envelope(i).open().payload();
 			cnote << "New message:" << RLP(p).toInt<unsigned>();
 		}
 	}
