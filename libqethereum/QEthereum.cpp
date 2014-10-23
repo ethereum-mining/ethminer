@@ -44,8 +44,8 @@ void QWebThree::poll()
 	for (int w: m_watches)
 	{
 		QJsonObject res;
-		res["jsonrpc"] = "2.0";
-		res["method"] = "changed";
+		res["jsonrpc"] = QString::fromStdString("2.0");
+		res["method"] = QString::fromStdString("changed");
 		
 		QJsonArray params;
 		params.append(w);
@@ -66,8 +66,8 @@ void QWebThree::clearWatches()
 	for (int w: m_watches)
 	{
 		QJsonObject res;
-		res["jsonrpc"] = "2.0";
-		res["method"] = "uninstallFilter";
+		res["jsonrpc"] = QString::fromStdString("2.0");
+		res["method"] = QString::fromStdString("uninstallFilter");
 		
 		QJsonArray params;
 		params.append(w);
@@ -89,7 +89,7 @@ void QWebThree::clientDieing()
 static QString formatInput(QJsonObject const& _object)
 {
 	QJsonObject res;
-	res["jsonrpc"] = "2.0";
+	res["jsonrpc"] = QString::fromStdString("2.0");
 	res["method"] = _object["call"];
 	res["params"] = _object["args"];
 	res["id"] = _object["_id"];
@@ -135,7 +135,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 			if (elem.contains("result") && elem["result"].toBool() == true)
 			{
 				QJsonObject res;
-				res["_event"] = "messages";
+				res["_event"] = QString::fromStdString("messages");
 				res["data"] = (int)m_watches[i]; // we can do that couse poll is synchronous
 				response(QString::fromUtf8(QJsonDocument(res).toJson()));
 			}
