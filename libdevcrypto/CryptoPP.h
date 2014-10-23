@@ -40,16 +40,19 @@ inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRando
 /// EC curve used by CryptoPP
 inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
 
-///
+/// Conversion from bytes to cryptopp point
 CryptoPP::ECP::Point PointFromPublic(Public const& _p);
 
-///
+/// Conversion from bytes to cryptopp exponent
 CryptoPP::Integer ExponentFromSecret(Secret const& _s);
 	
+/// Conversion from cryptopp exponent Integer to bytes
 void PublicFromExponent(CryptoPP::Integer const& _k, Public& _s);
 	
+/// Conversion from cryptopp public key to bytes
 void PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
 	
+/// Conversion from cryptopp private key to bytes
 void SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s);
 
 }

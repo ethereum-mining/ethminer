@@ -80,6 +80,7 @@ SecretKeyRef::SecretKeyRef()
 		for (unsigned i = 0; i < 32; ++i)
 			m_secret[i] = (byte)d(s_eng);
 		
+		/// todo: check key validity w/cryptopp
 		KeyPair ret(m_secret);
 		if (ret.address())
 			break;

@@ -23,7 +23,6 @@
 #include "ECDHE.h"
 
 using namespace dev::crypto;
-using namespace CryptoPP;
 
 ECDHE::ECDHE()
 {
