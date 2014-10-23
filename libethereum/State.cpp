@@ -166,7 +166,8 @@ State::State(State const& _s):
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
 	m_ourAddress(_s.m_ourAddress),
-	m_blockReward(_s.m_blockReward)
+	m_blockReward(_s.m_blockReward),
+	m_vmKind(_s.m_vmKind)
 {
 	paranoia("after state cloning (copy cons).", true);
 }
@@ -199,6 +200,7 @@ State& State::operator=(State const& _s)
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
 	m_lastTx = _s.m_lastTx;
+	m_vmKind = _s.m_vmKind;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
 }
@@ -1146,8 +1148,8 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		auto vmObj = VMFace::create(VMFace::Interpreter, *_gas);
-		VMFace& vm = *vmObj;
+		auto vmObj = VMFace::create(getVMKind(), *_gas);
+		auto& vm = *vmObj;
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
@@ -1209,8 +1211,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
-	auto vmObj = VMFace::create(VMFace::Interpreter, *_gas);
-	VMFace& vm = *vmObj;
+	auto vmObj = VMFace::create(getVMKind(), *_gas);
+	auto& vm = *vmObj;
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;
