@@ -159,6 +159,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\test\boostTest.cpp" />
+    <ClCompile Include="..\test\createRandomTest.cpp" />
     <ClCompile Include="..\test\crypto.cpp" />
     <ClCompile Include="..\test\dagger.cpp" />
     <ClCompile Include="..\test\fork.cpp" />
