@@ -23,18 +23,45 @@
 
 #include "CryptoPP.h"
 
+using namespace dev;
 using namespace dev::crypto;
+using namespace pp;
 using namespace CryptoPP;
 
-dev::Public pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k) {
-	Public p;
+void pp::exportDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p) {
 	ECP::Point q(_k.GetPublicElement());
-	q.x.Encode(&p.data()[0], 32);
-	q.y.Encode(&p.data()[32], 32);
-	return p;
+	q.x.Encode(_p.data(), 32);
+	q.y.Encode(&_p.data()[32], 32);
 }
+
+void pp::exportDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) {
+	_k.GetPrivateExponent().Encode(_s.data(), 32);
+}
+
+ECP::Point pp::PointFromPublic(Public const& _p)
+{
+	Integer x(&_p.data()[0], 32);
+	Integer y(&_p.data()[32], 32);
+	return std::move(ECP::Point(x,y));
+}
+
+Integer pp::ExponentFromSecret(Secret const& _s)
+{
+	return std::move(Integer(_s.data(), 32));
+}
+
+
+
+
 
 pp::ECKeyPair::ECKeyPair():
 m_decryptor(pp::PRNG(), pp::secp256k1())
 {
+}
+
+Secret pp::ECKeyPair::secret()
+{
+	Secret s;
+	exportDL_PrivateKey_EC(m_decryptor.AccessKey(), s);
+	return std::move(s);
 }

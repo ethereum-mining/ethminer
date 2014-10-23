@@ -42,21 +42,38 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-void dev::crypto::encrypt(bytes& _plain, Public const& _key)
+void dev::crypto::encrypt(Public const& _key, bytes& _plain)
 {
 	Integer x(&_key.data()[0], 32);
 	Integer y(&_key.data()[32], 32);
 	
-	DL_PublicKey_EC<ECP> p;
-	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
+//	DL_PublicKey_EC<ECP> p;
+//	p.Initialize(pp::secp256k1(), ECP::Point(x,y));
 	
-	ECIES<ECP>::Encryptor e(p);
-	// todo: determine size and use _plain as input and output.
-	std::string c;
-	StringSource ss(_plain.data(), _plain.size(), true, new PK_EncryptorFilter(pp::PRNG(), e, new StringSink(c)));
-	bzero(_plain.data(), _plain.size() * sizeof(byte));
-	_plain = std::move(asBytes(c));
+	ECIES<ECP>::Encryptor e;
+	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
+	e.AccessKey().SetPublicElement(ECP::Point(x,y));
+	size_t plen = _plain.size();
+	_plain.resize(e.CiphertextLength(plen));
+	e.Encrypt(pp::PRNG(), _plain.data(), plen, _plain.data());
 }
+
+void dev::crypto::decrypt(Secret const& _k, bytes& _c)
+{
+	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
+	m_decryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
+	m_decryptor.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
+	size_t plen = _c.size();
+	DecodingResult r = m_decryptor.Decrypt(pp::PRNG(), _c.data(), plen, _c.data());
+	_c.resize(r.messageLength);
+}
+
+
+
+
+
+
+/// Old stuff :)
 
 ECKeyPair ECKeyPair::create()
 {
@@ -64,7 +81,7 @@ ECKeyPair ECKeyPair::create()
 
 	// export public key and set address
 	ECIES<ECP>::Encryptor e(k.m_decryptor.GetKey());
-	k.m_public = pp::exportPublicKey(e.GetKey());
+	pp::exportDL_PublicKey_EC(e.GetKey(), k.m_public);
 	k.m_address = dev::right160(dev::sha3(k.m_public.ref()));
 	
 	return k;

@@ -40,7 +40,16 @@ inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRando
 /// EC curve used by CryptoPP
 inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
 
-Public exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k);
+void exportDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
+	
+void exportDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s);
+
+CryptoPP::ECP::Point PointFromPublic(Public const& _p);
+CryptoPP::Integer ExponentFromSecret(Secret const& _s);
+	
+void ECIESEncrypt(CryptoPP::ECP::Point const& _point);
+
+void ECIESDecrypt(CryptoPP::Integer const& _exponent);
 	
 /**
  * @brief CryptoPP-specific EC keypair
@@ -54,10 +63,12 @@ public:
 	/// Export Public key
 	Public const& publicKey() const { return m_public; }
 	
-protected:
-	ECKeyPair();
+	Secret secret();
 	
 	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor m_decryptor;
+	
+protected:
+	ECKeyPair();
 	
 	Address m_address;
 	Public m_public;
