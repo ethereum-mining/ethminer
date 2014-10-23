@@ -143,6 +143,9 @@ void Host::stop()
 
 void Host::quit()
 {
+	// called to force io_service to kill any remaining tasks it might have -
+	// such tasks may involve socket reads from Capabilities that maintain references
+	// to resources we're about to free.
 	stop();
 	m_ioService.reset();
 	// m_acceptor & m_socket are DANGEROUS now.

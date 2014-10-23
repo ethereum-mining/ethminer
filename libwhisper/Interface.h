@@ -43,6 +43,8 @@ namespace shh
 	Topic mask;
 };*/
 
+class Watch;
+
 struct InstalledFilter
 {
 	InstalledFilter(TopicFilter const& _f): filter(_f) {}
@@ -87,9 +89,11 @@ struct WatshhChannel: public dev::LogChannel { static const char* name() { retur
 
 }
 }
-/*
-namespace std { void swap(shh::Watch& _a, shh::Watch& _b); }
 
+namespace std { void swap(dev::shh::Watch& _a, dev::shh::Watch& _b); }
+
+namespace dev
+{
 namespace shh
 {
 
@@ -99,28 +103,29 @@ class Watch: public boost::noncopyable
 
 public:
 	Watch() {}
-	Watch(Whisper& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
-	Watch(Whisper& _c, TopicFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	Watch(Interface& _c, TopicMask const& _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Interface& _c, TopicFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
-	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
-	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
+	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }
+	h256s peek() { return m_c ? m_c->peekWatch(m_id) : h256s(); }
 
 private:
-	Whisper* m_c;
+	Interface* m_c;
 	unsigned m_id;
 };
 
 }
+}
 
-namespace shh
+namespace std
 {
 
-inline void swap(shh::Watch& _a, shh::Watch& _b)
+inline void swap(dev::shh::Watch& _a, dev::shh::Watch& _b)
 {
 	swap(_a.m_c, _b.m_c);
 	swap(_a.m_id, _b.m_id);
 }
 
 }
-*/
+
