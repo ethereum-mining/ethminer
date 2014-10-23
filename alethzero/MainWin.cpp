@@ -152,7 +152,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-//		m_ethereum->poll();
+		m_qweb->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -180,8 +180,7 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-//	m_ethereum->clientDieing();
-
+	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
 	writeSettings();
 }
@@ -1001,8 +1000,8 @@ void Main::timerEvent(QTimerEvent*)
 	else
 		interval += 100;
 	
-//	if (m_ethereum)
-//		m_ethereum->poll();
+	if (m_qweb)
+		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -1516,7 +1515,6 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	web3()->stopNetwork();
 	ethereum()->killChain();
-//	m_ethereum->setClient(ethereum());
 	readSettings(true);
 	installWatches();
 	refreshAll();

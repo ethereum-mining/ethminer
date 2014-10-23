@@ -35,11 +35,21 @@ public:
 	QWebThree(QObject* _p);
 	virtual ~QWebThree();
 
+	void poll();
+	void clearWatches();
+	void clientDieing();
+	
 	Q_INVOKABLE void postData(QString _json);
 	
+public slots:
+	void onDataProcessed(QString _json, QString _addInfo);
+	
 signals:
-	void processData(QString _json);
-	void send(QString _json);
+	void processData(QString _json, QString _addInfo);
+	void response(QString _json);
+	
+private:
+	std::vector<unsigned> m_watches;
 };
 
 class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnector
@@ -56,7 +66,10 @@ public:
 	bool virtual SendResponse(std::string const& _response, void* _addInfo = NULL);
 	
 public slots:
-	void onMessage(QString const& _json);
+	void onProcessData(QString const& _json, QString const& _addInfo);
+
+signals:
+	void dataProcessed(QString const& _json, QString const& _addInfo);
 	
 private:
 	QWebThree* m_qweb;
@@ -75,7 +88,7 @@ private:
 							"	}" \
 							"})" \
 							"})()"); \
-	_frame->evaluateJavaScript("navigator.qt.send.connect(function (res) {" \
+	_frame->evaluateJavaScript("navigator.qt.response.connect(function (res) {" \
 							"navigator.qt.handlers.forEach(function (handler) {" \
 							"	handler(res);" \
 							"})" \
