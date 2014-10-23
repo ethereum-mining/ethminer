@@ -96,6 +96,54 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
+static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
+{
+	dev::eth::MessageFilter filter;
+	if (!_json.isObject() || _json.empty()){
+		return filter;
+	}
+	
+	if (!_json["earliest"].empty())
+		filter.withEarliest(_json["earliest"].asInt());
+	if (!_json["latest"].empty())
+		filter.withLatest(_json["lastest"].asInt());
+	if (!_json["max"].empty())
+		filter.withMax(_json["max"].asInt());
+	if (!_json["skip"].empty())
+		filter.withSkip(_json["skip"].asInt());
+	if (!_json["from"].empty())
+	{
+		if (_json["from"].isArray())
+			for (auto i : _json["from"])
+				filter.from(jsToAddress(i.asString()));
+		else
+			filter.from(jsToAddress(_json["from"].asString()));
+	}
+	if (!_json["to"].empty())
+	{
+		if (_json["to"].isArray())
+			for (auto i : _json["to"])
+				filter.from(jsToAddress(i.asString()));
+		else
+			filter.from(jsToAddress(_json["to"].asString()));
+	}
+	if (!_json["altered"].empty())
+	{
+		if (_json["altered"].isArray())
+			for (auto i: _json["altered"])
+				if (i.isObject())
+					filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
+				else
+					filter.altered((jsToAddress(i.asString())));
+				else if (_json["altered"].isObject())
+					filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
+				else
+					filter.altered(jsToAddress(_json["altered"].asString()));
+	}
+	
+	return filter;
+}
+
 WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
@@ -207,6 +255,13 @@ std::string WebThreeStubServer::call(Json::Value const& _json)
 	return ret;
 }
 
+bool WebThreeStubServer::changed(int const& _id)
+{
+	if (!client())
+		return false;
+	return client()->checkWatch(_id);
+}
+
 std::string WebThreeStubServer::codeAt(string const& _address)
 {
 	// temp
@@ -235,6 +290,13 @@ std::string WebThreeStubServer::gasPrice()
 	return toJS(10 * dev::eth::szabo);
 }
 
+Json::Value WebThreeStubServer::getMessages(int const& _id)
+{
+	if (!client())
+		return  Json::Value();
+	return toJson(client()->messages(_id));
+}
+
 bool WebThreeStubServer::listening()
 {
 	return m_web3.isNetworkStarted();
@@ -245,65 +307,30 @@ bool WebThreeStubServer::mining()
 	return client() ? client()->isMining() : false;
 }
 
+int WebThreeStubServer::newFilter(Json::Value const& _json)
+{
+	unsigned ret = -1;
+	if (!client())
+		return ret;
+	ret = client()->installWatch(toMessageFilter(_json));
+	return ret;
+}
+
+int WebThreeStubServer::newFilterString(std::string const& _filter)
+{
+	unsigned ret = -1;
+	if (!client())
+		return ret;
+	if (_filter.compare("chain") == 0)
+		ret = client()->installWatch(dev::eth::ChainChangedFilter);
+	else if (_filter.compare("pending") == 0)
+		ret = client()->installWatch(dev::eth::PendingChangedFilter);
+	return ret;
+}
+
 std::string WebThreeStubServer::compile(string const& _s)
 {
 	return toJS(dev::eth::compileLLL(_s));
-}
-
-static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
-{
-	dev::eth::MessageFilter filter;
-	if (!_json.isObject() || _json.empty()){
-		return filter;
-	}
-	
-	if (!_json["earliest"].empty())
-		filter.withEarliest(_json["earliest"].asInt());
-	if (!_json["latest"].empty())
-		filter.withLatest(_json["lastest"].asInt());
-	if (!_json["max"].empty())
-		filter.withMax(_json["max"].asInt());
-	if (!_json["skip"].empty())
-		filter.withSkip(_json["skip"].asInt());
-	if (!_json["from"].empty())
-	{
-		if (_json["from"].isArray())
-			for (auto i : _json["from"])
-				filter.from(jsToAddress(i.asString()));
-		else
-			filter.from(jsToAddress(_json["from"].asString()));
-	}
-	if (!_json["to"].empty())
-	{
-		if (_json["to"].isArray())
-			for (auto i : _json["to"])
-				filter.from(jsToAddress(i.asString()));
-		else
-			filter.from(jsToAddress(_json["to"].asString()));
-	}
-	if (!_json["altered"].empty())
-	{
-		if (_json["altered"].isArray())
-			for (auto i: _json["altered"])
-				if (i.isObject())
-					filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
-				else
-					filter.altered((jsToAddress(i.asString())));
-		else if (_json["altered"].isObject())
-			filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
-		else
-			filter.altered(jsToAddress(_json["altered"].asString()));
-	}
-
-	return filter;
-}
-
-Json::Value WebThreeStubServer::messages(Json::Value const& _json)
-{
-	Json::Value res;
-	if (!client())
-		return  res;
-	return toJson(client()->messages(toMessageFilter(_json)));
 }
 
 int WebThreeStubServer::number()
@@ -412,34 +439,7 @@ Json::Value WebThreeStubServer::uncleByNumber(int const& _number, int const& _i)
 	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
-int WebThreeStubServer::watch(string const& _json)
-{
-	unsigned ret = -1;
-	if (!client())
-		return ret;
-	if (_json.compare("chain") == 0)
-		ret = client()->installWatch(dev::eth::ChainChangedFilter);
-	else if (_json.compare("pending") == 0)
-		ret = client()->installWatch(dev::eth::PendingChangedFilter);
-	else
-	{
-		Json::Reader reader;
-		Json::Value object;
-		reader.parse(_json, object);
-		ret = client()->installWatch(toMessageFilter(object));
-	}
-
-	return ret;
-}
-
-bool WebThreeStubServer::check(int const& _id)
-{
-	if (!client())
-		return false;
-	return client()->checkWatch(_id);
-}
-
-bool WebThreeStubServer::killWatch(int const& _id)
+bool WebThreeStubServer::uninstallFilter(int const& _id)
 {
 	if (!client())
 		return false;

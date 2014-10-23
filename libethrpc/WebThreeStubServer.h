@@ -43,17 +43,18 @@ public:
 	virtual Json::Value blockByHash(std::string const& _hash);
 	virtual Json::Value blockByNumber(int const& _number);
 	virtual std::string call(Json::Value const& _json);
-	virtual bool check(int const& _id);
+	virtual bool changed(int const& _id);
 	virtual std::string codeAt(std::string const& _address);
 	virtual std::string coinbase();
 	virtual std::string compile(std::string const& _s);
 	virtual double countAt(std::string const& _address);
 	virtual int defaultBlock();
 	virtual std::string gasPrice();
-	virtual bool killWatch(int const& _id);
+	virtual Json::Value getMessages(int const& _id);
 	virtual bool listening();
-	virtual Json::Value messages(Json::Value const& _json);
 	virtual bool mining();
+	virtual int newFilter(Json::Value const& _json);
+	virtual int newFilterString(std::string const& _filter);
 	virtual int number();
 	virtual int peerCount();
 	virtual bool setCoinbase(std::string const& _address);
@@ -65,7 +66,7 @@ public:
 	virtual Json::Value transactionByNumber(int const& _number, int const& _i);
 	virtual Json::Value uncleByHash(std::string const& _hash, int const& _i);
 	virtual Json::Value uncleByNumber(int const& _number, int const& _i);
-	virtual int watch(std::string const& _json);
+	virtual bool uninstallFilter(int const& _id);
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 private:
