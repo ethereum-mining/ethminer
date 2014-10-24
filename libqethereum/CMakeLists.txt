@@ -50,7 +50,6 @@ if (APPLE)
 	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTABLE})
 	include(BundleUtilities)
 endif ()
-
 file(GLOB HEADERS "*.h")
 if(ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS})

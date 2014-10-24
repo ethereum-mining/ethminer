@@ -5,8 +5,6 @@ aux_source_directory(. SRC_LIST)
 include_directories(..)
 include_directories(${LEVELDB_ID})
 
-link_directories(../libethcore)
-link_directories(../libethereum)
 set(EXECUTABLE neth)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
