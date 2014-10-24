@@ -261,6 +261,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::OR:
 		case Instruction::XOR:
 		case Instruction::BYTE:
+		case Instruction::SIGNEXTEND:
 		case Instruction::JUMPI:
 			require(2);
 			break;
@@ -418,6 +419,19 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::MULMOD:
 			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
 			m_stack.pop_back();
+			m_stack.pop_back();
+			break;
+		case Instruction::SIGNEXTEND:
+			if (m_stack.back() < 255)
+			{
+				unsigned const bit(m_stack.back());
+				u256& number = m_stack[m_stack.size() - 2];
+				u256 mask = ((u256(1) << bit) - 1);
+				if (boost::multiprecision::bit_test(number, bit))
+					number |= ~mask;
+				else
+					number &= mask;
+			}
 			m_stack.pop_back();
 			break;
 		case Instruction::SHA3:
