@@ -120,10 +120,9 @@ bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& _plain)
 {
 	bytes io = _cipher.toBytes();
 	crypto::decrypt(_k, io);
-	if (io.size())
-		_plain = std::move(io);
-	else
+	if (io.empty())
 		return false;
+	_plain = std::move(io);
 	return true;
 }
 

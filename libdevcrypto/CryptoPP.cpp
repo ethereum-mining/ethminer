@@ -23,19 +23,20 @@
 
 using namespace dev;
 using namespace dev::crypto;
-using namespace pp;
 using namespace CryptoPP;
 
 ECP::Point pp::PointFromPublic(Public const& _p)
 {
-	bytes prefixedKey(65);
-	prefixedKey[0] = 0x04;
-	memcpy(&prefixedKey[1], _p.data(), 64);
-	
 	ECP::Point p;
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub;
 	pub.AccessGroupParameters().Initialize(pp::secp256k1());
-	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), 65);
+
+	bytes prefixedKey(pub.GetGroupParameters().GetEncodedElementSize(true));
+	prefixedKey[0] = 0x04;
+	assert(Public::size == prefixedKey.size() - 1);
+	memcpy(&prefixedKey[1], _p.data(), prefixedKey.size() - 1);
+	
+	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), prefixedKey.size());
 	return std::move(p);
 }
 
@@ -58,12 +59,15 @@ void pp::PublicFromExponent(Integer const& _e, Public& _p)
 
 void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
 {
-	bytes prefixedKey(65);
+	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
 	_k.GetGroupParameters().GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
-	memcpy(_p.data(), &prefixedKey[1], 64);
+	
+	static_assert(Public::size == 64, "Public key must be 64 bytes.");
+	assert(Public::size + 1 == _k.GetGroupParameters().GetEncodedElementSize(true));
+	memcpy(_p.data(), &prefixedKey[1], Public::size);
 }
 
 void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s)
 {
-	_k.GetPrivateExponent().Encode(_s.data(), 32);
+	_k.GetPrivateExponent().Encode(_s.data(), Secret::size);
 }
