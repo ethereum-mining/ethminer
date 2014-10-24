@@ -144,7 +144,7 @@ Main::Main(QWidget *parent) :
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 
 		auto list = owned().toStdList();
-		m_server = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
+		m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
 		m_server->StartListening();
 		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));

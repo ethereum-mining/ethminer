@@ -112,7 +112,7 @@ inline double jsFromFixed(std::string const& _s)
 	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
 }
 
-struct TransactionJS
+struct TransactionSkeleton
 {
 	Address from;
 	Address to;

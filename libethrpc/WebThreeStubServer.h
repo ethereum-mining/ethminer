@@ -36,7 +36,7 @@ namespace dev { class WebThreeDirect; namespace eth { class Interface; } class K
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> _accounts);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
 	virtual Json::Value accounts();
 	virtual std::string balanceAt(std::string const& _address);

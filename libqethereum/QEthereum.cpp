@@ -101,12 +101,9 @@ void QWebThree::postData(QString _json)
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 
 	QString method = f["call"].toString();
-	if (!method.compare("uninstallFilter"))
+	if (!method.compare("uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
 	{
-		int idToRemove = -1;
-		if (f["args"].isArray())
-			if (f["args"].toArray().size())
-				idToRemove = f["args"].toArray()[0].toInt();;
+		int idToRemove = f["args"].toArray()[0].toInt();
 		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
 	}
 	
