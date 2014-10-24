@@ -64,6 +64,7 @@ using Topic = h256;
 class BuildTopic
 {
 public:
+	BuildTopic() {}
 	template <class T> BuildTopic(T const& _t) { shift(_t); }
 
 	template <class T> BuildTopic& shift(T const& _r) { return shiftBytes(RLPStream().append(_r).out()); }
@@ -75,8 +76,6 @@ public:
 	Topic toTopic() const { Topic ret; for (auto i = 0; i < 32; ++i) ret[i] = m_parts[i * m_parts.size() / 32][i]; return ret; }
 
 protected:
-	BuildTopic() {}
-
 	BuildTopic& shiftBytes(bytes const& _b);
 
 	h256s m_parts;
@@ -105,7 +104,10 @@ private:
 class BuildTopicMask: BuildTopic
 {
 public:
+	enum EmptyType { Empty };
+
 	BuildTopicMask() { shift(); }
+	BuildTopicMask(EmptyType) {}
 	template <class T> BuildTopicMask(T const& _t) { shift(_t); }
 
 	template <class T> BuildTopicMask& shift(T const& _r) { BuildTopic::shift(_r); return *this; }
