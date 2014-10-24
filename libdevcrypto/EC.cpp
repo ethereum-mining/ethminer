@@ -48,11 +48,12 @@ void dev::crypto::encrypt(Public const& _key, bytes& _plain)
 	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
 	e.AccessKey().SetPublicElement(pp::PointFromPublic(_key));
 	size_t plen = _plain.size();
-	std::string c;
+	bytes c;
 	c.resize(e.CiphertextLength(plen));
-	e.Encrypt(pp::PRNG(), _plain.data(), plen, (byte*)c.data());
-	_plain.resize(c.size());
-	memcpy(_plain.data(), c.data(), c.size());
+	// todo: use StringSource with _plain as input and output.
+	e.Encrypt(pp::PRNG(), _plain.data(), plen, c.data());
+	bzero(_plain.data(), _plain.size());
+	_plain = std::move(c);
 }
 
 void dev::crypto::decrypt(Secret const& _k, bytes& _c)
@@ -61,11 +62,12 @@ void dev::crypto::decrypt(Secret const& _k, bytes& _c)
 	d.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
 	d.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
 	size_t clen = _c.size();
-	std::string p;
+	bytes p;
 	p.resize(d.MaxPlaintextLength(_c.size()));
-	DecodingResult r = d.Decrypt(pp::PRNG(), _c.data(), clen, (byte*)p.data());
+	// todo: use StringSource with _c as input and output.
+	DecodingResult r = d.Decrypt(pp::PRNG(), _c.data(), clen, p.data());
 	assert(r.messageLength);
 	_c.resize(r.messageLength);
-	memcpy(_c.data(), p.data(), _c.size());
+	_c = std::move(p);
 }
 
