@@ -41,7 +41,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
-#include <libethrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"

@@ -27,9 +27,10 @@
 #include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#include <jsonrpc/rpc.h>
-#include <libethrpc/CorsHttpServer.h>
-#include <libethrpc/WebThreeStubServer.h>
+#if ETH_JSONRPC
+#include <jsonrpc/connectors/httpserver.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
+#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
 #include <libevm/VM.h>
@@ -38,6 +39,9 @@
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
+#if ETH_JSONRPC
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -104,8 +108,10 @@ void help()
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
         << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+#if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+#endif
         << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
@@ -179,7 +185,9 @@ int main(int argc, char** argv)
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 	bool interactive = false;
+#if ETH_JSONRPC
 	int jsonrpc = -1;
+#endif
 	string publicIP;
 	bool bootstrap = false;
 	bool upnp = true;
@@ -264,10 +272,12 @@ int main(int argc, char** argv)
 			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
+#if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
 			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
+#endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -326,12 +336,14 @@ int main(int argc, char** argv)
 	if (remoteHost.size())
 		web3.connect(remoteHost, remotePort);
 
+#if ETH_JSONRPC
 	auto_ptr<WebThreeStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
 		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
 		jsonrpcServer->StartListening();
 	}
+#endif
 
 	signal(SIGABRT, &sighandler);
 	signal(SIGTERM, &sighandler);
@@ -404,6 +416,7 @@ int main(int argc, char** argv)
 					iss >> g_logVerbosity;
 				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
+#if ETH_JSONRPC
 			else if (cmd == "jsonport")
 			{
 				if (iss.peek() != -1)
@@ -423,6 +436,7 @@ int main(int argc, char** argv)
 					jsonrpcServer->StopListening();
 				jsonrpcServer.reset();
 			}
+#endif
 			else if (cmd == "address")
 			{
 				cout << "Current address:" << endl;
@@ -755,8 +769,10 @@ int main(int argc, char** argv)
 			else
 				cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
 		}
+#if ETH_JSONRPC
 		if (jsonrpcServer.get())
 			jsonrpcServer->StopListening();
+#endif
 	}
 	else if (c)
 	{

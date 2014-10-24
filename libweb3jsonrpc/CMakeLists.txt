@@ -6,7 +6,7 @@ include_directories(..)
 link_directories(../libethcore)
 link_directories(../libwebthree)
 
-set(EXECUTABLE ethrpc)
+set(EXECUTABLE web3jsonrpc)
 file(GLOB HEADERS "*.h")
 
 if(ETH_STATIC)
