@@ -42,7 +42,8 @@ ECP::Point pp::PointFromPublic(Public const& _p)
 
 Integer pp::ExponentFromSecret(Secret const& _s)
 {
-	return std::move(Integer(_s.data(), 32));
+	static_assert(Secret::size == 32, "Secret key must be 32 bytes.");
+	return std::move(Integer(_s.data(), Secret::size));
 }
 
 void pp::PublicFromExponent(Integer const& _e, Public& _p)
