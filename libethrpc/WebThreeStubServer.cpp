@@ -143,7 +143,7 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	return filter;
 }
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> _accounts):
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
 {
@@ -192,9 +192,9 @@ Json::Value WebThreeStubServer::blockByNumber(int const& _number)
 	return toJson(client()->blockInfo(client()->hashFromNumber(_number)));
 }
 
-static TransactionJS toTransaction(Json::Value const& _json)
+static TransactionSkeleton toTransaction(Json::Value const& _json)
 {
-	TransactionJS ret;
+	TransactionSkeleton ret;
 	if (!_json.isObject() || _json.empty()){
 		return ret;
 	}
@@ -235,7 +235,7 @@ std::string WebThreeStubServer::call(Json::Value const& _json)
 	std::string ret;
 	if (!client())
 		return ret;
-	TransactionJS t = toTransaction(_json);
+	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
 		auto b = m_accounts.begin()->first;
@@ -379,7 +379,7 @@ Json::Value WebThreeStubServer::transact(Json::Value const& _json)
 	std::string ret;
 	if (!client())
 		return ret;
-	TransactionJS t = toTransaction(_json);
+	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
 		auto b = m_accounts.begin()->first;

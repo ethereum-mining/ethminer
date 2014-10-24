@@ -248,6 +248,6 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	std::auto_ptr<WebThreeStubServer> m_server;
+	std::unique_ptr<WebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 };
