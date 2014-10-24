@@ -42,32 +42,32 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-void dev::crypto::encrypt(Public const& _key, bytes& _plain)
+void dev::crypto::encrypt(Public const& _key, bytes& io_cipher)
 {
 	ECIES<ECP>::Encryptor e;
 	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
 	e.AccessKey().SetPublicElement(pp::PointFromPublic(_key));
-	size_t plen = _plain.size();
+	size_t plen = io_cipher.size();
 	bytes c;
 	c.resize(e.CiphertextLength(plen));
 	// todo: use StringSource with _plain as input and output.
-	e.Encrypt(pp::PRNG(), _plain.data(), plen, c.data());
-	bzero(_plain.data(), _plain.size());
-	_plain = std::move(c);
+	e.Encrypt(pp::PRNG(), io_cipher.data(), plen, c.data());
+	bzero(io_cipher.data(), io_cipher.size());
+	io_cipher = std::move(c);
 }
 
-void dev::crypto::decrypt(Secret const& _k, bytes& _c)
+void dev::crypto::decrypt(Secret const& _k, bytes& io_text)
 {
 	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor d;
 	d.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
 	d.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
-	size_t clen = _c.size();
+	size_t clen = io_text.size();
 	bytes p;
-	p.resize(d.MaxPlaintextLength(_c.size()));
+	p.resize(d.MaxPlaintextLength(io_text.size()));
 	// todo: use StringSource with _c as input and output.
-	DecodingResult r = d.Decrypt(pp::PRNG(), _c.data(), clen, p.data());
+	DecodingResult r = d.Decrypt(pp::PRNG(), io_text.data(), clen, p.data());
 	assert(r.messageLength);
-	_c.resize(r.messageLength);
-	_c = std::move(p);
+	io_text.resize(r.messageLength);
+	io_text = std::move(p);
 }
 
