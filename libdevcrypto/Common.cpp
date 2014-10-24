@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <random>
 #include <secp256k1/secp256k1.h>
+#include "EC.h"
 #include "SHA3.h"
 using namespace std;
 using namespace dev;
@@ -108,16 +109,20 @@ KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _pass
 	return KeyPair(sha3(aesDecrypt(_seed, _password)));
 }
 
-void dev::encrypt(Public _k, bytesConstRef _plain, bytes& _cipher)
+void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
 {
-	(void)_k;
-	_cipher = _plain.toBytes();
+	bytes io = _plain.toBytes();
+	crypto::encrypt(_k, io);
+	o_cipher = std::move(io);
 }
 
-bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& _plain)
+bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
-	(void)_k;
-	_plain = _cipher.toBytes();
+	bytes io = _cipher.toBytes();
+	crypto::decrypt(_k, io);
+	if (io.empty())
+		return false;
+	o_plaintext = std::move(io);
 	return true;
 }
 
