@@ -62,7 +62,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_messages[h] = _m;
 	}
 
-	if (_p)
+//	if (_p)
 	{
 		Guard l(m_filterLock);
 		for (auto const& f: m_filters)

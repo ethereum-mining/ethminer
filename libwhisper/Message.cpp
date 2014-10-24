@@ -60,7 +60,7 @@ void Message::populate(bytes const& _data)
 		m_payload = bytesConstRef(&_data).cropped(1).toBytes();
 }
 
-Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigned _workToProve)
+Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigned _workToProve) const
 {
 	Envelope ret(time(0) + _ttl, _ttl, _topic);
 
@@ -89,11 +89,6 @@ Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigne
 Message Envelope::open(Secret const& _s) const
 {
 	return Message(*this, _s);
-}
-
-Message Envelope::open() const
-{
-	return Message(*this);
 }
 
 unsigned Envelope::workProved() const

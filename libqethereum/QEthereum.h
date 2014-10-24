@@ -59,8 +59,9 @@ template <unsigned N> dev::FixedHash<N> toFixed(QString const& _s)
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s);
 
-inline dev::Address toAddress(QString const& _s) { return toFixed<20>(_s); }
-inline dev::Secret toSecret(QString const& _s) { return toFixed<32>(_s); }
+inline dev::Address toAddress(QString const& _s) { return toFixed<sizeof(dev::Address)>(_s); }
+inline dev::Public toPublic(QString const& _s) { return toFixed<sizeof(dev::Public)>(_s); }
+inline dev::Secret toSecret(QString const& _s) { return toFixed<sizeof(dev::Secret)>(_s); }
 inline dev::u256 toU256(QString const& _s) { return toInt<32>(_s); }
 
 template <unsigned S> QString toQJS(dev::FixedHash<S> const& _h) { return QString::fromStdString("0x" + toHex(_h.ref())); }
@@ -225,12 +226,12 @@ public:
 	Q_INVOKABLE QWhisper* self() { return this; }
 
 	/// Basic message send.
-	Q_INVOKABLE void send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload);
+	Q_INVOKABLE void doPost(QString _json);
+
+	Q_INVOKABLE QString newIdentity();
 
 	// Watches interface
-
 	Q_INVOKABLE unsigned newWatch(QString _json);
-	Q_INVOKABLE QString watchMessages(unsigned _w);
 	Q_INVOKABLE void killWatch(unsigned _w);
 	void clearWatches();
 
@@ -240,11 +241,13 @@ public slots:
 	void poll();
 
 signals:
-	void watchChanged(unsigned _w);
+	void watchChanged(unsigned _w, QString _envelopeJson);
 
 private:
 	std::weak_ptr<dev::shh::Interface> m_face;
-	std::vector<unsigned> m_watches;
+	std::map<unsigned, dev::Public> m_watches;
+
+	std::map<dev::Public, dev::Secret> m_ids;
 };
 
 // TODO: add p2p object
@@ -269,8 +272,9 @@ private:
 	if (_shh) \
 	{ \
 		_frame->addToJavaScriptWindowObject("_web3_dot_shh", _shh, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(a) { var ww = _web3_dot_shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.changed = function(f) { _web3_dot_shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(_web3_dot_shh.watchMessages(this.w)) }; return ret; }"); \
-		_frame->evaluateJavaScript("_web3_dot_shh.watch = function(a) { return _web3_dot_shh.makeWatch(JSON.stringify(a)) }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(json) { var ww = _web3_dot_shh.newWatch(json); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.arrived = function(f) { _web3_dot_shh.watchChanged.connect(function(nw, envelope) { if (nw == ww) f(JSON.parse(envelope)) }); }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.watch = function(filter) { return _web3_dot_shh.makeWatch(JSON.stringify(filter)) }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.post = function(message) { return _web3_dot_shh.doPost(JSON.stringify(message)) }"); \
 		_frame->evaluateJavaScript("web3.shh = _web3_dot_shh"); \
 	} \
 }
