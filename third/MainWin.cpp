@@ -73,6 +73,11 @@ static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 	return QString();
 }
 
+static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
+{
+	auto list = keys.toStdList();
+	return {std::begin(list), std::end(list)};
+}
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
@@ -103,19 +108,19 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
 	m_web3->connect(Host::pocHost());
 
+	m_qwebConnector = new QWebThreeConnector();
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(owned())));
+	m_server->StartListening();
+	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_qweb = new QWebThree(this);
 		auto qweb = m_qweb;
+		m_qwebConnector->setQWeb(qweb);
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-
-		auto list = owned().toStdList();
-		m_server = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new QWebThreeConnector(qweb), *web3(), {std::begin(list), std::end(list)}));
-		m_server->StartListening();
-		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 	});
 	
@@ -543,10 +548,7 @@ void Main::ourAccountsRowsMoved()
 	m_myKeys = myKeys;
 
 	if (m_server.get())
-	{
-		auto list = owned().toStdList();
-		m_server->setAccounts({std::begin(list), std::end(list)});
-	}
+		m_server->setAccounts(keysAsVector(owned()));
 }
 
 void Main::on_ourAccounts_doubleClicked()

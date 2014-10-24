@@ -57,13 +57,14 @@ class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnecto
 	Q_OBJECT
 	
 public:
-	QWebThreeConnector(QWebThree* _q);
+	QWebThreeConnector();
 	virtual ~QWebThreeConnector();
+	
+	void setQWeb(QWebThree *_q);
 	
 	virtual bool StartListening();
 	virtual bool StopListening();
-	
-	bool virtual SendResponse(std::string const& _response, void* _addInfo = NULL);
+	virtual bool SendResponse(std::string const& _response, void* _addInfo = NULL);
 	
 public slots:
 	void onProcessData(QString const& _json, QString const& _addInfo);
@@ -72,7 +73,8 @@ signals:
 	void dataProcessed(QString const& _json, QString const& _addInfo);
 	
 private:
-	QWebThree* m_qweb;
+	QWebThree* m_qweb = nullptr;
+	bool m_isListening;
 };
 
 #define QETH_INSTALL_JS_NAMESPACE(_frame, _env, qweb) [_frame, _env, qweb]() \
