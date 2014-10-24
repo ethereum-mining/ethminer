@@ -149,7 +149,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	response(formatOutput(f));
 }
 
-QWebThreeConnector::QWebThreeConnector(QWebThree* _q): m_qweb(_q)
+QWebThreeConnector::QWebThreeConnector()
 {
 }
 
@@ -158,10 +158,24 @@ QWebThreeConnector::~QWebThreeConnector()
 	StopListening();
 }
 
+void QWebThreeConnector::setQWeb(QWebThree* _q)
+{
+	m_qweb = _q;
+	if (m_isListening)
+	{
+		StopListening();
+		StartListening();
+	}
+}
+
 bool QWebThreeConnector::StartListening()
 {
-	connect(m_qweb, SIGNAL(processData(QString, QString)), this, SLOT(onProcessData(QString, QString)));
-	connect(this, SIGNAL(dataProcessed(QString, QString)), m_qweb, SLOT(onDataProcessed(QString, QString)));
+	m_isListening = true;
+	if (m_qweb)
+	{
+		connect(m_qweb, SIGNAL(processData(QString, QString)), this, SLOT(onProcessData(QString, QString)));
+		connect(this, SIGNAL(dataProcessed(QString, QString)), m_qweb, SLOT(onDataProcessed(QString, QString)));
+	}
 	return true;
 }
 
