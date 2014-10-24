@@ -109,20 +109,20 @@ KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _pass
 	return KeyPair(sha3(aesDecrypt(_seed, _password)));
 }
 
-void dev::encrypt(Public _k, bytesConstRef _plain, bytes& _cipher)
+void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	bytes io = _plain.toBytes();
 	crypto::encrypt(_k, io);
-	_cipher = std::move(io);
+	o_cipher = std::move(io);
 }
 
-bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& _plain)
+bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
 	bytes io = _cipher.toBytes();
 	crypto::decrypt(_k, io);
 	if (io.empty())
 		return false;
-	_plain = std::move(io);
+	o_plaintext = std::move(io);
 	return true;
 }
 

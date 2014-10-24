@@ -31,10 +31,10 @@ namespace crypto
 {
 
 /// Encrypts text (in place).
-void encrypt(Public const& _k, bytes& _text);
+void encrypt(Public const& _k, bytes& io_cipher);
 
 /// Decrypts text (in place).
-void decrypt(Secret const& _k, bytes& _text);
+void decrypt(Secret const& _k, bytes& io_text);
 	
 }
 }
