@@ -39,7 +39,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libwebthree/WebThree.h>
-#include <libethrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"

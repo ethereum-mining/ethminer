@@ -53,7 +53,7 @@ else ()
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
-target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp ${CRYPTOPP_LS} serpent lll evmface devcore ethrpc)
+target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp ${CRYPTOPP_LS} serpent lll evmface devcore web3jsonrpc)
 
 if (APPLE)
 	# First have qt5 install plugins and frameworks
