@@ -206,6 +206,7 @@ private:
 
 	void refreshNetwork();
 	void refreshMining();
+	void refreshWhispers();
 
 	void refreshAll();
 	void refreshPending();

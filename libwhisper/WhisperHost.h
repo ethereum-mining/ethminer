@@ -60,6 +60,8 @@ public:
 
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
 
+	std::map<h256, Envelope> all() const { ReadGuard l(x_messages); return m_messages; }
+
 	void cleanup();
 
 private:

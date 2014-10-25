@@ -763,7 +763,6 @@ void Main::refreshNetwork()
 {
 	auto ps = web3()->peers();
 
-
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
 	ui->nodes->clear();
@@ -1006,6 +1005,7 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		interval = 0;
 		refreshNetwork();
+		refreshWhispers();
 	}
 	else
 		interval += 100;
@@ -2106,6 +2106,33 @@ void Main::refreshWhisper()
 	ui->shhFrom->clear();
 	for (auto i: m_whisper->ids())
 		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
+}
+
+void Main::refreshWhispers()
+{
+	ui->whispers->clear();
+	for (auto const& w: whisper()->all())
+	{
+		shh::Envelope const& e = w.second;
+		shh::Message m;
+		for (pair<Public, Secret> const& i: m_whisper->ids())
+			if (!!(m = e.open(i.second)))
+				break;
+		if (!m)
+			m = e.open();
+
+		QString msg;
+		if (m.from())
+			// Good message.
+			msg = QString("%1->%2: %3").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "?").arg(toHex(m.payload()).c_str());
+		else if (m)
+			// Maybe message.
+			msg = QString("%1->%2: %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "?").arg(toHex(m.payload()).c_str());
+
+		time_t ex = e.expiry();
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(asctime(localtime(&ex))).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		ui->whispers->addItem(item);
+	}
 }
 
 // extra bits needed to link on VS

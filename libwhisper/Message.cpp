@@ -34,18 +34,18 @@ Message::Message(Envelope const& _e, Secret const& _s)
 		if (_s)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
-		populate(_s ? b : _e.data());
-		m_to = KeyPair(_s).pub();
+		if (populate(_s ? b : _e.data()))
+			m_to = KeyPair(_s).pub();
 	}
 	catch (...)	// Invalid secret? TODO: replace ... with InvalidSecret
 	{
 	}
 }
 
-void Message::populate(bytes const& _data)
+bool Message::populate(bytes const& _data)
 {
 	if (!_data.size())
-		return;
+		return false;
 
 	byte flags = _data[0];
 	if (!!(flags & ContainsSignature) && _data.size() > sizeof(Signature) + 1)	// has a signature
@@ -54,10 +54,13 @@ void Message::populate(bytes const& _data)
 		h256 h = sha3(payload);
 		Signature const& sig = *(Signature const*)&(_data[1 + payload.size()]);
 		m_from = recover(sig, h);
+		if (!m_from)
+			return false;
 		m_payload = payload.toBytes();
 	}
 	else
 		m_payload = bytesConstRef(&_data).cropped(1).toBytes();
+	return true;
 }
 
 Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigned _workToProve) const
