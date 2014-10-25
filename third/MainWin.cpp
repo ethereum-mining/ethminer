@@ -120,6 +120,7 @@ Main::Main(QWidget *parent) :
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		m_ethereum->poll();
+		m_whisper->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -522,6 +523,8 @@ void Main::timerEvent(QTimerEvent*)
 	
 	if (m_ethereum)
 		m_ethereum->poll();
+	if (m_whisper)
+		m_whisper->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
