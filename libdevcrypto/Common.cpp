@@ -152,17 +152,18 @@ inline h256 kFromMessage(h256 _msg, h256 _priv)
 	return _msg ^ _priv;
 }
 
-Signature dev::sign(Secret _k, h256 _message)
+Signature dev::sign(Secret _k, h256 _hash)
 {
 	int v = 0;
 
 	secp256k1_start();
 
 	SignatureStruct ret;
-	h256 nonce = kFromMessage(_message, _k);
+	h256 nonce = kFromMessage(_hash, _k);
 
-	if (!secp256k1_ecdsa_sign_compact(_message.data(), 32, ret.r.data(), _k.data(), nonce.data(), &v))
+	if (!secp256k1_ecdsa_sign_compact(_hash.data(), 32, ret.r.data(), _k.data(), nonce.data(), &v))
 		return Signature();
+	
 #if ETH_ADDRESS_DEBUG
 	cout << "---- SIGN -------------------------------" << endl;
 	cout << "MSG: " << _message << endl;
@@ -174,3 +175,21 @@ Signature dev::sign(Secret _k, h256 _message)
 	ret.v = v;
 	return *(Signature const*)&ret;
 }
+
+bool dev::verify(Public _p, Signature _s, h256 _hash)
+{
+	secp256k1_start();
+
+	// sig_t
+//	secp256k1_ecdsa_sig_t s;
+	int sz = sizeof(_s)-1;
+//	secp256k1_ecdsa_sig_serialize(_s.data()+1, &sz, &s);
+	
+	// pubk_t
+	byte pubkey[65] = {0x04};
+	memcpy(&pubkey[1], _p.data(), 64);
+
+//	int result = secp256k1_ecdsa_verify(_hash.data(), sizeof(_hash), &s, sizeof(s), pubkey, 65);
+	return 0;
+}
+

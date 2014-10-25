@@ -25,40 +25,40 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-ECP::Point pp::PointFromPublic(Public const& _p)
-{
-	ECP::Point p;
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub;
-	pub.AccessGroupParameters().Initialize(pp::secp256k1());
+/// Conversion from bytes to cryptopp point
+inline ECP::Point publicToPoint(Public const& _p);
 
-	bytes prefixedKey(pub.GetGroupParameters().GetEncodedElementSize(true));
-	prefixedKey[0] = 0x04;
-	assert(Public::size == prefixedKey.size() - 1);
-	memcpy(&prefixedKey[1], _p.data(), prefixedKey.size() - 1);
-	
-	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), prefixedKey.size());
-	return std::move(p);
+/// Conversion from bytes to cryptopp exponent
+inline Integer secretToExponent(Secret const& _s);
+
+/// Conversion from cryptopp exponent Integer to bytes
+inline void exponentToPublic(Integer const& _e, Public& _p);
+
+void pp::initializeSigner(Secret const& _s, ECDSA<ECP, CryptoPP::SHA3_256>::Signer& _signer)
+{
+	_signer.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	_signer.AccessKey().SetPrivateExponent(secretToExponent(_s));
 }
 
-Integer pp::ExponentFromSecret(Secret const& _s)
+void pp::initializeVerifier(Public const& _p, ECDSA<ECP, CryptoPP::SHA3_256>::Verifier& _verifier)
 {
-	static_assert(Secret::size == 32, "Secret key must be 32 bytes.");
-	return std::move(Integer(_s.data(), Secret::size));
+	_verifier.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	_verifier.AccessKey().SetPublicElement(publicToPoint(_p));
 }
 
-void pp::PublicFromExponent(Integer const& _e, Public& _p)
+void pp::initializeEncryptor(Public const& _p, CryptoPP::ECIES<CryptoPP::ECP>::Encryptor& _encryptor)
 {
-	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> k;
-	k.AccessGroupParameters().Initialize(secp256k1());
-	k.SetPrivateExponent(_e);
-
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> p;
-	p.AccessGroupParameters().Initialize(secp256k1());
-	k.MakePublicKey(p);
-	pp::PublicFromDL_PublicKey_EC(p, _p);
+	_encryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	_encryptor.AccessKey().SetPublicElement(publicToPoint(_p));
 }
 
-void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
+void pp::initializeDecryptor(Secret const& _s, CryptoPP::ECIES<CryptoPP::ECP>::Decryptor& _decryptor)
+{
+	_decryptor.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	_decryptor.AccessKey().SetPrivateExponent(secretToExponent(_s));
+}
+
+void pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
 {
 	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
 	_k.GetGroupParameters().GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
@@ -68,7 +68,42 @@ void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> cons
 	memcpy(_p.data(), &prefixedKey[1], Public::size);
 }
 
-void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s)
+void pp::exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s)
 {
 	_k.GetPrivateExponent().Encode(_s.data(), Secret::size);
+}
+
+/// Integer and Point Conversion:
+
+inline ECP::Point publicToPoint(Public const& _p)
+{
+	ECP::Point p;
+	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub;
+	pub.AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	
+	bytes prefixedKey(pub.GetGroupParameters().GetEncodedElementSize(true));
+	prefixedKey[0] = 0x04;
+	assert(Public::size == prefixedKey.size() - 1);
+	memcpy(&prefixedKey[1], _p.data(), prefixedKey.size() - 1);
+	
+	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), prefixedKey.size());
+	return std::move(p);
+}
+
+inline Integer secretToExponent(Secret const& _s)
+{
+	static_assert(Secret::size == 32, "Secret key must be 32 bytes.");
+	return std::move(Integer(_s.data(), Secret::size));
+}
+
+inline void exponentToPublic(Integer const& _e, Public& _p)
+{
+	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> k;
+	k.AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	k.SetPrivateExponent(_e);
+	
+	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> p;
+	p.AccessGroupParameters().Initialize(pp::secp256k1Curve);
+	k.MakePublicKey(p);
+	pp::exportPublicKey(p, _p);
 }

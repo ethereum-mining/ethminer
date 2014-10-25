@@ -59,7 +59,7 @@ Address toAddress(Secret _secret);
 
 /// Encrypts plain text using Public key.
 void encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher);
-	
+
 /// Decrypts cipher using Secret key.
 bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
@@ -67,7 +67,10 @@ bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext);
 Public recover(Signature _sig, h256 _message);
 	
 /// Returns siganture of message hash.
-Signature sign(Secret _k, h256 _message);
+Signature sign(Secret _k, h256 _hash);
+	
+/// Verify signature.
+bool verify(Public _k, Signature _s, h256 _hash);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.

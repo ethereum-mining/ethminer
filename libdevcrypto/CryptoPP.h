@@ -23,8 +23,6 @@
 
 #pragma once
 
-// need to leave this one disabled
-//#pragma GCC diagnostic ignored "-Wunused-function"
 #pragma warning(push)
 #pragma warning(disable:4100 4244)
 #pragma GCC diagnostic push
@@ -58,27 +56,31 @@ namespace crypto
 
 namespace pp
 {
-/// RNG used by CryptoPP
-inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
 
-/// EC curve used by CryptoPP
-inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
-
-/// Conversion from bytes to cryptopp point
-CryptoPP::ECP::Point PointFromPublic(Public const& _p);
-
-/// Conversion from bytes to cryptopp exponent
-CryptoPP::Integer ExponentFromSecret(Secret const& _s);
+/// CryptoPP random number pool
+static CryptoPP::AutoSeededRandomPool PRNG;
 	
-/// Conversion from cryptopp exponent Integer to bytes
-void PublicFromExponent(CryptoPP::Integer const& _k, Public& _s);
+/// CryptoPP EC Cruve
+static const CryptoPP::OID secp256k1Curve = CryptoPP::ASN1::secp256k1();
+
+/// Initialize signer
+void initializeSigner(Secret const& _s, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Signer& out_signer);
 	
+/// Initialize verifier
+void initializeVerifier(Public const& _p, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Verifier& _verifier);
+	
+/// Conversion from Public key to cryptopp encryptor
+void initializeEncryptor(Public const& _p, CryptoPP::ECIES<CryptoPP::ECP>::Encryptor& out_encryptor);
+	
+/// Conversion from Secret key to cryptopp decryptor
+void initializeDecryptor(Secret const& _s, CryptoPP::ECIES<CryptoPP::ECP>::Decryptor& out_decryptor);
+
 /// Conversion from cryptopp public key to bytes
-void PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
+void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& out_p);
 	
 /// Conversion from cryptopp private key to bytes
-void SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s);
-
+void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& out_s);
+	
 }
 }
 }
