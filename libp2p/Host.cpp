@@ -651,23 +651,26 @@ void Host::prunePeers()
 {
 	RecursiveGuard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-	for (unsigned old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-		while (m_peers.size() > m_idealPeerCount)
+	set<NodeId> dc;
+	for (unsigned old = 15000; m_peers.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+		if (m_peers.size() - dc.size() > m_idealPeerCount)
 		{
 			// look for worst peer to kick off
 			// first work out how many are old enough to kick off.
 			shared_ptr<Session> worst;
 			unsigned agedPeers = 0;
 			for (auto i: m_peers)
-				if (auto p = i.second.lock())
-					if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
-					{
-						++agedPeers;
-						if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
-							worst = p;
-					}
+				if (!dc.count(i.first))
+					if (auto p = i.second.lock())
+						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+						{
+							++agedPeers;
+							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
+								worst = p;
+						}
 			if (!worst || agedPeers <= m_idealPeerCount)
 				break;
+			dc.insert(worst->id());
 			worst->disconnect(TooManyPeers);
 		}
 
