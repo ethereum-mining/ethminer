@@ -75,6 +75,7 @@ public:
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;
+	virtual h256s watchMessages(unsigned _watchId) = 0;
 
 	virtual Envelope envelope(h256 _m) const = 0;
 
