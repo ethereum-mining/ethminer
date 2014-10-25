@@ -42,32 +42,58 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-void dev::crypto::encrypt(Public const& _key, bytes& io_cipher)
+void crypto::encrypt(Public const& _key, bytes& io_cipher)
 {
 	ECIES<ECP>::Encryptor e;
-	e.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
-	e.AccessKey().SetPublicElement(pp::PointFromPublic(_key));
+	pp::initializeEncryptor(_key, e);
 	size_t plen = io_cipher.size();
 	bytes c;
 	c.resize(e.CiphertextLength(plen));
 	// todo: use StringSource with _plain as input and output.
-	e.Encrypt(pp::PRNG(), io_cipher.data(), plen, c.data());
+	e.Encrypt(pp::PRNG, io_cipher.data(), plen, c.data());
 	bzero(io_cipher.data(), io_cipher.size());
 	io_cipher = std::move(c);
 }
 
-void dev::crypto::decrypt(Secret const& _k, bytes& io_text)
+void crypto::decrypt(Secret const& _k, bytes& io_text)
 {
 	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor d;
-	d.AccessKey().AccessGroupParameters().Initialize(pp::secp256k1());
-	d.AccessKey().SetPrivateExponent(pp::ExponentFromSecret(_k));
+	pp::initializeDecryptor(_k, d);
 	size_t clen = io_text.size();
 	bytes p;
 	p.resize(d.MaxPlaintextLength(io_text.size()));
 	// todo: use StringSource with _c as input and output.
-	DecodingResult r = d.Decrypt(pp::PRNG(), io_text.data(), clen, p.data());
+	DecodingResult r = d.Decrypt(pp::PRNG, io_text.data(), clen, p.data());
 	assert(r.messageLength);
 	io_text.resize(r.messageLength);
 	io_text = std::move(p);
 }
+
+Signature crypto::sign(Secret const& _k, bytesConstRef _message)
+{
+	ECDSA<ECP, SHA3_256>::Signer signer;
+	pp::initializeSigner(_k, signer);
+
+	string sigstr;
+	StringSource s(_message.toString(), true, new SignerFilter(pp::PRNG, signer, new StringSink(sigstr)));
+	FixedHash<sizeof(Signature)> retsig((byte const*)sigstr.data(), Signature::ConstructFromPointer);
+	
+	/// eth signature: 65 bytes: r: [0, 32), s: [32, 64), v: 64.
+	return std::move(retsig);
+}
+
+//Public crypto::recover(Signature _sig, bytesConstRef _message)
+//{
+//	
+//}
+
+bool crypto::verify(Public _p, Signature _sig, bytesConstRef _message)
+{
+	ECDSA<ECP, SHA3_256>::Verifier verifier;
+	pp::initializeVerifier(_p, verifier);
+	// cryptopp signatures are 64 bytes
+	static_assert(sizeof(Signature) == 65, "Expected 65-byte signature.");
+	return verifier.VerifyMessage(_message.data(), _message.size(), _sig.data(), sizeof(Signature) - 1);
+}
+
 
