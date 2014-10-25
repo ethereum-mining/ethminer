@@ -595,7 +595,7 @@ static shh::Envelope toSealed(QString _json, shh::Message const& _m, Secret _fro
 			for (auto i: f["topic"].toArray())
 				bt.shift(asBytes(padded(i.toString(), 32)));
 	}
-	return _m.seal(_from, bt, workToProve, ttl);
+	return _m.seal(_from, bt, ttl, workToProve);
 }
 
 void QWhisper::doPost(QString _json)

@@ -53,6 +53,9 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	if (_m.expiry() <= time(0))
+		return;
+
 	auto h = _m.sha3();
 	{
 		UpgradableGuard l(x_messages);
@@ -60,6 +63,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			return;
 		UpgradeGuard ll(l);
 		m_messages[h] = _m;
+		m_expiryQueue[_m.expiry()] = h;
 	}
 
 //	if (_p)
@@ -109,6 +113,7 @@ unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 
 h256s WhisperHost::watchMessages(unsigned _watchId)
 {
+	cleanup();
 	h256s ret;
 	auto wit = m_watches.find(_watchId);
 	if (wit == m_watches.end())
@@ -144,4 +149,14 @@ void WhisperHost::uninstallWatch(unsigned _i)
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
 			m_filters.erase(fit);
+}
+
+void WhisperHost::cleanup()
+{
+	// remove old messages.
+	// should be called every now and again.
+	auto now = time(0);
+	WriteGuard l(x_messages);
+	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
+		m_messages.erase(it->second);
 }
