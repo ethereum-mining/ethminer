@@ -725,6 +725,8 @@ void QWhisper::poll()
 				{
 					cwarn << "Silently decrypting message from identity" << w.second.abridged() << ": User validation hook goes here.";
 					m = e.open(m_ids[w.second]);
+					if (!m)
+						continue;
 				}
 				else
 					m = e.open();

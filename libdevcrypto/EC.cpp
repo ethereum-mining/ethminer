@@ -66,7 +66,7 @@ void dev::crypto::decrypt(Secret const& _k, bytes& io_text)
 	p.resize(d.MaxPlaintextLength(io_text.size()));
 	// todo: use StringSource with _c as input and output.
 	DecodingResult r = d.Decrypt(pp::PRNG(), io_text.data(), clen, p.data());
-	assert(r.messageLength);
+//	assert(r.messageLength);
 	io_text.resize(r.messageLength);
 	io_text = std::move(p);
 }

@@ -233,7 +233,7 @@ public:
 	// Watches interface
 	Q_INVOKABLE unsigned newWatch(QString _json);
 	Q_INVOKABLE void killWatch(unsigned _w);
-	void clearWatches();
+	Q_INVOKABLE void clearWatches();
 	Q_INVOKABLE QString watchMessages(unsigned _w);
 
 public slots:
