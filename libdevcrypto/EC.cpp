@@ -52,7 +52,7 @@ void dev::crypto::encrypt(Public const& _key, bytes& io_cipher)
 	c.resize(e.CiphertextLength(plen));
 	// todo: use StringSource with _plain as input and output.
 	e.Encrypt(pp::PRNG(), io_cipher.data(), plen, c.data());
-	bzero(io_cipher.data(), io_cipher.size());
+	memset(io_cipher.data(), 0, io_cipher.size());
 	io_cipher = std::move(c);
 }
 

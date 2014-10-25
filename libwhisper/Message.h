@@ -116,7 +116,7 @@ public:
 	Envelope sealTo(Secret _from, Public _to, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(_from, _topic, _workToProve, _ttl); }
 
 private:
-	void populate(bytes const& _data);
+	bool populate(bytes const& _data);
 
 	Public m_from;
 	Public m_to;
