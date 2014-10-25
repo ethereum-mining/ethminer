@@ -1789,6 +1789,9 @@ font-size: 14pt</string>
    </property>
   </action>
   <action name="importKeyFile">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Claim Ether Presale &amp;Wallet...</string>
    </property>

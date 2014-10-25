@@ -52,7 +52,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	return ret;
 }
 /*
-web3.shh.watch({}, function(m) { env.note("New message:\n"+JSON.stringify(m)); })
+web3.shh.watch({}).arrived(function(m) { env.note("New message:\n"+JSON.stringify(m)); })
 k = web3.shh.newIdentity()
 web3.shh.post({from: k, topic: web3.fromAscii("test"), payload: web3.fromAscii("Hello world!")})
 */
