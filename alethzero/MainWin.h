@@ -149,6 +149,10 @@ private slots:
 	void on_turboMining_triggered();
 	void on_go_triggered();
 	void on_importKeyFile_triggered();
+	void on_post_clicked();
+	void on_newIdentity_triggered();
+
+	void refreshWhisper();
 
 signals:
 	void poll();

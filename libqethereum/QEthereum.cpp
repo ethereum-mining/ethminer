@@ -708,9 +708,15 @@ QString QWhisper::watchMessages(unsigned _w)
 
 QString QWhisper::newIdentity()
 {
+	return toQJS(makeIdentity());
+}
+
+Public QWhisper::makeIdentity()
+{
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.sec();
-	return toQJS(kp.pub());
+	emit idsChanged();
+	return kp.pub();
 }
 
 void QWhisper::poll()
