@@ -234,6 +234,7 @@ public:
 	Q_INVOKABLE unsigned newWatch(QString _json);
 	Q_INVOKABLE void killWatch(unsigned _w);
 	void clearWatches();
+	Q_INVOKABLE QString watchMessages(unsigned _w);
 
 public slots:
 	/// Check to see if anything has changed, fire off signals if so.
@@ -272,7 +273,7 @@ private:
 	if (_shh) \
 	{ \
 		_frame->addToJavaScriptWindowObject("_web3_dot_shh", _shh, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(json) { var ww = _web3_dot_shh.newWatch(json); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.arrived = function(f) { _web3_dot_shh.watchChanged.connect(function(nw, envelope) { if (nw == ww) f(JSON.parse(envelope)) }); }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(json) { var ww = _web3_dot_shh.newWatch(json); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.arrived = function(f) { _web3_dot_shh.watchChanged.connect(function(nw, envelope) { if (nw == ww) f(JSON.parse(envelope)) }); var existing = JSON.parse(_web3_dot_shh.watchMessages(ww)); for (var e in existing) f(existing[e]) }; return ret; }"); \
 		_frame->evaluateJavaScript("_web3_dot_shh.watch = function(filter) { return _web3_dot_shh.makeWatch(JSON.stringify(filter)) }"); \
 		_frame->evaluateJavaScript("_web3_dot_shh.post = function(message) { return _web3_dot_shh.doPost(JSON.stringify(message)) }"); \
 		_frame->evaluateJavaScript("web3.shh = _web3_dot_shh"); \

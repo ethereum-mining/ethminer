@@ -660,13 +660,6 @@ void QWhisper::clearWatches()
 	m_watches.clear();
 }
 
-QString QWhisper::newIdentity()
-{
-	KeyPair kp = KeyPair::create();
-	m_ids[kp.pub()] = kp.sec();
-	return toQJS(kp.pub());
-}
-
 static QString toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
 {
 	QJsonObject v;
@@ -683,6 +676,41 @@ static QString toJson(h256 const& _h, shh::Envelope const& _e, shh::Message cons
 	v["to"] = toQJS(_m.to());
 
 	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+QString QWhisper::watchMessages(unsigned _w)
+{
+	QString ret = "[";
+	auto wit = m_watches.find(_w);
+	if (wit == m_watches.end())
+	{
+		cwarn << "watchMessages called with invalid watch id" << _w;
+		return "";
+	}
+	Public p = wit->second;
+	if (!p || m_ids.count(p))
+		for (h256 const& h: face()->watchMessages(_w))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (p)
+			{
+				cwarn << "Silently decrypting message from identity" << p.abridged() << ": User validation hook goes here.";
+				m = e.open(m_ids[p]);
+			}
+			else
+				m = e.open();
+			ret.append((ret == "[" ? "" : ",") + toJson(h, e, m));
+		}
+
+	return ret + "]";
+}
+
+QString QWhisper::newIdentity()
+{
+	KeyPair kp = KeyPair::create();
+	m_ids[kp.pub()] = kp.sec();
+	return toQJS(kp.pub());
 }
 
 void QWhisper::poll()
