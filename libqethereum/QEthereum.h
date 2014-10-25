@@ -236,6 +236,9 @@ public:
 	Q_INVOKABLE void clearWatches();
 	Q_INVOKABLE QString watchMessages(unsigned _w);
 
+	dev::Public makeIdentity();
+	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
+
 public slots:
 	/// Check to see if anything has changed, fire off signals if so.
 	/// @note Must be called in the QObject's thread.
@@ -243,6 +246,7 @@ public slots:
 
 signals:
 	void watchChanged(unsigned _w, QString _envelopeJson);
+	void idsChanged();
 
 private:
 	std::weak_ptr<dev::shh::Interface> m_face;

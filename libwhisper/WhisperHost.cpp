@@ -47,12 +47,16 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	if (m_messages.count(_m))
 	{
 		UpgradeGuard ll(l);
-		m_messages.at(_m).streamOut(_s, true);
+		auto const& m = m_messages.at(_m);
+		cnote << "streamOut: " << m.expiry() << m.ttl() << m.topic() << toHex(m.data());
+		m.streamOut(_s, true);
 	}
 }
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
+
 	if (_m.expiry() <= time(0))
 		return;
 
