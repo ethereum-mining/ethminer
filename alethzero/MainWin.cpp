@@ -2124,13 +2124,13 @@ void Main::refreshWhispers()
 		QString msg;
 		if (m.from())
 			// Good message.
-			msg = QString("%1->%2: %3").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "?").arg(toHex(m.payload()).c_str());
+			msg = QString("%1->%2: %3").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
 		else if (m)
 			// Maybe message.
-			msg = QString("%1->%2: %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "?").arg(toHex(m.payload()).c_str());
+			msg = QString("%1->%2: %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
 
 		time_t ex = e.expiry();
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(asctime(localtime(&ex))).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(ctime(&ex)).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
