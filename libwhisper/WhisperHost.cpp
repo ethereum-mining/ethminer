@@ -107,6 +107,27 @@ unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 	return installWatchOnId(h);
 }
 
+h256s WhisperHost::watchMessages(unsigned _watchId)
+{
+	h256s ret;
+	auto wit = m_watches.find(_watchId);
+	if (wit == m_watches.end())
+		return ret;
+	TopicFilter f;
+	{
+		Guard l(m_filterLock);
+		auto fit = m_filters.find(wit->second.id);
+		if (fit == m_filters.end())
+			return ret;
+		f = fit->second.filter;
+	}
+	ReadGuard l(x_messages);
+	for (auto const& m: m_messages)
+		if (f.matches(m.second))
+			ret.push_back(m.first);
+	return ret;
+}
+
 void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
