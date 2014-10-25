@@ -2093,7 +2093,7 @@ void Main::on_post_clicked()
 	Secret from;
 	if (m_whisper->ids().count(f))
 		from = m_whisper->ids().at(f);
-	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhWork->value(), ui->shhTtl->value()));
+	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
 }
 
 void Main::on_newIdentity_triggered()
@@ -2130,7 +2130,9 @@ void Main::refreshWhispers()
 			msg = QString("%1->%2: %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "?").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
 
 		time_t ex = e.expiry();
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(ctime(&ex)).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		QString t(ctime(&ex));
+		t.chop(1);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
