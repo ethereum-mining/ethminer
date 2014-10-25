@@ -55,10 +55,12 @@ public:
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
-	virtual h256s checkWatch(unsigned _watchId) override { dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
+	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
 	virtual h256s watchMessages(unsigned _watchId) override;
 
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
+
+	void cleanup();
 
 private:
 	void streamMessage(h256 _m, RLPStream& _s) const;
@@ -67,6 +69,7 @@ private:
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;
+	std::map<unsigned, h256> m_expiryQueue;
 
 	mutable dev::Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
