@@ -5,6 +5,8 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
+#include <libwhisper/Message.h>
+#include <libwhisper/WhisperHost.h>
 #include "QEthereum.h"
 using namespace std;
 using namespace dev;
@@ -21,7 +23,7 @@ dev::bytes toBytes(QString const& _s)
 	else
 	{
 		// Binary
-		cwarn << "THIS FUNCTIONALITY IS DEPRECATED. DO NOT ASSUME ASCII/BINARY-STRINGS WILL BE ACCEPTED. USE eth.fromAscii().";
+		cwarn << "'" << _s.toStdString() << "': Unrecognised format for number/hash. USE eth.fromAscii() if you mean to convert from ASCII.";
 		return asBytes(_s);
 	}
 }
@@ -558,37 +560,184 @@ void QWhisper::faceDieing()
 
 }
 
-void QWhisper::send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload)
+static shh::Message toMessage(QString _json)
 {
-	(void)_dest;
-	(void)_from;
-	(void)_topic;
-	(void)_payload;
+	shh::Message ret;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("from"))
+		ret.setFrom(toPublic(f["from"].toString()));
+	if (f.contains("to"))
+		ret.setTo(toPublic(f["to"].toString()));
+	if (f.contains("payload"))
+		ret.setPayload(toBytes(f["payload"].toString()));
+
+	return ret;
 }
 
+static shh::Envelope toSealed(QString _json, shh::Message const& _m, Secret _from)
+{
+	unsigned ttl = 50;
+	unsigned workToProve = 50;
+
+	shh::BuildTopic bt;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("ttl"))
+		ttl = f["ttl"].toInt();
+	if (f.contains("workToProve"))
+		workToProve = f["workToProve"].toInt();
+	if (f.contains("topic"))
+	{
+		if (f["topic"].isString())
+			bt.shift(asBytes(padded(f["topic"].toString(), 32)));
+		else if (f["topic"].isArray())
+			for (auto i: f["topic"].toArray())
+				bt.shift(asBytes(padded(i.toString(), 32)));
+	}
+	return _m.seal(_from, bt, ttl, workToProve);
+}
+
+void QWhisper::doPost(QString _json)
+{
+	shh::Message m = toMessage(_json);
+	Secret from;
+
+	if (m.from() && m_ids.count(m.from()))
+	{
+		cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
+		// TODO: insert validification hook here.
+		from = m_ids[m.from()];
+	}
+
+	face()->inject(toSealed(_json, m, from));
+}
+
+static pair<shh::TopicMask, Public> toWatch(QString _json)
+{
+	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	Public to;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("to"))
+		to = toPublic(f["to"].toString());
+
+	if (f.contains("topic"))
+	{
+		if (f["topic"].isString())
+			bt.shift(asBytes(padded(f["topic"].toString(), 32)));
+		else if (f["topic"].isArray())
+			for (auto i: f["topic"].toArray())
+				if (i.isString())
+					bt.shift(asBytes(padded(i.toString(), 32)));
+				else
+					bt.shift();
+	}
+	return make_pair(bt.toTopicMask(), to);
+}
+
+// _json contains
+// topic: the topic as an array of components, some may be null.
+// to: specifies the id to which the message is encrypted. null if broadcast.
 unsigned QWhisper::newWatch(QString _json)
 {
-	(void)_json;
-	return 0;
-}
-
-QString QWhisper::watchMessages(unsigned _w)
-{
-	(void)_w;
-	return "";
+	auto w = toWatch(_json);
+	auto ret = face()->installWatch(w.first);
+	m_watches.insert(make_pair(ret, w.second));
+	return ret;
 }
 
 void QWhisper::killWatch(unsigned _w)
 {
-	(void)_w;
+	face()->uninstallWatch(_w);
+	m_watches.erase(_w);
 }
 
 void QWhisper::clearWatches()
 {
+	for (auto i: m_watches)
+		face()->uninstallWatch(i.first);
+	m_watches.clear();
+}
+
+static QString toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
+{
+	QJsonObject v;
+	v["hash"] = toQJS(_h);
+
+	v["expiry"] = (int)_e.expiry();
+	v["sent"] = (int)_e.sent();
+	v["ttl"] = (int)_e.ttl();
+	v["workProved"] = (int)_e.workProved();
+	v["topic"] = toQJS(_e.topic());
+
+	v["payload"] = toQJS(_m.payload());
+	v["from"] = toQJS(_m.from());
+	v["to"] = toQJS(_m.to());
+
+	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+QString QWhisper::watchMessages(unsigned _w)
+{
+	QString ret = "[";
+	auto wit = m_watches.find(_w);
+	if (wit == m_watches.end())
+	{
+		cwarn << "watchMessages called with invalid watch id" << _w;
+		return "";
+	}
+	Public p = wit->second;
+	if (!p || m_ids.count(p))
+		for (h256 const& h: face()->watchMessages(_w))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (p)
+			{
+				cwarn << "Silently decrypting message from identity" << p.abridged() << ": User validation hook goes here.";
+				m = e.open(m_ids[p]);
+			}
+			else
+				m = e.open();
+			ret.append((ret == "[" ? "" : ",") + toJson(h, e, m));
+		}
+
+	return ret + "]";
+}
+
+QString QWhisper::newIdentity()
+{
+	return toQJS(makeIdentity());
+}
+
+Public QWhisper::makeIdentity()
+{
+	KeyPair kp = KeyPair::create();
+	m_ids[kp.pub()] = kp.sec();
+	emit idsChanged();
+	return kp.pub();
 }
 
 void QWhisper::poll()
 {
+	for (auto const& w: m_watches)
+		if (!w.second || m_ids.count(w.second))
+			for (h256 const& h: face()->checkWatch(w.first))
+			{
+				auto e = face()->envelope(h);
+				shh::Message m;
+				if (w.second)
+				{
+					cwarn << "Silently decrypting message from identity" << w.second.abridged() << ": User validation hook goes here.";
+					m = e.open(m_ids[w.second]);
+					if (!m)
+						continue;
+				}
+				else
+					m = e.open();
+				emit watchChanged(w.first, toJson(h, e, m));
+			}
 }
 
 // extra bits needed to link on VS

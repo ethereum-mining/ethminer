@@ -51,6 +51,7 @@ std::shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 		return std::make_shared<BoolType>();
 	else
 		BOOST_ASSERT(false); // @todo add other tyes
+	return std::shared_ptr<Type>();
 }
 
 std::shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
@@ -89,9 +90,9 @@ std::shared_ptr<IntegerType> IntegerType::smallestTypeForLiteral(std::string con
 IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 	m_bits(_bits), m_modifier(_modifier)
 {
-	BOOST_ASSERT(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
 	if (isAddress())
 		_bits = 160;
+	BOOST_ASSERT(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const

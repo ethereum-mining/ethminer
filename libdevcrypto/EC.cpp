@@ -49,9 +49,9 @@ void crypto::encrypt(Public const& _key, bytes& io_cipher)
 	size_t plen = io_cipher.size();
 	bytes c;
 	c.resize(e.CiphertextLength(plen));
-	// todo: use StringSource with _plain as input and output.
+	// todo: use StringSource with io_cipher as input and output.
 	e.Encrypt(pp::PRNG, io_cipher.data(), plen, c.data());
-	bzero(io_cipher.data(), io_cipher.size());
+	memset(io_cipher.data(), 0, io_cipher.size());
 	io_cipher = std::move(c);
 }
 
@@ -62,9 +62,13 @@ void crypto::decrypt(Secret const& _k, bytes& io_text)
 	size_t clen = io_text.size();
 	bytes p;
 	p.resize(d.MaxPlaintextLength(io_text.size()));
-	// todo: use StringSource with _c as input and output.
+	// todo: use StringSource with io_text as input and output.
 	DecodingResult r = d.Decrypt(pp::PRNG, io_text.data(), clen, p.data());
-	assert(r.messageLength);
+	if (!r.isValidCoding)
+	{
+		io_text.clear();
+		return;
+	}
 	io_text.resize(r.messageLength);
 	io_text = std::move(p);
 }

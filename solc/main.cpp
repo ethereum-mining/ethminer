@@ -1,3 +1,24 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/**
+ * @author Christian <c@ethdev.com>
+ * @date 2014
+ * Solidity commandline compiler.
+ */
 
 #include <string>
 #include <iostream>
@@ -9,21 +30,11 @@
 #include <libsolidity/Parser.h>
 #include <libsolidity/ASTPrinter.h>
 #include <libsolidity/NameAndTypeResolver.h>
+#include <libsolidity/Exceptions.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 
-namespace dev
-{
-namespace solidity
-{
-
-ASTPointer<ContractDefinition> parseAST(std::string const& _source)
-{
-	ASTPointer<Scanner> scanner = std::make_shared<Scanner>(CharStream(_source));
-	Parser parser;
-	return parser.parse(scanner);
-}
-
-}
-} // end namespaces
+using namespace dev;
+using namespace solidity;
 
 void help()
 {
@@ -57,28 +68,50 @@ int main(int argc, char** argv)
 		else
 			infile = argv[i];
 	}
-	std::string src;
+	std::string sourceCode;
 	if (infile.empty())
 	{
 		std::string s;
 		while (!std::cin.eof())
 		{
 			getline(std::cin, s);
-			src.append(s);
+			sourceCode.append(s);
 		}
 	}
 	else
+		sourceCode = asString(dev::contents(infile));
+
+	ASTPointer<ContractDefinition> ast;
+	std::shared_ptr<Scanner> scanner = std::make_shared<Scanner>(CharStream(sourceCode));
+	Parser parser;
+	try
 	{
-		src = dev::asString(dev::contents(infile));
+		ast = parser.parse(scanner);
 	}
-	std::cout << "Parsing..." << std::endl;
-	// @todo catch exception
-	dev::solidity::ASTPointer<dev::solidity::ContractDefinition> ast = dev::solidity::parseAST(src);
-	std::cout << "Syntax tree for the contract:" << std::endl;
-	dev::solidity::ASTPrinter printer(ast, src);
-	printer.print(std::cout);
-	std::cout << "Resolving identifiers..." << std::endl;
+	catch (ParserError const& exception)
+	{
+		SourceReferenceFormatter::printExceptionInformation(std::cerr, exception, "Parser error", *scanner);
+		return -1;
+	}
+
 	dev::solidity::NameAndTypeResolver resolver;
-	resolver.resolveNamesAndTypes(*ast.get());
+	try
+	{
+		resolver.resolveNamesAndTypes(*ast.get());
+	}
+	catch (DeclarationError const& exception)
+	{
+		SourceReferenceFormatter::printExceptionInformation(std::cerr, exception, "Declaration error", *scanner);
+		return -1;
+	}
+	catch (TypeError const& exception)
+	{
+		SourceReferenceFormatter::printExceptionInformation(std::cerr, exception, "Type error", *scanner);
+		return -1;
+	}
+
+	std::cout << "Syntax tree for the contract:" << std::endl;
+	dev::solidity::ASTPrinter printer(ast, sourceCode);
+	printer.print(std::cout);
 	return 0;
 }
