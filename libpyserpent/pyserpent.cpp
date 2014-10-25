@@ -120,11 +120,15 @@ std::vector<Node> cppifyNodeList(PyObject* o) {
 }
 
 PYMETHOD(ps_compile, FROMSTR, compile, pyifyString)
+PYMETHOD(ps_compile_chunk, FROMSTR, compileChunk, pyifyString)
 PYMETHOD(ps_compile_to_lll, FROMSTR, compileToLLL, pyifyNode)
+PYMETHOD(ps_compile_chunk_to_lll, FROMSTR, compileChunkToLLL, pyifyNode)
 PYMETHOD(ps_compile_lll, FROMNODE, compileLLL, pyifyString)
 PYMETHOD(ps_parse, FROMSTR, parseSerpent, pyifyNode)
 PYMETHOD(ps_rewrite, FROMNODE, rewrite, pyifyNode)
+PYMETHOD(ps_rewrite_chunk, FROMNODE, rewriteChunk, pyifyNode)
 PYMETHOD(ps_pretty_compile, FROMSTR, prettyCompile, pyifyNodeList)
+PYMETHOD(ps_pretty_compile_chunk, FROMSTR, prettyCompileChunk, pyifyNodeList)
 PYMETHOD(ps_pretty_compile_lll, FROMNODE, prettyCompileLLL, pyifyNodeList)
 PYMETHOD(ps_serialize, FROMLIST, serialize, pyifyString)
 PYMETHOD(ps_deserialize, FROMSTR, deserialize, pyifyNodeList)
@@ -134,16 +138,24 @@ PYMETHOD(ps_parse_lll, FROMSTR, parseLLL, pyifyNode)
 static PyMethodDef PyextMethods[] = {
     {"compile",  ps_compile, METH_VARARGS,
         "Compile code."},
+    {"compile_chunk",  ps_compile_chunk, METH_VARARGS,
+        "Compile code chunk (no wrappers)."},
     {"compile_to_lll",  ps_compile_to_lll, METH_VARARGS,
         "Compile code to LLL."},
+    {"compile_chunk_to_lll",  ps_compile_chunk_to_lll, METH_VARARGS,
+        "Compile code chunk to LLL (no wrappers)."},
     {"compile_lll",  ps_compile_lll, METH_VARARGS,
         "Compile LLL to EVM."},
     {"parse",  ps_parse, METH_VARARGS,
         "Parse serpent"},
     {"rewrite",  ps_rewrite, METH_VARARGS,
         "Rewrite parsed serpent to LLL"},
+    {"rewrite_chunk",  ps_rewrite_chunk, METH_VARARGS,
+        "Rewrite parsed serpent to LLL (no wrappers)"},
     {"pretty_compile",  ps_pretty_compile, METH_VARARGS,
         "Compile to EVM opcodes"},
+    {"pretty_compile_chunk",  ps_pretty_compile_chunk, METH_VARARGS,
+        "Compile chunk to EVM opcodes (no wrappers)"},
     {"pretty_compile_lll",  ps_pretty_compile_lll, METH_VARARGS,
         "Compile LLL to EVM opcodes"},
     {"serialize",  ps_serialize, METH_VARARGS,

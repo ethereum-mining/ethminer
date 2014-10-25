@@ -32,7 +32,7 @@ int toktype(Node tok) {
     if (v == "(" || v == "[" || v == "{") return LPAREN;
     else if (v == ")" || v == "]" || v == "}") return RPAREN;
     else if (v == ",") return COMMA;
-    else if (v == "!" || v == "not") return UNARY_OP;
+    else if (v == "!" || v == "not" || v == "neg") return UNARY_OP;
     else if (precedence(tok) >= 0) return BINARY_OP;
     if (tok.val[0] != '"' && tok.val[0] != '\'') {
 		for (unsigned i = 0; i < tok.val.length(); i++) {
@@ -91,17 +91,19 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
         // If binary op, keep popping from stack while higher bedmas precedence
         else if (toktyp == BINARY_OP) {
             if (tok.val == "-" && prevtyp != ALPHANUM && prevtyp != RPAREN) {
-                oq.push_back(token("0", tok.metadata));
+                stack.push_back(token("neg", tok.metadata));
             }
-            int prec = precedence(tok);
-            while (stack.size() 
-                  && (toktype(stack.back()) == BINARY_OP 
-                      || toktype(stack.back()) == UNARY_OP)
-                  && precedence(stack.back()) <= prec) {
-                oq.push_back(stack.back());
-                stack.pop_back();
+            else {
+                int prec = precedence(tok);
+                while (stack.size() 
+                      && (toktype(stack.back()) == BINARY_OP 
+                          || toktype(stack.back()) == UNARY_OP)
+                      && precedence(stack.back()) <= prec) {
+                    oq.push_back(stack.back());
+                    stack.pop_back();
+                }
+                stack.push_back(tok);
             }
-            stack.push_back(tok);
         }
         // Comma means finish evaluating the argument
         else if (toktyp == COMMA) {
