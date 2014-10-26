@@ -564,6 +564,8 @@ void Main::readSettings(bool _skipGeometry)
 	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
 	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
+	if (ui->clientName->text().isEmpty())
+		ui->clientName->setText(QInputDialog::getText(this, "Enter identity", "Enter a string that will identify you on the peer network"));
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
