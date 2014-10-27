@@ -96,7 +96,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		nonce = _header[field = 14].toHash<h256>();
 	}
 
-	catch (Exception & _e)
+	catch (Exception const& _e)
 	{
 		_e << errinfo_name("invalid block header format") << BadFieldError(field, toHex(_header[field].data().toBytes()));
 		throw;
