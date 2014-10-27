@@ -1,0 +1,8 @@
+<RCC version="1.0">
+<qresource>
+    <file>js/es6-promise-2.0.0.js</file>
+    <file>js/setup.js</file>
+    <file>js/main.js</file>
+    <file>js/qt.js</file>
+</qresource>
+</RCC>
