@@ -369,7 +369,7 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
-	if (_a.port() < 30300 && _a.port() > 30303)
+	if (_a.port() < 30300 || _a.port() > 30303)
 		cwarn << "Wierd port being recorded!";
 
 	if (_a.port() >= /*49152*/32768)

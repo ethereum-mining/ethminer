@@ -32,13 +32,20 @@ namespace eth
 
 struct Transaction
 {
+	enum Type
+	{
+		ContractCreation,
+		MessageCall
+	};
+
 	Transaction() {}
 	Transaction(bytesConstRef _rlp, bool _checkSender = false);
 	Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
 
-	bool operator==(Transaction const& _c) const { return receiveAddress == _c.receiveAddress && value == _c.value && data == _c.data; }
+	bool operator==(Transaction const& _c) const { return type == _c.type && (type == ContractCreation || receiveAddress == _c.receiveAddress) && value == _c.value && data == _c.data; }
 	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
 
+	Type type;		///< True if this is a contract-creation transaction. F
 	u256 nonce;			///< The transaction-count of the sender.
 	u256 value;			///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
 	Address receiveAddress;	///< The receiving address of the transaction.
