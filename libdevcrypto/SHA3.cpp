@@ -20,8 +20,9 @@
  */
 
 #include "SHA3.h"
-#include "CryptoPP.h"
 
+#include <libdevcore/RLP.h>
+#include "CryptoPP.h"
 using namespace std;
 using namespace dev;
 
@@ -29,6 +30,7 @@ namespace dev
 {
 
 h256 EmptySHA3 = sha3(bytesConstRef());
+h256 ZeroRLPSHA3 = sha3(rlp(bytesConstRef()));
 
 std::string sha3(std::string const& _input, bool _hex)
 {
