@@ -45,6 +45,7 @@
 #include <osrng.h>
 #include <oids.h>
 #include <secp256k1/secp256k1.h>
+#include <dsa.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
 #include "Common.h"

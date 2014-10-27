@@ -84,11 +84,21 @@ Signature crypto::sign(Secret const& _k, bytesConstRef _message)
 	return std::move(retsig);
 }
 
-bool crypto::verify(Public _p, Signature _sig, bytesConstRef _message)
+bool crypto::verify(Public _p, Signature _sig, bytesConstRef _message, bool _raw)
 {
+	if (_raw)
+	{
+		assert(_message.size() == 32);
+		byte encpub[65] = {0x04};
+		memcpy(&encpub[1], _p.data(), 64);
+		byte dersig[72];
+		size_t cssz = DSAConvertSignatureFormat(dersig, 72, DSA_DER, _sig.data(), 64, DSA_P1363);
+		assert(cssz <= 72);
+		return (1 == secp256k1_ecdsa_verify(_message.data(), _message.size(), dersig, cssz, encpub, 65));
+	}
+	
 	ECDSA<ECP, SHA3_256>::Verifier verifier;
 	pp::initializeVerifier(_p, verifier);
-
 	// cryptopp signatures are 64 bytes
 	static_assert(sizeof(Signature) == 65, "Expected 65-byte signature.");
 	return verifier.VerifyMessage(_message.data(), _message.size(), _sig.data(), sizeof(Signature) - 1);
