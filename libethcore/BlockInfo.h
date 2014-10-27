@@ -47,7 +47,7 @@ extern u256 c_genesisDifficulty;
  * corresponding RLP block created with createGenesisBlock().
  *
  * The difficulty and gas-limit derivations may be calculated with the calculateDifficulty()
- * and calculateGasLimit() and the object serialised to RLP with fillStream. To determine the
+ * and calculateGasLimit() and the object serialised to RLP with streamRLP. To determine the
  * header hash without the nonce (for mining), the method headerHashWithoutNonce() is provided.
  *
  * The default constructor creates an empty object, which can be tested against with the boolean
@@ -62,6 +62,8 @@ public:
 	Address coinbaseAddress;
 	h256 stateRoot;
 	h256 transactionsRoot;
+	h256 receiptsRoot;
+	h512 logBloom;	// TODO LogBloom - get include
 	u256 difficulty;
 	u256 number;
 	u256 minGasPrice;
@@ -89,6 +91,8 @@ public:
 				coinbaseAddress == _cmp.coinbaseAddress &&
 				stateRoot == _cmp.stateRoot &&
 				transactionsRoot == _cmp.transactionsRoot &&
+				receiptsRoot == _cmp.receiptsRoot &&
+				logBloom == _cmp.logBloom &&
 				difficulty == _cmp.difficulty &&
 				number == _cmp.number &&
 				minGasPrice == _cmp.minGasPrice &&
@@ -112,13 +116,14 @@ public:
 
 	/// No-nonce sha3 of the header only.
 	h256 headerHashWithoutNonce() const;
-	void fillStream(RLPStream& _s, bool _nonce) const;
+	void streamRLP(RLPStream& _s, bool _nonce) const;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
-			_bi.difficulty << " " << _bi.number << " " << _bi.minGasPrice << " " << _bi.gasLimit << " " << _bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
+			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.minGasPrice << " " << _bi.gasLimit << " " <<
+			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
 	return _out;
 }
 

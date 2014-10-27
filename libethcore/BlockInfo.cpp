@@ -52,16 +52,16 @@ BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
 h256 BlockInfo::headerHashWithoutNonce() const
 {
 	RLPStream s;
-	fillStream(s, false);
+	streamRLP(s, false);
 	return sha3(s.out());
 }
 
 auto static const c_sha3EmptyList = sha3(RLPEmptyList);
 
-void BlockInfo::fillStream(RLPStream& _s, bool _nonce) const
+void BlockInfo::streamRLP(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 13 : 12)
-		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot
+	_s.appendList(_nonce ? 15 : 14)
+		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
@@ -84,14 +84,16 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		coinbaseAddress = _header[field = 2].toHash<Address>();
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
-		difficulty = _header[field = 5].toInt<u256>();
-		number = _header[field = 6].toInt<u256>();
-		minGasPrice = _header[field = 7].toInt<u256>();
-		gasLimit = _header[field = 8].toInt<u256>();
-		gasUsed = _header[field = 9].toInt<u256>();
-		timestamp = _header[field = 10].toInt<u256>();
-		extraData = _header[field = 11].toBytes();
-		nonce = _header[field = 12].toHash<h256>();
+		receiptsRoot = _header[field = 5].toHash<h256>();
+		logBloom = _header[field = 6].toHash<h512>();
+		difficulty = _header[field = 7].toInt<u256>();
+		number = _header[field = 8].toInt<u256>();
+		minGasPrice = _header[field = 9].toInt<u256>();
+		gasLimit = _header[field = 10].toInt<u256>();
+		gasUsed = _header[field = 11].toInt<u256>();
+		timestamp = _header[field = 12].toInt<u256>();
+		extraData = _header[field = 13].toBytes();
+		nonce = _header[field = 14].toHash<h256>();
 	}
 
 	catch (Exception & _e)
