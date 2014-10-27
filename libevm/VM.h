@@ -117,11 +117,14 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreGas * 2;
+				runGas = c_sstoreSetGas;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
+			{
 				runGas = 0;
+				_ext.sub.refunds += c_sstoreRefundGas;
+			}
 			else
-				runGas = c_sstoreGas;
+				runGas = c_sstoreResetGas;
 			break;
 
 		case Instruction::SLOAD:
