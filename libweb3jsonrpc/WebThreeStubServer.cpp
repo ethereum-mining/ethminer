@@ -249,7 +249,7 @@ std::string WebThreeStubServer::call(Json::Value const& _json)
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
-		t.gas = client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice;
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
 	ret = toJS(client()->call(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice));
 	return ret;
 }
@@ -393,7 +393,7 @@ Json::Value WebThreeStubServer::transact(Json::Value const& _json)
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(KeyPair(t.from).address()) / t.gasPrice);
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
 	cwarn << "Silently signing transaction from address" << t.from.abridged() << ": User validation hook goes here.";
 	if (t.to)
 		// TODO: from qethereum, insert validification hook here.

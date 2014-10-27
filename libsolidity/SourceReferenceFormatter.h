@@ -14,20 +14,35 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/**
+ * @author Christian <c@ethdev.com>
  * @date 2014
+ * Formatting functions for errors referencing positions and locations in the source.
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include <ostream>
+#include <libsolidity/BaseTypes.h>
 
 namespace dev
 {
 
-char const* Version = "0.7.6";
+class Exception; // forward
+
+namespace solidity
+{
+
+class Scanner; // forward
+
+struct SourceReferenceFormatter
+{
+public:
+	static void printSourceLocation(std::ostream& _stream, Location const& _location, Scanner const& _scanner);
+	static void printSourcePosition(std::ostream& _stream, int _position, Scanner const& _scanner);
+	static void printExceptionInformation(std::ostream& _stream, Exception const& _exception,
+										  std::string const& _name, Scanner const& _scanner);
+};
 
 }
-
+}
