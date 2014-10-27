@@ -78,6 +78,7 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
+	secp256k1_start();
 	int ok = secp256k1_ecdsa_seckey_verify(m_secret.data());
 	if (!ok)
 		return;
@@ -180,18 +181,8 @@ Signature dev::sign(Secret _k, h256 _hash)
 
 bool dev::verify(Public _p, Signature _s, h256 _hash)
 {
-	secp256k1_start();
-
-	// sig_t
-//	secp256k1_ecdsa_sig_t s;
-	int sz = sizeof(_s)-1;
-//	secp256k1_ecdsa_sig_serialize(_s.data()+1, &sz, &s);
-	
-	// pubk_t
-	byte pubkey[65] = {0x04};
-	memcpy(&pubkey[1], _p.data(), 64);
-
-//	int result = secp256k1_ecdsa_verify(_hash.data(), sizeof(_hash), &s, sizeof(s), pubkey, 65);
-	return 0;
+	// Placeholder. The signature should be verified if recovering public key isn't proof.
+	Public v = dev::recover(_s, _hash);
+	return (v == _p);
 }
 

@@ -81,20 +81,14 @@ Signature crypto::sign(Secret const& _k, bytesConstRef _message)
 	string sigstr;
 	StringSource s(_message.toString(), true, new SignerFilter(pp::PRNG, signer, new StringSink(sigstr)));
 	FixedHash<sizeof(Signature)> retsig((byte const*)sigstr.data(), Signature::ConstructFromPointer);
-	
-	/// eth signature: 65 bytes: r: [0, 32), s: [32, 64), v: 64.
 	return std::move(retsig);
 }
-
-//Public crypto::recover(Signature _sig, bytesConstRef _message)
-//{
-//	
-//}
 
 bool crypto::verify(Public _p, Signature _sig, bytesConstRef _message)
 {
 	ECDSA<ECP, SHA3_256>::Verifier verifier;
 	pp::initializeVerifier(_p, verifier);
+
 	// cryptopp signatures are 64 bytes
 	static_assert(sizeof(Signature) == 65, "Expected 65-byte signature.");
 	return verifier.VerifyMessage(_message.data(), _message.size(), _sig.data(), sizeof(Signature) - 1);
