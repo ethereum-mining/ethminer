@@ -74,7 +74,7 @@ public:
 	void init();
 	void setRoot(h256 _root)
 	{
-		m_root = _root == h256() ? c_shaNull : _root;
+		m_root = _root;
 		if (m_root == c_shaNull && !m_db->exists(m_root))
 			init();
 
@@ -82,14 +82,14 @@ public:
 		if (!node(m_root).size())
 			BOOST_THROW_EXCEPTION(RootNotFound());
 	}
-	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == h256() ? true : m_db->lookup(_root, _enforceRefs).size(); }
+	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == c_shaNull ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	bool isNull() const { return !node(m_root).size(); }
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { assert(node(m_root).size()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 

@@ -236,7 +236,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
 			break;
-		case Instruction::NEG:
+		case Instruction::BNOT:
 		case Instruction::NOT:
 		case Instruction::CALLDATALOAD:
 		case Instruction::EXTCODESIZE:
@@ -262,6 +262,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::XOR:
 		case Instruction::BYTE:
 		case Instruction::JUMPI:
+		case Instruction::SIGNEXTEND:
 			require(2);
 			break;
 		case Instruction::ADDMOD:
@@ -368,8 +369,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
-		case Instruction::NEG:
-			m_stack.back() = ~(m_stack.back() - 1);
+		case Instruction::BNOT:
+			m_stack.back() = ~m_stack.back();
 			break;
 		case Instruction::LT:
 			m_stack[m_stack.size() - 2] = m_stack.back() < m_stack[m_stack.size() - 2] ? 1 : 0;
@@ -420,6 +421,22 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
+		case Instruction::SIGNEXTEND:
+		{
+			unsigned k = m_stack[m_stack.size() - 2];
+			if (k > 31)
+				m_stack[m_stack.size() - 2] = m_stack.back();
+			else
+			{
+				u256 b = m_stack.back();
+				if ((b >> (k * 8)) & 0x80)
+					for (int i = 31; i > k; --i)
+						b |= (u256(0xff) << i);
+				m_stack[m_stack.size() - 2] = b;
+			}
+			m_stack.pop_back();
+			break;
+		}
 		case Instruction::SHA3:
 		{
 			unsigned inOff = (unsigned)m_stack.back();
