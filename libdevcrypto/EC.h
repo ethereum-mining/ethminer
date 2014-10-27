@@ -38,9 +38,6 @@ void decrypt(Secret const& _k, bytes& io_text);
 
 /// Returns siganture of message hash.
 Signature sign(Secret const& _k, bytesConstRef _message);
-	
-/// Recovers Public key from signed message.
-//Public recover(Signature _sig, bytesConstRef _message);
 
 /// Verify signature
 bool verify(Public _p, Signature _sig, bytesConstRef _message);
