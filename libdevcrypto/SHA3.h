@@ -57,6 +57,7 @@ inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_inpu
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
 
 extern h256 EmptySHA3;
+extern h256 ZeroRLPSHA3;
 
 // Other crypto convenience routines
 

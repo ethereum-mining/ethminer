@@ -131,6 +131,7 @@ Main::Main(QWidget *parent) :
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	m_ldb = new QLDB(this);
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
@@ -138,8 +139,8 @@ Main::Main(QWidget *parent) :
 		m_whisper = nullptr;
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), owned());
-		m_whisper = new QWhisper(this, whisper());
+		m_ethereum = new QEthereum(this, ethereum(), m_myKeys);
+		m_whisper = new QWhisper(this, whisper(), owned());
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
@@ -147,8 +148,9 @@ Main::Main(QWidget *parent) :
 		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh));
-		connect(m_whisper, SIGNAL(idsChanged()), this, SLOT(refreshWhisper()));
+		auto qldb = m_ldb;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qldb));
+		connect(m_whisper, SIGNAL(newIdToAdd(QString)), this, SLOT(addNewId(QString)));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -183,9 +185,18 @@ Main::~Main()
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
 	m_ethereum->clientDieing();
+	m_whisper->faceDieing();
 
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+void Main::addNewId(QString _ids)
+{
+	Secret _id = toSecret(_ids);
+	KeyPair kp(_id);
+	m_myIdentities.push_back(kp);
+	m_whisper->setIdentities(owned());
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const
@@ -494,15 +505,28 @@ void Main::on_paranoia_triggered()
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
-	QByteArray b;
-	b.resize(sizeof(Secret) * m_myKeys.size());
-	auto p = b.data();
-	for (auto i: m_myKeys)
 	{
-		memcpy(p, &(i.secret()), sizeof(Secret));
-		p += sizeof(Secret);
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myKeys.size());
+		auto p = b.data();
+		for (auto i: m_myKeys)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("address", b);
 	}
-	s.setValue("address", b);
+	{
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myIdentities.size());
+		auto p = b.data();
+		for (auto i: m_myIdentities)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("identities", b);
+	}
 
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forceAddress->text());
@@ -538,21 +562,39 @@ void Main::readSettings(bool _skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
 
-	m_myKeys.clear();
-	QByteArray b = s.value("address").toByteArray();
-	if (b.isEmpty())
-		m_myKeys.append(KeyPair::create());
-	else
 	{
-		h256 k;
-		for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+		m_myKeys.clear();
+		QByteArray b = s.value("address").toByteArray();
+		if (b.isEmpty())
+			m_myKeys.append(KeyPair::create());
+		else
 		{
-			memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-			if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
-				m_myKeys.append(KeyPair(k));
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
+					m_myKeys.append(KeyPair(k));
+			}
+		}
+		ethereum()->setAddress(m_myKeys.back().address());
+	}
+
+	{
+		m_myIdentities.clear();
+		QByteArray b = s.value("identities").toByteArray();
+		if (!b.isEmpty())
+		{
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
+					m_myIdentities.append(KeyPair(k));
+			}
 		}
 	}
-	ethereum()->setAddress(m_myKeys.back().address());
+
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
@@ -1742,6 +1784,7 @@ void Main::on_debug_clicked()
 				t.gasPrice = gasPrice();
 				t.gas = ui->gas->value();
 				t.data = m_data;
+				t.type = isCreation() ? Transaction::ContractCreation : Transaction::MessageCall;
 				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 				t.sign(s);
 				auto r = t.rlp();
