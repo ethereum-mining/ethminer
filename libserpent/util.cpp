@@ -137,7 +137,7 @@ std::string strToNumeric(std::string inp) {
     }
     else if (inp.substr(0,2) == "0x") {
 		for (unsigned i = 2; i < inp.length(); i++) {
-            int dig = std::string("0123456789abcdef").find(inp[i]);
+            int dig = std::string("0123456789abcdef0123456789ABCDEF").find(inp[i]) % 16;
             if (dig < 0) return "";
             o = decimalAdd(decimalMul(o,"16"), unsignedToDecimal(dig));
         }
@@ -219,8 +219,8 @@ void err(std::string errtext, Metadata met) {
     std::string err = "Error (file \"" + met.file + "\", line " +
         unsignedToDecimal(met.ln + 1) + ", char " + unsignedToDecimal(met.ch) +
         "): " + errtext;
-	std::cerr << err << "\n";
-	throw(err);
+    std::cerr << err << "\n";
+    throw(err);
 }
 
 //Bin to hex

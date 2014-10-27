@@ -47,12 +47,19 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	if (m_messages.count(_m))
 	{
 		UpgradeGuard ll(l);
-		m_messages.at(_m).streamOut(_s, true);
+		auto const& m = m_messages.at(_m);
+		cnote << "streamOut: " << m.expiry() << m.ttl() << m.topic() << toHex(m.data());
+		m.streamOut(_s, true);
 	}
 }
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
+
+	if (_m.expiry() <= time(0))
+		return;
+
 	auto h = _m.sha3();
 	{
 		UpgradableGuard l(x_messages);
@@ -60,9 +67,10 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			return;
 		UpgradeGuard ll(l);
 		m_messages[h] = _m;
+		m_expiryQueue[_m.expiry()] = h;
 	}
 
-	if (_p)
+//	if (_p)
 	{
 		Guard l(m_filterLock);
 		for (auto const& f: m_filters)
@@ -107,6 +115,28 @@ unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
 	return installWatchOnId(h);
 }
 
+h256s WhisperHost::watchMessages(unsigned _watchId)
+{
+	cleanup();
+	h256s ret;
+	auto wit = m_watches.find(_watchId);
+	if (wit == m_watches.end())
+		return ret;
+	TopicFilter f;
+	{
+		Guard l(m_filterLock);
+		auto fit = m_filters.find(wit->second.id);
+		if (fit == m_filters.end())
+			return ret;
+		f = fit->second.filter;
+	}
+	ReadGuard l(x_messages);
+	for (auto const& m: m_messages)
+		if (f.matches(m.second))
+			ret.push_back(m.first);
+	return ret;
+}
+
 void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
@@ -123,4 +153,14 @@ void WhisperHost::uninstallWatch(unsigned _i)
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
 			m_filters.erase(fit);
+}
+
+void WhisperHost::cleanup()
+{
+	// remove old messages.
+	// should be called every now and again.
+	auto now = time(0);
+	WriteGuard l(x_messages);
+	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
+		m_messages.erase(it->second);
 }
