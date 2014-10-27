@@ -58,6 +58,7 @@ enum class Instruction: uint8_t
 	BYTE,				///< retrieve single byte from word
 	ADDMOD,				///< unsigned modular addition
 	MULMOD,				///< unsigned modular multiplication
+	SIGNEXTEND,			///< perform sign extension starting at given bit
 	SHA3 = 0x20,		///< compute SHA3-256 hash
 
 	ADDRESS = 0x30,		///< get address of currently executing account
