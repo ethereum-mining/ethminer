@@ -749,12 +749,18 @@ Public QWhisper::makeIdentity()
 	return kp.pub();
 }
 
-QString QWhisper::createGroup(QString _json)
+QString QWhisper::newGroup(QString _me, QString _others)
 {
+	(void)_me;
+	(void)_others;
+	return "";
 }
 
 QString QWhisper::addToGroup(QString _group, QString _who)
 {
+	(void)_group;
+	(void)_who;
+	return "";
 }
 
 void QWhisper::poll()
