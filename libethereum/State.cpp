@@ -817,8 +817,12 @@ void State::commitToMine(BlockChain const& _bc)
 	}
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> receipts(&tm);
-	receipts.init();
+	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
+	transactionsTrie.init();
+
+	MemoryDB rm;
+	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
+	receiptsTrie.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -827,12 +831,15 @@ void State::commitToMine(BlockChain const& _bc)
 	{
 		RLPStream k;
 		k << i;
-		RLPStream v;
-		m_receipts[i].streamRLP(v);
-		receipts.insert(&k.out(), &v.out());
+
+		RLPStream receiptrlp;
+		m_receipts[i].streamRLP(receiptrlp);
+		receiptsTrie.insert(&k.out(), &receiptrlp.out());
 
 		RLPStream txrlp;
 		m_transactions[i].streamRLP(txrlp);
+		transactionsTrie.insert(&k.out(), &txrlp.out());
+
 		txs.appendRaw(txrlp.out());
 	}
 
@@ -840,7 +847,8 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
-	m_currentBlock.receiptsRoot = receipts.root();
+	m_currentBlock.transactionsRoot = transactionsTrie.root();
+	m_currentBlock.receiptsRoot = receiptsTrie.root();
 	m_currentBlock.logBloom = logBloom();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
