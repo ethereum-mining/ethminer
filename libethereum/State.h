@@ -54,7 +54,7 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 
 struct TransactionReceipt
 {
-	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms) {}
+	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms, LogEntries const& _logs): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms), logs(_logs) {}
 
 //	Manifest const& changes() const { return changes; }
 
@@ -69,6 +69,7 @@ struct TransactionReceipt
 	h256 stateRoot;
 	u256 gasUsed;
 	Manifest changes;
+	LogEntries logs;
 };
 
 struct PrecompiledAddress

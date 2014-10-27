@@ -36,8 +36,10 @@ namespace eth
 
 struct LogEntry
 {
+	LogEntry() {}
+	LogEntry(Address const& _f, h256s&& _ts, bytes&& _d): from(_f), topics(std::move(_ts)), data(std::move(_d)) {}
 	Address from;
-	h256 topics;
+	h256s topics;
 	bytes data;
 };
 
@@ -103,6 +105,9 @@ public:
 
 	/// Make a new message call.
 	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+
+	/// Revert any changes made (by any of the other calls).
+	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void revert() {}

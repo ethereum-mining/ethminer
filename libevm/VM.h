@@ -172,6 +172,18 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			runGas = c_balanceGas;
 			break;
 
+		case Instruction::LOG0:
+		case Instruction::LOG1:
+		case Instruction::LOG2:
+		case Instruction::LOG3:
+		case Instruction::LOG4:
+		{
+			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
+			require(n + 2);
+			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
+			break;
+		}
+
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			require(7);
@@ -690,6 +702,21 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.push_back(m_gas);
 			break;
 		case Instruction::JUMPDEST:
+			break;
+		case Instruction::LOG0:
+			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG1:
+			_ext.log({m_stack[m_stack.size() - 1]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 2], (unsigned)m_stack[m_stack.size() - 3]));
+			break;
+		case Instruction::LOG2:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 3], (unsigned)m_stack[m_stack.size() - 4]));
+			break;
+		case Instruction::LOG3:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 4], (unsigned)m_stack[m_stack.size() - 5]));
+			break;
+		case Instruction::LOG4:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 5], (unsigned)m_stack[m_stack.size() - 6]));
 			break;
 		case Instruction::CREATE:
 		{
