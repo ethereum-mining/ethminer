@@ -48,7 +48,7 @@ bool Message::populate(bytes const& _data)
 		return false;
 
 	byte flags = _data[0];
-	if (!!(flags & ContainsSignature) && _data.size() > sizeof(Signature) + 1)	// has a signature
+	if (!!(flags & ContainsSignature) && _data.size() >= sizeof(Signature) + 1)	// has a signature
 	{
 		bytesConstRef payload = bytesConstRef(&_data).cropped(1, _data.size() - sizeof(Signature) - 1);
 		h256 h = sha3(payload);
