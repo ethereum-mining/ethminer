@@ -181,8 +181,6 @@ Signature dev::sign(Secret _k, h256 _hash)
 
 bool dev::verify(Public _p, Signature _s, h256 _hash)
 {
-	// Placeholder. The signature should be verified if recovering public key isn't proof.
-	Public v = dev::recover(_s, _hash);
-	return (v == _p);
+	return crypto::verify(_p, _s, bytesConstRef(_hash.data(), 32), true);
 }
 

@@ -40,7 +40,7 @@ void decrypt(Secret const& _k, bytes& io_text);
 Signature sign(Secret const& _k, bytesConstRef _message);
 
 /// Verify signature
-bool verify(Public _p, Signature _sig, bytesConstRef _message);
+bool verify(Public _p, Signature _sig, bytesConstRef _message, bool _raw = false);
 
 }
 }
