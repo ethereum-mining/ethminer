@@ -162,6 +162,12 @@ enum class Instruction: uint8_t
 	SWAP15,				///< swaps the highest and 16th highest value on the stack
 	SWAP16,				///< swaps the highest and 17th highest value on the stack
 
+	LOG0 = 0xa0,		///< Makes a log entry; no topics.
+	LOG1,				///< Makes a log entry; 1 topic.
+	LOG2,				///< Makes a log entry; 2 topics.
+	LOG3,				///< Makes a log entry; 3 topics.
+	LOG4,				///< Makes a log entry; 4 topics.
+
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account
 	RETURN,				///< halt execution returning output data

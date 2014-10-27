@@ -1114,7 +1114,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed(), ms));
+	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed(), ms, e.logs()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
