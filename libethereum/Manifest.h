@@ -41,7 +41,7 @@ struct Manifest
 {
 	Manifest() {}
 	Manifest(bytesConstRef _r);
-	void streamOut(RLPStream& _s) const;
+	void streamRLP(RLPStream& _s) const;
 
 	h256 bloom() const { h256 ret = from.bloom() | to.bloom(); for (auto const& i: internal) ret |= i.bloom(); for (auto const& i: altered) ret |= h256(i).bloom(); return ret; }
 

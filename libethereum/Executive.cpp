@@ -123,7 +123,11 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
+	{
 		m_endGas = _gas;
+		if (m_ext)
+			m_ext->sub.logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
+	}
 	return !m_ext;
 }
 

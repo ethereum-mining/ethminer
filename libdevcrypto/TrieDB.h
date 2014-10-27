@@ -45,6 +45,7 @@ struct TrieDBChannel: public LogChannel  { static const char* name() { return "-
 
 struct InvalidTrie: virtual dev::Exception {};
 extern const h256 c_shaNull;
+extern const h256 EmptyTrie;
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.

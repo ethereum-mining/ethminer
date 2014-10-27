@@ -159,7 +159,7 @@ void Client::clearPending()
 		if (!m_postMine.pending().size())
 			return;
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-			appendFromNewPending(m_postMine.bloom(i), changeds);
+			appendFromNewPending(m_postMine.oldBloom(i), changeds);
 		changeds.insert(PendingChangedFilter);
 		m_postMine = m_preMine;
 	}

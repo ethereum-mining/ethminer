@@ -36,7 +36,7 @@ BuildTopic& BuildTopic::shiftBytes(bytes const& _b)
 h256 TopicFilter::sha3() const
 {
 	RLPStream s;
-	fillStream(s);
+	streamRLP(s);
 	return dev::sha3(s.out());
 }
 
