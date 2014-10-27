@@ -9,6 +9,7 @@
 			{ "method": "accounts", "params": [], "order": [], "returns" : [] },
 			{ "method": "peerCount", "params": [], "order": [], "returns" : 0 },
 			{ "method": "defaultBlock", "params": [], "order": [], "returns" : 0},
+			{ "method": "setDefaultBlock", "params": [0], "order": [], "returns" : true},
 			{ "method": "number", "params": [], "order": [], "returns" : 0},
 
 			{ "method": "balanceAt", "params": [""], "order": [], "returns" : ""},
