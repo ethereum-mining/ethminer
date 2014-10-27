@@ -19,3 +19,5 @@ if (window.Promise === undefined) {
 	window.Promise = ES6Promise.Promise;
 }
 
+web3.setProvider(new web3.providers.QtProvider());
+
