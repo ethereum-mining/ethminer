@@ -343,7 +343,17 @@ int WebThreeStubServer::peerCount()
 
 bool WebThreeStubServer::setCoinbase(std::string const& _address)
 {
+	if (!client())
+		return false;
 	client()->setAddress(jsToAddress(_address));
+	return true;
+}
+
+bool WebThreeStubServer::setDefaultBlock(int const& _block)
+{
+	if (!client())
+		return false;
+	client()->setDefault(_block);
 	return true;
 }
 
@@ -359,7 +369,7 @@ bool WebThreeStubServer::setListening(bool const& _listening)
 bool WebThreeStubServer::setMining(bool const& _mining)
 {
 	if (!client())
-		return Json::nullValue;
+		return false;
 
 	if (_mining)
 		client()->startMining();

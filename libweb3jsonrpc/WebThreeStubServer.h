@@ -58,6 +58,7 @@ public:
 	virtual int number();
 	virtual int peerCount();
 	virtual bool setCoinbase(std::string const& _address);
+	virtual bool setDefaultBlock(int const& _block);
 	virtual bool setListening(bool const& _listening);
 	virtual bool setMining(bool const& _mining);
 	virtual std::string stateAt(std::string const& _address, std::string const& _storage);
