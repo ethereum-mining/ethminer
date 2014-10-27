@@ -86,14 +86,15 @@ Signature crypto::sign(Secret const& _k, bytesConstRef _message)
 
 bool crypto::verify(Public _p, Signature _sig, bytesConstRef _message, bool _raw)
 {
+	static size_t derMaxEncodingLength = 72;
 	if (_raw)
 	{
 		assert(_message.size() == 32);
 		byte encpub[65] = {0x04};
 		memcpy(&encpub[1], _p.data(), 64);
-		byte dersig[72];
-		size_t cssz = DSAConvertSignatureFormat(dersig, 72, DSA_DER, _sig.data(), 64, DSA_P1363);
-		assert(cssz <= 72);
+		byte dersig[derMaxEncodingLength];
+		size_t cssz = DSAConvertSignatureFormat(dersig, derMaxEncodingLength, DSA_DER, _sig.data(), 64, DSA_P1363);
+		assert(cssz <= derMaxEncodingLength);
 		return (1 == secp256k1_ecdsa_verify(_message.data(), _message.size(), dersig, cssz, encpub, 65));
 	}
 	
