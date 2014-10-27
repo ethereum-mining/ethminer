@@ -172,6 +172,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
+			if (m_ext)
+				m_endGas += min((m_t.gas - m_endGas) / 2, m_ext->sub.refunds);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
@@ -236,6 +238,6 @@ void Executive::finalize(OnOpFunc const&)
 
 	// Suicides...
 	if (m_ext)
-		for (auto a: m_ext->suicides)
+		for (auto a: m_ext->sub.suicides)
 			m_s.m_cache[a].kill();
 }

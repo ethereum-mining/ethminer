@@ -24,6 +24,7 @@
 #include <set>
 #include <functional>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonData.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
@@ -33,13 +34,28 @@ namespace dev
 namespace eth
 {
 
-struct Post
+struct LogEntry
 {
 	Address from;
-	Address to;
-	u256 value;
+	h256 topics;
 	bytes data;
-	u256 gas;
+};
+
+using LogEntries = std::vector<LogEntry>;
+
+struct SubState
+{
+	std::set<Address> suicides;	///< Any accounts that have suicided.
+	LogEntries logs;			///< Any logs.
+	u256 refunds;				///< Refund counter of SSTORE nonzero->zero.
+
+	SubState& operator+=(SubState const& _s)
+	{
+		suicides += _s.suicides;
+		refunds += _s.refunds;
+		suicides += _s.suicides;
+		return *this;
+	}
 };
 
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
@@ -80,7 +96,7 @@ public:
 	virtual u256 txCount(Address) { return 0; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	virtual void suicide(Address) { suicides.insert(myAddress); }
+	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
 	virtual h160 create(u256, u256*, bytesConstRef, OnOpFunc const&) { return h160(); }
@@ -103,7 +119,7 @@ public:
 	bytesConstRef code;			///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
-	std::set<Address> suicides;	///< Any accounts that have suicided.
+	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
 	unsigned depth;				///< Depth of the present call.
 };
 

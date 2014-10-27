@@ -44,7 +44,7 @@ enum class Instruction: uint8_t
 	MOD,				///< modulo remainder operation
 	SMOD,				///< signed modulo remainder operation
 	EXP,				///< exponential operation
-	NEG,				///< negation operation
+	BNOT,				///< bitwise not
 	LT,					///< less-than comparision
 	GT,					///< greater-than comparision
 	SLT,				///< signed less-than comparision
@@ -58,6 +58,7 @@ enum class Instruction: uint8_t
 	BYTE,				///< retrieve single byte from word
 	ADDMOD,				///< unsigned modular addition
 	MULMOD,				///< unsigned modular multiplication
+	SIGNEXTEND,			///< extend length of signed integer
 	SHA3 = 0x20,		///< compute SHA3-256 hash
 
 	ADDRESS = 0x30,		///< get address of currently executing account

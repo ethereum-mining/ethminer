@@ -32,7 +32,9 @@ extern u256 const c_stepGas;			///< Once per operation, except for SSTORE, SLOAD
 extern u256 const c_balanceGas;			///< Once per BALANCE operation.
 extern u256 const c_sha3Gas;			///< Once per SHA3 operation.
 extern u256 const c_sloadGas;			///< Once per SLOAD operation.
-extern u256 const c_sstoreGas;			///< Once per non-zero storage element in a CREATE call/transaction. Also, once/twice per SSTORE operation depending on whether the zeroness changes (twice iff it changes from zero; nothing at all if to zero) or doesn't (once).
+extern u256 const c_sstoreSetGas;		///< Once per SSTORE operation if the zeroness changes from zero.
+extern u256 const c_sstoreResetGas;		///< Once per SSTORE operation if the zeroness doesn't change.
+extern u256 const c_sstoreRefundGas;	///< Refunded gas, once per SSTORE operation if the zeroness changes to zero.
 extern u256 const c_createGas;			///< Once per CREATE operation & contract-creation transaction.
 extern u256 const c_callGas;			///< Once per CALL operation & message call transaction.
 extern u256 const c_memoryGas;			///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.

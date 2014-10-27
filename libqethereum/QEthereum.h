@@ -1,10 +1,38 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file QEthereum.h
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
 #pragma once
+
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
 
 #include <QtCore/QObject>
 #include <QtCore/QStringList>
 #include <QtCore/QList>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
+
+namespace ldb = leveldb;
 
 namespace dev {
 namespace eth {
@@ -214,11 +242,13 @@ class QWhisper: public QObject
 	Q_OBJECT
 
 public:
-	QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c);
+	QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c, QList<dev::KeyPair> _ids);
 	virtual ~QWhisper();
 
 	std::shared_ptr<dev::shh::Interface> face() const;
 	void setFace(std::shared_ptr<dev::shh::Interface> const& _c) { m_face = _c; }
+
+	void setIdentities(QList<dev::KeyPair> const& _l);
 
 	/// Call when the face() is going to be deleted to make this object useless but safe.
 	void faceDieing();
@@ -229,6 +259,9 @@ public:
 	Q_INVOKABLE void doPost(QString _json);
 
 	Q_INVOKABLE QString newIdentity();
+
+	Q_INVOKABLE QString newGroup(QString _id, QString _who);
+	Q_INVOKABLE QString addToGroup(QString _group, QString _who);
 
 	// Watches interface
 	Q_INVOKABLE unsigned newWatch(QString _json);
@@ -247,6 +280,7 @@ public slots:
 signals:
 	void watchChanged(unsigned _w, QString _envelopeJson);
 	void idsChanged();
+	void newIdToAdd(QString _id);
 
 private:
 	std::weak_ptr<dev::shh::Interface> m_face;
@@ -255,16 +289,41 @@ private:
 	std::map<dev::Public, dev::Secret> m_ids;
 };
 
+class QLDB: public QObject
+{
+	Q_OBJECT
+
+public:
+	QLDB(QObject* _p);
+	~QLDB();
+
+	Q_INVOKABLE void put(QString _name, QString _key, QString _value);
+	Q_INVOKABLE QString get(QString _name, QString _key);
+	Q_INVOKABLE void putString(QString _name, QString _key, QString _value);
+	Q_INVOKABLE QString getString(QString _name, QString _key);
+
+private:
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
+
+	ldb::DB* m_db;
+};
+
 // TODO: add p2p object
-#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _web3, _eth, _shh) [_frame, _env, _web3, _eth, _shh]() \
+#define QETH_INSTALL_JS_NAMESPACE(_frame, _env, _web3, _eth, _shh, _ldb) [_frame, _env, _web3, _eth, _shh, _ldb]() \
 { \
 	_frame->disconnect(); \
 	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
 	_frame->addToJavaScriptWindowObject("web3", _web3, QWebFrame::ScriptOwnership); \
+	if (_ldb) \
+	{ \
+		_frame->addToJavaScriptWindowObject("_web3_dot_db", _ldb, QWebFrame::QtOwnership); \
+		_frame->evaluateJavaScript("web3.db = _web3_dot_db"); \
+	} \
 	if (_eth) \
 	{ \
 		_frame->addToJavaScriptWindowObject("_web3_dot_eth", _eth, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("_web3_dot_eth.makeWatch = function(a) { var ww = _web3_dot_eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_eth.killWatch(w); }; ret.changed = function(f) { _web3_dot_eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(_web3_dot_eth.watchMessages(this.w)) }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_eth.makeWatch = function(a) { var ww = _web3_dot_eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_eth.killWatch(this.w); }; ret.changed = function(f) { _web3_dot_eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(_web3_dot_eth.watchMessages(this.w)) }; return ret; }"); \
 		_frame->evaluateJavaScript("_web3_dot_eth.watch = function(a) { return _web3_dot_eth.makeWatch(JSON.stringify(a)) }"); \
 		_frame->evaluateJavaScript("_web3_dot_eth.transact = function(a, f) { var r = _web3_dot_eth.doTransact(JSON.stringify(a)); if (f) f(r); }"); \
 		_frame->evaluateJavaScript("_web3_dot_eth.call = function(a, f) { var ret = _web3_dot_eth.doCallJson(JSON.stringify(a)); if (f) f(ret); return ret; }"); \
@@ -277,7 +336,7 @@ private:
 	if (_shh) \
 	{ \
 		_frame->addToJavaScriptWindowObject("_web3_dot_shh", _shh, QWebFrame::ScriptOwnership); \
-		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(json) { var ww = _web3_dot_shh.newWatch(json); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(w); }; ret.arrived = function(f) { _web3_dot_shh.watchChanged.connect(function(nw, envelope) { if (nw == ww) f(JSON.parse(envelope)) }); var existing = JSON.parse(_web3_dot_shh.watchMessages(ww)); for (var e in existing) f(existing[e]) }; return ret; }"); \
+		_frame->evaluateJavaScript("_web3_dot_shh.makeWatch = function(json) { var ww = _web3_dot_shh.newWatch(json); var ret = { w: ww }; ret.uninstall = function() { _web3_dot_shh.killWatch(this.w); }; ret.arrived = function(f) { _web3_dot_shh.watchChanged.connect(function(nw, envelope) { if (nw == ww) f(JSON.parse(envelope)) }); var existing = JSON.parse(_web3_dot_shh.watchMessages(this.w)); for (var e in existing) f(existing[e]) }; return ret; }"); \
 		_frame->evaluateJavaScript("_web3_dot_shh.watch = function(filter) { return _web3_dot_shh.makeWatch(JSON.stringify(filter)) }"); \
 		_frame->evaluateJavaScript("_web3_dot_shh.post = function(message) { return _web3_dot_shh.doPost(JSON.stringify(message)) }"); \
 		_frame->evaluateJavaScript("web3.shh = _web3_dot_shh"); \
