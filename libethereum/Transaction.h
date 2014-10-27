@@ -64,11 +64,11 @@ struct Transaction
 
 	static h256 kFromMessage(h256 _msg, h256 _priv);
 
-	void fillStream(RLPStream& _s, bool _sig = true) const;
-	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
+	void streamRLP(RLPStream& _s, bool _sig = true) const;
+	bytes rlp(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return s.out(); }
 	std::string rlpString(bool _sig = true) const { return asString(rlp(_sig)); }
-	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return dev::sha3(s.out()); }
-	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return dev::sha3Bytes(s.out()); }
+	h256 sha3(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return dev::sha3(s.out()); }
+	bytes sha3Bytes(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return dev::sha3Bytes(s.out()); }
 
 private:
 	mutable Address m_sender;
