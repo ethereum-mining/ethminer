@@ -353,9 +353,9 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
-			s = AddressState(0, 0, h256(), EmptySHA3);
+			s = AddressState(0, 0, ZeroRLPSHA3, EmptySHA3);
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].isEmpty() ? EmptySHA3 : state[3].toHash<h256>());
+			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
@@ -1119,7 +1119,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1154,9 +1154,8 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		{
 			auto out = vm.go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_suicides)
-				for (auto i: evm.suicides)
-					o_suicides->insert(i);
+			if (o_sub)
+				*o_sub += evm.sub;
 			if (o_ms)
 				o_ms->output = out.toBytes();
 		}
@@ -1189,7 +1188,7 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1218,9 +1217,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		out = vm.go(evm, _onOp);
 		if (o_ms)
 			o_ms->output = out.toBytes();
-		if (o_suicides)
-			for (auto i: evm.suicides)
-				o_suicides->insert(i);
+		if (o_sub)
+			*o_sub += evm.sub;
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -1240,7 +1238,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		clog(StateChat) << "std::exception in VM: " << _e.what();
 	}
 
-	// TODO: CHECK: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
+	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
 
 	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)

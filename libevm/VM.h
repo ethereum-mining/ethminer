@@ -117,11 +117,14 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreGas * 2;
+				runGas = c_sstoreSetGas;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
+			{
 				runGas = 0;
+				_ext.sub.refunds += c_sstoreRefundGas;
+			}
 			else
-				runGas = c_sstoreGas;
+				runGas = c_sstoreResetGas;
 			break;
 
 		case Instruction::SLOAD:
@@ -236,7 +239,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
 			break;
-		case Instruction::NEG:
+		case Instruction::BNOT:
 		case Instruction::NOT:
 		case Instruction::CALLDATALOAD:
 		case Instruction::EXTCODESIZE:
@@ -261,8 +264,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::OR:
 		case Instruction::XOR:
 		case Instruction::BYTE:
-		case Instruction::SIGNEXTEND:
 		case Instruction::JUMPI:
+		case Instruction::SIGNEXTEND:
 			require(2);
 			break;
 		case Instruction::ADDMOD:
@@ -369,8 +372,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
-		case Instruction::NEG:
-			m_stack.back() = ~(m_stack.back() - 1);
+		case Instruction::BNOT:
+			m_stack.back() = ~m_stack.back();
 			break;
 		case Instruction::LT:
 			m_stack[m_stack.size() - 2] = m_stack.back() < m_stack[m_stack.size() - 2] ? 1 : 0;
@@ -422,18 +425,21 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SIGNEXTEND:
-			if (m_stack.back() < 31)
+		{
+			unsigned k = m_stack[m_stack.size() - 2];
+			if (k > 31)
+				m_stack[m_stack.size() - 2] = m_stack.back();
+			else
 			{
-				unsigned const testBit(m_stack.back() * 8 + 7);
-				u256& number = m_stack[m_stack.size() - 2];
-				u256 mask = ((u256(1) << testBit) - 1);
-				if (boost::multiprecision::bit_test(number, testBit))
-					number |= ~mask;
-				else
-					number &= mask;
+				u256 b = m_stack.back();
+				if ((b >> (k * 8)) & 0x80)
+					for (int i = 31; i > k; --i)
+						b |= (u256(0xff) << i);
+				m_stack[m_stack.size() - 2] = b;
 			}
 			m_stack.pop_back();
 			break;
+		}
 		case Instruction::SHA3:
 		{
 			unsigned inOff = (unsigned)m_stack.back();

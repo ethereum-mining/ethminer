@@ -288,12 +288,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -367,16 +367,10 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			{
 				h256 ch = sha3(i.second.code());
 				_db.insert(ch, &i.second.code());
-				if (i.second.code().size())
-					s << ch;
-				else
-					s << "";
+				s << ch;
 			}
 			else
-				if (i.second.codeHash() == EmptySHA3)
-					s << "";
-				else
-					s << i.second.codeHash();
+				s << i.second.codeHash();
 
 			_state.insert(i.first, &s.out());
 		}
