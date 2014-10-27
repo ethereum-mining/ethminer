@@ -64,16 +64,16 @@ static CryptoPP::AutoSeededRandomPool PRNG;
 /// CryptoPP EC Cruve
 static const CryptoPP::OID secp256k1Curve = CryptoPP::ASN1::secp256k1();
 
-/// Initialize signer
+/// Initialize signer with Secret
 void initializeSigner(Secret const& _s, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Signer& out_signer);
 	
-/// Initialize verifier
+/// Initialize verifier with Public
 void initializeVerifier(Public const& _p, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Verifier& _verifier);
 	
-/// Conversion from Public key to cryptopp encryptor
+/// Initialize cryptopp encryptor with Public
 void initializeEncryptor(Public const& _p, CryptoPP::ECIES<CryptoPP::ECP>::Encryptor& out_encryptor);
 	
-/// Conversion from Secret key to cryptopp decryptor
+/// Initialize cryptopp decryptor with Secret
 void initializeDecryptor(Secret const& _s, CryptoPP::ECIES<CryptoPP::ECP>::Decryptor& out_decryptor);
 
 /// Conversion from cryptopp public key to bytes
