@@ -36,7 +36,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::setListeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::setMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::stateAtI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::transactI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::transactionByHashI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::transactionByNumberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("uncleByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::uncleByHashI);
@@ -214,7 +214,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool setListening(const bool& param1) = 0;
         virtual bool setMining(const bool& param1) = 0;
         virtual std::string stateAt(const std::string& param1, const std::string& param2) = 0;
-        virtual Json::Value transact(const Json::Value& param1) = 0;
+        virtual std::string transact(const Json::Value& param1) = 0;
         virtual Json::Value transactionByHash(const std::string& param1, const int& param2) = 0;
         virtual Json::Value transactionByNumber(const int& param1, const int& param2) = 0;
         virtual Json::Value uncleByHash(const std::string& param1, const int& param2) = 0;

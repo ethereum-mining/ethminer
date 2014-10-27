@@ -374,7 +374,7 @@ std::string WebThreeStubServer::stateAt(string const& _address, string const& _s
 	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
 }
 
-Json::Value WebThreeStubServer::transact(Json::Value const& _json)
+std::string WebThreeStubServer::transact(Json::Value const& _json)
 {
 	std::string ret;
 	if (!client())

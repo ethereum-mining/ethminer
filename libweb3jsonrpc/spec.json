@@ -16,7 +16,7 @@
 			{ "method": "countAt", "params": [""], "order": [], "returns" : 0.0},
 			{ "method": "codeAt", "params": [""], "order": [], "returns": ""},
 
-			{ "method": "transact", "params": [{}], "order": [], "returns": []},
+			{ "method": "transact", "params": [{}], "order": [], "returns": ""},
 			{ "method": "call", "params": [{}], "order": [], "returns": ""},
 
 			{ "method": "blockByHash", "params": [""],"order": [], "returns": {}},
