@@ -1,3 +1,25 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file QEthereum.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
+#include <boost/filesystem.hpp>
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libdevcrypto/FileSystem.h>
@@ -536,8 +558,9 @@ void QEthereum::poll()
 
 // TODO: repot and hook all these up.
 
-QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c): QObject(_p), m_face(_c)
+QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c, QList<dev::KeyPair> _ids): QObject(_p), m_face(_c)
 {
+	setIdentities(_ids);
 }
 
 QWhisper::~QWhisper()
@@ -611,6 +634,14 @@ void QWhisper::doPost(QString _json)
 	}
 
 	face()->inject(toSealed(_json, m, from));
+}
+
+void QWhisper::setIdentities(QList<dev::KeyPair> const& _l)
+{
+	m_ids.clear();
+	for (auto i: _l)
+		m_ids[i.pub()] = i.secret();
+	emit idsChanged();
 }
 
 static pair<shh::TopicMask, Public> toWatch(QString _json)
@@ -714,9 +745,16 @@ QString QWhisper::newIdentity()
 Public QWhisper::makeIdentity()
 {
 	KeyPair kp = KeyPair::create();
-	m_ids[kp.pub()] = kp.sec();
-	emit idsChanged();
+	emit newIdToAdd(toQJS(kp.sec()));
 	return kp.pub();
+}
+
+QString QWhisper::createGroup(QString _json)
+{
+}
+
+QString QWhisper::addToGroup(QString _group, QString _who)
+{
 }
 
 void QWhisper::poll()
@@ -738,6 +776,51 @@ void QWhisper::poll()
 					m = e.open();
 				emit watchChanged(w.first, toJson(h, e, m));
 			}
+}
+
+#include <libdevcrypto/FileSystem.h>
+
+QLDB::QLDB(QObject* _p): QObject(_p)
+{
+	auto path = getDataDir() + "/.web3";
+	boost::filesystem::create_directories(path);
+	ldb::Options o;
+	o.create_if_missing = true;
+	ldb::DB::Open(o, path, &m_db);
+}
+
+QLDB::~QLDB()
+{
+}
+
+void QLDB::put(QString _p, QString _k, QString _v)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	bytes v = toBytes(_v);
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+}
+
+QString QLDB::get(QString _p, QString _k)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return toQJS(dev::asBytes(ret));
+}
+
+void QLDB::putString(QString _p, QString _k, QString _v)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string v = _v.toStdString();
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+}
+
+QString QLDB::getString(QString _p, QString _k)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return QString::fromStdString(ret);
 }
 
 // extra bits needed to link on VS
