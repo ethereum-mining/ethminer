@@ -1784,6 +1784,7 @@ void Main::on_debug_clicked()
 				t.gasPrice = gasPrice();
 				t.gas = ui->gas->value();
 				t.data = m_data;
+				t.type = isCreation() ? Transaction::ContractCreation : Transaction::MessageCall;
 				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 				t.sign(s);
 				auto r = t.rlp();
