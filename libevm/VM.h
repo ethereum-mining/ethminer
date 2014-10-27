@@ -422,12 +422,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SIGNEXTEND:
-			if (m_stack.back() < 255)
+			if (m_stack.back() < 31)
 			{
-				unsigned const bit(m_stack.back());
+				unsigned const testBit(m_stack.back() * 8 + 7);
 				u256& number = m_stack[m_stack.size() - 2];
-				u256 mask = ((u256(1) << bit) - 1);
-				if (boost::multiprecision::bit_test(number, bit))
+				u256 mask = ((u256(1) << testBit) - 1);
+				if (boost::multiprecision::bit_test(number, testBit))
 					number |= ~mask;
 				else
 					number &= mask;
