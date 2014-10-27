@@ -81,20 +81,10 @@ private:
 { \
 	_frame->disconnect(); \
 	_frame->addToJavaScriptWindowObject("_web3", qweb, QWebFrame::ScriptOwnership); \
-	_frame->evaluateJavaScript("navigator.qt = _web3;"); \
-	_frame->evaluateJavaScript("(function () {" \
-							"navigator.qt.handlers = [];" \
-							"Object.defineProperty(navigator.qt, 'onmessage', {" \
-							"	set: function(handler) {" \
-							"		navigator.qt.handlers.push(handler);" \
-							"	}" \
-							"})" \
-							"})()"); \
-	_frame->evaluateJavaScript("navigator.qt.response.connect(function (res) {" \
-							"navigator.qt.handlers.forEach(function (handler) {" \
-							"	handler(res);" \
-							"})" \
-							"})"); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/es6-promise-2.0.0.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/setup.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/main.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/qt.js")); \
 }
 
 

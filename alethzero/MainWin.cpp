@@ -90,6 +90,15 @@ static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
 	return {std::begin(list), std::end(list)};
 }
 
+static QString contentsOfQResource(std::string const& res)
+{
+	QFile file(QString::fromStdString(res));
+	if (!file.open(QFile::ReadOnly))
+		return "";
+	QTextStream in(&file);
+	return in.readAll();
+}
+
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
 Main::Main(QWidget *parent) :

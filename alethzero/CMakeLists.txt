@@ -24,6 +24,9 @@ find_package(Qt5WebKitWidgets REQUIRED)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
+qt5_add_resources(AQRC alethzero.qrc)
+add_custom_target(alethqrc DEPENDS ${AQRC})
+
 # Set name of binary and add_executable()
 file(GLOB HEADERS "*.h")
 if (APPLE)
@@ -42,15 +45,17 @@ if (APPLE)
 	set(MACOSX_BUNDLE_ICON_FILE alethzero)
 	include(BundleUtilities)
 
-	add_executable(${EXECUTEABLE} MACOSX_BUNDLE alethzero.icns Main.ui ${SRC_LIST} ${HEADERS})
+	add_executable(${EXECUTEABLE} MACOSX_BUNDLE alethzero.icns Main.ui ${SRC_LIST} ${HEADERS} ${AQRC})
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
 	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
 	SET_SOURCE_FILES_PROPERTIES(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
 else ()
 	set(EXECUTEABLE alethzero)
-	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST} ${HEADERS})
+	add_executable(${EXECUTEABLE} Main.ui ${SRC_LIST} ${HEADERS} ${AQRC})
 endif ()
+
+add_dependencies(${EXECUTEABLE} alethqrc)
 
 qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
 target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp ${CRYPTOPP_LS} serpent lll evmface devcore web3jsonrpc)
