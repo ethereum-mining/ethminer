@@ -61,7 +61,7 @@ public:
 	virtual bool setListening(bool const& _listening);
 	virtual bool setMining(bool const& _mining);
 	virtual std::string stateAt(std::string const& _address, std::string const& _storage);
-	virtual Json::Value transact(Json::Value const& _json);
+	virtual std::string transact(Json::Value const& _json);
 	virtual Json::Value transactionByHash(std::string const& _hash, int const& _i);
 	virtual Json::Value transactionByNumber(int const& _number, int const& _i);
 	virtual Json::Value uncleByHash(std::string const& _hash, int const& _i);
