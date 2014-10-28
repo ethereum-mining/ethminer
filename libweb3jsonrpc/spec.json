@@ -32,13 +32,19 @@
 			{ "method": "newFilter", "params": [{}], "order": [], "returns": 0},
 			{ "method": "newFilterString", "params": [""], "order": [], "returns": 0},
 			{ "method": "uninstallFilter", "params": [0], "order": [], "returns": true},
-			{ "method": "changed", "params": [0], "order": [], "returns": true},
+			{ "method": "changed", "params": [0], "order": [], "returns": false},
 			{ "method": "getMessages", "params": [0], "order": [], "returns": []},
 
             { "method": "put", "params": ["", "", ""], "order": [], "returns": true},
             { "method": "get", "params": ["", ""], "order": [], "returns": ""},
             { "method": "putString", "params": ["", "", ""], "order": [], "returns": true},
-            { "method": "getString", "params": ["", ""], "order": [], "returns": ""}
+            { "method": "getString", "params": ["", ""], "order": [], "returns": ""},
+
+            { "method": "post", "params": [{}], "order": [], "returns": true},
+            { "method": "newIdentity", "params": [], "order": [], "returns": ""},
+            { "method": "haveIdentity", "params": [""], "order": [], "returns": false},
+            { "method": "newGroup", "params": ["", ""], "order": [], "returns": ""},
+            { "method": "addToGroup", "params": ["", ""], "order": [], "returns": ""}
             
 ]
 

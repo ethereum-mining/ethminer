@@ -82,8 +82,9 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 		return fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(jsPadded(_s, N)));
 }
 
-inline Address jsToAddress(std::string const& _s) { return jsToFixed<20>(_s); }
-inline Secret jsToSecret(std::string const& _s) { return jsToFixed<32>(_s); }
+inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
+inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
+inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
 inline std::string jsToBinary(std::string const& _s)

@@ -149,7 +149,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector = new QWebThreeConnector();
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(owned())));
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->StartListening();
 
 	
@@ -1142,7 +1142,7 @@ void Main::ourAccountsRowsMoved()
 	m_myKeys = myKeys;
 
 	if (m_server.get())
-		m_server->setAccounts(keysAsVector(owned()));
+		m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_inject_triggered()
