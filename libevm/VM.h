@@ -423,7 +423,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SIGNEXTEND:
 		{
-			unsigned k = m_stack[m_stack.size() - 2];
+			unsigned k = (unsigned)m_stack[m_stack.size() - 2];
 			if (k > 31)
 				m_stack[m_stack.size() - 2] = m_stack.back();
 			else
