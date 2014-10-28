@@ -1053,6 +1053,7 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		interval = 0;
 		refreshNetwork();
+		refreshWhispers();
 	}
 	else
 		interval += 100;
@@ -2165,7 +2166,7 @@ void Main::refreshWhispers()
 				break;
 		if (!m)
 			m = e.open();
-		
+
 		QString msg;
 		if (m.from())
 			// Good message.
@@ -2173,7 +2174,7 @@ void Main::refreshWhispers()
 		else if (m)
 			// Maybe message.
 			msg = QString("{%1 -> %2} %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
-		
+
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
