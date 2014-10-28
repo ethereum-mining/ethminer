@@ -38,7 +38,19 @@
 
 namespace ldb = leveldb;
 
-namespace dev { class WebThreeDirect; namespace eth { class Interface; } class KeyPair; }
+namespace dev
+{
+class WebThreeDirect;
+class KeyPair;
+namespace eth
+{
+class Interface;
+}
+namespace shh
+{
+class Interface;
+}
+}
 
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
@@ -46,6 +58,7 @@ public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
 	virtual Json::Value accounts();
+	virtual std::string addToGroup(std::string const& _group, std::string const& _who);
 	virtual std::string balanceAt(std::string const& _address);
 	virtual Json::Value blockByHash(std::string const& _hash);
 	virtual Json::Value blockByNumber(int const& _number);
@@ -60,12 +73,16 @@ public:
 	virtual std::string get(std::string const& _name, std::string const& _key);
 	virtual Json::Value getMessages(int const& _id);
 	virtual std::string getString(std::string const& _name, std::string const& _key);
+	virtual bool haveIdentity(std::string const& _id);
 	virtual bool listening();
 	virtual bool mining();
 	virtual int newFilter(Json::Value const& _json);
 	virtual int newFilterString(std::string const& _filter);
+	virtual std::string newGroup(std::string const& _id, std::string const& _who);
+	virtual std::string newIdentity();
 	virtual int number();
 	virtual int peerCount();
+	virtual bool post(Json::Value const& _json);
 	virtual bool put(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual bool putString(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual bool setCoinbase(std::string const& _address);
@@ -81,12 +98,16 @@ public:
 	virtual bool uninstallFilter(int const& _id);
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
+	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 private:
 	dev::eth::Interface* client() const;
+	std::shared_ptr<dev::shh::Interface> face() const;
 	dev::WebThreeDirect& m_web3;
 	std::map<dev::Address, dev::KeyPair> m_accounts;
 	
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
 	ldb::DB* m_db;
+	
+	std::map<dev::Public, dev::Secret> m_ids;
 };

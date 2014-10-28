@@ -14,6 +14,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             jsonrpc::AbstractServer<AbstractWebThreeStubServer>(conn) 
         {
             this->bindAndAddMethod(new jsonrpc::Procedure("accounts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::accountsI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("addToGroup", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::addToGroupI);
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::balanceAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("blockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::blockByHashI);
             this->bindAndAddMethod(new jsonrpc::Procedure("blockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::blockByNumberI);
@@ -28,12 +29,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::getI);
             this->bindAndAddMethod(new jsonrpc::Procedure("getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::getMessagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("getString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::getStringI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("haveIdentity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::haveIdentityI);
             this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("mining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::newFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::newFilterStringI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("newGroup", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::newGroupI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("newIdentity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::newIdentityI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::peerCountI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("post", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::postI);
             this->bindAndAddMethod(new jsonrpc::Procedure("put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::putI);
             this->bindAndAddMethod(new jsonrpc::Procedure("putString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::putStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setCoinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::setCoinbaseI);
@@ -53,6 +58,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void accountsI(const Json::Value& request, Json::Value& response) 
         {
             response = this->accounts();
+        }
+
+        inline virtual void addToGroupI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->addToGroup(request[0u].asString(), request[1u].asString());
         }
 
         inline virtual void balanceAtI(const Json::Value& request, Json::Value& response) 
@@ -125,6 +135,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->getString(request[0u].asString(), request[1u].asString());
         }
 
+        inline virtual void haveIdentityI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->haveIdentity(request[0u].asString());
+        }
+
         inline virtual void listeningI(const Json::Value& request, Json::Value& response) 
         {
             response = this->listening();
@@ -145,6 +160,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->newFilterString(request[0u].asString());
         }
 
+        inline virtual void newGroupI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->newGroup(request[0u].asString(), request[1u].asString());
+        }
+
+        inline virtual void newIdentityI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->newIdentity();
+        }
+
         inline virtual void numberI(const Json::Value& request, Json::Value& response) 
         {
             response = this->number();
@@ -153,6 +178,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void peerCountI(const Json::Value& request, Json::Value& response) 
         {
             response = this->peerCount();
+        }
+
+        inline virtual void postI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->post(request[0u]);
         }
 
         inline virtual void putI(const Json::Value& request, Json::Value& response) 
@@ -222,6 +252,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
 
 
         virtual Json::Value accounts() = 0;
+        virtual std::string addToGroup(const std::string& param1, const std::string& param2) = 0;
         virtual std::string balanceAt(const std::string& param1) = 0;
         virtual Json::Value blockByHash(const std::string& param1) = 0;
         virtual Json::Value blockByNumber(const int& param1) = 0;
@@ -236,12 +267,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string get(const std::string& param1, const std::string& param2) = 0;
         virtual Json::Value getMessages(const int& param1) = 0;
         virtual std::string getString(const std::string& param1, const std::string& param2) = 0;
+        virtual bool haveIdentity(const std::string& param1) = 0;
         virtual bool listening() = 0;
         virtual bool mining() = 0;
         virtual int newFilter(const Json::Value& param1) = 0;
         virtual int newFilterString(const std::string& param1) = 0;
+        virtual std::string newGroup(const std::string& param1, const std::string& param2) = 0;
+        virtual std::string newIdentity() = 0;
         virtual int number() = 0;
         virtual int peerCount() = 0;
+        virtual bool post(const Json::Value& param1) = 0;
         virtual bool put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual bool putString(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual bool setCoinbase(const std::string& param1) = 0;

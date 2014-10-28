@@ -29,6 +29,8 @@
 #include <libdevcore/CommonJS.h>
 #include <boost/filesystem.hpp>
 #include <libdevcrypto/FileSystem.h>
+#include <libwhisper/Message.h>
+#include <libwhisper/WhisperHost.h>
 
 using namespace std;
 using namespace dev;
@@ -145,6 +147,40 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	return filter;
 }
 
+static shh::Message toMessage(Json::Value const& _json)
+{
+	shh::Message ret;
+	if (!_json["from"].empty())
+		ret.setFrom(jsToPublic(_json["from"].asString()));
+	if (!_json["to"].empty())
+		ret.setTo(jsToPublic(_json["to"].asString()));
+	if (!_json["payload"].empty())
+		ret.setPayload(jsToBytes(_json["payload"].asString()));
+	return ret;
+}
+
+static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret _from)
+{
+	unsigned ttl = 50;
+	unsigned workToProve = 50;
+	
+	shh::BuildTopic bt;
+	
+	if (!_json["ttl"].empty())
+		ttl = _json["ttl"].asInt();
+	if (!_json["workToProve"].empty())
+		workToProve = _json["workToProve"].asInt();
+	if (!_json["topic"].empty())
+	{
+		if (_json["topic"].isString())
+			bt.shift(asBytes(jsPadded(_json["topic"].asString(), 32)));
+		else if (_json["topic"].isArray())
+			for (auto i: _json["topic"])
+				bt.shift(asBytes(jsPadded(i.asString(), 32)));
+	}
+	return _m.seal(_from, bt, ttl, workToProve);
+}
+
 WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
@@ -165,9 +201,22 @@ void WebThreeStubServer::setAccounts(std::vector<dev::KeyPair> const& _accounts)
 		m_accounts[i.address()] = i.secret();
 }
 
+void WebThreeStubServer::setIdentities(std::vector<dev::KeyPair> const& _ids)
+{
+	m_ids.clear();
+	for (auto i: _ids)
+		m_ids[i.pub()] = i.secret();
+	// emit ids changed?
+}
+
 dev::eth::Interface* WebThreeStubServer::client() const
 {
 	return m_web3.ethereum();
+}
+
+std::shared_ptr<dev::shh::Interface> WebThreeStubServer::face() const
+{
+	return m_web3.whisper();
 }
 
 Json::Value WebThreeStubServer::accounts()
@@ -176,6 +225,13 @@ Json::Value WebThreeStubServer::accounts()
 	for (auto i: m_accounts)
 		ret.append(toJS(i.first));
 	return ret;
+}
+
+std::string WebThreeStubServer::addToGroup(std::string const& _group, std::string const& _who)
+{
+	(void)_group;
+	(void)_who;
+	return "";
 }
 
 std::string WebThreeStubServer::balanceAt(string const& _address)
@@ -319,6 +375,11 @@ std::string WebThreeStubServer::getString(std::string const& _name, std::string 
 	return ret;
 }
 
+bool WebThreeStubServer::haveIdentity(std::string const& _id)
+{
+	return m_ids.count(jsToPublic(_id)) > 0;
+}
+
 bool WebThreeStubServer::listening()
 {
 	return m_web3.isNetworkStarted();
@@ -350,6 +411,20 @@ int WebThreeStubServer::newFilterString(std::string const& _filter)
 	return ret;
 }
 
+std::string WebThreeStubServer::newGroup(std::string const& _id, std::string const& _who)
+{
+	(void)_id;
+	(void)_who;
+	return "";
+}
+
+std::string WebThreeStubServer::newIdentity()
+{
+	KeyPair kp = KeyPair::create();
+	// emit newId
+	return toJS(kp.pub());
+}
+
 std::string WebThreeStubServer::compile(string const& _s)
 {
 	return toJS(dev::eth::compileLLL(_s));
@@ -363,6 +438,22 @@ int WebThreeStubServer::number()
 int WebThreeStubServer::peerCount()
 {
 	return m_web3.peerCount();
+}
+
+bool WebThreeStubServer::post(Json::Value const& _json)
+{
+	shh::Message m = toMessage(_json);
+	Secret from;
+	
+	if (m.from() && m_ids.count(m.from()))
+	{
+		cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
+		// TODO: insert validification hook here.
+		from = m_ids[m.from()];
+	}
+	
+	face()->inject(toSealed(_json, m, from));
+	return true;
 }
 
 bool WebThreeStubServer::put(std::string const& _name, std::string const& _key, std::string const& _value)
