@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <LLVMEnabled>1</LLVMEnabled>
+    <LLVMEnabled>0</LLVMEnabled>
     <LLVMSrcDir>../../llvm</LLVMSrcDir>
     <LLVMBuildDir>../../_build/llvm/$(Platform)</LLVMBuildDir>
     <LLVMIncludeDir>$(LLVMSrcDir)\include;$(LLVMBuildDir)\include</LLVMIncludeDir>
