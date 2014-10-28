@@ -33,7 +33,13 @@
 			{ "method": "newFilterString", "params": [""], "order": [], "returns": 0},
 			{ "method": "uninstallFilter", "params": [0], "order": [], "returns": true},
 			{ "method": "changed", "params": [0], "order": [], "returns": true},
-			{ "method": "getMessages", "params": [0], "order": [], "returns": []}
+			{ "method": "getMessages", "params": [0], "order": [], "returns": []},
+
+            { "method": "put", "params": ["", "", ""], "order": [], "returns": true},
+            { "method": "get", "params": ["", ""], "order": [], "returns": ""},
+            { "method": "putString", "params": ["", "", ""], "order": [], "returns": true},
+            { "method": "getString", "params": ["", ""], "order": [], "returns": ""}
+            
 ]
 
 

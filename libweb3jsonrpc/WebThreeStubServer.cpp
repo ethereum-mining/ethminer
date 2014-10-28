@@ -27,6 +27,8 @@
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
 #include <libdevcore/CommonJS.h>
+#include <boost/filesystem.hpp>
+#include <libdevcrypto/FileSystem.h>
 
 using namespace std;
 using namespace dev;
@@ -148,6 +150,12 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, 
 	m_web3(_web3)
 {
 	setAccounts(_accounts);
+	
+	auto path = getDataDir() + "/.web3";
+	boost::filesystem::create_directories(path);
+	ldb::Options o;
+	o.create_if_missing = true;
+	ldb::DB::Open(o, path, &m_db);
 }
 
 void WebThreeStubServer::setAccounts(std::vector<dev::KeyPair> const& _accounts)
@@ -288,11 +296,27 @@ std::string WebThreeStubServer::gasPrice()
 	return toJS(10 * dev::eth::szabo);
 }
 
+std::string WebThreeStubServer::get(std::string const& _name, std::string const& _key)
+{
+	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return toJS(dev::asBytes(ret));
+}
+
 Json::Value WebThreeStubServer::getMessages(int const& _id)
 {
 	if (!client())
 		return  Json::Value();
 	return toJson(client()->messages(_id));
+}
+
+std::string WebThreeStubServer::getString(std::string const& _name, std::string const& _key)
+{
+	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return ret;
 }
 
 bool WebThreeStubServer::listening()
@@ -339,6 +363,22 @@ int WebThreeStubServer::number()
 int WebThreeStubServer::peerCount()
 {
 	return m_web3.peerCount();
+}
+
+bool WebThreeStubServer::put(std::string const& _name, std::string const& _key, std::string const& _value)
+{
+	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
+	bytes v = jsToBytes(_value);
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+	return true;
+}
+
+bool WebThreeStubServer::putString(std::string const& _name, std::string const& _key, std::string const& _value)
+{
+	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
+	string v = _value;
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+	return true;
 }
 
 bool WebThreeStubServer::setCoinbase(std::string const& _address)

@@ -23,6 +23,11 @@
 
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+
 #include <iostream>
 #include <jsonrpc/rpc.h>
 #include <libdevcrypto/Common.h>
@@ -30,6 +35,8 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "abstractwebthreestubserver.h"
 #pragma GCC diagnostic pop
+
+namespace ldb = leveldb;
 
 namespace dev { class WebThreeDirect; namespace eth { class Interface; } class KeyPair; }
 
@@ -50,13 +57,17 @@ public:
 	virtual double countAt(std::string const& _address);
 	virtual int defaultBlock();
 	virtual std::string gasPrice();
+	virtual std::string get(std::string const& _name, std::string const& _key);
 	virtual Json::Value getMessages(int const& _id);
+	virtual std::string getString(std::string const& _name, std::string const& _key);
 	virtual bool listening();
 	virtual bool mining();
 	virtual int newFilter(Json::Value const& _json);
 	virtual int newFilterString(std::string const& _filter);
 	virtual int number();
 	virtual int peerCount();
+	virtual bool put(std::string const& _name, std::string const& _key, std::string const& _value);
+	virtual bool putString(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual bool setCoinbase(std::string const& _address);
 	virtual bool setDefaultBlock(int const& _block);
 	virtual bool setListening(bool const& _listening);
@@ -74,4 +85,8 @@ private:
 	dev::eth::Interface* client() const;
 	dev::WebThreeDirect& m_web3;
 	std::map<dev::Address, dev::KeyPair> m_accounts;
+	
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
+	ldb::DB* m_db;
 };
