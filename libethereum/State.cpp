@@ -591,7 +591,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 #if !ETH_RELEASE
-	BlockInfo bi(_block);
+	BlockInfo bi(_block, _checkNonce);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
@@ -608,16 +608,32 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 //	cnote << m_state;
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionManifest(&tm);
-	transactionManifest.init();
+	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
+	transactionsTrie.init();
+
+	MemoryDB rm;
+	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
+	receiptsTrie.init();
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
 	{
+		RLPStream k;
+		k << i;
+
+		RLPStream txrlp;
+		m_transactions[i].streamRLP(txrlp);
+		transactionsTrie.insert(&k.out(), tr.data());
+
 //		cnote << m_state.root() << m_state;
 //		cnote << *this;
-		execute(tr[0].data());
+		execute(tr.data());
+
+		RLPStream receiptrlp;
+		m_receipts.back().streamRLP(receiptrlp);
+		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+/*
 		if (tr[1].toHash<h256>() != m_state.root())
 		{
 			// Invalid state root
@@ -628,15 +644,20 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
 			BOOST_THROW_EXCEPTION(InvalidTransactionGasUsed());
-		bytes k = rlp(i);
-		transactionManifest.insert(&k, tr.data());
+*/
 		++i;
 	}
 
-	if (m_currentBlock.transactionsRoot && transactionManifest.root() != m_currentBlock.transactionsRoot)
+	if (transactionsTrie.root() != m_currentBlock.transactionsRoot)
 	{
 		cwarn << "Bad transactions state root!";
-		BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
+		BOOST_THROW_EXCEPTION(InvalidTransactionsStateRoot());
+	}
+
+	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
+	{
+		cwarn << "Bad receipts state root!";
+		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
 	// Initialise total difficulty calculation.
@@ -877,6 +898,10 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 
 	if (!ret.completed)
 		m_currentBytes.clear();
+	else
+	{
+		cnote << "Completed" << m_currentBlock.headerHashWithoutNonce().abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHashWithoutNonce(), m_currentBlock.nonce, m_currentBlock.difficulty);
+	}
 
 	return ret;
 }

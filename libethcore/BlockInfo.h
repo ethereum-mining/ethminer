@@ -75,7 +75,7 @@ public:
 
 	BlockInfo();
 	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
-	explicit BlockInfo(bytesConstRef _block);
+	explicit BlockInfo(bytesConstRef _block, bool _checkNonce = true);
 
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);

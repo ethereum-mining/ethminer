@@ -249,6 +249,9 @@ public:
 	/// Get the bloom filter of a particular transaction that happened in the block. TODO: PoC-7: KILL
 	h256 oldBloom(unsigned _i) const { return m_receipts[_i].changes().bloom(); }
 
+	/// Get the transaction receipt for the transaction of the given index.
+	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
+
 	/// Get the list of pending transactions.
 	LogEntries const& log(unsigned _i) const { return m_receipts[_i].log(); }
 
