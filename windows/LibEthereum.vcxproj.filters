@@ -193,6 +193,15 @@
     <ClCompile Include="..\libethcore\Exceptions.cpp">
       <Filter>libethcore</Filter>
     </ClCompile>
+    <ClCompile Include="..\libdevcrypto\CryptoPP.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\EC.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -416,6 +425,15 @@
     </ClInclude>
     <ClInclude Include="..\libwebthree\webthree.h">
       <Filter>libwebthree</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\CryptoPP.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\EC.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\SHA3MAC.h">
+      <Filter>libdevcrypto</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

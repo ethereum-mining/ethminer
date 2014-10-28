@@ -144,7 +144,9 @@ Public dev::recover(Signature _sig, h256 _message)
 	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
 #endif
 
-	return *(Public const*)&(pubkey[1]);
+	Public ret;
+	memcpy(&ret, &(pubkey[1]), sizeof(Public));
+	return ret;
 }
 
 inline h256 kFromMessage(h256 _msg, h256 _priv)

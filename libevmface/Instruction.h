@@ -44,7 +44,7 @@ enum class Instruction: uint8_t
 	MOD,				///< modulo remainder operation
 	SMOD,				///< signed modulo remainder operation
 	EXP,				///< exponential operation
-	NEG,				///< negation operation
+	BNOT,				///< bitwise not
 	LT,					///< less-than comparision
 	GT,					///< greater-than comparision
 	SLT,				///< signed less-than comparision
@@ -58,6 +58,7 @@ enum class Instruction: uint8_t
 	BYTE,				///< retrieve single byte from word
 	ADDMOD,				///< unsigned modular addition
 	MULMOD,				///< unsigned modular multiplication
+	SIGNEXTEND,			///< extend length of signed integer
 	SHA3 = 0x20,		///< compute SHA3-256 hash
 
 	ADDRESS = 0x30,		///< get address of currently executing account
@@ -160,6 +161,12 @@ enum class Instruction: uint8_t
 	SWAP14,				///< swaps the highest and 15th highest value on the stack
 	SWAP15,				///< swaps the highest and 16th highest value on the stack
 	SWAP16,				///< swaps the highest and 17th highest value on the stack
+
+	LOG0 = 0xa0,		///< Makes a log entry; no topics.
+	LOG1,				///< Makes a log entry; 1 topic.
+	LOG2,				///< Makes a log entry; 2 topics.
+	LOG3,				///< Makes a log entry; 3 topics.
+	LOG4,				///< Makes a log entry; 4 topics.
 
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account

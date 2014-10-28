@@ -61,6 +61,7 @@ public:
 
 	bytesConstRef out() const { return m_out; }
 	h160 newAddress() const { return m_newAddress; }
+	LogEntries const& logs() const { return m_logs; }
 
 	VM const& vm() const { return *m_vm; }
 	State const& state() const { return m_s; }
@@ -77,6 +78,8 @@ private:
 	Transaction m_t;
 	Address m_sender;
 	u256 m_endGas;
+
+	LogEntries m_logs;
 };
 
 }
