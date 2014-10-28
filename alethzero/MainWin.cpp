@@ -559,11 +559,11 @@ void Main::writeSettings()
 void Main::readSettings(bool _skipGeometry)
 {
 	QSettings s("ethereum", "alethzero");
-	
+
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
-	
+
 	{
 		m_myKeys.clear();
 		QByteArray b = s.value("address").toByteArray();
@@ -581,7 +581,7 @@ void Main::readSettings(bool _skipGeometry)
 		}
 		ethereum()->setAddress(m_myKeys.back().address());
 	}
-	
+
 	{
 		m_myIdentities.clear();
 		QByteArray b = s.value("identities").toByteArray();
@@ -596,7 +596,7 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 	}
-	
+
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
@@ -618,7 +618,7 @@ void Main::readSettings(bool _skipGeometry)
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
-	
+
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -1601,54 +1601,7 @@ void Main::on_data_textChanged()
 	}
 	else
 	{
-		m_data.clear();
-		QString s = ui->data->toPlainText();
-		while (s.size())
-		{
-			QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
-			QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
-			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
-			if (r.exactMatch(s))
-			{
-				for (auto i: r.cap(2))
-					m_data.push_back((byte)i.toLatin1());
-				if (r.cap(1) != "$")
-					for (int i = r.cap(2).size(); i < 32; ++i)
-						m_data.push_back(0);
-				else
-					m_data.push_back(0);
-				s = r.cap(3);
-			}
-			else if (d.exactMatch(s))
-			{
-				u256 v(d.cap(2).toStdString());
-				if (d.cap(6) == "szabo")
-					v *= dev::eth::szabo;
-				else if (d.cap(5) == "finney")
-					v *= dev::eth::finney;
-				else if (d.cap(4) == "ether")
-					v *= dev::eth::ether;
-				bytes bs = dev::toCompactBigEndian(v);
-				if (d.cap(1) != "$")
-					for (auto i = bs.size(); i < 32; ++i)
-						m_data.push_back(0);
-				for (auto b: bs)
-					m_data.push_back(b);
-				s = d.cap(7);
-			}
-			else if (h.exactMatch(s))
-			{
-				bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
-				if (h.cap(1) != "$")
-					for (auto i = bs.size(); i < 32; ++i)
-						m_data.push_back(0);
-				for (auto b: bs)
-					m_data.push_back(b);
-				s = h.cap(5);
-			}
-			else
-				s = s.mid(1);
-		}
+		m_data = dataFromText(ui->data->toPlainText());
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
 		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
@@ -2198,6 +2151,35 @@ void Main::refreshWhisper()
 	ui->shhFrom->clear();
 	for (auto i: m_server ->ids())
 		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
+}
+
+void Main::refreshWhispers()
+{
+	ui->whispers->clear();
+	for (auto const& w: whisper()->all())
+	{
+		shh::Envelope const& e = w.second;
+		shh::Message m;
+		for (pair<Public, Secret> const& i: m_server->ids())
+			if (!!(m = e.open(i.second)))
+				break;
+		if (!m)
+			m = e.open();
+		
+		QString msg;
+		if (m.from())
+			// Good message.
+			msg = QString("{%1 -> %2} %3").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
+		else if (m)
+			// Maybe message.
+			msg = QString("{%1 -> %2} %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
+		
+		time_t ex = e.expiry();
+		QString t(ctime(&ex));
+		t.chop(1);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		ui->whispers->addItem(item);
+	}
 }
 
 // extra bits needed to link on VS
