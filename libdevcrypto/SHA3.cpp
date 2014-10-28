@@ -20,8 +20,9 @@
  */
 
 #include "SHA3.h"
-#include "CryptoHeaders.h"
 
+#include <libdevcore/RLP.h>
+#include "CryptoPP.h"
 using namespace std;
 using namespace dev;
 

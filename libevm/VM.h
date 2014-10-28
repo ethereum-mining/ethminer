@@ -62,6 +62,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
+	std::set<unsigned> m_jumpDests;
 };
 
 }
@@ -70,6 +71,16 @@ private:
 template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+
+	if (m_jumpDests.empty())
+	{
+		m_jumpDests.insert(0);
+		for (unsigned i = 1; i < _ext.code.size(); ++i)
+			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
+				m_jumpDests.insert(i + 1);
+			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
+				i += _ext.code[i] - (int)Instruction::PUSH1 + 1;
+	}
 
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
@@ -88,20 +99,25 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 
 		case Instruction::SUICIDE:
+			require(1);
 			runGas = 0;
 			break;
 
 		case Instruction::SSTORE:
 			require(2);
 			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreGas * 2;
+				runGas = c_sstoreSetGas;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
+			{
 				runGas = 0;
+				_ext.sub.refunds += c_sstoreRefundGas;
+			}
 			else
-				runGas = c_sstoreGas;
+				runGas = c_sstoreResetGas;
 			break;
 
 		case Instruction::SLOAD:
+			require(1);
             runGas = c_sloadGas;
 			break;
 
@@ -141,15 +157,23 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 			
 		case Instruction::BALANCE:
+			require(1);
 			runGas = c_balanceGas;
 			break;
 
-		case Instruction::CALL:
-			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
-			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+		case Instruction::LOG0:
+		case Instruction::LOG1:
+		case Instruction::LOG2:
+		case Instruction::LOG3:
+		case Instruction::LOG4:
+		{
+			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
+			require(n + 2);
+			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
 			break;
+		}
 
+		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			require(7);
 			runGas = c_callGas + m_stack[m_stack.size() - 1];
@@ -166,35 +190,16 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 
-		case Instruction::ADD:
-		case Instruction::MUL:
-		case Instruction::SUB:
-		case Instruction::DIV:
-		case Instruction::SDIV:
-		case Instruction::MOD:
-		case Instruction::SMOD:
-		case Instruction::EXP:
-		case Instruction::NEG:
-		case Instruction::LT:
-		case Instruction::GT:
-		case Instruction::SLT:
-		case Instruction::SGT:
-		case Instruction::EQ:
-		case Instruction::NOT:
-		case Instruction::AND:
-		case Instruction::OR:
-		case Instruction::XOR:
-		case Instruction::BYTE:
-		case Instruction::ADDMOD:
-		case Instruction::MULMOD:
+		case Instruction::PC:
+		case Instruction::MSIZE:
+		case Instruction::GAS:
+		case Instruction::JUMPDEST:
 		case Instruction::ADDRESS:
 		case Instruction::ORIGIN:
 		case Instruction::CALLER:
 		case Instruction::CALLVALUE:
-		case Instruction::CALLDATALOAD:
 		case Instruction::CALLDATASIZE:
 		case Instruction::CODESIZE:
-		case Instruction::EXTCODESIZE:
 		case Instruction::GASPRICE:
 		case Instruction::PREVHASH:
 		case Instruction::COINBASE:
@@ -234,7 +239,40 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH30:
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
+			break;
+		case Instruction::BNOT:
+		case Instruction::NOT:
+		case Instruction::CALLDATALOAD:
+		case Instruction::EXTCODESIZE:
 		case Instruction::POP:
+		case Instruction::JUMP:
+			require(1);
+			break;
+		case Instruction::ADD:
+		case Instruction::MUL:
+		case Instruction::SUB:
+		case Instruction::DIV:
+		case Instruction::SDIV:
+		case Instruction::MOD:
+		case Instruction::SMOD:
+		case Instruction::EXP:
+		case Instruction::LT:
+		case Instruction::GT:
+		case Instruction::SLT:
+		case Instruction::SGT:
+		case Instruction::EQ:
+		case Instruction::AND:
+		case Instruction::OR:
+		case Instruction::XOR:
+		case Instruction::BYTE:
+		case Instruction::JUMPI:
+		case Instruction::SIGNEXTEND:
+			require(2);
+			break;
+		case Instruction::ADDMOD:
+		case Instruction::MULMOD:
+			require(3);
+			break;
 		case Instruction::DUP1:
 		case Instruction::DUP2:
 		case Instruction::DUP3:
@@ -251,6 +289,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::DUP14:
 		case Instruction::DUP15:
 		case Instruction::DUP16:
+			require(1 + (int)inst - (int)Instruction::DUP1);
+			break;
 		case Instruction::SWAP1:
 		case Instruction::SWAP2:
 		case Instruction::SWAP3:
@@ -267,12 +307,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SWAP14:
 		case Instruction::SWAP15:
 		case Instruction::SWAP16:
-		case Instruction::JUMP:
-		case Instruction::JUMPI:
-		case Instruction::PC:
-		case Instruction::MSIZE:
-		case Instruction::GAS:
-		case Instruction::JUMPDEST:
+			require((int)inst - (int)Instruction::SWAP1 + 2);
 			break;
 		default:
 			BOOST_THROW_EXCEPTION(BadInstruction());
@@ -302,118 +337,103 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 		case Instruction::ADD:
 			//pops two items and pushes S[-1] + S[-2] mod 2^256.
-			require(2);
 			m_stack[m_stack.size() - 2] += m_stack.back();
 			m_stack.pop_back();
 			break;
 		case Instruction::MUL:
 			//pops two items and pushes S[-1] * S[-2] mod 2^256.
-			require(2);
 			m_stack[m_stack.size() - 2] *= m_stack.back();
 			m_stack.pop_back();
 			break;
 		case Instruction::SUB:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() - m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::DIV:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() / m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SDIV:
-			require(2);
             m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) / u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? m_stack.back() % m_stack[m_stack.size() - 2] : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SMOD:
-			require(2);
             m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) % u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
 		{
-			require(2);
 			auto base = m_stack.back();
 			auto expon = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
-		case Instruction::NEG:
-			require(1);
-			m_stack.back() = ~(m_stack.back() - 1);
+		case Instruction::BNOT:
+			m_stack.back() = ~m_stack.back();
 			break;
 		case Instruction::LT:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() < m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::GT:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() > m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SLT:
-			require(2);
             m_stack[m_stack.size() - 2] = u2s(m_stack.back()) < u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SGT:
-			require(2);
             m_stack[m_stack.size() - 2] = u2s(m_stack.back()) > u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() == m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::NOT:
-			require(1);
 			m_stack.back() = m_stack.back() ? 0 : 1;
 			break;
 		case Instruction::AND:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() & m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::OR:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() | m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::XOR:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() ^ m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			break;
 		case Instruction::BYTE:
-			require(2);
 			m_stack[m_stack.size() - 2] = m_stack.back() < 32 ? (m_stack[m_stack.size() - 2] >> (unsigned)(8 * (31 - m_stack.back()))) & 0xff : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::ADDMOD:
-			require(3);
 			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) + bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		case Instruction::MULMOD:
-			require(3);
 			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
+		case Instruction::SIGNEXTEND:
+		{
+			auto k = m_stack[m_stack.size() - 2];
+			m_stack[m_stack.size() - 2] = m_stack.back();
+			m_stack.pop_back();
+			break;
+		}
 		case Instruction::SHA3:
 		{
-			require(2);
 			unsigned inOff = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned inSize = (unsigned)m_stack.back();
@@ -429,7 +449,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::BALANCE:
 		{
-			require(1);
 			m_stack.back() = _ext.balance(asAddress(m_stack.back()));
 			break;
 		}
@@ -441,7 +460,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CALLDATALOAD:
 		{
-			require(1);
 			if ((unsigned)m_stack.back() + 31 < _ext.data.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (unsigned)m_stack.back());
 			else
@@ -458,7 +476,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CALLDATACOPY:
 		{
-			require(3);
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned cf = (unsigned)m_stack.back();
@@ -475,7 +492,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CODECOPY:
 		{
-			require(3);
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned cf = (unsigned)m_stack.back();
@@ -488,12 +504,10 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 		case Instruction::EXTCODESIZE:
-			require(1);
 			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
 			break;
 		case Instruction::EXTCODECOPY:
 		{
-			require(4);
 			Address a = asAddress(m_stack.back());
 			m_stack.pop_back();
 			unsigned mf = (unsigned)m_stack.back();
@@ -569,7 +583,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		}
 		case Instruction::POP:
-			require(1);
 			m_stack.pop_back();
 			break;
 		case Instruction::DUP1:
@@ -590,7 +603,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::DUP16:
 		{
 			auto n = 1 + (int)inst - (int)Instruction::DUP1;
-			require(n);
 			m_stack.push_back(m_stack[m_stack.size() - n]);
 			break;
 		}
@@ -612,7 +624,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SWAP16:
 		{
 			unsigned n = (int)inst - (int)Instruction::SWAP1 + 2;
-			require(n);
 			auto d = m_stack.back();
 			m_stack.back() = m_stack[m_stack.size() - n];
 			m_stack[m_stack.size() - n] = d;
@@ -620,13 +631,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::MLOAD:
 		{
-			require(1);
 			m_stack.back() = (u256)*(h256 const*)(m_temp.data() + (unsigned)m_stack.back());
 			break;
 		}
 		case Instruction::MSTORE:
 		{
-			require(2);
 			*(h256*)&m_temp[(unsigned)m_stack.back()] = (h256)m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
 			m_stack.pop_back();
@@ -634,35 +643,30 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::MSTORE8:
 		{
-			require(2);
 			m_temp[(unsigned)m_stack.back()] = (byte)(m_stack[m_stack.size() - 2] & 0xff);
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		}
 		case Instruction::SLOAD:
-			require(1);
 			m_stack.back() = _ext.store(m_stack.back());
 			break;
 		case Instruction::SSTORE:
-			require(2);
 			_ext.setStore(m_stack.back(), m_stack[m_stack.size() - 2]);
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMP:
-			require(1);
 			nextPC = m_stack.back();
-			if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+			if (!m_jumpDests.count((unsigned)nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
-			require(2);
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+				if (!m_jumpDests.count((unsigned)nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
@@ -679,10 +683,38 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMPDEST:
 			break;
+/*		case Instruction::LOG0:
+			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG1:
+			_ext.log({m_stack[m_stack.size() - 1]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 2], (unsigned)m_stack[m_stack.size() - 3]));
+			break;
+		case Instruction::LOG2:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 3], (unsigned)m_stack[m_stack.size() - 4]));
+			break;
+		case Instruction::LOG3:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 4], (unsigned)m_stack[m_stack.size() - 5]));
+			break;
+		case Instruction::LOG4:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 5], (unsigned)m_stack[m_stack.size() - 6]));
+			break;*/
+		case Instruction::LOG0:
+			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG1:
+			_ext.log({m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG2:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG3:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG4:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5], m_stack[m_stack.size() - 6]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
 		case Instruction::CREATE:
 		{
-			require(3);
-
 			u256 endowment = m_stack.back();
 			m_stack.pop_back();
 			unsigned initOff = (unsigned)m_stack.back();
@@ -704,8 +736,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			require(7);
-
 			u256 gas = m_stack.back();
 			m_stack.pop_back();
 			Address receiveAddress = asAddress(m_stack.back());
@@ -737,8 +767,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::RETURN:
 		{
-			require(2);
-
 			unsigned b = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned s = (unsigned)m_stack.back();
@@ -748,7 +776,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		}
 		case Instruction::SUICIDE:
 		{
-			require(1);
 			Address dest = asAddress(m_stack.back());
 			_ext.suicide(dest);
 			// ...follow through to...

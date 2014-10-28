@@ -27,7 +27,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void MessageFilter::fillStream(RLPStream& _s) const
+void MessageFilter::streamRLP(RLPStream& _s) const
 {
 	_s.appendList(8) << m_from << m_to << m_stateAltered << m_altered << m_earliest << m_latest << m_max << m_skip;
 }
@@ -35,7 +35,7 @@ void MessageFilter::fillStream(RLPStream& _s) const
 h256 MessageFilter::sha3() const
 {
 	RLPStream s;
-	fillStream(s);
+	streamRLP(s);
 	return dev::sha3(s.out());
 }
 

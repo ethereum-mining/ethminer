@@ -69,10 +69,13 @@
     </ClCompile>
     <ClCompile Include="..\libdevcore\_libdevcore.cpp" />
     <ClCompile Include="..\libdevcrypto\Common.cpp" />
+    <ClCompile Include="..\libdevcrypto\CryptoPP.cpp" />
+    <ClCompile Include="..\libdevcrypto\EC.cpp" />
     <ClCompile Include="..\libdevcrypto\FileSystem.cpp" />
     <ClCompile Include="..\libdevcrypto\MemoryDB.cpp" />
     <ClCompile Include="..\libdevcrypto\OverlayDB.cpp" />
     <ClCompile Include="..\libdevcrypto\SHA3.cpp" />
+    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieCommon.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieDB.cpp" />
     <ClCompile Include="..\libethcore\BlockInfo.cpp">
@@ -271,10 +274,13 @@
     <ClInclude Include="..\libdevcrypto\All.h" />
     <ClInclude Include="..\libdevcrypto\Common.h" />
     <ClInclude Include="..\libdevcrypto\CryptoHeaders.h" />
+    <ClInclude Include="..\libdevcrypto\CryptoPP.h" />
+    <ClInclude Include="..\libdevcrypto\EC.h" />
     <ClInclude Include="..\libdevcrypto\FileSystem.h" />
     <ClInclude Include="..\libdevcrypto\MemoryDB.h" />
     <ClInclude Include="..\libdevcrypto\OverlayDB.h" />
     <ClInclude Include="..\libdevcrypto\SHA3.h" />
+    <ClInclude Include="..\libdevcrypto\SHA3MAC.h" />
     <ClInclude Include="..\libdevcrypto\TrieCommon.h" />
     <ClInclude Include="..\libdevcrypto\TrieDB.h" />
     <ClInclude Include="..\libethcore\All.h">

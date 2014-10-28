@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <random>
 #include <secp256k1/secp256k1.h>
+#include "EC.h"
 #include "SHA3.h"
 using namespace std;
 using namespace dev;
@@ -108,3 +109,70 @@ KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _pass
 	return KeyPair(sha3(aesDecrypt(_seed, _password)));
 }
 
+void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	bytes io = _plain.toBytes();
+	crypto::encrypt(_k, io);
+	o_cipher = std::move(io);
+}
+
+bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	bytes io = _cipher.toBytes();
+	crypto::decrypt(_k, io);
+	if (io.empty())
+		return false;
+	o_plaintext = std::move(io);
+	return true;
+}
+
+Public dev::recover(Signature _sig, h256 _message)
+{
+	secp256k1_start();
+
+	byte pubkey[65];
+	int pubkeylen = 65;
+	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _sig.data(), pubkey, &pubkeylen, 0, (int)_sig[64]))
+		return Public();
+
+	// right160(dev::sha3(bytesConstRef(&(pubkey[1]), 64)));
+#if ETH_CRYPTO_TRACE
+	h256* sig = (h256 const*)_sig.data();
+	cout << "---- RECOVER -------------------------------" << endl;
+	cout << "MSG: " << _message << endl;
+	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(_sig[64] - 27) << "+27" << endl;
+	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
+#endif
+
+	Public ret;
+	memcpy(&ret, &(pubkey[1]), sizeof(Public));
+	return ret;
+}
+
+inline h256 kFromMessage(h256 _msg, h256 _priv)
+{
+	return _msg ^ _priv;
+}
+
+Signature dev::sign(Secret _k, h256 _message)
+{
+	int v = 0;
+
+	secp256k1_start();
+
+	SignatureStruct ret;
+	h256 nonce = kFromMessage(_message, _k);
+
+	if (!secp256k1_ecdsa_sign_compact(_message.data(), 32, ret.r.data(), _k.data(), nonce.data(), &v))
+		return Signature();
+#if ETH_ADDRESS_DEBUG
+	cout << "---- SIGN -------------------------------" << endl;
+	cout << "MSG: " << _message << endl;
+	cout << "SEC: " << _k << endl;
+	cout << "NON: " << nonce << endl;
+	cout << "R S V: " << ret.r << " " << ret.s << " " << v << "+27" << endl;
+#endif
+
+	ret.v = v;
+	return *(Signature const*)&ret;
+}
