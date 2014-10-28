@@ -25,13 +25,17 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("countAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("defaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::defaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("gasPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::gasPriceI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::getI);
             this->bindAndAddMethod(new jsonrpc::Procedure("getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::getMessagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("getString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::getStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("mining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::newFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::newFilterStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("number", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::peerCountI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::putI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("putString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::putStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setCoinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::setCoinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setDefaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::setDefaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::setListeningI);
@@ -106,9 +110,19 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->gasPrice();
         }
 
+        inline virtual void getI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->get(request[0u].asString(), request[1u].asString());
+        }
+
         inline virtual void getMessagesI(const Json::Value& request, Json::Value& response) 
         {
             response = this->getMessages(request[0u].asInt());
+        }
+
+        inline virtual void getStringI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->getString(request[0u].asString(), request[1u].asString());
         }
 
         inline virtual void listeningI(const Json::Value& request, Json::Value& response) 
@@ -139,6 +153,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void peerCountI(const Json::Value& request, Json::Value& response) 
         {
             response = this->peerCount();
+        }
+
+        inline virtual void putI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->put(request[0u].asString(), request[1u].asString(), request[2u].asString());
+        }
+
+        inline virtual void putStringI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->putString(request[0u].asString(), request[1u].asString(), request[2u].asString());
         }
 
         inline virtual void setCoinbaseI(const Json::Value& request, Json::Value& response) 
@@ -209,13 +233,17 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual double countAt(const std::string& param1) = 0;
         virtual int defaultBlock() = 0;
         virtual std::string gasPrice() = 0;
+        virtual std::string get(const std::string& param1, const std::string& param2) = 0;
         virtual Json::Value getMessages(const int& param1) = 0;
+        virtual std::string getString(const std::string& param1, const std::string& param2) = 0;
         virtual bool listening() = 0;
         virtual bool mining() = 0;
         virtual int newFilter(const Json::Value& param1) = 0;
         virtual int newFilterString(const std::string& param1) = 0;
         virtual int number() = 0;
         virtual int peerCount() = 0;
+        virtual bool put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
+        virtual bool putString(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual bool setCoinbase(const std::string& param1) = 0;
         virtual bool setDefaultBlock(const int& param1) = 0;
         virtual bool setListening(const bool& param1) = 0;
