@@ -23,10 +23,11 @@
 
 #pragma once
 
+// need to leave this one disabled for link-time. blame cryptopp.
+#pragma GCC diagnostic ignored "-Wunused-function"
 #pragma warning(push)
 #pragma warning(disable:4100 4244)
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-variable"
