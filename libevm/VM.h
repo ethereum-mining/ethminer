@@ -84,6 +84,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
+	std::set<unsigned> m_jumpDests;
 };
 
 }
@@ -92,6 +93,16 @@ private:
 template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+
+	if (m_jumpDests.empty())
+	{
+		m_jumpDests.insert(0);
+		for (unsigned i = 1; i < _ext.code.size(); ++i)
+			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
+				m_jumpDests.insert(i + 1);
+			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
+				i += _ext.code[i] - (int)Instruction::PUSH1 + 1;
+	}
 
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
@@ -678,7 +689,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+			if (!m_jumpDests.count((unsigned)nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -686,7 +697,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+				if (!m_jumpDests.count((unsigned)nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
