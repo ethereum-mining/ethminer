@@ -143,6 +143,9 @@ void Host::stop()
 
 void Host::quit()
 {
+	// called to force io_service to kill any remaining tasks it might have -
+	// such tasks may involve socket reads from Capabilities that maintain references
+	// to resources we're about to free.
 	stop();
 	m_ioService.reset();
 	// m_acceptor & m_socket are DANGEROUS now.
@@ -249,17 +252,27 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 			m_public = bi::tcp::endpoint(bi::address(), (unsigned short)p);
 		else
 		{
-			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), (unsigned short)p);
+			bi::address adr = adr = bi::address::from_string(eip);
+			try
+			{
+				adr = bi::address::from_string(_publicAddress);
+			}
+			catch (...) {}
+			m_public = bi::tcp::endpoint(adr, (unsigned short)p);
 			m_addresses.push_back(m_public.address());
 		}
 	}
 	else
 	{
 		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
-		m_public = bi::tcp::endpoint(_publicAddress.size() ? bi::address::from_string(_publicAddress)
-									: m_peerAddresses.size() ? m_peerAddresses[0]
-									: bi::address(), m_listenPort);
-		m_addresses.push_back(m_public.address());
+		bi::address adr = m_peerAddresses.size() ? m_peerAddresses[0] : bi::address();
+		try
+		{
+			adr = bi::address::from_string(_publicAddress);
+		}
+		catch (...) {}
+		m_public = bi::tcp::endpoint(adr, m_listenPort);
+		m_addresses.push_back(adr);
 	}
 }
 
@@ -366,7 +379,7 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
-	if (_a.port() < 30300 && _a.port() > 30303)
+	if (_a.port() < 30300 || _a.port() > 30303)
 		cwarn << "Wierd port being recorded!";
 
 	if (_a.port() >= /*49152*/32768)
@@ -648,23 +661,26 @@ void Host::prunePeers()
 {
 	RecursiveGuard l(x_peers);
 	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-	for (unsigned old = 15000; m_peers.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-		while (m_peers.size() > m_idealPeerCount)
+	set<NodeId> dc;
+	for (unsigned old = 15000; m_peers.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+		if (m_peers.size() - dc.size() > m_idealPeerCount)
 		{
 			// look for worst peer to kick off
 			// first work out how many are old enough to kick off.
 			shared_ptr<Session> worst;
 			unsigned agedPeers = 0;
 			for (auto i: m_peers)
-				if (auto p = i.second.lock())
-					if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
-					{
-						++agedPeers;
-						if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
-							worst = p;
-					}
+				if (!dc.count(i.first))
+					if (auto p = i.second.lock())
+						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+						{
+							++agedPeers;
+							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
+								worst = p;
+						}
 			if (!worst || agedPeers <= m_idealPeerCount)
 				break;
+			dc.insert(worst->id());
 			worst->disconnect(TooManyPeers);
 		}
 
