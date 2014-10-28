@@ -158,6 +158,25 @@ public:
 		return ret;
 	}
 
+	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h) { return (*this |= _h.nbloom<P, N>()); }
+
+	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	{
+		static const unsigned c_bloomBytes = (M + 7) / 8;
+		unsigned mask = (1 << c_bloomBytes) - 1;
+		FixedHash<M> ret;
+		byte const* p = data();
+		for (unsigned i = 0; i < P; ++i)
+		{
+			unsigned index = 0;
+			for (unsigned j = 0; j < c_bloomBytes; ++j, ++p)
+				index = (index << 8) | *p;
+			index &= mask;
+			ret[N - 1 - index / 8] |= (1 << (index % 8));
+		}
+		return ret;
+	}
+
 	/// Returns the index of the first bit set to one, or size() * 8 if no bits are set.
 	inline unsigned firstBitSet() const
 	{

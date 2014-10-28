@@ -37,10 +37,10 @@ Manifest::Manifest(bytesConstRef _r)
 		internal.emplace_back(i.data());
 }
 
-void Manifest::streamOut(RLPStream& _s) const
+void Manifest::streamRLP(RLPStream& _s) const
 {
 	_s.appendList(7) << from << to << value << altered << input << output;
 	_s.appendList(internal.size());
 	for (auto const& i: internal)
-		i.streamOut(_s);
+		i.streamRLP(_s);
 }

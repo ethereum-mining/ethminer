@@ -55,9 +55,9 @@ public:
 
 	operator bool() const { return !!m_expiry; }
 
-	void streamOut(RLPStream& _s, bool _withNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
-	h256 sha3() const { RLPStream s; streamOut(s, true); return dev::sha3(s.out()); }
-	h256 sha3NoNonce() const { RLPStream s; streamOut(s, false); return dev::sha3(s.out()); }
+	void streamRLP(RLPStream& _s, bool _withNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
+	h256 sha3() const { RLPStream s; streamRLP(s, true); return dev::sha3(s.out()); }
+	h256 sha3NoNonce() const { RLPStream s; streamRLP(s, false); return dev::sha3(s.out()); }
 
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
