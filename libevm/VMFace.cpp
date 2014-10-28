@@ -24,7 +24,12 @@ using namespace dev::eth;
 
 std::unique_ptr<VMFace> VMFace::create(VMFace::Kind _kind, u256 _gas)
 {
-	std::unique_ptr<VMFace> vm(_kind == Kind::JIT ? static_cast<VMFace*>(new jit::VM) : new VM);
+	std::unique_ptr<VMFace> vm;
+#if ETH_JIT
+	vm.reset(_kind == Kind::JIT ? static_cast<VMFace*>(new jit::VM) : new VM);
+#else
+	vm.reset(new VM);
+#endif
 	vm->reset(_gas);
 	return vm;
 }
