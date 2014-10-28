@@ -448,7 +448,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SIGNEXTEND:
-		{
 			if (m_stack.back() < 31)
 			{
 				unsigned const testBit(m_stack.back() * 8 + 7);
@@ -461,7 +460,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			}
 			m_stack.pop_back();
 			break;
-		}
 		case Instruction::SHA3:
 		{
 			unsigned inOff = (unsigned)m_stack.back();
