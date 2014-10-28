@@ -348,8 +348,6 @@ void Main::load(QString _s)
 	}
 }
 
-// env.load("/home/gav/eth/init.eth")
-
 void Main::on_loadJS_triggered()
 {
 	QString f = QFileDialog::getOpenFileName(this, "Load Javascript", QString(), "Javascript (*.js);;All files (*)");
@@ -402,6 +400,17 @@ void Main::eval(QString const& _js)
 				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
 	s += "</div></body></html>";
 	ui->jsConsole->setHtml(s);
+}
+
+static Public stringToPublic(QString const& _a)
+{
+	string sn = _a.toStdString();
+	if (_a.size() == sizeof(Public) * 2)
+		return Public(fromHex(_a.toStdString()));
+	else if (_a.size() == sizeof(Public) * 2 + 2 && _a.startsWith("0x"))
+		return Public(fromHex(_a.mid(2).toStdString()));
+	else
+		return Public();
 }
 
 QString Main::pretty(dev::Address _a) const
@@ -498,15 +507,28 @@ void Main::on_paranoia_triggered()
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
-	QByteArray b;
-	b.resize(sizeof(Secret) * m_myKeys.size());
-	auto p = b.data();
-	for (auto i: m_myKeys)
 	{
-		memcpy(p, &(i.secret()), sizeof(Secret));
-		p += sizeof(Secret);
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myKeys.size());
+		auto p = b.data();
+		for (auto i: m_myKeys)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("address", b);
 	}
-	s.setValue("address", b);
+	{
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myIdentities.size());
+		auto p = b.data();
+		for (auto i: m_myIdentities)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("identities", b);
+	}
 
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forceAddress->text());
@@ -537,26 +559,44 @@ void Main::writeSettings()
 void Main::readSettings(bool _skipGeometry)
 {
 	QSettings s("ethereum", "alethzero");
-
+	
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
-
-	m_myKeys.clear();
-	QByteArray b = s.value("address").toByteArray();
-	if (b.isEmpty())
-		m_myKeys.append(KeyPair::create());
-	else
+	
 	{
-		h256 k;
-		for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+		m_myKeys.clear();
+		QByteArray b = s.value("address").toByteArray();
+		if (b.isEmpty())
+			m_myKeys.append(KeyPair::create());
+		else
 		{
-			memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-			if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
-				m_myKeys.append(KeyPair(k));
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
+					m_myKeys.append(KeyPair(k));
+			}
+		}
+		ethereum()->setAddress(m_myKeys.back().address());
+	}
+	
+	{
+		m_myIdentities.clear();
+		QByteArray b = s.value("identities").toByteArray();
+		if (!b.isEmpty())
+		{
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
+					m_myIdentities.append(KeyPair(k));
+			}
 		}
 	}
-	ethereum()->setAddress(m_myKeys.back().address());
+	
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
@@ -570,13 +610,15 @@ void Main::readSettings(bool _skipGeometry)
 	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
 	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
+	if (ui->clientName->text().isEmpty())
+		ui->clientName->setText(QInputDialog::getText(this, "Enter identity", "Enter a name that will identify you on the peer network"));
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
-
+	
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -768,7 +810,6 @@ void Main::refreshBalances()
 void Main::refreshNetwork()
 {
 	auto ps = web3()->peers();
-
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
@@ -1400,6 +1441,112 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
+static bytes dataFromText(QString _s)
+{
+	bytes ret;
+	while (_s.size())
+	{
+		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
+		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
+		if (r.exactMatch(_s))
+		{
+			for (auto i: r.cap(2))
+				ret.push_back((byte)i.toLatin1());
+			if (r.cap(1) != "$")
+				for (int i = r.cap(2).size(); i < 32; ++i)
+					ret.push_back(0);
+			else
+				ret.push_back(0);
+			_s = r.cap(3);
+		}
+		else if (d.exactMatch(_s))
+		{
+			u256 v(d.cap(2).toStdString());
+			if (d.cap(6) == "szabo")
+				v *= dev::eth::szabo;
+			else if (d.cap(5) == "finney")
+				v *= dev::eth::finney;
+			else if (d.cap(4) == "ether")
+				v *= dev::eth::ether;
+			bytes bs = dev::toCompactBigEndian(v);
+			if (d.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					ret.push_back(0);
+			for (auto b: bs)
+				ret.push_back(b);
+			_s = d.cap(7);
+		}
+		else if (h.exactMatch(_s))
+		{
+			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
+			if (h.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					ret.push_back(0);
+			for (auto b: bs)
+				ret.push_back(b);
+			_s = h.cap(5);
+		}
+		else
+			_s = _s.mid(1);
+	}
+	return ret;
+}
+
+static shh::Topic topicFromText(QString _s)
+{
+	shh::BuildTopic ret;
+	while (_s.size())
+	{
+		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
+		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
+		bytes part;
+		if (r.exactMatch(_s))
+		{
+			for (auto i: r.cap(2))
+				part.push_back((byte)i.toLatin1());
+			if (r.cap(1) != "$")
+				for (int i = r.cap(2).size(); i < 32; ++i)
+					part.push_back(0);
+			else
+				part.push_back(0);
+			_s = r.cap(3);
+		}
+		else if (d.exactMatch(_s))
+		{
+			u256 v(d.cap(2).toStdString());
+			if (d.cap(6) == "szabo")
+				v *= dev::eth::szabo;
+			else if (d.cap(5) == "finney")
+				v *= dev::eth::finney;
+			else if (d.cap(4) == "ether")
+				v *= dev::eth::ether;
+			bytes bs = dev::toCompactBigEndian(v);
+			if (d.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					part.push_back(0);
+			for (auto b: bs)
+				part.push_back(b);
+			_s = d.cap(7);
+		}
+		else if (h.exactMatch(_s))
+		{
+			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
+			if (h.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					part.push_back(0);
+			for (auto b: bs)
+				part.push_back(b);
+			_s = h.cap(5);
+		}
+		else
+			_s = _s.mid(1);
+		ret.shift(part);
+	}
+	return ret;
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -2027,6 +2174,30 @@ void Main::updateDebugger()
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
 	}
+}
+
+void Main::on_post_clicked()
+{
+	shh::Message m;
+	m.setTo(stringToPublic(ui->shhTo->currentText()));
+	m.setPayload(dataFromText(ui->shhData->toPlainText()));
+	Public f = stringToPublic(ui->shhFrom->currentText());
+	Secret from;
+	if (m_server->ids().count(f))
+		from = m_server->ids().at(f);
+	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
+}
+
+void Main::on_newIdentity_triggered()
+{
+//	m_whisper->makeIdentity();
+}
+
+void Main::refreshWhisper()
+{
+	ui->shhFrom->clear();
+	for (auto i: m_server ->ids())
+		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
 }
 
 // extra bits needed to link on VS
