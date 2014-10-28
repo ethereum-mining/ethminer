@@ -45,6 +45,9 @@
     <ClCompile Include="..\libevmjit\Stack.cpp">
       <Filter>libevmjit</Filter>
     </ClCompile>
+    <ClCompile Include="..\libevmjit\Arith256.cpp">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libevmjit\BasicBlock.h">
@@ -84,6 +87,9 @@
       <Filter>libevmjit</Filter>
     </ClInclude>
     <ClInclude Include="..\libevmjit\Stack.h">
+      <Filter>libevmjit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmjit\Arith256.h">
       <Filter>libevmjit</Filter>
     </ClInclude>
   </ItemGroup>
