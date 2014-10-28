@@ -1218,6 +1218,7 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+			revert = true;
 		}
 		catch (Exception const& _e)
 		{
@@ -1285,25 +1286,32 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	catch (VMException const& _e)
 	{
 		clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+		revert = true;
 	}
 	catch (Exception const& _e)
 	{
-		clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
 	}
 	catch (std::exception const& _e)
 	{
-		clog(StateChat) << "std::exception in VM: " << _e.what();
+		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 	}
 
 	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
 
 	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)
+	{
 		evm.revert();
-
-	// Set code.
-	if (addressInUse(newAddress))
-		m_cache[newAddress].setCode(out);
+		m_cache.erase(newAddress);
+		newAddress = Address();
+	}
+	else
+		// Set code.
+		if (addressInUse(newAddress))
+			m_cache[newAddress].setCode(out);
 
 	*_gas = vm.gas();
 
