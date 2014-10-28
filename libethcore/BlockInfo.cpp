@@ -103,7 +103,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	cnote << "Verifying" << headerHashWithoutNonce().abridged() << nonce.abridged() << difficulty;
 	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHashWithoutNonce(), nonce, difficulty))
 		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty));
 
