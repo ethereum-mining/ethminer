@@ -252,17 +252,27 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 			m_public = bi::tcp::endpoint(bi::address(), (unsigned short)p);
 		else
 		{
-			m_public = bi::tcp::endpoint(bi::address::from_string(_publicAddress.empty() ? eip : _publicAddress), (unsigned short)p);
+			bi::address adr = adr = bi::address::from_string(eip);
+			try
+			{
+				adr = bi::address::from_string(_publicAddress);
+			}
+			catch (...) {}
+			m_public = bi::tcp::endpoint(adr, (unsigned short)p);
 			m_addresses.push_back(m_public.address());
 		}
 	}
 	else
 	{
 		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
-		m_public = bi::tcp::endpoint(_publicAddress.size() ? bi::address::from_string(_publicAddress)
-									: m_peerAddresses.size() ? m_peerAddresses[0]
-									: bi::address(), m_listenPort);
-		m_addresses.push_back(m_public.address());
+		bi::address adr = m_peerAddresses.size() ? m_peerAddresses[0] : bi::address();
+		try
+		{
+			adr = bi::address::from_string(_publicAddress);
+		}
+		catch (...) {}
+		m_public = bi::tcp::endpoint(adr, m_listenPort);
+		m_addresses.push_back(adr);
 	}
 }
 

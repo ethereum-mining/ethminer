@@ -92,7 +92,7 @@ public:
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
 	TopicFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
 
-	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
+	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
 
 	bool matches(Envelope const& _m) const;

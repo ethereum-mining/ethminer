@@ -61,7 +61,7 @@ public:
 		m_s.noteSending(myAddress);
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
+		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &sub, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
@@ -72,7 +72,7 @@ public:
 	{
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
+		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &sub, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
