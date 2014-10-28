@@ -41,7 +41,7 @@ struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
-class StackTooSmall: virtual public VMException { public: StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+struct StackTooSmall: virtual public VMException { StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -84,6 +84,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
+	std::set<unsigned> m_jumpDests;
 };
 
 }
@@ -92,6 +93,16 @@ private:
 template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+
+	if (m_jumpDests.empty())
+	{
+		m_jumpDests.insert(0);
+		for (unsigned i = 1; i < _ext.code.size(); ++i)
+			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
+				m_jumpDests.insert(i + 1);
+			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
+				i += _ext.code[i] - (int)Instruction::PUSH1 + 1;
+	}
 
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
@@ -171,6 +182,18 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			require(1);
 			runGas = c_balanceGas;
 			break;
+
+		case Instruction::LOG0:
+		case Instruction::LOG1:
+		case Instruction::LOG2:
+		case Instruction::LOG3:
+		case Instruction::LOG4:
+		{
+			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
+			require(n + 2);
+			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
+			break;
+		}
 
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
@@ -666,7 +689,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+			if (!m_jumpDests.count((unsigned)nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -674,7 +697,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (nextPC && (Instruction)_ext.getCode(nextPC - 1) != Instruction::JUMPDEST)
+				if (!m_jumpDests.count((unsigned)nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
@@ -690,6 +713,36 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.push_back(m_gas);
 			break;
 		case Instruction::JUMPDEST:
+			break;
+/*		case Instruction::LOG0:
+			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG1:
+			_ext.log({m_stack[m_stack.size() - 1]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 2], (unsigned)m_stack[m_stack.size() - 3]));
+			break;
+		case Instruction::LOG2:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 3], (unsigned)m_stack[m_stack.size() - 4]));
+			break;
+		case Instruction::LOG3:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 4], (unsigned)m_stack[m_stack.size() - 5]));
+			break;
+		case Instruction::LOG4:
+			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 5], (unsigned)m_stack[m_stack.size() - 6]));
+			break;*/
+		case Instruction::LOG0:
+			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG1:
+			_ext.log({m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG2:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG3:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			break;
+		case Instruction::LOG4:
+			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5], m_stack[m_stack.size() - 6]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
 			break;
 		case Instruction::CREATE:
 		{

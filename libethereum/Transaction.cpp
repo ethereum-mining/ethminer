@@ -85,7 +85,7 @@ void Transaction::sign(Secret _priv)
 	vrs = *(SignatureStruct const*)&sig;
 }
 
-void Transaction::fillStream(RLPStream& _s, bool _sig) const
+void Transaction::streamRLP(RLPStream& _s, bool _sig) const
 {
 	_s.appendList((_sig ? 3 : 0) + 6);
 	_s << nonce << gasPrice << gas;
