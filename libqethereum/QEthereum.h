@@ -259,6 +259,7 @@ public:
 	Q_INVOKABLE void doPost(QString _json);
 
 	Q_INVOKABLE QString newIdentity();
+	Q_INVOKABLE bool haveIdentity(QString _id) { return m_ids.count(toPublic(_id)); }
 
 	Q_INVOKABLE QString newGroup(QString _id, QString _who);
 	Q_INVOKABLE QString addToGroup(QString _group, QString _who);
