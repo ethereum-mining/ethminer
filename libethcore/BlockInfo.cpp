@@ -37,9 +37,9 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block)
+BlockInfo::BlockInfo(bytesConstRef _block, bool _checkNonce)
 {
-	populate(_block);
+	populate(_block, _checkNonce);
 }
 
 BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
@@ -103,6 +103,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
+	cnote << "Verifying" << headerHashWithoutNonce().abridged() << nonce.abridged() << difficulty;
 	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHashWithoutNonce(), nonce, difficulty))
 		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty));
 
@@ -142,7 +143,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	{
 		bytes k = rlp(i);
 		t.insert(&k, tr.data());
-		u256 gp = tr[0][1].toInt<u256>();
+		u256 gp = tr[1].toInt<u256>();
 		mgp = min(mgp, gp);
 		++i;
 	}
