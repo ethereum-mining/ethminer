@@ -30,22 +30,22 @@ namespace dev
 namespace eth
 {
 
-struct Signature
-{
-	byte v;
-	u256 r;
-	u256 s;
-};
-
 struct Transaction
 {
+	enum Type
+	{
+		ContractCreation,
+		MessageCall
+	};
+
 	Transaction() {}
 	Transaction(bytesConstRef _rlp, bool _checkSender = false);
 	Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
 
-	bool operator==(Transaction const& _c) const { return receiveAddress == _c.receiveAddress && value == _c.value && data == _c.data; }
+	bool operator==(Transaction const& _c) const { return type == _c.type && (type == ContractCreation || receiveAddress == _c.receiveAddress) && value == _c.value && data == _c.data; }
 	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
 
+	Type type;		///< True if this is a contract-creation transaction. F
 	u256 nonce;			///< The transaction-count of the sender.
 	u256 value;			///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
 	Address receiveAddress;	///< The receiving address of the transaction.
@@ -54,7 +54,7 @@ struct Transaction
 
 	bytes data;			///< The data associated with the transaction, or the initialiser if it's a creation transaction.
 
-	Signature vrs;		///< The signature of the transaction. Encodes the sender.
+	SignatureStruct vrs;		///< The signature of the transaction. Encodes the sender.
 
 	Address safeSender() const noexcept;	///< Like sender() but will never throw.
 	Address sender() const;					///< Determine the sender of the transaction from the signature (and hash).
@@ -64,11 +64,11 @@ struct Transaction
 
 	static h256 kFromMessage(h256 _msg, h256 _priv);
 
-	void fillStream(RLPStream& _s, bool _sig = true) const;
-	bytes rlp(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return s.out(); }
+	void streamRLP(RLPStream& _s, bool _sig = true) const;
+	bytes rlp(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return s.out(); }
 	std::string rlpString(bool _sig = true) const { return asString(rlp(_sig)); }
-	h256 sha3(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return dev::sha3(s.out()); }
-	bytes sha3Bytes(bool _sig = true) const { RLPStream s; fillStream(s, _sig); return dev::sha3Bytes(s.out()); }
+	h256 sha3(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return dev::sha3(s.out()); }
+	bytes sha3Bytes(bool _sig = true) const { RLPStream s; streamRLP(s, _sig); return dev::sha3Bytes(s.out()); }
 
 private:
 	mutable Address m_sender;

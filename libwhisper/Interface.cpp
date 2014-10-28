@@ -34,10 +34,10 @@ using namespace dev::shh;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-bool MessageFilter::matches(Message const& _m) const
+bool TopicFilter::matches(Envelope const& _e) const
 {
 	for (TopicMask const& t: m_topicMasks)
-		if (((t.first ^ _m.topic) & t.second) == 0)
+		if (((t.first ^ _e.topic()) & t.second) == 0)
 			return true;
 	return false;
 }

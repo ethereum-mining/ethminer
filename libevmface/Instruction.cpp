@@ -39,7 +39,7 @@ const std::map<std::string, Instruction> dev::eth::c_instructions =
 	{ "MOD", Instruction::MOD },
 	{ "SMOD", Instruction::SMOD },
 	{ "EXP", Instruction::EXP },
-	{ "NEG", Instruction::NEG },
+	{ "BNOT", Instruction::BNOT },
 	{ "LT", Instruction::LT },
 	{ "GT", Instruction::GT },
 	{ "SLT", Instruction::SLT },
@@ -52,6 +52,7 @@ const std::map<std::string, Instruction> dev::eth::c_instructions =
 	{ "BYTE", Instruction::BYTE },
 	{ "ADDMOD", Instruction::ADDMOD },
 	{ "MULMOD", Instruction::MULMOD },
+	{ "SIGNEXTEND", Instruction::SIGNEXTEND },
 	{ "SHA3", Instruction::SHA3 },
 	{ "ADDRESS", Instruction::ADDRESS },
 	{ "BALANCE", Instruction::BALANCE },
@@ -148,6 +149,11 @@ const std::map<std::string, Instruction> dev::eth::c_instructions =
 	{ "SWAP14", Instruction::SWAP14 },
 	{ "SWAP15", Instruction::SWAP15 },
 	{ "SWAP16", Instruction::SWAP16 },
+	{ "LOG0", Instruction::LOG0 },
+	{ "LOG1", Instruction::LOG1 },
+	{ "LOG2", Instruction::LOG2 },
+	{ "LOG3", Instruction::LOG3 },
+	{ "LOG4", Instruction::LOG4 },
 	{ "CREATE", Instruction::CREATE },
 	{ "CALL", Instruction::CALL },
 	{ "CALLCODE", Instruction::CALLCODE },
@@ -166,7 +172,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::MOD,			{ "MOD",			0, 2, 1 } },
 	{ Instruction::SMOD,		{ "SMOD",			0, 2, 1 } },
 	{ Instruction::EXP,			{ "EXP",			0, 2, 1 } },
-	{ Instruction::NEG,			{ "NEG",			0, 1, 1 } },
+	{ Instruction::BNOT,		{ "BNOT",			0, 1, 1 } },
 	{ Instruction::LT,			{ "LT",				0, 2, 1 } },
 	{ Instruction::GT,			{ "GT",				0, 2, 1 } },
 	{ Instruction::SLT,			{ "SLT",			0, 2, 1 } },
@@ -179,6 +185,7 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::BYTE,		{ "BYTE",			0, 2, 1 } },
 	{ Instruction::ADDMOD,		{ "ADDMOD",			0, 3, 1 } },
 	{ Instruction::MULMOD,		{ "MULMOD",			0, 3, 1 } },
+	{ Instruction::SIGNEXTEND,	{ "SIGNEXTEND",		0, 2, 1 } },
 	{ Instruction::SHA3,		{ "SHA3",			0, 2, 1 } },
 	{ Instruction::ADDRESS,		{ "ADDRESS",		0, 0, 1 } },
 	{ Instruction::BALANCE,		{ "BALANCE",		0, 1, 1 } },
@@ -275,6 +282,11 @@ static const std::map<Instruction, InstructionInfo> c_instructionInfo =
 	{ Instruction::SWAP14,		{ "SWAP14",			0, 15, 15 } },
 	{ Instruction::SWAP15,		{ "SWAP15",			0, 16, 16 } },
 	{ Instruction::SWAP16,		{ "SWAP16",			0, 17, 17 } },
+	{ Instruction::LOG0,		{ "LOG0",			0, 1, 0 } },
+	{ Instruction::LOG1,		{ "LOG1",			0, 2, 0 } },
+	{ Instruction::LOG2,		{ "LOG2",			0, 3, 0 } },
+	{ Instruction::LOG3,		{ "LOG3",			0, 4, 0 } },
+	{ Instruction::LOG4,		{ "LOG4",			0, 5, 0 } },
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1 } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1 } },
 	{ Instruction::CALLCODE,	{ "CALLCODE",		0, 7, 1 } },
@@ -317,4 +329,9 @@ InstructionInfo dev::eth::instructionInfo(Instruction _inst)
 		cwarn << "<INVALID_INSTRUCTION: " << toString((unsigned)_inst) << ">\n" << boost::current_exception_diagnostic_information();
 		return InstructionInfo({"<INVALID_INSTRUCTION: " + toString((unsigned)_inst) + ">", 0, 0, 0});
 	}
+}
+
+bool dev::eth::isValidInstruction(Instruction _inst)
+{
+	return !!c_instructionInfo.count(_inst);
 }

@@ -26,6 +26,7 @@ using namespace dev;
 
 #if !ETH_LANGUAGES
 
-const h256 dev::c_shaNull = sha3(rlp(""));
+h256 const dev::c_shaNull = sha3(rlp(""));
+h256 const dev::EmptyTrie = c_shaNull;
 
 #endif

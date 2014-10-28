@@ -46,49 +46,49 @@ public:
 	}
 
 	/// Read storage location.
-	u256 store(u256 _n) { return m_s.storage(myAddress, _n); }
+	virtual u256 store(u256 _n) override final { return m_s.storage(myAddress, _n); }
 
 	/// Write a value in storage.
-	void setStore(u256 _n, u256 _v) { m_s.setStorage(myAddress, _n, _v); if (m_ms) m_ms->altered.push_back(_n); }
+	virtual void setStore(u256 _n, u256 _v) override final { m_s.setStorage(myAddress, _n, _v); if (m_ms) m_ms->altered.push_back(_n); }
 
 	/// Read address's code.
-	bytes const& codeAt(Address _a) { return m_s.code(_a); }
+	virtual bytes const& codeAt(Address _a) override final { return m_s.code(_a); }
 
 	/// Create a new contract.
-	h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, OnOpFunc const& _onOp = OnOpFunc())
+	virtual h160 create(u256 _endowment, u256* _gas, bytesConstRef _code, OnOpFunc const& _onOp = OnOpFunc()) override final
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
+		auto ret = m_s.create(myAddress, _endowment, gasPrice, _gas, _code, origin, &sub, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
 	}
 
 	/// Create a new message call. Leave _myAddressOverride as the default to use the present address as caller.
-	bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = OnOpFunc(), Address _myAddressOverride = Address(), Address _codeAddressOverride = Address())
+	virtual bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256* _gas, bytesRef _out, OnOpFunc const& _onOp = {}, Address _myAddressOverride = {}, Address _codeAddressOverride = {}) override final
 	{
 		if (m_ms)
 			m_ms->internal.resize(m_ms->internal.size() + 1);
-		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &suicides, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
+		auto ret = m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, _gas, _out, origin, &sub, m_ms ? &(m_ms->internal.back()) : nullptr, _onOp, depth + 1);
 		if (m_ms && !m_ms->internal.back().from)
 			m_ms->internal.pop_back();
 		return ret;
 	}
 
 	/// Read address's balance.
-	u256 balance(Address _a) { return m_s.balance(_a); }
+	virtual u256 balance(Address _a) override final { return m_s.balance(_a); }
 
 	/// Subtract amount from account's balance.
-	void subBalance(u256 _a) { m_s.subBalance(myAddress, _a); }
+	virtual void subBalance(u256 _a) override final { m_s.subBalance(myAddress, _a); }
 
 	/// Determine account's TX count.
-	u256 txCount(Address _a) { return m_s.transactionsFrom(_a); }
+	virtual u256 txCount(Address _a) override final { return m_s.transactionsFrom(_a); }
 
 	/// Suicide the associated contract to the given address.
-	void suicide(Address _a)
+	virtual void suicide(Address _a) override final
 	{
 		m_s.addBalance(_a, m_s.balance(myAddress));
 		ExtVMFace::suicide(_a);
@@ -96,7 +96,7 @@ public:
 
 	/// Revert any changes made (by any of the other calls).
 	/// @TODO check call site for the parent manifest being discarded.
-	void revert() { if (m_ms) *m_ms = Manifest(); m_s.m_cache = m_origCache; }
+	virtual void revert() override final { if (m_ms) *m_ms = Manifest(); m_s.m_cache = m_origCache; }
 
 	State& state() const { return m_s; }
 

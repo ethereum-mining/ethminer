@@ -59,7 +59,7 @@ public:
 	FixedHash() { m_data.fill(0); }
 
 	/// Construct from another hash, filling with zeroes or cropping as necessary.
-	template <unsigned M> FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
+	template <unsigned M> explicit FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
 
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -158,6 +158,40 @@ public:
 		return ret;
 	}
 
+	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h) { return (*this |= _h.nbloom<P, N>()); }
+
+	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	{
+		static const unsigned c_bloomBytes = (M + 7) / 8;
+		unsigned mask = (1 << c_bloomBytes) - 1;
+		FixedHash<M> ret;
+		byte const* p = data();
+		for (unsigned i = 0; i < P; ++i)
+		{
+			unsigned index = 0;
+			for (unsigned j = 0; j < c_bloomBytes; ++j, ++p)
+				index = (index << 8) | *p;
+			index &= mask;
+			ret[N - 1 - index / 8] |= (1 << (index % 8));
+		}
+		return ret;
+	}
+
+	/// Returns the index of the first bit set to one, or size() * 8 if no bits are set.
+	inline unsigned firstBitSet() const
+	{
+		unsigned ret = 0;
+		for (auto d: m_data)
+			if (d)
+				for (;; ++ret, d <<= 1)
+					if (d & 0x80)
+						return ret;
+					else {}
+			else
+				ret += 8;
+		return ret;
+	}
+
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };
@@ -193,6 +227,7 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 }
 
 // Common types of FixedHash.
+using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;

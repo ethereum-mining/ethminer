@@ -190,7 +190,7 @@ void pushFront(_T& _t, _U _e)
 	_t[0] = _e;
 }
 
-/// Concatenate two vectors of elements. _T must be POD.
+/// Concatenate two vectors of elements of POD types.
 template <class _T>
 inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<std::is_pod<_T>::value, _T>::type>& _a, std::vector<_T> const& _b)
 {
@@ -201,15 +201,7 @@ inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<std::is_p
 
 }
 
-/// Concatenate two vectors of elements. _T must be POD.
-template <class _T>
-inline std::vector<_T> operator+(std::vector<typename std::enable_if<std::is_pod<_T>::value, _T>::type> const& _a, std::vector<_T> const& _b)
-{
-	std::vector<_T> ret(_a);
-	return ret += _b;
-}
-
-/// Concatenate two vectors of elements. _T must be POD.
+/// Concatenate two vectors of elements.
 template <class _T>
 inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<!std::is_pod<_T>::value, _T>::type>& _a, std::vector<_T> const& _b)
 {
@@ -217,14 +209,30 @@ inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<!std::is_
 	for (auto& i: _b)
 		_a.push_back(i);
 	return _a;
-
 }
 
-/// Concatenate two vectors of elements. _T must be POD.
+/// Concatenate two vectors of elements.
 template <class _T>
-inline std::vector<_T> operator+(std::vector<typename std::enable_if<!std::is_pod<_T>::value, _T>::type> const& _a, std::vector<_T> const& _b)
+inline std::vector<_T> operator+(std::vector<_T> const& _a, std::vector<_T> const& _b)
 {
 	std::vector<_T> ret(_a);
+	return ret += _b;
+}
+
+/// Merge two sets of elements.
+template <class _T>
+inline std::set<_T>& operator+=(std::set<_T>& _a, std::set<_T> const& _b)
+{
+	for (auto& i: _b)
+		_a.insert(i);
+	return _a;
+}
+
+/// Merge two sets of elements.
+template <class _T>
+inline std::set<_T> operator+(std::set<_T> const& _a, std::set<_T> const& _b)
+{
+	std::set<_T> ret(_a);
 	return ret += _b;
 }
 

@@ -29,6 +29,7 @@ void VM::reset(u256 _gas) noexcept
 {
 	VMFace::reset(_gas);
 	m_curPC = 0;
+	m_jumpDests.clear();
 }
 
 bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
