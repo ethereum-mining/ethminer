@@ -193,14 +193,17 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
 			m_endGas = m_vm->gas();
+			revert = true;
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+			cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
 		}
 		catch (std::exception const& _e)
 		{
-			clog(StateChat) << "std::exception in VM: " << _e.what();
+			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
 		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 
