@@ -29,5 +29,5 @@ void VM::reset(u256 _gas)
 {
 	m_gas = _gas;
 	m_curPC = 0;
-	m_jumpDests.reset();
+	m_jumpDests.clear();
 }
