@@ -161,6 +161,7 @@ State::State(State const& _s):
 	m_db(_s.m_db),
 	m_state(&m_db, _s.m_state.root()),
 	m_transactions(_s.m_transactions),
+	m_receipts(_s.m_receipts),
 	m_transactionSet(_s.m_transactionSet),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
@@ -192,6 +193,7 @@ State& State::operator=(State const& _s)
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root());
 	m_transactions = _s.m_transactions;
+	m_receipts = _s.m_receipts;
 	m_transactionSet = _s.m_transactionSet;
 	m_cache = _s.m_cache;
 	m_previousBlock = _s.m_previousBlock;
@@ -353,7 +355,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
-			s = AddressState(0, 0, ZeroRLPSHA3, EmptySHA3);
+			s = AddressState(0, 0, EmptyTrie, EmptySHA3);
 		else
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
@@ -484,6 +486,7 @@ map<Address, u256> State::addresses() const
 void State::resetCurrent()
 {
 	m_transactions.clear();
+	m_receipts.clear();
 	m_transactionSet.clear();
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
@@ -547,7 +550,7 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				{
 					uncommitToMine();
 					execute(i.second);
-					ret.push_back(m_transactions.back().changes.bloom());
+					ret.push_back(m_receipts.back().changes().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 				}
@@ -588,7 +591,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 #if !ETH_RELEASE
-	BlockInfo bi(_block);
+	BlockInfo bi(_block, _checkNonce);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
@@ -605,16 +608,32 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 //	cnote << m_state;
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionManifest(&tm);
-	transactionManifest.init();
+	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
+	transactionsTrie.init();
+
+	MemoryDB rm;
+	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
+	receiptsTrie.init();
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
 	{
+		RLPStream k;
+		k << i;
+
+		RLPStream txrlp;
+		m_transactions[i].streamRLP(txrlp);
+		transactionsTrie.insert(&k.out(), tr.data());
+
 //		cnote << m_state.root() << m_state;
 //		cnote << *this;
-		execute(tr[0].data());
+		execute(tr.data());
+
+		RLPStream receiptrlp;
+		m_receipts.back().streamRLP(receiptrlp);
+		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+/*
 		if (tr[1].toHash<h256>() != m_state.root())
 		{
 			// Invalid state root
@@ -625,15 +644,20 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		}
 		if (tr[2].toInt<u256>() != gasUsed())
 			BOOST_THROW_EXCEPTION(InvalidTransactionGasUsed());
-		bytes k = rlp(i);
-		transactionManifest.insert(&k, tr.data());
+*/
 		++i;
 	}
 
-	if (m_currentBlock.transactionsRoot && transactionManifest.root() != m_currentBlock.transactionsRoot)
+	if (transactionsTrie.root() != m_currentBlock.transactionsRoot)
 	{
 		cwarn << "Bad transactions state root!";
-		BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
+		BOOST_THROW_EXCEPTION(InvalidTransactionsStateRoot());
+	}
+
+	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
+	{
+		cwarn << "Bad receipts state root!";
+		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
 	// Initialise total difficulty calculation.
@@ -713,7 +737,7 @@ void State::uncommitToMine()
 		if (!m_transactions.size())
 			m_state.setRoot(m_previousBlock.stateRoot);
 		else
-			m_state.setRoot(m_transactions[m_transactions.size() - 1].stateRoot);
+			m_state.setRoot(m_receipts[m_receipts.size() - 1].stateRoot());
 		m_db = m_lastTx;
 		paranoia("Uncommited to mine", true);
 		m_currentBlock.sha3Uncles = h256();
@@ -730,7 +754,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	// Compile block:
 	RLPStream block;
 	block.appendList(3);
-	m_currentBlock.fillStream(block, true);
+	m_currentBlock.streamRLP(block, true);
 	block.appendRaw(m_currentTxs);
 	block.appendRaw(m_currentUncles);
 
@@ -757,11 +781,20 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	return false;
 }
 
-h256 State::bloom() const
+h256 State::oldBloom() const
 {
 	h256 ret = m_currentBlock.coinbaseAddress.bloom();
-	for (auto const& i: m_transactions)
-		ret |= i.changes.bloom();
+	for (auto const& i: m_receipts)
+		ret |= i.changes().bloom();
+	return ret;
+}
+
+LogBloom State::logBloom() const
+{
+	LogBloom ret;
+	ret.shiftBloom<3>(sha3(m_currentBlock.coinbaseAddress.ref()));
+	for (TransactionReceipt const& i: m_receipts)
+		ret |= i.bloom();
 	return ret;
 }
 
@@ -797,7 +830,7 @@ void State::commitToMine(BlockChain const& _bc)
 				if (!knownUncles.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
-					ubi.fillStream(unclesData, true);
+					ubi.streamRLP(unclesData, true);
 					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
@@ -805,8 +838,12 @@ void State::commitToMine(BlockChain const& _bc)
 	}
 
 	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionReceipts(&tm);
-	transactionReceipts.init();
+	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
+	transactionsTrie.init();
+
+	MemoryDB rm;
+	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
+	receiptsTrie.init();
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -815,17 +852,25 @@ void State::commitToMine(BlockChain const& _bc)
 	{
 		RLPStream k;
 		k << i;
-		RLPStream v;
-		m_transactions[i].fillStream(v);
-		transactionReceipts.insert(&k.out(), &v.out());
-		txs.appendRaw(v.out());
+
+		RLPStream receiptrlp;
+		m_receipts[i].streamRLP(receiptrlp);
+		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+
+		RLPStream txrlp;
+		m_transactions[i].streamRLP(txrlp);
+		transactionsTrie.insert(&k.out(), &txrlp.out());
+
+		txs.appendRaw(txrlp.out());
 	}
 
 	txs.swapOut(m_currentTxs);
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionReceipts.root();
+	m_currentBlock.transactionsRoot = transactionsTrie.root();
+	m_currentBlock.receiptsRoot = receiptsTrie.root();
+	m_currentBlock.logBloom = logBloom();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
@@ -853,6 +898,10 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 
 	if (!ret.completed)
 		m_currentBytes.clear();
+	else
+	{
+		cnote << "Completed" << m_currentBlock.headerHashWithoutNonce().abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHashWithoutNonce(), m_currentBlock.nonce, m_currentBlock.difficulty);
+	}
 
 	return ret;
 }
@@ -865,7 +914,7 @@ void State::completeMine()
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
-	m_currentBlock.fillStream(ret, true);
+	m_currentBlock.streamRLP(ret, true);
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
@@ -875,6 +924,7 @@ void State::completeMine()
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
 	m_transactions.clear();
+	m_receipts.clear();
 	m_transactionSet.clear();
 	m_lastTx = m_db;
 }
@@ -1114,12 +1164,13 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
 
 	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(TransactionReceipt(e.t(), rootHash(), startGasUsed + e.gasUsed(), ms));
+	m_transactions.push_back(e.t());
+	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs(), ms));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1154,9 +1205,8 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		{
 			auto out = vm.go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_suicides)
-				for (auto i: evm.suicides)
-					o_suicides->insert(i);
+			if (o_sub)
+				*o_sub += evm.sub;
 			if (o_ms)
 				o_ms->output = out.toBytes();
 		}
@@ -1168,6 +1218,7 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+			revert = true;
 		}
 		catch (Exception const& _e)
 		{
@@ -1186,10 +1237,16 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 
 		return !revert;
 	}
+	else
+	{
+		// non-contract call
+		if (o_sub)
+			o_sub->logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
+	}
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, std::set<Address>* o_suicides, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1218,9 +1275,8 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		out = vm.go(evm, _onOp);
 		if (o_ms)
 			o_ms->output = out.toBytes();
-		if (o_suicides)
-			for (auto i: evm.suicides)
-				o_suicides->insert(i);
+		if (o_sub)
+			*o_sub += evm.sub;
 	}
 	catch (OutOfGas const& /*_e*/)
 	{
@@ -1230,25 +1286,32 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	catch (VMException const& _e)
 	{
 		clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+		revert = true;
 	}
 	catch (Exception const& _e)
 	{
-		clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
 	}
 	catch (std::exception const& _e)
 	{
-		clog(StateChat) << "std::exception in VM: " << _e.what();
+		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 	}
 
-	// TODO: CHECK: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
+	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
 
 	// Write state out only in the case of a non-out-of-gas transaction.
 	if (revert)
+	{
 		evm.revert();
-
-	// Set code.
-	if (addressInUse(newAddress))
-		m_cache[newAddress].setCode(out);
+		m_cache.erase(newAddress);
+		newAddress = Address();
+	}
+	else
+		// Set code.
+		if (addressInUse(newAddress))
+			m_cache[newAddress].setCode(out);
 
 	*_gas = vm.gas();
 
@@ -1263,11 +1326,12 @@ State State::fromPending(unsigned _i) const
 	if (!_i)
 		ret.m_state.setRoot(m_previousBlock.stateRoot);
 	else
-		ret.m_state.setRoot(m_transactions[_i - 1].stateRoot);
+		ret.m_state.setRoot(m_receipts[_i - 1].stateRoot());
 	while (ret.m_transactions.size() > _i)
 	{
-		ret.m_transactionSet.erase(ret.m_transactions.back().transaction.sha3());
+		ret.m_transactionSet.erase(ret.m_transactions.back().sha3());
 		ret.m_transactions.pop_back();
+		ret.m_receipts.pop_back();
 	}
 	return ret;
 }
