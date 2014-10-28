@@ -449,16 +449,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SIGNEXTEND:
 		{
-			unsigned k = m_stack[m_stack.size() - 2];
-			if (k > 31)
-				m_stack[m_stack.size() - 2] = m_stack.back();
-			else
+			if (m_stack.back() < 31)
 			{
-				u256 b = m_stack.back();
-				if ((b >> (k * 8)) & 0x80)
-					for (int i = 31; i > k; --i)
-						b |= (u256(0xff) << i);
-				m_stack[m_stack.size() - 2] = b;
+				unsigned const testBit(m_stack.back() * 8 + 7);
+				u256& number = m_stack[m_stack.size() - 2];
+				u256 mask = ((u256(1) << testBit) - 1);
+				if (boost::multiprecision::bit_test(number, testBit))
+					number |= ~mask;
+				else
+					number &= mask;
 			}
 			m_stack.pop_back();
 			break;
