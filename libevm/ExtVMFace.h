@@ -25,6 +25,8 @@
 #include <functional>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/SHA3.h>
 #include <libevmface/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
@@ -34,14 +36,39 @@ namespace dev
 namespace eth
 {
 
+using LogBloom = h512;
+
 struct LogEntry
 {
+	LogEntry() {}
+	LogEntry(RLP const& _r) { from = (Address)_r[0]; topics = (h256s)_r[1]; data = (bytes)_r[2]; }
+	LogEntry(Address const& _f, h256s&& _ts, bytes&& _d): from(_f), topics(std::move(_ts)), data(std::move(_d)) {}
+
+	void streamRLP(RLPStream& _s) const { _s.appendList(3) << from << topics << data; }
+
+	LogBloom bloom() const
+	{
+		LogBloom ret;
+		ret.shiftBloom<3, 32>(sha3(from.ref()));
+		for (auto t: topics)
+			ret.shiftBloom<3, 32>(sha3(t.ref()));
+		return ret;
+	}
+
 	Address from;
-	h256 topics;
+	h256s topics;
 	bytes data;
 };
 
 using LogEntries = std::vector<LogEntry>;
+
+inline LogBloom bloom(LogEntries const& _logs)
+{
+	LogBloom ret;
+	for (auto const& l: _logs)
+		ret |= l.bloom();
+	return ret;
+}
 
 struct SubState
 {
@@ -103,6 +130,9 @@ public:
 
 	/// Make a new message call.
 	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+
+	/// Revert any changes made (by any of the other calls).
+	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void revert() {}

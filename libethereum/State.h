@@ -52,24 +52,36 @@ struct StateChat: public LogChannel { static const char* name() { return "-S-"; 
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 
-struct TransactionReceipt
+class TransactionReceipt
 {
-	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms) {}
+public:
+	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log, Manifest const& _ms): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log), m_changes(_ms) {}
 
-//	Manifest const& changes() const { return changes; }
+	Manifest const& changes() const { return m_changes; }
 
-	void fillStream(RLPStream& _s) const
+	h256 const& stateRoot() const { return m_stateRoot; }
+	u256 const& gasUsed() const { return m_gasUsed; }
+	LogBloom const& bloom() const { return m_bloom; }
+	LogEntries const& log() const { return m_log; }
+
+	void streamRLP(RLPStream& _s) const
 	{
-		_s.appendList(3);
-		transaction.fillStream(_s);
-		_s.append(stateRoot, false, true) << gasUsed;
+		_s.appendList(4) << m_stateRoot << m_gasUsed << m_bloom;
+		_s.appendList(m_log.size());
+		for (LogEntry const& l: m_log)
+			l.streamRLP(_s);
 	}
 
-	Transaction transaction;
-	h256 stateRoot;
-	u256 gasUsed;
-	Manifest changes;
+private:
+	h256 m_stateRoot;
+	u256 m_gasUsed;
+	LogBloom m_bloom;
+	LogEntries m_log;
+
+	Manifest m_changes;	///< TODO: PoC-7: KILL
 };
+
+using TransactionReceipts = std::vector<TransactionReceipt>;
 
 struct PrecompiledAddress
 {
@@ -226,16 +238,28 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
+	Transactions const& pending() const { return m_transactions; }
+
+	/// Get the list of pending transactions. TODO: PoC-7: KILL
+	Manifest changesFromPending(unsigned _i) const { return m_receipts[_i].changes(); }
+
+	/// Get the bloom filter of all changes happened in the block. TODO: PoC-7: KILL
+	h256 oldBloom() const;
+
+	/// Get the bloom filter of a particular transaction that happened in the block. TODO: PoC-7: KILL
+	h256 oldBloom(unsigned _i) const { return m_receipts[_i].changes().bloom(); }
+
+	/// Get the transaction receipt for the transaction of the given index.
+	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
 	/// Get the list of pending transactions.
-	Manifest changesFromPending(unsigned _i) const { return m_transactions[_i].changes; }
+	LogEntries const& log(unsigned _i) const { return m_receipts[_i].log(); }
 
-	/// Get the bloom filter of all changes happened in the block.
-	h256 bloom() const;
+	/// Get the bloom filter of all logs that happened in the block.
+	LogBloom logBloom() const;
 
 	/// Get the bloom filter of a particular transaction that happened in the block.
-	h256 bloom(unsigned _i) const { return m_transactions[_i].changes.bloom(); }
+	LogBloom const& logBloom(unsigned _i) const { return m_receipts[_i].bloom(); }
 
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
@@ -304,14 +328,15 @@ private:
 	void refreshManifest(RLPStream* _txs = nullptr);
 
 	/// @returns gas used by transactions thus far executed.
-	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
+	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
 
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
-	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
+	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
 
