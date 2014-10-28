@@ -78,7 +78,7 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	QList<dev::KeyPair> const& owned() const { return m_myIdentities + m_myKeys; }
+	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 	
 public slots:
 	void load(QString _file);
@@ -150,10 +150,10 @@ private slots:
 	void on_turboMining_triggered();
 	void on_go_triggered();
 	void on_importKeyFile_triggered();
-//	void on_post_clicked();
-//	void on_newIdentity_triggered();
+	void on_post_clicked();
+	void on_newIdentity_triggered();
 
-//	void refreshWhisper();
+	void refreshWhisper();
 
 signals:
 	void poll();
@@ -207,7 +207,7 @@ private:
 
 	void refreshNetwork();
 	void refreshMining();
-//	void refreshWhispers();
+	void refreshWhispers();
 
 	void refreshAll();
 	void refreshPending();

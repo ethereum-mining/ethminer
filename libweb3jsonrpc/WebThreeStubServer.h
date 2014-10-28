@@ -99,6 +99,7 @@ public:
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
+	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 private:
 	dev::eth::Interface* client() const;
 	std::shared_ptr<dev::shh::Interface> face() const;
