@@ -50,6 +50,7 @@ signals:
 	
 private:
 	std::vector<unsigned> m_watches;
+	std::vector<unsigned> m_shhWatches;
 };
 
 class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnector

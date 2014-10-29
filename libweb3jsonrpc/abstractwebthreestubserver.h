@@ -45,6 +45,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("setDefaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::setDefaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setListening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::setListeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("setMining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::setMiningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("shhChanged", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::shhChangedI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("shhNewFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::shhNewFilterI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("shhUninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::shhUninstallFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("stateAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::stateAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::transactionByHashI);
@@ -215,6 +218,21 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->setMining(request[0u].asBool());
         }
 
+        inline virtual void shhChangedI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->shhChanged(request[0u].asInt());
+        }
+
+        inline virtual void shhNewFilterI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->shhNewFilter(request[0u]);
+        }
+
+        inline virtual void shhUninstallFilterI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->shhUninstallFilter(request[0u].asInt());
+        }
+
         inline virtual void stateAtI(const Json::Value& request, Json::Value& response) 
         {
             response = this->stateAt(request[0u].asString(), request[1u].asString());
@@ -283,6 +301,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool setDefaultBlock(const int& param1) = 0;
         virtual bool setListening(const bool& param1) = 0;
         virtual bool setMining(const bool& param1) = 0;
+        virtual Json::Value shhChanged(const int& param1) = 0;
+        virtual int shhNewFilter(const Json::Value& param1) = 0;
+        virtual bool shhUninstallFilter(const int& param1) = 0;
         virtual std::string stateAt(const std::string& param1, const std::string& param2) = 0;
         virtual std::string transact(const Json::Value& param1) = 0;
         virtual Json::Value transactionByHash(const std::string& param1, const int& param2) = 0;

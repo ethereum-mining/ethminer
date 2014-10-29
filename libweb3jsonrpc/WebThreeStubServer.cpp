@@ -181,6 +181,48 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
+static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
+{
+	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	Public to;
+
+	if (!_json["to"].empty())
+		to = jsToPublic(_json["to"].asString());
+
+	if (!_json["topic"].empty())
+	{
+		if (_json["topic"].isString())
+			bt.shift(asBytes(jsPadded(_json["topic"].asString(), 32)));
+		else if (_json["topic"].isArray())
+			for (auto i: _json["topic"])
+			{
+				if (i.isString())
+					bt.shift(asBytes(jsPadded(i.asString(), 32)));
+				else
+					bt.shift();
+			}
+	}
+	return make_pair(bt.toTopicMask(), to);
+}
+
+static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
+{
+	Json::Value res;
+	res["hash"] = toJS(_h);
+	
+	res["expiry"] = (int)_e.expiry();
+	res["sent"] = (int)_e.sent();
+	res["ttl"] = (int)_e.ttl();
+	res["workProved"] = (int)_e.workProved();
+	res["topic"] = toJS(_e.topic());
+	
+	res["payload"] = toJS(_m.payload());
+	res["from"] = toJS(_m.from());
+	res["to"] = toJS(_m.to());
+	return res;
+}
+
+
 WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
@@ -506,6 +548,44 @@ bool WebThreeStubServer::setMining(bool const& _mining)
 		client()->startMining();
 	else
 		client()->stopMining();
+	return true;
+}
+
+Json::Value WebThreeStubServer::shhChanged(int const& _id)
+{
+	Json::Value ret(Json::arrayValue);
+	auto pub = m_shhWatches[_id];
+	if (!pub || m_ids.count(pub))
+		for (h256 const& h: face()->checkWatch(_id))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (pub)
+			{
+				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+				m = e.open(m_ids[pub]);
+				if (!m)
+					continue;
+			}
+			else
+				m = e.open();
+			ret.append(toJson(h,e,m));
+		}
+
+	return ret;
+}
+
+int WebThreeStubServer::shhNewFilter(Json::Value const& _json)
+{
+	auto w = toWatch(_json);
+	auto ret = face()->installWatch(w.first);
+	m_shhWatches.insert(make_pair(ret, w.second));
+	return ret;
+}
+
+bool WebThreeStubServer::shhUninstallFilter(int const& _id)
+{
+	face()->uninstallWatch(_id);
 	return true;
 }
 
