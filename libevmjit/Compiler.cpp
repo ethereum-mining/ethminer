@@ -91,9 +91,12 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 
 		case Instruction::JUMPDEST:
 		{
-			// A basic block starts here.
-			splitPoints.insert(currentPC);
-			indirectJumpTargets.push_back(currentPC);
+			// A basic block starts at the next instruction.
+			if (currentPC + 1 < bytecode.size())
+			{
+				splitPoints.insert(currentPC + 1);
+				indirectJumpTargets.push_back(currentPC + 1);
+			}
 			break;
 		}
 
@@ -153,8 +156,8 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 		}
 		else
 		{
-			std::cerr << "Bad JUMP at PC " << it->first
-					  << ": " << it->second << " is not a valid PC\n";
+			clog(JIT) << "Bad JUMP at PC " << it->first
+					  << ": " << it->second << " is not a valid PC";
 			m_directJumpTargets[it->first] = m_badJumpBlock->llvm();
 		}
 	}
@@ -239,8 +242,8 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef bytecode)
 		dump();
 	}
 
-	if (getenv("EVMCC_OPTIMIZE_STACK"))
-	{
+	//if (getenv("EVMCC_OPTIMIZE_STACK"))
+	//{
 		std::vector<BasicBlock*> blockList;
 		for	(auto& entry : basicBlocks)
 			blockList.push_back(&entry.second);
@@ -258,7 +261,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef bytecode)
 			std::cerr << "\n\nAfter stack optimization \n\n";
 			dump();
 		}
-	}
+	//}
 
 	for (auto& entry : basicBlocks)
 		entry.second.localStack().synchronize(stack);
@@ -486,9 +489,8 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto sum = m_builder.CreateAdd(lhs, rhs);
 			auto mod = stack.pop();
-			auto res = arith.mod(sum, mod);
+			auto res = arith.addmod(lhs, rhs, mod);
 			stack.push(res);
 			break;
 		}
@@ -497,9 +499,8 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto prod = m_builder.CreateMul(lhs, rhs);
 			auto mod = stack.pop();
-			auto res = arith.mod(prod, mod);
+			auto res = arith.mulmod(lhs, rhs, mod);
 			stack.push(res);
 			break;
 		}
@@ -654,8 +655,7 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 
 		case Instruction::JUMPDEST:
 		{
-			// Extra asserts just in case.
-			assert(currentPC == basicBlock.begin());
+			// Nothing to do
 			break;
 		}
 
@@ -814,6 +814,11 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 		{
 			m_builder.CreateRet(Constant::get(ReturnCode::Stop));
 			break;
+		}
+
+		default: // Invalid instruction - runtime exception
+		{
+			_runtimeManager.raiseException(ReturnCode::BadInstruction);
 		}
 
 		}

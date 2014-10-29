@@ -20,9 +20,9 @@
  * vm test functions.
  */
 
+#include <chrono>
 #include <boost/filesystem/path.hpp>
 #include "vm.h"
-
 //#define FILL_TESTS
 
 using namespace std;
@@ -359,9 +359,9 @@ void FakeExtVM::importExec(mObject& _o)
 	code = &thisTxCode;
 	if (_o["code"].type() == str_type)
 		if (_o["code"].get_str().find_first_of("0x") == 0)
-			thisTxCode = compileLLL(_o["code"].get_str());
-		else
 			thisTxCode = fromHex(_o["code"].get_str().substr(2));
+		else
+			thisTxCode = compileLLL(_o["code"].get_str());
 	else if (_o["code"].type() == array_type)
 		for (auto const& j: _o["code"].get_array())
 			thisTxCode.push_back(toByte(j));
@@ -441,8 +441,8 @@ h160 FakeState::createNewAddress(Address _newAddress, Address _sender, u256 _end
 	m_cache[_newAddress] = AddressState(0, balance(_newAddress) + _endowment, h256(), h256());
 
 	// Execute init code.
-	auto vmObj = VMFace::create(VMFace::Interpreter, *_gas);
-	VMFace& vm = *vmObj;
+	auto vmObj = VMFace::create(getVMKind(), *_gas);
+	auto& vm = *vmObj;
 	ExtVM evm(*this, _newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;
@@ -500,7 +500,14 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		BOOST_REQUIRE(o.count("pre") > 0);
 		BOOST_REQUIRE(o.count("exec") > 0);
 
+		auto argc = boost::unit_test::framework::master_test_suite().argc;
+		auto argv = boost::unit_test::framework::master_test_suite().argv;
+		auto useJit = argc >= 2 && std::string(argv[1]) == "--jit";
+		auto vmKind = useJit ? VMFace::JIT : VMFace::Interpreter;
+
 		dev::test::FakeExtVM fev;
+		fev.setVMKind(vmKind);
+
 		fev.importEnv(o["env"].get_obj());
 		fev.importState(o["pre"].get_obj());
 
@@ -513,16 +520,12 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 			fev.thisTxCode = get<3>(fev.addresses.at(fev.myAddress));
 			fev.code = &fev.thisTxCode;
 		}
-
-
-		auto argc = boost::unit_test::framework::master_test_suite().argc;
-		auto argv = boost::unit_test::framework::master_test_suite().argv;
-		auto useJit = argc >= 2 && std::string(argv[1]) == "--jit";
 		
-		auto vmKind = useJit ? VMFace::JIT : VMFace::Interpreter;
-		auto vm = VMFace::create(vmKind, fev.gas);
+		auto vm = VMFace::create(fev.getVMKind(), fev.gas);
 		bytes output;
 		auto outOfGas = false;
+
+		auto startTime = std::chrono::high_resolution_clock::now();
 		try
 		{
 			output = vm->go(fev, fev.simpleTrace<FakeExtVM>()).toVector();
@@ -539,6 +542,20 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		{
 			cnote << "VM did throw an exception: " << _e.what();
 		}
+
+		auto endTime = std::chrono::high_resolution_clock::now();
+		for (auto i = 0; i < argc; ++i)
+		{	       
+			if (std::string(argv[i]) == "--show-times")
+			{
+				auto testDuration = endTime - startTime;
+				cnote << "Execution time: "
+				      << std::chrono::duration_cast<std::chrono::milliseconds>(testDuration).count()
+				      << " ms";
+			}
+			break;
+		}
+
 		auto gas = vm->gas();
 
 		// delete null entries in storage for the sake of comparison
@@ -761,6 +778,11 @@ BOOST_AUTO_TEST_CASE(vmIOandFlowOperationsTest)
 BOOST_AUTO_TEST_CASE(vmPushDupSwapTest)
 {
 	dev::test::executeTests("vmPushDupSwapTest");
+}
+
+BOOST_AUTO_TEST_CASE(vmPerformanceTest)
+{
+	dev::test::executeTests("vmPerformanceTest");
 }
 
 BOOST_AUTO_TEST_CASE(vmSystemOperationsTest)
