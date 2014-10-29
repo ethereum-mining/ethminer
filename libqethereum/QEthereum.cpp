@@ -136,8 +136,8 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 			if (elem.contains("result") && elem["result"].toBool() == true)
 			{
 				QJsonObject res;
-				res["_event"] = QString::fromStdString("messages");
-				res["data"] = (int)m_watches[i]; // we can do that couse poll is synchronous
+				res["_event"] = _addInfo;
+				res["_id"] = (int)m_watches[i]; // we can do that couse poll is synchronous
 				response(QString::fromUtf8(QJsonDocument(res).toJson()));
 			}
 		}
@@ -154,8 +154,9 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 				for (auto e: elem["result"].toArray())
 				{
 					QJsonObject res;
-					res["_event"] = QString::fromStdString("messages");
-					res["data"] = e; //TODO somehow send watch id?
+					res["_event"] = _addInfo;
+					res["_id"] = (int)m_shhWatches[i];
+					res["data"] = e;
 					response(QString::fromUtf8(QJsonDocument(res).toJson()));
 				}
 		}
