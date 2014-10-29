@@ -189,6 +189,9 @@
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="LibEthereum.vcxproj">
+      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    </ProjectReference>
     <ProjectReference Include="LibEvmJit.vcxproj">
       <Project>{9c816740-5c11-4377-a3a7-46be12f35fa0}</Project>
     </ProjectReference>

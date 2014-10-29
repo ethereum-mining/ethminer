@@ -21,8 +21,38 @@
 
 #include "Common.h"
 
+#include <libdevcrypto/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
+BuildTopic& BuildTopic::shiftBytes(bytes const& _b)
+{
+	m_parts.push_back(dev::sha3(_b));
+	return *this;
+}
+
+h256 TopicFilter::sha3() const
+{
+	RLPStream s;
+	streamRLP(s);
+	return dev::sha3(s.out());
+}
+
+TopicMask BuildTopicMask::toTopicMask() const
+{
+	TopicMask ret;
+	if (m_parts.size())
+		for (auto i = 0; i < 32; ++i)
+		{
+			ret.first[i] = m_parts[i * m_parts.size() / 32][i];
+			ret.second[i] = m_parts[i * m_parts.size() / 32] ? 255 : 0;
+		}
+	return ret;
+}
+/*
+web3.shh.watch({}).arrived(function(m) { env.note("New message:\n"+JSON.stringify(m)); })
+k = web3.shh.newIdentity()
+web3.shh.post({from: k, topic: web3.fromAscii("test"), payload: web3.fromAscii("Hello world!")})
+*/

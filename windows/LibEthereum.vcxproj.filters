@@ -195,6 +195,14 @@
     </ClCompile>
     <ClCompile Include="..\libevm\VMFace.cpp">
       <Filter>libevm</Filter>
+    <ClCompile Include="..\libdevcrypto\CryptoPP.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\EC.cpp">
+      <Filter>libdevcrypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp">
+      <Filter>libdevcrypto</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -422,6 +430,15 @@
     </ClInclude>
     <ClInclude Include="..\libevm\VMFace.h">
       <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\CryptoPP.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\EC.h">
+      <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libdevcrypto\SHA3MAC.h">
+      <Filter>libdevcrypto</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

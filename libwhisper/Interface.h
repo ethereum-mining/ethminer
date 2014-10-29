@@ -43,30 +43,13 @@ namespace shh
 	Topic mask;
 };*/
 
-using TopicMask = std::pair<Topic, Topic>;
-using TopicMasks = std::vector<TopicMask>;
-
-class MessageFilter
-{
-public:
-	MessageFilter() {}
-	MessageFilter(TopicMasks const& _m): m_topicMasks(_m) {}
-	MessageFilter(RLP const& _r): m_topicMasks((TopicMasks)_r) {}
-
-	void fillStream(RLPStream& _s) const { _s << m_topicMasks; }
-	h256 sha3() const { RLPStream s; fillStream(s); return dev::sha3(s.out()); }
-
-	bool matches(Message const& _m) const;
-
-private:
-	TopicMasks m_topicMasks;
-};
+class Watch;
 
 struct InstalledFilter
 {
-	InstalledFilter(MessageFilter const& _f): filter(_f) {}
+	InstalledFilter(TopicFilter const& _f): filter(_f) {}
 
-	MessageFilter filter;
+	TopicFilter filter;
 	unsigned refCount = 1;
 };
 
@@ -84,17 +67,22 @@ class Interface
 public:
 	virtual ~Interface() {}
 
-	virtual void inject(Message const& _m, WhisperPeer* _from = nullptr) = 0;
+	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
-	virtual unsigned installWatch(MessageFilter const& _filter) = 0;
-	virtual unsigned installWatch(h256 _filterId) = 0;
+	unsigned installWatch(TopicMask const& _mask) { return installWatch(TopicFilter(_mask)); }
+	virtual unsigned installWatch(TopicFilter const& _filter) = 0;
+	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;
+	virtual h256s watchMessages(unsigned _watchId) = 0;
 
-	virtual Message message(h256 _m) const = 0;
+	virtual Envelope envelope(h256 _m) const = 0;
 
-	virtual void sendRaw(bytes const& _payload, h256 _topic, unsigned _ttl) = 0;
+	void post(bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
+	void post(Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_to, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
+	void post(Secret _from, Public _to, bytes const& _payload, Topic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_from, _to, _topic, _ttl, _workToProve)); }
 };
 
 struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
@@ -102,9 +90,11 @@ struct WatshhChannel: public dev::LogChannel { static const char* name() { retur
 
 }
 }
-/*
-namespace std { void swap(shh::Watch& _a, shh::Watch& _b); }
 
+namespace std { void swap(dev::shh::Watch& _a, dev::shh::Watch& _b); }
+
+namespace dev
+{
 namespace shh
 {
 
@@ -114,28 +104,29 @@ class Watch: public boost::noncopyable
 
 public:
 	Watch() {}
-	Watch(Whisper& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
-	Watch(Whisper& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	Watch(Interface& _c, TopicMask const& _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Interface& _c, TopicFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
-	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
-	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
+	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }
+	h256s peek() { return m_c ? m_c->peekWatch(m_id) : h256s(); }
 
 private:
-	Whisper* m_c;
+	Interface* m_c;
 	unsigned m_id;
 };
 
 }
+}
 
-namespace shh
+namespace std
 {
 
-inline void swap(shh::Watch& _a, shh::Watch& _b)
+inline void swap(dev::shh::Watch& _a, dev::shh::Watch& _b)
 {
 	swap(_a.m_c, _b.m_c);
 	swap(_a.m_id, _b.m_id);
 }
 
 }
-*/
+

@@ -91,7 +91,6 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 bytes BlockChain::createGenesisBlock()
 {
 	RLPStream block(3);
-	auto sha3EmptyList = sha3(RLPEmptyList);
 
 	h256 stateRoot;
 	{
@@ -102,8 +101,9 @@ bytes BlockChain::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(13) << h256() << sha3EmptyList << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
+	block.appendList(15)
+			// TODO: maybe make logbloom correct?
+		<< h256() << EmptySHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -306,7 +306,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
-		auto b = s.bloom();
+		auto b = s.oldBloom();
 		BlockBlooms bb;
 		BlockTraces bt;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
