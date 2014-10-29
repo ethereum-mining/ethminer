@@ -102,24 +102,28 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
 	m_web3->connect(Host::pocHost());
 
+	m_ldb = new QLDB(this);
+
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), owned());
-		m_whisper = new QWhisper(this, whisper());
+		m_ethereum = new QEthereum(this, ethereum(), m_myKeys);
+		m_whisper = new QWhisper(this, whisper(), owned());
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh));
+		auto qldb = m_ldb;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qldb));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		m_ethereum->poll();
+		m_whisper->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -522,6 +526,8 @@ void Main::timerEvent(QTimerEvent*)
 	
 	if (m_ethereum)
 		m_ethereum->poll();
+	if (m_whisper)
+		m_whisper->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))

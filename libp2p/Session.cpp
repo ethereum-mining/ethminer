@@ -475,7 +475,6 @@ void Session::drop(DisconnectReason _reason)
 {
 	if (m_dropped)
 		return;
-	cerr << (void*)this << " dropped" << endl;
 	if (m_socket.is_open())
 		try
 		{

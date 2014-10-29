@@ -72,8 +72,8 @@ All other entities' first alpha is lower case.
 4. Variable prefixes:
 
 a. Leading underscore "_" to parameter names (both normal and template).
-- Exception: "o_parameterName" when it is used exclusively for output. See 7(f).
-- Exception: "io_parameterName" when it is used for both input and output. See 7(f).
+- Exception: "o_parameterName" when it is used exclusively for output. See 6(f).
+- Exception: "io_parameterName" when it is used for both input and output. See 6(f).
 b. Leading "c_" to const variables (unless part of an external API).
 c. Leading "g_" to global (non-const) variables.
 d. Leading "s_" to static (non-const, non-global) variables.

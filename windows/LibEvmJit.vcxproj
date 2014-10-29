@@ -123,6 +123,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\libevmjit\Arith256.cpp" />
     <ClCompile Include="..\libevmjit\BasicBlock.cpp" />
     <ClCompile Include="..\libevmjit\Compiler.cpp" />
     <ClCompile Include="..\libevmjit\CompilerHelper.cpp" />
@@ -138,6 +139,7 @@
     <ClCompile Include="..\libevmjit\VM.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libevmjit\Arith256.h" />
     <ClInclude Include="..\libevmjit\BasicBlock.h" />
     <ClInclude Include="..\libevmjit\Compiler.h" />
     <ClInclude Include="..\libevmjit\CompilerHelper.h" />

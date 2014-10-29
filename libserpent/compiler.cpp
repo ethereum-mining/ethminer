@@ -123,9 +123,10 @@ programData opcodeify(Node node,
             token("$begincode"+symb+".endcode"+symb, m), token("DUP1", m),
             token("$begincode"+symb, m), sub.code, token("CODECOPY", m),
             token("$endcode"+symb, m), token("JUMP", m),
-            token("~begincode"+symb, m), code, token("~endcode"+symb, m)
+            token("~begincode"+symb, m), code, token("~endcode"+symb, m),
+            token("JUMPDEST", m)
         };
-        return pd(sub.aux, multiToken(nodelist, 10, m), 1);
+        return pd(sub.aux, multiToken(nodelist, 11, m), 1);
     }
     // Stack variables
     if (node.val == "with") {
@@ -171,9 +172,9 @@ programData opcodeify(Node node,
             cond.code,
             token("$endif"+symb, m), token("JUMPI", m),
             action.code,
-            token("~endif"+symb, m)
+            token("~endif"+symb, m), token("JUMPDEST", m)
         };
-        return pd(aux, multiToken(nodelist, 5, m), 0);
+        return pd(aux, multiToken(nodelist, 6, m), 0);
     }
     // 3-part conditional
     else if (node.val == "if" && node.args.size() == 3) {
@@ -190,13 +191,15 @@ programData opcodeify(Node node,
         if (elsed.outs > outs) elsed.code = popwrap(elsed.code);
         Node nodelist[] = {
             ifd.code,
-            token("NOT", m), token("$else"+symb, m), token("JUMPI", m),
+            token("NOT", m),
+            token("$else"+symb, m), token("JUMPI", m),
             thend.code,
-            token("$endif"+symb, m), token("JUMP", m), token("~else"+symb, m),
+            token("$endif"+symb, m), token("JUMP", m),
+            token("~else"+symb, m), token("JUMPDEST", m),
             elsed.code,
-            token("~endif"+symb, m)
+            token("~endif"+symb, m), token("JUMPDEST", m)
         };
-        return pd(aux, multiToken(nodelist, 10, m), outs);
+        return pd(aux, multiToken(nodelist, 12, m), outs);
     }
     // While (rewritten to this in rewrites)
     else if (node.val == "until") {
@@ -207,13 +210,14 @@ programData opcodeify(Node node,
             err("Condition of while/until loop has arity 0", m);
         if (action.outs) action.code = popwrap(action.code);
         Node nodelist[] = {
-            token("~beg"+symb, m),
+            token("~beg"+symb, m), token("JUMPDEST", m),
             cond.code,
             token("$end"+symb, m), token("JUMPI", m),
             action.code,
-            token("$beg"+symb, m), token("JUMP", m), token("~end"+symb, m)
+            token("$beg"+symb, m), token("JUMP", m),
+            token("~end"+symb, m), token("JUMPDEST", m)
         };
-        return pd(aux, multiToken(nodelist, 8, m));
+        return pd(aux, multiToken(nodelist, 10, m));
     }
     // Memory allocations
     else if (node.val == "alloc") {
@@ -298,7 +302,7 @@ Node finalize(programData c) {
     Metadata m = c.code.metadata;
     // If we are using both alloc and variables, we need to pre-zfill
     // some memory
-    if (c.aux.allocUsed && c.aux.vars.size() > 0) {
+    if ((c.aux.allocUsed || c.aux.calldataUsed) && c.aux.vars.size() > 0) {
         Node nodelist[] = {
             token("0", m), 
             token(unsignedToDecimal(c.aux.vars.size() * 32 - 1)),
@@ -309,8 +313,8 @@ Node finalize(programData c) {
     // If msg.data is being used as an array, then we need to copy it
     if (c.aux.calldataUsed) {
         Node nodelist[] = {
-            token("MSIZE", m), token("CALLDATASIZE", m), token("MSIZE", m),
-            token("0", m), token("CALLDATACOPY", m),
+            token("MSIZE", m), token("CALLDATASIZE", m), token("0", m),
+            token("MSIZE", m), token("CALLDATACOPY", m),
             token(c.aux.vars["'msg.data"], m), token("MSTORE", m)
         };
         bottom.push_back(multiToken(nodelist, 7, m));
