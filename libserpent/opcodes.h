@@ -1,3 +1,20 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef ETHSERP_OPCODES
 #define ETHSERP_OPCODES
 
@@ -86,23 +103,24 @@ std::map<std::string, std::vector<int> > opcodes;
 std::map<int, std::string> reverseOpcodes;
 
 // Fetches everything EXCEPT PUSH1..32
-std::pair<std::string, std::vector<int> > _opdata(std::string ops, int opi) {
-	if (!opcodes.size()) {
+std::pair<std::string, std::vector<int> > _opdata(std::string ops, int opi)
+{
+	if (!opcodes.size())
+	{
 		int i = 0;
-		while (mapping[i].op != "---END---") {
+		while (mapping[i].op != "---END---")
+		{
 			Mapping mi = mapping[i];
 			opcodes[mi.op] = triple(mi.opcode, mi.in, mi.out);
 			i++;
 		}
-		for (i = 1; i <= 16; i++) {
+		for (i = 1; i <= 16; i++)
+		{
 			opcodes["DUP"+unsignedToDecimal(i)] = triple(0x7f + i, i, i+1);
 			opcodes["SWAP"+unsignedToDecimal(i)] = triple(0x8f + i, i+1, i+1);
 		}
-		for (std::map<std::string, std::vector<int> >::iterator it=opcodes.begin();
-			 it != opcodes.end();
-			 it++) {
+		for (std::map<std::string, std::vector<int> >::iterator it=opcodes.begin(); it != opcodes.end(); it++)
 			reverseOpcodes[(*it).second[0]] = (*it).first;
-		}
 	}
 	std::string op;
 	std::vector<int> opdata;
@@ -111,19 +129,23 @@ std::pair<std::string, std::vector<int> > _opdata(std::string ops, int opi) {
 	return std::pair<std::string, std::vector<int> >(op, opdata);
 }
 
-int opcode(std::string op) {
+int opcode(std::string op)
+{
 	return _opdata(op, -1).second[0];
 }
 
-int opinputs(std::string op) {
+int opinputs(std::string op)
+{
 	return _opdata(op, -1).second[1];
 }
 
-int opoutputs(std::string op) {
+int opoutputs(std::string op)
+{
 	return _opdata(op, -1).second[2];
 }
 
-std::string op(int opcode) {
+std::string op(int opcode)
+{
 	return _opdata("", opcode).first;
 }
 
