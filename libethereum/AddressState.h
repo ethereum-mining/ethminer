@@ -23,6 +23,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libdevcrypto/SHA3.h>
 
 namespace dev
@@ -35,10 +36,19 @@ namespace eth
 class AddressState
 {
 public:
-	AddressState(): m_isAlive(false), m_nonce(0), m_balance(0) {}
+	enum NewAccountType { NormalCreation, ContractConception };
+
+	/// Construct a dead AddressState.
+	AddressState() {}
+	/// Construct an alive AddressState, with given endowment, for either a normal (non-contract) account or for a contract account in the
+	/// conception phase, where the code is not yet known.
+	AddressState(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? h256() : EmptySHA3) {}
+	/// Explicit constructor for wierd cases of construction of a normal account.
+	AddressState(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
+	/// Explicit constructor for wierd cases of construction or a contract account.
 	AddressState(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_nonce(_nonce), m_balance(_balance), m_storageRoot(_contractRoot), m_codeHash(_codeHash) {}
 
-	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = h256(); m_balance = 0; m_nonce = 0; }
+	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = EmptyTrie; m_balance = 0; m_nonce = 0; }
 	bool isAlive() const { return m_isAlive; }
 
 	u256& balance() { return m_balance; }
@@ -62,17 +72,17 @@ public:
 	void noteCode(bytesConstRef _code) { assert(sha3(_code) == m_codeHash); m_codeCache = _code.toBytes(); }
 
 private:
-	bool m_isAlive;
-	u256 m_nonce;
-	u256 m_balance;
+	bool m_isAlive = false;
+	u256 m_nonce = 0;
+	u256 m_balance = 0;
 
 	/// The base storage root. Used with the state DB to give a base to the storage. m_storageOverlay is overlaid on this and takes precedence for all values set.
-	h256 m_storageRoot;
+	h256 m_storageRoot = EmptyTrie;
 
 	/// If 0 then we're in the limbo where we're running the initialisation code. We expect a setCode() at some point later.
 	/// If EmptySHA3, then m_code, which should be empty, is valid.
 	/// If anything else, then m_code is valid iff it's not empty, otherwise, State::ensureCached() needs to be called with the correct args.
-	h256 m_codeHash;
+	h256 m_codeHash = EmptySHA3;
 
 	// TODO: change to unordered_map.
 	std::map<u256, u256> m_storageOverlay;

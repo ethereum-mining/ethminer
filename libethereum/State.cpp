@@ -326,6 +326,9 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
+	cnote << *this;
+	cnote << _c;
+
 	for (auto i: ads)
 	{
 		auto it = m_cache.find(i);
@@ -357,7 +360,7 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		RLP state(stateBack);
 		AddressState s;
 		if (state.isNull())
-			s = AddressState(0, 0, EmptyTrie, EmptySHA3);
+			s = AddressState(0, AddressState::NormalCreation);
 		else
 			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
@@ -624,8 +627,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		RLPStream k;
 		k << i;
 
-		RLPStream txrlp;
-		m_transactions[i].streamRLP(txrlp);
 		transactionsTrie.insert(&k.out(), tr.data());
 
 //		cnote << m_state.root() << m_state;
@@ -962,8 +963,12 @@ void State::noteSending(Address _id)
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end())
-		m_cache[_id] = AddressState(1, 0, h256(), EmptySHA3);
+	if (asserts(it != m_cache.end()))
+	{
+		cwarn << "Sending from non-existant account. How did it pay!?!";
+		// this is impossible. but we'll continue regardless...
+		m_cache[_id] = AddressState(1, 0);
+	}
 	else
 		it->second.incNonce();
 }
@@ -973,7 +978,7 @@ void State::addBalance(Address _id, u256 _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(0, _amount, h256(), EmptySHA3);
+		m_cache[_id] = AddressState(_amount, AddressState::NormalCreation);
 	else
 		it->second.addBalance(_amount);
 }
@@ -1265,7 +1270,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(0, balance(newAddress) + _endowment, h256(), h256());
+	m_cache[newAddress] = AddressState(balance(newAddress) + _endowment, AddressState::ContractConception);
 
 	// Execute init code.
 	auto vmObj = VMFace::create(getVMKind(), *_gas);
@@ -1380,7 +1385,6 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			/// For POC6, 3rd value of account is code and will be empty if code is not present.
 			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
 			{
 				std::map<u256, u256> mem;
