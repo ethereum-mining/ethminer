@@ -155,7 +155,7 @@ static shh::Message toMessage(Json::Value const& _json)
 	if (!_json["to"].empty())
 		ret.setTo(jsToPublic(_json["to"].asString()));
 	if (!_json["payload"].empty())
-		ret.setPayload(jsToBytes(_json["payload"].asString()));
+		ret.setPayload(asBytes(_json["payload"].asString()));
 	return ret;
 }
 
@@ -216,7 +216,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["workProved"] = (int)_e.workProved();
 	res["topic"] = toJS(_e.topic());
 	
-	res["payload"] = toJS(_m.payload());
+	res["payload"] = asString(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;

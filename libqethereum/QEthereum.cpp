@@ -151,14 +151,13 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 		{
 			QJsonObject elem = resultsArray[i].toObject();
 			if (elem.contains("result"))
-				for (auto e: elem["result"].toArray())
-				{
-					QJsonObject res;
-					res["_event"] = _addInfo;
-					res["_id"] = (int)m_shhWatches[i];
-					res["data"] = e;
-					response(QString::fromUtf8(QJsonDocument(res).toJson()));
-				}
+			{
+				QJsonObject res;
+				res["_event"] = _addInfo;
+				res["_id"] = (int)m_shhWatches[i];
+				res["data"] = elem["result"].toArray();
+				response(QString::fromUtf8(QJsonDocument(res).toJson()));
+			}
 		}
 	}
 	
