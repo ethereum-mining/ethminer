@@ -20,9 +20,9 @@
  * vm test functions.
  */
 
+#include <chrono>
 #include <boost/filesystem/path.hpp>
 #include "vm.h"
-
 //#define FILL_TESTS
 
 using namespace std;
@@ -524,6 +524,8 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		auto vm = VMFace::create(fev.getVMKind(), fev.gas);
 		bytes output;
 		auto outOfGas = false;
+
+		auto startTime = std::chrono::high_resolution_clock::now();
 		try
 		{
 			output = vm->go(fev, fev.simpleTrace<FakeExtVM>()).toVector();
@@ -540,6 +542,20 @@ void doTests(json_spirit::mValue& v, bool _fillin)
 		{
 			cnote << "VM did throw an exception: " << _e.what();
 		}
+
+		auto endTime = std::chrono::high_resolution_clock::now();
+		for (auto i = 0; i < argc; ++i)
+		{	       
+			if (std::string(argv[i]) == "--show-times")
+			{
+				auto testDuration = endTime - startTime;
+				cnote << "Execution time: "
+				      << std::chrono::duration_cast<std::chrono::milliseconds>(testDuration).count()
+				      << " ms";
+			}
+			break;
+		}
+
 		auto gas = vm->gas();
 
 		// delete null entries in storage for the sake of comparison
@@ -762,6 +778,11 @@ BOOST_AUTO_TEST_CASE(vmIOandFlowOperationsTest)
 BOOST_AUTO_TEST_CASE(vmPushDupSwapTest)
 {
 	dev::test::executeTests("vmPushDupSwapTest");
+}
+
+BOOST_AUTO_TEST_CASE(vmPerformanceTest)
+{
+	dev::test::executeTests("vmPerformanceTest");
 }
 
 BOOST_AUTO_TEST_CASE(vmSystemOperationsTest)
