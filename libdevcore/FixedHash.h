@@ -59,7 +59,7 @@ public:
 	FixedHash() { m_data.fill(0); }
 
 	/// Construct from another hash, filling with zeroes or cropping as necessary.
-	template <unsigned M> FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
+	template <unsigned M> explicit FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
 
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -155,6 +155,25 @@ public:
 		FixedHash<32> ret;
 		for (auto i: m_data)
 			ret[i / 8] |= 1 << (i % 8);
+		return ret;
+	}
+
+	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h) { return (*this |= _h.template nbloom<P, N>()); }
+
+	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	{
+		static const unsigned c_bloomBytes = (M + 7) / 8;
+		unsigned mask = (1 << c_bloomBytes) - 1;
+		FixedHash<M> ret;
+		byte const* p = data();
+		for (unsigned i = 0; i < P; ++i)
+		{
+			unsigned index = 0;
+			for (unsigned j = 0; j < c_bloomBytes; ++j, ++p)
+				index = (index << 8) | *p;
+			index &= mask;
+			ret[N - 1 - index / 8] |= (1 << (index % 8));
+		}
 		return ret;
 	}
 
