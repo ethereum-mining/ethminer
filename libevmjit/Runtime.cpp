@@ -57,13 +57,9 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-static Runtime* g_runtime;	// FIXME: Remove
-
 Runtime::Runtime(u256 _gas, ExtVMFace& _ext, jmp_buf _jmpBuf):
 	m_ext(_ext)
 {
-	assert(!g_runtime);
-	g_runtime = this;
 	set(RuntimeData::Gas, _gas);
 	set(RuntimeData::Address, fromAddress(_ext.myAddress));
 	set(RuntimeData::Caller, fromAddress(_ext.caller));
@@ -81,11 +77,6 @@ Runtime::Runtime(u256 _gas, ExtVMFace& _ext, jmp_buf _jmpBuf):
 	m_data.callData = _ext.data.data();
 	m_data.code = _ext.code.data();
 	m_data.jmpBuf = _jmpBuf;
-}
-
-Runtime::~Runtime()
-{
-	g_runtime = nullptr;
 }
 
 void Runtime::set(RuntimeData::Index _index, u256 _value)
@@ -113,6 +104,8 @@ bytesConstRef Runtime::getReturnData() const
 RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder): CompilerHelper(_builder)
 {
 	m_dataPtr = new llvm::GlobalVariable(*getModule(), Type::RuntimePtr, false, llvm::GlobalVariable::PrivateLinkage, llvm::UndefValue::get(Type::RuntimePtr), "rt");
+	llvm::Type* args[] = {Type::BytePtr, m_builder.getInt32Ty()};
+	m_longjmp = llvm::Function::Create(llvm::FunctionType::get(Type::Void, args, false), llvm::Function::ExternalLinkage, "longjmp", getModule());
 
 	// Export data
 	auto mainFunc = getMainFunction();
@@ -147,6 +140,11 @@ void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size
 {
 	set(RuntimeData::ReturnDataOffset, _offset);
 	set(RuntimeData::ReturnDataSize, _size);
+}
+
+void RuntimeManager::raiseException(ReturnCode _returnCode)
+{
+	m_builder.CreateCall2(m_longjmp, getJmpBuf(), Constant::get(_returnCode));
 }
 
 llvm::Value* RuntimeManager::get(Instruction _inst)

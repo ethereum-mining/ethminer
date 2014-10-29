@@ -1,12 +1,15 @@
 
 #pragma once
 
+
+#include <setjmp.h>
 #include <vector>
 
 #include <libevm/ExtVMFace.h>
 
 #include "CompilerHelper.h"
 #include "Utils.h"
+#include "Type.h"
 
 
 #ifdef _MSC_VER
@@ -62,7 +65,6 @@ class Runtime
 {
 public:
 	Runtime(u256 _gas, ExtVMFace& _ext, jmp_buf _jmpBuf);
-	~Runtime();
 
 	Runtime(const Runtime&) = delete;
 	void operator=(const Runtime&) = delete;
@@ -99,16 +101,19 @@ public:
 	llvm::Value* getGas();	// TODO: Remove
 	llvm::Value* getCallData();
 	llvm::Value* getCode();
-	llvm::Value* getJmpBuf();
 	void setGas(llvm::Value* _gas);
 
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
 
+	void raiseException(ReturnCode _returnCode);
+
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);
 	void set(RuntimeData::Index _index, llvm::Value* _value);
+	llvm::Value* getJmpBuf();
 
-	llvm::GlobalVariable* m_dataPtr;
+	llvm::GlobalVariable* m_dataPtr = nullptr;
+	llvm::Function* m_longjmp = nullptr;
 };
 
 }

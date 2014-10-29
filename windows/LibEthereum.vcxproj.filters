@@ -195,6 +195,7 @@
     </ClCompile>
     <ClCompile Include="..\libevm\VMFace.cpp">
       <Filter>libevm</Filter>
+    </ClCompile>
     <ClCompile Include="..\libdevcrypto\CryptoPP.cpp">
       <Filter>libdevcrypto</Filter>
     </ClCompile>

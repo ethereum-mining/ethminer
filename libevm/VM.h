@@ -427,9 +427,13 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SIGNEXTEND:
 		{
-			auto k = m_stack[m_stack.size() - 2];
-			m_stack[m_stack.size() - 2] = m_stack.back();
+			unsigned k = m_stack.back().convert_to<unsigned>();
 			m_stack.pop_back();
+			auto& b = m_stack.back();
+			if (k <= 31)
+				if ((b >> (k * 8)) & 0x80)
+					for (unsigned i = 31; i > k; --i)
+						b |= (u256(0xff) << i);
 			break;
 		}
 		case Instruction::SHA3:

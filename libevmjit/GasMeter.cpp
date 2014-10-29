@@ -101,11 +101,7 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 	m_builder.CreateCondBr(isOutOfGas, outOfGasBB, updateBB);
 
 	m_builder.SetInsertPoint(outOfGasBB);
-
-	//auto longjmpFunc = llvm::Intrinsic::getDeclaration(_module, llvm::Intrinsic::eh_sjlj_longjmp);
-	llvm::Type* args[] = {Type::BytePtr, m_builder.getInt32Ty()};
-	auto longjmpNative = llvm::Function::Create(llvm::FunctionType::get(Type::Void, args, false), llvm::Function::ExternalLinkage, "longjmp", module);
-	m_builder.CreateCall2(longjmpNative, m_runtimeManager.getJmpBuf(), Constant::get(ReturnCode::OutOfGas));
+	_runtimeManager.raiseException(ReturnCode::OutOfGas);
 	m_builder.CreateUnreachable();
 
 	m_builder.SetInsertPoint(updateBB);
@@ -147,7 +143,7 @@ void GasMeter::countSStore(Ext& _ext, llvm::Value* _index, llvm::Value* _newValu
 	auto isDel = m_builder.CreateAnd(oldValueIsntZero, newValueIsZero, "isDel");
 	auto cost = m_builder.CreateSelect(isAdd, Constant::get(2 * sstoreCost), Constant::get(sstoreCost), "cost");
 	cost = m_builder.CreateSelect(isDel, Constant::get(0), cost, "cost");
-	m_builder.CreateCall(m_gasCheckFunc, cost);
+	createCall(m_gasCheckFunc, cost);
 }
 
 void GasMeter::giveBack(llvm::Value* _gas)

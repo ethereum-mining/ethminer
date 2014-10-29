@@ -109,8 +109,7 @@ llvm::Value* Ext::create(llvm::Value* _endowment, llvm::Value* _initOff, llvm::V
 	m_builder.CreateStore(_endowment, m_args[0]);
 	m_builder.CreateStore(_initOff, m_arg2);
 	m_builder.CreateStore(_initSize, m_arg3);
-	llvm::Value* args[] = {getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_arg3, m_args[1]};
-	m_builder.CreateCall(m_create, args);
+	createCall(m_create, getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_arg3, m_args[1]);
 	llvm::Value* address = m_builder.CreateLoad(m_args[1]);
 	address = Endianness::toNative(m_builder, address);
 	return address;
@@ -128,9 +127,7 @@ llvm::Value* Ext::call(llvm::Value*& _gas, llvm::Value* _receiveAddress, llvm::V
 	m_builder.CreateStore(_outSize, m_arg7);
 	auto codeAddress = Endianness::toBE(m_builder, _codeAddress);
 	m_builder.CreateStore(codeAddress, m_arg8);
-
-	llvm::Value* args[] = {getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7, m_arg8, m_args[1]};
-	m_builder.CreateCall(m_call, args);
+	createCall(m_call, getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_arg3, m_arg4, m_arg5, m_arg6, m_arg7, m_arg8, m_args[1]);
 	_gas = m_builder.CreateLoad(m_args[0]); // Return gas
 	return m_builder.CreateLoad(m_args[1]);
 }
@@ -139,8 +136,7 @@ llvm::Value* Ext::sha3(llvm::Value* _inOff, llvm::Value* _inSize)
 {
 	m_builder.CreateStore(_inOff, m_args[0]);
 	m_builder.CreateStore(_inSize, m_arg2);
-	llvm::Value* args[] = {getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_args[1]};
-	m_builder.CreateCall(m_sha3, args);
+	createCall(m_sha3, getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_args[1]);
 	llvm::Value* hash = m_builder.CreateLoad(m_args[1]);
 	hash = Endianness::toNative(m_builder, hash);
 	return hash;
@@ -148,10 +144,10 @@ llvm::Value* Ext::sha3(llvm::Value* _inOff, llvm::Value* _inSize)
 
 llvm::Value* Ext::exp(llvm::Value* _left, llvm::Value* _right)
 {
+	// TODO: Move ext to Arith256
 	m_builder.CreateStore(_left, m_args[0]);
 	m_builder.CreateStore(_right, m_arg2);
-	llvm::Value* args[] = {getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_args[1]};
-	m_builder.CreateCall(m_exp, args);
+	createCall(m_exp, getRuntimeManager().getRuntimePtr(), m_args[0], m_arg2, m_args[1]);
 	return m_builder.CreateLoad(m_args[1]);
 }
 
@@ -166,8 +162,7 @@ llvm::Value* Ext::codesizeAt(llvm::Value* _addr)
 {
 	auto addr = Endianness::toBE(m_builder, _addr);
 	m_builder.CreateStore(addr, m_args[0]);
-	llvm::Value* args[] = {getRuntimeManager().getRuntimePtr(), m_args[0], m_args[1]};
-	m_builder.CreateCall(m_codesizeAt, args);
+	createCall(m_codesizeAt, getRuntimeManager().getRuntimePtr(), m_args[0], m_args[1]);
 	return m_builder.CreateLoad(m_args[1]);
 }
 
@@ -279,7 +274,7 @@ EXPORT void ext_exp(Runtime* _rt, i256* _left, i256* _right, i256* _ret)
 	*_ret = eth2llvm(ret);
 }
 
-EXPORT unsigned char* ext_codeAt(Runtime* _rt, h256* _addr256)	//FIXME: Check endianess
+EXPORT unsigned char* ext_codeAt(Runtime* _rt, h256* _addr256)
 {
 	auto&& ext = _rt->getExt();
 	auto addr = right160(*_addr256);
@@ -287,7 +282,7 @@ EXPORT unsigned char* ext_codeAt(Runtime* _rt, h256* _addr256)	//FIXME: Check en
 	return const_cast<unsigned char*>(code.data());
 }
 
-EXPORT void ext_codesizeAt(Runtime* _rt, h256* _addr256, i256* _ret)	//FIXME: Check endianess
+EXPORT void ext_codesizeAt(Runtime* _rt, h256* _addr256, i256* _ret)
 {
 	auto&& ext = _rt->getExt();
 	auto addr = right160(*_addr256);
