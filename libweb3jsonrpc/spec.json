@@ -44,7 +44,11 @@
             { "method": "newIdentity", "params": [], "order": [], "returns": ""},
             { "method": "haveIdentity", "params": [""], "order": [], "returns": false},
             { "method": "newGroup", "params": ["", ""], "order": [], "returns": ""},
-            { "method": "addToGroup", "params": ["", ""], "order": [], "returns": ""}
+            { "method": "addToGroup", "params": ["", ""], "order": [], "returns": ""},
+			
+            { "method": "shhNewFilter", "params": [{}], "order": [], "returns": 0},
+			{ "method": "shhUninstallFilter", "params": [0], "order": [], "returns": true},
+			{ "method": "shhChanged", "params": [0], "order": [], "returns": []}
             
 ]
 

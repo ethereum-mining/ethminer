@@ -35,17 +35,14 @@ QWebThree::~QWebThree()
 {
 }
 
-void QWebThree::poll()
+static QString toJsonRpcBatch(std::vector<unsigned> const& _watches, QString _method)
 {
-	if (m_watches.size() == 0)
-		return;
-	
 	QJsonArray batch;
-	for (int w: m_watches)
+	for (int w: _watches)
 	{
 		QJsonObject res;
 		res["jsonrpc"] = QString::fromStdString("2.0");
-		res["method"] = QString::fromStdString("changed");
+		res["method"] = _method;
 		
 		QJsonArray params;
 		params.append(w);
@@ -53,31 +50,38 @@ void QWebThree::poll()
 		res["id"] = w;
 		batch.append(res);
 	}
-	
-	emit processData(QString::fromUtf8(QJsonDocument(batch).toJson()), "changed");
+
+	return QString::fromUtf8(QJsonDocument(batch).toJson());
+}
+
+void QWebThree::poll()
+{
+	if (m_watches.size() > 0)
+	{
+		QString batch = toJsonRpcBatch(m_watches, "changed");
+		emit processData(batch, "changed");
+	}
+	if (m_shhWatches.size() > 0)
+	{
+		QString batch = toJsonRpcBatch(m_shhWatches, "shhChanged");
+		emit processData(batch, "shhChanged");
+	}
 }
 
 void QWebThree::clearWatches()
 {
-	if (m_watches.size() == 0)
-		return;
-	
-	QJsonArray batch;
-	for (int w: m_watches)
+	if (m_watches.size() > 0)
 	{
-		QJsonObject res;
-		res["jsonrpc"] = QString::fromStdString("2.0");
-		res["method"] = QString::fromStdString("uninstallFilter");
-		
-		QJsonArray params;
-		params.append(w);
-		res["params"] = params;
-		res["id"] = w;
-		batch.append(params);
+		QString batch = toJsonRpcBatch(m_watches, "uninstallFilter");
+		m_watches.clear();
+		emit processData(batch, "internal");
 	}
-	
-	m_watches.clear();
-	emit processData(QString::fromUtf8(QJsonDocument(batch).toJson()), "internal");
+	if (m_shhWatches.size() > 0)
+	{
+		QString batch = toJsonRpcBatch(m_shhWatches, "shhUninstallFilter");
+		m_shhWatches.clear();
+		emit processData(batch, "internal");
+	}
 }
 
 void QWebThree::clientDieing()
@@ -140,11 +144,29 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 		return;
 	}
 	
+	if (!_addInfo.compare("shhChanged"))
+	{
+		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
+		for (int i = 0; i < resultsArray.size(); i++)
+		{
+			QJsonObject elem = resultsArray[i].toObject();
+			if (elem.contains("result"))
+				for (auto e: elem["result"].toArray())
+				{
+					QJsonObject res;
+					res["_event"] = QString::fromStdString("messages");
+					res["data"] = e; //TODO somehow send watch id?
+					response(QString::fromUtf8(QJsonDocument(res).toJson()));
+				}
+		}
+	}
+	
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	
-	if (!_addInfo.compare("newFilter") || !_addInfo.compare("newFilterString"))
-		if (f.contains("result"))
-			m_watches.push_back(f["result"].toInt());
+	if ((!_addInfo.compare("newFilter") || !_addInfo.compare("newFilterString")) && f.contains("result"))
+		m_watches.push_back(f["result"].toInt());
+	if (!_addInfo.compare("shhNewFilter") && f.contains("result"))
+		m_shhWatches.push_back(f["result"].toInt());
 
 	response(formatOutput(f));
 }

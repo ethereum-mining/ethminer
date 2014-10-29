@@ -89,6 +89,9 @@ public:
 	virtual bool setDefaultBlock(int const& _block);
 	virtual bool setListening(bool const& _listening);
 	virtual bool setMining(bool const& _mining);
+	virtual Json::Value shhChanged(int const& _id);
+	virtual int shhNewFilter(Json::Value const& _json);
+	virtual bool shhUninstallFilter(int const& _id);
 	virtual std::string stateAt(std::string const& _address, std::string const& _storage);
 	virtual std::string transact(Json::Value const& _json);
 	virtual Json::Value transactionByHash(std::string const& _hash, int const& _i);
@@ -111,4 +114,5 @@ private:
 	ldb::DB* m_db;
 	
 	std::map<dev::Public, dev::Secret> m_ids;
+	std::map<unsigned, dev::Public> m_shhWatches;
 };
