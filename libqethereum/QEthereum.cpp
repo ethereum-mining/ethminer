@@ -1,3 +1,25 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file QEthereum.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2014
+ */
+
+#include <boost/filesystem.hpp>
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libdevcrypto/FileSystem.h>
@@ -5,6 +27,8 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
+#include <libwhisper/Message.h>
+#include <libwhisper/WhisperHost.h>
 #include "QEthereum.h"
 using namespace std;
 using namespace dev;
@@ -21,7 +45,7 @@ dev::bytes toBytes(QString const& _s)
 	else
 	{
 		// Binary
-		cwarn << "THIS FUNCTIONALITY IS DEPRECATED. DO NOT ASSUME ASCII/BINARY-STRINGS WILL BE ACCEPTED. USE eth.fromAscii().";
+		cwarn << "'" << _s.toStdString() << "': Unrecognised format for number/hash. USE eth.fromAscii() if you mean to convert from ASCII.";
 		return asBytes(_s);
 	}
 }
@@ -534,8 +558,9 @@ void QEthereum::poll()
 
 // TODO: repot and hook all these up.
 
-QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c): QObject(_p), m_face(_c)
+QWhisper::QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c, QList<dev::KeyPair> _ids): QObject(_p), m_face(_c)
 {
+	setIdentities(_ids);
 }
 
 QWhisper::~QWhisper()
@@ -558,37 +583,250 @@ void QWhisper::faceDieing()
 
 }
 
-void QWhisper::send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload)
+static shh::Message toMessage(QString _json)
 {
-	(void)_dest;
-	(void)_from;
-	(void)_topic;
-	(void)_payload;
+	shh::Message ret;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("from"))
+		ret.setFrom(toPublic(f["from"].toString()));
+	if (f.contains("to"))
+		ret.setTo(toPublic(f["to"].toString()));
+	if (f.contains("payload"))
+		ret.setPayload(toBytes(f["payload"].toString()));
+
+	return ret;
 }
 
+static shh::Envelope toSealed(QString _json, shh::Message const& _m, Secret _from)
+{
+	unsigned ttl = 50;
+	unsigned workToProve = 50;
+
+	shh::BuildTopic bt;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("ttl"))
+		ttl = f["ttl"].toInt();
+	if (f.contains("workToProve"))
+		workToProve = f["workToProve"].toInt();
+	if (f.contains("topic"))
+	{
+		if (f["topic"].isString())
+			bt.shift(asBytes(padded(f["topic"].toString(), 32)));
+		else if (f["topic"].isArray())
+			for (auto i: f["topic"].toArray())
+				bt.shift(asBytes(padded(i.toString(), 32)));
+	}
+	return _m.seal(_from, bt, ttl, workToProve);
+}
+
+void QWhisper::doPost(QString _json)
+{
+	shh::Message m = toMessage(_json);
+	Secret from;
+
+	if (m.from() && m_ids.count(m.from()))
+	{
+		cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
+		// TODO: insert validification hook here.
+		from = m_ids[m.from()];
+	}
+
+	face()->inject(toSealed(_json, m, from));
+}
+
+void QWhisper::setIdentities(QList<dev::KeyPair> const& _l)
+{
+	m_ids.clear();
+	for (auto i: _l)
+		m_ids[i.pub()] = i.secret();
+	emit idsChanged();
+}
+
+static pair<shh::TopicMask, Public> toWatch(QString _json)
+{
+	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	Public to;
+
+	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
+	if (f.contains("to"))
+		to = toPublic(f["to"].toString());
+
+	if (f.contains("topic"))
+	{
+		if (f["topic"].isString())
+			bt.shift(asBytes(padded(f["topic"].toString(), 32)));
+		else if (f["topic"].isArray())
+			for (auto i: f["topic"].toArray())
+				if (i.isString())
+					bt.shift(asBytes(padded(i.toString(), 32)));
+				else
+					bt.shift();
+	}
+	return make_pair(bt.toTopicMask(), to);
+}
+
+// _json contains
+// topic: the topic as an array of components, some may be null.
+// to: specifies the id to which the message is encrypted. null if broadcast.
 unsigned QWhisper::newWatch(QString _json)
 {
-	(void)_json;
-	return 0;
-}
-
-QString QWhisper::watchMessages(unsigned _w)
-{
-	(void)_w;
-	return "";
+	auto w = toWatch(_json);
+	auto ret = face()->installWatch(w.first);
+	m_watches.insert(make_pair(ret, w.second));
+	return ret;
 }
 
 void QWhisper::killWatch(unsigned _w)
 {
-	(void)_w;
+	face()->uninstallWatch(_w);
+	m_watches.erase(_w);
 }
 
 void QWhisper::clearWatches()
 {
+	for (auto i: m_watches)
+		face()->uninstallWatch(i.first);
+	m_watches.clear();
+}
+
+static QString toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
+{
+	QJsonObject v;
+	v["hash"] = toQJS(_h);
+
+	v["expiry"] = (int)_e.expiry();
+	v["sent"] = (int)_e.sent();
+	v["ttl"] = (int)_e.ttl();
+	v["workProved"] = (int)_e.workProved();
+	v["topic"] = toQJS(_e.topic());
+
+	v["payload"] = toQJS(_m.payload());
+	v["from"] = toQJS(_m.from());
+	v["to"] = toQJS(_m.to());
+
+	return QString::fromUtf8(QJsonDocument(v).toJson());
+}
+
+QString QWhisper::watchMessages(unsigned _w)
+{
+	QString ret = "[";
+	auto wit = m_watches.find(_w);
+	if (wit == m_watches.end())
+	{
+		cwarn << "watchMessages called with invalid watch id" << _w;
+		return "";
+	}
+	Public p = wit->second;
+	if (!p || m_ids.count(p))
+		for (h256 const& h: face()->watchMessages(_w))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (p)
+			{
+				cwarn << "Silently decrypting message from identity" << p.abridged() << ": User validation hook goes here.";
+				m = e.open(m_ids[p]);
+			}
+			else
+				m = e.open();
+			ret.append((ret == "[" ? "" : ",") + toJson(h, e, m));
+		}
+
+	return ret + "]";
+}
+
+QString QWhisper::newIdentity()
+{
+	return toQJS(makeIdentity());
+}
+
+Public QWhisper::makeIdentity()
+{
+	KeyPair kp = KeyPair::create();
+	emit newIdToAdd(toQJS(kp.sec()));
+	return kp.pub();
+}
+
+QString QWhisper::newGroup(QString _me, QString _others)
+{
+	(void)_me;
+	(void)_others;
+	return "";
+}
+
+QString QWhisper::addToGroup(QString _group, QString _who)
+{
+	(void)_group;
+	(void)_who;
+	return "";
 }
 
 void QWhisper::poll()
 {
+	for (auto const& w: m_watches)
+		if (!w.second || m_ids.count(w.second))
+			for (h256 const& h: face()->checkWatch(w.first))
+			{
+				auto e = face()->envelope(h);
+				shh::Message m;
+				if (w.second)
+				{
+					cwarn << "Silently decrypting message from identity" << w.second.abridged() << ": User validation hook goes here.";
+					m = e.open(m_ids[w.second]);
+					if (!m)
+						continue;
+				}
+				else
+					m = e.open();
+				emit watchChanged(w.first, toJson(h, e, m));
+			}
+}
+
+#include <libdevcrypto/FileSystem.h>
+
+QLDB::QLDB(QObject* _p): QObject(_p)
+{
+	auto path = getDataDir() + "/.web3";
+	boost::filesystem::create_directories(path);
+	ldb::Options o;
+	o.create_if_missing = true;
+	ldb::DB::Open(o, path, &m_db);
+}
+
+QLDB::~QLDB()
+{
+}
+
+void QLDB::put(QString _p, QString _k, QString _v)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	bytes v = toBytes(_v);
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+}
+
+QString QLDB::get(QString _p, QString _k)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return toQJS(dev::asBytes(ret));
+}
+
+void QLDB::putString(QString _p, QString _k, QString _v)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string v = _v.toStdString();
+	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+}
+
+QString QLDB::getString(QString _p, QString _k)
+{
+	bytes k = sha3(_p.toStdString()).asBytes() + sha3(_k.toStdString()).asBytes();
+	string ret;
+	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	return QString::fromStdString(ret);
 }
 
 // extra bits needed to link on VS

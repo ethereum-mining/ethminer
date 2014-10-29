@@ -159,7 +159,7 @@ void Client::clearPending()
 		if (!m_postMine.pending().size())
 			return;
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-			appendFromNewPending(m_postMine.bloom(i), changeds);
+			appendFromNewPending(m_postMine.oldBloom(i), changeds);
 		changeds.insert(PendingChangedFilter);
 		m_postMine = m_preMine;
 	}
@@ -325,6 +325,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	t.value = _value;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
+	t.type = Transaction::MessageCall;
 	t.receiveAddress = _dest;
 	t.data = _data;
 	t.sign(_secret);
@@ -348,6 +349,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 		t.value = _value;
 		t.gasPrice = _gasPrice;
 		t.gas = _gas;
+		t.type = Transaction::ContractCreation;
 		t.receiveAddress = _dest;
 		t.data = _data;
 		t.sign(_secret);
@@ -373,6 +375,7 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 	t.value = _endowment;
 	t.gasPrice = _gasPrice;
 	t.gas = _gas;
+	t.type = Transaction::ContractCreation;
 	t.receiveAddress = Address();
 	t.data = _init;
 	t.sign(_secret);

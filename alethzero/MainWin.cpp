@@ -131,13 +131,16 @@ Main::Main(QWidget *parent) :
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	m_ldb = new QLDB(this);
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
+		m_ethereum = nullptr;
+		m_whisper = nullptr;
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), owned());
-		m_whisper = new QWhisper(this, whisper());
+		m_ethereum = new QEthereum(this, ethereum(), m_myKeys);
+		m_whisper = new QWhisper(this, whisper(), owned());
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
@@ -145,12 +148,15 @@ Main::Main(QWidget *parent) :
 		auto qdev = m_dev;
 		auto qeth = m_ethereum;
 		auto qshh = m_whisper;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh));
+		auto qldb = m_ldb;
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qldb));
+		connect(m_whisper, SIGNAL(newIdToAdd(QString)), this, SLOT(addNewId(QString)));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		m_ethereum->poll();
+		m_whisper->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -179,9 +185,18 @@ Main::~Main()
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
 	m_ethereum->clientDieing();
+	m_whisper->faceDieing();
 
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+void Main::addNewId(QString _ids)
+{
+	Secret _id = toSecret(_ids);
+	KeyPair kp(_id);
+	m_myIdentities.push_back(kp);
+	m_whisper->setIdentities(owned());
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const
@@ -331,8 +346,6 @@ void Main::load(QString _s)
 	}
 }
 
-// env.load("/home/gav/eth/init.eth")
-
 void Main::on_loadJS_triggered()
 {
 	QString f = QFileDialog::getOpenFileName(this, "Load Javascript", QString(), "Javascript (*.js);;All files (*)");
@@ -385,6 +398,17 @@ void Main::eval(QString const& _js)
 				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
 	s += "</div></body></html>";
 	ui->jsConsole->setHtml(s);
+}
+
+static Public stringToPublic(QString const& _a)
+{
+	string sn = _a.toStdString();
+	if (_a.size() == sizeof(Public) * 2)
+		return Public(fromHex(_a.toStdString()));
+	else if (_a.size() == sizeof(Public) * 2 + 2 && _a.startsWith("0x"))
+		return Public(fromHex(_a.mid(2).toStdString()));
+	else
+		return Public();
 }
 
 QString Main::pretty(dev::Address _a) const
@@ -481,15 +505,28 @@ void Main::on_paranoia_triggered()
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
-	QByteArray b;
-	b.resize(sizeof(Secret) * m_myKeys.size());
-	auto p = b.data();
-	for (auto i: m_myKeys)
 	{
-		memcpy(p, &(i.secret()), sizeof(Secret));
-		p += sizeof(Secret);
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myKeys.size());
+		auto p = b.data();
+		for (auto i: m_myKeys)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("address", b);
 	}
-	s.setValue("address", b);
+	{
+		QByteArray b;
+		b.resize(sizeof(Secret) * m_myIdentities.size());
+		auto p = b.data();
+		for (auto i: m_myIdentities)
+		{
+			memcpy(p, &(i.secret()), sizeof(Secret));
+			p += sizeof(Secret);
+		}
+		s.setValue("identities", b);
+	}
 
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forceAddress->text());
@@ -525,21 +562,39 @@ void Main::readSettings(bool _skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
 
-	m_myKeys.clear();
-	QByteArray b = s.value("address").toByteArray();
-	if (b.isEmpty())
-		m_myKeys.append(KeyPair::create());
-	else
 	{
-		h256 k;
-		for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+		m_myKeys.clear();
+		QByteArray b = s.value("address").toByteArray();
+		if (b.isEmpty())
+			m_myKeys.append(KeyPair::create());
+		else
 		{
-			memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-			if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
-				m_myKeys.append(KeyPair(k));
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
+					m_myKeys.append(KeyPair(k));
+			}
+		}
+		ethereum()->setAddress(m_myKeys.back().address());
+	}
+
+	{
+		m_myIdentities.clear();
+		QByteArray b = s.value("identities").toByteArray();
+		if (!b.isEmpty())
+		{
+			h256 k;
+			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
+			{
+				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
+					m_myIdentities.append(KeyPair(k));
+			}
 		}
 	}
-	ethereum()->setAddress(m_myKeys.back().address());
+
 	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
@@ -553,6 +608,8 @@ void Main::readSettings(bool _skipGeometry)
 	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
 	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
+	if (ui->clientName->text().isEmpty())
+		ui->clientName->setText(QInputDialog::getText(this, "Enter identity", "Enter a name that will identify you on the peer network"));
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
@@ -751,7 +808,6 @@ void Main::refreshBalances()
 void Main::refreshNetwork()
 {
 	auto ps = web3()->peers();
-
 
 	ui->peerCount->setText(QString::fromStdString(toString(ps.size())) + " peer(s)");
 	ui->peers->clear();
@@ -995,12 +1051,15 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		interval = 0;
 		refreshNetwork();
+		refreshWhispers();
 	}
 	else
 		interval += 100;
 	
 	if (m_ethereum)
 		m_ethereum->poll();
+	if (m_whisper)
+		m_whisper->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -1168,6 +1227,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
+			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			if (info.parentHash)
@@ -1382,6 +1442,112 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
+static bytes dataFromText(QString _s)
+{
+	bytes ret;
+	while (_s.size())
+	{
+		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
+		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
+		if (r.exactMatch(_s))
+		{
+			for (auto i: r.cap(2))
+				ret.push_back((byte)i.toLatin1());
+			if (r.cap(1) != "$")
+				for (int i = r.cap(2).size(); i < 32; ++i)
+					ret.push_back(0);
+			else
+				ret.push_back(0);
+			_s = r.cap(3);
+		}
+		else if (d.exactMatch(_s))
+		{
+			u256 v(d.cap(2).toStdString());
+			if (d.cap(6) == "szabo")
+				v *= dev::eth::szabo;
+			else if (d.cap(5) == "finney")
+				v *= dev::eth::finney;
+			else if (d.cap(4) == "ether")
+				v *= dev::eth::ether;
+			bytes bs = dev::toCompactBigEndian(v);
+			if (d.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					ret.push_back(0);
+			for (auto b: bs)
+				ret.push_back(b);
+			_s = d.cap(7);
+		}
+		else if (h.exactMatch(_s))
+		{
+			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
+			if (h.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					ret.push_back(0);
+			for (auto b: bs)
+				ret.push_back(b);
+			_s = h.cap(5);
+		}
+		else
+			_s = _s.mid(1);
+	}
+	return ret;
+}
+
+static shh::Topic topicFromText(QString _s)
+{
+	shh::BuildTopic ret;
+	while (_s.size())
+	{
+		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
+		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
+		bytes part;
+		if (r.exactMatch(_s))
+		{
+			for (auto i: r.cap(2))
+				part.push_back((byte)i.toLatin1());
+			if (r.cap(1) != "$")
+				for (int i = r.cap(2).size(); i < 32; ++i)
+					part.push_back(0);
+			else
+				part.push_back(0);
+			_s = r.cap(3);
+		}
+		else if (d.exactMatch(_s))
+		{
+			u256 v(d.cap(2).toStdString());
+			if (d.cap(6) == "szabo")
+				v *= dev::eth::szabo;
+			else if (d.cap(5) == "finney")
+				v *= dev::eth::finney;
+			else if (d.cap(4) == "ether")
+				v *= dev::eth::ether;
+			bytes bs = dev::toCompactBigEndian(v);
+			if (d.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					part.push_back(0);
+			for (auto b: bs)
+				part.push_back(b);
+			_s = d.cap(7);
+		}
+		else if (h.exactMatch(_s))
+		{
+			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
+			if (h.cap(1) != "$")
+				for (auto i = bs.size(); i < 32; ++i)
+					part.push_back(0);
+			for (auto b: bs)
+				part.push_back(b);
+			_s = h.cap(5);
+		}
+		else
+			_s = _s.mid(1);
+		ret.shift(part);
+	}
+	return ret;
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -1436,54 +1602,7 @@ void Main::on_data_textChanged()
 	}
 	else
 	{
-		m_data.clear();
-		QString s = ui->data->toPlainText();
-		while (s.size())
-		{
-			QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
-			QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
-			QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
-			if (r.exactMatch(s))
-			{
-				for (auto i: r.cap(2))
-					m_data.push_back((byte)i.toLatin1());
-				if (r.cap(1) != "$")
-					for (int i = r.cap(2).size(); i < 32; ++i)
-						m_data.push_back(0);
-				else
-					m_data.push_back(0);
-				s = r.cap(3);
-			}
-			else if (d.exactMatch(s))
-			{
-				u256 v(d.cap(2).toStdString());
-				if (d.cap(6) == "szabo")
-					v *= dev::eth::szabo;
-				else if (d.cap(5) == "finney")
-					v *= dev::eth::finney;
-				else if (d.cap(4) == "ether")
-					v *= dev::eth::ether;
-				bytes bs = dev::toCompactBigEndian(v);
-				if (d.cap(1) != "$")
-					for (auto i = bs.size(); i < 32; ++i)
-						m_data.push_back(0);
-				for (auto b: bs)
-					m_data.push_back(b);
-				s = d.cap(7);
-			}
-			else if (h.exactMatch(s))
-			{
-				bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
-				if (h.cap(1) != "$")
-					for (auto i = bs.size(); i < 32; ++i)
-						m_data.push_back(0);
-				for (auto b: bs)
-					m_data.push_back(b);
-				s = h.cap(5);
-			}
-			else
-				s = s.mid(1);
-		}
+		m_data = dataFromText(ui->data->toPlainText());
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
 		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
@@ -1666,6 +1785,7 @@ void Main::on_debug_clicked()
 				t.gasPrice = gasPrice();
 				t.gas = ui->gas->value();
 				t.data = m_data;
+				t.type = isCreation() ? Transaction::ContractCreation : Transaction::MessageCall;
 				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 				t.sign(s);
 				auto r = t.rlp();
@@ -2009,6 +2129,59 @@ void Main::updateDebugger()
 				s << "@" << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second).toStdString() << "<br/>";
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
+	}
+}
+
+void Main::on_post_clicked()
+{
+	shh::Message m;
+	m.setTo(stringToPublic(ui->shhTo->currentText()));
+	m.setPayload(dataFromText(ui->shhData->toPlainText()));
+	Public f = stringToPublic(ui->shhFrom->currentText());
+	Secret from;
+	if (m_whisper->ids().count(f))
+		from = m_whisper->ids().at(f);
+	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
+}
+
+void Main::on_newIdentity_triggered()
+{
+	m_whisper->makeIdentity();
+}
+
+void Main::refreshWhisper()
+{
+	ui->shhFrom->clear();
+	for (auto i: m_whisper->ids())
+		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
+}
+
+void Main::refreshWhispers()
+{
+	ui->whispers->clear();
+	for (auto const& w: whisper()->all())
+	{
+		shh::Envelope const& e = w.second;
+		shh::Message m;
+		for (pair<Public, Secret> const& i: m_whisper->ids())
+			if (!!(m = e.open(i.second)))
+				break;
+		if (!m)
+			m = e.open();
+
+		QString msg;
+		if (m.from())
+			// Good message.
+			msg = QString("{%1 -> %2} %3").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
+		else if (m)
+			// Maybe message.
+			msg = QString("{%1 -> %2} %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
+
+		time_t ex = e.expiry();
+		QString t(ctime(&ex));
+		t.chop(1);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		ui->whispers->addItem(item);
 	}
 }
 
