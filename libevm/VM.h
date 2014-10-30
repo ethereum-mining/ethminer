@@ -426,16 +426,18 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SIGNEXTEND:
-		{
-			unsigned k = m_stack.back().convert_to<unsigned>();
+			if (m_stack.back() < 31)
+			{
+				unsigned const testBit(m_stack.back() * 8 + 7);
+				u256& number = m_stack[m_stack.size() - 2];
+				u256 mask = ((u256(1) << testBit) - 1);
+				if (boost::multiprecision::bit_test(number, testBit))
+					number |= ~mask;
+				else
+					number &= mask;
+			}
 			m_stack.pop_back();
-			auto& b = m_stack.back();
-			if (k <= 31)
-				if ((b >> (k * 8)) & 0x80)
-					for (unsigned i = 31; i > k; --i)
-						b |= (u256(0xff) << i);
 			break;
-		}
 		case Instruction::SHA3:
 		{
 			unsigned inOff = (unsigned)m_stack.back();
