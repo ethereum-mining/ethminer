@@ -14,7 +14,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>$(LLVMIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4800;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ETH_JIT=$(LLVMEnabled);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ETH_EVMJIT=$(LLVMEnabled);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(LLVMLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

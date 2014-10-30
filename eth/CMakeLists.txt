@@ -15,7 +15,7 @@ target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
 
-if(EVMCC)
+if(EVMJIT)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 

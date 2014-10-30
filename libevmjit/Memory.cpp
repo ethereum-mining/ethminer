@@ -31,8 +31,8 @@ Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	auto i64Ty = m_builder.getInt64Ty();
 	llvm::Type* argTypes[] = {i64Ty, i64Ty};
 	auto dumpTy = llvm::FunctionType::get(m_builder.getVoidTy(), llvm::ArrayRef<llvm::Type*>(argTypes), false);
- 	m_memDump = llvm::Function::Create(dumpTy, llvm::GlobalValue::LinkageTypes::ExternalLinkage,
-		"evmccrt_memory_dump", module);
+	m_memDump = llvm::Function::Create(dumpTy, llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+									   "evmccrt_memory_dump", module);
 
 	m_data = new llvm::GlobalVariable(*module, Type::BytePtr, false, llvm::GlobalVariable::PrivateLinkage, llvm::UndefValue::get(Type::BytePtr), "mem.data");
 	m_data->setUnnamedAddr(true); // Address is not important
@@ -74,7 +74,8 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 	m_builder.SetInsertPoint(resizeBB);
 	// Check gas first
 	auto wordsRequired = m_builder.CreateUDiv(m_builder.CreateAdd(sizeRequired, Constant::get(31)), Constant::get(32), "wordsRequired");
-	auto words = m_builder.CreateUDiv(m_builder.CreateAdd(size, Constant::get(31)), Constant::get(32), "words");
+	sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeRequired");
+	auto words = m_builder.CreateUDiv(size, Constant::get(32), "words");	// size is always 32*k
 	auto newWords = m_builder.CreateSub(wordsRequired, words, "addtionalWords");
 	_gasMeter.checkMemory(newWords, m_builder);
 	// Resize
@@ -89,7 +90,7 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 	return func;
 }
 
-llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMeter& _gasMeter)
+llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMeter&)
 {
 	auto isWord = _valueType == Type::i256;
 
@@ -103,7 +104,7 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMet
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(func->getContext(), {}, func));
 	llvm::Value* index = func->arg_begin();
 	index->setName("index");
-	
+
 	auto valueSize = _valueType->getPrimitiveSizeInBits() / 8;
 	this->require(index, Constant::get(valueSize));
 	auto data = m_builder.CreateLoad(m_data, "data");
@@ -175,7 +176,7 @@ void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 }
 
 void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value* _srcIdx,
-                       llvm::Value* _destMemIdx, llvm::Value* _reqBytes)
+					   llvm::Value* _destMemIdx, llvm::Value* _reqBytes)
 {
 	auto zero256 = llvm::ConstantInt::get(Type::i256, 0);
 
@@ -218,38 +219,14 @@ void Memory::dump(uint64_t _begin, uint64_t _end)
 extern "C"
 {
 
-using namespace dev::eth::jit;
+	using namespace dev::eth::jit;
 
-EXPORT uint8_t* mem_resize(Runtime* _rt, i256* _size)
-{
-	auto size = _size->a; // Trunc to 64-bit
-	auto& memory = _rt->getMemory();
-	memory.resize(size);
-	return memory.data();
-}
+	EXPORT uint8_t* mem_resize(Runtime* _rt, i256* _size)
+	{
+		auto size = _size->a; // Trunc to 64-bit
+		auto& memory = _rt->getMemory();
+		memory.resize(size);
+		return memory.data();
+	}
 
-EXPORT void evmccrt_memory_dump(uint64_t _begin, uint64_t _end)
-{
-	//if (_end == 0)
-	//	_end = Runtime::getMemory().size();
-
-	//std::cerr << "MEMORY: active size: " << std::dec
-	//		  << Runtime::getMemory().size() / 32 << " words\n";
-	//std::cerr << "MEMORY: dump from " << std::dec
-	//		  << _begin << " to " << _end << ":";
-	//if (_end <= _begin)
-	//	return;
-
-	//_begin = _begin / 16 * 16;
-	//for (size_t i = _begin; i < _end; i++)
-	//{
-	//	if ((i - _begin) % 16 == 0)
-	//		std::cerr << '\n' << std::dec << i << ":  ";
-
-	//	auto b = Runtime::getMemory()[i];
-	//	std::cerr << std::hex << std::setw(2) << static_cast<int>(b) << ' ';
-	//}
-	//std::cerr << std::endl;
-}
-
-}	// extern "C"
+}   // extern "C"

@@ -33,7 +33,9 @@ namespace jit
 {
 
 Compiler::Compiler():
-	m_builder(llvm::getGlobalContext())
+	m_builder(llvm::getGlobalContext()),
+	m_jumpTableBlock(),
+	m_badJumpBlock()
 {
 	Type::init(m_builder.getContext());
 }
@@ -46,7 +48,7 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 	std::vector<ProgramCounter> indirectJumpTargets;
 	boost::dynamic_bitset<> validJumpTargets(std::max(bytecode.size(), size_t(1)));
 
-	splitPoints.insert(0);	// First basic block
+	splitPoints.insert(0);  // First basic block
 	validJumpTargets[0] = true;
 
 	for (auto curr = bytecode.begin(); curr != bytecode.end(); ++curr)
@@ -120,7 +122,7 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 	}
 
 	// Remove split points generated from jumps out of code or into data.
-	for (auto it = splitPoints.cbegin(); it != splitPoints.cend(); )
+	for (auto it = splitPoints.cbegin(); it != splitPoints.cend();)
 	{
 		if (*it > bytecode.size() || !validJumpTargets[*it])
 			it = splitPoints.erase(it);
@@ -128,7 +130,7 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 			++it;
 	}
 
-	for (auto it = splitPoints.cbegin(); it != splitPoints.cend(); )
+	for (auto it = splitPoints.cbegin(); it != splitPoints.cend();)
 	{
 		auto beginInstIdx = *it;
 		++it;
@@ -137,8 +139,8 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 	}
 
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
-	m_badJumpBlock = std::make_unique<BasicBlock>("BadJumpBlock", m_mainFunc, m_builder);
-	m_jumpTableBlock = std::make_unique<BasicBlock>("JumpTableBlock", m_mainFunc, m_builder);
+	m_badJumpBlock = std::unique_ptr<BasicBlock>(new BasicBlock("BadJumpBlock", m_mainFunc, m_builder));
+	m_jumpTableBlock = std::unique_ptr<BasicBlock>(new BasicBlock("JumpTableBlock", m_mainFunc, m_builder));
 
 	for (auto it = directJumpTargets.cbegin(); it != directJumpTargets.cend(); ++it)
 	{
@@ -170,10 +172,10 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 
 std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef bytecode)
 {
-	auto module = std::make_unique<llvm::Module>("main", m_builder.getContext());
+	auto module = std::unique_ptr<llvm::Module>(new llvm::Module("main", m_builder.getContext()));
 
 	// Create main function
-	llvm::Type* mainFuncArgTypes[] = {m_builder.getInt32Ty(), Type::RuntimePtr};	// There must be int in first place because LLVM does not support other signatures
+	llvm::Type* mainFuncArgTypes[] = {m_builder.getInt32Ty(), Type::RuntimePtr};    // There must be int in first place because LLVM does not support other signatures
 	auto mainFuncType = llvm::FunctionType::get(Type::MainReturn, mainFuncArgTypes, false);
 	m_mainFunc = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, "main", module.get());
 	m_mainFunc->arg_begin()->getNextNode()->setName("rt");
@@ -217,8 +219,8 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef bytecode)
 	if (m_indirectJumpTargets.size() > 0)
 	{
 		auto dest = m_jumpTableBlock->localStack().pop();
-		auto switchInstr = 	m_builder.CreateSwitch(dest, m_badJumpBlock->llvm(),
-		                   	                     m_indirectJumpTargets.size());
+		auto switchInstr =  m_builder.CreateSwitch(dest, m_badJumpBlock->llvm(),
+							m_indirectJumpTargets.size());
 		for (auto it = m_indirectJumpTargets.cbegin(); it != m_indirectJumpTargets.cend(); ++it)
 		{
 			auto& bb = *it;
@@ -372,14 +374,13 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 			break;
 		}
 
-		/*case Instruction::NEG:
+		case Instruction::BNOT:
 		{
-			auto top = stack.pop();
-			auto zero = Constant::get(0);
-			auto res = m_builder.CreateSub(zero, top);
-			stack.push(res);
+			auto value = stack.pop();
+			auto ret = m_builder.CreateXor(value, llvm::APInt(256, -1, true), "bnot");
+			stack.push(ret);
 			break;
-		}*/
+		}
 
 		case Instruction::LT:
 		{
@@ -505,6 +506,36 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 			break;
 		}
 
+		case Instruction::SIGNEXTEND:
+		{
+			auto idx = stack.pop();
+			auto word = stack.pop();
+
+			auto k32_ = m_builder.CreateTrunc(idx, m_builder.getIntNTy(5), "k_32");
+			auto k32 = m_builder.CreateZExt(k32_, Type::i256);
+			auto k32x8 = m_builder.CreateMul(k32, Constant::get(8), "kx8");
+
+			// test for word >> (k * 8 + 7)
+			auto bitpos = m_builder.CreateAdd(k32x8, Constant::get(7), "bitpos");
+			auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
+			auto bittest = m_builder.CreateTrunc(bitval, m_builder.getInt1Ty(), "bittest");
+
+			auto mask_ = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto mask = m_builder.CreateSub(mask_, Constant::get(1), "mask");
+
+			auto negmask = m_builder.CreateXor(mask, llvm::ConstantInt::getAllOnesValue(Type::i256), "negmask");
+			auto val1 = m_builder.CreateOr(word, negmask);
+			auto val0 = m_builder.CreateAnd(word, mask);
+
+			auto kInRange = m_builder.CreateICmpULE(idx, llvm::ConstantInt::get(Type::i256, 30));
+			auto result = m_builder.CreateSelect(kInRange,
+			                                     m_builder.CreateSelect(bittest, val1, val0),
+			                                     word);
+			stack.push(result);
+
+			break;
+		}
+
 		case Instruction::SHA3:
 		{
 			auto inOff = stack.pop();
@@ -523,29 +554,28 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 
 		case Instruction::ANY_PUSH:
 		{
-			auto numBytes = static_cast<size_t>(inst)-static_cast<size_t>(Instruction::PUSH1) + 1;
+			const auto numBytes = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::PUSH1) + 1;
 			auto value = llvm::APInt(256, 0);
-			for (decltype(numBytes) i = 0; i < numBytes; ++i)	// TODO: Use pc as iterator
+			for (auto lastPC = currentPC + numBytes; currentPC < lastPC;)
 			{
-				++currentPC;
 				value <<= 8;
-				value |= bytecode[currentPC];
+				value |= bytecode[++currentPC];
 			}
-			auto c = m_builder.getInt(value);
-			stack.push(c);
+
+			stack.push(m_builder.getInt(value));
 			break;
 		}
 
 		case Instruction::ANY_DUP:
 		{
-			auto index = static_cast<size_t>(inst)-static_cast<size_t>(Instruction::DUP1);
+			auto index = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::DUP1);
 			stack.dup(index);
 			break;
 		}
 
 		case Instruction::ANY_SWAP:
 		{
-			auto index = static_cast<size_t>(inst)-static_cast<size_t>(Instruction::SWAP1) + 1;
+			auto index = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::SWAP1) + 1;
 			stack.swap(index);
 			break;
 		}
@@ -610,9 +640,7 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 			{
 				auto pairIter = m_directJumpTargets.find(currentPC);
 				if (pairIter != m_directJumpTargets.end())
-				{
 					targetBlock = pairIter->second;
-				}
 			}
 
 			if (inst == Instruction::JUMP)
@@ -625,9 +653,7 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 					m_builder.CreateBr(targetBlock);
 				}
 				else
-				{
 					m_builder.CreateBr(m_jumpTableBlock->llvm());
-				}
 			}
 			else // JUMPI
 			{
@@ -636,8 +662,9 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 				auto zero = Constant::get(0);
 				auto cond = m_builder.CreateICmpNE(val, zero, "nonzero");
 
-				// Assume the basic blocks are properly ordered:
-				assert(nextBasicBlock); // FIXME: JUMPI can be last instruction
+				
+				if (!nextBasicBlock)	// In case JUMPI is the last instruction
+					nextBasicBlock = m_stopBB;
 
 				if (targetBlock)
 				{
@@ -645,9 +672,7 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 					m_builder.CreateCondBr(cond, targetBlock, nextBasicBlock);
 				}
 				else
-				{
 					m_builder.CreateCondBr(cond, m_jumpTableBlock->llvm(), nextBasicBlock);
-				}
 			}
 
 			break;
@@ -721,7 +746,7 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 			auto srcIdx = stack.pop();
 			auto reqBytes = stack.pop();
 
-			auto srcPtr = _runtimeManager.getCode();	// TODO: Code & its size are constants, feature #80814234
+			auto srcPtr = _runtimeManager.getCode();    // TODO: Code & its size are constants, feature #80814234
 			auto srcSize = _runtimeManager.get(RuntimeData::CodeSize);
 
 			memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
@@ -826,12 +851,12 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 
 	gasMeter.commitCostBlock();
 
-	if (!basicBlock.llvm()->getTerminator())	// If block not terminated
+	if (!basicBlock.llvm()->getTerminator())    // If block not terminated
 	{
 		if (nextBasicBlock)
-			m_builder.CreateBr(nextBasicBlock);	// Branch to the next block
+			m_builder.CreateBr(nextBasicBlock); // Branch to the next block
 		else
-			m_builder.CreateRet(Constant::get(ReturnCode::Stop));	// Return STOP code
+			m_builder.CreateRet(Constant::get(ReturnCode::Stop));   // Return STOP code
 	}
 }
 
@@ -870,8 +895,8 @@ void Compiler::removeDeadBlocks()
 void Compiler::dumpBasicBlockGraph(std::ostream& out)
 {
 	out << "digraph BB {\n"
-	    << "  node [shape=record, fontname=Courier, fontsize=10];\n"
-	    << "  entry [share=record, label=\"entry block\"];\n";
+		<< "  node [shape=record, fontname=Courier, fontsize=10];\n"
+		<< "  entry [share=record, label=\"entry block\"];\n";
 
 	std::vector<BasicBlock*> blocks;
 	for (auto& pair : basicBlocks)
@@ -903,10 +928,10 @@ void Compiler::dumpBasicBlockGraph(std::ostream& out)
 		for (llvm::pred_iterator it = llvm::pred_begin(bb->llvm()); it != end; ++it)
 		{
 			out << "  \"" << (*it)->getName().str() << "\" -> \"" << blockName << "\" ["
-			    << ((m_jumpTableBlock.get() && *it == m_jumpTableBlock.get()->llvm()) ? "style = dashed, " : "")
-			    //<< "label = \""
-			    //<< phiNodesPerBlock[bb]
-			    << "];\n";
+				<< ((m_jumpTableBlock.get() && *it == m_jumpTableBlock.get()->llvm()) ? "style = dashed, " : "")
+				//<< "label = \""
+				//<< phiNodesPerBlock[bb]
+				<< "];\n";
 		}
 	}
 
