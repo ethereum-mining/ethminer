@@ -56,29 +56,20 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 		ProgramCounter currentPC = curr - bytecode.begin();
 		validJumpTargets[currentPC] = true;
 
-		auto inst = static_cast<Instruction>(*curr);
+		auto inst = Instruction(*curr);
 		switch (inst)
 		{
 
 		case Instruction::ANY_PUSH:
 		{
-			auto numBytes = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::PUSH1) + 1;
-			auto next = curr + numBytes + 1;
-			if (next >= bytecode.end())
+			auto val = readPushData(curr, bytecode.end());
+			auto next = curr + 1;
+			if (next == bytecode.end())
 				break;
 
-			auto nextInst = static_cast<Instruction>(*next);
-
+			auto nextInst = Instruction(*next);
 			if (nextInst == Instruction::JUMP || nextInst == Instruction::JUMPI)
 			{
-				// Compute target PC of the jump.
-				u256 val = 0;
-				for (auto iter = curr + 1; iter < next; ++iter)
-				{
-					val <<= 8;
-					val |= *iter;
-				}
-
 				// Create a block for the JUMP target.
 				ProgramCounter targetPC = val < bytecode.size() ? val.convert_to<ProgramCounter>() : bytecode.size();
 				splitPoints.insert(targetPC);
@@ -86,8 +77,6 @@ void Compiler::createBasicBlocks(bytesConstRef bytecode)
 				ProgramCounter jumpPC = (next - bytecode.begin());
 				directJumpTargets[jumpPC] = targetPC;
 			}
-
-			curr += numBytes;
 			break;
 		}
 
@@ -554,15 +543,11 @@ void Compiler::compileBasicBlock(BasicBlock& basicBlock, bytesConstRef bytecode,
 
 		case Instruction::ANY_PUSH:
 		{
-			const auto numBytes = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::PUSH1) + 1;
-			auto value = llvm::APInt(256, 0);
-			for (auto lastPC = currentPC + numBytes; currentPC < lastPC;)
-			{
-				value <<= 8;
-				value |= bytecode[++currentPC];
-			}
+			auto curr = bytecode.begin() + currentPC;	// TODO: replace currentPC with iterator
+			auto value = readPushData(curr, bytecode.end());
+			currentPC = curr - bytecode.begin();
 
-			stack.push(m_builder.getInt(value));
+			stack.push(Constant::get(value));
 			break;
 		}
 
