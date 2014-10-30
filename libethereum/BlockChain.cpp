@@ -67,7 +67,7 @@ std::map<Address, AddressState> const& dev::eth::genesisState()
 			"6c386a4b26f73c802f34673f7248bb118f97424a",
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
-			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
+			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, AddressState::NormalCreation);
 	return s_ret;
 }
 
