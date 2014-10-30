@@ -463,6 +463,7 @@ std::string WebThreeStubServer::newGroup(std::string const& _id, std::string con
 std::string WebThreeStubServer::newIdentity()
 {
 	KeyPair kp = KeyPair::create();
+	m_ids[kp.pub()] = kp.secret();
 	return toJS(kp.pub());
 }
 

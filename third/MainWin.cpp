@@ -118,7 +118,8 @@ Main::Main(QWidget *parent) :
 	m_web3->connect(Host::pocHost());
 
 	m_qwebConnector = new QWebThreeConnector();
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(owned())));
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
@@ -557,7 +558,7 @@ void Main::ourAccountsRowsMoved()
 	m_myKeys = myKeys;
 
 	if (m_server.get())
-		m_server->setAccounts(keysAsVector(owned()));
+		m_server->setAccounts(keysAsVector(myKeys));
 }
 
 void Main::on_ourAccounts_doubleClicked()

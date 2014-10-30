@@ -153,14 +153,14 @@ Main::Main(QWidget *parent) :
 	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
-	
+
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_qweb = new QWebThree(this);
 		auto qweb = m_qweb;
 		m_qwebConnector->setQWeb(qweb);
-		
+
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
@@ -179,9 +179,7 @@ Main::Main(QWidget *parent) :
 	});
 	
 	readSettings();
-
 	installWatches();
-
 	startTimer(100);
 
 	{
