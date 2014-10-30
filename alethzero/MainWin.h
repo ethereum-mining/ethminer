@@ -154,6 +154,7 @@ private slots:
 	void on_newIdentity_triggered();
 
 	void refreshWhisper();
+	void addNewId(QString _ids);
 
 signals:
 	void poll();
