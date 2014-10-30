@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AddressState.h
+/** @file Account.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -33,20 +33,20 @@ namespace eth
 
 // TODO: Document fully.
 
-class AddressState
+class Account
 {
 public:
 	enum NewAccountType { NormalCreation, ContractConception };
 
-	/// Construct a dead AddressState.
-	AddressState() {}
-	/// Construct an alive AddressState, with given endowment, for either a normal (non-contract) account or for a contract account in the
+	/// Construct a dead Account.
+	Account() {}
+	/// Construct an alive Account, with given endowment, for either a normal (non-contract) account or for a contract account in the
 	/// conception phase, where the code is not yet known.
-	AddressState(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? h256() : EmptySHA3) {}
+	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? h256() : EmptySHA3) {}
 	/// Explicit constructor for wierd cases of construction of a normal account.
-	AddressState(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
+	Account(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
 	/// Explicit constructor for wierd cases of construction or a contract account.
-	AddressState(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_nonce(_nonce), m_balance(_balance), m_storageRoot(_contractRoot), m_codeHash(_codeHash) {}
+	Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_nonce(_nonce), m_balance(_balance), m_storageRoot(_contractRoot), m_codeHash(_codeHash) { assert(_contractRoot); }
 
 	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = EmptyTrie; m_balance = 0; m_nonce = 0; }
 	bool isAlive() const { return m_isAlive; }
@@ -59,7 +59,7 @@ public:
 	u256 const& nonce() const { return m_nonce; }
 	void incNonce() { m_nonce++; }
 
-	h256 baseRoot() const { return m_storageRoot; }
+	h256 baseRoot() const { assert(m_storageRoot); return m_storageRoot; }
 	std::map<u256, u256> const& storage() const { return m_storageOverlay; }
 	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; }
 

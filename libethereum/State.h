@@ -33,7 +33,7 @@
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
-#include "AddressState.h"
+#include "Account.h"
 #include "Transaction.h"
 #include "Executive.h"
 #include "AccountDiff.h"
@@ -299,7 +299,7 @@ private:
 	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
@@ -340,7 +340,7 @@ private:
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
 
-	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
+	mutable std::map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
@@ -365,7 +365,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
+void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
 		if (!i.second.isAlive())
