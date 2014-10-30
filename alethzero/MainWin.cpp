@@ -2153,7 +2153,9 @@ void Main::on_post_clicked()
 
 void Main::on_newIdentity_triggered()
 {
-//	m_whisper->makeIdentity();
+	KeyPair kp = KeyPair::create();
+	m_myIdentities.append(kp);
+	m_server->setIdentities(keysAsVector(owned()));
 }
 
 void Main::refreshWhisper()
