@@ -35,6 +35,9 @@
 #include <libdevcrypto/FileSystem.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
@@ -1559,6 +1562,20 @@ void Main::on_data_textChanged()
 		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
 		{
 			m_data = fromHex(src);
+		}
+		else if (src.substr(0, 8) == "contract") // improve this heuristic
+		{
+			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
+			try
+			{
+				m_data = dev::solidity::CompilerStack::compile(src, scanner);
+			}
+			catch (dev::Exception const& exception)
+			{
+				ostringstream error;
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
+				errors.push_back(error.str());
+			}
 		}
 		else
 		{
