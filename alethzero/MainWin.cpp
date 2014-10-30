@@ -976,7 +976,7 @@ void Main::refreshBlockChain()
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
-			Transaction t(i[0].data());
+			Transaction t(i.data());
 			if (bm || transactionMatch(filter, t))
 			{
 				QString s = t.receiveAddress ?
@@ -1236,13 +1236,13 @@ void Main::on_blocks_currentItemChanged()
 			else
 				s << "<br/>Pre: <i>Nothing is before the Gensesis</i>";
 			for (auto const& i: block[1])
-				s << "<br/>" << sha3(i[0].data()).abridged() << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
+				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
 		}
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi][0].data());
+			Transaction tx(block[1][txi].data());
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce));
 			s << "<h3>" << th << "</h3>";
