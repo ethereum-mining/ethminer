@@ -175,6 +175,15 @@ enum class Instruction: uint8_t
 	SUICIDE = 0xff		///< halt execution and register account for later deletion
 };
 
+/// Returs the PUSH<_number> instruction
+inline Instruction pushInstruction(unsigned _number) { assert(1 <= _number && _number <= 32); return Instruction(unsigned(Instruction::PUSH1) + _number - 1); }
+
+/// Returs the DUP<_number> instruction
+inline Instruction dupInstruction(unsigned _number) { assert(1 <= _number && _number <= 16); return Instruction(unsigned(Instruction::DUP1) + _number - 1); }
+
+/// Returs the SWAP<_number> instruction
+inline Instruction swapInstruction(unsigned _number) { assert(1 <= _number && _number <= 16); return Instruction(unsigned(Instruction::SWAP1) + _number - 1); }
+
 /// Information structure for a particular instruction.
 struct InstructionInfo
 {
