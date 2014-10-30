@@ -1,8 +1,10 @@
-
 #include "ExecutionEngine.h"
 
 #include <csetjmp>
 #include <chrono>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -15,6 +17,9 @@
 #include <llvm/Support/Signals.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include <llvm/Support/Host.h>
+
+#pragma GCC diagnostic pop
+
 
 #include <libevm/VM.h>
 
@@ -64,19 +69,19 @@ int ExecutionEngine::run(std::unique_ptr<llvm::Module> _module, u256& _gas, ExtV
 
 	auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 	if (triple.getOS() == llvm::Triple::OSType::Win32)
-		triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);	// MCJIT does not support COFF format
+		triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);    // MCJIT does not support COFF format
 	module->setTargetTriple(triple.str());
 
 	auto exec = std::unique_ptr<llvm::ExecutionEngine>(builder.create());
 	if (!exec)
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(errorMsg));
-	_module.release();	// Successfully created llvm::ExecutionEngine takes ownership of the module
+	_module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
 
 	auto finalizationStartTime = std::chrono::high_resolution_clock::now();
 	exec->finalizeObject();
 	auto finalizationEndTime = std::chrono::high_resolution_clock::now();
 	clog(JIT) << "Module finalization time: "
-		<< std::chrono::duration_cast<std::chrono::microseconds>(finalizationEndTime - finalizationStartTime).count();
+			  << std::chrono::duration_cast<std::chrono::microseconds>(finalizationEndTime - finalizationStartTime).count();
 
 	// Create fake ExtVM interface
 	if (!_ext)
@@ -117,7 +122,7 @@ int ExecutionEngine::run(std::unique_ptr<llvm::Module> _module, u256& _gas, ExtV
 
 		auto executionEndTime = std::chrono::high_resolution_clock::now();
 		clog(JIT) << "Execution time : "
-			<< std::chrono::duration_cast<std::chrono::microseconds>(executionEndTime - executionStartTime).count();
+				  << std::chrono::duration_cast<std::chrono::microseconds>(executionEndTime - executionStartTime).count();
 
 	}
 	else
