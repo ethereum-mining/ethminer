@@ -154,6 +154,7 @@ if (NOT LANGUAGES)
 			message(FATAL_ERROR "Alethzero requires jsonrpc.")
 		endif()
 
+		add_subdirectory(libjsqrc)
 		add_subdirectory(libqethereum)
 		add_subdirectory(alethzero)
 		add_subdirectory(third)
