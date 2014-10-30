@@ -129,8 +129,10 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
+	/// @returns the address b such that b > @a _a .
 	Address nextActiveAddress(Address _a) const;
 
+	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
 
 	/// @brief Checks that mining the current object will result in a valid block.
@@ -346,12 +348,12 @@ private:
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 
-	bytes m_currentTxs;
-	bytes m_currentUncles;
+	bytes m_currentTxs;							///< The RLP-encoded block of transactions.
+	bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
-	ProofOfWork m_pow;
+	ProofOfWork m_pow;							///< The PoW mining class.
 
 	u256 m_blockReward;
 
