@@ -375,7 +375,10 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
-				s.append(i.second.baseRoot(), false, true);
+			{
+				assert(i.second.baseRoot());
+				s.append(i.second.baseRoot());
+			}
 			else
 			{
 				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
@@ -384,7 +387,8 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						storageDB.insert(j.first, rlp(j.second));
 					else
 						storageDB.remove(j.first);
-				s.append(storageDB.root(), false, true);
+				assert(storageDB.root());
+				s.append(storageDB.root());
 			}
 
 			if (i.second.isFreshCode())

@@ -27,7 +27,7 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.7.7";
+char const* Version = "0.7.8";
 
 }
 
