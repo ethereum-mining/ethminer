@@ -47,6 +47,7 @@ public slots:
 signals:
 	void processData(QString _json, QString _addInfo);
 	void response(QString _json);
+	void onNewId(QString _id);
 	
 private:
 	std::vector<unsigned> m_watches;

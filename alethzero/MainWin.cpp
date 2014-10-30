@@ -33,6 +33,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
+#include <libdevcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>
@@ -150,8 +151,8 @@ Main::Main(QWidget *parent) :
 
 	m_qwebConnector = new QWebThreeConnector();
 	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
-
 	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
@@ -164,6 +165,7 @@ Main::Main(QWidget *parent) :
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
+		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -199,6 +201,14 @@ Main::~Main()
 	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
 	writeSettings();
+}
+
+void Main::addNewId(QString _ids)
+{
+	Secret _id = jsToSecret(_ids.toStdString());
+	KeyPair kp(_id);
+	m_myIdentities.push_back(kp);
+	m_server->setIdentities(keysAsVector(owned()));
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const

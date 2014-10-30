@@ -167,6 +167,8 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 		m_watches.push_back(f["result"].toInt());
 	if (!_addInfo.compare("shhNewFilter") && f.contains("result"))
 		m_shhWatches.push_back(f["result"].toInt());
+	if (!_addInfo.compare("newIdentity") && f.contains("result"))
+		emit onNewId(f["result"].toString());
 
 	response(formatOutput(f));
 }
