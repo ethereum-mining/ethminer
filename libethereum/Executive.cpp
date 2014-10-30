@@ -138,7 +138,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, m_s.balance(m_newAddress) + _endowment, h256(), h256());
+	m_s.m_cache[m_newAddress] = AddressState(0, m_s.balance(m_newAddress) + _endowment, EmptyTrie, h256());
 
 	// Execute _init.
 	m_vm = new VM(_gas);
