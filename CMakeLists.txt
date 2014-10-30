@@ -15,6 +15,7 @@ function(createDefaultCacheConfig)
 	set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
 	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
+	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
 endfunction()
 
 
@@ -39,6 +40,14 @@ function(configureProject)
 		message(FATAL_ERROR "VM tracing requires debug.")
 	endif ()
 	endif ()
+
+	if (EVMJIT)
+		if (LANGUAGES)
+			message(FATAL_ERROR "Unset LANGUAGES to build EVMJIT")
+		else()
+			add_definitions(-DETH_EVMJIT)
+		endif()
+	endif()
 endfunction()
 
 
@@ -75,7 +84,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
-message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; EVMJIT: ${EVMJIT}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -158,9 +167,9 @@ if (NOT LANGUAGES)
 	endif()
 endif()
 
-if (EVMCC)
-  add_subdirectory(libevmjit)
-  add_subdirectory(evmcc)
+if (EVMJIT)
+	add_subdirectory(libevmjit)
+	add_subdirectory(evmcc)
 endif()
 
 

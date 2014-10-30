@@ -24,7 +24,7 @@ if(JSONRPC_LS)
 target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
 endif()
 
-if(EVMCC)
+if(EVMJIT)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 

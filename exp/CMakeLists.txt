@@ -17,7 +17,7 @@ target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 
-if(EVMCC)
+if(EVMJIT)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 
