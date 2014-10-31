@@ -33,6 +33,7 @@ QWebThree::QWebThree(QObject* _p): QObject(_p)
 
 QWebThree::~QWebThree()
 {
+	clientDieing();
 }
 
 static QString toJsonRpcBatch(std::vector<unsigned> const& _watches, QString _method)
@@ -86,8 +87,8 @@ void QWebThree::clearWatches()
 
 void QWebThree::clientDieing()
 {
-	this->disconnect();
 	clearWatches();
+	this->disconnect();
 }
 
 static QString formatInput(QJsonObject const& _object)
