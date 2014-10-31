@@ -102,7 +102,7 @@ public:
 
 private:
 	State& m_s;										///< A reference to the base state.
-	std::map<Address, AddressState> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
+	std::map<Address, Account> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
 	Manifest* m_ms;
 };
 

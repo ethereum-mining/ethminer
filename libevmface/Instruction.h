@@ -43,22 +43,23 @@ enum class Instruction: uint8_t
 	SDIV,				///< signed integer division operation
 	MOD,				///< modulo remainder operation
 	SMOD,				///< signed modulo remainder operation
+	ADDMOD,				///< unsigned modular addition
+	MULMOD,				///< unsigned modular multiplication
 	EXP,				///< exponential operation
-	BNOT,				///< bitwise not
-	LT,					///< less-than comparision
+	SIGNEXTEND,			///< extend length of signed integer
+
+	LT = 0x10,			///< less-than comparision
 	GT,					///< greater-than comparision
 	SLT,				///< signed less-than comparision
 	SGT,				///< signed greater-than comparision
 	EQ,					///< equality comparision
-	NOT,				///< simple not operator
-
-	AND = 0x10,			///< bitwise AND operation
+	ISZERO,				///< simple not operator
+	AND,				///< bitwise AND operation
 	OR,					///< bitwise OR operation
 	XOR,				///< bitwise XOR operation
+	NOT,				///< bitwise NOT opertation
 	BYTE,				///< retrieve single byte from word
-	ADDMOD,				///< unsigned modular addition
-	MULMOD,				///< unsigned modular multiplication
-	SIGNEXTEND,			///< extend length of signed integer
+
 	SHA3 = 0x20,		///< compute SHA3-256 hash
 
 	ADDRESS = 0x30,		///< get address of currently executing account
@@ -83,7 +84,7 @@ enum class Instruction: uint8_t
 	GASLIMIT,			///< get the block's gas limit
 
 	POP = 0x50,			///< remove item from stack
-	MLOAD = 0x53,		///< load word from memory
+	MLOAD,				///< load word from memory
 	MSTORE,				///< save word to memory
 	MSTORE8,			///< save byte to memory
 	SLOAD,				///< load word from storage
