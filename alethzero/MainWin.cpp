@@ -88,14 +88,14 @@ static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
 {
 	auto list = keys.toStdList();
-	return {std::begin(list), std::end(list)};
+	return {begin(list), end(list)};
 }
 
 static QString contentsOfQResource(std::string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
-		return "";
+		BOOST_THROW_EXCEPTION(FileError());
 	QTextStream in(&file);
 	return in.readAll();
 }
