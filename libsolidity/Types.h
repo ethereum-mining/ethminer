@@ -25,7 +25,7 @@
 #include <memory>
 #include <string>
 #include <boost/noncopyable.hpp>
-#include <boost/assert.hpp>
+#include <libdevcore/Common.h>
 #include <libsolidity/ASTForward.h>
 #include <libsolidity/Token.h>
 
@@ -36,6 +36,9 @@ namespace solidity
 
 // @todo realMxN, string<N>, mapping
 
+/**
+ * Abstract base class that forms the root of the type hierarchy.
+ */
 class Type: private boost::noncopyable
 {
 public:
@@ -44,15 +47,19 @@ public:
 		INTEGER, BOOL, REAL, STRING, CONTRACT, STRUCT, FUNCTION, MAPPING, VOID, TYPE
 	};
 
-	//! factory functions that convert an AST TypeName to a Type.
+	///@{
+	///@name Factory functions
+	/// Factory functions that convert an AST @ref TypeName to a Type.
 	static std::shared_ptr<Type> fromElementaryTypeName(Token::Value _typeToken);
 	static std::shared_ptr<Type> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
 	static std::shared_ptr<Type> fromMapping(Mapping const& _typeName);
+	/// @}
 
+	/// Auto-detect the proper type for a literal
 	static std::shared_ptr<Type> forLiteral(Literal const& _literal);
 
 	virtual Category getCategory() const = 0;
-	virtual bool isImplicitlyConvertibleTo(Type const&) const { return false; }
+	virtual bool isImplicitlyConvertibleTo(Type const& _other) const { return *this == _other; }
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const
 	{
 		return isImplicitlyConvertibleTo(_convertTo);
@@ -60,9 +67,16 @@ public:
 	virtual bool acceptsBinaryOperator(Token::Value) const { return false; }
 	virtual bool acceptsUnaryOperator(Token::Value) const { return false; }
 
+	virtual bool operator==(Type const& _other) const { return getCategory() == _other.getCategory(); }
+	virtual bool operator!=(Type const& _other) const { return !this->operator ==(_other); }
+
 	virtual std::string toString() const = 0;
+	virtual bytes literalToBigEndian(Literal const&) const { return NullBytes; }
 };
 
+/**
+ * Any kind of integer type including hash and address.
+ */
 class IntegerType: public Type
 {
 public:
@@ -81,7 +95,10 @@ public:
 	virtual bool acceptsBinaryOperator(Token::Value _operator) const override;
 	virtual bool acceptsUnaryOperator(Token::Value _operator) const override;
 
+	virtual bool operator==(Type const& _other) const override;
+
 	virtual std::string toString() const override;
+	virtual bytes literalToBigEndian(Literal const& _literal) const override;
 
 	int getNumBits() const { return m_bits; }
 	bool isHash() const { return m_modifier == Modifier::HASH || m_modifier == Modifier::ADDRESS; }
@@ -93,14 +110,13 @@ private:
 	Modifier m_modifier;
 };
 
+/**
+ * The boolean type.
+ */
 class BoolType: public Type
 {
 public:
 	virtual Category getCategory() const { return Category::BOOL; }
-	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override
-	{
-		return _convertTo.getCategory() == Category::BOOL;
-	}
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool acceptsBinaryOperator(Token::Value _operator) const override
 	{
@@ -110,15 +126,21 @@ public:
 	{
 		return _operator == Token::NOT || _operator == Token::DELETE;
 	}
+
 	virtual std::string toString() const override { return "bool"; }
+	virtual bytes literalToBigEndian(Literal const& _literal) const override;
 };
 
+/**
+ * The type of a contract instance, there is one distinct type for each contract definition.
+ */
 class ContractType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::CONTRACT; }
 	ContractType(ContractDefinition const& _contract): m_contract(_contract) {}
-	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const;
+
+	virtual bool operator==(Type const& _other) const override;
 
 	virtual std::string toString() const override { return "contract{...}"; }
 
@@ -126,17 +148,20 @@ private:
 	ContractDefinition const& m_contract;
 };
 
+/**
+ * The type of a struct instance, there is one distinct type per struct definition.
+ */
 class StructType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::STRUCT; }
 	StructType(StructDefinition const& _struct): m_struct(_struct) {}
-	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const;
 	virtual bool acceptsUnaryOperator(Token::Value _operator) const override
 	{
 		return _operator == Token::DELETE;
 	}
 
+	virtual bool operator==(Type const& _other) const override;
 
 	virtual std::string toString() const override { return "struct{...}"; }
 
@@ -144,6 +169,9 @@ private:
 	StructDefinition const& m_struct;
 };
 
+/**
+ * The type of a function, there is one distinct type per function definition.
+ */
 class FunctionType: public Type
 {
 public:
@@ -154,10 +182,15 @@ public:
 
 	virtual std::string toString() const override { return "function(...)returns(...)"; }
 
+	virtual bool operator==(Type const& _other) const override;
+
 private:
 	FunctionDefinition const& m_function;
 };
 
+/**
+ * The type of a mapping, there is one distinct type per key/value type pair.
+ */
 class MappingType: public Type
 {
 public:
@@ -165,19 +198,30 @@ public:
 	MappingType() {}
 	virtual std::string toString() const override { return "mapping(...=>...)"; }
 
+	virtual bool operator==(Type const& _other) const override;
+
 private:
-	//@todo
+	std::shared_ptr<Type const> m_keyType;
+	std::shared_ptr<Type const> m_valueType;
 };
 
-//@todo should be changed into "empty anonymous struct"
+/**
+ * The void type, can only be implicitly used as the type that is returned by functions without
+ * return parameters.
+ */
 class VoidType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::VOID; }
 	VoidType() {}
+
 	virtual std::string toString() const override { return "void"; }
 };
 
+/**
+ * The type of a type reference. The type of "uint32" when used in "a = uint32(2)" is an example
+ * of a TypeType.
+ */
 class TypeType: public Type
 {
 public:
@@ -185,6 +229,8 @@ public:
 	TypeType(std::shared_ptr<Type const> const& _actualType): m_actualType(_actualType) {}
 
 	std::shared_ptr<Type const> const& getActualType() const { return m_actualType; }
+
+	virtual bool operator==(Type const& _other) const override;
 
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
 
