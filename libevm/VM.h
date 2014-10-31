@@ -506,7 +506,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = (unsigned)m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
@@ -522,11 +522,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = (u256)m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() < cf ? 0 : _ext.code.size() - cf : l;
+			unsigned el = cf + l > (u256)_ext.code.size() ? (u256)_ext.code.size() < cf ? 0 : _ext.code.size() - (unsigned)cf : l;
 			memcpy(m_temp.data() + mf, _ext.code.data() + cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
@@ -540,11 +540,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.codeAt(a).size() ? _ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - cf : l;
+			unsigned el = cf + l > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - (unsigned)cf : l;
 			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
