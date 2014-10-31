@@ -40,7 +40,6 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
 	res["hash"] = boost::lexical_cast<string>(_bi.hash);
-	
 	res["parentHash"] = toJS(_bi.parentHash);
 	res["sha3Uncles"] = toJS(_bi.sha3Uncles);
 	res["miner"] = toJS(_bi.coinbaseAddress);
@@ -81,7 +80,6 @@ static Json::Value toJson(dev::eth::PastMessages const& _pms)
 	Json::Value res;
 	for (dev::eth::PastMessage const& t: _pms)
 		res.append(toJson(t));
-	
 	return res;
 }
 
@@ -105,7 +103,7 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty()){
 		return filter;
 	}
-	
+
 	if (!_json["earliest"].empty())
 		filter.withEarliest(_json["earliest"].asInt());
 	if (!_json["latest"].empty())
@@ -143,7 +141,6 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 				else
 					filter.altered(jsToAddress(_json["altered"].asString()));
 	}
-	
 	return filter;
 }
 
@@ -163,9 +160,8 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 {
 	unsigned ttl = 50;
 	unsigned workToProve = 50;
-	
 	shh::BuildTopic bt;
-	
+
 	if (!_json["ttl"].empty())
 		ttl = _json["ttl"].asInt();
 	if (!_json["workToProve"].empty())
@@ -209,13 +205,11 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 {
 	Json::Value res;
 	res["hash"] = toJS(_h);
-	
 	res["expiry"] = (int)_e.expiry();
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
 	res["topic"] = toJS(_e.topic());
-	
 	res["payload"] = asString(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
@@ -228,7 +222,6 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, 
 	m_web3(_web3)
 {
 	setAccounts(_accounts);
-	
 	auto path = getDataDir() + "/.web3";
 	boost::filesystem::create_directories(path);
 	ldb::Options o;
@@ -248,7 +241,6 @@ void WebThreeStubServer::setIdentities(std::vector<dev::KeyPair> const& _ids)
 	m_ids.clear();
 	for (auto i: _ids)
 		m_ids[i.pub()] = i.secret();
-	// emit ids changed?
 }
 
 dev::eth::Interface* WebThreeStubServer::client() const
@@ -293,7 +285,6 @@ Json::Value WebThreeStubServer::blockByHash(std::string const& _hash)
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->blockInfo(jsToFixed<32>(_hash)));
 }
 
@@ -301,7 +292,6 @@ Json::Value WebThreeStubServer::blockByNumber(int const& _number)
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->blockInfo(client()->hashFromNumber(_number)));
 }
 
@@ -311,7 +301,7 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty()){
 		return ret;
 	}
-	
+
 	if (!_json["from"].empty())
 		ret.from = jsToAddress(_json["from"].asString());
 	if (!_json["to"].empty())
@@ -339,7 +329,6 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 			for (auto i: _json["dataclose"])
 				dev::operator +=(ret.data, jsToBytes(i.asString()));
 	}
-	
 	return ret;
 }
 
@@ -493,7 +482,7 @@ bool WebThreeStubServer::post(Json::Value const& _json)
 {
 	shh::Message m = toMessage(_json);
 	Secret from;
-	
+
 	if (m.from() && m_ids.count(m.from()))
 	{
 		cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
@@ -578,7 +567,7 @@ Json::Value WebThreeStubServer::shhChanged(int const& _id)
 				m = e.open();
 			ret.append(toJson(h,e,m));
 		}
-
+	
 	return ret;
 }
 
@@ -636,7 +625,6 @@ Json::Value WebThreeStubServer::transactionByHash(std::string const& _hash, int 
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->transaction(jsToFixed<32>(_hash), _i));
 }
 
@@ -644,7 +632,6 @@ Json::Value WebThreeStubServer::transactionByNumber(int const& _number, int cons
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->transaction(client()->hashFromNumber(_number), _i));
 }
 
@@ -652,7 +639,6 @@ Json::Value WebThreeStubServer::uncleByHash(std::string const& _hash, int const&
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->uncle(jsToFixed<32>(_hash), _i));
 }
 
@@ -660,7 +646,6 @@ Json::Value WebThreeStubServer::uncleByNumber(int const& _number, int const& _i)
 {
 	if (!client())
 		return "";
-	
 	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
