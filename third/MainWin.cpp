@@ -117,8 +117,7 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
 	m_web3->connect(Host::pocHost());
 
-	m_qwebConnector = new QWebThreeConnector();
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 	
@@ -127,7 +126,7 @@ Main::Main(QWidget *parent) :
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_qweb = new QWebThree(this);
 		auto qweb = m_qweb;
-		m_qwebConnector->setQWeb(qweb);
+		m_qwebConnector.setQWeb(qweb);
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));

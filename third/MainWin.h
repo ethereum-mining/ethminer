@@ -135,6 +135,6 @@ private:
 	QNetworkAccessManager m_webCtrl;
 
 	std::unique_ptr<WebThreeStubServer> m_server;
-	QWebThreeConnector* m_qwebConnector = nullptr;
+	QWebThreeConnector m_qwebConnector;
 	QWebThree* m_qweb = nullptr;
 };
