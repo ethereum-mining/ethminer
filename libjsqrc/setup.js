@@ -11,7 +11,7 @@ navigator.qt = _web3;
 
 navigator.qt.response.connect(function (res) {
 	navigator.qt.handlers.forEach(function (handler) {
-		handler(res);
+		handler({data: res});
 	});
 });
 

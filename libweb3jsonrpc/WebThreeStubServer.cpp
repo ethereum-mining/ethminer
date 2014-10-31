@@ -261,9 +261,16 @@ std::shared_ptr<dev::shh::Interface> WebThreeStubServer::face() const
 	return m_web3.whisper();
 }
 
+std::string WebThreeStubServer::account()
+{
+	if (!m_accounts.empty())
+		return toJS(m_accounts.begin()->first);
+	return "";
+}
+
 Json::Value WebThreeStubServer::accounts()
 {
-	Json::Value ret;
+	Json::Value ret(Json::arrayValue);
 	for (auto i: m_accounts)
 		ret.append(toJS(i.first));
 	return ret;

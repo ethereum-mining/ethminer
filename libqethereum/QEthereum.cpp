@@ -100,7 +100,7 @@ static QString formatInput(QJsonObject const& _object)
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
-void QWebThree::postData(QString _json)
+void QWebThree::postMessage(QString _json)
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 

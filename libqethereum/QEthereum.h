@@ -39,7 +39,7 @@ public:
 	void clearWatches();
 	void clientDieing();
 	
-	Q_INVOKABLE void postData(QString _json);
+	Q_INVOKABLE void postMessage(QString _json);
 	
 public slots:
 	void onDataProcessed(QString _json, QString _addInfo);
