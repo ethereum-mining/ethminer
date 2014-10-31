@@ -84,7 +84,7 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 {
 	auto module = getModule();
 
-	m_gasCheckFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, Type::i256, false), llvm::Function::PrivateLinkage, "gas.check", module);
+	m_gasCheckFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, Type::Word, false), llvm::Function::PrivateLinkage, "gas.check", module);
 	InsertPointGuard guard(m_builder);
 
 	auto checkBB = llvm::BasicBlock::Create(_builder.getContext(), "Check", m_gasCheckFunc);
@@ -113,7 +113,7 @@ void GasMeter::count(Instruction _inst)
 	if (!m_checkCall)
 	{
 		// Create gas check call with mocked block cost at begining of current cost-block
-		m_checkCall = m_builder.CreateCall(m_gasCheckFunc, llvm::UndefValue::get(Type::i256));
+		m_checkCall = m_builder.CreateCall(m_gasCheckFunc, llvm::UndefValue::get(Type::Word));
 	}
 
 	m_blockCost += getStepCost(_inst);
@@ -169,11 +169,10 @@ void GasMeter::commitCostBlock(llvm::Value* _additionalCost)
 	assert(m_blockCost == 0);
 }
 
-void GasMeter::checkMemory(llvm::Value* _additionalMemoryInWords, llvm::IRBuilder<>& _builder)
+void GasMeter::checkMemory(llvm::Value* _additionalMemoryInWords)
 {
-	// Memory uses other builder, but that can be changes later
-	auto cost = _builder.CreateMul(_additionalMemoryInWords, Constant::get(static_cast<uint64_t>(c_memoryGas)), "memcost");
-	_builder.CreateCall(m_gasCheckFunc, cost);
+	auto cost = m_builder.CreateNUWMul(_additionalMemoryInWords, Constant::get(static_cast<uint64_t>(c_memoryGas)), "memcost");
+	m_builder.CreateCall(m_gasCheckFunc, cost);
 }
 
 }
