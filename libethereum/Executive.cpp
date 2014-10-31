@@ -123,7 +123,11 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
+	{
 		m_endGas = _gas;
+		if (m_ext)
+			m_ext->sub.logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
+	}
 	return !m_ext;
 }
 
@@ -134,7 +138,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, m_s.balance(m_newAddress) + _endowment, h256(), h256());
+	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
 	m_vm = new VM(_gas);
@@ -172,6 +176,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
+			if (m_ext)
+				m_endGas += min((m_t.gas - m_endGas) / 2, m_ext->sub.refunds);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
@@ -187,14 +193,17 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
 			m_endGas = m_vm->gas();
+			revert = true;
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+			cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
 		}
 		catch (std::exception const& _e)
 		{
-			clog(StateChat) << "std::exception in VM: " << _e.what();
+			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
+			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
 		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 
@@ -236,6 +245,6 @@ void Executive::finalize(OnOpFunc const&)
 
 	// Suicides...
 	if (m_ext)
-		for (auto a: m_ext->suicides)
+		for (auto a: m_ext->sub.suicides)
 			m_s.m_cache[a].kill();
 }

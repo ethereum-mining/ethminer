@@ -33,7 +33,7 @@
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
-#include "AddressState.h"
+#include "Account.h"
 #include "Transaction.h"
 #include "Executive.h"
 #include "AccountDiff.h"
@@ -52,24 +52,36 @@ struct StateChat: public LogChannel { static const char* name() { return "-S-"; 
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 
-struct TransactionReceipt
+class TransactionReceipt
 {
-	TransactionReceipt(Transaction const& _t, h256 _root, u256 _gasUsed, Manifest const& _ms): transaction(_t), stateRoot(_root), gasUsed(_gasUsed), changes(_ms) {}
+public:
+	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log, Manifest const& _ms): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log), m_changes(_ms) {}
 
-//	Manifest const& changes() const { return changes; }
+	Manifest const& changes() const { return m_changes; }
 
-	void fillStream(RLPStream& _s) const
+	h256 const& stateRoot() const { return m_stateRoot; }
+	u256 const& gasUsed() const { return m_gasUsed; }
+	LogBloom const& bloom() const { return m_bloom; }
+	LogEntries const& log() const { return m_log; }
+
+	void streamRLP(RLPStream& _s) const
 	{
-		_s.appendList(3);
-		transaction.fillStream(_s);
-		_s.append(stateRoot, false, true) << gasUsed;
+		_s.appendList(4) << m_stateRoot << m_gasUsed << m_bloom;
+		_s.appendList(m_log.size());
+		for (LogEntry const& l: m_log)
+			l.streamRLP(_s);
 	}
 
-	Transaction transaction;
-	h256 stateRoot;
-	u256 gasUsed;
-	Manifest changes;
+private:
+	h256 m_stateRoot;
+	u256 m_gasUsed;
+	LogBloom m_bloom;
+	LogEntries m_log;
+
+	Manifest m_changes;	///< TODO: PoC-7: KILL
 };
+
+using TransactionReceipts = std::vector<TransactionReceipt>;
 
 struct PrecompiledAddress
 {
@@ -117,8 +129,10 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
+	/// @returns the address b such that b > @a _a .
 	Address nextActiveAddress(Address _a) const;
 
+	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
 
 	/// @brief Checks that mining the current object will result in a valid block.
@@ -226,16 +240,28 @@ public:
 	h256 rootHash() const { return m_state.root(); }
 
 	/// Get the list of pending transactions.
-	Transactions pending() const { Transactions ret; for (auto const& t: m_transactions) ret.push_back(t.transaction); return ret; }
+	Transactions const& pending() const { return m_transactions; }
+
+	/// Get the list of pending transactions. TODO: PoC-7: KILL
+	Manifest changesFromPending(unsigned _i) const { return m_receipts[_i].changes(); }
+
+	/// Get the bloom filter of all changes happened in the block. TODO: PoC-7: KILL
+	h256 oldBloom() const;
+
+	/// Get the bloom filter of a particular transaction that happened in the block. TODO: PoC-7: KILL
+	h256 oldBloom(unsigned _i) const { return m_receipts[_i].changes().bloom(); }
+
+	/// Get the transaction receipt for the transaction of the given index.
+	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
 	/// Get the list of pending transactions.
-	Manifest changesFromPending(unsigned _i) const { return m_transactions[_i].changes; }
+	LogEntries const& log(unsigned _i) const { return m_receipts[_i].log(); }
 
-	/// Get the bloom filter of all changes happened in the block.
-	h256 bloom() const;
+	/// Get the bloom filter of all logs that happened in the block.
+	LogBloom logBloom() const;
 
 	/// Get the bloom filter of a particular transaction that happened in the block.
-	h256 bloom(unsigned _i) const { return m_transactions[_i].changes.bloom(); }
+	LogBloom const& logBloom(unsigned _i) const { return m_receipts[_i].bloom(); }
 
 	/// Get the State immediately after the given number of pending transactions have been applied.
 	/// If (_i == 0) returns the initial state of the block.
@@ -275,7 +301,7 @@ private:
 	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
 	void commit();
@@ -288,12 +314,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), std::set<Address>* o_suicides = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
@@ -304,29 +330,30 @@ private:
 	void refreshManifest(RLPStream* _txs = nullptr);
 
 	/// @returns gas used by transactions thus far executed.
-	u256 gasUsed() const { return m_transactions.size() ? m_transactions.back().gasUsed : 0; }
+	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
 
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
-	std::vector<TransactionReceipt> m_transactions;	///< The current list of transactions that we've included in the state.
+	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
+	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
 
-	mutable std::map<Address, AddressState> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
+	mutable std::map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 
-	bytes m_currentTxs;
-	bytes m_currentUncles;
+	bytes m_currentTxs;							///< The RLP-encoded block of transactions.
+	bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
 
-	ProofOfWork m_pow;
+	ProofOfWork m_pow;							///< The PoW mining class.
 
 	u256 m_blockReward;
 
@@ -340,7 +367,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
+void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
 		if (!i.second.isAlive())
@@ -351,7 +378,10 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 			s << i.second.nonce() << i.second.balance();
 
 			if (i.second.storage().empty())
-				s.append(i.second.baseRoot(), false, true);
+			{
+				assert(i.second.baseRoot());
+				s.append(i.second.baseRoot());
+			}
 			else
 			{
 				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
@@ -360,23 +390,18 @@ void commit(std::map<Address, AddressState> const& _cache, DB& _db, TrieDB<Addre
 						storageDB.insert(j.first, rlp(j.second));
 					else
 						storageDB.remove(j.first);
-				s.append(storageDB.root(), false, true);
+				assert(storageDB.root());
+				s.append(storageDB.root());
 			}
 
 			if (i.second.isFreshCode())
 			{
 				h256 ch = sha3(i.second.code());
 				_db.insert(ch, &i.second.code());
-				if (i.second.code().size())
-					s << ch;
-				else
-					s << "";
+				s << ch;
 			}
 			else
-				if (i.second.codeHash() == EmptySHA3)
-					s << "";
-				else
-					s << i.second.codeHash();
+				s << i.second.codeHash();
 
 			_state.insert(i.first, &s.out());
 		}

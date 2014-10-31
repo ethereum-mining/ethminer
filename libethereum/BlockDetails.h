@@ -66,7 +66,7 @@ struct BlockTraces
 {
 	BlockTraces() {}
 	BlockTraces(RLP const& _r) { for (auto const& i: _r) traces.emplace_back(i.data()); }
-	bytes rlp() const { RLPStream s(traces.size()); for (auto const& i: traces) i.streamOut(s); return s.out(); }
+	bytes rlp() const { RLPStream s(traces.size()); for (auto const& i: traces) i.streamRLP(s); return s.out(); }
 
 	Manifests traces;
 };
