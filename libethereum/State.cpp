@@ -259,7 +259,7 @@ struct CachedAddressState
 				ret[j.first] = RLP(j.second).toInt<u256>();
 		}
 		if (s)
-			for (auto const& j: s->storage())
+			for (auto const& j: s->storageOverlay())
 				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
 					ret[j.first] = j.second;
 		return ret;
@@ -1011,8 +1011,8 @@ u256 State::storage(Address _id, u256 _memory) const
 		return 0;
 
 	// See if it's in the account's storage cache.
-	auto mit = it->second.storage().find(_memory);
-	if (mit != it->second.storage().end())
+	auto mit = it->second.storageOverlay().find(_memory);
+	if (mit != it->second.storageOverlay().end())
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
@@ -1040,7 +1040,7 @@ map<u256, u256> State::storage(Address _id) const
 		}
 
 		// Then merge cached storage over the top.
-		for (auto const& i: it->second.storage())
+		for (auto const& i: it->second.storageOverlay())
 			if (i.second)
 				ret[i.first] = i.second;
 			else
@@ -1394,7 +1394,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
 				if (cache)
-					for (auto const& j: cache->storage())
+					for (auto const& j: cache->storageOverlay())
 					{
 						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
 							mem[j.first] = j.second, delta.insert(j.first);
