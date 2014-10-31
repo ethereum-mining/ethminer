@@ -3,6 +3,7 @@
 
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IntrinsicInst.h>
 
 #include <libevm/VM.h>
 
@@ -22,7 +23,7 @@ llvm::StructType* RuntimeData::getType()
 	{
 		llvm::Type* elems[] =
 		{
-			llvm::ArrayType::get(Type::i256, _size),
+			llvm::ArrayType::get(Type::Word, _size),
 			Type::BytePtr,
 			Type::BytePtr,
 			Type::BytePtr
@@ -105,7 +106,7 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder): CompilerHelper(_bui
 {
 	m_dataPtr = new llvm::GlobalVariable(*getModule(), Type::RuntimePtr, false, llvm::GlobalVariable::PrivateLinkage, llvm::UndefValue::get(Type::RuntimePtr), "rt");
 	llvm::Type* args[] = {Type::BytePtr, m_builder.getInt32Ty()};
-	m_longjmp = llvm::Function::Create(llvm::FunctionType::get(Type::Void, args, false), llvm::Function::ExternalLinkage, "longjmp", getModule());
+	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::longjmp);
 
 	// Export data
 	auto mainFunc = getMainFunction();

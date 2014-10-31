@@ -29,7 +29,7 @@ Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	RuntimeHelper(_runtimeManager)
 {
 	auto module = getModule();
-	llvm::Type* argTypes[] = {Type::i256, Type::i256};
+	llvm::Type* argTypes[] = {Type::Word, Type::Word};
 	auto dumpTy = llvm::FunctionType::get(m_builder.getVoidTy(), llvm::ArrayRef<llvm::Type*>(argTypes), false);
 	m_memDump = llvm::Function::Create(dumpTy, llvm::GlobalValue::LinkageTypes::ExternalLinkage,
 									   "evmccrt_memory_dump", module);
@@ -37,7 +37,7 @@ Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	m_data = new llvm::GlobalVariable(*module, Type::BytePtr, false, llvm::GlobalVariable::PrivateLinkage, llvm::UndefValue::get(Type::BytePtr), "mem.data");
 	m_data->setUnnamedAddr(true); // Address is not important
 
-	m_size = new llvm::GlobalVariable(*module, Type::i256, false, llvm::GlobalVariable::PrivateLinkage, Constant::get(0), "mem.size");
+	m_size = new llvm::GlobalVariable(*module, Type::Word, false, llvm::GlobalVariable::PrivateLinkage, Constant::get(0), "mem.size");
 	m_size->setUnnamedAddr(true); // Address is not important
 
 	llvm::Type* resizeArgs[] = {Type::RuntimePtr, Type::WordPtr};
@@ -47,14 +47,14 @@ Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	m_resize->setAttributes(llvm::AttributeSet::get(m_resize->getContext(), 1, attrBuilder));
 
 	m_require = createRequireFunc(_gasMeter, _runtimeManager);
-	m_loadWord = createFunc(false, Type::i256, _gasMeter);
-	m_storeWord = createFunc(true, Type::i256, _gasMeter);
+	m_loadWord = createFunc(false, Type::Word, _gasMeter);
+	m_storeWord = createFunc(true, Type::Word, _gasMeter);
 	m_storeByte = createFunc(true, Type::Byte,  _gasMeter);
 }
 
 llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _runtimeManager)
 {
-	llvm::Type* argTypes[] = {Type::i256, Type::i256};
+	llvm::Type* argTypes[] = {Type::Word, Type::Word};
 	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "mem.require", getModule());
 	auto offset = func->arg_begin();
 	offset->setName("offset");
@@ -67,9 +67,9 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 
 	InsertPointGuard guard(m_builder); // Restores insert point at function exit
 
-	// BB "check"
+	// BB "Check"
 	m_builder.SetInsertPoint(checkBB);
-	auto uaddWO = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::uadd_with_overflow, Type::i256);
+	auto uaddWO = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::uadd_with_overflow, Type::Word);
 	auto uaddRes = m_builder.CreateCall2(uaddWO, offset, size, "res");
 	auto sizeRequired = m_builder.CreateExtractValue(uaddRes, 0, "sizeReq");
 	auto overflow1 = m_builder.CreateExtractValue(uaddRes, 1, "overflow1");
@@ -78,7 +78,7 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 	auto resizeNeeded = m_builder.CreateOr(tooSmall, overflow1, "resizeNeeded");
 	m_builder.CreateCondBr(resizeNeeded, resizeBB, returnBB); // OPT branch weights?
 
-	// BB "resize"
+	// BB "Resize"
 	m_builder.SetInsertPoint(resizeBB);
 	// Check gas first
 	uaddRes = m_builder.CreateCall2(uaddWO, sizeRequired, Constant::get(31), "res");
@@ -90,14 +90,14 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 	sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeReq");
 	auto words = m_builder.CreateUDiv(currSize, Constant::get(32), "words");	// size is always 32*k
 	auto newWords = m_builder.CreateSub(wordsRequired, words, "addtionalWords");
-	_gasMeter.checkMemory(newWords, m_builder);
+	_gasMeter.checkMemory(newWords);
 	// Resize
 	m_builder.CreateStore(sizeRequired, m_size);
 	auto newData = m_builder.CreateCall2(m_resize, _runtimeManager.getRuntimePtr(), m_size, "newData");
 	m_builder.CreateStore(newData, m_data);
 	m_builder.CreateBr(returnBB);
 
-	// BB "return"
+	// BB "Return"
 	m_builder.SetInsertPoint(returnBB);
 	m_builder.CreateRetVoid();
 	return func;
@@ -105,11 +105,11 @@ llvm::Function* Memory::createRequireFunc(GasMeter& _gasMeter, RuntimeManager& _
 
 llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMeter&)
 {
-	auto isWord = _valueType == Type::i256;
+	auto isWord = _valueType == Type::Word;
 
-	llvm::Type* storeArgs[] = {Type::i256, _valueType};
+	llvm::Type* storeArgs[] = {Type::Word, _valueType};
 	auto name = _isStore ? isWord ? "mstore" : "mstore8" : "mload";
-	auto funcType = _isStore ? llvm::FunctionType::get(Type::Void, storeArgs, false) : llvm::FunctionType::get(Type::i256, Type::i256, false);
+	auto funcType = _isStore ? llvm::FunctionType::get(Type::Void, storeArgs, false) : llvm::FunctionType::get(Type::Word, Type::Word, false);
 	auto func = llvm::Function::Create(funcType, llvm::Function::PrivateLinkage, name, getModule());
 
 	InsertPointGuard guard(m_builder); // Restores insert point at function exit
@@ -185,7 +185,7 @@ void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value* _srcIdx,
 					   llvm::Value* _destMemIdx, llvm::Value* _reqBytes)
 {
-	auto zero256 = llvm::ConstantInt::get(Type::i256, 0);
+	auto zero256 = llvm::ConstantInt::get(Type::Word, 0);
 
 	require(_destMemIdx, _reqBytes);
 
@@ -224,7 +224,6 @@ void Memory::dump(uint64_t _begin, uint64_t _end)
 
 extern "C"
 {
-
 	using namespace dev::eth::jit;
 
 	EXPORT uint8_t* mem_resize(Runtime* _rt, i256* _size)
@@ -234,5 +233,4 @@ extern "C"
 		memory.resize(size);
 		return memory.data();
 	}
-
-}   // extern "C"
+}
