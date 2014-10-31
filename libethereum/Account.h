@@ -123,12 +123,11 @@ public:
 	h256 baseRoot() const { assert(m_storageRoot); return m_storageRoot; }
 
 	/// @returns the storage overlay as a simple map.
-	std::map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
+	std::map<u256, u256> const& storage() const { return m_storageOverlay; }
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.
 	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; }
-
 
 	/// @returns true if we are in the contract-conception state and setCode is valid to call.
 	bool isFreshCode() const { return m_codeHash == c_contractConceptionCodeHash; }
