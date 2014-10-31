@@ -33,7 +33,7 @@
 #include <libethcore/BlockInfo.h>
 #include <libdevcore/Guards.h>
 #include "BlockDetails.h"
-#include "AddressState.h"
+#include "Account.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
@@ -57,7 +57,7 @@ struct BlockChainChat: public LogChannel { static const char* name() { return "-
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
-std::map<Address, AddressState> const& genesisState();
+std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 
