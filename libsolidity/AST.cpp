@@ -26,6 +26,8 @@
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/Exceptions.h>
 
+using namespace std;
+
 namespace dev
 {
 namespace solidity
@@ -248,12 +250,12 @@ void Literal::accept(ASTVisitor& _visitor)
 	_visitor.endVisit(*this);
 }
 
-TypeError ASTNode::createTypeError(std::string const& _description)
+TypeError ASTNode::createTypeError(string const& _description)
 {
 	return TypeError() << errinfo_sourceLocation(getLocation()) << errinfo_comment(_description);
 }
 
-void Statement::expectType(Expression& _expression, const Type& _expectedType)
+void Statement::expectType(Expression& _expression, Type const& _expectedType)
 {
 	_expression.checkTypeRequirements();
 	if (!_expression.getType()->isImplicitlyConvertibleTo(_expectedType))
@@ -263,7 +265,7 @@ void Statement::expectType(Expression& _expression, const Type& _expectedType)
 
 void Block::checkTypeRequirements()
 {
-	for (std::shared_ptr<Statement> const& statement: m_statements)
+	for (shared_ptr<Statement> const& statement: m_statements)
 		statement->checkTypeRequirements();
 }
 
@@ -291,7 +293,7 @@ void Break::checkTypeRequirements()
 
 void Return::checkTypeRequirements()
 {
-	BOOST_ASSERT(m_returnParameters);
+	assert(m_returnParameters);
 	if (m_returnParameters->getParameters().size() != 1)
 		BOOST_THROW_EXCEPTION(createTypeError("Different number of arguments in return statement "
 											  "than in returns declaration."));
@@ -328,7 +330,7 @@ void Assignment::checkTypeRequirements()
 	m_type = m_leftHandSide->getType();
 	if (m_assigmentOperator != Token::ASSIGN)
 	{
-		// complex assignment
+		// compound assignment
 		if (!m_type->acceptsBinaryOperator(Token::AssignmentToBinaryOp(m_assigmentOperator)))
 			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
 	}
@@ -339,7 +341,7 @@ void UnaryOperation::checkTypeRequirements()
 	// INC, DEC, NOT, BIT_NOT, DELETE
 	m_subExpression->checkTypeRequirements();
 	m_type = m_subExpression->getType();
-	if (m_type->acceptsUnaryOperator(m_operator))
+	if (!m_type->acceptsUnaryOperator(m_operator))
 		BOOST_THROW_EXCEPTION(createTypeError("Unary operator not compatible with type."));
 }
 
@@ -354,10 +356,10 @@ void BinaryOperation::checkTypeRequirements()
 	else
 		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation."));
 	if (Token::isCompareOp(m_operator))
-		m_type = std::make_shared<BoolType>();
+		m_type = make_shared<BoolType>();
 	else
 	{
-		BOOST_ASSERT(Token::isBinaryOp(m_operator));
+		assert(Token::isBinaryOp(m_operator));
 		m_type = m_commonType;
 		if (!m_commonType->acceptsBinaryOperator(m_operator))
 			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
@@ -369,12 +371,12 @@ void FunctionCall::checkTypeRequirements()
 	m_expression->checkTypeRequirements();
 	for (ASTPointer<Expression> const& argument: m_arguments)
 		argument->checkTypeRequirements();
-	Type const& expressionType = *m_expression->getType();
-	Type::Category const category = expressionType.getCategory();
-	if (category == Type::Category::TYPE)
+
+	Type const* expressionType = m_expression->getType().get();
+	if (isTypeConversion())
 	{
-		TypeType const* type = dynamic_cast<TypeType const*>(&expressionType);
-		BOOST_ASSERT(type);
+		TypeType const* type = dynamic_cast<TypeType const*>(expressionType);
+		assert(type);
 		//@todo for structs, we have to check the number of arguments to be equal to the
 		// number of non-mapping members
 		if (m_arguments.size() != 1)
@@ -384,15 +386,15 @@ void FunctionCall::checkTypeRequirements()
 			BOOST_THROW_EXCEPTION(createTypeError("Explicit type conversion not allowed."));
 		m_type = type->getActualType();
 	}
-	else if (category == Type::Category::FUNCTION)
+	else
 	{
 		//@todo would be nice to create a struct type from the arguments
 		// and then ask if that is implicitly convertible to the struct represented by the
 		// function parameters
-		FunctionType const* function = dynamic_cast<FunctionType const*>(&expressionType);
-		BOOST_ASSERT(function);
+		FunctionType const* function = dynamic_cast<FunctionType const*>(expressionType);
+		assert(function);
 		FunctionDefinition const& fun = function->getFunction();
-		std::vector<ASTPointer<VariableDeclaration>> const& parameters = fun.getParameters();
+		vector<ASTPointer<VariableDeclaration>> const& parameters = fun.getParameters();
 		if (parameters.size() != m_arguments.size())
 			BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for function call."));
 		for (size_t i = 0; i < m_arguments.size(); ++i)
@@ -401,29 +403,32 @@ void FunctionCall::checkTypeRequirements()
 		// @todo actually the return type should be an anonymous struct,
 		// but we change it to the type of the first return value until we have structs
 		if (fun.getReturnParameterList()->getParameters().empty())
-			m_type = std::make_shared<VoidType>();
+			m_type = make_shared<VoidType>();
 		else
 			m_type = fun.getReturnParameterList()->getParameters().front()->getType();
 	}
-	else
-		BOOST_THROW_EXCEPTION(createTypeError("Type does not support invocation."));
+}
+
+bool FunctionCall::isTypeConversion() const
+{
+	return m_expression->getType()->getCategory() == Type::Category::TYPE;
 }
 
 void MemberAccess::checkTypeRequirements()
 {
-	BOOST_ASSERT(false); // not yet implemented
+	assert(false); // not yet implemented
 	// m_type = ;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
-	BOOST_ASSERT(false); // not yet implemented
+	assert(false); // not yet implemented
 	// m_type = ;
 }
 
 void Identifier::checkTypeRequirements()
 {
-	BOOST_ASSERT(m_referencedDeclaration);
+	assert(m_referencedDeclaration);
 	//@todo these dynamic casts here are not really nice...
 	// is i useful to have an AST visitor here?
 	// or can this already be done in NameAndTypeResolver?
@@ -446,7 +451,7 @@ void Identifier::checkTypeRequirements()
 	if (structDef)
 	{
 		// note that we do not have a struct type here
-		m_type = std::make_shared<TypeType>(std::make_shared<StructType>(*structDef));
+		m_type = make_shared<TypeType>(make_shared<StructType>(*structDef));
 		return;
 	}
 	FunctionDefinition* functionDef = dynamic_cast<FunctionDefinition*>(m_referencedDeclaration);
@@ -455,21 +460,21 @@ void Identifier::checkTypeRequirements()
 		// a function reference is not a TypeType, because calling a TypeType converts to the type.
 		// Calling a function (e.g. function(12), otherContract.function(34)) does not do a type
 		// conversion.
-		m_type = std::make_shared<FunctionType>(*functionDef);
+		m_type = make_shared<FunctionType>(*functionDef);
 		return;
 	}
 	ContractDefinition* contractDef = dynamic_cast<ContractDefinition*>(m_referencedDeclaration);
 	if (contractDef)
 	{
-		m_type = std::make_shared<TypeType>(std::make_shared<ContractType>(*contractDef));
+		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef));
 		return;
 	}
-	BOOST_ASSERT(false); // declaration reference of unknown/forbidden type
+	assert(false); // declaration reference of unknown/forbidden type
 }
 
 void ElementaryTypeNameExpression::checkTypeRequirements()
 {
-	m_type = std::make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
+	m_type = make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
 }
 
 void Literal::checkTypeRequirements()
