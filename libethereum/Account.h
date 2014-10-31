@@ -123,7 +123,7 @@ public:
 	h256 baseRoot() const { assert(m_storageRoot); return m_storageRoot; }
 
 	/// @returns the storage overlay as a simple map.
-	std::map<u256, u256> const& storage() const { return m_storageOverlay; }
+	std::map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.
