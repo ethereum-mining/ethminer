@@ -118,6 +118,9 @@ public:
 
 	/// Stop the network subsystem.
 	void stopNetwork() { m_net.stop(); }
+	
+	/// Is network working? there may not be any peers yet.
+	bool isNetworkStarted() { return m_net.isStarted(); }
 
 private:
 	std::string m_clientVersion;					///< Our end-application client's name/version.

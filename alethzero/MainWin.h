@@ -47,6 +47,7 @@ class MessageFilter;
 }}
 
 class QQuickView;
+class WebThreeStubServer;
 
 struct WorldState
 {
@@ -153,11 +154,10 @@ private slots:
 	void on_newIdentity_triggered();
 
 	void refreshWhisper();
-	void addNewId(QString);
+	void addNewId(QString _ids);
 
 signals:
 	void poll();
-	void idsChanged();
 
 private:
 	dev::p2p::NetworkPreferences netPrefs() const;
@@ -181,8 +181,6 @@ private:
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
-	void keysChanged();
-
 	bool isCreation() const;
 	dev::u256 fee() const;
 	dev::u256 total() const;
@@ -192,6 +190,8 @@ private:
 	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 	void uninstallWatch(unsigned _w);
+
+	void keysChanged();
 
 	void onNewPending();
 	void onNewBlock();
@@ -255,8 +255,7 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	QDev* m_dev = nullptr;
-	QEthereum* m_ethereum = nullptr;
-	QWhisper* m_whisper = nullptr;
-	QLDB* m_ldb = nullptr;
+	std::unique_ptr<WebThreeStubServer> m_server;
+	QWebThreeConnector m_qwebConnector;
+	QWebThree* m_qweb = nullptr;
 };
