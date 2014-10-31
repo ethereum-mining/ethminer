@@ -5,8 +5,6 @@ aux_source_directory(. SRC_LIST)
 include_directories(..)
 include_directories(${LEVELDB_ID})
 
-link_directories(../libethcore)
-link_directories(../libethereum)
 set(EXECUTABLE neth)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
@@ -21,7 +19,7 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 if(JSONRPC_LS)
-target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
