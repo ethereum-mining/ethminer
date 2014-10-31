@@ -376,7 +376,7 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, D
 			RLPStream s(4);
 			s << i.second.nonce() << i.second.balance();
 
-			if (i.second.storage().empty())
+			if (i.second.storageOverlay().empty())
 			{
 				assert(i.second.baseRoot());
 				s.append(i.second.baseRoot());
@@ -384,7 +384,7 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, D
 			else
 			{
 				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
-				for (auto const& j: i.second.storage())
+				for (auto const& j: i.second.storageOverlay())
 					if (j.second)
 						storageDB.insert(j.first, rlp(j.second));
 					else
