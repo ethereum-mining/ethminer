@@ -100,9 +100,8 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 {
 	dev::eth::MessageFilter filter;
-	if (!_json.isObject() || _json.empty()){
+	if (!_json.isObject() || _json.empty())
 		return filter;
-	}
 
 	if (!_json["earliest"].empty())
 		filter.withEarliest(_json["earliest"].asInt());
@@ -298,9 +297,8 @@ Json::Value WebThreeStubServer::blockByNumber(int const& _number)
 static TransactionSkeleton toTransaction(Json::Value const& _json)
 {
 	TransactionSkeleton ret;
-	if (!_json.isObject() || _json.empty()){
+	if (!_json.isObject() || _json.empty())
 		return ret;
-	}
 
 	if (!_json["from"].empty())
 		ret.from = jsToAddress(_json["from"].asString());
