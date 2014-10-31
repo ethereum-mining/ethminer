@@ -262,8 +262,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
 			break;
-		case Instruction::BNOT:
 		case Instruction::NOT:
+		case Instruction::ISZERO:
 		case Instruction::CALLDATALOAD:
 		case Instruction::EXTCODESIZE:
 		case Instruction::POP:
@@ -395,7 +395,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
-		case Instruction::BNOT:
+		case Instruction::NOT:
 			m_stack.back() = ~m_stack.back();
 			break;
 		case Instruction::LT:
@@ -418,7 +418,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack[m_stack.size() - 2] = m_stack.back() == m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
-		case Instruction::NOT:
+		case Instruction::ISZERO:
 			m_stack.back() = m_stack.back() ? 0 : 1;
 			break;
 		case Instruction::AND:
