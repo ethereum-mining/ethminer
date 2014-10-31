@@ -57,9 +57,16 @@ using Secrets = h256s;
 /// @returns 0 if it's not a valid secret key.
 Address toAddress(Secret _secret);
 
+/// Encrypts plain text using Public key.
 void encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher);
-bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plain);
+	
+/// Decrypts cipher using Secret key.
+bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext);
+	
+/// Recovers Public key from signed message.
 Public recover(Signature _sig, h256 _message);
+	
+/// Returns siganture of message hash.
 Signature sign(Secret _k, h256 _message);
 
 /// Simple class that represents a "key pair".

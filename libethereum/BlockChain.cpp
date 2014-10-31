@@ -52,9 +52,9 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-std::map<Address, AddressState> const& dev::eth::genesisState()
+std::map<Address, Account> const& dev::eth::genesisState()
 {
-	static std::map<Address, AddressState> s_ret;
+	static std::map<Address, Account> s_ret;
 	if (s_ret.empty())
 		// Initialise.
 		for (auto i: vector<string>({
@@ -67,7 +67,7 @@ std::map<Address, AddressState> const& dev::eth::genesisState()
 			"6c386a4b26f73c802f34673f7248bb118f97424a",
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
-			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
+			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
 	return s_ret;
 }
 
@@ -101,8 +101,9 @@ bytes BlockChain::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(13) << h256() << bytes() << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
+	block.appendList(15)
+			// TODO: maybe make logbloom correct?
+		<< h256() << EmptySHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -305,7 +306,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
-		auto b = s.bloom();
+		auto b = s.oldBloom();
 		BlockBlooms bb;
 		BlockTraces bt;
 		for (unsigned i = 0; i < s.pending().size(); ++i)

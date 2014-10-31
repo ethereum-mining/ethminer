@@ -20,6 +20,7 @@
  * Solidity data types
  */
 
+#include <libdevcore/CommonIO.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
@@ -50,6 +51,7 @@ std::shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 		return std::make_shared<BoolType>();
 	else
 		BOOST_ASSERT(false); // @todo add other tyes
+	return std::shared_ptr<Type>();
 }
 
 std::shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
@@ -88,9 +90,9 @@ std::shared_ptr<IntegerType> IntegerType::smallestTypeForLiteral(std::string con
 IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 	m_bits(_bits), m_modifier(_modifier)
 {
-	BOOST_ASSERT(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
 	if (isAddress())
 		_bits = 160;
+	BOOST_ASSERT(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
@@ -128,6 +130,14 @@ bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
 bool IntegerType::acceptsUnaryOperator(Token::Value _operator) const
 {
 	return _operator == Token::DELETE || (!isAddress() && _operator == Token::BIT_NOT);
+}
+
+std::string IntegerType::toString() const
+{
+	if (isAddress())
+		return "address";
+	std::string prefix = isHash() ? "hash" : (isSigned() ? "int" : "uint");
+	return prefix + dev::toString(m_bits);
 }
 
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const

@@ -28,6 +28,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/test/unit_test.hpp>
 #include "JsonSpiritHeaders.h"
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonIO.h>
 #include <libevmface/Instruction.h>
 #include <libevm/ExtVMFace.h>
 #include <libevm/VM.h>
@@ -44,7 +45,7 @@ class FakeState: public eth::State
 {
 public:
 	/// Execute a contract-creation transaction.
-	h160 createNewAddress(Address _newAddress, Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = {}, std::set<Address>* o_suicides = nullptr, eth::Manifest* o_ms = nullptr, eth::OnOpFunc const& _onOp = {}, unsigned _level = 0);
+	h160 createNewAddress(Address _newAddress, Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = {}, eth::SubState* o_sub = nullptr, eth::Manifest* o_ms = nullptr, eth::OnOpFunc const& _onOp = {}, unsigned _level = 0);
 };
 
 class FakeExtVM: public eth::ExtVMFace
@@ -80,6 +81,9 @@ public:
 	json_spirit::mArray exportCallCreates();
 	void importCallCreates(json_spirit::mArray& _callcreates);
 
+	eth::OnOpFunc simpleTrace();
+	FakeState state() const { return m_s; }
+
 	std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes>> addresses;
 	eth::Transactions callcreates;
 	bytes thisTxData;
@@ -90,5 +94,6 @@ private:
 	FakeState m_s;
 	eth::Manifest m_ms;
 };
+
 
 } } // Namespace Close

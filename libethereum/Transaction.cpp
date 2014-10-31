@@ -39,6 +39,7 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		nonce = rlp[field = 0].toInt<u256>();
 		gasPrice = rlp[field = 1].toInt<u256>();
 		gas = rlp[field = 2].toInt<u256>();
+		type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
 		receiveAddress = rlp[field = 3].toHash<Address>();
 		value = rlp[field = 4].toInt<u256>();
 		data = rlp[field = 5].toBytes();
@@ -84,11 +85,11 @@ void Transaction::sign(Secret _priv)
 	vrs = *(SignatureStruct const*)&sig;
 }
 
-void Transaction::fillStream(RLPStream& _s, bool _sig) const
+void Transaction::streamRLP(RLPStream& _s, bool _sig) const
 {
 	_s.appendList((_sig ? 3 : 0) + 6);
 	_s << nonce << gasPrice << gas;
-	if (receiveAddress)
+	if (type == MessageCall)
 		_s << receiveAddress;
 	else
 		_s << "";
