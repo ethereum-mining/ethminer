@@ -52,6 +52,11 @@ class Interface;
 }
 }
 
+/**
+ * @brief JSON-RPC api implementation
+ * @todo filters should work on unsigned instead of int
+ * unsigned are not supported in json-rpc-cpp and there are bugs with double in json-rpc-cpp version 0.2.1
+ */
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
