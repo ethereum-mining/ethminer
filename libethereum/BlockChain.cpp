@@ -52,9 +52,9 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-std::map<Address, AddressState> const& dev::eth::genesisState()
+std::map<Address, Account> const& dev::eth::genesisState()
 {
-	static std::map<Address, AddressState> s_ret;
+	static std::map<Address, Account> s_ret;
 	if (s_ret.empty())
 		// Initialise.
 		for (auto i: vector<string>({
@@ -67,7 +67,7 @@ std::map<Address, AddressState> const& dev::eth::genesisState()
 			"6c386a4b26f73c802f34673f7248bb118f97424a",
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
-			s_ret[Address(fromHex(i))] = AddressState(u256(1) << 200, AddressState::NormalCreation);
+			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
 	return s_ret;
 }
 
