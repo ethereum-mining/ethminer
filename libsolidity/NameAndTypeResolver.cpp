@@ -20,11 +20,12 @@
  * Parser part that determines the declarations corresponding to names and the types of expressions.
  */
 
+#include <cassert>
 #include <libsolidity/NameAndTypeResolver.h>
-
 #include <libsolidity/AST.h>
 #include <libsolidity/Exceptions.h>
-#include <boost/assert.hpp>
+
+using namespace std;
 
 namespace dev
 {
@@ -68,7 +69,7 @@ Declaration* NameAndTypeResolver::getNameFromCurrentScope(ASTString const& _name
 }
 
 
-DeclarationRegistrationHelper::DeclarationRegistrationHelper(std::map<ASTNode*, Scope>& _scopes,
+DeclarationRegistrationHelper::DeclarationRegistrationHelper(map<ASTNode*, Scope>& _scopes,
 															 ASTNode& _astRoot):
 	m_scopes(_scopes), m_currentScope(&m_scopes[nullptr])
 {
@@ -120,22 +121,22 @@ void DeclarationRegistrationHelper::endVisit(VariableDeclaration&)
 
 void DeclarationRegistrationHelper::enterNewSubScope(ASTNode& _node)
 {
-	std::map<ASTNode*, Scope>::iterator iter;
+	map<ASTNode*, Scope>::iterator iter;
 	bool newlyAdded;
-	std::tie(iter, newlyAdded) = m_scopes.emplace(&_node, Scope(m_currentScope));
-	BOOST_ASSERT(newlyAdded);
+	tie(iter, newlyAdded) = m_scopes.emplace(&_node, Scope(m_currentScope));
+	assert(newlyAdded);
 	m_currentScope = &iter->second;
 }
 
 void DeclarationRegistrationHelper::closeCurrentScope()
 {
-	BOOST_ASSERT(m_currentScope);
-	m_currentScope = m_currentScope->getOuterScope();
+	assert(m_currentScope);
+	m_currentScope = m_currentScope->getEnclosingScope();
 }
 
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
-	BOOST_ASSERT(m_currentScope);
+	assert(m_currentScope);
 	if (!m_currentScope->registerDeclaration(_declaration))
 		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
 												 << errinfo_comment("Identifier already declared."));
@@ -162,7 +163,7 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 
 bool ReferencesResolver::visit(Return& _return)
 {
-	BOOST_ASSERT(m_returnParameters);
+	assert(m_returnParameters);
 	_return.setFunctionReturnParameters(*m_returnParameters);
 	return true;
 }

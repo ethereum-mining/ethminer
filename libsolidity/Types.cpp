@@ -20,7 +20,9 @@
  * Solidity data types
  */
 
+#include <cassert>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/CommonData.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
@@ -50,7 +52,7 @@ std::shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 	else if (_typeToken == Token::BOOL)
 		return std::make_shared<BoolType>();
 	else
-		BOOST_ASSERT(false); // @todo add other tyes
+		assert(false); // @todo add other tyes
 	return std::shared_ptr<Type>();
 }
 
@@ -61,7 +63,7 @@ std::shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _
 
 std::shared_ptr<Type> Type::fromMapping(Mapping const&)
 {
-	BOOST_ASSERT(false); //@todo not yet implemented
+	assert(false); //@todo not yet implemented
 	return std::shared_ptr<Type>();
 }
 
@@ -92,12 +94,12 @@ IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 {
 	if (isAddress())
 		_bits = 160;
-	BOOST_ASSERT(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
+	assert(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	if (_convertTo.getCategory() != Category::INTEGER)
+	if (_convertTo.getCategory() != getCategory())
 		return false;
 	IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
 	if (convertTo.m_bits < m_bits)
@@ -114,7 +116,7 @@ bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	return _convertTo.getCategory() == Category::INTEGER;
+	return _convertTo.getCategory() == getCategory();
 }
 
 bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
@@ -129,7 +131,24 @@ bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
 
 bool IntegerType::acceptsUnaryOperator(Token::Value _operator) const
 {
-	return _operator == Token::DELETE || (!isAddress() && _operator == Token::BIT_NOT);
+	if (_operator == Token::DELETE)
+		return true;
+	if (isAddress())
+		return false;
+	if (_operator == Token::BIT_NOT)
+		return true;
+	if (isHash())
+		return false;
+	return _operator == Token::ADD || _operator == Token::SUB ||
+		   _operator == Token::INC || _operator == Token::DEC;
+}
+
+bool IntegerType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	IntegerType const& other = dynamic_cast<IntegerType const&>(_other);
+	return other.m_bits == m_bits && other.m_modifier == m_modifier;
 }
 
 std::string IntegerType::toString() const
@@ -140,11 +159,21 @@ std::string IntegerType::toString() const
 	return prefix + dev::toString(m_bits);
 }
 
+bytes IntegerType::literalToBigEndian(Literal const& _literal) const
+{
+	bigint value(_literal.getValue());
+	if (!isSigned() && value < 0)
+		return bytes(); // @todo this should already be caught by "smallestTypeforLiteral"
+	//@todo check that the number of bits is correct
+	//@todo does "toCompactBigEndian" work for signed numbers?
+	return toCompactBigEndian(value);
+}
+
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
 	// conversion to integer is fine, but not to address
 	// this is an example of explicit conversions being not transitive (though implicit should be)
-	if (_convertTo.getCategory() == Category::INTEGER)
+	if (_convertTo.getCategory() == getCategory())
 	{
 		IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
 		if (!convertTo.isAddress())
@@ -153,22 +182,55 @@ bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 	return isImplicitlyConvertibleTo(_convertTo);
 }
 
-bool ContractType::isImplicitlyConvertibleTo(Type const& _convertTo) const
+bytes BoolType::literalToBigEndian(Literal const& _literal) const
 {
-	if (_convertTo.getCategory() != Category::CONTRACT)
-		return false;
-	ContractType const& convertTo = dynamic_cast<ContractType const&>(_convertTo);
-	return &m_contract == &convertTo.m_contract;
+	if (_literal.getToken() == Token::TRUE_LITERAL)
+		return bytes(1, 1);
+	else if (_literal.getToken() == Token::FALSE_LITERAL)
+		return bytes(1, 0);
+	else
+		return NullBytes;
 }
 
-bool StructType::isImplicitlyConvertibleTo(Type const& _convertTo) const
+bool ContractType::operator==(Type const& _other) const
 {
-	if (_convertTo.getCategory() != Category::STRUCT)
+	if (_other.getCategory() != getCategory())
 		return false;
-	StructType const& convertTo = dynamic_cast<StructType const&>(_convertTo);
-	return &m_struct == &convertTo.m_struct;
+	ContractType const& other = dynamic_cast<ContractType const&>(_other);
+	return other.m_contract == m_contract;
 }
 
+bool StructType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	StructType const& other = dynamic_cast<StructType const&>(_other);
+	return other.m_struct == m_struct;
+}
+
+bool FunctionType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	FunctionType const& other = dynamic_cast<FunctionType const&>(_other);
+	return other.m_function == m_function;
+}
+
+bool MappingType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	MappingType const& other = dynamic_cast<MappingType const&>(_other);
+	return *other.m_keyType == *m_keyType && *other.m_valueType == *m_valueType;
+}
+
+bool TypeType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	TypeType const& other = dynamic_cast<TypeType const&>(_other);
+	return *getActualType() == *other.getActualType();
+}
 
 }
 }
