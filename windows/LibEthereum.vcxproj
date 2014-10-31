@@ -103,8 +103,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\libethcore\_libethcore.cpp" />
+    <ClCompile Include="..\libethereum\Account.cpp" />
     <ClCompile Include="..\libethereum\AccountDiff.cpp" />
-    <ClCompile Include="..\libethereum\AddressState.cpp" />
     <ClCompile Include="..\libethereum\BlockChain.cpp" />
     <ClCompile Include="..\libethereum\BlockDetails.cpp" />
     <ClCompile Include="..\libethereum\BlockQueue.cpp" />
@@ -318,8 +318,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\libethereum\Account.h" />
     <ClInclude Include="..\libethereum\AccountDiff.h" />
-    <ClInclude Include="..\libethereum\AddressState.h" />
     <ClInclude Include="..\libethereum\All.h" />
     <ClInclude Include="..\libethereum\BlockChain.h" />
     <ClInclude Include="..\libethereum\BlockDetails.h" />

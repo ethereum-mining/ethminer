@@ -4,9 +4,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethereum\AddressState.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
     <ClCompile Include="..\libethereum\BlockChain.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
@@ -202,13 +199,13 @@
     <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp">
       <Filter>libdevcrypto</Filter>
     </ClCompile>
+    <ClCompile Include="..\libethereum\Account.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Windows</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethereum\AddressState.h">
-      <Filter>libethereum</Filter>
     </ClInclude>
     <ClInclude Include="..\libethereum\BlockChain.h">
       <Filter>libethereum</Filter>
@@ -434,6 +431,9 @@
     </ClInclude>
     <ClInclude Include="..\libdevcrypto\SHA3MAC.h">
       <Filter>libdevcrypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\Account.h">
+      <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
