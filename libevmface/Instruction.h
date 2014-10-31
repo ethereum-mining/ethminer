@@ -84,7 +84,7 @@ enum class Instruction: uint8_t
 	GASLIMIT,			///< get the block's gas limit
 
 	POP = 0x50,			///< remove item from stack
-	MLOAD = 0x53,		///< load word from memory
+	MLOAD,				///< load word from memory
 	MSTORE,				///< save word to memory
 	MSTORE8,			///< save byte to memory
 	SLOAD,				///< load word from storage
