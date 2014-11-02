@@ -110,13 +110,19 @@ private:
 	Public m_public;
 	Address m_address;
 };
-	
-struct Sec
+
+namespace crypto
 {
-	static h256 getNonce(bool _commit = false);
+/**
+ * @brief Generator for nonce material
+ */
+struct Nonce
+{
+	static h256 get(bool _commit = false);
 private:
-	Sec() {}
-	~Sec();
+	Nonce() {}
+	~Nonce();
 };
+}
 
 }
