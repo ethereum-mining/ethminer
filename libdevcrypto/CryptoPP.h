@@ -18,7 +18,7 @@
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
- * CryptoPP headers and helper methods
+ * CryptoPP headers and primitive helper methods
  */
 
 #pragma once
@@ -45,7 +45,6 @@
 #include <files.h>
 #include <osrng.h>
 #include <oids.h>
-#include <secp256k1/secp256k1.h>
 #include <dsa.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
@@ -55,34 +54,35 @@ namespace dev
 {
 namespace crypto
 {
-
 namespace pp
 {
-
+	
+using namespace CryptoPP;
+	
 /// CryptoPP random number pool
 static CryptoPP::AutoSeededRandomPool PRNG;
 	
 /// CryptoPP EC Cruve
 static const CryptoPP::OID secp256k1Curve = CryptoPP::ASN1::secp256k1();
+	
+static const CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> secp256k1Params(secp256k1Curve);
+	
+static ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data()+32, 32); return std::move(ECP::Point(x,y)); }
+	
+static Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.data(), Secret::size)); }
 
-/// Initialize signer with Secret
-void initializeSigner(Secret const& _s, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Signer& out_signer);
-	
-/// Initialize verifier with Public
-void initializeVerifier(Public const& _p, CryptoPP::ECDSA<CryptoPP::ECP, CryptoPP::SHA3_256>::Verifier& _verifier);
-	
-/// Initialize cryptopp encryptor with Public
-void initializeEncryptor(Public const& _p, CryptoPP::ECIES<CryptoPP::ECP>::Encryptor& out_encryptor);
-	
-/// Initialize cryptopp decryptor with Secret
-void initializeDecryptor(Secret const& _s, CryptoPP::ECIES<CryptoPP::ECP>::Decryptor& out_decryptor);
+void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
 
-/// Conversion from cryptopp public key to bytes
-void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& out_p);
+static void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
 	
-/// Conversion from cryptopp private key to bytes
-void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& out_s);
+void exponentToPublic(Integer const& _e, Public& _p);
 	
+template <class T>
+void initializeDLScheme(Secret const& _s, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, secretToExponent(_s)); }
+	
+template <class T>
+void initializeDLScheme(Public const& _p, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, publicToPoint(_p)); }
+
 }
 }
 }
