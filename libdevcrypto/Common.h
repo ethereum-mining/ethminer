@@ -14,8 +14,9 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonEth.h
+/** @file Common.h
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
  * Ethereum-specific data structures & algorithms.
@@ -63,8 +64,8 @@ void encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher);
 /// Decrypts cipher using Secret key.
 bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
-/// Recovers Public key from signed message.
-Public recover(Signature _sig, h256 _message);
+/// Recovers Public key from signed message hash.
+Public recover(Signature _sig, h256 _hash);
 	
 /// Returns siganture of message hash.
 Signature sign(Secret _k, h256 _hash);
@@ -108,6 +109,14 @@ private:
 	Secret m_secret;
 	Public m_public;
 	Address m_address;
+};
+	
+struct Sec
+{
+	static h256 getNonce(bool _commit = false);
+private:
+	Sec() {}
+	~Sec();
 };
 
 }
