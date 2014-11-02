@@ -28,6 +28,7 @@
 #include "Common.h"
 using namespace std;
 using namespace dev;
+using namespace crypto;
 
 //#define ETH_ADDRESS_DEBUG 1
 
@@ -38,8 +39,8 @@ Address dev::toAddress(Secret _secret)
 
 KeyPair KeyPair::create()
 {
-	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<uint16_t> d(0, 255);
+	static mt19937_64 s_eng(time(0));
+	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
@@ -57,8 +58,8 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
-	crypto::toPublic(m_secret, m_public);
-	if (crypto::verifySecret(m_secret, m_public))
+	toPublic(m_secret, m_public);
+	if (verifySecret(m_secret, m_public))
 		m_address = right160(dev::sha3(m_public.ref()));
 	
 #if ETH_ADDRESS_DEBUG
@@ -106,7 +107,7 @@ bool dev::verify(Public _p, Signature _s, h256 _hash)
 	return crypto::verify(_p, _s, bytesConstRef(_hash.data(), 32), true);
 }
 
-h256 Sec::getNonce(bool _commit)
+h256 Nonce::get(bool _commit)
 {
 	// todo: atomic efface bit, periodic save, kdf, rr, rng
 	static h256 seed;
@@ -116,8 +117,7 @@ h256 Sec::getNonce(bool _commit)
 	{
 		if (!seed)
 		{
-			static Sec sec;
-			
+			static Nonce nonce;
 			bytes b = contents(seedFile);
 			if (b.size() == 32)
 				memcpy(seed.data(), b.data(), 32);
@@ -139,7 +139,7 @@ h256 Sec::getNonce(bool _commit)
 	return seed;
 }
 
-Sec::~Sec()
+Nonce::~Nonce()
 {
-	Sec::getNonce(true);
+	Nonce::get(true);
 }

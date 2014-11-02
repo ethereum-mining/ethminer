@@ -56,7 +56,7 @@ void crypto::toPublic(Secret const& _s, Public& o_public)
 h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 {
 	h256 s;
-	sha3mac(Sec::getNonce().ref(), _priv.ref(), s.ref());
+	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
 	assert(s);
 	return sha3((_hash ^ s).asBytes());
 }
