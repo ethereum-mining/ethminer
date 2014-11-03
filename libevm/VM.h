@@ -84,7 +84,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
-	std::set<unsigned> m_jumpDests;
+	std::set<u256> m_jumpDests;
 };
 
 }
@@ -96,12 +96,26 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 	if (m_jumpDests.empty())
 	{
-		m_jumpDests.insert(0);
-		for (unsigned i = 1; i < _ext.code.size(); ++i)
+		std::set<u256> implicit;
+		for (unsigned i = 0; i < _ext.code.size(); ++i)
 			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
-				m_jumpDests.insert(i + 1);
+				m_jumpDests.insert(i);
 			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
-				i += _ext.code[i] - (int)Instruction::PUSH1 + 1;
+			{
+				int in = _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
+				u256 p = 0;
+				for (; in--; i++)
+					p = (p << 8) | _ext.getCode(i);
+				if ((_ext.getCode(i) == (byte)Instruction::JUMP || _ext.getCode(i) == (byte)Instruction::JUMPI) && !(_ext.getCode(p) == (byte)Instruction::JUMP || _ext.getCode(p) == (byte)Instruction::JUMPI))
+					if (p >= _ext.code.size())
+						m_jumpDests.insert(p);
+					else
+						implicit.insert(p);
+				else {}
+			}
+		for (unsigned i = 0; i < _ext.code.size(); i += instructionInfo((Instruction)_ext.getCode(i)).additional + 1)
+			if (implicit.count(i))
+				m_jumpDests.insert(i);
 	}
 
 	u256 nextPC = m_curPC + 1;
@@ -262,8 +276,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::PUSH31:
 		case Instruction::PUSH32:
 			break;
-		case Instruction::BNOT:
 		case Instruction::NOT:
+		case Instruction::ISZERO:
 		case Instruction::CALLDATALOAD:
 		case Instruction::EXTCODESIZE:
 		case Instruction::POP:
@@ -395,7 +409,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
 			break;
 		}
-		case Instruction::BNOT:
+		case Instruction::NOT:
 			m_stack.back() = ~m_stack.back();
 			break;
 		case Instruction::LT:
@@ -418,7 +432,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack[m_stack.size() - 2] = m_stack.back() == m_stack[m_stack.size() - 2] ? 1 : 0;
 			m_stack.pop_back();
 			break;
-		case Instruction::NOT:
+		case Instruction::ISZERO:
 			m_stack.back() = m_stack.back() ? 0 : 1;
 			break;
 		case Instruction::AND:
@@ -506,12 +520,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.data.size() ? _ext.data.size() < cf ? 0 : _ext.data.size() - cf : l;
-			memcpy(m_temp.data() + mf, _ext.data.data() + cf, el);
+			unsigned el = cf + l > (u256)_ext.data.size() ? (u256)_ext.data.size() < cf ? 0 : _ext.data.size() - (unsigned)cf : l;
+			memcpy(m_temp.data() + mf, _ext.data.data() + (unsigned)cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
@@ -522,12 +536,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = (u256)m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.code.size() ? _ext.code.size() < cf ? 0 : _ext.code.size() - cf : l;
-			memcpy(m_temp.data() + mf, _ext.code.data() + cf, el);
+			unsigned el = cf + l > (u256)_ext.code.size() ? (u256)_ext.code.size() < cf ? 0 : _ext.code.size() - (unsigned)cf : l;
+			memcpy(m_temp.data() + mf, _ext.code.data() + (unsigned)cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
@@ -540,12 +554,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			unsigned mf = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned cf = (unsigned)m_stack.back();
+			u256 cf = m_stack.back();
 			m_stack.pop_back();
 			unsigned l = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = cf + l > _ext.codeAt(a).size() ? _ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - cf : l;
-			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + cf, el);
+			unsigned el = cf + l > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - (unsigned)cf : l;
+			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + (unsigned)cf, el);
 			memset(m_temp.data() + mf + el, 0, l - el);
 			break;
 		}
