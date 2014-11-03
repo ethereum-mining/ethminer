@@ -46,11 +46,7 @@ struct FileError: virtual Exception {};
 typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;
 typedef boost::error_info<struct tag_address, std::string> errinfo_wrongAddress;
 typedef boost::error_info<struct tag_comment, std::string> errinfo_comment;
-
 typedef boost::error_info<struct tag_required, int> errinfo_required;
 typedef boost::error_info<struct tag_got, int> errinfo_got;
 typedef boost::tuple<errinfo_required, errinfo_got> RequirementError;
-
-
-
 }
