@@ -1130,7 +1130,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	ctrace << toHex(e.t().rlp(true));
 #endif
 
-	e.go();
+	e.go(e.simpleTrace());
 	e.finalize();
 
 #if ETH_PARANOIA

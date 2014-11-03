@@ -41,10 +41,10 @@
 namespace dev
 {
 
+namespace test { class ImportTest; }
+
 namespace eth
 {
-
-namespace test { class ImportTest; }
 
 class BlockChain;
 
@@ -97,7 +97,7 @@ struct PrecompiledAddress
 class State
 {
 	friend class ExtVM;
-	friend class test::ImportTest;
+	friend class dev::test::ImportTest;
 	friend class Executive;
 
 public:
