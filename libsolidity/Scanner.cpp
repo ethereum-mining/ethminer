@@ -50,10 +50,12 @@
  * Solidity scanner.
  */
 
+#include <cassert>
 #include <algorithm>
 #include <tuple>
-
 #include <libsolidity/Scanner.h>
+
+using namespace std;
 
 namespace dev
 {
@@ -118,7 +120,7 @@ void Scanner::reset(CharStream const& _source)
 
 bool Scanner::scanHexNumber(char& o_scannedNumber, int _expectedLength)
 {
-	BOOST_ASSERT(_expectedLength <= 4);  // prevent overflow
+	assert(_expectedLength <= 4);  // prevent overflow
 	char x = 0;
 	for (int i = 0; i < _expectedLength; i++)
 	{
@@ -178,7 +180,7 @@ Token::Value Scanner::skipSingleLineComment()
 
 Token::Value Scanner::skipMultiLineComment()
 {
-	BOOST_ASSERT(m_char == '*');
+	assert(m_char == '*');
 	advance();
 	while (!isSourcePastEndOfInput())
 	{
@@ -471,7 +473,7 @@ void Scanner::scanDecimalDigits()
 
 Token::Value Scanner::scanNumber(bool _periodSeen)
 {
-	BOOST_ASSERT(IsDecimalDigit(m_char));  // the first digit of the number or the fraction
+	assert(IsDecimalDigit(m_char));  // the first digit of the number or the fraction
 	enum { DECIMAL, HEX, OCTAL, IMPLICIT_OCTAL, BINARY } kind = DECIMAL;
 	LiteralScope literal(this);
 	if (_periodSeen)
@@ -513,7 +515,7 @@ Token::Value Scanner::scanNumber(bool _periodSeen)
 	// scan exponent, if any
 	if (m_char == 'e' || m_char == 'E')
 	{
-		BOOST_ASSERT(kind != HEX);  // 'e'/'E' must be scanned as part of the hex number
+		assert(kind != HEX);  // 'e'/'E' must be scanned as part of the hex number
 		if (kind != DECIMAL) return Token::ILLEGAL;
 		// scan exponent
 		addLiteralCharAndAdvance();
@@ -607,9 +609,9 @@ Token::Value Scanner::scanNumber(bool _periodSeen)
 	KEYWORD("while", Token::WHILE)                                             \
 
 
-static Token::Value KeywordOrIdentifierToken(std::string const& input)
+static Token::Value KeywordOrIdentifierToken(string const& input)
 {
-	BOOST_ASSERT(!input.empty());
+	assert(!input.empty());
 	int const kMinLength = 2;
 	int const kMaxLength = 10;
 	if (input.size() < kMinLength || input.size() > kMaxLength)
@@ -637,7 +639,7 @@ case ch:
 
 Token::Value Scanner::scanIdentifierOrKeyword()
 {
-	BOOST_ASSERT(IsIdentifierStart(m_char));
+	assert(IsIdentifierStart(m_char));
 	LiteralScope literal(this);
 	addLiteralCharAndAdvance();
 	// Scan the rest of the identifier characters.
@@ -659,42 +661,41 @@ char CharStream::advanceAndGet()
 
 char CharStream::rollback(size_t _amount)
 {
-	BOOST_ASSERT(m_pos >= _amount);
+	assert(m_pos >= _amount);
 	m_pos -= _amount;
 	return get();
 }
 
-std::string CharStream::getLineAtPosition(int _position) const
+string CharStream::getLineAtPosition(int _position) const
 {
 	// if _position points to \n, it returns the line before the \n
-	using size_type = std::string::size_type;
-	size_type searchStart = std::min<size_type>(m_source.size(), _position);
+	using size_type = string::size_type;
+	size_type searchStart = min<size_type>(m_source.size(), _position);
 	if (searchStart > 0)
 		searchStart--;
 	size_type lineStart = m_source.rfind('\n', searchStart);
-	if (lineStart == std::string::npos)
+	if (lineStart == string::npos)
 		lineStart = 0;
 	else
 		lineStart++;
-	return m_source.substr(lineStart,
-						   std::min(m_source.find('\n', lineStart),
-									m_source.size()) - lineStart);
+	return m_source.substr(lineStart, min(m_source.find('\n', lineStart),
+										  m_source.size()) - lineStart);
 }
 
-std::tuple<int, int> CharStream::translatePositionToLineColumn(int _position) const
+tuple<int, int> CharStream::translatePositionToLineColumn(int _position) const
 {
-	using size_type = std::string::size_type;
-	size_type searchPosition = std::min<size_type>(m_source.size(), _position);
-	int lineNumber = std::count(m_source.begin(), m_source.begin() + searchPosition, '\n');
+	using size_type = string::size_type;
+	size_type searchPosition = min<size_type>(m_source.size(), _position);
+	int lineNumber = count(m_source.begin(), m_source.begin() + searchPosition, '\n');
 	size_type lineStart;
 	if (searchPosition == 0)
 		lineStart = 0;
 	else
 	{
 		lineStart = m_source.rfind('\n', searchPosition - 1);
-		lineStart = lineStart == std::string::npos ? 0 : lineStart + 1;
+		lineStart = lineStart == string::npos ? 0 : lineStart + 1;
 	}
-	return std::tuple<int, int>(lineNumber, searchPosition - lineStart);
+	return tuple<int, int>(lineNumber, searchPosition - lineStart);
 }
 
 
