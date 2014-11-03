@@ -17,22 +17,34 @@
 /** @file CommonJS.h
  * @authors:
  *   Gav Wood <i@gavwood.com>
+ *   Marek Kotewicz <marek@ethdev.com>
  * @date 2014
  */
 
 #pragma once
 
 #include <string>
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/FixedHash.h>
-#include <libethcore/CommonEth.h>
+#include <libethereum/Interface.h>
+#include "Common.h"
+#include "CommonData.h"
 
 namespace dev
 {
-namespace eth
+
+template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 {
+	return "0x" + toHex(_h.ref());
+}
+	
+template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
+{
+	return "0x" + toHex(toCompactBigEndian(_n));
+}
+	
+inline std::string toJS(dev::bytes const& _n)
+{
+	return "0x" + dev::toHex(_n);
+}
 
 bytes jsToBytes(std::string const& _s);
 std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r);
@@ -52,6 +64,11 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 		return FixedHash<N>(asBytes(jsPadded(_s, N)));
 }
 
+inline std::string jsToFixed(double _s)
+{
+	return toJS(dev::u256(_s * (double)(dev::u256(1) << 128)));
+}
+
 template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> jsToInt(std::string const& _s)
 {
 	if (_s.substr(0, 2) == "0x")
@@ -65,27 +82,45 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 		return fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(jsPadded(_s, N)));
 }
 
-inline Address jsToAddress(std::string const& _s) { return jsToFixed<20>(_s); }
-inline Secret jsToSecret(std::string const& _s) { return jsToFixed<32>(_s); }
+inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
+inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
+inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
-
-template <unsigned S> std::string toJS(FixedHash<S> const& _h) { return "0x" + toHex(_h.ref()); }
-template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n) { return "0x" + toHex(toCompactBigEndian(_n)); }
 
 inline std::string jsToBinary(std::string const& _s)
 {
-	return asString(jsToBytes(_s));
+	return jsUnpadded(dev::toString(jsToBytes(_s)));
 }
 
 inline std::string jsToDecimal(std::string const& _s)
 {
-	return toString(jsToU256(_s));
+	return dev::toString(jsToU256(_s));
 }
 
-inline std::string jsToHex(std::string const& _s)
+inline std::string jsFromBinary(dev::bytes _s, unsigned _padding = 32)
 {
-	return "0x" + toHex(asBytes(_s));
+	_s.resize(std::max<unsigned>(_s.size(), _padding));
+	return "0x" + dev::toHex(_s);
 }
 
+inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
+{
+	return jsFromBinary(asBytes(_s), _padding);
 }
+
+inline double jsFromFixed(std::string const& _s)
+{
+	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
+}
+
+struct TransactionSkeleton
+{
+	Address from;
+	Address to;
+	u256 value;
+	bytes data;
+	u256 gas;
+	u256 gasPrice;
+};
+
 }
