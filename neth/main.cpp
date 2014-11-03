@@ -27,7 +27,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmface/Instruction.h>
