@@ -56,8 +56,6 @@ h256 BlockInfo::headerHashWithoutNonce() const
 	return sha3(s.out());
 }
 
-auto static const c_sha3EmptyList = sha3(RLPEmptyList);
-
 void BlockInfo::streamRLP(RLPStream& _s, bool _nonce) const
 {
 	_s.appendList(_nonce ? 15 : 14)
