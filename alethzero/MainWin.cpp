@@ -1559,6 +1559,7 @@ void Main::on_data_textChanged()
 		string src = ui->data->toPlainText().toStdString();
 		vector<string> errors;
 		QString lll;
+		QString solidity;
 		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
 		{
 			m_data = fromHex(src);
@@ -1574,7 +1575,7 @@ void Main::on_data_textChanged()
 			{
 				ostringstream error;
 				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
-				errors.push_back(error.str());
+				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 		}
 		else
@@ -1611,7 +1612,7 @@ void Main::on_data_textChanged()
 			for (auto const& i: errors)
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
-		ui->code->setHtml(errs + lll + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
