@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AddressState.h"
+#include "Account.h"
 #include "BlockChain.h"
 #include "Client.h"
 #include "Defaults.h"

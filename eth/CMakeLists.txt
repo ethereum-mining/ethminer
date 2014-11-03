@@ -3,8 +3,6 @@ cmake_policy(SET CMP0015 NEW)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
-link_directories(../libethcore)
-link_directories(../libwebthree)
 
 set(EXECUTABLE eth)
 
@@ -20,7 +18,7 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
 if(JSONRPC_LS)
-target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 if(READLINE_LS)
 target_link_libraries(${EXECUTABLE} ${READLINE_LS})
