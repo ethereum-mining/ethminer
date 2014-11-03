@@ -224,7 +224,7 @@ Address State::nextActiveAddress(Address _a) const
 // TODO: repot
 struct CachedAddressState
 {
-	CachedAddressState(std::string const& _rlp, AddressState const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
+	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
 
 	bool exists() const
 	{
@@ -259,7 +259,7 @@ struct CachedAddressState
 				ret[j.first] = RLP(j.second).toInt<u256>();
 		}
 		if (s)
-			for (auto const& j: s->storage())
+			for (auto const& j: s->storageOverlay())
 				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
 					ret[j.first] = j.second;
 		return ret;
@@ -300,7 +300,7 @@ struct CachedAddressState
 
 	std::string rS;
 	RLP r;
-	AddressState const* s;
+	Account const* s;
 	OverlayDB const* o;
 };
 
@@ -346,7 +346,7 @@ void State::ensureCached(Address _a, bool _requireCode, bool _forceCreate) const
 	ensureCached(m_cache, _a, _requireCode, _forceCreate);
 }
 
-void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
+void State::ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
 {
 	auto it = _cache.find(_a);
 	if (it == _cache.end())
@@ -356,11 +356,11 @@ void State::ensureCached(std::map<Address, AddressState>& _cache, Address _a, bo
 		if (stateBack.empty() && !_forceCreate)
 			return;
 		RLP state(stateBack);
-		AddressState s;
+		Account s;
 		if (state.isNull())
-			s = AddressState(0, AddressState::NormalCreation);
+			s = Account(0, Account::NormalCreation);
 		else
-			s = AddressState(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
+			s = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
@@ -965,7 +965,7 @@ void State::noteSending(Address _id)
 	{
 		cwarn << "Sending from non-existant account. How did it pay!?!";
 		// this is impossible. but we'll continue regardless...
-		m_cache[_id] = AddressState(1, 0);
+		m_cache[_id] = Account(1, 0);
 	}
 	else
 		it->second.incNonce();
@@ -976,7 +976,7 @@ void State::addBalance(Address _id, u256 _amount)
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
 	if (it == m_cache.end())
-		m_cache[_id] = AddressState(_amount, AddressState::NormalCreation);
+		m_cache[_id] = Account(_amount, Account::NormalCreation);
 	else
 		it->second.addBalance(_amount);
 }
@@ -1011,8 +1011,8 @@ u256 State::storage(Address _id, u256 _memory) const
 		return 0;
 
 	// See if it's in the account's storage cache.
-	auto mit = it->second.storage().find(_memory);
-	if (mit != it->second.storage().end())
+	auto mit = it->second.storageOverlay().find(_memory);
+	if (mit != it->second.storageOverlay().end())
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
@@ -1040,7 +1040,7 @@ map<u256, u256> State::storage(Address _id) const
 		}
 
 		// Then merge cached storage over the top.
-		for (auto const& i: it->second.storage())
+		for (auto const& i: it->second.storageOverlay())
 			if (i.second)
 				ret[i.first] = i.second;
 			else
@@ -1057,7 +1057,7 @@ h256 State::storageRoot(Address _id) const
 		RLP r(s);
 		return r[2].toHash<h256>();
 	}
-	return h256();
+	return EmptyTrie;
 }
 
 bytes const& State::code(Address _contract) const
@@ -1267,7 +1267,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 
 	// Set up new account...
-	m_cache[newAddress] = AddressState(balance(newAddress) + _endowment, AddressState::ContractConception);
+	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
 
 	// Execute init code.
 	VM vm(*_gas);
@@ -1366,7 +1366,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	for (auto i: d)
 	{
 		auto it = _s.m_cache.find(i);
-		AddressState* cache = it != _s.m_cache.end() ? &it->second : nullptr;
+		Account* cache = it != _s.m_cache.end() ? &it->second : nullptr;
 		string rlpString = dtr.count(i) ? trie.at(i) : "";
 		RLP r(rlpString);
 		assert(cache || r);
@@ -1394,7 +1394,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
 				if (cache)
-					for (auto const& j: cache->storage())
+					for (auto const& j: cache->storageOverlay())
 					{
 						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
 							mem[j.first] = j.second, delta.insert(j.first);

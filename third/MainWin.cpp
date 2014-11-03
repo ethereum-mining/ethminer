@@ -39,6 +39,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libwebthree/WebThree.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -72,6 +73,20 @@ static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 	return QString();
 }
 
+static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
+{
+	auto list = keys.toStdList();
+	return {std::begin(list), std::end(list)};
+}
+
+static QString contentsOfQResource(std::string const& res)
+{
+	QFile file(QString::fromStdString(res));
+	if (!file.open(QFile::ReadOnly))
+		return "";
+	QTextStream in(&file);
+	return in.readAll();
+}
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
 
@@ -102,28 +117,25 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
 	m_web3->connect(Host::pocHost());
 
-	m_ldb = new QLDB(this);
-
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server->setIdentities(keysAsVector(owned()));
+	m_server->StartListening();
+	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), m_myKeys);
-		m_whisper = new QWhisper(this, whisper(), owned());
+		m_qweb = new QWebThree(this);
+		auto qweb = m_qweb;
+		m_qwebConnector.setQWeb(qweb);
 
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		auto qdev = m_dev;
-		auto qeth = m_ethereum;
-		auto qshh = m_whisper;
-		auto qldb = m_ldb;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qldb));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_ethereum->poll();
-		m_whisper->poll();
+		m_qweb->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -151,8 +163,7 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_ethereum->clientDieing();
-
+	m_qweb->clientDieing();
 	writeSettings();
 }
 
@@ -524,10 +535,8 @@ void Main::timerEvent(QTimerEvent*)
 	else
 		interval += 100;
 	
-	if (m_ethereum)
-		m_ethereum->poll();
-	if (m_whisper)
-		m_whisper->poll();
+	if (m_qweb)
+		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -546,8 +555,9 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-	if (m_ethereum)
-		m_ethereum->setAccounts(myKeys);
+
+	if (m_server.get())
+		m_server->setAccounts(keysAsVector(myKeys));
 }
 
 void Main::on_ourAccounts_doubleClicked()

@@ -14,17 +14,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AddressState.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file QEthereum.cpp
+ * @authors:
+ *   Marek Kotewicz <marek@ethdev.com>
  * @date 2014
  */
 
-#include "AddressState.h"
-#include <libethcore/CommonEth.h>
-using namespace std;
-using namespace dev;
-using namespace dev::eth;
+navigator.qt = _web3;
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-namespace { char dummy; };
+(function () {
+	navigator.qt.handlers = [];
+	Object.defineProperty(navigator.qt, 'onmessage', {
+		set: function (handler) {
+			navigator.qt.handlers.push(handler);
+		}
+	});
+})();
 
+navigator.qt.response.connect(function (res) {
+	navigator.qt.handlers.forEach(function (handler) {
+		handler({data: res});
+	});
+});
+
+if (window.Promise === undefined) {
+	window.Promise = ES6Promise.Promise;
+}
+
+web3.setProvider(new web3.providers.QtProvider());
