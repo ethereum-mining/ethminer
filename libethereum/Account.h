@@ -82,7 +82,7 @@ public:
 	/// Construct an alive Account, with given endowment, for either a normal (non-contract) account or for a
 	/// contract account in the
 	/// conception phase, where the code is not yet known.
-	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? c_contractConceptionCodeHash : EmptySHA3) {}
+	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? EmptySHA3 : c_contractConceptionCodeHash) {}
 	/// Explicit constructor for wierd cases of construction of a normal account.
 	Account(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
 
