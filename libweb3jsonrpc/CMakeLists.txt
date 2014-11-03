@@ -3,11 +3,17 @@ cmake_policy(SET CMP0015 NEW)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
+link_directories(../libethcore)
+link_directories(../libwebthree)
 
-set(EXECUTABLE eth)
-
+set(EXECUTABLE web3jsonrpc)
 file(GLOB HEADERS "*.h")
-add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+
+if(ETH_STATIC)
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+else()
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
@@ -17,9 +23,8 @@ if(MINIUPNPC_LS)
 endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
-if(JSONRPC_LS)
-target_link_libraries(${EXECUTABLE} web3jsonrpc)
-endif()
+target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 if(READLINE_LS)
 target_link_libraries(${EXECUTABLE} ${READLINE_LS})
 endif()
@@ -44,5 +49,7 @@ else ()
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-install( TARGETS ${EXECUTABLE} DESTINATION bin )
+install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
+
 
