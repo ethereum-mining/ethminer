@@ -33,6 +33,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
+#include <libdevcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>
@@ -41,6 +42,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
@@ -81,6 +83,21 @@ static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
 		return QString::fromStdString(s);
 	}
 	return QString();
+}
+
+static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
+{
+	auto list = keys.toStdList();
+	return {begin(list), end(list)};
+}
+
+static QString contentsOfQResource(std::string const& res)
+{
+	QFile file(QString::fromStdString(res));
+	if (!file.open(QFile::ReadOnly))
+		BOOST_THROW_EXCEPTION(FileError());
+	QTextStream in(&file);
+	return in.readAll();
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
@@ -131,32 +148,28 @@ Main::Main(QWidget *parent) :
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
-	m_ldb = new QLDB(this);
+
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server->setIdentities(keysAsVector(owned()));
+	m_server->StartListening();
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		m_ethereum = nullptr;
-		m_whisper = nullptr;
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_dev = new QDev(this);
-		m_ethereum = new QEthereum(this, ethereum(), m_myKeys);
-		m_whisper = new QWhisper(this, whisper(), owned());
+		m_qweb = new QWebThree(this);
+		auto qweb = m_qweb;
+		m_qwebConnector.setQWeb(qweb);
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		auto qdev = m_dev;
-		auto qeth = m_ethereum;
-		auto qshh = m_whisper;
-		auto qldb = m_ldb;
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qdev, qeth, qshh, qldb));
-		connect(m_whisper, SIGNAL(newIdToAdd(QString)), this, SLOT(addNewId(QString)));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
+		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_ethereum->poll();
-		m_whisper->poll();
+		m_qweb->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -165,9 +178,7 @@ Main::Main(QWidget *parent) :
 	});
 	
 	readSettings();
-
 	installWatches();
-
 	startTimer(100);
 
 	{
@@ -184,19 +195,17 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_ethereum->clientDieing();
-	m_whisper->faceDieing();
-
+	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
 	writeSettings();
 }
 
 void Main::addNewId(QString _ids)
 {
-	Secret _id = toSecret(_ids);
+	Secret _id = jsToSecret(_ids.toStdString());
 	KeyPair kp(_id);
 	m_myIdentities.push_back(kp);
-	m_whisper->setIdentities(owned());
+	m_server->setIdentities(keysAsVector(owned()));
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const
@@ -1056,10 +1065,8 @@ void Main::timerEvent(QTimerEvent*)
 	else
 		interval += 100;
 	
-	if (m_ethereum)
-		m_ethereum->poll();
-	if (m_whisper)
-		m_whisper->poll();
+	if (m_qweb)
+		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 		if (ethereum()->checkWatch(i.first))
@@ -1182,8 +1189,9 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-	if (m_ethereum)
-		m_ethereum->setAccounts(myKeys);
+
+	if (m_server.get())
+		m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_inject_triggered()
@@ -1629,7 +1637,6 @@ void Main::on_killBlockchain_triggered()
 	ui->net->setChecked(false);
 	web3()->stopNetwork();
 	ethereum()->killChain();
-	m_ethereum->setClient(ethereum());
 	readSettings(true);
 	installWatches();
 	refreshAll();
@@ -1785,7 +1792,6 @@ void Main::on_debug_clicked()
 				t.gasPrice = gasPrice();
 				t.gas = ui->gas->value();
 				t.data = m_data;
-				t.type = isCreation() ? Transaction::ContractCreation : Transaction::MessageCall;
 				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
 				t.sign(s);
 				auto r = t.rlp();
@@ -2139,20 +2145,22 @@ void Main::on_post_clicked()
 	m.setPayload(dataFromText(ui->shhData->toPlainText()));
 	Public f = stringToPublic(ui->shhFrom->currentText());
 	Secret from;
-	if (m_whisper->ids().count(f))
-		from = m_whisper->ids().at(f);
+	if (m_server->ids().count(f))
+		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
 }
 
 void Main::on_newIdentity_triggered()
 {
-	m_whisper->makeIdentity();
+	KeyPair kp = KeyPair::create();
+	m_myIdentities.append(kp);
+	m_server->setIdentities(keysAsVector(owned()));
 }
 
 void Main::refreshWhisper()
 {
 	ui->shhFrom->clear();
-	for (auto i: m_whisper->ids())
+	for (auto i: m_server ->ids())
 		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
 }
 
@@ -2163,7 +2171,7 @@ void Main::refreshWhispers()
 	{
 		shh::Envelope const& e = w.second;
 		shh::Message m;
-		for (pair<Public, Secret> const& i: m_whisper->ids())
+		for (pair<Public, Secret> const& i: m_server->ids())
 			if (!!(m = e.open(i.second)))
 				break;
 		if (!m)

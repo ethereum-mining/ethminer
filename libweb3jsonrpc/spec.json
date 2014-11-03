@@ -1,0 +1,55 @@
+[
+            { "method": "coinbase", "params": [], "order": [], "returns" : "" },
+            { "method": "setCoinbase", "params": [""], "order": [], "returns" : true },
+            { "method": "listening", "params": [], "order": [], "returns" : false },
+            { "method": "setListening", "params": [false], "order" : [], "returns" : true },
+            { "method": "mining", "params": [], "order": [], "returns" : false },
+            { "method": "setMining", "params": [false], "order" : [], "returns" : true },
+            { "method": "gasPrice", "params": [], "order": [], "returns" : "" },
+            { "method": "account", "params": [], "order": [], "returns" : "" },
+            { "method": "accounts", "params": [], "order": [], "returns" : [] },
+            { "method": "peerCount", "params": [], "order": [], "returns" : 0 },
+            { "method": "defaultBlock", "params": [], "order": [], "returns" : 0},
+            { "method": "setDefaultBlock", "params": [0], "order": [], "returns" : true},
+            { "method": "number", "params": [], "order": [], "returns" : 0},
+
+            { "method": "balanceAt", "params": [""], "order": [], "returns" : ""},
+            { "method": "stateAt", "params": ["", ""], "order": [], "returns": ""},
+            { "method": "countAt", "params": [""], "order": [], "returns" : 0.0},
+            { "method": "codeAt", "params": [""], "order": [], "returns": ""},
+
+            { "method": "transact", "params": [{}], "order": [], "returns": ""},
+            { "method": "call", "params": [{}], "order": [], "returns": ""},
+
+            { "method": "blockByHash", "params": [""],"order": [], "returns": {}},
+            { "method": "blockByNumber", "params": [0],"order": [], "returns": {}},
+            { "method": "transactionByHash", "params": ["", 0], "order": [], "returns": {}},
+            { "method": "transactionByNumber", "params": [0, 0], "order": [], "returns": {}},
+            { "method": "uncleByHash", "params": ["", 0], "order": [], "returns": {}},
+            { "method": "uncleByNumber", "params": [0, 0], "order": [], "returns": {}},
+
+            { "method": "compile", "params": [""], "order": [], "returns": ""},
+
+            { "method": "newFilter", "params": [{}], "order": [], "returns": 0},
+            { "method": "newFilterString", "params": [""], "order": [], "returns": 0},
+            { "method": "uninstallFilter", "params": [0], "order": [], "returns": true},
+            { "method": "changed", "params": [0], "order": [], "returns": false},
+            { "method": "getMessages", "params": [0], "order": [], "returns": []},
+
+            { "method": "put", "params": ["", "", ""], "order": [], "returns": true},
+            { "method": "get", "params": ["", ""], "order": [], "returns": ""},
+            { "method": "putString", "params": ["", "", ""], "order": [], "returns": true},
+            { "method": "getString", "params": ["", ""], "order": [], "returns": ""},
+
+            { "method": "post", "params": [{}], "order": [], "returns": true},
+            { "method": "newIdentity", "params": [], "order": [], "returns": ""},
+            { "method": "haveIdentity", "params": [""], "order": [], "returns": false},
+            { "method": "newGroup", "params": ["", ""], "order": [], "returns": ""},
+            { "method": "addToGroup", "params": ["", ""], "order": [], "returns": ""},
+            
+            { "method": "shhNewFilter", "params": [{}], "order": [], "returns": 0},
+            { "method": "shhUninstallFilter", "params": [0], "order": [], "returns": true},
+            { "method": "shhChanged", "params": [0], "order": [], "returns": []}
+            
+]
+
