@@ -20,8 +20,8 @@
  * @date 2014
  */
 
-
 #include <random>
+#include <mutex>
 #include "EC.h"
 #include "SHA3.h"
 #include "FileSystem.h"
