@@ -26,6 +26,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/Exceptions.h>
 
 namespace dev
 {
@@ -113,6 +114,8 @@ private:
 
 namespace crypto
 {
+struct InvalidState: virtual Exception {};
+	
 /**
  * @brief Generator for nonce material
  */
