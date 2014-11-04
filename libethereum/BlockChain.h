@@ -105,6 +105,14 @@ public:
 	BlockTraces traces(h256 _hash) const { return queryExtras<BlockTraces, 2>(_hash, m_traces, x_traces, NullBlockTraces); }
 	BlockTraces traces() const { return traces(currentHash()); }
 
+	/// Get the transactions' log blooms of a block (or the most recent mined if none given). Thread-safe.
+	BlockLogBlooms logBlooms(h256 _hash) const { return queryExtras<BlockLogBlooms, 3>(_hash, m_logBlooms, x_logBlooms, NullBlockLogBlooms); }
+	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
+
+	/// Get the transactions' receipts of a block (or the most recent mined if none given). Thread-safe.
+	BlockReceipts receipts(h256 _hash) const { return queryExtras<BlockReceipts, 4>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
+	BlockReceipts receipts() const { return receipts(currentHash()); }
+
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 _hash) const;
 	bytes block() const { return block(currentHash()); }
@@ -185,6 +193,10 @@ private:
 	mutable BlockBloomsHash m_blooms;
 	mutable boost::shared_mutex x_traces;
 	mutable BlockTracesHash m_traces;
+	mutable boost::shared_mutex x_logBlooms;
+	mutable BlockLogBloomsHash m_logBlooms;
+	mutable boost::shared_mutex x_receipts;
+	mutable BlockReceiptsHash m_receipts;
 	mutable boost::shared_mutex x_cache;
 	mutable std::map<h256, bytes> m_cache;
 
