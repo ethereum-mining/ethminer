@@ -56,13 +56,14 @@ class Interface;
  * @brief JSON-RPC api implementation
  * @todo filters should work on unsigned instead of int
  * unsigned are not supported in json-rpc-cpp and there are bugs with double in json-rpc-cpp version 0.2.1
+ * @todo split these up according to subprotocol (eth, shh, db, p2p, web3) and make it /very/ clear about how to add other subprotocols.
+ * @todo modularise everything so additional subprotocols don't need to change this file.
  */
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
-	virtual std::string account();
 	virtual Json::Value accounts();
 	virtual std::string addToGroup(std::string const& _group, std::string const& _who);
 	virtual std::string balanceAt(std::string const& _address);
@@ -109,6 +110,7 @@ public:
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
+
 private:
 	dev::eth::Interface* client() const;
 	std::shared_ptr<dev::shh::Interface> face() const;
