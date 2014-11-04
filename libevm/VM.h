@@ -104,7 +104,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			{
 				int in = _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 				u256 p = 0;
-				for (; in--; i++)
+				for (i++; in--; i++)
 					p = (p << 8) | _ext.getCode(i);
 				if ((_ext.getCode(i) == (byte)Instruction::JUMP || _ext.getCode(i) == (byte)Instruction::JUMPI) && !(_ext.getCode(p) == (byte)Instruction::JUMP || _ext.getCode(p) == (byte)Instruction::JUMPI))
 					if (p >= _ext.code.size())
@@ -112,6 +112,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 					else
 						implicit.insert(p);
 				else {}
+				i--;
 			}
 		for (unsigned i = 0; i < _ext.code.size(); i += instructionInfo((Instruction)_ext.getCode(i)).additional + 1)
 			if (implicit.count(i))
