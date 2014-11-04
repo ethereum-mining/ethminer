@@ -163,6 +163,11 @@ public:
 		return (*this |= _h.template nbloom<P, N>());
 	}
 
+	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
+	{
+		return contains(_h.template nbloom<P, N>());
+	}
+
 	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
 	{
 		static const unsigned c_bloomBits = M * 8;
