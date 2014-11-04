@@ -3,6 +3,19 @@
 # deprecated. TODO will rewrite to proper CMake packages
 
 
+include(ExternalProject)
+
+ExternalProject_Add(project_cryptopp
+  URL http://www.cryptopp.com/cryptopp562.zip
+  BINARY_DIR project_cryptopp-prefix/src/project_cryptopp 
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND make -j 3
+  INSTALL_COMMAND ""
+)
+
+
+
+
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
@@ -11,24 +24,9 @@ if("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CRYPTOPP_ID /usr/x86_64-w64-mingw32/include/cryptopp)
 else()
 	# Look for available Crypto++ version and if it is >= 5.6.2
-	find_path(ID cryptlib.h
-		../cryptopp/src
-		../../cryptopp/src
-		/usr/include/cryptopp
-		/usr/include/crypto++
-		/usr/local/include/cryptopp
-		/usr/local/include/crypto++
-		/opt/local/include/cryptopp
-		/opt/local/include/crypto++
-		)
-	find_library(LS NAMES cryptoppeth cryptopp
-		../cryptopp/src/../target/build/release
-		../../cryptopp/src/../target/build/release
-		PATHS
-		/usr/lib
-		/usr/local/lib
-		/opt/local/lib
-		)
+	
+	set(CRYPTOPP_ID ${CMAKE_CURRENT_BINARY_DIR}/project_cryptopp-prefix/src/project_cryptopp)
+	set(CRYPTOPP_LS cryptopp)
 
 	if (ID AND LS)
 		message(STATUS "Found Crypto++: ${ID}, ${LS}")
@@ -180,9 +178,8 @@ else()
 	set(QTQML 1)
 endif()
 
-if(CRYPTOPP_ID)
-	include_directories(${CRYPTOPP_ID})
-endif()
+include_directories(${CRYPTOPP_ID})
+
 if(PYTHON_ID)
 	include_directories(${PYTHON_ID})
 endif()
