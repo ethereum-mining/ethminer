@@ -725,9 +725,7 @@ void State::cleanup(bool _fullCommit)
 		m_previousBlock = m_currentBlock;
 	}
 	else
-	{
 		m_db.rollback();
-	}
 
 	resetCurrent();
 }
