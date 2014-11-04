@@ -149,7 +149,7 @@ Main::Main(QWidget *parent) :
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 

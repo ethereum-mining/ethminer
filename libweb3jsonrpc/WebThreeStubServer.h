@@ -60,7 +60,7 @@ class Interface;
 class WebThreeStubServer: public AbstractWebThreeStubServer
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
 	virtual std::string account();
 	virtual Json::Value accounts();
