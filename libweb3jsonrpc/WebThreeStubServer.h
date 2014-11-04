@@ -29,7 +29,6 @@
 #pragma warning(pop)
 
 #include <iostream>
-//#include <jsonrpc/rpc.h>
 #include <jsonrpccpp/server.h>
 #include <libdevcrypto/Common.h>
 #pragma GCC diagnostic push

@@ -28,7 +28,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
-//#include <jsonrpc/connectors/httpserver.h>
 #include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libdevcrypto/FileSystem.h>

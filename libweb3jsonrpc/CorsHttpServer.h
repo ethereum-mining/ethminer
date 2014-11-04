@@ -20,7 +20,6 @@
  */
 
 #include <jsonrpccpp/server/connectors/httpserver.h>
-//#include <jsonrpc/connectors/httpserver.h>
 
 namespace jsonrpc
 {
