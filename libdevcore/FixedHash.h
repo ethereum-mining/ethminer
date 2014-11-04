@@ -231,6 +231,7 @@ using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
+using h512s = std::vector<h512>;
 using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
