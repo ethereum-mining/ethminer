@@ -44,10 +44,15 @@ void crypto::toPublic(Secret const& _s, Public& o_public)
 
 h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 {
+	// H(H(r||k)^h)
 	h256 s;
 	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
-	assert(s);
-	return sha3((_hash ^ s).asBytes());
+	s ^= _hash;
+	sha3(s.ref(), s.ref());
+	
+	if (!s || !_hash || !_priv)
+		throw InvalidState();
+	return std::move(s);
 }
 
 void crypto::encrypt(Public const& _k, bytes& io_cipher)
@@ -96,7 +101,8 @@ Signature crypto::sign(Secret const& _key, h256 const& _hash)
 	Integer e(_hash.asBytes().data(), 32);
 
 	Integer k(kdf(_key, _hash).data(), 32);
-	assert(k);
+	if (k == 0)
+		throw InvalidState();
 	k = 1 + (k % (qs - 1));
 	
 	ECP::Point rp = secp256k1Params.ExponentiateBase(k);

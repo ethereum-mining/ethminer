@@ -127,9 +127,12 @@ h256 Nonce::get(bool _commit)
 			for (unsigned i = 0; i < 32; ++i)
 				seed[i] = (byte)d(s_eng);
 		}
+		if (!seed)
+			throw InvalidState();
+		
+		// prevent seed reuse if process terminates abnormally
 		writeFile(seedFile, bytes());
 	}
-	assert(seed);
 	h256 prev(seed);
 	sha3(prev.ref(), seed.ref());
 	if (_commit)
