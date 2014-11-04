@@ -6,16 +6,12 @@
 include(ExternalProject)
 
 ExternalProject_Add(project_cryptopp
-  URL http://www.cryptopp.com/cryptopp562.zip
-  BINARY_DIR project_cryptopp-prefix/src/project_cryptopp 
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND make -j 3
-  INSTALL_COMMAND ""
+	URL http://www.cryptopp.com/cryptopp562.zip
+	BINARY_DIR project_cryptopp-prefix/src/project_cryptopp 
+	CONFIGURE_COMMAND ""
+	BUILD_COMMAND make -j 3
+	INSTALL_COMMAND ""
 )
-
-
-
-
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
@@ -27,6 +23,7 @@ else()
 	
 	set(CRYPTOPP_ID ${CMAKE_CURRENT_BINARY_DIR}/project_cryptopp-prefix/src/project_cryptopp)
 	set(CRYPTOPP_LS cryptopp)
+	link_directories(${CMAKE_CURRENT_BINARY_DIR}/project_cryptopp-prefix/src/project_cryptopp)
 
 	if (ID AND LS)
 		message(STATUS "Found Crypto++: ${ID}, ${LS}")
