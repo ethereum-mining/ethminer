@@ -15,6 +15,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(..)
 
+add_dependencies(${EXECUTABLE} project_cryptopp)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
