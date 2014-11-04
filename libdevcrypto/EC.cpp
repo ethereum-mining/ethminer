@@ -39,7 +39,7 @@ using namespace pp;
 
 void crypto::toPublic(Secret const& _s, Public& o_public)
 {
-	exponentToPublic(Integer(_s.data(),sizeof(_s)), o_public);
+	exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public);
 }
 
 h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
@@ -92,10 +92,12 @@ Signature crypto::sign(Secret const& _key, h256 const& _hash)
 	initializeDLScheme(_key, signer);
 
 	Integer const& q = secp256k1Params.GetGroupOrder();
+	Integer const& qs = secp256k1Params.GetSubgroupOrder();
 	Integer e(_hash.asBytes().data(), 32);
 
 	Integer k(kdf(_key, _hash).data(), 32);
-	k %= secp256k1Params.GetSubgroupOrder()-1;
+	assert(k);
+	k = 1 + (k % (qs - 1));
 	
 	ECP::Point rp = secp256k1Params.ExponentiateBase(k);
 	Integer r = secp256k1Params.ConvertElementToInteger(rp);
@@ -105,7 +107,7 @@ Signature crypto::sign(Secret const& _key, h256 const& _hash)
 	Integer s = (kInv * (Integer(_key.asBytes().data(), 32)*r + e)) % q;
 	assert(!!r && !!s);
 	
-	if (s > secp256k1Params.GetSubgroupOrder())
+	if (s > qs)
 	{
 		s = q - s;
 		if (recid)
@@ -114,7 +116,7 @@ Signature crypto::sign(Secret const& _key, h256 const& _hash)
 	
 	Signature sig;
 	r.Encode(sig.data(), 32);
-	s.Encode(sig.data()+32, 32);
+	s.Encode(sig.data() + 32, 32);
 	sig[64] = recid;
 	return sig;
 }
@@ -147,8 +149,8 @@ Public crypto::recover(Signature _signature, bytesConstRef _message)
 {
 	secp256k1_start();
 	
-	byte pubkey[65];
 	int pubkeylen = 65;
+	byte pubkey[pubkeylen];
 	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &pubkeylen, 0, (int)_signature[64]))
 		return Public();
 	
@@ -172,8 +174,8 @@ bool crypto::verifySecret(Secret const& _s, Public const& _p)
 	if (!ok)
 		return false;
 	
-	byte pubkey[65];
 	int pubkeylen = 65;
+	byte pubkey[pubkeylen];
 	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _s.data(), 0);
 	if (!ok || pubkeylen != 65)
 		return false;

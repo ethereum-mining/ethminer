@@ -114,28 +114,26 @@ h256 Nonce::get(bool _commit)
 	static string seedFile(getDataDir() + "/seed");
 	static mutex x;
 	lock_guard<mutex> l(x);
+	if (!seed)
 	{
-		if (!seed)
+		static Nonce nonce;
+		bytes b = contents(seedFile);
+		if (b.size() == 32)
+			memcpy(seed.data(), b.data(), 32);
+		else
 		{
-			static Nonce nonce;
-			bytes b = contents(seedFile);
-			if (b.size() == 32)
-				memcpy(seed.data(), b.data(), 32);
-			else
-			{
-				std::mt19937_64 s_eng(time(0));
-				std::uniform_int_distribution<uint16_t> d(0, 255);
-				for (unsigned i = 0; i < 32; ++i)
-					seed[i] = (byte)d(s_eng);
-			}
-			writeFile(seedFile, bytes());
+			std::mt19937_64 s_eng(time(0));
+			std::uniform_int_distribution<uint16_t> d(0, 255);
+			for (unsigned i = 0; i < 32; ++i)
+				seed[i] = (byte)d(s_eng);
 		}
-		assert(seed);
-		h256 prev(seed);
-		sha3(prev.ref(), seed.ref());
-		if (_commit)
-			writeFile(seedFile, seed.asBytes());
+		writeFile(seedFile, bytes());
 	}
+	assert(seed);
+	h256 prev(seed);
+	sha3(prev.ref(), seed.ref());
+	if (_commit)
+		writeFile(seedFile, seed.asBytes());
 	return seed;
 }
 
