@@ -62,7 +62,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
-	std::set<unsigned> m_jumpDests;
+	std::set<u256> m_jumpDests;
 };
 
 }
@@ -74,12 +74,27 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 	if (m_jumpDests.empty())
 	{
-		m_jumpDests.insert(0);
-		for (unsigned i = 1; i < _ext.code.size(); ++i)
+		std::set<u256> implicit;
+		for (unsigned i = 0; i < _ext.code.size(); ++i)
 			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
-				m_jumpDests.insert(i + 1);
+				m_jumpDests.insert(i);
 			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
-				i += _ext.code[i] - (int)Instruction::PUSH1 + 1;
+			{
+				int in = _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
+				u256 p = 0;
+				for (i++; in--; i++)
+					p = (p << 8) | _ext.getCode(i);
+				if ((_ext.getCode(i) == (byte)Instruction::JUMP || _ext.getCode(i) == (byte)Instruction::JUMPI) && !(_ext.getCode(p) == (byte)Instruction::JUMP || _ext.getCode(p) == (byte)Instruction::JUMPI))
+					if (p >= _ext.code.size())
+						m_jumpDests.insert(p);
+					else
+						implicit.insert(p);
+				else {}
+				i--;
+			}
+		for (unsigned i = 0; i < _ext.code.size(); i += instructionInfo((Instruction)_ext.getCode(i)).additional + 1)
+			if (implicit.count(i))
+				m_jumpDests.insert(i);
 	}
 
 	u256 nextPC = m_curPC + 1;
