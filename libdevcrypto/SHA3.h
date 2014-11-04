@@ -58,6 +58,8 @@ inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input))
 
 extern h256 EmptySHA3;
 
+extern h256 EmptyListSHA3;
+
 // Other crypto convenience routines
 
 bytes aesDecrypt(bytesConstRef _cipher, std::string const& _password, unsigned _rounds = 2000, bytesConstRef _salt = bytesConstRef());
