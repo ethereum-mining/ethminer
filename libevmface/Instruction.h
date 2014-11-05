@@ -32,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-class InvalidOpcode: public Exception {};
+struct InvalidOpcode: virtual Exception {};
 
 /// Virtual machine bytecode instruction.
 enum class Instruction: uint8_t
