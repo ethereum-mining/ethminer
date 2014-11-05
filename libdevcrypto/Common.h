@@ -114,8 +114,8 @@ private:
 
 namespace crypto
 {
-struct InvalidState: virtual Exception {};
-	
+struct InvalidState: public dev::Exception {};
+
 /**
  * @brief Generator for nonce material
  */

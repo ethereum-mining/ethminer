@@ -110,34 +110,36 @@ bool dev::verify(Public _p, Signature _s, h256 _hash)
 h256 Nonce::get(bool _commit)
 {
 	// todo: atomic efface bit, periodic save, kdf, rr, rng
-	static h256 seed;
-	static string seedFile(getDataDir() + "/seed");
-	static mutex x;
-	lock_guard<mutex> l(x);
-	if (!seed)
+	// todo: encrypt
+	static h256 s_seed;
+	static string s_seedFile(getDataDir() + "/seed");
+	static mutex s_x;
+	lock_guard<mutex> l(s_x);
+	if (!s_seed)
 	{
-		static Nonce nonce;
-		bytes b = contents(seedFile);
+		static Nonce s_nonce;
+		bytes b = contents(s_seedFile);
 		if (b.size() == 32)
-			memcpy(seed.data(), b.data(), 32);
+			memcpy(s_seed.data(), b.data(), 32);
 		else
 		{
+			// todo: replace w/entropy from user and system
 			std::mt19937_64 s_eng(time(0));
 			std::uniform_int_distribution<uint16_t> d(0, 255);
 			for (unsigned i = 0; i < 32; ++i)
-				seed[i] = (byte)d(s_eng);
+				s_seed[i] = (byte)d(s_eng);
 		}
-		if (!seed)
+		if (!s_seed)
 			throw InvalidState();
 		
 		// prevent seed reuse if process terminates abnormally
-		writeFile(seedFile, bytes());
+		writeFile(s_seedFile, bytes());
 	}
-	h256 prev(seed);
-	sha3(prev.ref(), seed.ref());
+	h256 prev(s_seed);
+	sha3(prev.ref(), s_seed.ref());
 	if (_commit)
-		writeFile(seedFile, seed.asBytes());
-	return seed;
+		writeFile(s_seedFile, s_seed.asBytes());
+	return std::move(s_seed);
 }
 
 Nonce::~Nonce()
