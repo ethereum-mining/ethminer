@@ -30,6 +30,7 @@ namespace dev
 {
 
 h256 EmptySHA3 = sha3(bytesConstRef());
+h256 EmptyListSHA3 = sha3(RLPEmptyList);
 
 std::string sha3(std::string const& _input, bool _hex)
 {
