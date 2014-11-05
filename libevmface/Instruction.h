@@ -32,6 +32,8 @@ namespace dev
 namespace eth
 {
 
+class InvalidOpcode: public Exception {};
+
 /// Virtual machine bytecode instruction.
 enum class Instruction: uint8_t
 {
@@ -177,13 +179,28 @@ enum class Instruction: uint8_t
 };
 
 /// @returns the PUSH<_number> instruction
-inline Instruction pushInstruction(unsigned _number) { assert(1 <= _number && _number <= 32); return Instruction(unsigned(Instruction::PUSH1) + _number - 1); }
+inline Instruction pushInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 32))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid PUSH instruction requested."));
+	return Instruction(unsigned(Instruction::PUSH1) + _number - 1);
+}
 
 /// @returns the DUP<_number> instruction
-inline Instruction dupInstruction(unsigned _number) { assert(1 <= _number && _number <= 16); return Instruction(unsigned(Instruction::DUP1) + _number - 1); }
+inline Instruction dupInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 16))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid DUP instruction requested."));
+	return Instruction(unsigned(Instruction::DUP1) + _number - 1);
+}
 
 /// @returns the SWAP<_number> instruction
-inline Instruction swapInstruction(unsigned _number) { assert(1 <= _number && _number <= 16); return Instruction(unsigned(Instruction::SWAP1) + _number - 1); }
+inline Instruction swapInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 16))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid SWAP instruction requested."));
+	return Instruction(unsigned(Instruction::SWAP1) + _number - 1);
+}
 
 /// Information structure for a particular instruction.
 struct InstructionInfo
