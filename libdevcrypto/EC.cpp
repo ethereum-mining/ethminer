@@ -51,7 +51,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	sha3(s.ref(), s.ref());
 	
 	if (!s || !_hash || !_priv)
-		throw InvalidState();
+		BOOST_THROW_EXCEPTION(InvalidState());
 	return std::move(s);
 }
 
@@ -102,7 +102,7 @@ Signature crypto::sign(Secret const& _key, h256 const& _hash)
 
 	Integer k(kdf(_key, _hash).data(), 32);
 	if (k == 0)
-		throw InvalidState();
+		BOOST_THROW_EXCEPTION(InvalidState());
 	k = 1 + (k % (qs - 1));
 	
 	ECP::Point rp = secp256k1Params.ExponentiateBase(k);
