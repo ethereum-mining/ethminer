@@ -316,19 +316,13 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 {
 	startWorking();
 
-	Transaction t;
-//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	u256 n;
 	{
 		ReadGuard l(x_stateDB);
-		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+		n = m_postMine.transactionsFrom(toAddress(_secret));
 	}
-	t.value = _value;
-	t.gasPrice = _gasPrice;
-	t.gas = _gas;
-	t.type = Transaction::MessageCall;
-	t.receiveAddress = _dest;
-	t.data = _data;
-	t.sign(_secret);
+	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 }
@@ -338,22 +332,16 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	bytes out;
 	try
 	{
+		u256 n;
 		State temp;
-		Transaction t;
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
 			temp = m_postMine;
-			t.nonce = temp.transactionsFrom(toAddress(_secret));
+			n = temp.transactionsFrom(toAddress(_secret));
 		}
-		t.value = _value;
-		t.gasPrice = _gasPrice;
-		t.gas = _gas;
-		t.type = Transaction::ContractCreation;
-		t.receiveAddress = _dest;
-		t.data = _data;
-		t.sign(_secret);
-		u256 gasUsed = temp.execute(t.data, &out, false);
+		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+		u256 gasUsed = temp.execute(t.data(), &out, false);
 		(void)gasUsed; // TODO: do something with gasused which it returns.
 	}
 	catch (...)
@@ -367,21 +355,15 @@ Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u2
 {
 	startWorking();
 
-	Transaction t;
+	u256 n;
 	{
 		ReadGuard l(x_stateDB);
-		t.nonce = m_postMine.transactionsFrom(toAddress(_secret));
+		n = m_postMine.transactionsFrom(toAddress(_secret));
 	}
-	t.value = _endowment;
-	t.gasPrice = _gasPrice;
-	t.gas = _gas;
-	t.type = Transaction::ContractCreation;
-	t.receiveAddress = Address();
-	t.data = _init;
-	t.sign(_secret);
+	Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
-	return right160(sha3(rlpList(t.sender(), t.nonce)));
+	return right160(sha3(rlpList(t.sender(), t.nonce())));
 }
 
 void Client::inject(bytesConstRef _rlp)

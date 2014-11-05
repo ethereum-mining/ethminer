@@ -50,6 +50,9 @@ using Address = h160;
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
 
+/// A vector of Ethereum addresses.
+using AddressSet = std::set<h160>;
+
 /// A vector of secrets.
 using Secrets = h256s;
 
