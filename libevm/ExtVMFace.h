@@ -88,7 +88,6 @@ struct SubState
 	{
 		suicides += _s.suicides;
 		refunds += _s.refunds;
-		suicides += _s.suicides;
 		return *this;
 	}
 };
