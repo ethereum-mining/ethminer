@@ -34,8 +34,8 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 38;
-const unsigned c_databaseVersion = 3;
+const unsigned c_protocolVersion = 39;
+const unsigned c_databaseVersion = 4;
 
 static const vector<pair<u256, string>> g_units =
 {
