@@ -87,13 +87,13 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
 	res["hash"] = toJS(_t.sha3());
-	res["input"] = jsFromBinary(_t.data);
-	res["to"] = toJS(_t.receiveAddress);
+	res["input"] = jsFromBinary(_t.data());
+	res["to"] = toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.sender());
-	res["gas"] = (int)_t.gas;
-	res["gasPrice"] = toJS(_t.gasPrice);
-	res["nonce"] = toJS(_t.nonce);
-	res["value"] = toJS(_t.value);
+	res["gas"] = (int)_t.gas();
+	res["gasPrice"] = toJS(_t.gasPrice());
+	res["nonce"] = toJS(_t.nonce());
+	res["value"] = toJS(_t.value());
 	return res;
 }
 
@@ -107,7 +107,7 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LogEntries const& _es)
+/*static*/ Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
 	Json::Value res;
 	for (dev::eth::LogEntry const& e: _es)
@@ -161,7 +161,7 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	return filter;
 }
 
-static dev::eth::LogFilter toLogFilter(Json::Value const& _json)
+/*static*/ dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
 	if (!_json.isObject() || _json.empty())

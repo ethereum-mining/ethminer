@@ -79,7 +79,7 @@ bool MessageFilter::matches(State const& _s, unsigned _i) const
 		return false;
 
 	Transaction t = _s.pending()[_i];
-	if (!m_to.empty() && !m_to.count(t.receiveAddress))
+	if (!m_to.empty() && !m_to.count(t.receiveAddress()))
 		return false;
 	if (!m_from.empty() && !m_from.count(t.sender()))
 		return false;
