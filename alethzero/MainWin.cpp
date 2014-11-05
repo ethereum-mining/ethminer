@@ -946,7 +946,7 @@ static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 
 
 static bool transactionMatch(string const& _f, Transaction const& _t)
 {
-	string info = toHex(_t.receiveAddress().ref()) + " " + toHex(_t.sha3(true).ref()) + " " + toHex(_t.sha3(false).ref()) + " " + toHex(_t.sender().ref());
+	string info = toHex(_t.receiveAddress().ref()) + " " + toHex(_t.sha3().ref()) + " " + toHex(_t.sha3(eth::WithoutSignature).ref()) + " " + toHex(_t.sender().ref());
 	if (info.find(_f) != string::npos)
 		return true;
 	return false;
@@ -1266,7 +1266,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << "</b>";
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
-			s << "<br/>Msg: <b>" << tx.sha3(false) << "</b>";
+			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
 			if (tx.isCreation())
 			{
 				if (tx.data().size())
