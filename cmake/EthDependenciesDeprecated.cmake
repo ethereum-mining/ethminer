@@ -128,6 +128,7 @@ else()
 	find_path( JSONRPC_ID jsonrpc/rpc.h
 		/usr/include
 		/usr/local/include
+                ../libjson-rpc-cpp/src
 		)
 	if ( JSONRPC_ID )
 		message(STATUS "Found jsonrpc headers")
@@ -137,6 +138,7 @@ else()
 			/usr/local/lib
 			/opt/local/lib
 			/usr/lib/*/
+			../libjson-rpc-cpp/build/out
 			)
 		if ( JSONRPC_LS )
 			message(STATUS "Found jsonrpc library: ${JSONRPC_LS}")
