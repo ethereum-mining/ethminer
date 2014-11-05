@@ -1585,6 +1585,10 @@ void Main::on_data_textChanged()
 				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
+			catch (...)
+			{
+				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
+			}
 		}
 		else
 		{
