@@ -13,7 +13,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         AbstractWebThreeStubServer(jsonrpc::AbstractServerConnector* conn) :
             jsonrpc::AbstractServer<AbstractWebThreeStubServer>(conn) 
         {
-            this->bindAndAddMethod(new jsonrpc::Procedure("account", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::accountI);
             this->bindAndAddMethod(new jsonrpc::Procedure("accounts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::accountsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("addToGroup", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::addToGroupI);
             this->bindAndAddMethod(new jsonrpc::Procedure("balanceAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::balanceAtI);
@@ -59,11 +58,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
 
         }
         
-        inline virtual void accountI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->account();
-        }
-
         inline virtual void accountsI(const Json::Value& request, Json::Value& response) 
         {
             response = this->accounts();
@@ -275,7 +269,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
 
 
-        virtual std::string account() = 0;
         virtual Json::Value accounts() = 0;
         virtual std::string addToGroup(const std::string& param1, const std::string& param2) = 0;
         virtual std::string balanceAt(const std::string& param1) = 0;

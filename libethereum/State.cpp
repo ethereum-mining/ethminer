@@ -520,7 +520,7 @@ bool State::cull(TransactionQueue& _tq) const
 			try
 			{
 				Transaction t(i.second);
-				if (t.nonce <= transactionsFrom(t.sender()))
+				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -791,7 +791,8 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	ret.shiftBloom<3>(sha3(m_currentBlock.coinbaseAddress.ref()));
+	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
+	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
@@ -1153,10 +1154,10 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 	paranoia("after execution commit.", true);
 
-	if (e.t().receiveAddress)
+	if (e.t().receiveAddress())
 	{
 		EnforceRefs r(m_db, true);
-		if (storageRoot(e.t().receiveAddress) && m_db.lookup(storageRoot(e.t().receiveAddress)).empty())
+		if (storageRoot(e.t().receiveAddress()) && m_db.lookup(storageRoot(e.t().receiveAddress())).empty())
 		{
 			cwarn << "TRIE immediately after execution; no node for receiveAddress";
 			BOOST_THROW_EXCEPTION(InvalidTrie());
