@@ -309,10 +309,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		auto b = s.oldBloom();
 		BlockBlooms bb;
 		BlockTraces bt;
+		BlockLogBlooms blb;
+		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
-			bt.traces.push_back(s.changesFromPending(i));
 			bb.blooms.push_back(s.changesFromPending(i).bloom());
+			bt.traces.push_back(s.changesFromPending(i));
+			blb.blooms.push_back(s.receipt(i).bloom());
+			br.receipts.push_back(s.receipt(i));
 		}
 		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
@@ -334,11 +338,21 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			WriteGuard l(x_traces);
 			m_traces[newHash] = bt;
 		}
+		{
+			WriteGuard l(x_logBlooms);
+			m_logBlooms[newHash] = blb;
+		}
+		{
+			WriteGuard l(x_receipts);
+			m_receipts[newHash] = br;
+		}
 
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)dev::ref(m_blooms[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)dev::ref(m_traces[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 
 #if ETH_PARANOIA
