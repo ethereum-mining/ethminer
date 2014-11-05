@@ -152,7 +152,7 @@ compile_boost()
 	fi
 	
 	if [ ! -d "stage/$platform" ]; then
-		targets="--with-filesystem --with-system --with-thread --with-date_time --with-regex --with-test"
+		targets="--with-filesystem --with-system --with-thread --with-date_time --with-regex --with-test --with-program_options"
 		(set -x; ./b2 -j4 --build-type=complete link=static runtime-link=shared variant=debug,release threading=multi $addressModel $targets stage)
 		(set -x; mv stage/lib stage/$platform)
 	fi
