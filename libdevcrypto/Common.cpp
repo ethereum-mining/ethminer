@@ -130,7 +130,7 @@ h256 Nonce::get(bool _commit)
 				s_seed[i] = (byte)d(s_eng);
 		}
 		if (!s_seed)
-			throw InvalidState();
+			BOOST_THROW_EXCEPTION(InvalidState());
 		
 		// prevent seed reuse if process terminates abnormally
 		writeFile(s_seedFile, bytes());
