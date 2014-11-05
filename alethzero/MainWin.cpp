@@ -36,6 +36,9 @@
 #include <libdevcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
@@ -1566,9 +1569,28 @@ void Main::on_data_textChanged()
 		string src = ui->data->toPlainText().toStdString();
 		vector<string> errors;
 		QString lll;
+		QString solidity;
 		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
 		{
 			m_data = fromHex(src);
+		}
+		else if (src.substr(0, 8) == "contract") // improve this heuristic
+		{
+			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
+			try
+			{
+				m_data = dev::solidity::CompilerStack::compile(src, scanner);
+			}
+			catch (dev::Exception const& exception)
+			{
+				ostringstream error;
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
+				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
+			}
+			catch (...)
+			{
+				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
+			}
 		}
 		else
 		{
@@ -1604,7 +1626,7 @@ void Main::on_data_textChanged()
 			for (auto const& i: errors)
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
-		ui->code->setHtml(errs + lll + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
