@@ -44,6 +44,14 @@ public:
 	NameAndTypeResolver() {}
 
 	void resolveNamesAndTypes(ContractDefinition& _contract);
+
+	/// Resolves the given @a _name inside the scope @a _scope. If @a _scope is omitted,
+	/// the global scope is used (i.e. the one containing only the contract).
+	/// @returns a pointer to the declaration on success or nullptr on failure.
+	Declaration* resolveName(ASTString const& _name, Declaration const* _scope = nullptr) const;
+
+	/// Resolves a name in the "current" scope. Should only be called during the initial
+	/// resolving phase.
 	Declaration* getNameFromCurrentScope(ASTString const& _name, bool _recursive = true);
 
 private:
@@ -51,7 +59,7 @@ private:
 
 	/// Maps nodes declaring a scope to scopes, i.e. ContractDefinition, FunctionDeclaration and
 	/// StructDefinition (@todo not yet implemented), where nullptr denotes the global scope.
-	std::map<ASTNode*, Scope> m_scopes;
+	std::map<ASTNode const*, Scope> m_scopes;
 
 	Scope* m_currentScope;
 };
@@ -63,7 +71,7 @@ private:
 class DeclarationRegistrationHelper: private ASTVisitor
 {
 public:
-	DeclarationRegistrationHelper(std::map<ASTNode*, Scope>& _scopes, ASTNode& _astRoot);
+	DeclarationRegistrationHelper(std::map<ASTNode const*, Scope>& _scopes, ASTNode& _astRoot);
 
 private:
 	bool visit(ContractDefinition& _contract);
@@ -72,15 +80,16 @@ private:
 	void endVisit(StructDefinition& _struct);
 	bool visit(FunctionDefinition& _function);
 	void endVisit(FunctionDefinition& _function);
+	void endVisit(VariableDefinition& _variableDefinition);
 	bool visit(VariableDeclaration& _declaration);
-	void endVisit(VariableDeclaration& _declaration);
 
 	void enterNewSubScope(ASTNode& _node);
 	void closeCurrentScope();
 	void registerDeclaration(Declaration& _declaration, bool _opensScope);
 
-	std::map<ASTNode*, Scope>& m_scopes;
+	std::map<ASTNode const*, Scope>& m_scopes;
 	Scope* m_currentScope;
+	FunctionDefinition* m_currentFunction;
 };
 
 /**
