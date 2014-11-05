@@ -149,7 +149,9 @@ Main::Main(QWidget *parent) :
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	// w3stubserver, on dealloc, deletes m_qwebConnector
+	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
+	m_server.reset(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
@@ -158,7 +160,7 @@ Main::Main(QWidget *parent) :
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_qweb = new QWebThree(this);
 		auto qweb = m_qweb;
-		m_qwebConnector.setQWeb(qweb);
+		m_qwebConnector->setQWeb(qweb);
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
