@@ -24,7 +24,6 @@
 #include <exception>
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
-#include <libdevcrypto/Common.h>
 #include "CommonData.h"
 #include "FixedHash.h"
 

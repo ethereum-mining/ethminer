@@ -47,7 +47,7 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		if (_checkSender)
 			m_sender = sender();
 	}
-	catch (Exception & _e)
+	catch (Exception& _e)
 	{
 		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
 		throw;
@@ -71,7 +71,7 @@ Address Transaction::sender() const
 {
 	if (!m_sender)
 	{
-		auto p = recover(*(Signature const*)&m_vrs, sha3(false));
+		auto p = recover(*(Signature const*)&m_vrs, sha3(WithoutSignature));
 		if (!p)
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 		m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
@@ -81,12 +81,14 @@ Address Transaction::sender() const
 
 void Transaction::sign(Secret _priv)
 {
-	auto sig = dev::sign(_priv, sha3(false));
+	auto sig = dev::sign(_priv, sha3(WithoutSignature));
 	m_vrs = *(SignatureStruct const*)&sig;
 }
 
-void Transaction::streamRLP(RLPStream& _s, bool _sig) const
+void Transaction::streamRLP(RLPStream& _s, IncludeSignature _sig) const
 {
+	if (m_type == NullTransaction)
+		return;
 	_s.appendList((_sig ? 3 : 0) + 6);
 	_s << m_nonce << m_gasPrice << m_gas;
 	if (m_type == MessageCall)

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <libdevcore/CommonIO.h>
 
 namespace dev
 {
