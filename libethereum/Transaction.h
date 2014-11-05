@@ -51,11 +51,10 @@ public:
 	bool operator==(Transaction const& _c) const { return m_type == _c.m_type && (m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress) && m_value == _c.m_value && m_data == _c.m_data; }
 	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
 
-	Address safeSender() const noexcept;	///< Like sender() but will never throw.
+	Address safeSender() const noexcept;	///< Like sender() but will never throw. @returns a null Address if the signature is invalid.
 	Address sender() const;					///< Determine the sender of the transaction from the signature (and hash).
-	void sign(Secret _priv);				///< Sign the transaction.
 
-	bool isCreation() const { return !m_receiveAddress; }
+	bool isCreation() const { return m_type == ContractCreation; }
 
 	void streamRLP(RLPStream& _s, bool _sig = true) const;
 
@@ -74,6 +73,8 @@ public:
 	SignatureStruct const& signature() const { return m_vrs; }
 
 private:
+	void sign(Secret _priv);				///< Sign the transaction.
+
 	Type m_type = NullTransaction;	///< True if this is a contract-creation transaction. F
 	u256 m_nonce;					///< The transaction-count of the sender.
 	u256 m_value;					///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
