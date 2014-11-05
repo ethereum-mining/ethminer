@@ -48,6 +48,20 @@ std::string decimalMul(std::string a, std::string b) {
     return o;
 }
 
+//Modexp
+std::string decimalModExp(std::string b, std::string e, std::string m) {
+    if (e == "0") return "1";
+    else if (e == "1") return b;
+    else if (decimalMod(e, "2") == "0") {
+        std::string o = decimalModExp(b, decimalDiv(e, "2"), m);
+        return decimalMod(decimalMul(o, o), m);
+    }
+    else {
+        std::string o = decimalModExp(b, decimalDiv(e, "2"), m);
+        return decimalMod(decimalMul(decimalMul(o, o), b), m);
+    }
+}
+
 //Is a greater than b? Flag allows equality
 bool decimalGt(std::string a, std::string b, bool eqAllowed) {
     if (a == b) return eqAllowed;
