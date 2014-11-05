@@ -57,10 +57,10 @@ public:
 	Transaction(u256 _value, u256 _gasPrice, u256 _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
-	Transaction(bytesConstRef _rlp, bool _checkSender = false);
+	explicit Transaction(bytesConstRef _rlp, bool _checkSender = false);
 
 	/// Constructs a transaction from the given RLP.
-	Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
+	explicit Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
 
 
 	/// Checks equality of transactions.

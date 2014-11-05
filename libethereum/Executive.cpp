@@ -184,15 +184,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			return false;
 		}
-		catch (OutOfGas const& /*_e*/)
-		{
-			clog(StateChat) << "Out of Gas! Reverting.";
-			revert = true;
-		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
-			m_endGas = m_vm->gas();
+			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
+			m_endGas = 0;//m_vm->gas();
 			revert = true;
 		}
 		catch (Exception const& _e)

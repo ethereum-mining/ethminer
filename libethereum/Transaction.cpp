@@ -47,7 +47,7 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		if (_checkSender)
 			m_sender = sender();
 	}
-	catch (Exception & _e)
+	catch (Exception& _e)
 	{
 		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
 		throw;
