@@ -228,7 +228,7 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	if (!_json["topic"].empty())
 	{
 		if (_json["topic"].isString())
-			bt.shift(jsToBytes(_json["topic"]));
+			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
 				bt.shift(jsToBytes(i.asString()));
