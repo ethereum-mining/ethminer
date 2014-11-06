@@ -33,18 +33,18 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
-#include <sha.h>
-#include <sha3.h>
-#include <ripemd.h>
-#include <aes.h>
-#include <pwdbased.h>
-#include <modes.h>
-#include <filters.h>
-#include <eccrypto.h>
-#include <ecp.h>
-#include <files.h>
-#include <osrng.h>
-#include <oids.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/sha3.h>
+#include <cryptopp/ripemd.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/pwdbased.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/eccrypto.h>
+#include <cryptopp/ecp.h>
+#include <cryptopp/files.h>
+#include <cryptopp/osrng.h>
+#include <cryptopp/oids.h>
 #include <secp256k1/secp256k1.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
