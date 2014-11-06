@@ -20,7 +20,6 @@
  * Solidity data types
  */
 
-#include <cassert>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
 #include <libsolidity/Types.h>
@@ -33,6 +32,9 @@ namespace solidity
 
 std::shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 {
+	if (asserts(Token::isElementaryTypeName(_typeToken)))
+		BOOST_THROW_EXCEPTION(InternalCompilerError());
+
 	if (Token::INT <= _typeToken && _typeToken <= Token::HASH256)
 	{
 		int offset = _typeToken - Token::INT;
@@ -52,7 +54,8 @@ std::shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 	else if (_typeToken == Token::BOOL)
 		return std::make_shared<BoolType>();
 	else
-		assert(false); // @todo add other tyes
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
+																		 std::string(Token::toString(_typeToken)) + " to type."));
 	return std::shared_ptr<Type>();
 }
 
@@ -63,7 +66,7 @@ std::shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _
 
 std::shared_ptr<Type> Type::fromMapping(Mapping const&)
 {
-	assert(false); //@todo not yet implemented
+	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Mapping types not yet implemented."));
 	return std::shared_ptr<Type>();
 }
 
@@ -94,7 +97,8 @@ IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 {
 	if (isAddress())
 		_bits = 160;
-	assert(_bits > 0 && _bits <= 256 && _bits % 8 == 0);
+	if (asserts(_bits > 0 && _bits <= 256 && _bits % 8 == 0))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid bit number for integer type: " + dev::toString(_bits)));
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
@@ -159,14 +163,12 @@ std::string IntegerType::toString() const
 	return prefix + dev::toString(m_bits);
 }
 
-bytes IntegerType::literalToBigEndian(Literal const& _literal) const
+u256 IntegerType::literalValue(Literal const& _literal) const
 {
 	bigint value(_literal.getValue());
-	if (!isSigned() && value < 0)
-		return bytes(); // @todo this should already be caught by "smallestTypeforLiteral"
-	//@todo check that the number of bits is correct
-	//@todo does "toCompactBigEndian" work for signed numbers?
-	return toCompactBigEndian(value);
+	//@todo check that the number is not too large
+	//@todo does this work for signed numbers?
+	return u256(value);
 }
 
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
@@ -182,14 +184,14 @@ bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 	return isImplicitlyConvertibleTo(_convertTo);
 }
 
-bytes BoolType::literalToBigEndian(Literal const& _literal) const
+u256 BoolType::literalValue(Literal const& _literal) const
 {
 	if (_literal.getToken() == Token::TRUE_LITERAL)
-		return bytes(1, 1);
+		return u256(1);
 	else if (_literal.getToken() == Token::FALSE_LITERAL)
-		return bytes(1, 0);
+		return u256(0);
 	else
-		return NullBytes;
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Bool type constructed from non-boolean literal."));
 }
 
 bool ContractType::operator==(Type const& _other) const
