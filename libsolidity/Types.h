@@ -26,6 +26,7 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
+#include <libsolidity/Exceptions.h>
 #include <libsolidity/ASTForward.h>
 #include <libsolidity/Token.h>
 
@@ -70,8 +71,16 @@ public:
 	virtual bool operator==(Type const& _other) const { return getCategory() == _other.getCategory(); }
 	virtual bool operator!=(Type const& _other) const { return !this->operator ==(_other); }
 
+	/// @returns number of bytes used by this type when encoded for CALL, or 0 if the encoding
+	/// is not a simple big-endian encoding or the type cannot be stored on the stack.
+	virtual unsigned getCalldataEncodedSize() const { return 0; }
+
 	virtual std::string toString() const = 0;
-	virtual bytes literalToBigEndian(Literal const&) const { return NullBytes; }
+	virtual u256 literalValue(Literal const&) const
+	{
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Literal value requested "
+																		  "for type without literals."));
+	}
 };
 
 /**
@@ -97,8 +106,10 @@ public:
 
 	virtual bool operator==(Type const& _other) const override;
 
+	virtual unsigned getCalldataEncodedSize() const { return m_bits / 8; }
+
 	virtual std::string toString() const override;
-	virtual bytes literalToBigEndian(Literal const& _literal) const override;
+	virtual u256 literalValue(Literal const& _literal) const override;
 
 	int getNumBits() const { return m_bits; }
 	bool isHash() const { return m_modifier == Modifier::HASH || m_modifier == Modifier::ADDRESS; }
@@ -127,8 +138,10 @@ public:
 		return _operator == Token::NOT || _operator == Token::DELETE;
 	}
 
+	virtual unsigned getCalldataEncodedSize() const { return 1; }
+
 	virtual std::string toString() const override { return "bool"; }
-	virtual bytes literalToBigEndian(Literal const& _literal) const override;
+	virtual u256 literalValue(Literal const& _literal) const override;
 };
 
 /**
