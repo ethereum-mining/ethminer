@@ -182,7 +182,7 @@ bool crypto::verifySecret(Secret const& _s, Public const& _p)
 		return false;
 	
 	static const int c_pubkeylen = 65;
-	auto pubkeylen = c_pubkeylen;
+	int pubkeylen = c_pubkeylen;
 	byte pubkey[c_pubkeylen];
 	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _s.data(), 0);
 	if (!ok || pubkeylen != 65)
