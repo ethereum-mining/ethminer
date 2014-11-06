@@ -134,7 +134,7 @@ bool crypto::verify(Signature const& _signature, bytesConstRef _message)
 
 bool crypto::verify(Public const& _p, Signature const& _sig, bytesConstRef _message, bool _hashed)
 {
-	static size_t derMaxEncodingLength = 72;
+	static const size_t derMaxEncodingLength = 72;
 	if (_hashed)
 	{
 		assert(_message.size() == 32);
@@ -155,8 +155,9 @@ Public crypto::recover(Signature _signature, bytesConstRef _message)
 {
 	secp256k1_start();
 	
-	int pubkeylen = 65;
-	byte pubkey[pubkeylen];
+	static const int c_pubkeylen = 65;
+	auto pubkeylen = c_pubkeylen;
+	byte pubkey[c_pubkeylen];
 	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &pubkeylen, 0, (int)_signature[64]))
 		return Public();
 	
@@ -180,8 +181,9 @@ bool crypto::verifySecret(Secret const& _s, Public const& _p)
 	if (!ok)
 		return false;
 	
-	int pubkeylen = 65;
-	byte pubkey[pubkeylen];
+	static const int c_pubkeylen = 65;
+	auto pubkeylen = c_pubkeylen;
+	byte pubkey[c_pubkeylen];
 	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _s.data(), 0);
 	if (!ok || pubkeylen != 65)
 		return false;
