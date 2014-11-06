@@ -269,7 +269,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
 	res["topic"] = toJS(_e.topic());
-	res["payload"] = asString(_m.payload());
+	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
@@ -452,7 +452,7 @@ std::string WebThreeStubServer::get(std::string const& _name, std::string const&
 Json::Value WebThreeStubServer::getMessages(int const& _id)
 {
 	if (!client())
-		return  Json::Value();
+		return Json::Value();
 	return toJson(client()->messages(_id));
 }
 
@@ -618,7 +618,7 @@ Json::Value WebThreeStubServer::shhChanged(int const& _id)
 			}
 			else
 				m = e.open();
-			ret.append(toJson(h,e,m));
+			ret.append(toJson(h, e, m));
 		}
 	
 	return ret;
