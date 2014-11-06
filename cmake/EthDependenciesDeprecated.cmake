@@ -140,8 +140,6 @@ else()
 	set(QTQML 1)
 endif()
 
-include_directories(${CRYPTOPP_ID})
-
 if(PYTHON_ID)
 	include_directories(${PYTHON_ID})
 endif()
