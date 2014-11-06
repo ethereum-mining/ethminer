@@ -410,8 +410,10 @@
     };
 
     Filter.prototype.trigger = function(messages) {
-        for(var i = 0; i < this.callbacks.length; i++) {
-            this.callbacks[i].call(this, messages);
+    	if (!(messages instanceof Array) || messages.length) {
+            for(var i = 0; i < this.callbacks.length; i++) {
+                this.callbacks[i].call(this, messages);
+            }
         }
     };
 
