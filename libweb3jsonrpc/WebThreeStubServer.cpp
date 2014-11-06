@@ -211,7 +211,7 @@ static shh::Message toMessage(Json::Value const& _json)
 	if (!_json["to"].empty())
 		ret.setTo(jsToPublic(_json["to"].asString()));
 	if (!_json["payload"].empty())
-		ret.setPayload(asBytes(_json["payload"].asString()));
+		ret.setPayload(jsToBytes(_json["payload"].asString()));
 	return ret;
 }
 
@@ -228,10 +228,10 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	if (!_json["topic"].empty())
 	{
 		if (_json["topic"].isString())
-			bt.shift(asBytes(jsPadded(_json["topic"].asString(), 32)));
+			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-				bt.shift(asBytes(jsPadded(i.asString(), 32)));
+				bt.shift(jsToBytes(i.asString()));
 	}
 	return _m.seal(_from, bt, ttl, workToProve);
 }
@@ -247,12 +247,12 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 	if (!_json["topic"].empty())
 	{
 		if (_json["topic"].isString())
-			bt.shift(asBytes(jsPadded(_json["topic"].asString(), 32)));
+			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
 			{
 				if (i.isString())
-					bt.shift(asBytes(jsPadded(i.asString(), 32)));
+					bt.shift(jsToBytes(i.asString()));
 				else
 					bt.shift();
 			}
@@ -372,10 +372,10 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 			ret.data = jsToBytes(_json["code"].asString());
 		else if (_json["data"].isArray())
 			for (auto i: _json["data"])
-				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
 		else if (_json["code"].isArray())
 			for (auto i: _json["code"])
-				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
 		else if (_json["dataclose"].isArray())
 			for (auto i: _json["dataclose"])
 				dev::operator +=(ret.data, jsToBytes(i.asString()));
