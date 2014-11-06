@@ -26,7 +26,7 @@
 #include <random>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VM.h>
 #include "BlockChain.h"

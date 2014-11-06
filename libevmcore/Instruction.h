@@ -22,17 +22,12 @@
 #pragma once
 
 #include <libdevcore/Common.h>
-#include <libdevcore/Exceptions.h>
-
-namespace boost { namespace spirit { class utree; } }
-namespace sp = boost::spirit;
+#include <libevmcore/Exceptions.h>
 
 namespace dev
 {
 namespace eth
 {
-
-struct InvalidOpcode: virtual Exception {};
 
 /// Virtual machine bytecode instruction.
 enum class Instruction: uint8_t
