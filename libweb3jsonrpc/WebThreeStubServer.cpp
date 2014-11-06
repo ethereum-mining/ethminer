@@ -509,6 +509,7 @@ std::string WebThreeStubServer::newGroup(std::string const& _id, std::string con
 
 std::string WebThreeStubServer::newIdentity()
 {
+	cnote << this << m_ids;
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.secret();
 	return toJS(kp.pub());
@@ -531,6 +532,7 @@ int WebThreeStubServer::peerCount()
 
 bool WebThreeStubServer::post(Json::Value const& _json)
 {
+	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
 	Secret from;
 
