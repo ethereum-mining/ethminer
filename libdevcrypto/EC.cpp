@@ -156,7 +156,7 @@ Public crypto::recover(Signature _signature, bytesConstRef _message)
 	secp256k1_start();
 	
 	static const int c_pubkeylen = 65;
-	auto pubkeylen = c_pubkeylen;
+	int pubkeylen = c_pubkeylen;
 	byte pubkey[c_pubkeylen];
 	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &pubkeylen, 0, (int)_signature[64]))
 		return Public();
