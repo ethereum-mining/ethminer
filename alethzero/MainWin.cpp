@@ -1268,7 +1268,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas() << "</b>";
-			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << "</b>";
+			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << " + 27</b>";
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
