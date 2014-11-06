@@ -5,7 +5,7 @@ ExternalProject_Add(miniupnpc
 	BINARY_DIR miniupnpc-prefix/src/miniupnpc
 	CONFIGURE_COMMAND ""
 	BUILD_COMMAND make -j 3
-	INSTALL_COMMAND ""
+	INSTALL_COMMAND make install INSTALLPREFIX=${ETH_DEPENDENCY_INSTALL_DIR}
 	)
 
 
