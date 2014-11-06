@@ -1243,6 +1243,13 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
+			for (auto u: block[2])
+			{
+				BlockInfo uncle = BlockInfo::fromHeader(u.data());
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Hash: <b>" << uncle.hash << "</b>";
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Parent: <b>" << uncle.parentHash << "</b>";
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Number: <b>" << uncle.number << "</b>";
+			}
 			if (info.parentHash)
 				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			else
@@ -1268,7 +1275,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas() << "</b>";
-			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << "</b>";
+			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << " + 27</b>";
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
