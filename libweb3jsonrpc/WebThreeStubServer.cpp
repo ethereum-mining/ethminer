@@ -87,13 +87,31 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
 	res["hash"] = toJS(_t.sha3());
-	res["input"] = jsFromBinary(_t.data);
-	res["to"] = toJS(_t.receiveAddress);
+	res["input"] = jsFromBinary(_t.data());
+	res["to"] = toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.sender());
-	res["gas"] = (int)_t.gas;
-	res["gasPrice"] = toJS(_t.gasPrice);
-	res["nonce"] = toJS(_t.nonce);
-	res["value"] = toJS(_t.value);
+	res["gas"] = (int)_t.gas();
+	res["gasPrice"] = toJS(_t.gasPrice());
+	res["nonce"] = toJS(_t.nonce());
+	res["value"] = toJS(_t.value());
+	return res;
+}
+
+static Json::Value toJson(dev::eth::LogEntry const& _e)
+{
+	Json::Value res;
+	res["data"] = jsFromBinary(_e.data);
+	res["address"] = toJS(_e.address);
+	for (auto const& t: _e.topics)
+		res["topics"].append(toJS(t));
+	return res;
+}
+
+/*static*/ Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+{
+	Json::Value res;
+	for (dev::eth::LogEntry const& e: _es)
+		res.append(toJson(e));
 	return res;
 }
 
@@ -123,9 +141,9 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	{
 		if (_json["to"].isArray())
 			for (auto i : _json["to"])
-				filter.from(jsToAddress(i.asString()));
+				filter.to(jsToAddress(i.asString()));
 		else
-			filter.from(jsToAddress(_json["to"].asString()));
+			filter.to(jsToAddress(_json["to"].asString()));
 	}
 	if (!_json["altered"].empty())
 	{
@@ -139,6 +157,48 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 					filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
 				else
 					filter.altered(jsToAddress(_json["altered"].asString()));
+	}
+	return filter;
+}
+
+/*static*/ dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+{
+	dev::eth::LogFilter filter;
+	if (!_json.isObject() || _json.empty())
+		return filter;
+
+	if (!_json["earliest"].empty())
+		filter.withEarliest(_json["earliest"].asInt());
+	if (!_json["latest"].empty())
+		filter.withLatest(_json["lastest"].asInt());
+	if (!_json["max"].empty())
+		filter.withMax(_json["max"].asInt());
+	if (!_json["skip"].empty())
+		filter.withSkip(_json["skip"].asInt());
+	if (!_json["from"].empty())
+	{
+		if (_json["from"].isArray())
+			for (auto i : _json["from"])
+				filter.from(jsToAddress(i.asString()));
+		else
+			filter.from(jsToAddress(_json["from"].asString()));
+	}
+	if (!_json["address"].empty())
+	{
+		if (_json["address"].isArray())
+			for (auto i : _json["address"])
+				filter.address(jsToAddress(i.asString()));
+		else
+			filter.from(jsToAddress(_json["address"].asString()));
+	}
+	if (!_json["topics"].empty())
+	{
+		if (_json["topics"].isArray())
+			for (auto i: _json["topics"])
+				if (i.isString())
+					filter.topic(jsToU256(i.asString()));
+		else if(_json["topics"].isString())
+			filter.topic(jsToU256(_json["topics"].asString()));
 	}
 	return filter;
 }
@@ -250,13 +310,6 @@ dev::eth::Interface* WebThreeStubServer::client() const
 std::shared_ptr<dev::shh::Interface> WebThreeStubServer::face() const
 {
 	return m_web3.whisper();
-}
-
-std::string WebThreeStubServer::account()
-{
-	if (!m_accounts.empty())
-		return toJS(m_accounts.begin()->first);
-	return "";
 }
 
 Json::Value WebThreeStubServer::accounts()

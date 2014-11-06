@@ -843,18 +843,18 @@ int main(int argc, char** argv)
 			for (auto const& i: RLP(b)[1])
 			{
 				Transaction t(i[0].data());
-				auto s = t.receiveAddress ?
+				auto s = t.receiveAddress() ?
 					boost::format("  %1% %2%> %3%: %4% [%5%]") %
 						toString(t.safeSender()) %
-						(c.codeAt(t.receiveAddress, 0).size() ? '*' : '-') %
-						toString(t.receiveAddress) %
-						toString(formatBalance(t.value)) %
-						toString((unsigned)t.nonce) :
+						(c.codeAt(t.receiveAddress(), 0).size() ? '*' : '-') %
+						toString(t.receiveAddress()) %
+						toString(formatBalance(t.value())) %
+						toString((unsigned)t.nonce()) :
 					boost::format("  %1% +> %2%: %3% [%4%]") %
 						toString(t.safeSender()) %
-						toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
-						toString(formatBalance(t.value)) %
-						toString((unsigned)t.nonce);
+						toString(right160(sha3(rlpList(t.safeSender(), t.nonce())))) %
+						toString(formatBalance(t.value())) %
+						toString((unsigned)t.nonce());
 				mvwaddnstr(blockswin, y++, x, s.str().c_str(), qwidth - 2);
 				if (y > qheight - 2)
 					break;
@@ -868,18 +868,18 @@ int main(int argc, char** argv)
 		y = 1;
 		for (Transaction const& t: c.pending())
 		{
-			auto s = t.receiveAddress ?
+			auto s = t.receiveAddress() ?
 				boost::format("%1% %2%> %3%: %4% [%5%]") %
 					toString(t.safeSender()) %
-					(c.codeAt(t.receiveAddress, 0).size() ? '*' : '-') %
-					toString(t.receiveAddress) %
-					toString(formatBalance(t.value)) %
-					toString((unsigned)t.nonce) :
+					(c.codeAt(t.receiveAddress(), 0).size() ? '*' : '-') %
+					toString(t.receiveAddress()) %
+					toString(formatBalance(t.value())) %
+					toString((unsigned)t.nonce()) :
 				boost::format("%1% +> %2%: %3% [%4%]") %
 					toString(t.safeSender()) %
-					toString(right160(sha3(rlpList(t.safeSender(), t.nonce)))) %
-					toString(formatBalance(t.value)) %
-					toString((unsigned)t.nonce);
+					toString(right160(sha3(rlpList(t.safeSender(), t.nonce())))) %
+					toString(formatBalance(t.value())) %
+					toString((unsigned)t.nonce());
 			mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
 			if (y > height * 1 / 5 - 4)
 				break;

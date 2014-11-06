@@ -79,7 +79,7 @@ bool MessageFilter::matches(State const& _s, unsigned _i) const
 		return false;
 
 	Transaction t = _s.pending()[_i];
-	if (!m_to.empty() && !m_to.count(t.receiveAddress))
+	if (!m_to.empty() && !m_to.count(t.receiveAddress()))
 		return false;
 	if (!m_from.empty() && !m_from.count(t.sender()))
 		return false;
@@ -147,5 +147,60 @@ bool MessageFilter::matches(Manifest const& _m, vector<unsigned> _p, Address _o,
 		_p.back()++;
 	}
 
+	return ret;
+}
+
+
+
+void LogFilter::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(6) << m_addresses << m_topics << m_earliest << m_latest << m_max << m_skip;
+}
+
+h256 LogFilter::sha3() const
+{
+	RLPStream s;
+	streamRLP(s);
+	return dev::sha3(s.out());
+}
+
+bool LogFilter::matches(LogBloom _bloom) const
+{
+	if (m_addresses.size())
+	{
+		for (auto i: m_addresses)
+			if (_bloom.containsBloom<3>(dev::sha3(i)))
+				goto OK1;
+		return false;
+	}
+	OK1:
+	if (m_topics.size())
+	{
+		for (auto i: m_topics)
+			if (_bloom.containsBloom<3>(dev::sha3(i)))
+				goto OK2;
+		return false;
+	}
+	OK2:
+	return true;
+}
+
+bool LogFilter::matches(State const& _s, unsigned _i) const
+{
+	return matches(_s.receipt(_i)).size() > 0;
+}
+
+LogEntries LogFilter::matches(TransactionReceipt const& _m) const
+{
+	LogEntries ret;
+	for (LogEntry const& e: _m.log())
+	{
+		if (!m_addresses.empty() && !m_addresses.count(e.address))
+			continue;
+		for (auto const& t: m_topics)
+			if (!e.topics.count(t))
+				continue;
+		ret.push_back(e);
+	}
 	return ret;
 }

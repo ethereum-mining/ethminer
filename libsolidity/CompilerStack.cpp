@@ -14,20 +14,36 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/**
+ * @author Christian <c@ethdev.com>
  * @date 2014
+ * Full-stack compiler that converts a source code string to bytecode.
  */
 
-#include "Common.h"
+#include <libsolidity/AST.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/Parser.h>
+#include <libsolidity/NameAndTypeResolver.h>
+#include <libsolidity/Compiler.h>
+#include <libsolidity/CompilerStack.h>
 
 using namespace std;
-using namespace dev;
 
 namespace dev
 {
+namespace solidity
+{
 
-char const* Version = "0.7.9";
+bytes CompilerStack::compile(std::string const& _sourceCode, shared_ptr<Scanner> _scanner)
+{
+	if (!_scanner)
+		_scanner = make_shared<Scanner>();
+	_scanner->reset(CharStream(_sourceCode));
 
+	ASTPointer<ContractDefinition> contract = Parser().parse(_scanner);
+	NameAndTypeResolver().resolveNamesAndTypes(*contract);
+	return Compiler::compile(*contract);
 }
 
+}
+}
