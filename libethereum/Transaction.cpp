@@ -36,18 +36,18 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 	RLP rlp(_rlpData);
 	try
 	{
-		nonce = rlp[field = 0].toInt<u256>();
-		gasPrice = rlp[field = 1].toInt<u256>();
-		gas = rlp[field = 2].toInt<u256>();
-		type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
-		receiveAddress = rlp[field = 3].toHash<Address>();
-		value = rlp[field = 4].toInt<u256>();
-		data = rlp[field = 5].toBytes();
-		vrs = SignatureStruct{ rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>(), byte(rlp[field = 6].toInt<byte>() - 27) };
+		m_nonce = rlp[field = 0].toInt<u256>();
+		m_gasPrice = rlp[field = 1].toInt<u256>();
+		m_gas = rlp[field = 2].toInt<u256>();
+		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
+		m_receiveAddress = rlp[field = 3].toHash<Address>();
+		m_value = rlp[field = 4].toInt<u256>();
+		m_data = rlp[field = 5].toBytes();
+		m_vrs = SignatureStruct{ rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>(), byte(rlp[field = 6].toInt<byte>() - 27) };
 		if (_checkSender)
 			m_sender = sender();
 	}
-	catch (Exception & _e)
+	catch (Exception& _e)
 	{
 		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
 		throw;
@@ -71,7 +71,7 @@ Address Transaction::sender() const
 {
 	if (!m_sender)
 	{
-		auto p = recover(*(Signature const*)&vrs, sha3(false));
+		auto p = recover(*(Signature const*)&m_vrs, sha3(WithoutSignature));
 		if (!p)
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 		m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
@@ -81,19 +81,21 @@ Address Transaction::sender() const
 
 void Transaction::sign(Secret _priv)
 {
-	auto sig = dev::sign(_priv, sha3(false));
-	vrs = *(SignatureStruct const*)&sig;
+	auto sig = dev::sign(_priv, sha3(WithoutSignature));
+	m_vrs = *(SignatureStruct const*)&sig;
 }
 
-void Transaction::streamRLP(RLPStream& _s, bool _sig) const
+void Transaction::streamRLP(RLPStream& _s, IncludeSignature _sig) const
 {
+	if (m_type == NullTransaction)
+		return;
 	_s.appendList((_sig ? 3 : 0) + 6);
-	_s << nonce << gasPrice << gas;
-	if (type == MessageCall)
-		_s << receiveAddress;
+	_s << m_nonce << m_gasPrice << m_gas;
+	if (m_type == MessageCall)
+		_s << m_receiveAddress;
 	else
 		_s << "";
-	_s << value << data;
+	_s << m_value << m_data;
 	if (_sig)
-		_s << (vrs.v + 27) << (u256)vrs.r << (u256)vrs.s;
+		_s << (m_vrs.v + 27) << (u256)m_vrs.r << (u256)m_vrs.s;
 }

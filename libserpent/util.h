@@ -22,7 +22,8 @@ const int TOKEN = 0,
           COLON = 11,
           UNARY_OP = 12,
           BINARY_OP = 13,
-          COMPOUND = 14;
+          COMPOUND = 14,
+          TOKEN_SPLITTER = 15;
 
 // Stores metadata about each token
 class Metadata {
@@ -48,6 +49,9 @@ struct Node {
 };
 Node token(std::string val, Metadata met=Metadata());
 Node astnode(std::string val, std::vector<Node> args, Metadata met=Metadata());
+Node astnode(std::string val, Node a, Metadata met=Metadata());
+Node astnode(std::string val, Node a, Node b, Metadata met=Metadata());
+Node astnode(std::string val, Node a, Node b, Node c, Metadata met=Metadata());
 
 // Number of tokens in a tree
 int treeSize(Node prog);

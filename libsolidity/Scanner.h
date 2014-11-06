@@ -110,7 +110,8 @@ public:
 		bool complete_;
 	};
 
-	explicit Scanner(CharStream const& _source);
+	Scanner() { reset(CharStream()); }
+	explicit Scanner(CharStream const& _source) { reset(_source); }
 
 	/// Resets the scanner as if newly constructed with _input as input.
 	void reset(CharStream const& _source);
@@ -168,7 +169,7 @@ private:
 	/// If the next character is _next, advance and return _then, otherwise return _else.
 	inline Token::Value selectToken(char _next, Token::Value _then, Token::Value _else);
 
-	bool scanHexNumber(char& o_scannedNumber, int _expectedLength);
+	bool scanHexByte(char& o_scannedByte);
 
 	/// Scans a single JavaScript token.
 	void scanToken();
