@@ -20,7 +20,6 @@ endif()
 include_directories(..)
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
-	include_directories(/usr/x86_64-w64-mingw32/include/cryptopp)
 	target_link_libraries(${EXECUTABLE} boost_system-mt-s)
 	target_link_libraries(${EXECUTABLE} boost_thread_win32-mt-s)
 	target_link_libraries(${EXECUTABLE} iphlpapi)

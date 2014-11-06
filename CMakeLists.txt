@@ -42,16 +42,6 @@ function(configureProject)
 endfunction()
 
 
-# all dependencies that are not directly included in the cpp-ethereum distribution are defined here
-# for this to work, download the dependency via the cmake script in extdep or install them manually!
-function(checkExternalDependencies)
-	set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install")
-
-	set (CRYPTOPP_ROOT_DIR ${ETH_DEPENDENCY_INSTALL_DIR}) 	
-	find_package (CryptoPP 5.6.2 REQUIRED)
-endfunction()
-
-
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
@@ -104,7 +94,10 @@ endif ()
 include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
-checkExternalDependencies()
+
+# this must be an include, as a function it would messs up with variable scope!
+include(EthDependencies)
+
 
 # TODO this will go away soon!
 include(EthDependenciesDeprecated)
