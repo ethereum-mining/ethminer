@@ -47,7 +47,7 @@ class MessageFilter;
 }}
 
 class QQuickView;
-class WebThreeStubServer;
+class OurWebThreeStubServer;
 
 struct WorldState
 {
@@ -256,6 +256,6 @@ private:
 	bool m_logChanged = true;
 
 	QWebThreeConnector* m_qwebConnector;
-	std::unique_ptr<WebThreeStubServer> m_server;
+	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 };

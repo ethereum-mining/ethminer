@@ -35,8 +35,7 @@ bytes jsToBytes(std::string const& _s)
 		// Decimal
 		return toCompactBigEndian(bigint(_s));
 	else
-		// Binary
-		return asBytes(_s);
+		return bytes();
 }
 
 std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r)
