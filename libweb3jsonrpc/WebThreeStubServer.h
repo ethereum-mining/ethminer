@@ -86,6 +86,7 @@ public:
 	virtual bool eth_setCoinbase(std::string const& _address);
 	virtual bool eth_setDefaultBlock(int const& _block);
 	virtual bool eth_setListening(bool const& _listening);
+	virtual std::string eth_lll(std::string const& _s);
 	virtual bool eth_setMining(bool const& _mining);
 	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
 	virtual std::string eth_transact(Json::Value const& _json);
