@@ -3,45 +3,10 @@
 # deprecated. TODO will rewrite to proper CMake packages
 
 
-include(ExternalProject)
-
-ExternalProject_Add(project_cryptopp
-	URL http://www.cryptopp.com/cryptopp562.zip
-	BINARY_DIR project_cryptopp-prefix/src/project_cryptopp 
-	CONFIGURE_COMMAND ""
-	BUILD_COMMAND make -j 3
-	INSTALL_COMMAND ""
-)
-
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
 	set(LEVELDB_LS leveldb)
-	set(CRYPTOPP_LS cryptopp)
-	set(CRYPTOPP_ID /usr/x86_64-w64-mingw32/include/cryptopp)
 else()
-	# Look for available Crypto++ version and if it is >= 5.6.2
-	
-	set(CRYPTOPP_ID ${CMAKE_CURRENT_BINARY_DIR}/project_cryptopp-prefix/src/project_cryptopp)
-	set(CRYPTOPP_LS cryptopp)
-	link_directories(${CMAKE_CURRENT_BINARY_DIR}/project_cryptopp-prefix/src/project_cryptopp)
-
-	if (ID AND LS)
-		message(STATUS "Found Crypto++: ${ID}, ${LS}")
-		set(_CRYPTOPP_VERSION_HEADER ${ID}/config.h)
-		if(EXISTS ${_CRYPTOPP_VERSION_HEADER})
-			file(STRINGS ${_CRYPTOPP_VERSION_HEADER} _CRYPTOPP_VERSION REGEX "^#define CRYPTOPP_VERSION[ \t]+[0-9]+$")
-			string(REGEX REPLACE "^#define CRYPTOPP_VERSION[ \t]+([0-9]+)" "\\1" _CRYPTOPP_VERSION ${_CRYPTOPP_VERSION})
-			if(${_CRYPTOPP_VERSION} LESS 562)
-				message(FATAL_ERROR "Crypto++ version found is smaller than 5.6.2.")
-			else()
-				set(CRYPTOPP_ID ${ID} CACHE FILEPATH "")
-				set(CRYPTOPP_LS ${LS} CACHE FILEPATH "")
-				message(STATUS "Crypto++ found and version greater or equal to 5.6.2")
-			endif()
-		endif()
-  else()
-    message(STATUS "Crypto++ Not Found: ${CRYPTOPP_ID}, ${CRYPTOPP_LS}")
-	endif()
 
 	find_path( LEVELDB_ID leveldb/db.h
 		/usr/include

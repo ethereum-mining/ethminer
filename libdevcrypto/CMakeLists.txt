@@ -11,14 +11,14 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-include_directories(..)
+include_directories(..) 
+include_directories(${CRYPTOPP_INCLUDE_DIR})
 
-add_dependencies(${EXECUTABLE} project_cryptopp)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
-target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
+target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_system-mt-s)

@@ -14,7 +14,8 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file EC.cpp
+/** 
+ * @file EC.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
@@ -29,7 +30,6 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
 #pragma GCC diagnostic ignored "-Wextra"
-#include <files.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
 #include "CryptoPP.h"

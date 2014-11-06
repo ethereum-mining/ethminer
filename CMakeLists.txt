@@ -42,6 +42,17 @@ function(configureProject)
 endfunction()
 
 
+# all dependencies that are not directly included in the cpp-ethereum distribution are defined here
+# for this to work, download the dependency via the cmake script in extdep or install them manually!
+function(checkExternalDependencies)
+	set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install")
+
+	set (CRYPTOPP_ROOT_DIR ${ETH_DEPENDENCY_INSTALL_DIR}) 	
+	find_package (CryptoPP 5.6.2 REQUIRED)
+endfunction()
+
+
+
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
 	if (CMAKE_COMPILER_IS_MINGW)
@@ -66,6 +77,8 @@ function(createBuildInfo)
 	set(SRC_LIST BuildInfo.h)
 endfunction()
 
+
+
 ######################################################################################################
 
 
@@ -88,19 +101,12 @@ if ("${TARGET_PLATFORM}" STREQUAL "linux")
 	set(CMAKE_THREAD_LIBS_INIT pthread)
 endif ()
 
-# Set default build type to Release w/debug info
-# if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-#    set(CMAKE_BUILD_TYPE RelWithDebInfo)
-# endif()
-
-
 include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
-#add_definitions("-DETH_BUILD_TYPE=${ETH_BUILD_TYPE}")
-#add_definitions("-DETH_BUILD_PLATFORM=${ETH_BUILD_PLATFORM}")
+checkExternalDependencies()
 
-
+# TODO this will go away soon!
 include(EthDependenciesDeprecated)
 
 createBuildInfo()
