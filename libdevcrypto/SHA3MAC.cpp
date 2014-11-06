@@ -28,9 +28,10 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output)
+void crypto::sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output)
 {
 	CryptoPP::SHA3_256 ctx;
+	assert(_secret.size() > 0);
 	ctx.Update((byte*)_secret.data(), _secret.size());
 	ctx.Update((byte*)_plain.data(), _plain.size());
 	assert(_output.size() >= 32);

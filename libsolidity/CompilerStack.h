@@ -14,20 +14,30 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/**
+ * @author Christian <c@ethdev.com>
  * @date 2014
+ * Full-stack compiler that converts a source code string to bytecode.
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include <string>
+#include <memory>
+#include <libdevcore/Common.h>
 
-namespace dev
+namespace dev {
+namespace solidity {
+
+class Scanner; // forward
+
+class CompilerStack
 {
-
-char const* Version = "0.7.9";
+public:
+	/// Compile the given @a _sourceCode to bytecode. If a scanner is provided, it is used for
+	/// scanning the source code - this is useful for printing exception information.
+	static bytes compile(std::string const& _sourceCode, std::shared_ptr<Scanner> _scanner = std::shared_ptr<Scanner>());
+};
 
 }
-
+}

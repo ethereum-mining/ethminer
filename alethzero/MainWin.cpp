@@ -36,6 +36,9 @@
 #include <libdevcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
@@ -149,7 +152,9 @@ Main::Main(QWidget *parent) :
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	// w3stubserver, on dealloc, deletes m_qwebConnector
+	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
+	m_server.reset(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
@@ -158,7 +163,7 @@ Main::Main(QWidget *parent) :
 		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
 		m_qweb = new QWebThree(this);
 		auto qweb = m_qweb;
-		m_qwebConnector.setQWeb(qweb);
+		m_qwebConnector->setQWeb(qweb);
 
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
@@ -868,18 +873,18 @@ void Main::refreshPending()
 	ui->transactionQueue->clear();
 	for (Transaction const& t: ethereum()->pending())
 	{
-		QString s = t.receiveAddress ?
+		QString s = t.receiveAddress() ?
 			QString("%2 %5> %3: %1 [%4]")
-				.arg(formatBalance(t.value).c_str())
+				.arg(formatBalance(t.value()).c_str())
 				.arg(render(t.safeSender()))
-				.arg(render(t.receiveAddress))
-				.arg((unsigned)t.nonce)
-				.arg(ethereum()->codeAt(t.receiveAddress).size() ? '*' : '-') :
+				.arg(render(t.receiveAddress()))
+				.arg((unsigned)t.nonce())
+				.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
 			QString("%2 +> %3: %1 [%4]")
-				.arg(formatBalance(t.value).c_str())
+				.arg(formatBalance(t.value()).c_str())
 				.arg(render(t.safeSender()))
-				.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
-				.arg((unsigned)t.nonce);
+				.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
+				.arg((unsigned)t.nonce());
 		ui->transactionQueue->addItem(s);
 	}
 }
@@ -946,7 +951,7 @@ static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 
 
 static bool transactionMatch(string const& _f, Transaction const& _t)
 {
-	string info = toHex(_t.receiveAddress.ref()) + " " + toHex(_t.sha3(true).ref()) + " " + toHex(_t.sha3(false).ref()) + " " + toHex(_t.sender().ref());
+	string info = toHex(_t.receiveAddress().ref()) + " " + toHex(_t.sha3().ref()) + " " + toHex(_t.sha3(eth::WithoutSignature).ref()) + " " + toHex(_t.sender().ref());
 	if (info.find(_f) != string::npos)
 		return true;
 	return false;
@@ -986,18 +991,18 @@ void Main::refreshBlockChain()
 			Transaction t(i.data());
 			if (bm || transactionMatch(filter, t))
 			{
-				QString s = t.receiveAddress ?
+				QString s = t.receiveAddress() ?
 					QString("    %2 %5> %3: %1 [%4]")
-						.arg(formatBalance(t.value).c_str())
+						.arg(formatBalance(t.value()).c_str())
 						.arg(render(t.safeSender()))
-						.arg(render(t.receiveAddress))
-						.arg((unsigned)t.nonce)
-						.arg(ethereum()->codeAt(t.receiveAddress).size() ? '*' : '-') :
+						.arg(render(t.receiveAddress()))
+						.arg((unsigned)t.nonce())
+						.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
 					QString("    %2 +> %3: %1 [%4]")
-						.arg(formatBalance(t.value).c_str())
+						.arg(formatBalance(t.value()).c_str())
 						.arg(render(t.safeSender()))
-						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce)))))
-						.arg((unsigned)t.nonce);
+						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
+						.arg((unsigned)t.nonce());
 				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
 				auto hba = QByteArray((char const*)h.data(), h.size);
 				txItem->setData(Qt::UserRole, hba);
@@ -1144,26 +1149,26 @@ void Main::on_transactionQueue_currentItemChanged()
 	{
 		Transaction tx(ethereum()->pending()[i]);
 		auto ss = tx.safeSender();
-		h256 th = sha3(rlpList(ss, tx.nonce));
+		h256 th = sha3(rlpList(ss, tx.nonce()));
 		s << "<h3>" << th << "</h3>";
 		s << "From: <b>" << pretty(ss).toStdString() << "</b> " << ss;
 		if (tx.isCreation())
 			s << "<br/>Creates: <b>" << pretty(right160(th)).toStdString() << "</b> " << right160(th);
 		else
-			s << "<br/>To: <b>" << pretty(tx.receiveAddress).toStdString() << "</b> " << tx.receiveAddress;
-		s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
-		s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
-		s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
-		s << "<br/>Gas: <b>" << tx.gas << "</b>";
+			s << "<br/>To: <b>" << pretty(tx.receiveAddress()).toStdString() << "</b> " << tx.receiveAddress();
+		s << "<br/>Value: <b>" << formatBalance(tx.value()) << "</b>";
+		s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
+		s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
+		s << "<br/>Gas: <b>" << tx.gas() << "</b>";
 		if (tx.isCreation())
 		{
-			if (tx.data.size())
-				s << "<h4>Code</h4>" << disassemble(tx.data);
+			if (tx.data().size())
+				s << "<h4>Code</h4>" << disassemble(tx.data());
 		}
 		else
 		{
-			if (tx.data.size())
-				s << dev::memDump(tx.data, 16, true);
+			if (tx.data().size())
+				s << dev::memDump(tx.data(), 16, true);
 		}
 		s << "<hr/>";
 
@@ -1251,31 +1256,31 @@ void Main::on_blocks_currentItemChanged()
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			Transaction tx(block[1][txi].data());
 			auto ss = tx.safeSender();
-			h256 th = sha3(rlpList(ss, tx.nonce));
+			h256 th = sha3(rlpList(ss, tx.nonce()));
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
 			if (tx.isCreation())
 				s << "<br/>Creates: <b>" << pretty(right160(th)).toHtmlEscaped().toStdString() << "</b> " << right160(th);
 			else
-				s << "<br/>To: <b>" << pretty(tx.receiveAddress).toHtmlEscaped().toStdString() << "</b> " << tx.receiveAddress;
-			s << "<br/>Value: <b>" << formatBalance(tx.value) << "</b>";
-			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce << "</b>";
-			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice) << "</b>";
-			s << "<br/>Gas: <b>" << tx.gas << "</b>";
-			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.vrs.v << "</b>";
-			s << "<br/>R: <b>" << hex << nouppercase << tx.vrs.r << "</b>";
-			s << "<br/>S: <b>" << hex << nouppercase << tx.vrs.s << "</b>";
-			s << "<br/>Msg: <b>" << tx.sha3(false) << "</b>";
+				s << "<br/>To: <b>" << pretty(tx.receiveAddress()).toHtmlEscaped().toStdString() << "</b> " << tx.receiveAddress();
+			s << "<br/>Value: <b>" << formatBalance(tx.value()) << "</b>";
+			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
+			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
+			s << "<br/>Gas: <b>" << tx.gas() << "</b>";
+			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << "</b>";
+			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
+			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
+			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
 			if (tx.isCreation())
 			{
-				if (tx.data.size())
-					s << "<h4>Code</h4>" << disassemble(tx.data);
+				if (tx.data().size())
+					s << "<h4>Code</h4>" << disassemble(tx.data());
 			}
 			else
 			{
-				if (tx.data.size())
-					s << dev::memDump(tx.data, 16, true);
+				if (tx.data().size())
+					s << dev::memDump(tx.data(), 16, true);
 			}
 			s << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
@@ -1564,9 +1569,28 @@ void Main::on_data_textChanged()
 		string src = ui->data->toPlainText().toStdString();
 		vector<string> errors;
 		QString lll;
+		QString solidity;
 		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
 		{
 			m_data = fromHex(src);
+		}
+		else if (src.substr(0, 8) == "contract") // improve this heuristic
+		{
+			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
+			try
+			{
+				m_data = dev::solidity::CompilerStack::compile(src, scanner);
+			}
+			catch (dev::Exception const& exception)
+			{
+				ostringstream error;
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
+				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
+			}
+			catch (...)
+			{
+				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
+			}
 		}
 		else
 		{
@@ -1602,7 +1626,7 @@ void Main::on_data_textChanged()
 			for (auto const& i: errors)
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
-		ui->code->setHtml(errs + lll + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
 		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
@@ -1786,14 +1810,9 @@ void Main::on_debug_clicked()
 				Secret s = i.secret();
 				m_executiveState = ethereum()->postState();
 				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
-				Transaction t;
-				t.nonce = m_executiveState.transactionsFrom(dev::toAddress(s));
-				t.value = value();
-				t.gasPrice = gasPrice();
-				t.gas = ui->gas->value();
-				t.data = m_data;
-				t.receiveAddress = isCreation() ? Address() : fromString(ui->destination->currentText());
-				t.sign(s);
+				Transaction t = isCreation() ?
+					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
+					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
 				auto r = t.rlp();
 				populateDebugger(&r);
 				m_currentExecution.reset();
