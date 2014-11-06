@@ -520,7 +520,7 @@ bool State::cull(TransactionQueue& _tq) const
 			try
 			{
 				Transaction t(i.second);
-				if (t.nonce <= transactionsFrom(t.sender()))
+				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -791,7 +791,8 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	ret.shiftBloom<3>(sha3(m_currentBlock.coinbaseAddress.ref()));
+	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
+	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
@@ -1125,7 +1126,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
-	ctrace << toHex(e.t().rlp(true));
+	ctrace << toHex(e.t().rlp());
 #endif
 
 	e.go(e.simpleTrace());
@@ -1153,10 +1154,10 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 	paranoia("after execution commit.", true);
 
-	if (e.t().receiveAddress)
+	if (e.t().receiveAddress())
 	{
 		EnforceRefs r(m_db, true);
-		if (storageRoot(e.t().receiveAddress) && m_db.lookup(storageRoot(e.t().receiveAddress)).empty())
+		if (storageRoot(e.t().receiveAddress()) && m_db.lookup(storageRoot(e.t().receiveAddress())).empty())
 		{
 			cwarn << "TRIE immediately after execution; no node for receiveAddress";
 			BOOST_THROW_EXCEPTION(InvalidTrie());
@@ -1212,31 +1213,28 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 				*o_sub += evm.sub;
 			if (o_ms)
 				o_ms->output = out.toBytes();
-		}
-		catch (OutOfGas const& /*_e*/)
-		{
-			clog(StateChat) << "Out of Gas! Reverting.";
-			revert = true;
+			*_gas = vm.gas();
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			revert = true;
+			*_gas = 0;
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
+			// TODO: use fallback known-safe VM.
 		}
 		catch (std::exception const& _e)
 		{
-			clog(StateChat) << "std::exception in VM: " << _e.what();
+			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
+			// TODO: use fallback known-safe VM.
 		}
 
 		// Write state out only in the case of a non-excepted transaction.
 		if (revert)
 			evm.revert();
-
-		*_gas = vm.gas();
 
 		return !revert;
 	}
@@ -1280,16 +1278,13 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 			o_ms->output = out.toBytes();
 		if (o_sub)
 			*o_sub += evm.sub;
-	}
-	catch (OutOfGas const& /*_e*/)
-	{
-		clog(StateChat) << "Out of Gas! Reverting.";
-		revert = true;
+		*_gas = vm.gas();
 	}
 	catch (VMException const& _e)
 	{
-		clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 		revert = true;
+		*_gas = 0;
 	}
 	catch (Exception const& _e)
 	{
@@ -1315,8 +1310,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		// Set code.
 		if (addressInUse(newAddress))
 			m_cache[newAddress].setCode(out);
-
-	*_gas = vm.gas();
 
 	return newAddress;
 }
@@ -1379,7 +1372,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
+			if ((cache && cache->codeBearing()) || (!cache && r && (h256)r[3] != EmptySHA3))
 			{
 				std::map<u256, u256> mem;
 				std::set<u256> back;
@@ -1408,7 +1401,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				else
 					contout << r[2].toHash<h256>();
 				if (cache && cache->isFreshCode())
-					contout << " $" << cache->code();
+					contout << " $" << toHex(cache->code());
 				else
 					contout << " $" << (cache ? cache->codeHash() : r[3].toHash<h256>());
 

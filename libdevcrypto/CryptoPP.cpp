@@ -25,50 +25,21 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-ECP::Point pp::PointFromPublic(Public const& _p)
-{
-	ECP::Point p;
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pub;
-	pub.AccessGroupParameters().Initialize(pp::secp256k1());
 
-	bytes prefixedKey(pub.GetGroupParameters().GetEncodedElementSize(true));
-	prefixedKey[0] = 0x04;
-	assert(Public::size == prefixedKey.size() - 1);
-	memcpy(&prefixedKey[1], _p.data(), prefixedKey.size() - 1);
-	
-	pub.GetGroupParameters().GetCurve().DecodePoint(p, prefixedKey.data(), prefixedKey.size());
-	return std::move(p);
-}
+/// Integer and Point Conversion:
 
-Integer pp::ExponentFromSecret(Secret const& _s)
-{
-	static_assert(Secret::size == 32, "Secret key must be 32 bytes.");
-	return std::move(Integer(_s.data(), Secret::size));
-}
-
-void pp::PublicFromExponent(Integer const& _e, Public& _p)
-{
-	CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> k;
-	k.AccessGroupParameters().Initialize(secp256k1());
-	k.SetPrivateExponent(_e);
-
-	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> p;
-	p.AccessGroupParameters().Initialize(secp256k1());
-	k.MakePublicKey(p);
-	pp::PublicFromDL_PublicKey_EC(p, _p);
-}
-
-void pp::PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
+void pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
 {
 	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
-	_k.GetGroupParameters().GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
-	
-	static_assert(Public::size == 64, "Public key must be 64 bytes.");
+	secp256k1Params.GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
+
 	assert(Public::size + 1 == _k.GetGroupParameters().GetEncodedElementSize(true));
 	memcpy(_p.data(), &prefixedKey[1], Public::size);
 }
 
-void pp::SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s)
+void pp::exponentToPublic(Integer const& _e, Public& _p)
 {
-	_k.GetPrivateExponent().Encode(_s.data(), Secret::size);
+	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pk;
+	pk.Initialize(secp256k1Params, secp256k1Params.ExponentiateBase(_e));
+	pp::exportPublicKey(pk, _p);
 }

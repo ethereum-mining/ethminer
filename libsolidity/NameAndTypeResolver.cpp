@@ -20,7 +20,6 @@
  * Parser part that determines the declarations corresponding to names and the types of expressions.
  */
 
-#include <cassert>
 #include <libsolidity/NameAndTypeResolver.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Exceptions.h>
@@ -55,6 +54,20 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 		m_currentScope = &m_scopes[function.get()];
 		function->getBody().checkTypeRequirements();
 	}
+	m_currentScope = &m_scopes[nullptr];
+}
+
+Declaration* NameAndTypeResolver::resolveName(ASTString const& _name, Declaration const* _scope) const
+{
+	auto iterator = m_scopes.find(_scope);
+	if (iterator == end(m_scopes))
+		return nullptr;
+	return iterator->second.resolveName(_name, false);
+}
+
+Declaration* NameAndTypeResolver::getNameFromCurrentScope(ASTString const& _name, bool _recursive)
+{
+	return m_currentScope->resolveName(_name, _recursive);
 }
 
 void NameAndTypeResolver::reset()
@@ -63,13 +76,7 @@ void NameAndTypeResolver::reset()
 	m_currentScope = nullptr;
 }
 
-Declaration* NameAndTypeResolver::getNameFromCurrentScope(ASTString const& _name, bool _recursive)
-{
-	return m_currentScope->resolveName(_name, _recursive);
-}
-
-
-DeclarationRegistrationHelper::DeclarationRegistrationHelper(map<ASTNode*, Scope>& _scopes,
+DeclarationRegistrationHelper::DeclarationRegistrationHelper(map<ASTNode const*, Scope>& _scopes,
 															 ASTNode& _astRoot):
 	m_scopes(_scopes), m_currentScope(&m_scopes[nullptr])
 {
@@ -101,12 +108,23 @@ void DeclarationRegistrationHelper::endVisit(StructDefinition&)
 bool DeclarationRegistrationHelper::visit(FunctionDefinition& _function)
 {
 	registerDeclaration(_function, true);
+	m_currentFunction = &_function;
 	return true;
 }
 
 void DeclarationRegistrationHelper::endVisit(FunctionDefinition&)
 {
+	m_currentFunction = nullptr;
 	closeCurrentScope();
+}
+
+void DeclarationRegistrationHelper::endVisit(VariableDefinition& _variableDefinition)
+{
+	// Register the local variables with the function
+	// This does not fit here perfectly, but it saves us another AST visit.
+	if (asserts(m_currentFunction))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Variable definition without function."));
+	m_currentFunction->addLocalVariable(_variableDefinition.getDeclaration());
 }
 
 bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
@@ -115,28 +133,27 @@ bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
 	return true;
 }
 
-void DeclarationRegistrationHelper::endVisit(VariableDeclaration&)
-{
-}
-
 void DeclarationRegistrationHelper::enterNewSubScope(ASTNode& _node)
 {
-	map<ASTNode*, Scope>::iterator iter;
+	map<ASTNode const*, Scope>::iterator iter;
 	bool newlyAdded;
 	tie(iter, newlyAdded) = m_scopes.emplace(&_node, Scope(m_currentScope));
-	assert(newlyAdded);
+	if (asserts(newlyAdded))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to add new scope."));
 	m_currentScope = &iter->second;
 }
 
 void DeclarationRegistrationHelper::closeCurrentScope()
 {
-	assert(m_currentScope);
+	if (asserts(m_currentScope))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Closed non-existing scope."));
 	m_currentScope = m_currentScope->getEnclosingScope();
 }
 
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
-	assert(m_currentScope);
+	if (asserts(m_currentScope))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Declaration registered without scope."));
 	if (!m_currentScope->registerDeclaration(_declaration))
 		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
 												 << errinfo_comment("Identifier already declared."));
@@ -163,7 +180,8 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 
 bool ReferencesResolver::visit(Return& _return)
 {
-	assert(m_returnParameters);
+	if (asserts(m_returnParameters))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Return parameters not set."));
 	_return.setFunctionReturnParameters(*m_returnParameters);
 	return true;
 }
