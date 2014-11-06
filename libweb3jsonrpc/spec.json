@@ -27,6 +27,7 @@
             { "method": "eth_uncleByHash", "params": ["", 0], "order": [], "returns": {}},
             { "method": "eth_uncleByNumber", "params": [0, 0], "order": [], "returns": {}},
 
+            { "method": "eth_lll", "params": [""], "order": [], "returns": ""},
             { "method": "eth_compile", "params": [""], "order": [], "returns": ""},
 
             { "method": "eth_newFilter", "params": [{}], "order": [], "returns": 0},

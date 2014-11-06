@@ -521,6 +521,11 @@ std::string WebThreeStubServer::eth_compile(string const& _s)
 	return toJS(dev::eth::compileLLL(_s));
 }
 
+std::string WebThreeStubServer::eth_lll(string const& _s)
+{
+	return toJS(dev::eth::compileLLL(_s));
+}
+
 int WebThreeStubServer::eth_number()
 {
 	return client() ? client()->number() + 1 : 0;
