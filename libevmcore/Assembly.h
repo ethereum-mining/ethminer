@@ -24,7 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <libdevcore/Common.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include "Exceptions.h"
 
 namespace dev

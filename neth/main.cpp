@@ -30,7 +30,7 @@
 #include <jsonrpc/connectors/httpserver.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
