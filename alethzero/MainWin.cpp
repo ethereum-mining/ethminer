@@ -50,6 +50,7 @@
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
+#include "OurWebThreeStubServer.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
@@ -154,7 +155,8 @@ Main::Main(QWidget *parent) :
 
 	// w3stubserver, on dealloc, deletes m_qwebConnector
 	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
-	m_server.reset(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server.reset(new OurWebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
@@ -205,12 +207,28 @@ Main::~Main()
 	writeSettings();
 }
 
+void Main::on_newIdentity_triggered()
+{
+	KeyPair kp = KeyPair::create();
+	m_myIdentities.append(kp);
+	m_server->setIdentities(keysAsVector(owned()));
+	refreshWhisper();
+}
+
+void Main::refreshWhisper()
+{
+	ui->shhFrom->clear();
+	for (auto i: m_server->ids())
+		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
+}
+
 void Main::addNewId(QString _ids)
 {
 	Secret _id = jsToSecret(_ids.toStdString());
 	KeyPair kp(_id);
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
+	refreshWhisper();
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const
@@ -2174,20 +2192,6 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
-}
-
-void Main::on_newIdentity_triggered()
-{
-	KeyPair kp = KeyPair::create();
-	m_myIdentities.append(kp);
-	m_server->setIdentities(keysAsVector(owned()));
-}
-
-void Main::refreshWhisper()
-{
-	ui->shhFrom->clear();
-	for (auto i: m_server ->ids())
-		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
 }
 
 void Main::refreshWhispers()

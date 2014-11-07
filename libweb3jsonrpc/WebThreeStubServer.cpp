@@ -22,7 +22,7 @@
  */
 
 #include "WebThreeStubServer.h"
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
@@ -269,7 +269,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
 	res["topic"] = toJS(_e.topic());
-	res["payload"] = asString(_m.payload());
+	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
@@ -452,7 +452,7 @@ std::string WebThreeStubServer::get(std::string const& _name, std::string const&
 Json::Value WebThreeStubServer::getMessages(int const& _id)
 {
 	if (!client())
-		return  Json::Value();
+		return Json::Value();
 	return toJson(client()->messages(_id));
 }
 
@@ -509,6 +509,7 @@ std::string WebThreeStubServer::newGroup(std::string const& _id, std::string con
 
 std::string WebThreeStubServer::newIdentity()
 {
+	cnote << this << m_ids;
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.secret();
 	return toJS(kp.pub());
@@ -531,6 +532,7 @@ int WebThreeStubServer::peerCount()
 
 bool WebThreeStubServer::post(Json::Value const& _json)
 {
+	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
 	Secret from;
 
@@ -616,7 +618,7 @@ Json::Value WebThreeStubServer::shhChanged(int const& _id)
 			}
 			else
 				m = e.open();
-			ret.append(toJson(h,e,m));
+			ret.append(toJson(h, e, m));
 		}
 	
 	return ret;

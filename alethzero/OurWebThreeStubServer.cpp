@@ -14,31 +14,23 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
+/** @file OurWebThreeStubServer.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "OurWebThreeStubServer.h"
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
 
-#include <libdevcore/Exceptions.h>
+OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+	WebThreeStubServer(_conn, _web3, _accounts)
+{}
 
-namespace dev
+std::string OurWebThreeStubServer::newIdentity()
 {
-namespace eth
-{
-
-/// Compile a Low-level Lisp-like Language program into EVM-code.
-class CompilerException: public dev::Exception {};
-class InvalidOperation: public CompilerException {};
-class IntegerOutOfRange: public CompilerException {};
-class EmptyList: public CompilerException {};
-class DataNotExecutable: public CompilerException {};
-class IncorrectParameterCount: public CompilerException {};
-class InvalidName: public CompilerException {};
-class InvalidMacroArgs: public CompilerException {};
-class InvalidLiteral: public CompilerException {};
-class BareSymbol: public CompilerException {};
-
-}
+	dev::KeyPair kp = dev::KeyPair::create();
+	emit onNewId(QString::fromStdString(toJS(kp.sec())));
+	return toJS(kp.pub());
 }
