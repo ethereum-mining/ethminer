@@ -134,7 +134,7 @@ bool crypto::verify(Signature const& _signature, bytesConstRef _message)
 
 bool crypto::verify(Public const& _p, Signature const& _sig, bytesConstRef _message, bool _hashed)
 {
-	static const size_t derMaxEncodingLength = 72;
+	static const size_t c_derMaxEncodingLength = 72;
 	if (_hashed)
 	{
 		assert(_message.size() == 32);
