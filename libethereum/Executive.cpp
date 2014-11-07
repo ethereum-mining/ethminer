@@ -40,7 +40,7 @@ Executive::~Executive()
 
 u256 Executive::gasUsed() const
 {
-	return m_t.gas - m_endGas;
+	return m_t.gas() - m_endGas;
 }
 
 bool Executive::setup(bytesConstRef _rlp)
@@ -52,29 +52,29 @@ bool Executive::setup(bytesConstRef _rlp)
 
 	// Avoid invalid transactions.
 	auto nonceReq = m_s.transactionsFrom(m_sender);
-	if (m_t.nonce != nonceReq)
+	if (m_t.nonce() != nonceReq)
 	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce;
-		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce));
+		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce()));
 	}
 
 	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
-	if (m_t.gasPrice < m_s.m_currentBlock.minGasPrice)
+	if (m_t.gasPrice() < m_s.m_currentBlock.minGasPrice)
 	{
-		clog(StateDetail) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice;
+		clog(StateDetail) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice();
 		BOOST_THROW_EXCEPTION(GasPriceTooLow());
 	}
 
 	// Check gas cost is enough.
-	u256 gasCost = m_t.data.size() * c_txDataGas + c_txGas;
+	u256 gasCost = m_t.data().size() * c_txDataGas + c_txGas;
 
-	if (m_t.gas < gasCost)
+	if (m_t.gas() < gasCost)
 	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas;
+		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas();
 		BOOST_THROW_EXCEPTION(OutOfGas());
 	}
 
-	u256 cost = m_t.value + m_t.gas * m_t.gasPrice;
+	u256 cost = m_t.value() + m_t.gas() * m_t.gasPrice();
 
 	// Avoid unaffordable transactions.
 	if (m_s.balance(m_sender) < cost)
@@ -84,9 +84,9 @@ bool Executive::setup(bytesConstRef _rlp)
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
-	if (startGasUsed + m_t.gas > m_s.m_currentBlock.gasLimit)
+	if (startGasUsed + m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
-		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas;
+		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached());
 	}
 
@@ -94,21 +94,21 @@ bool Executive::setup(bytesConstRef _rlp)
 	m_s.noteSending(m_sender);
 
 	// Pay...
-	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas << "gas at" << formatBalance(m_t.gasPrice) << ")";
+	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
 	m_s.subBalance(m_sender, cost);
 
 	if (m_ms)
 	{
 		m_ms->from = m_sender;
-		m_ms->to = m_t.receiveAddress;
-		m_ms->value = m_t.value;
-		m_ms->input = m_t.data;
+		m_ms->to = m_t.receiveAddress();
+		m_ms->value = m_t.value();
+		m_ms->input = m_t.data();
 	}
 
 	if (m_t.isCreation())
-		return create(m_sender, m_t.value, m_t.gasPrice, m_t.gas - gasCost, &m_t.data, m_sender);
+		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - gasCost, &m_t.data(), m_sender);
 	else
-		return call(m_t.receiveAddress, m_sender, m_t.value, m_t.gasPrice, bytesConstRef(&m_t.data), m_t.gas - gasCost, m_sender);
+		return call(m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - gasCost, m_sender);
 }
 
 bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
@@ -177,22 +177,17 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
 			if (m_ext)
-				m_endGas += min((m_t.gas - m_endGas) / 2, m_ext->sub.refunds);
+				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
 		{
 			return false;
 		}
-		catch (OutOfGas const& /*_e*/)
-		{
-			clog(StateChat) << "Out of Gas! Reverting.";
-			revert = true;
-		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
-			m_endGas = m_vm->gas();
+			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
+			m_endGas = 0;//m_vm->gas();
 			revert = true;
 		}
 		catch (Exception const& _e)
@@ -234,9 +229,9 @@ void Executive::finalize(OnOpFunc const&)
 		m_s.m_cache[m_newAddress].setCode(m_out);
 
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice);
+	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
 
-	u256 feesEarned = (m_t.gas - m_endGas) * m_t.gasPrice;
+	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 

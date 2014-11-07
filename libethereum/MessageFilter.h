@@ -25,6 +25,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include "PastMessage.h"
+#include "TransactionReceipt.h"
 
 namespace dev
 {
@@ -66,6 +67,39 @@ private:
 	std::set<Address> m_to;
 	std::set<std::pair<Address, u256>> m_stateAltered;
 	std::set<Address> m_altered;
+	int m_earliest = 0;
+	int m_latest = -1;
+	unsigned m_max;
+	unsigned m_skip;
+};
+
+class LogFilter
+{
+public:
+	LogFilter(int _earliest = 0, int _latest = -1, unsigned _max = 10, unsigned _skip = 0): m_earliest(_earliest), m_latest(_latest), m_max(_max), m_skip(_skip) {}
+
+	void streamRLP(RLPStream& _s) const;
+	h256 sha3() const;
+
+	int earliest() const { return m_earliest; }
+	int latest() const { return m_latest; }
+	unsigned max() const { return m_max; }
+	unsigned skip() const { return m_skip; }
+	bool matches(LogBloom _bloom) const;
+	bool matches(State const& _s, unsigned _i) const;
+	LogEntries matches(TransactionReceipt const& _r) const;
+
+	LogFilter address(Address _a) { m_addresses.insert(_a); return *this; }
+	LogFilter from(Address _a) { return topic(u256((u160)_a) + 1); }
+	LogFilter topic(h256 const& _t) { m_topics.insert(_t); return *this; }
+	LogFilter withMax(unsigned _m) { m_max = _m; return *this; }
+	LogFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
+	LogFilter withEarliest(int _e) { m_earliest = _e; return *this; }
+	LogFilter withLatest(int _e) { m_latest = _e; return *this; }
+
+private:
+	AddressSet m_addresses;
+	h256Set m_topics;
 	int m_earliest = 0;
 	int m_latest = -1;
 	unsigned m_max;

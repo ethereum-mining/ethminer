@@ -6,7 +6,6 @@
             { "method": "mining", "params": [], "order": [], "returns" : false },
             { "method": "setMining", "params": [false], "order" : [], "returns" : true },
             { "method": "gasPrice", "params": [], "order": [], "returns" : "" },
-            { "method": "account", "params": [], "order": [], "returns" : "" },
             { "method": "accounts", "params": [], "order": [], "returns" : [] },
             { "method": "peerCount", "params": [], "order": [], "returns" : 0 },
             { "method": "defaultBlock", "params": [], "order": [], "returns" : 0},

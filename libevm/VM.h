@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"

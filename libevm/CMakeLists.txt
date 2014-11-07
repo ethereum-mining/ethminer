@@ -17,7 +17,7 @@ include_directories(..)
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
-target_link_libraries(${EXECUTABLE} evmface)
+target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
