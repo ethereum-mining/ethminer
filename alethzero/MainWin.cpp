@@ -50,6 +50,7 @@
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "MainWin.h"
+#include "OurWebThreeStubServer.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
@@ -154,7 +155,8 @@ Main::Main(QWidget *parent) :
 
 	// w3stubserver, on dealloc, deletes m_qwebConnector
 	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
-	m_server.reset(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server.reset(new OurWebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
@@ -205,12 +207,28 @@ Main::~Main()
 	writeSettings();
 }
 
+void Main::on_newIdentity_triggered()
+{
+	KeyPair kp = KeyPair::create();
+	m_myIdentities.append(kp);
+	m_server->setIdentities(keysAsVector(owned()));
+	refreshWhisper();
+}
+
+void Main::refreshWhisper()
+{
+	ui->shhFrom->clear();
+	for (auto i: m_server->ids())
+		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
+}
+
 void Main::addNewId(QString _ids)
 {
 	Secret _id = jsToSecret(_ids.toStdString());
 	KeyPair kp(_id);
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
+	refreshWhisper();
 }
 
 dev::p2p::NetworkPreferences Main::netPrefs() const
@@ -1243,6 +1261,13 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
+			for (auto u: block[2])
+			{
+				BlockInfo uncle = BlockInfo::fromHeader(u.data());
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Hash: <b>" << uncle.hash << "</b>";
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Parent: <b>" << uncle.parentHash << "</b>";
+				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Number: <b>" << uncle.number << "</b>";
+			}
 			if (info.parentHash)
 				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			else
@@ -1268,7 +1293,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
 			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
 			s << "<br/>Gas: <b>" << tx.gas() << "</b>";
-			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << "</b>";
+			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << " + 27</b>";
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
@@ -2167,20 +2192,6 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
-}
-
-void Main::on_newIdentity_triggered()
-{
-	KeyPair kp = KeyPair::create();
-	m_myIdentities.append(kp);
-	m_server->setIdentities(keysAsVector(owned()));
-}
-
-void Main::refreshWhisper()
-{
-	ui->shhFrom->clear();
-	for (auto i: m_server ->ids())
-		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
 }
 
 void Main::refreshWhispers()

@@ -390,7 +390,7 @@ class Continue: public Statement
 public:
 	Continue(Location const& _location): Statement(_location) {}
 	virtual void accept(ASTVisitor& _visitor) override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements() override {}
 };
 
 class Break: public Statement
@@ -398,7 +398,7 @@ class Break: public Statement
 public:
 	Break(Location const& _location): Statement(_location) {}
 	virtual void accept(ASTVisitor& _visitor) override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements() override {}
 };
 
 class Return: public Statement
@@ -565,12 +565,15 @@ public:
 	Expression& getLeftExpression() const { return *m_left; }
 	Expression& getRightExpression() const { return *m_right; }
 	Token::Value getOperator() const { return m_operator; }
+	Type const& getCommonType() const { return *m_commonType; }
 
 private:
 	ASTPointer<Expression> m_left;
 	Token::Value m_operator;
 	ASTPointer<Expression> m_right;
 
+	/// The common type that is used for the operation, not necessarily the result type (e.g. for
+	/// comparisons, this is always bool).
 	std::shared_ptr<Type const> m_commonType;
 };
 
