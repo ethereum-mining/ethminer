@@ -9,20 +9,21 @@
 // Extended BEDMAS precedence order
 int precedence(Node tok) {
     std::string v = tok.val;
-    if (v == "!" || v == "not") return 0;
-    else if (v=="^" || v == "**") return 1;
-	else if (v=="*" || v=="/" || v=="@/" || v=="%" || v=="@%") return 2;
-    else if (v=="+" || v=="-") return 3;
-    else if (v=="<" || v==">" || v=="<=" || v==">=") return 4;
-    else if (v=="@<" || v=="@>" || v=="@<=" || v=="@>=") return 4;
-    else if (v=="&" || v=="|" || v=="xor" || v=="==" || v == "!=") return 5;
-    else if (v=="&&" || v=="and") return 6;    
-    else if (v=="||" || v=="or") return 7;
-    else if (v==":") return 8;
+    if (v == ".") return -1;
+    else if (v == "!" || v == "not") return 1;
+    else if (v=="^" || v == "**") return 2;
+	else if (v=="*" || v=="/" || v=="@/" || v=="%" || v=="@%") return 3;
+    else if (v=="+" || v=="-") return 4;
+    else if (v=="<" || v==">" || v=="<=" || v==">=") return 5;
+    else if (v=="@<" || v=="@>" || v=="@<=" || v=="@>=") return 5;
+    else if (v=="&" || v=="|" || v=="xor" || v=="==" || v == "!=") return 6;
+    else if (v=="&&" || v=="and") return 7;    
+    else if (v=="||" || v=="or") return 8;
+    else if (v==":") return 9;
     else if (v=="=") return 10;
     else if (v=="+=" || v=="-=" || v=="*=" || v=="/=" || v=="%=") return 10;
     else if (v=="@/=" || v=="@%=") return 10;
-    else return -1;
+    else return 0;
 }
 
 // Token classification for shunting-yard purposes
@@ -32,8 +33,9 @@ int toktype(Node tok) {
     if (v == "(" || v == "[" || v == "{") return LPAREN;
     else if (v == ")" || v == "]" || v == "}") return RPAREN;
     else if (v == ",") return COMMA;
-    else if (v == "!" || v == "not" || v == "neg") return UNARY_OP;
-    else if (precedence(tok) >= 0) return BINARY_OP;
+    else if (v == "!" || v == "~" || v == "not") return UNARY_OP;
+    else if (precedence(tok) > 0) return BINARY_OP;
+    else if (precedence(tok) < 0) return TOKEN_SPLITTER;
     if (tok.val[0] != '"' && tok.val[0] != '\'') {
 		for (unsigned i = 0; i < tok.val.length(); i++) {
             if (chartype(tok.val[i]) == SYMB) {
@@ -68,6 +70,10 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
         }
         // Left parens go on stack and output queue
         else if (toktyp == LPAREN) {
+            while (stack.size() && toktype(stack.back()) == TOKEN_SPLITTER) {
+                oq.push_back(stack.back());
+                stack.pop_back();
+            }
             if (prevtyp != ALPHANUM && prevtyp != RPAREN) {
                 oq.push_back(token("id", tok.metadata));
             }
@@ -88,16 +94,26 @@ std::vector<Node> shuntingYard(std::vector<Node> tokens) {
         else if (toktyp == UNARY_OP) {
             stack.push_back(tok);
         }
+        // If token splitter, just push it to the stack 
+        else if (toktyp == TOKEN_SPLITTER) {
+            while (stack.size() && toktype(stack.back()) == TOKEN_SPLITTER) {
+                oq.push_back(stack.back());
+                stack.pop_back();
+            }
+            stack.push_back(tok);
+        }
         // If binary op, keep popping from stack while higher bedmas precedence
         else if (toktyp == BINARY_OP) {
             if (tok.val == "-" && prevtyp != ALPHANUM && prevtyp != RPAREN) {
-                stack.push_back(token("neg", tok.metadata));
+                stack.push_back(tok);
+                oq.push_back(token("0", tok.metadata));
             }
             else {
                 int prec = precedence(tok);
                 while (stack.size() 
                       && (toktype(stack.back()) == BINARY_OP 
-                          || toktype(stack.back()) == UNARY_OP)
+                          || toktype(stack.back()) == UNARY_OP
+                          || toktype(stack.back()) == TOKEN_SPLITTER)
                       && precedence(stack.back()) <= prec) {
                     oq.push_back(stack.back());
                     stack.pop_back();
@@ -133,9 +149,9 @@ Node treefy(std::vector<Node> stream) {
         int typ = toktype(tok);
         // If unary, take node off end of oq and wrap it with the operator
         // If binary, do the same with two nodes
-        if (typ == UNARY_OP || typ == BINARY_OP) {
+        if (typ == UNARY_OP || typ == BINARY_OP || typ == TOKEN_SPLITTER) {
             std::vector<Node> args;
-            int rounds = (typ == BINARY_OP) ? 2 : 1;
+            int rounds = (typ == UNARY_OP) ? 1 : 2;
             for (int i = 0; i < rounds; i++) {
                 if (oq.size() == 0) {
                     err("Line malformed, not enough args for "+tok.val,
@@ -245,7 +261,8 @@ int spaceCount(std::string s) {
 // Is this a command that takes an argument on the same line?
 bool bodied(std::string tok) {
     return tok == "if" || tok == "elif" || tok == "while"
-        || tok == "with" || tok == "def";
+        || tok == "with" || tok == "def" || tok == "extern"
+        || tok == "data";
 }
 
 // Is this a command that takes an argument as a child block?
