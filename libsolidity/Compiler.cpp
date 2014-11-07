@@ -252,17 +252,15 @@ bool Compiler::visit(WhileStatement& _whileStatement)
 
 bool Compiler::visit(Continue&)
 {
-	if (asserts(!m_continueTags.empty()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Jump tag not available for \"continue\"."));
-	m_context.appendJumpTo(m_continueTags.back());
+	if (!m_continueTags.empty())
+		m_context.appendJumpTo(m_continueTags.back());
 	return false;
 }
 
 bool Compiler::visit(Break&)
 {
-	if (asserts(!m_breakTags.empty()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Jump tag not available for \"break\"."));
-	m_context.appendJumpTo(m_breakTags.back());
+	if (!m_breakTags.empty())
+		m_context.appendJumpTo(m_breakTags.back());
 	return false;
 }
 
@@ -273,7 +271,7 @@ bool Compiler::visit(Return& _return)
 	{
 		ExpressionCompiler::compileExpression(m_context, *expression);
 		VariableDeclaration const& firstVariable = *_return.getFunctionReturnParameters().getParameters().front();
-		ExpressionCompiler::cleanHigherOrderBitsIfNeeded(*expression->getType(), *firstVariable.getType());
+		ExpressionCompiler::appendTypeConversion(m_context, *expression->getType(), *firstVariable.getType());
 		int stackPosition = m_context.getStackPositionOfVariable(firstVariable);
 		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}
@@ -286,8 +284,9 @@ bool Compiler::visit(VariableDefinition& _variableDefinition)
 	if (Expression* expression = _variableDefinition.getExpression())
 	{
 		ExpressionCompiler::compileExpression(m_context, *expression);
-		ExpressionCompiler::cleanHigherOrderBitsIfNeeded(*expression->getType(),
-														 *_variableDefinition.getDeclaration().getType());
+		ExpressionCompiler::appendTypeConversion(m_context,
+												 *expression->getType(),
+												 *_variableDefinition.getDeclaration().getType());
 		int stackPosition = m_context.getStackPositionOfVariable(_variableDefinition.getDeclaration());
 		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}

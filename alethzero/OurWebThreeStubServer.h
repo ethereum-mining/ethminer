@@ -14,31 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
+/** @file OurWebThreeStubServer.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include <QtCore/QObject>
+#include <libdevcore/CommonJS.h>
+#include <libdevcrypto/Common.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 
-#include <libdevcore/Exceptions.h>
-
-namespace dev
+class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 {
-namespace eth
-{
+	Q_OBJECT
 
-/// Compile a Low-level Lisp-like Language program into EVM-code.
-class CompilerException: public dev::Exception {};
-class InvalidOperation: public CompilerException {};
-class IntegerOutOfRange: public CompilerException {};
-class EmptyList: public CompilerException {};
-class DataNotExecutable: public CompilerException {};
-class IncorrectParameterCount: public CompilerException {};
-class InvalidName: public CompilerException {};
-class InvalidMacroArgs: public CompilerException {};
-class InvalidLiteral: public CompilerException {};
-class BareSymbol: public CompilerException {};
+public:
+	OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 
-}
-}
+	virtual std::string newIdentity() override;
+
+signals:
+	void onNewId(QString _s);
+};

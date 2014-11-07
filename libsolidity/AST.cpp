@@ -283,14 +283,6 @@ void WhileStatement::checkTypeRequirements()
 	m_body->checkTypeRequirements();
 }
 
-void Continue::checkTypeRequirements()
-{
-}
-
-void Break::checkTypeRequirements()
-{
-}
-
 void Return::checkTypeRequirements()
 {
 	if (!m_expression)
@@ -326,8 +318,6 @@ void VariableDefinition::checkTypeRequirements()
 
 void Assignment::checkTypeRequirements()
 {
-	//@todo lefthandside actually has to be assignable
-	// add a feature to the type system to check that
 	m_leftHandSide->checkTypeRequirements();
 	if (!m_leftHandSide->isLvalue())
 		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
@@ -347,9 +337,11 @@ void ExpressionStatement::checkTypeRequirements()
 void Expression::expectType(Type const& _expectedType)
 {
 	checkTypeRequirements();
-	if (!getType()->isImplicitlyConvertibleTo(_expectedType))
-		BOOST_THROW_EXCEPTION(createTypeError("Type not implicitly convertible to expected type."));
-	//@todo provide more information to the exception
+	Type const& type = *getType();
+	if (!type.isImplicitlyConvertibleTo(_expectedType))
+		BOOST_THROW_EXCEPTION(createTypeError("Type " + type.toString() +
+											  " not implicitly convertible to expected type "
+											  + _expectedType.toString() + "."));
 }
 
 void UnaryOperation::checkTypeRequirements()
@@ -366,21 +358,25 @@ void UnaryOperation::checkTypeRequirements()
 
 void BinaryOperation::checkTypeRequirements()
 {
-	m_right->checkTypeRequirements();
 	m_left->checkTypeRequirements();
+	m_right->checkTypeRequirements();
 	if (m_right->getType()->isImplicitlyConvertibleTo(*m_left->getType()))
 		m_commonType = m_left->getType();
 	else if (m_left->getType()->isImplicitlyConvertibleTo(*m_right->getType()))
 		m_commonType = m_right->getType();
 	else
-		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation."));
+		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation: " +
+											  m_left->getType()->toString() + " vs. " +
+											  m_right->getType()->toString()));
 	if (Token::isCompareOp(m_operator))
 		m_type = make_shared<BoolType>();
 	else
 	{
 		m_type = m_commonType;
 		if (!m_commonType->acceptsBinaryOperator(m_operator))
-			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
+			BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_operator)) +
+												  " not compatible with type " +
+												  m_commonType->toString()));
 	}
 }
 
@@ -446,14 +442,6 @@ void Identifier::checkTypeRequirements()
 	if (asserts(m_referencedDeclaration))
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Identifier not resolved."));
 
-	//@todo these dynamic casts here are not really nice...
-	// is i useful to have an AST visitor here?
-	// or can this already be done in NameAndTypeResolver?
-	// the only problem we get there is that in
-	// var x;
-	// x = 2;
-	// var y = x;
-	// the type of x is not yet determined.
 	VariableDeclaration* variable = dynamic_cast<VariableDeclaration*>(m_referencedDeclaration);
 	if (variable)
 	{
@@ -497,6 +485,8 @@ void ElementaryTypeNameExpression::checkTypeRequirements()
 void Literal::checkTypeRequirements()
 {
 	m_type = Type::forLiteral(*this);
+	if (!m_type)
+		BOOST_THROW_EXCEPTION(createTypeError("Literal value too large."));
 }
 
 }
