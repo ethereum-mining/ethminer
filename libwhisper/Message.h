@@ -39,6 +39,12 @@ namespace shh
 
 class Message;
 
+enum IncludeNonce
+{
+	WithoutNonce = 0,
+	WithNonce = 1
+};
+
 class Envelope
 {
 	friend class Message;
@@ -56,14 +62,13 @@ public:
 
 	operator bool() const { return !!m_expiry; }
 
-	void streamRLP(RLPStream& _s, bool _withNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
-	h256 sha3() const { RLPStream s; streamRLP(s, true); return dev::sha3(s.out()); }
-	h256 sha3NoNonce() const { RLPStream s; streamRLP(s, false); return dev::sha3(s.out()); }
+	void streamRLP(RLPStream& _s, IncludeNonce _withNonce = WithNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
+	h256 sha3(IncludeNonce _withNonce = WithNonce) const { RLPStream s; streamRLP(s, _withNonce); return dev::sha3(s.out()); }
 
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
 	unsigned ttl() const { return m_ttl; }
-	Topic const& topic() const { return m_topic; }
+	Topic const& topics() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
 	Message open(Secret const& _s = Secret()) const;

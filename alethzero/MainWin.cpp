@@ -1374,7 +1374,7 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 		debugFinished();
 		vector<WorldState const*> levels;
 		m_codes.clear();
-		bytesConstRef lastExtCode;
+		bytes lastExtCode;
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
@@ -1387,7 +1387,7 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 				lastExtCode = ext.code;
 				lastHash = sha3(lastExtCode);
 				if (!m_codes.count(lastHash))
-					m_codes[lastHash] = ext.code.toBytes();
+					m_codes[lastHash] = ext.code;
 			}
 			if (ext.data != lastData)
 			{
@@ -2218,7 +2218,7 @@ void Main::refreshWhispers()
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topics()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
