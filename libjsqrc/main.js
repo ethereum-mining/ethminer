@@ -2,19 +2,19 @@
     This file is part of ethereum.js.
 
     ethereum.js is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
+    it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     ethereum.js is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
+    You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ethereum.js
+/** @file main.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
  * @date 2014
@@ -153,15 +153,15 @@
                     return {call: call, args: args};
                 }).then(function (request) {
                     return new Promise(function (resolve, reject) {
-                        web3.provider.send(request, function (result) {
-                            if (result || typeof result === "boolean") {
+                        web3.provider.send(request, function (err, result) {
+                            if (!err) {
                                 resolve(result);
                                 return;
                             } 
-                            reject(result);
+                            reject(err);
                         });
                     });
-                }).catch(function( err) {
+                }).catch(function(err) {
                     console.error(err);
                 });
             };
@@ -173,8 +173,12 @@
             var proto = {};
             proto.get = function () {
                 return new Promise(function(resolve, reject) {
-                    web3.provider.send({call: property.getter}, function(result) {
-                        resolve(result);
+                    web3.provider.send({call: property.getter}, function(err, result) {
+                        if (!err) {
+                            resolve(result);
+                            return;
+                        }
+                        reject(err);
                     });
                 });
             };
@@ -182,12 +186,12 @@
                 proto.set = function (val) {
                     return flattenPromise([val]).then(function (args) {
                         return new Promise(function (resolve) {
-                            web3.provider.send({call: property.setter, args: args}, function (result) {
-                                if (result) {
+                            web3.provider.send({call: property.setter, args: args}, function (err, result) {
+                                if (!err) {
                                     resolve(result);
-                                } else {
-                                    reject(result);
+                                    return;
                                 }
+                                reject(err);
                             });
                         });
                     }).catch(function (err) {
@@ -218,7 +222,7 @@
             var str = "";
             var i = 0, l = hex.length;
             if (hex.substring(0, 2) == '0x')
-            	i = 2;
+                i = 2;
             for(; i < l; i+=2) {
                 var code = hex.charCodeAt(i)
                 if(code == 0) {
@@ -240,7 +244,7 @@
             var hex = this.toHex(str);
             while(hex.length < pad*2)
                 hex += "00";
-            return "0x" + hex
+            return "0x" + hex;
         },
 
         eth: {
@@ -442,7 +446,7 @@
         if(data._id) {
             var cb = web3._callbacks[data._id];
             if (cb) {
-                cb.call(this, data.data)
+                cb.call(this, data.error, data.data);
                 delete web3._callbacks[data._id];
             }
         }
