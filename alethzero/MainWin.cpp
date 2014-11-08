@@ -610,6 +610,7 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 		ethereum()->setAddress(m_myKeys.back().address());
+		m_server->setAccounts(keysAsVector(m_myKeys));
 	}
 
 	{
@@ -1821,6 +1822,7 @@ void Main::on_send_clicked()
 void Main::keysChanged()
 {
 	onBalancesChange();
+	m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_debug_clicked()
