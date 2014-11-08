@@ -69,7 +69,7 @@ public:
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
-	unsigned installWatch(TopicMask const& _mask) { return installWatch(TopicFilter(_mask)); }
+	unsigned installWatch(TopicMask const& _mask);
 	virtual unsigned installWatch(TopicFilter const& _filter) = 0;
 	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
