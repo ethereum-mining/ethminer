@@ -59,7 +59,9 @@ enum WhisperPacket
 	PacketCount
 };
 
-using Topic = h256;
+using TopicPart = uint32_t;
+
+using Topic = std::vector<TopicPart>;
 
 class BuildTopic
 {
@@ -73,7 +75,7 @@ public:
 	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
 
 	operator Topic() const { return toTopic(); }
-	Topic toTopic() const { Topic ret; for (auto i = 0; i < 32; ++i) ret[i] = m_parts[i * m_parts.size() / 32][i]; return ret; }
+	Topic toTopic() const;
 
 protected:
 	BuildTopic& shiftBytes(bytes const& _b);
@@ -81,7 +83,7 @@ protected:
 	h256s m_parts;
 };
 
-using TopicMask = std::pair<Topic, Topic>;
+using TopicMask = std::vector<std::pair<TopicPart, TopicPart>>;
 using TopicMasks = std::vector<TopicMask>;
 
 class TopicFilter

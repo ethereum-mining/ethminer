@@ -268,7 +268,8 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
-	res["topic"] = toJS(_e.topic());
+	for (auto const& t: _e.topics())
+		res["topics"].append(toJS((u256)t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
