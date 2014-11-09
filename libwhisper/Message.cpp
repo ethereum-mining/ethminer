@@ -97,7 +97,7 @@ Message Envelope::open(Secret const& _s) const
 unsigned Envelope::workProved() const
 {
 	h256 d[2];
-	d[0] = sha3NoNonce();
+	d[0] = sha3(WithoutNonce);
 	d[1] = m_nonce;
 	return dev::sha3(bytesConstRef(d[0].data(), 64)).firstBitSet();
 }
@@ -106,7 +106,7 @@ void Envelope::proveWork(unsigned _ms)
 {
 	// PoW
 	h256 d[2];
-	d[0] = sha3NoNonce();
+	d[0] = sha3(WithoutNonce);
 	uint32_t& n = *(uint32_t*)&(d[1][28]);
 	unsigned bestBitSet = 0;
 	bytesConstRef chuck(d[0].data(), 64);
