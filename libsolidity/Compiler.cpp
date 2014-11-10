@@ -21,6 +21,8 @@
  */
 
 #include <algorithm>
+#include <libevmcore/Instruction.h>
+#include <libevmcore/Assembly.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Compiler.h>
 #include <libsolidity/ExpressionCompiler.h>
@@ -30,11 +32,11 @@ using namespace std;
 namespace dev {
 namespace solidity {
 
-bytes Compiler::compile(ContractDefinition& _contract)
+bytes Compiler::compile(ContractDefinition& _contract, bool _optimize)
 {
 	Compiler compiler;
 	compiler.compileContract(_contract);
-	return compiler.m_context.getAssembledBytecode();
+	return compiler.m_context.getAssembledBytecode(_optimize);
 }
 
 void Compiler::compileContract(ContractDefinition& _contract)
@@ -42,10 +44,12 @@ void Compiler::compileContract(ContractDefinition& _contract)
 	m_context = CompilerContext(); // clear it just in case
 
 	//@todo constructor
-	//@todo register state variables
 
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
 		m_context.addFunction(*function);
+	//@todo sort them?
+	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
+		m_context.addStateVariable(*variable);
 
 	appendFunctionSelector(_contract.getDefinedFunctions());
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
@@ -89,10 +93,11 @@ void Compiler::appendFunctionSelector(vector<ASTPointer<FunctionDefinition>> con
 	eth::AssemblyItem jumpTableStart = m_context.pushNewTag();
 	m_context << eth::Instruction::ADD << eth::Instruction::JUMP;
 
-	// jump table @todo it could be that the optimizer destroys this
-	m_context << jumpTableStart;
+	// jump table, tell the optimizer not to remove the JUMPDESTs
+	m_context << eth::AssemblyItem(eth::NoOptimizeBegin) << jumpTableStart;
 	for (pair<string, pair<FunctionDefinition const*, eth::AssemblyItem>> const& f: publicFunctions)
 		m_context.appendJumpTo(f.second.second) << eth::Instruction::JUMPDEST;
+	m_context << eth::AssemblyItem(eth::NoOptimizeEnd);
 
 	m_context << returnTag << eth::Instruction::STOP;
 
@@ -122,7 +127,7 @@ void Compiler::appendCalldataUnpacker(FunctionDefinition const& _function)
 		if (numBytes == 0)
 			BOOST_THROW_EXCEPTION(CompilerError()
 								  << errinfo_sourceLocation(var->getLocation())
-								  << errinfo_comment("Type not yet supported."));
+								  << errinfo_comment("Type " + var->getType()->toString() + " not yet supported."));
 		if (numBytes == 32)
 			m_context << u256(dataOffset) << eth::Instruction::CALLDATALOAD;
 		else
@@ -139,11 +144,12 @@ void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
 	vector<ASTPointer<VariableDeclaration>> const& parameters = _function.getReturnParameters();
 	for (unsigned i = 0; i < parameters.size(); ++i)
 	{
-		unsigned numBytes = parameters[i]->getType()->getCalldataEncodedSize();
+		Type const& paramType = *parameters[i]->getType();
+		unsigned numBytes = paramType.getCalldataEncodedSize();
 		if (numBytes == 0)
 			BOOST_THROW_EXCEPTION(CompilerError()
 								  << errinfo_sourceLocation(parameters[i]->getLocation())
-								  << errinfo_comment("Type not yet supported."));
+								  << errinfo_comment("Type " + paramType.toString() + " not yet supported."));
 		m_context << eth::dupInstruction(parameters.size() - i);
 		if (numBytes != 32)
 			m_context << (u256(1) << ((32 - numBytes) * 8)) << eth::Instruction::MUL;
@@ -272,7 +278,8 @@ bool Compiler::visit(Return& _return)
 		ExpressionCompiler::compileExpression(m_context, *expression);
 		VariableDeclaration const& firstVariable = *_return.getFunctionReturnParameters().getParameters().front();
 		ExpressionCompiler::appendTypeConversion(m_context, *expression->getType(), *firstVariable.getType());
-		int stackPosition = m_context.getStackPositionOfVariable(firstVariable);
+
+		unsigned stackPosition = m_context.baseToCurrentStackOffset(m_context.getBaseStackOffsetOfVariable(firstVariable));
 		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}
 	m_context.appendJumpTo(m_returnTag);
@@ -287,7 +294,8 @@ bool Compiler::visit(VariableDefinition& _variableDefinition)
 		ExpressionCompiler::appendTypeConversion(m_context,
 												 *expression->getType(),
 												 *_variableDefinition.getDeclaration().getType());
-		int stackPosition = m_context.getStackPositionOfVariable(_variableDefinition.getDeclaration());
+		unsigned baseStackOffset = m_context.getBaseStackOffsetOfVariable(_variableDefinition.getDeclaration());
+		unsigned stackPosition = m_context.baseToCurrentStackOffset(baseStackOffset);
 		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}
 	return false;

@@ -28,7 +28,7 @@ OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _
 	WebThreeStubServer(_conn, _web3, _accounts)
 {}
 
-std::string OurWebThreeStubServer::newIdentity()
+std::string OurWebThreeStubServer::shh_newIdentity()
 {
 	dev::KeyPair kp = dev::KeyPair::create();
 	emit onNewId(QString::fromStdString(toJS(kp.sec())));
