@@ -120,6 +120,7 @@ static QString formatOutput(QJsonObject const& _object)
 	QJsonObject res;
 	res["_id"] = _object["id"];
 	res["data"] = _object["result"];
+	res["error"] = _object["error"];
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
