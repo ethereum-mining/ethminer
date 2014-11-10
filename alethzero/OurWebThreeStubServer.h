@@ -31,7 +31,7 @@ class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 public:
 	OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 
-	virtual std::string newIdentity() override;
+	virtual std::string shh_newIdentity() override;
 
 signals:
 	void onNewId(QString _s);
