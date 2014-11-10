@@ -341,7 +341,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-		u256 gasUsed = temp.execute(t.data(), &out, false);
+		u256 gasUsed = temp.execute(t.rlp(), &out, false);
 		(void)gasUsed; // TODO: do something with gasused which it returns.
 	}
 	catch (...)

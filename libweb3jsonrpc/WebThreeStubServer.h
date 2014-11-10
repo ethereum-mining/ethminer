@@ -73,7 +73,9 @@ public:
 	virtual bool changed(int const& _id);
 	virtual std::string codeAt(std::string const& _address);
 	virtual std::string coinbase();
-	virtual std::string compile(std::string const& _s);
+	virtual Json::Value compilers();
+	virtual std::string contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params);
+	virtual std::string contractCreate(std::string const& _bytecode, std::string const& _value);
 	virtual double countAt(std::string const& _address);
 	virtual int defaultBlock();
 	virtual std::string gasPrice();
@@ -82,6 +84,7 @@ public:
 	virtual std::string getString(std::string const& _name, std::string const& _key);
 	virtual bool haveIdentity(std::string const& _id);
 	virtual bool listening();
+	virtual std::string lll(std::string const& _code);
 	virtual bool mining();
 	virtual int newFilter(Json::Value const& _json);
 	virtual int newFilterString(std::string const& _filter);
@@ -99,6 +102,7 @@ public:
 	virtual Json::Value shhChanged(int const& _id);
 	virtual int shhNewFilter(Json::Value const& _json);
 	virtual bool shhUninstallFilter(int const& _id);
+	virtual std::string solidity(std::string const& _code);
 	virtual std::string stateAt(std::string const& _address, std::string const& _storage);
 	virtual std::string transact(Json::Value const& _json);
 	virtual Json::Value transactionByHash(std::string const& _hash, int const& _i);

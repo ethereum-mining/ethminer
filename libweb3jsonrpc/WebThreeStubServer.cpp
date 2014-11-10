@@ -31,6 +31,8 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/Scanner.h>
 
 using namespace std;
 using namespace dev;
@@ -373,13 +375,13 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 			ret.data = jsToBytes(_json["code"].asString());
 		else if (_json["data"].isArray())
 			for (auto i: _json["data"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
 		else if (_json["code"].isArray())
 			for (auto i: _json["code"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
 		else if (_json["dataclose"].isArray())
 			for (auto i: _json["dataclose"])
-				dev::operator +=(ret.data, jsToBytes(i.asString()));
+				dev::operator +=(ret.data, asBytes(i.asString()));
 	}
 	return ret;
 }
@@ -516,9 +518,64 @@ std::string WebThreeStubServer::newIdentity()
 	return toJS(kp.pub());
 }
 
-std::string WebThreeStubServer::compile(string const& _s)
+Json::Value WebThreeStubServer::compilers()
 {
-	return toJS(dev::eth::compileLLL(_s));
+	Json::Value ret(Json::arrayValue);
+	ret.append("lll");
+	ret.append("solidity");
+	return ret;
+}
+
+static bytes paramsToBytes(Json::Value const& _params)
+{
+	bytes data;
+	if (_params.isArray())
+		for (auto i: _params)
+//			data += asBytes(i.asString());
+//			data += toBigEndian(jsToU256(i.asString()));
+			data += asBytes(jsPadded(i.asString(), 33));
+	cwarn << data;
+	return data;
+}
+
+std::string WebThreeStubServer::contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params)
+{
+	auto from = m_accounts.begin()->first;
+	for (auto a: m_accounts)
+		if (client()->balanceAt(a.first) > client()->balanceAt(from))
+			from = a.first;
+	
+	cwarn << "Silently signing transaction from address" << from.abridged() << ": User validation hook goes here.";
+	
+	auto gasPrice = 10 * dev::eth::szabo;
+	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
+	auto bytes = paramsToBytes(_params);
+	return toJS(client()->call(m_accounts[from].secret(), jsToU256(_value), jsToAddress(_address), paramsToBytes(_params), gas, gasPrice));
+}
+
+std::string WebThreeStubServer::contractCreate(std::string const& _bytecode, std::string const& _value)
+{
+	auto from = m_accounts.begin()->first;
+	for (auto a: m_accounts)
+		if (client()->balanceAt(a.first) > client()->balanceAt(from))
+			from = a.first;
+	
+	cwarn << "Silently signing transaction from address" << from.abridged() << ": User validation hook goes here.";
+	
+	auto gasPrice = 10 * dev::eth::szabo;
+	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
+	return toJS(client()->transact(m_accounts[from].secret(), jsToU256(_value), jsToBytes(_bytecode), gas, gasPrice));
+}
+
+std::string WebThreeStubServer::lll(std::string const& _code)
+{
+	return toJS(dev::eth::compileLLL(_code));
+}
+
+std::string WebThreeStubServer::solidity(std::string const& _code)
+{
+	shared_ptr<dev::solidity::Scanner> scanner = make_shared<dev::solidity::Scanner>();
+	return toJS(dev::solidity::CompilerStack::compile(_code, scanner));
 }
 
 int WebThreeStubServer::number()

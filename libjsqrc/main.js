@@ -87,7 +87,11 @@
         { name: 'block', call: blockCall },
         { name: 'transaction', call: transactionCall },
         { name: 'uncle', call: uncleCall },
-        { name: 'compile', call: 'compile' }
+        { name: 'compilers', call: 'compilers' },
+        { name: 'lll', call: 'lll' },
+        { name: 'solidity', call: 'solidity' },
+        { name: 'contractCreate', call: 'contractCreate' },
+        { name: 'contractCall', call: 'contractCall' }
         ];
         return methods;
     };
@@ -414,10 +418,8 @@
     };
 
     Filter.prototype.trigger = function(messages) {
-    	if (!(messages instanceof Array) || messages.length) {
-            for(var i = 0; i < this.callbacks.length; i++) {
-                this.callbacks[i].call(this, messages);
-            }
+        for(var i = 0; i < this.callbacks.length; i++) {
+            this.callbacks[i].call(this, messages);
         }
     };
 
@@ -446,7 +448,7 @@
         if(data._id) {
             var cb = web3._callbacks[data._id];
             if (cb) {
-                cb.call(this, data.error, data.data);
+                cb.call(this, data.error, data.data)
                 delete web3._callbacks[data._id];
             }
         }
