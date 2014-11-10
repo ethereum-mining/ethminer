@@ -196,9 +196,11 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	if (!_json["topics"].empty())
 	{
 		if (_json["topics"].isArray())
+		{
 			for (auto i: _json["topics"])
 				if (i.isString())
 					filter.topic(jsToU256(i.asString()));
+		}
 		else if(_json["topics"].isString())
 			filter.topic(jsToU256(_json["topics"].asString()));
 	}
@@ -315,7 +317,7 @@ std::shared_ptr<dev::shh::Interface> WebThreeStubServer::face() const
 	return m_web3.whisper();
 }
 
-Json::Value WebThreeStubServer::accounts()
+Json::Value WebThreeStubServer::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
 	for (auto i: m_accounts)
@@ -323,27 +325,27 @@ Json::Value WebThreeStubServer::accounts()
 	return ret;
 }
 
-std::string WebThreeStubServer::addToGroup(std::string const& _group, std::string const& _who)
+std::string WebThreeStubServer::shh_addToGroup(std::string const& _group, std::string const& _who)
 {
 	(void)_group;
 	(void)_who;
 	return "";
 }
 
-std::string WebThreeStubServer::balanceAt(string const& _address)
+std::string WebThreeStubServer::eth_balanceAt(string const& _address)
 {
 	int block = 0;
 	return toJS(client()->balanceAt(jsToAddress(_address), block));
 }
 
-Json::Value WebThreeStubServer::blockByHash(std::string const& _hash)
+Json::Value WebThreeStubServer::eth_blockByHash(std::string const& _hash)
 {
 	if (!client())
 		return "";
 	return toJson(client()->blockInfo(jsToFixed<32>(_hash)));
 }
 
-Json::Value WebThreeStubServer::blockByNumber(int const& _number)
+Json::Value WebThreeStubServer::eth_blockByNumber(int const& _number)
 {
 	if (!client())
 		return "";
@@ -386,7 +388,7 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	return ret;
 }
 
-std::string WebThreeStubServer::call(Json::Value const& _json)
+std::string WebThreeStubServer::eth_call(Json::Value const& _json)
 {
 	std::string ret;
 	if (!client())
@@ -410,41 +412,41 @@ std::string WebThreeStubServer::call(Json::Value const& _json)
 	return ret;
 }
 
-bool WebThreeStubServer::changed(int const& _id)
+bool WebThreeStubServer::eth_changed(int const& _id)
 {
 	if (!client())
 		return false;
 	return client()->checkWatch(_id);
 }
 
-std::string WebThreeStubServer::codeAt(string const& _address)
+std::string WebThreeStubServer::eth_codeAt(string const& _address)
 {
 	int block = 0;
 	return client() ? jsFromBinary(client()->codeAt(jsToAddress(_address), block)) : "";
 }
 
-std::string WebThreeStubServer::coinbase()
+std::string WebThreeStubServer::eth_coinbase()
 {
 	return client() ? toJS(client()->address()) : "";
 }
 
-double WebThreeStubServer::countAt(string const& _address)
+double WebThreeStubServer::eth_countAt(string const& _address)
 {
 	int block = 0;
 	return client() ? (double)(uint64_t)client()->countAt(jsToAddress(_address), block) : 0;
 }
 
-int WebThreeStubServer::defaultBlock()
+int WebThreeStubServer::eth_defaultBlock()
 {
 	return client() ? client()->getDefault() : 0;
 }
 
-std::string WebThreeStubServer::gasPrice()
+std::string WebThreeStubServer::eth_gasPrice()
 {
 	return toJS(10 * dev::eth::szabo);
 }
 
-std::string WebThreeStubServer::get(std::string const& _name, std::string const& _key)
+std::string WebThreeStubServer::db_get(std::string const& _name, std::string const& _key)
 {
 	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
 	string ret;
@@ -452,14 +454,14 @@ std::string WebThreeStubServer::get(std::string const& _name, std::string const&
 	return toJS(dev::asBytes(ret));
 }
 
-Json::Value WebThreeStubServer::getMessages(int const& _id)
+Json::Value WebThreeStubServer::eth_getMessages(int const& _id)
 {
 	if (!client())
 		return Json::Value();
 	return toJson(client()->messages(_id));
 }
 
-std::string WebThreeStubServer::getString(std::string const& _name, std::string const& _key)
+std::string WebThreeStubServer::db_getString(std::string const& _name, std::string const& _key)
 {
 	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
 	string ret;
@@ -467,22 +469,22 @@ std::string WebThreeStubServer::getString(std::string const& _name, std::string 
 	return ret;
 }
 
-bool WebThreeStubServer::haveIdentity(std::string const& _id)
+bool WebThreeStubServer::shh_haveIdentity(std::string const& _id)
 {
 	return m_ids.count(jsToPublic(_id)) > 0;
 }
 
-bool WebThreeStubServer::listening()
+bool WebThreeStubServer::eth_listening()
 {
 	return m_web3.isNetworkStarted();
 }
 
-bool WebThreeStubServer::mining()
+bool WebThreeStubServer::eth_mining()
 {
 	return client() ? client()->isMining() : false;
 }
 
-int WebThreeStubServer::newFilter(Json::Value const& _json)
+int WebThreeStubServer::eth_newFilter(Json::Value const& _json)
 {
 	unsigned ret = -1;
 	if (!client())
@@ -491,7 +493,7 @@ int WebThreeStubServer::newFilter(Json::Value const& _json)
 	return ret;
 }
 
-int WebThreeStubServer::newFilterString(std::string const& _filter)
+int WebThreeStubServer::eth_newFilterString(std::string const& _filter)
 {
 	unsigned ret = -1;
 	if (!client())
@@ -503,14 +505,14 @@ int WebThreeStubServer::newFilterString(std::string const& _filter)
 	return ret;
 }
 
-std::string WebThreeStubServer::newGroup(std::string const& _id, std::string const& _who)
+std::string WebThreeStubServer::shh_newGroup(std::string const& _id, std::string const& _who)
 {
 	(void)_id;
 	(void)_who;
 	return "";
 }
 
-std::string WebThreeStubServer::newIdentity()
+std::string WebThreeStubServer::shh_newIdentity()
 {
 	cnote << this << m_ids;
 	KeyPair kp = KeyPair::create();
@@ -518,7 +520,7 @@ std::string WebThreeStubServer::newIdentity()
 	return toJS(kp.pub());
 }
 
-Json::Value WebThreeStubServer::compilers()
+Json::Value WebThreeStubServer::eth_compilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
@@ -538,7 +540,7 @@ static bytes paramsToBytes(Json::Value const& _params)
 	return data;
 }
 
-std::string WebThreeStubServer::contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params)
+std::string WebThreeStubServer::eth_contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params)
 {
 	auto from = m_accounts.begin()->first;
 	for (auto a: m_accounts)
@@ -553,7 +555,7 @@ std::string WebThreeStubServer::contractCall(std::string const& _address, std::s
 	return toJS(client()->call(m_accounts[from].secret(), jsToU256(_value), jsToAddress(_address), paramsToBytes(_params), gas, gasPrice));
 }
 
-std::string WebThreeStubServer::contractCreate(std::string const& _bytecode, std::string const& _value)
+std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode, std::string const& _value)
 {
 	auto from = m_accounts.begin()->first;
 	for (auto a: m_accounts)
@@ -567,28 +569,28 @@ std::string WebThreeStubServer::contractCreate(std::string const& _bytecode, std
 	return toJS(client()->transact(m_accounts[from].secret(), jsToU256(_value), jsToBytes(_bytecode), gas, gasPrice));
 }
 
-std::string WebThreeStubServer::lll(std::string const& _code)
+std::string WebThreeStubServer::eth_lll(std::string const& _code)
 {
 	return toJS(dev::eth::compileLLL(_code));
 }
 
-std::string WebThreeStubServer::solidity(std::string const& _code)
+std::string WebThreeStubServer::eth_solidity(std::string const& _code)
 {
 	shared_ptr<dev::solidity::Scanner> scanner = make_shared<dev::solidity::Scanner>();
 	return toJS(dev::solidity::CompilerStack::compile(_code, scanner));
 }
 
-int WebThreeStubServer::number()
+int WebThreeStubServer::eth_number()
 {
 	return client() ? client()->number() + 1 : 0;
 }
 
-int WebThreeStubServer::peerCount()
+int WebThreeStubServer::eth_peerCount()
 {
 	return m_web3.peerCount();
 }
 
-bool WebThreeStubServer::post(Json::Value const& _json)
+bool WebThreeStubServer::shh_post(Json::Value const& _json)
 {
 	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
@@ -605,7 +607,7 @@ bool WebThreeStubServer::post(Json::Value const& _json)
 	return true;
 }
 
-bool WebThreeStubServer::put(std::string const& _name, std::string const& _key, std::string const& _value)
+bool WebThreeStubServer::db_put(std::string const& _name, std::string const& _key, std::string const& _value)
 {
 	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
 	bytes v = jsToBytes(_value);
@@ -613,7 +615,7 @@ bool WebThreeStubServer::put(std::string const& _name, std::string const& _key, 
 	return true;
 }
 
-bool WebThreeStubServer::putString(std::string const& _name, std::string const& _key, std::string const& _value)
+bool WebThreeStubServer::db_putString(std::string const& _name, std::string const& _key, std::string const& _value)
 {
 	bytes k = sha3(_name).asBytes() + sha3(_key).asBytes();
 	string v = _value;
@@ -621,7 +623,7 @@ bool WebThreeStubServer::putString(std::string const& _name, std::string const& 
 	return true;
 }
 
-bool WebThreeStubServer::setCoinbase(std::string const& _address)
+bool WebThreeStubServer::eth_setCoinbase(std::string const& _address)
 {
 	if (!client())
 		return false;
@@ -629,7 +631,7 @@ bool WebThreeStubServer::setCoinbase(std::string const& _address)
 	return true;
 }
 
-bool WebThreeStubServer::setDefaultBlock(int const& _block)
+bool WebThreeStubServer::eth_setDefaultBlock(int const& _block)
 {
 	if (!client())
 		return false;
@@ -637,7 +639,7 @@ bool WebThreeStubServer::setDefaultBlock(int const& _block)
 	return true;
 }
 
-bool WebThreeStubServer::setListening(bool const& _listening)
+bool WebThreeStubServer::eth_setListening(bool const& _listening)
 {
 	if (_listening)
 		m_web3.startNetwork();
@@ -646,7 +648,7 @@ bool WebThreeStubServer::setListening(bool const& _listening)
 	return true;
 }
 
-bool WebThreeStubServer::setMining(bool const& _mining)
+bool WebThreeStubServer::eth_setMining(bool const& _mining)
 {
 	if (!client())
 		return false;
@@ -658,7 +660,7 @@ bool WebThreeStubServer::setMining(bool const& _mining)
 	return true;
 }
 
-Json::Value WebThreeStubServer::shhChanged(int const& _id)
+Json::Value WebThreeStubServer::shh_changed(int const& _id)
 {
 	Json::Value ret(Json::arrayValue);
 	auto pub = m_shhWatches[_id];
@@ -682,7 +684,7 @@ Json::Value WebThreeStubServer::shhChanged(int const& _id)
 	return ret;
 }
 
-int WebThreeStubServer::shhNewFilter(Json::Value const& _json)
+int WebThreeStubServer::shh_newFilter(Json::Value const& _json)
 {
 	auto w = toWatch(_json);
 	auto ret = face()->installWatch(w.first);
@@ -690,19 +692,19 @@ int WebThreeStubServer::shhNewFilter(Json::Value const& _json)
 	return ret;
 }
 
-bool WebThreeStubServer::shhUninstallFilter(int const& _id)
+bool WebThreeStubServer::shh_uninstallFilter(int const& _id)
 {
 	face()->uninstallWatch(_id);
 	return true;
 }
 
-std::string WebThreeStubServer::stateAt(string const& _address, string const& _storage)
+std::string WebThreeStubServer::eth_stateAt(string const& _address, string const& _storage)
 {
 	int block = 0;
 	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
 }
 
-std::string WebThreeStubServer::transact(Json::Value const& _json)
+std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 {
 	std::string ret;
 	if (!client())
@@ -732,35 +734,35 @@ std::string WebThreeStubServer::transact(Json::Value const& _json)
 	return ret;
 }
 
-Json::Value WebThreeStubServer::transactionByHash(std::string const& _hash, int const& _i)
+Json::Value WebThreeStubServer::eth_transactionByHash(std::string const& _hash, int const& _i)
 {
 	if (!client())
 		return "";
 	return toJson(client()->transaction(jsToFixed<32>(_hash), _i));
 }
 
-Json::Value WebThreeStubServer::transactionByNumber(int const& _number, int const& _i)
+Json::Value WebThreeStubServer::eth_transactionByNumber(int const& _number, int const& _i)
 {
 	if (!client())
 		return "";
 	return toJson(client()->transaction(client()->hashFromNumber(_number), _i));
 }
 
-Json::Value WebThreeStubServer::uncleByHash(std::string const& _hash, int const& _i)
+Json::Value WebThreeStubServer::eth_uncleByHash(std::string const& _hash, int const& _i)
 {
 	if (!client())
 		return "";
 	return toJson(client()->uncle(jsToFixed<32>(_hash), _i));
 }
 
-Json::Value WebThreeStubServer::uncleByNumber(int const& _number, int const& _i)
+Json::Value WebThreeStubServer::eth_uncleByNumber(int const& _number, int const& _i)
 {
 	if (!client())
 		return "";
 	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
-bool WebThreeStubServer::uninstallFilter(int const& _id)
+bool WebThreeStubServer::eth_uninstallFilter(int const& _id)
 {
 	if (!client())
 		return false;
