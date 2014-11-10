@@ -9,12 +9,6 @@
 #  JSON_RCP_CPP_LIBRARIES, the libraries needed to use jsoncpp.
 #  JSON_RCP_CPP_FOUND, If false, do not try to use jsoncpp.
 
-if (JSON_RPC_CPP_LIBRARIES AND JSON_RPC_CPP_INCLUDE_DIRS)
-  # in cache already
-  set(JSON_RPC_CPP_FOUND TRUE)
-endif()
-
-
 # only look in default directories
 find_path(
     JSON_RPC_CPP_INCLUDE_DIR 
@@ -32,10 +26,14 @@ find_library(
 set (JSON_RPC_CPP_INCLUDE_DIRS ${JSON_RPC_CPP_INCLUDE_DIR})
 set (JSON_RPC_CPP_LIBRARIES ${JSON_RPC_CPP_LIBRARY})
 
+# message (" - json-rcp-cpp header : ${JSON_RPC_CPP_INCLUDE_DIRS}")
+# message (" - json-rcp-cpp lib    : ${JSON_RPC_CPP_LIBRARIES}")
+
+
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set JSON_RPC_CPP_FOUND to TRUE
 # if all listed variables are TRUE
-find_package_handle_standard_args(json-rpc-cpp DEFAULT_MSG
+find_package_handle_standard_args(json_rpc_cpp DEFAULT_MSG
      JSON_RPC_CPP_LIBRARY JSON_RPC_CPP_INCLUDE_DIR)                             
 
 

@@ -85,29 +85,6 @@ else()
 		message(STATUS "Failed to find the miniupnpc headers!")
 	endif ()
 
-	find_path( JSONRPC_ID jsonrpc/rpc.h
-		/usr/include
-		/usr/local/include
-		)
-	if ( JSONRPC_ID )
-		message(STATUS "Found jsonrpc headers")
-		find_library( JSONRPC_LS NAMES jsonrpc
-			PATHS
-			/usr/lib
-			/usr/local/lib
-			/opt/local/lib
-			/usr/lib/*/
-			)
-		if ( JSONRPC_LS )
-			message(STATUS "Found jsonrpc library: ${JSONRPC_LS}")
-		add_definitions(-DETH_JSONRPC)
-		else ()
-			message(STATUS "Failed to find the jsonrpc library!")
-		endif ()
-	else ()
-		message(STATUS "Failed to find the jsonrpc headers!")
-	endif ()
-
 	find_path( READLINE_ID readline/readline.h
 		/usr/include
 		/usr/local/include
@@ -151,9 +128,6 @@ if(LEVELDB_ID)
 endif()
 if(READLINE_ID)
 	include_directories(${READLINE_ID})
-endif()
-if(JSONRPC_ID)
-	include_directories(${JSONRPC_ID})
 endif()
 
 

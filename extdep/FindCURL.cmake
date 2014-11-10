@@ -1,4 +1,4 @@
-# hacky way to resolve nested dependencies
+# hacky way to resolve nested dependencies - needed for json-rpc-cpp
 find_library(CURL_LIBRARY NAMES curl
 	PATHS
 	${ETH_DEPENDENCY_INSTALL_DIR}/lib
