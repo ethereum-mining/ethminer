@@ -610,6 +610,7 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 		ethereum()->setAddress(m_myKeys.back().address());
+		m_server->setAccounts(keysAsVector(m_myKeys));
 	}
 
 	{
@@ -1821,6 +1822,7 @@ void Main::on_send_clicked()
 void Main::keysChanged()
 {
 	onBalancesChange();
+	m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_debug_clicked()
@@ -2218,7 +2220,7 @@ void Main::refreshWhispers()
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topics()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }

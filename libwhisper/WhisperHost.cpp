@@ -21,6 +21,7 @@
 
 #include "WhisperHost.h"
 
+#include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libp2p/All.h>
 using namespace std;
@@ -48,14 +49,14 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	{
 		UpgradeGuard ll(l);
 		auto const& m = m_messages.at(_m);
-		cnote << "streamRLP: " << m.expiry() << m.ttl() << m.topic() << toHex(m.data());
-		m.streamRLP(_s, true);
+		cnote << "streamRLP: " << m.expiry() << m.ttl() << m.topics() << toHex(m.data());
+		m.streamRLP(_s);
 	}
 }
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
-	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
+	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topics() << toHex(_m.data());
 
 	if (_m.expiry() <= time(0))
 		return;

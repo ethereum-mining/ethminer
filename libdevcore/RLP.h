@@ -159,7 +159,11 @@ public:
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
 	explicit operator RLPs() const { return toList(); }
-	explicit operator byte() const { return toInt<byte>(); }
+	explicit operator uint8_t() const { return toInt<uint8_t>(); }
+	explicit operator uint16_t() const { return toInt<uint16_t>(); }
+	explicit operator uint32_t() const { return toInt<uint32_t>(); }
+	explicit operator uint64_t() const { return toInt<uint64_t>(); }
+	explicit operator u160() const { return toInt<u160>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
