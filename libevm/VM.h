@@ -701,7 +701,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (!m_jumpDests.count((unsigned)nextPC))
+			if (!m_jumpDests.count(nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -709,7 +709,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (!m_jumpDests.count((unsigned)nextPC))
+				if (!m_jumpDests.count(nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
