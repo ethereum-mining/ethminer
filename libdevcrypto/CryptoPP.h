@@ -18,7 +18,7 @@
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
- * CryptoPP headers and helper methods
+ * CryptoPP headers and primitive helper methods
  */
 
 #pragma once
@@ -45,7 +45,7 @@
 #include <cryptopp/files.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/oids.h>
-#include <secp256k1/secp256k1.h>
+#include <cryptopp/dsa.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
 #include "Common.h"
@@ -54,30 +54,34 @@ namespace dev
 {
 namespace crypto
 {
-
 namespace pp
 {
-
-/// RNG used by CryptoPP
-inline CryptoPP::AutoSeededRandomPool& PRNG() { static CryptoPP::AutoSeededRandomPool prng; return prng; }
-
-/// EC curve used by CryptoPP
-inline CryptoPP::OID const& secp256k1() { static CryptoPP::OID curve = CryptoPP::ASN1::secp256k1(); return curve; }
-
-/// Conversion from bytes to cryptopp point
-CryptoPP::ECP::Point PointFromPublic(Public const& _p);
-
-/// Conversion from bytes to cryptopp exponent
-CryptoPP::Integer ExponentFromSecret(Secret const& _s);
 	
-/// Conversion from cryptopp exponent Integer to bytes
-void PublicFromExponent(CryptoPP::Integer const& _k, Public& _s);
+using namespace CryptoPP;
 	
-/// Conversion from cryptopp public key to bytes
-void PublicFromDL_PublicKey_EC(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
+/// CryptoPP random number pool
+static CryptoPP::AutoSeededRandomPool PRNG;
 	
-/// Conversion from cryptopp private key to bytes
-void SecretFromDL_PrivateKey_EC(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s);
+/// CryptoPP EC Cruve
+static const CryptoPP::OID secp256k1Curve = CryptoPP::ASN1::secp256k1();
+	
+static const CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> secp256k1Params(secp256k1Curve);
+	
+static ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data() + 32, 32); return std::move(ECP::Point(x,y)); }
+	
+static Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.data(), Secret::size)); }
+
+void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
+
+static void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
+	
+void exponentToPublic(Integer const& _e, Public& _p);
+	
+template <class T>
+void initializeDLScheme(Secret const& _s, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, secretToExponent(_s)); }
+	
+template <class T>
+void initializeDLScheme(Public const& _p, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, publicToPoint(_p)); }
 
 }
 }

@@ -36,7 +36,7 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-#if 0
+#if 1
 int main()
 {
 	DownloadMan man;
@@ -44,18 +44,19 @@ int main()
 	DownloadSub s1(man);
 	DownloadSub s2(man);
 	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}));
-	cnote << s0.nextFetch(2);
-	cnote << s1.nextFetch(2);
-	cnote << s2.nextFetch(2);
-	s0.noteBlock(u256(0));
+	assert((s0.nextFetch(2) == h256Set{(u256)7, (u256)8}));
+	assert((s1.nextFetch(2) == h256Set{(u256)5, (u256)6}));
+	assert((s2.nextFetch(2) == h256Set{(u256)3, (u256)4}));
+	s0.noteBlock(u256(8));
 	s0.doneFetch();
-	cnote << s0.nextFetch(2);
-	s1.noteBlock(u256(2));
-	s1.noteBlock(u256(3));
+	assert((s0.nextFetch(2) == h256Set{(u256)2, (u256)7}));
+	s1.noteBlock(u256(6));
+	s1.noteBlock(u256(5));
 	s1.doneFetch();
-	cnote << s1.nextFetch(2);
-	s0.doneFetch();
-	cnote << s0.nextFetch(2);
+	assert((s1.nextFetch(2) == h256Set{(u256)0, (u256)1}));
+	s0.doneFetch();				// TODO: check exact semantics of doneFetch & nextFetch. Not sure if they're right -> doneFetch calls resetFetch which kills all the info of past fetches.
+	cdebug << s0.nextFetch(2);
+	assert((s0.nextFetch(2) == h256Set{(u256)3, (u256)4}));
 
 /*	RangeMask<unsigned> m(0, 100);
 	cnote << m;
@@ -73,26 +74,52 @@ int main()
 }
 #endif
 
-int main(int argc, char** argv)
+/*int other(bool& o_started)
 {
-	g_logVerbosity = 20;
+	setThreadName("other");
+
+	short listenPort = 30300;
+
+	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
+	auto wh = ph.registerCapability(new WhisperHost());
+
+	ph.start();
+
+	o_started = true;
+
+	/// Only interested in odd packets
+	auto w = wh->installWatch(BuildTopicMask()("odd"));
+
+	unsigned last = 0;
+	unsigned total = 0;
+
+	for (int i = 0; i < 100 && last < 81; ++i)
+	{
+		for (auto i: wh->checkWatch(w))
+		{
+			Message msg = wh->envelope(i).open();
+			last = RLP(msg.payload()).toInt<unsigned>();
+			cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+			total += last;
+		}
+		this_thread::sleep_for(chrono::milliseconds(50));
+	}
+	return total;
+}
+
+int main(int, char**)
+{
+	g_logVerbosity = 0;
+
+	bool started = false;
+	unsigned result;
+	std::thread listener([&](){ return (result = other(started)); });
+	while (!started)
+		this_thread::sleep_for(chrono::milliseconds(50));
 
 	short listenPort = 30303;
-	string remoteHost;
-	short remotePort = 30303;
-
-	for (int i = 1; i < argc; ++i)
-	{
-		string arg = argv[i];
-		if (arg == "-l" && i + 1 < argc)
-			listenPort = (short)atoi(argv[++i]);
-		else if (arg == "-r" && i + 1 < argc)
-			remoteHost = argv[++i];
-		else if (arg == "-p" && i + 1 < argc)
-			remotePort = (short)atoi(argv[++i]);
-		else
-			remoteHost = argv[i];
-	}
+	string remoteHost = "127.0.0.1";
+	short remotePort = 30300;
 
 	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
 	auto wh = ph.registerCapability(new WhisperHost());
@@ -102,20 +129,15 @@ int main(int argc, char** argv)
 	if (!remoteHost.empty())
 		ph.connect(remoteHost, remotePort);
 
-	/// Only interested in odd packets
-	auto w = wh->installWatch(BuildTopicMask()("odd"));
-
 	KeyPair us = KeyPair::create();
-	for (int i = 0; ; ++i)
+	for (int i = 0; i < 10; ++i)
 	{
 		wh->post(us.sec(), RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"));
-		for (auto i: wh->checkWatch(w))
-		{
-			Message msg = wh->envelope(i).open();
-
-			cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
-		}
-		this_thread::sleep_for(chrono::seconds(1));
+		this_thread::sleep_for(chrono::milliseconds(250));
 	}
+
+	listener.join();
+	assert(result == 1 + 9 + 25 + 49 + 81);
+
 	return 0;
-}
+}*/

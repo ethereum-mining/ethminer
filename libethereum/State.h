@@ -42,7 +42,7 @@
 namespace dev
 {
 
-namespace test { class FakeExtVM; class FakeState; }
+namespace test { class ImportTest; }
 
 namespace eth
 {
@@ -67,8 +67,7 @@ struct PrecompiledAddress
 class State
 {
 	friend class ExtVM;
-	friend class test::FakeExtVM;
-	friend class test::FakeState;
+	friend class dev::test::ImportTest;
 	friend class Executive;
 
 public:

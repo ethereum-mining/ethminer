@@ -17,387 +17,298 @@
 /**
  * @author Christian <c@ethdev.com>
  * @date 2014
- * Solidity AST to EVM bytecode compiler.
+ * Solidity compiler.
  */
 
-#include <cassert>
-#include <utility>
+#include <algorithm>
+#include <libevmcore/Instruction.h>
+#include <libevmcore/Assembly.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Compiler.h>
+#include <libsolidity/ExpressionCompiler.h>
+
+using namespace std;
 
 namespace dev {
 namespace solidity {
 
-void CompilerContext::setLabelPosition(uint32_t _label, uint32_t _position)
+bytes Compiler::compile(ContractDefinition& _contract, bool _optimize)
 {
-	assert(m_labelPositions.find(_label) == m_labelPositions.end());
-	m_labelPositions[_label] = _position;
+	Compiler compiler;
+	compiler.compileContract(_contract);
+	return compiler.m_context.getAssembledBytecode(_optimize);
 }
 
-uint32_t CompilerContext::getLabelPosition(uint32_t _label) const
+void Compiler::compileContract(ContractDefinition& _contract)
 {
-	auto iter = m_labelPositions.find(_label);
-	assert(iter != m_labelPositions.end());
-	return iter->second;
+	m_context = CompilerContext(); // clear it just in case
+
+	//@todo constructor
+
+	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
+		m_context.addFunction(*function);
+	//@todo sort them?
+	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
+		m_context.addStateVariable(*variable);
+
+	appendFunctionSelector(_contract.getDefinedFunctions());
+	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
+		function->accept(*this);
+
+	packIntoContractCreator();
 }
 
-void ExpressionCompiler::compile(Expression& _expression)
+void Compiler::packIntoContractCreator()
 {
-	m_assemblyItems.clear();
-	_expression.accept(*this);
+	CompilerContext creatorContext;
+	eth::AssemblyItem sub = creatorContext.addSubroutine(m_context.getAssembly());
+	// stack contains sub size
+	creatorContext << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
+	creatorContext << u256(0) << eth::Instruction::RETURN;
+	swap(m_context, creatorContext);
 }
 
-bytes ExpressionCompiler::getAssembledBytecode() const
+void Compiler::appendFunctionSelector(vector<ASTPointer<FunctionDefinition>> const& _functions)
 {
-	bytes assembled;
-	assembled.reserve(m_assemblyItems.size());
+	// sort all public functions and store them together with a tag for their argument decoding section
+	map<string, pair<FunctionDefinition const*, eth::AssemblyItem>> publicFunctions;
+	for (ASTPointer<FunctionDefinition> const& f: _functions)
+		if (f->isPublic())
+			publicFunctions.insert(make_pair(f->getName(), make_pair(f.get(), m_context.newTag())));
 
-	// resolve label references
-	for (uint32_t pos = 0; pos < m_assemblyItems.size(); ++pos)
+	//@todo remove constructor
+
+	if (publicFunctions.size() > 255)
+		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("More than 255 public functions for contract."));
+
+	//@todo check for calldatasize?
+	// retrieve the first byte of the call data
+	m_context << u256(0) << eth::Instruction::CALLDATALOAD << u256(0) << eth::Instruction::BYTE;
+	// check that it is not too large
+	m_context << eth::Instruction::DUP1 << u256(publicFunctions.size() - 1) << eth::Instruction::LT;
+	eth::AssemblyItem returnTag = m_context.appendConditionalJump();
+
+	// otherwise, jump inside jump table (each entry of the table has size 4)
+	m_context << u256(4) << eth::Instruction::MUL;
+	eth::AssemblyItem jumpTableStart = m_context.pushNewTag();
+	m_context << eth::Instruction::ADD << eth::Instruction::JUMP;
+
+	// jump table, tell the optimizer not to remove the JUMPDESTs
+	m_context << eth::AssemblyItem(eth::NoOptimizeBegin) << jumpTableStart;
+	for (pair<string, pair<FunctionDefinition const*, eth::AssemblyItem>> const& f: publicFunctions)
+		m_context.appendJumpTo(f.second.second) << eth::Instruction::JUMPDEST;
+	m_context << eth::AssemblyItem(eth::NoOptimizeEnd);
+
+	m_context << returnTag << eth::Instruction::STOP;
+
+	for (pair<string, pair<FunctionDefinition const*, eth::AssemblyItem>> const& f: publicFunctions)
 	{
-		AssemblyItem const& item = m_assemblyItems[pos];
-		if (item.getType() == AssemblyItem::Type::LABEL)
-			m_context.setLabelPosition(item.getLabel(), pos + 1);
-	}
+		FunctionDefinition const& function = *f.second.first;
+		m_context << f.second.second;
 
-	for (AssemblyItem const& item: m_assemblyItems)
-		if (item.getType() == AssemblyItem::Type::LABELREF)
-			assembled.push_back(m_context.getLabelPosition(item.getLabel()));
+		eth::AssemblyItem returnTag = m_context.pushNewTag();
+		appendCalldataUnpacker(function);
+		m_context.appendJumpTo(m_context.getFunctionEntryLabel(function));
+		m_context << returnTag;
+
+		appendReturnValuePacker(function);
+	}
+}
+
+void Compiler::appendCalldataUnpacker(FunctionDefinition const& _function)
+{
+	// We do not check the calldata size, everything is zero-padded.
+	unsigned dataOffset = 1;
+
+	//@todo this can be done more efficiently, saving some CALLDATALOAD calls
+	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
+	{
+		unsigned const numBytes = var->getType()->getCalldataEncodedSize();
+		if (numBytes == 0)
+			BOOST_THROW_EXCEPTION(CompilerError()
+								  << errinfo_sourceLocation(var->getLocation())
+								  << errinfo_comment("Type " + var->getType()->toString() + " not yet supported."));
+		if (numBytes == 32)
+			m_context << u256(dataOffset) << eth::Instruction::CALLDATALOAD;
 		else
-			assembled.push_back(item.getData());
-
-	return assembled;
-}
-
-AssemblyItems ExpressionCompiler::compileExpression(CompilerContext& _context,
-													Expression& _expression)
-{
-	ExpressionCompiler compiler(_context);
-	compiler.compile(_expression);
-	return compiler.getAssemblyItems();
-}
-
-void ExpressionCompiler::endVisit(Assignment& _assignment)
-{
-	Expression& rightHandSide = _assignment.getRightHandSide();
-	Token::Value op = _assignment.getAssignmentOperator();
-	if (op != Token::ASSIGN)
-	{
-		// compound assignment
-		// @todo retrieve lvalue value
-		rightHandSide.accept(*this);
-		Type const& resultType = *_assignment.getType();
-		cleanHigherOrderBitsIfNeeded(*rightHandSide.getType(), resultType);
-		appendOrdinaryBinaryOperatorCode(Token::AssignmentToBinaryOp(op), resultType);
+			m_context << (u256(1) << ((32 - numBytes) * 8)) << u256(dataOffset)
+					  << eth::Instruction::CALLDATALOAD << eth::Instruction::DIV;
+		dataOffset += numBytes;
 	}
-	else
-		rightHandSide.accept(*this);
-	// @todo store value
 }
 
-void ExpressionCompiler::endVisit(UnaryOperation& _unaryOperation)
+void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
 {
-	//@todo type checking and creating code for an operator should be in the same place:
-	// the operator should know how to convert itself and to which types it applies, so
-	// put this code together with "Type::acceptsBinary/UnaryOperator" into a class that
-	// represents the operator
-	switch (_unaryOperation.getOperator())
+	//@todo this can be also done more efficiently
+	unsigned dataOffset = 0;
+	vector<ASTPointer<VariableDeclaration>> const& parameters = _function.getReturnParameters();
+	for (unsigned i = 0; i < parameters.size(); ++i)
 	{
-	case Token::NOT: // !
-		append(eth::Instruction::ISZERO);
-		break;
-	case Token::BIT_NOT: // ~
-		append(eth::Instruction::NOT);
-		break;
-	case Token::DELETE: // delete
-		// a -> a xor a (= 0).
-		// @todo this should also be an assignment
-		// @todo semantics change for complex types
-		append(eth::Instruction::DUP1);
-		append(eth::Instruction::XOR);
-		break;
-	case Token::INC: // ++ (pre- or postfix)
-		// @todo this should also be an assignment
-		if (_unaryOperation.isPrefixOperation())
+		Type const& paramType = *parameters[i]->getType();
+		unsigned numBytes = paramType.getCalldataEncodedSize();
+		if (numBytes == 0)
+			BOOST_THROW_EXCEPTION(CompilerError()
+								  << errinfo_sourceLocation(parameters[i]->getLocation())
+								  << errinfo_comment("Type " + paramType.toString() + " not yet supported."));
+		m_context << eth::dupInstruction(parameters.size() - i);
+		if (numBytes != 32)
+			m_context << (u256(1) << ((32 - numBytes) * 8)) << eth::Instruction::MUL;
+		m_context << u256(dataOffset) << eth::Instruction::MSTORE;
+		dataOffset += numBytes;
+	}
+	// note that the stack is not cleaned up here
+	m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
+}
+
+bool Compiler::visit(FunctionDefinition& _function)
+{
+	//@todo to simplify this, the calling convention could by changed such that
+	// caller puts: [retarg0] ... [retargm] [return address] [arg0] ... [argn]
+	// although note that this reduces the size of the visible stack
+
+	m_context.startNewFunction();
+	m_returnTag = m_context.newTag();
+	m_breakTags.clear();
+	m_continueTags.clear();
+
+	m_context << m_context.getFunctionEntryLabel(_function);
+
+	// stack upon entry: [return address] [arg0] [arg1] ... [argn]
+	// reserve additional slots: [retarg0] ... [retargm] [localvar0] ... [localvarp]
+
+	unsigned const numArguments = _function.getParameters().size();
+	unsigned const numReturnValues = _function.getReturnParameters().size();
+	unsigned const numLocalVariables = _function.getLocalVariables().size();
+
+	for (ASTPointer<VariableDeclaration> const& variable: _function.getParameters() + _function.getReturnParameters())
+		m_context.addVariable(*variable);
+	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
+		m_context.addVariable(*localVariable);
+	m_context.initializeLocalVariables(numReturnValues + numLocalVariables);
+
+	_function.getBody().accept(*this);
+
+	m_context << m_returnTag;
+
+	// Now we need to re-shuffle the stack. For this we keep a record of the stack layout
+	// that shows the target positions of the elements, where "-1" denotes that this element needs
+	// to be removed from the stack.
+	// Note that the fact that the return arguments are of increasing index is vital for this
+	// algorithm to work.
+
+	vector<int> stackLayout;
+	stackLayout.push_back(numReturnValues); // target of return address
+	stackLayout += vector<int>(numArguments, -1); // discard all arguments
+	for (unsigned i = 0; i < numReturnValues; ++i)
+		stackLayout.push_back(i);
+	stackLayout += vector<int>(numLocalVariables, -1);
+
+	while (stackLayout.back() != int(stackLayout.size() - 1))
+		if (stackLayout.back() < 0)
 		{
-			append(eth::Instruction::PUSH1);
-			append(1);
-			append(eth::Instruction::ADD);
+			m_context << eth::Instruction::POP;
+			stackLayout.pop_back();
 		}
-		break;
-	case Token::DEC: // -- (pre- or postfix)
-		// @todo this should also be an assignment
-		if (_unaryOperation.isPrefixOperation())
+		else
 		{
-			append(eth::Instruction::PUSH1);
-			append(1);
-			append(eth::Instruction::SWAP1); //@todo avoid this
-			append(eth::Instruction::SUB);
+			m_context << eth::swapInstruction(stackLayout.size() - stackLayout.back() - 1);
+			swap(stackLayout[stackLayout.back()], stackLayout.back());
 		}
-		break;
-	case Token::ADD: // +
-		// unary add, so basically no-op
-		break;
-	case Token::SUB: // -
-		// unary -x translates into "0-x"
-		append(eth::Instruction::PUSH1);
-		append(0);
-		append(eth::Instruction::SUB);
-		break;
-	default:
-		assert(false); // invalid operation
-	}
-}
+	//@todo assert that everything is in place now
 
-bool ExpressionCompiler::visit(BinaryOperation& _binaryOperation)
-{
-	Expression& leftExpression = _binaryOperation.getLeftExpression();
-	Expression& rightExpression = _binaryOperation.getRightExpression();
-	Type const& resultType = *_binaryOperation.getType();
-	Token::Value const op = _binaryOperation.getOperator();
+	m_context << eth::Instruction::JUMP;
 
-	if (op == Token::AND || op == Token::OR)
-	{
-		// special case: short-circuiting
-		appendAndOrOperatorCode(_binaryOperation);
-	}
-	else if (Token::isCompareOp(op))
-	{
-		leftExpression.accept(*this);
-		rightExpression.accept(*this);
-
-		// the types to compare have to be the same, but the resulting type is always bool
-		assert(*leftExpression.getType() == *rightExpression.getType());
-		appendCompareOperatorCode(op, *leftExpression.getType());
-	}
-	else
-	{
-		leftExpression.accept(*this);
-		cleanHigherOrderBitsIfNeeded(*leftExpression.getType(), resultType);
-		rightExpression.accept(*this);
-		cleanHigherOrderBitsIfNeeded(*rightExpression.getType(), resultType);
-		appendOrdinaryBinaryOperatorCode(op, resultType);
-	}
-
-	// do not visit the child nodes, we already did that explicitly
 	return false;
 }
 
-void ExpressionCompiler::endVisit(FunctionCall& _functionCall)
+bool Compiler::visit(IfStatement& _ifStatement)
 {
-	if (_functionCall.isTypeConversion())
+	ExpressionCompiler::compileExpression(m_context, _ifStatement.getCondition());
+	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
+	if (_ifStatement.getFalseStatement())
+		_ifStatement.getFalseStatement()->accept(*this);
+	eth::AssemblyItem endTag = m_context.appendJump();
+	m_context << trueTag;
+	_ifStatement.getTrueStatement().accept(*this);
+	m_context << endTag;
+	return false;
+}
+
+bool Compiler::visit(WhileStatement& _whileStatement)
+{
+	eth::AssemblyItem loopStart = m_context.newTag();
+	eth::AssemblyItem loopEnd = m_context.newTag();
+	m_continueTags.push_back(loopStart);
+	m_breakTags.push_back(loopEnd);
+
+	m_context << loopStart;
+	ExpressionCompiler::compileExpression(m_context, _whileStatement.getCondition());
+	m_context << eth::Instruction::ISZERO;
+	m_context.appendConditionalJumpTo(loopEnd);
+
+	_whileStatement.getBody().accept(*this);
+
+	m_context.appendJumpTo(loopStart);
+	m_context << loopEnd;
+
+	m_continueTags.pop_back();
+	m_breakTags.pop_back();
+	return false;
+}
+
+bool Compiler::visit(Continue&)
+{
+	if (!m_continueTags.empty())
+		m_context.appendJumpTo(m_continueTags.back());
+	return false;
+}
+
+bool Compiler::visit(Break&)
+{
+	if (!m_breakTags.empty())
+		m_context.appendJumpTo(m_breakTags.back());
+	return false;
+}
+
+bool Compiler::visit(Return& _return)
+{
+	//@todo modifications are needed to make this work with functions returning multiple values
+	if (Expression* expression = _return.getExpression())
 	{
-		//@todo binary representation for all supported types (bool and int) is the same, so no-op
-		// here for now.
+		ExpressionCompiler::compileExpression(m_context, *expression);
+		VariableDeclaration const& firstVariable = *_return.getFunctionReturnParameters().getParameters().front();
+		ExpressionCompiler::appendTypeConversion(m_context, *expression->getType(), *firstVariable.getType());
+
+		unsigned stackPosition = m_context.baseToCurrentStackOffset(m_context.getBaseStackOffsetOfVariable(firstVariable));
+		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}
-	else
+	m_context.appendJumpTo(m_returnTag);
+	return false;
+}
+
+bool Compiler::visit(VariableDefinition& _variableDefinition)
+{
+	if (Expression* expression = _variableDefinition.getExpression())
 	{
-		//@todo
+		ExpressionCompiler::compileExpression(m_context, *expression);
+		ExpressionCompiler::appendTypeConversion(m_context,
+												 *expression->getType(),
+												 *_variableDefinition.getDeclaration().getType());
+		unsigned baseStackOffset = m_context.getBaseStackOffsetOfVariable(_variableDefinition.getDeclaration());
+		unsigned stackPosition = m_context.baseToCurrentStackOffset(baseStackOffset);
+		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
 	}
+	return false;
 }
 
-void ExpressionCompiler::endVisit(MemberAccess&)
+bool Compiler::visit(ExpressionStatement& _expressionStatement)
 {
-
+	Expression& expression = _expressionStatement.getExpression();
+	ExpressionCompiler::compileExpression(m_context, expression);
+	if (expression.getType()->getCategory() != Type::Category::VOID)
+		m_context << eth::Instruction::POP;
+	return false;
 }
-
-void ExpressionCompiler::endVisit(IndexAccess&)
-{
-
-}
-
-void ExpressionCompiler::endVisit(Identifier&)
-{
-
-}
-
-void ExpressionCompiler::endVisit(Literal& _literal)
-{
-	switch (_literal.getType()->getCategory())
-	{
-	case Type::Category::INTEGER:
-	case Type::Category::BOOL:
-	{
-		bytes value = _literal.getType()->literalToBigEndian(_literal);
-		assert(value.size() <= 32);
-		assert(!value.empty());
-		append(static_cast<byte>(eth::Instruction::PUSH1) + static_cast<byte>(value.size() - 1));
-		append(value);
-		break;
-	}
-	default:
-		assert(false); // @todo
-	}
-}
-
-void ExpressionCompiler::cleanHigherOrderBitsIfNeeded(Type const& _typeOnStack, Type const& _targetType)
-{
-	// If the type of one of the operands is extended, we need to remove all
-	// higher-order bits that we might have ignored in previous operations.
-	// @todo: store in the AST whether the operand might have "dirty" higher
-	// order bits
-
-	if (_typeOnStack == _targetType)
-		return;
-	if (_typeOnStack.getCategory() == Type::Category::INTEGER &&
-			_targetType.getCategory() == Type::Category::INTEGER)
-	{
-		//@todo
-	}
-	else
-	{
-		// If we get here, there is either an implementation missing to clean higher oder bits
-		// for non-integer types that are explicitly convertible or we got here in error.
-		assert(!_typeOnStack.isExplicitlyConvertibleTo(_targetType));
-		assert(false); // these types should not be convertible.
-	}
-}
-
-void ExpressionCompiler::appendAndOrOperatorCode(BinaryOperation& _binaryOperation)
-{
-	Token::Value const op = _binaryOperation.getOperator();
-	assert(op == Token::OR || op == Token::AND);
-
-	_binaryOperation.getLeftExpression().accept(*this);
-	append(eth::Instruction::DUP1);
-	if (op == Token::AND)
-		append(eth::Instruction::NOT);
-	uint32_t endLabel = appendConditionalJump();
-	_binaryOperation.getRightExpression().accept(*this);
-	appendLabel(endLabel);
-}
-
-void ExpressionCompiler::appendCompareOperatorCode(Token::Value _operator, Type const& _type)
-{
-	if (_operator == Token::EQ || _operator == Token::NE)
-	{
-		append(eth::Instruction::EQ);
-		if (_operator == Token::NE)
-			append(eth::Instruction::NOT);
-	}
-	else
-	{
-		IntegerType const* type = dynamic_cast<IntegerType const*>(&_type);
-		assert(type);
-		bool const isSigned = type->isSigned();
-
-		// note that EVM opcodes compare like "stack[0] < stack[1]",
-		// but our left value is at stack[1], so everyhing is reversed.
-		switch (_operator)
-		{
-		case Token::GTE:
-			append(isSigned ? eth::Instruction::SGT : eth::Instruction::GT);
-			append(eth::Instruction::NOT);
-			break;
-		case Token::LTE:
-			append(isSigned ? eth::Instruction::SLT : eth::Instruction::LT);
-			append(eth::Instruction::NOT);
-			break;
-		case Token::GT:
-			append(isSigned ? eth::Instruction::SLT : eth::Instruction::LT);
-			break;
-		case Token::LT:
-			append(isSigned ? eth::Instruction::SGT : eth::Instruction::GT);
-			break;
-		default:
-			assert(false);
-		}
-	}
-}
-
-void ExpressionCompiler::appendOrdinaryBinaryOperatorCode(Token::Value _operator, Type const& _type)
-{
-	if (Token::isArithmeticOp(_operator))
-		appendArithmeticOperatorCode(_operator, _type);
-	else if (Token::isBitOp(_operator))
-		appendBitOperatorCode(_operator);
-	else if (Token::isShiftOp(_operator))
-		appendShiftOperatorCode(_operator);
-	else
-		assert(false); // unknown binary operator
-}
-
-void ExpressionCompiler::appendArithmeticOperatorCode(Token::Value _operator, Type const& _type)
-{
-	IntegerType const* type = dynamic_cast<IntegerType const*>(&_type);
-	assert(type);
-	bool const isSigned = type->isSigned();
-
-	switch (_operator)
-	{
-	case Token::ADD:
-		append(eth::Instruction::ADD);
-		break;
-	case Token::SUB:
-		append(eth::Instruction::SWAP1);
-		append(eth::Instruction::SUB);
-		break;
-	case Token::MUL:
-		append(eth::Instruction::MUL);
-		break;
-	case Token::DIV:
-		append(eth::Instruction::SWAP1);
-		append(isSigned ? eth::Instruction::SDIV : eth::Instruction::DIV);
-		break;
-	case Token::MOD:
-		append(eth::Instruction::SWAP1);
-		append(isSigned ? eth::Instruction::SMOD : eth::Instruction::MOD);
-		break;
-	default:
-		assert(false);
-	}
-}
-
-void ExpressionCompiler::appendBitOperatorCode(Token::Value _operator)
-{
-	switch (_operator)
-	{
-	case Token::BIT_OR:
-		append(eth::Instruction::OR);
-		break;
-	case Token::BIT_AND:
-		append(eth::Instruction::AND);
-		break;
-	case Token::BIT_XOR:
-		append(eth::Instruction::XOR);
-		break;
-	default:
-		assert(false);
-	}
-}
-
-void ExpressionCompiler::appendShiftOperatorCode(Token::Value _operator)
-{
-	switch (_operator)
-	{
-	case Token::SHL:
-		assert(false); //@todo
-		break;
-	case Token::SAR:
-		assert(false); //@todo
-		break;
-	default:
-		assert(false);
-	}
-}
-
-uint32_t ExpressionCompiler::appendConditionalJump()
-{
-	uint32_t label = m_context.dispenseNewLabel();
-	append(eth::Instruction::PUSH1);
-	appendLabelref(label);
-	append(eth::Instruction::JUMPI);
-	return label;
-}
-
-void ExpressionCompiler::append(bytes const& _data)
-{
-	m_assemblyItems.reserve(m_assemblyItems.size() + _data.size());
-	for (byte b: _data)
-		append(b);
-}
-
-
 
 }
 }
