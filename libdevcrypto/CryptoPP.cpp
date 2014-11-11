@@ -31,6 +31,7 @@ using namespace CryptoPP;
 void pp::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
 {
 	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
+	
 	secp256k1Params.GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
 
 	assert(Public::size + 1 == _k.GetGroupParameters().GetEncodedElementSize(true));
@@ -42,4 +43,11 @@ void pp::exponentToPublic(Integer const& _e, Public& _p)
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pk;
 	pk.Initialize(secp256k1Params, secp256k1Params.ExponentiateBase(_e));
 	pp::exportPublicKey(pk, _p);
+}
+
+void pp::ecdhAgree(Secret _s, Public _r, h256& o_s)
+{
+	ECDH<ECP>::Domain d(secp256k1Curve);
+	assert(d.AgreedValueLength() == sizeof(o_s));
+	d.Agree(o_s.data(), _s.data(), _r.data());
 }
