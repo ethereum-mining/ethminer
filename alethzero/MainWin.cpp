@@ -1605,7 +1605,7 @@ void Main::on_data_textChanged()
 			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
 			try
 			{
-				m_data = dev::solidity::CompilerStack::compile(src, scanner);
+				m_data = dev::solidity::CompilerStack::compile(src, scanner, m_enableOptimizer);
 			}
 			catch (dev::Exception const& exception)
 			{
