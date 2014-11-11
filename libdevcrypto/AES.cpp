@@ -19,5 +19,33 @@
  * @date 2014
  */
 
+#include "CryptoPP.h"
 #include "AES.h"
+
+using namespace std;
+using namespace dev::crypto::aes;
+using namespace dev::crypto::pp;
+using namespace CryptoPP;
+
+Stream::Stream(StreamType _t, h128 _ckey):
+	m_cSecret(_ckey)
+{
+	(void)_t; // encrypt and decrypt are same operation w/ctr mode
+	cryptor = new Aes128Ctr(_ckey);
+}
+
+Stream::~Stream()
+{
+	delete cryptor;
+}
+
+void Stream::update(bytesRef io_bytes)
+{
+
+}
+
+size_t Stream::streamOut(bytes& o_bytes)
+{
+	
+}
 

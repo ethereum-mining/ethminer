@@ -29,10 +29,10 @@ namespace dev
 {
 namespace crypto
 {
+namespace pp { struct Aes128Ctr; }
 namespace aes
 {
 
-using Secret128 = FixedHash<16>;
 enum StreamType { Encrypt, Decrypt };
 	
 /**
@@ -41,18 +41,20 @@ enum StreamType { Encrypt, Decrypt };
 class Stream
 {
 public:
-	Stream(StreamType _t, Secret128 _encS, bool _zero = true): m_type(_t), m_zeroInput(_zero), m_encSecret(_encS) {};
+	// streamtype maybe irrelevant w/ctr
+	Stream(StreamType _t, h128 _ckey);
+	~Stream();
 	
-	virtual void update(bytesRef io_bytes) {};
+	virtual void update(bytesRef io_bytes);
 	
 	/// Move ciphertext to _bytes.
-	virtual size_t streamOut(bytes& o_bytes) {};
+	virtual size_t streamOut(bytes& o_bytes);
 	
 private:
-	StreamType m_type;
-	bool m_zeroInput;
-	Secret128 m_encSecret;
+	h128 m_cSecret;
 	bytes m_text;
+
+	pp::Aes128Ctr* cryptor;
 };
 
 /**
@@ -61,16 +63,16 @@ private:
 class AuthenticatedStream: public Stream
 {
 public:
-	AuthenticatedStream(StreamType _t, Secret128 _encS, Secret128 _macS, unsigned _interval, bool _zero = true): Stream(_t, _encS, _zero), m_macSecret(_macS) { m_macInterval = _interval; }
+	AuthenticatedStream(StreamType _t, h128 _ckey, h128 _mackey, unsigned _interval): Stream(_t, _ckey), m_macSecret(_mackey) { m_macInterval = _interval; }
 	
-	AuthenticatedStream(StreamType _t, Secret const& _s, unsigned _interval, bool _zero = true): Stream(_t, Secret128(_s), _zero), m_macSecret(FixedHash<16>(_s[0]+16)) { m_macInterval = _interval; }
+	AuthenticatedStream(StreamType _t, Secret const& _s, unsigned _interval): Stream(_t, h128(_s)), m_macSecret(FixedHash<16>(_s[0]+16)) { m_macInterval = _interval; }
 	
 	/// Adjust mac interval. Next mac will be xored with value.
 	void adjustInterval(unsigned _interval) { m_macInterval = _interval; };
 	
 private:
 	std::atomic<unsigned> m_macInterval;
-	Secret128 m_macSecret;
+	h128 m_macSecret;
 };
 
 }

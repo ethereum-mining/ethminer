@@ -45,9 +45,11 @@ void pp::exponentToPublic(Integer const& _e, Public& _p)
 	pp::exportPublicKey(pk, _p);
 }
 
-void pp::ecdhAgree(Secret _s, Public _r, h256& o_s)
+void pp::ecdhAgree(Secret const& _s, Public const& _r, h256& o_s)
 {
 	ECDH<ECP>::Domain d(secp256k1Curve);
 	assert(d.AgreedValueLength() == sizeof(o_s));
-	d.Agree(o_s.data(), _s.data(), _r.data());
+	byte remote[65] = {0x04};
+	memcpy(&remote[1], _r.data(), 64);
+	assert(d.Agree(o_s.data(), _s.data(), remote));
 }
