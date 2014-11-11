@@ -134,15 +134,15 @@ bool crypto::verify(Signature const& _signature, bytesConstRef _message)
 
 bool crypto::verify(Public const& _p, Signature const& _sig, bytesConstRef _message, bool _hashed)
 {
-	static const size_t c_derMaxEncodingLength = 72;
 	if (_hashed)
 	{
 		assert(_message.size() == 32);
 		byte encpub[65] = {0x04};
 		memcpy(&encpub[1], _p.data(), 64);
-		byte dersig[derMaxEncodingLength];
-		size_t cssz = DSAConvertSignatureFormat(dersig, derMaxEncodingLength, DSA_DER, _sig.data(), 64, DSA_P1363);
-		assert(cssz <= derMaxEncodingLength);
+		static const size_t c_derMaxEncodingLength = 72;
+		byte dersig[c_derMaxEncodingLength];
+		size_t cssz = DSAConvertSignatureFormat(dersig, c_derMaxEncodingLength, DSA_DER, _sig.data(), 64, DSA_P1363);
+		assert(cssz <= c_derMaxEncodingLength);
 		return (1 == secp256k1_ecdsa_verify(_message.data(), _message.size(), dersig, cssz, encpub, 65));
 	}
 	
