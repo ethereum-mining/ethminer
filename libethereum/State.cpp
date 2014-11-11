@@ -1194,11 +1194,14 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas >= it->second.gas)
+		if (*_gas < it->second.gas)
 		{
-			*_gas -= it->second.gas;
-			it->second.exec(_data, _out);
+			*_gas = 0;
+			return false;
 		}
+
+		*_gas -= it->second.gas;
+		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
 	{
