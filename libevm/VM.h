@@ -743,18 +743,38 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;*/
 		case Instruction::LOG0:
 			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG1:
 			_ext.log({m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG2:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG3:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG4:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5], m_stack[m_stack.size() - 6]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::CREATE:
 		{
