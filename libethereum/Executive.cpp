@@ -80,14 +80,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_s.balance(m_sender) < cost)
 	{
 		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
-		BOOST_THROW_EXCEPTION(NotEnoughCash());
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((int)cost, (int)m_s.balance(m_sender)));
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
-		BOOST_THROW_EXCEPTION(BlockGasLimitReached());
+		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((int)(m_s.m_currentBlock.gasLimit - startGasUsed), (int)m_t.gas()));
 	}
 
 	// Increment associated nonce for sender.
