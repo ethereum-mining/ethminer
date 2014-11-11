@@ -206,7 +206,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
 			require(n + 2);
-			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
+			newTempSize = memNeed(m_stack[m_stack.size() - 1 ], m_stack[m_stack.size() - 2]);
 			break;
 		}
 

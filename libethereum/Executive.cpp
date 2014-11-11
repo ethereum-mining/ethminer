@@ -173,7 +173,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
 			if (m_ext)
+			{
 				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+				m_logs = m_ext->sub.logs;
+			}
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)
