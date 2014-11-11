@@ -1195,7 +1195,10 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	if (it != c_precompiled.end())
 	{
 		if (*_gas < it->second.gas)
+		{
+			*_gas = 0;
 			return false;
+		}
 
 		*_gas -= it->second.gas;
 		it->second.exec(_data, _out);
