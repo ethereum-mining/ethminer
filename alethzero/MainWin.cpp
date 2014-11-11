@@ -1238,6 +1238,7 @@ void Main::on_blocks_currentItemChanged()
 		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
 		auto details = ethereum()->blockChain().details(h);
 		auto blockData = ethereum()->blockChain().block(h);
+		auto blockReceipts = ethereum()->blockChain().receipts(h);
 		auto block = RLP(blockData);
 		BlockInfo info(blockData);
 
@@ -1261,6 +1262,14 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
+			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
+			for (unsigned i = 0; i < blockReceipts.receipts.size(); ++i)
+			{
+				s << "<div>TX: " << toHex(block[1][i].data()) << "</div>";
+				s << "<div>Receipt: " << toHex(blockReceipts.receipts[i].rlp()) << "</div>";
+				auto r = blockReceipts.receipts[i].rlp();
+				s << "<div>RLP: " << toString(RLP(r)) << "</div>";
+			}
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			for (auto u: block[2])
 			{
