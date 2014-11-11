@@ -76,7 +76,9 @@ void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public&
 static void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
 	
 void exponentToPublic(Integer const& _e, Public& _p);
-	
+
+void ecdhAgree(Secret _s, Public _r, h256& o_s);
+
 template <class T>
 void initializeDLScheme(Secret const& _s, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, secretToExponent(_s)); }
 	
