@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
@@ -41,7 +41,7 @@ struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
-struct StackTooSmall: virtual public VMException { StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+struct StackTooSmall: virtual public VMException {};
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -71,7 +71,7 @@ public:
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
-	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall(_n, m_stack.size())); }
+	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError(int(_n), m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
@@ -701,7 +701,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (!m_jumpDests.count((unsigned)nextPC))
+			if (!m_jumpDests.count(nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -709,7 +709,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (!m_jumpDests.count((unsigned)nextPC))
+				if (!m_jumpDests.count(nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();

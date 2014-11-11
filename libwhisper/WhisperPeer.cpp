@@ -37,7 +37,7 @@ using namespace dev::shh;
 WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i): Capability(_s, _h, _i)
 {
 	RLPStream s;
-	sealAndSend(prep(s, StatusPacket, 1) << host()->protocolVersion());
+	sealAndSend(prep(s, StatusPacket, 1) << version());
 }
 
 WhisperPeer::~WhisperPeer()
@@ -59,7 +59,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 		clogS(NetMessageSummary) << "Status: " << protocolVersion;
 
-		if (protocolVersion != host()->protocolVersion())
+		if (protocolVersion != version())
 			disable("Invalid protocol version.");
 
 		if (session()->id() < host()->host()->id())

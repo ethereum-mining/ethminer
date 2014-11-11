@@ -9,7 +9,7 @@
 #include <QtCore/QtCore>
 #include <libethcore/FileSystem.h>
 #include <libethcore/Dagger.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
 #include "BuildInfo.h"

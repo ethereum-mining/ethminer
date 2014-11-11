@@ -59,7 +59,7 @@ endif()
 
 include_directories(/)
 qt5_use_modules(${EXECUTABLE} Core Gui WebKit WebKitWidgets Widgets Network Quick Qml)
-target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${JSONRPC_LS})
+target_link_libraries(${EXECUTABLE} ethereum secp256k1 ${JSON_RPC_CPP_LIBRARIES})
 
 if (APPLE)
 	if (${ADDFRAMEWORKS})

@@ -27,7 +27,7 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
@@ -36,27 +36,35 @@ namespace dev
 namespace eth
 {
 
+template <class T> inline std::set<T> toSet(std::vector<T> const& _ts)
+{
+	std::set<T> ret;
+	for (auto const& t: _ts)
+		ret.insert(t);
+	return ret;
+}
+
 using LogBloom = h512;
 
 struct LogEntry
 {
 	LogEntry() {}
-	LogEntry(RLP const& _r) { from = (Address)_r[0]; topics = (h256s)_r[1]; data = (bytes)_r[2]; }
-	LogEntry(Address const& _f, h256s&& _ts, bytes&& _d): from(_f), topics(std::move(_ts)), data(std::move(_d)) {}
+	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = (h256Set)_r[1]; data = (bytes)_r[2]; }
+	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(toSet(_ts)), data(std::move(_d)) {}
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3) << from << topics << data; }
+	void streamRLP(RLPStream& _s) const { _s.appendList(3) << address << topics << data; }
 
 	LogBloom bloom() const
 	{
 		LogBloom ret;
-		ret.shiftBloom<3, 32>(sha3(from.ref()));
+		ret.shiftBloom<3, 32>(sha3(address.ref()));
 		for (auto t: topics)
 			ret.shiftBloom<3, 32>(sha3(t.ref()));
 		return ret;
 	}
 
-	Address from;
-	h256s topics;
+	Address address;
+	h256Set topics;
 	bytes data;
 };
 
@@ -80,7 +88,6 @@ struct SubState
 	{
 		suicides += _s.suicides;
 		refunds += _s.refunds;
-		suicides += _s.suicides;
 		return *this;
 	}
 };
@@ -97,7 +104,7 @@ public:
 	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
 
 	virtual ~ExtVMFace() = default;
 
@@ -146,7 +153,7 @@ public:
 	u256 value;					///< Value (in Wei) that was passed to this address.
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
-	bytesConstRef code;			///< Current code that is executing.
+	bytes code;			///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).

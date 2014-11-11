@@ -27,6 +27,7 @@
 #include <chrono>
 #include <boost/thread.hpp>
 #include "vector_ref.h"
+#include "CommonIO.h"
 
 namespace dev
 {
