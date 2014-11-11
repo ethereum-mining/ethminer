@@ -73,8 +73,8 @@ public:
 	virtual std::string eth_codeAt(std::string const& _address);
 	virtual std::string eth_coinbase();
 	virtual Json::Value eth_compilers();
-	virtual std::string eth_contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params);
-	virtual std::string eth_contractCreate(std::string const& _bytecode, std::string const& _value);
+	virtual std::string eth_contractCall(std::string const& _address, int const& _index, Json::Value const& _params);
+	virtual std::string eth_contractCreate(std::string const& _bytecode);
 	virtual double eth_countAt(std::string const& _address);
 	virtual int eth_defaultBlock();
 	virtual std::string eth_gasPrice();
