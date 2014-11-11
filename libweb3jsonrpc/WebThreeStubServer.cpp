@@ -528,19 +528,17 @@ Json::Value WebThreeStubServer::eth_compilers()
 	return ret;
 }
 
-static bytes paramsToBytes(Json::Value const& _params)
+static bytes toMethodCall(int const& _index, Json::Value const& _params)
 {
-	bytes data;
+	bytes data(1, _index);
 	if (_params.isArray())
 		for (auto i: _params)
-//			data += asBytes(i.asString());
-//			data += toBigEndian(jsToU256(i.asString()));
-			data += asBytes(jsPadded(i.asString(), 33));
+			data += asBytes(jsPadded(i.asString(), 32));
 	cwarn << data;
 	return data;
 }
 
-std::string WebThreeStubServer::eth_contractCall(std::string const& _address, std::string const& _value, Json::Value const& _params)
+std::string WebThreeStubServer::eth_contractCall(std::string const& _address, int const& _index, Json::Value const& _params)
 {
 	auto from = m_accounts.begin()->first;
 	for (auto a: m_accounts)
@@ -551,11 +549,11 @@ std::string WebThreeStubServer::eth_contractCall(std::string const& _address, st
 	
 	auto gasPrice = 10 * dev::eth::szabo;
 	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
-	auto bytes = paramsToBytes(_params);
-	return toJS(client()->call(m_accounts[from].secret(), jsToU256(_value), jsToAddress(_address), paramsToBytes(_params), gas, gasPrice));
+	auto bytes = toMethodCall(_index, _params);
+	return toJS(client()->call(m_accounts[from].secret(), 0, jsToAddress(_address), toMethodCall(_index, _params), gas, gasPrice));
 }
 
-std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode, std::string const& _value)
+std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode)
 {
 	auto from = m_accounts.begin()->first;
 	for (auto a: m_accounts)
@@ -566,7 +564,7 @@ std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode,
 	
 	auto gasPrice = 10 * dev::eth::szabo;
 	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
-	return toJS(client()->transact(m_accounts[from].secret(), jsToU256(_value), jsToBytes(_bytecode), gas, gasPrice));
+	return toJS(client()->transact(m_accounts[from].secret(), 0, jsToBytes(_bytecode), gas, gasPrice));
 }
 
 std::string WebThreeStubServer::eth_lll(std::string const& _code)
