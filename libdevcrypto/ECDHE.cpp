@@ -29,15 +29,24 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace dev::crypto::pp;
 
-void ECDHE::agree(Public _remote)
+void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret)
 {
+	if (m_remoteEphemeral)
+		// agreement can only occur once
+		BOOST_THROW_EXCEPTION(InvalidState());
+	
 	m_remoteEphemeral = _remote;
-	ecdhAgree(m_ephemeral.sec(), m_remoteEphemeral, m_sharedSecret);
+	ecdhAgree(m_ephemeral.sec(), m_remoteEphemeral, o_sharedSecret);
+}
+
+void ECDHEKeyExchange::agree(Public const& _remoteEphemeral)
+{
+	ecdhAgree(m_ephemeral.sec(), _remoteEphemeral, m_ephemeralSecret);
 }
 
 void ECDHEKeyExchange::exchange(bytes& o_exchange)
 {
-	if (!m_sharedSecret)
+	if (!m_ephemeralSecret)
 		// didn't agree on public remote
 		BOOST_THROW_EXCEPTION(InvalidState());
 
@@ -60,12 +69,12 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	memcpy(exchange.data() - v.size(), v.data(), v.size());
 	
 	h256 auth;
-	sha3mac(m_alias.m_secret.ref(), m_sharedSecret.ref(), auth.ref());
+	sha3mac(m_alias.m_secret.ref(), m_ephemeralSecret.ref(), auth.ref());
 	Signature sig = crypto::sign(m_alias.m_secret, auth);
 	exchange.resize(exchange.size() + sizeof(sig));
 	memcpy(exchange.data() - sizeof(sig), sig.data(), sizeof(sig));
 	
-	aes::AuthenticatedStream aes(aes::Encrypt, m_sharedSecret, 0);
+	aes::AuthenticatedStream aes(aes::Encrypt, m_ephemeralSecret, 0);
 	h256 prefix(sha3((h256)(m_known.second|m_remoteEphemeral)));
 	aes.update(prefix.ref());
 	

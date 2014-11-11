@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common.h"
-#include "CryptoPP.h"
 #include "EC.h"
 #include "FileSystem.h"
 #include "MemoryDB.h"

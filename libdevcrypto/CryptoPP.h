@@ -77,13 +77,19 @@ static void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k
 	
 void exponentToPublic(Integer const& _e, Public& _p);
 
-void ecdhAgree(Secret _s, Public _r, h256& o_s);
+void ecdhAgree(Secret const& _s, Public const& _r, h256& o_s);
 
 template <class T>
 void initializeDLScheme(Secret const& _s, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, secretToExponent(_s)); }
 	
 template <class T>
 void initializeDLScheme(Public const& _p, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, publicToPoint(_p)); }
+	
+struct Aes128Ctr
+{
+	Aes128Ctr(h128 _k) { mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data()); }
+	CTR_Mode<AES>::Encryption mode;
+};
 
 }
 }

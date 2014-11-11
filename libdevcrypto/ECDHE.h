@@ -48,6 +48,7 @@ private:
 	
 /**
  * @brief Derive DH shared secret from EC keypairs.
+ * As ephemeral keys are single-use, agreement is limited to a single occurence.
  */
 class ECDHE
 {
@@ -58,13 +59,12 @@ public:
 	/// Public key sent to remote.
 	Public pubkey() { return m_ephemeral.pub(); }
 	
-	/// Provide public key for dh agreement to generated shared secret.
-	void agree(Public _remoteEphemeral);
+	/// Input public key for dh agreement, output generated shared secret.
+	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret);
 	
 protected:
 	KeyPair m_ephemeral;			///< Ephemeral keypair; generated.
 	Public m_remoteEphemeral;		///< Public key of remote; parameter.
-	Secret m_sharedSecret;		///< Derived secret; derived by agree.
 };
 
 /**
@@ -73,7 +73,7 @@ protected:
  *
  * Usage: Agree -> Exchange -> Authenticate
  */
-class ECDHEKeyExchange: public ECDHE
+class ECDHEKeyExchange: private ECDHE
 {
 public:
 	/// Exchange with unknown remote (pass public key for ingress exchange)
@@ -82,6 +82,9 @@ public:
 	/// Exchange with known remote
 	ECDHEKeyExchange(Alias& _k, AliasSession _known): m_alias(_k), m_known(_known) {};
 
+	/// Provide public key for dh agreement to generate shared secret.
+	void agree(Public const& _remoteEphemeral);
+	
 	/// @returns encrypted payload of key exchange
 	void exchange(bytes& o_exchange);
 	
@@ -89,6 +92,7 @@ public:
 	bool authenticate(bytes _exchangeIn);
 
 private:
+	Secret m_ephemeralSecret;
 	Alias m_alias;
 	AliasSession m_known;
 	Secret m_sharedAliasSecret;
