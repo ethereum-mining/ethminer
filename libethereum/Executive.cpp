@@ -123,11 +123,7 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
-	{
 		m_endGas = _gas;
-		if (m_ext)
-			m_ext->sub.logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
-	}
 	return !m_ext;
 }
 
@@ -177,7 +173,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
 			if (m_ext)
+			{
 				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+				m_logs = m_ext->sub.logs;
+			}
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)

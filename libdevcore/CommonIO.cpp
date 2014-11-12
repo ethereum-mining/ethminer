@@ -30,7 +30,7 @@ string dev::memDump(bytes const& _b, unsigned _w, bool _html)
 {
 	stringstream ret;
 	if (_html)
-		ret << "<pre style=\"font-family: Monospace, sans-serif; font-size: small\">";
+		ret << "<pre style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">";
 	for (unsigned i = 0; i < _b.size(); i += _w)
 	{
 		ret << hex << setw(4) << setfill('0') << i << " ";
