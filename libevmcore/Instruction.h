@@ -22,17 +22,12 @@
 #pragma once
 
 #include <libdevcore/Common.h>
-#include <libdevcore/Exceptions.h>
-
-namespace boost { namespace spirit { class utree; } }
-namespace sp = boost::spirit;
+#include <libevmcore/Exceptions.h>
 
 namespace dev
 {
 namespace eth
 {
-
-struct InvalidOpcode: virtual Exception {};
 
 /// Virtual machine bytecode instruction.
 enum class Instruction: uint8_t
@@ -209,6 +204,7 @@ struct InstructionInfo
 	int additional;		///< Additional items required in memory for this instructions (only for PUSH).
 	int args;			///< Number of items required on the stack for this instruction (and, for the purposes of ret, the number taken from the stack).
 	int ret;			///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
+	bool sideEffects;	///< false if the only effect on the execution environment (apart from gas usage) is a change to a topmost segment of the stack
 };
 
 /// Information on all the instructions.

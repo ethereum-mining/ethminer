@@ -23,7 +23,7 @@
 
 #include <functional>
 #include <libdevcore/Log.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include "Transaction.h"
 #include "Manifest.h"
