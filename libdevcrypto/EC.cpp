@@ -153,24 +153,33 @@ bool crypto::verify(Public const& _p, Signature const& _sig, bytesConstRef _mess
 
 Public crypto::recover(Signature _signature, bytesConstRef _message)
 {
-	secp256k1_start();
+	Integer heInt(_message.data(), 32);
 	
-	int pubkeylen = 65;
-	byte pubkey[pubkeylen];
-	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &pubkeylen, 0, (int)_signature[64]))
-		return Public();
+	// a different curve would require additional check for v (aka, recid)
+	Integer r(_signature.data(), 32);
+	Integer s(_signature.data()+32, 32);
+	unsigned recid = _signature[64];
 	
-#if ETH_CRYPTO_TRACE
-	h256* sig = (h256 const*)_signature.data();
-	cout << "---- RECOVER -------------------------------" << endl;
-	cout << "MSG: " << _message << endl;
-	cout << "R S V: " << sig[0] << " " << sig[1] << " " << (int)(_signature[64] - 27) << "+27" << endl;
-	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-#endif
+	byte encodedpoint[33];
+	encodedpoint[0] = recid|2;
+	memcpy(&encodedpoint[1], _signature.data(), 32);
+
+	ECP::Element x;
+	secp256k1Params.GetCurve().DecodePoint(x, encodedpoint, 33);
+
+	if (!secp256k1Params.GetCurve().VerifyPoint(x))
+		BOOST_THROW_EXCEPTION(InvalidState());
 	
-	Public ret;
-	memcpy(&ret, &(pubkey[1]), sizeof(Public));
-	return ret;
+	Integer rn = r.InverseMod(secp256k1Params.GetGroupOrder());
+	Integer u1 = secp256k1Params.GetGroupOrder() - (rn.Times(heInt)).Modulo(secp256k1Params.GetGroupOrder());
+	Integer u2 = (rn.Times(s)).Modulo(secp256k1Params.GetGroupOrder());
+
+	ECP::Point p = secp256k1Params.GetCurve().CascadeMultiply(u2, x, u1, secp256k1Params.GetSubgroupGenerator());
+	byte recoveredbytes[65];
+	secp256k1Params.GetCurve().EncodePoint(recoveredbytes, p, false);
+	Public recovered;
+	memcpy(recovered.data(), &recoveredbytes[1], 64);
+	return recovered;
 }
 
 bool crypto::verifySecret(Secret const& _s, Public const& _p)
