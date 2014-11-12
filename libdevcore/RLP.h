@@ -158,8 +158,13 @@ public:
 
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
+	explicit operator bytes() const { return toBytes(); }
 	explicit operator RLPs() const { return toList(); }
-	explicit operator byte() const { return toInt<byte>(); }
+	explicit operator uint8_t() const { return toInt<uint8_t>(); }
+	explicit operator uint16_t() const { return toInt<uint16_t>(); }
+	explicit operator uint32_t() const { return toInt<uint32_t>(); }
+	explicit operator uint64_t() const { return toInt<uint64_t>(); }
+	explicit operator u160() const { return toInt<u160>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
@@ -337,7 +342,7 @@ public:
 	RLPStream& append(char const* _s) { return append(std::string(_s)); }
 	template <unsigned N> RLPStream& append(FixedHash<N> _s, bool _compact = false, bool _allOrNothing = false) { return _allOrNothing && !_s ? append(bytesConstRef()) : append(_s.ref(), _compact); }
 
-	/// Appends an arbitrary RLP fragment - this *must* be a single item.
+	/// Appends an arbitrary RLP fragment - this *must* be a single item unless @a _itemCount is given.
 	RLPStream& append(RLP const& _rlp, unsigned _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.

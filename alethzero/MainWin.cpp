@@ -610,6 +610,7 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 		ethereum()->setAddress(m_myKeys.back().address());
+		m_server->setAccounts(keysAsVector(m_myKeys));
 	}
 
 	{
@@ -1257,9 +1258,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
-			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
+//			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
+			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			for (auto u: block[2])
 			{
@@ -1282,6 +1284,7 @@ void Main::on_blocks_currentItemChanged()
 			Transaction tx(block[1][txi].data());
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
+			auto receipt = ethereum()->blockChain().receipts(h).receipts[txi];
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
@@ -1297,6 +1300,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
+			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
+			auto r = receipt.rlp();
+			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			if (tx.isCreation())
 			{
 				if (tx.data().size())
@@ -1374,7 +1381,7 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 		debugFinished();
 		vector<WorldState const*> levels;
 		m_codes.clear();
-		bytesConstRef lastExtCode;
+		bytes lastExtCode;
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
@@ -1387,7 +1394,7 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 				lastExtCode = ext.code;
 				lastHash = sha3(lastExtCode);
 				if (!m_codes.count(lastHash))
-					m_codes[lastHash] = ext.code.toBytes();
+					m_codes[lastHash] = ext.code;
 			}
 			if (ext.data != lastData)
 			{
@@ -1604,7 +1611,7 @@ void Main::on_data_textChanged()
 			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
 			try
 			{
-				m_data = dev::solidity::CompilerStack::compile(src, scanner);
+				m_data = dev::solidity::CompilerStack::compile(src, scanner, m_enableOptimizer);
 			}
 			catch (dev::Exception const& exception)
 			{
@@ -1821,6 +1828,7 @@ void Main::on_send_clicked()
 void Main::keysChanged()
 {
 	onBalancesChange();
+	m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_debug_clicked()
@@ -2218,7 +2226,7 @@ void Main::refreshWhispers()
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topics()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
