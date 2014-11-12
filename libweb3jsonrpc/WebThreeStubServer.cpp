@@ -538,7 +538,7 @@ static bytes toMethodCall(int const& _index, Json::Value const& _params)
 	return data;
 }
 
-std::string WebThreeStubServer::eth_contractCall(std::string const& _address, int const& _index, Json::Value const& _params)
+std::string WebThreeStubServer::eth_contractCall(std::string const& _address, std::string const& _bytes)
 {
 	auto from = m_accounts.begin()->first;
 	for (auto a: m_accounts)
@@ -549,8 +549,8 @@ std::string WebThreeStubServer::eth_contractCall(std::string const& _address, in
 	
 	auto gasPrice = 10 * dev::eth::szabo;
 	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
-	auto bytes = toMethodCall(_index, _params);
-	return toJS(client()->call(m_accounts[from].secret(), 0, jsToAddress(_address), toMethodCall(_index, _params), gas, gasPrice));
+	auto bytes = jsToBytes(_bytes);
+	return toJS(client()->call(m_accounts[from].secret(), 0, jsToAddress(_address), bytes, gas, gasPrice));
 }
 
 std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode)

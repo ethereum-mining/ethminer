@@ -31,7 +31,7 @@
             { "method": "eth_lll", "params": [""], "order": [], "returns": ""},
             { "method": "eth_solidity", "params": [""], "order": [], "returns": ""},
             { "method": "eth_contractCreate", "params": [""], "order": [], "returns": ""},
-            { "method": "eth_contractCall", "params": ["", 0, []], "order": [], "returns": ""},
+            { "method": "eth_contractCall", "params": ["", ""], "order": [], "returns": ""},
 
             { "method": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
             { "method": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
