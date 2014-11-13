@@ -273,13 +273,12 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
 	for (auto const& t: _e.topics())
-		res["topics"].append(toJS((u256)t));
+		res["topics"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
 }
-
 
 WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
