@@ -71,10 +71,10 @@ class AuthenticatedStream: public Stream
 public:
 	AuthenticatedStream(StreamType _t, h128 _ckey, h128 _mackey, unsigned _interval): Stream(_t, _ckey), m_macSecret(_mackey) { m_macInterval = _interval; }
 	
-	AuthenticatedStream(StreamType _t, Secret const& _s, unsigned _interval): Stream(_t, h128(_s)), m_macSecret(FixedHash<16>(_s[0]+16)) { m_macInterval = _interval; }
+	AuthenticatedStream(StreamType _t, Secret const& _s, unsigned _interval): Stream(_t, h128(_s)), m_macSecret(FixedHash<16>((byte const*)_s.data()+16,h128::ConstructFromPointer)) { m_macInterval = _interval; }
 	
 	/// Adjust mac interval. Next mac will be xored with value.
-	void adjustInterval(unsigned _interval) { m_macInterval = _interval; };
+	void adjustInterval(unsigned _interval) { m_macInterval = _interval; }
 	
 private:
 	AuthenticatedStream(AuthenticatedStream const&) = delete;
