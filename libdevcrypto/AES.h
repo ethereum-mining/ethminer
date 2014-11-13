@@ -29,10 +29,10 @@ namespace dev
 {
 namespace crypto
 {
-namespace pp { struct Aes128Ctr; }
 namespace aes
 {
 
+struct Aes128Ctr;
 enum StreamType { Encrypt, Decrypt };
 	
 /**
@@ -54,8 +54,9 @@ private:
 	h128 m_cSecret;
 	bytes m_text;
 
-	pp::Aes128Ctr* cryptor;
+	Aes128Ctr* cryptor;
 };
+	
 
 /**
  * @brief Encrypted stream with inband SHA3 mac at specific interval.

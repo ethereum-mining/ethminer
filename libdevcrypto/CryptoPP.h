@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <mutex>
 // need to leave this one disabled for link-time. blame cryptopp.
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma warning(push)
@@ -48,50 +49,85 @@
 #include <dsa.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
+#include "SHA3.h"
 #include "Common.h"
 
 namespace dev
 {
 namespace crypto
 {
-namespace pp
-{
-	
+
 using namespace CryptoPP;
-	
-/// CryptoPP random number pool
-static CryptoPP::AutoSeededRandomPool PRNG;
-	
-/// CryptoPP EC Cruve
-static const CryptoPP::OID secp256k1Curve = CryptoPP::ASN1::secp256k1();
-	
-static const CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> secp256k1Params(secp256k1Curve);
-	
-static ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data() + 32, 32); return std::move(ECP::Point(x,y)); }
-	
-static Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.data(), Secret::size)); }
 
-void exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p);
+inline ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data() + 32, 32); return std::move(ECP::Point(x,y)); }
 
-static void exportPrivateKey(CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
+inline Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.data(), Secret::size)); }
 	
-void exponentToPublic(Integer const& _e, Public& _p);
-
-void ecdhAgree(Secret const& _s, Public const& _r, h256& o_s);
-
-template <class T>
-void initializeDLScheme(Secret const& _s, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, secretToExponent(_s)); }
+/**
+ * CryptoPP secp256k1 algorithms.
+ */
+class Secp256k1
+{	
+public:
+	Secp256k1(): m_oid(ASN1::secp256k1()), m_params(m_oid), m_curve(m_params.GetCurve()), m_q(m_params.GetGroupOrder()), m_qs(m_params.GetSubgroupOrder()) {}
 	
-template <class T>
-void initializeDLScheme(Public const& _p, T& io_operator) { io_operator.AccessKey().Initialize(pp::secp256k1Params, publicToPoint(_p)); }
+	Address toAddress(Public const& _p) { return right160(sha3(_p.ref())); }
 	
-struct Aes128Ctr
-{
-	Aes128Ctr(h128 _k) { mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data()); }
-	CTR_Mode<AES>::Encryption mode;
+	void toPublic(Secret const& _s, Public& o_public) { exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public); }
+	
+	/// Encrypts text (replace input).
+	void encrypt(Public const& _k, bytes& io_cipher);
+	
+	/// Decrypts text (replace input).
+	void decrypt(Secret const& _k, bytes& io_text);
+	
+	/// @returns siganture of message.
+	Signature sign(Secret const& _k, bytesConstRef _message);
+	
+	/// @returns compact siganture of message hash.
+	Signature sign(Secret const& _k, h256 const& _hash);
+	
+	/// Verify compact signature (public key is extracted from message).
+	bool verify(Signature const& _signature, bytesConstRef _message);
+	
+	/// Verify signature.
+	bool verify(Public const& _p, Signature const& _sig, bytesConstRef _message, bool _hashed = false);
+	
+	/// Recovers public key from compact signature. Uses libsecp256k1.
+	Public recover(Signature _signature, bytesConstRef _message);
+	
+	/// Verify secret key is valid.
+	bool verifySecret(Secret const& _s, Public& o_p);
+	
+	void agree(Secret const& _s, Public const& _r, h256& o_s);
+	
+protected:
+	void exportPrivateKey(DL_PrivateKey_EC<ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
+	
+	void exportPublicKey(DL_PublicKey_EC<ECP> const& _k, Public& _p);
+	
+	void exponentToPublic(Integer const& _e, Public& _p);
+	
+	template <class T> void initializeDLScheme(Secret const& _s, T& io_operator) { std::lock_guard<std::mutex> l(x_params); io_operator.AccessKey().Initialize(m_params, secretToExponent(_s)); }
+	
+	template <class T> void initializeDLScheme(Public const& _p, T& io_operator) { std::lock_guard<std::mutex> l(x_params); io_operator.AccessKey().Initialize(m_params, publicToPoint(_p)); }
+	
+private:
+	OID m_oid;
+	
+	std::mutex x_rng;
+	AutoSeededRandomPool m_rng;
+	
+	std::mutex x_params;
+	DL_GroupParameters_EC<ECP> m_params;
+	
+	std::mutex x_curve;
+	DL_GroupParameters_EC<ECP>::EllipticCurve m_curve;
+	
+	Integer m_q;
+	Integer m_qs;
 };
 
-}
 }
 }
 

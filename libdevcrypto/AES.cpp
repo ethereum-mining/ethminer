@@ -23,14 +23,21 @@
 #include "AES.h"
 
 using namespace std;
+using namespace dev;
+using namespace dev::crypto;
 using namespace dev::crypto::aes;
-using namespace dev::crypto::pp;
 using namespace CryptoPP;
+
+struct aes::Aes128Ctr
+{
+	Aes128Ctr(h128 _k) { mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data()); }
+	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption mode;
+};
 
 Stream::Stream(StreamType _t, h128 _ckey):
 	m_cSecret(_ckey)
 {
-	(void)_t; // encrypt and decrypt are same operation w/ctr mode
+	(void)_t; // encrypt and decrypt are same operation w/ctr
 	cryptor = new Aes128Ctr(_ckey);
 }
 
@@ -39,13 +46,13 @@ Stream::~Stream()
 	delete cryptor;
 }
 
-void Stream::update(bytesRef io_bytes)
+void Stream::update(bytesRef)
 {
 
 }
 
-size_t Stream::streamOut(bytes& o_bytes)
+size_t Stream::streamOut(bytes&)
 {
-	
+	return 0;
 }
 
