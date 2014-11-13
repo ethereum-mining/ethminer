@@ -24,7 +24,6 @@
 #pragma once
 
 #include "AES.h"
-#include "EC.h"
 
 namespace dev
 {
@@ -33,6 +32,9 @@ namespace crypto
 	
 typedef std::pair<Public,h256> AliasSession;
 	
+/**
+ * @brief An addressable EC key pair.
+ */
 class Alias
 {
 	friend class ECDHEKeyExchange; // todo: remove

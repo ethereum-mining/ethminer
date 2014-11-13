@@ -20,14 +20,14 @@
  */
 
 #include "SHA3.h"
-#include "SHA3MAC.h"
 #include "CryptoPP.h"
 #include "ECDHE.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
-using namespace dev::crypto::pp;
+
+static Secp256k1 s_secp256k1;
 
 void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret)
 {
@@ -36,12 +36,12 @@ void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret)
 		BOOST_THROW_EXCEPTION(InvalidState());
 	
 	m_remoteEphemeral = _remote;
-	ecdhAgree(m_ephemeral.sec(), m_remoteEphemeral, o_sharedSecret);
+	s_secp256k1.agree(m_ephemeral.sec(), m_remoteEphemeral, o_sharedSecret);
 }
 
 void ECDHEKeyExchange::agree(Public const& _remoteEphemeral)
 {
-	ecdhAgree(m_ephemeral.sec(), _remoteEphemeral, m_ephemeralSecret);
+	s_secp256k1.agree(m_ephemeral.sec(), _remoteEphemeral, m_ephemeralSecret);
 }
 
 void ECDHEKeyExchange::exchange(bytes& o_exchange)
@@ -50,16 +50,29 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 		// didn't agree on public remote
 		BOOST_THROW_EXCEPTION(InvalidState());
 
+	// The key exchange payload is in two parts and is encrypted
+	// using ephemeral keypair.
+	//
+	// The first part is the 'prefix' which is a zero-knowledge proof
+	// allowing the remote to resume or emplace a previous session.
+	// If a session previously exists:
+	//	prefix is sha3(token) // todo: ephemeral entropy from both sides
+	// If a session doesn't exist:
+	//	prefix is sha3mac(m_ephemeralSecret,
+	//
+	// The second part is encrypted using the public key which relates to the prefix.
+	
 	Public encpk = m_known.first|m_remoteEphemeral;
 	bytes exchange(encpk.asBytes());
 	
 	// This is the public key which we would like the remote to use,
-	// which maybe different than previously-known public key.
-	// Here we would pick an appropriate alias or generate a new one,
+	// which maybe different than the previously-known public key.
+	//
+	// Here we should pick an appropriate alias or generate a new one,
 	// but for now, we use static alias passed to constructor.
 	//
 	Public p;
-	pp::exponentToPublic(pp::secretToExponent(m_alias.m_secret), p);
+	s_secp256k1.toPublic(m_alias.m_secret, p);
 	exchange.resize(exchange.size() + sizeof(p));
 	memcpy(exchange.data() - sizeof(p), p.data(), sizeof(p));
 	
@@ -70,7 +83,7 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	
 	h256 auth;
 	sha3mac(m_alias.m_secret.ref(), m_ephemeralSecret.ref(), auth.ref());
-	Signature sig = crypto::sign(m_alias.m_secret, auth);
+	Signature sig = s_secp256k1.sign(m_alias.m_secret, auth);
 	exchange.resize(exchange.size() + sizeof(sig));
 	memcpy(exchange.data() - sizeof(sig), sig.data(), sizeof(sig));
 	
@@ -78,7 +91,7 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	h256 prefix(sha3((h256)(m_known.second|m_remoteEphemeral)));
 	aes.update(prefix.ref());
 	
-	encrypt(encpk, exchange);
+	s_secp256k1.encrypt(encpk, exchange);
 	aes.update(&exchange);
 
 	aes.streamOut(o_exchange);

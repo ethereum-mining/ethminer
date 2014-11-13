@@ -30,7 +30,7 @@
 
 namespace dev
 {
-
+	
 /// A secret key: 32 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Secret = h256;
@@ -59,6 +59,12 @@ using AddressSet = std::set<h160>;
 using Secrets = h256s;
 
 /// Convert a secret key into the public key equivalent.
+Public toPublic(Secret _secret);
+
+/// Convert a public key to address.
+Address toAddress(Public _public);
+
+/// Convert a secret key into address of public key equivalent.
 /// @returns 0 if it's not a valid secret key.
 Address toAddress(Secret _secret);
 
@@ -119,6 +125,9 @@ namespace crypto
 {
 struct InvalidState: public dev::Exception {};
 
+/// Key derivation
+h256 kdf(Secret const& _priv, h256 const& _hash);
+	
 /**
  * @brief Generator for nonce material
  */
