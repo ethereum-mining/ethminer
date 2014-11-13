@@ -206,7 +206,8 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
 			require(n + 2);
-			newTempSize = memNeed(m_stack[m_stack.size() - 1 ], m_stack[m_stack.size() - 2]);
+			runGas = c_logGas + c_logTopicGas * n + c_logDataGas * m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
 			break;
 		}
 
