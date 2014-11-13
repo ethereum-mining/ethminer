@@ -109,6 +109,14 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
+static Json::Value toJson(std::map<u256, u256> const& _storage)
+{
+	Json::Value res(Json::objectValue);
+	for (auto i: _storage)
+		res[toJS(i.first)] = toJS(i.second);
+	return res;
+}
+
 /*static*/ Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
 	Json::Value res;
@@ -649,6 +657,13 @@ std::string WebThreeStubServer::eth_stateAt(string const& _address, string const
 {
 	int block = 0;
 	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
+}
+
+Json::Value WebThreeStubServer::eth_storageAt(string const& _address)
+{
+	if (!client())
+		return Json::Value(Json::objectValue);
+	return toJson(client()->storageAt(jsToAddress(_address)));
 }
 
 std::string WebThreeStubServer::eth_transact(Json::Value const& _json)

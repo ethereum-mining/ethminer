@@ -16,6 +16,7 @@
             { "method": "eth_stateAt", "params": ["", ""], "order": [], "returns": ""},
             { "method": "eth_countAt", "params": [""], "order": [], "returns" : 0.0},
             { "method": "eth_codeAt", "params": [""], "order": [], "returns": ""},
+            { "method": "eth_storageAt", "params": [""], "order": [], "returns": {}},
 
             { "method": "eth_transact", "params": [{}], "order": [], "returns": ""},
             { "method": "eth_call", "params": [{}], "order": [], "returns": ""},
