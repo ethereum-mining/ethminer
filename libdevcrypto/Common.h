@@ -30,7 +30,7 @@
 
 namespace dev
 {
-	
+
 /// A secret key: 32 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Secret = h256;
@@ -59,29 +59,29 @@ using AddressSet = std::set<h160>;
 using Secrets = h256s;
 
 /// Convert a secret key into the public key equivalent.
-Public toPublic(Secret _secret);
+Public toPublic(Secret const& _secret);
 
 /// Convert a public key to address.
-Address toAddress(Public _public);
+Address toAddress(Public const& _public);
 
 /// Convert a secret key into address of public key equivalent.
 /// @returns 0 if it's not a valid secret key.
-Address toAddress(Secret _secret);
+Address toAddress(Secret const& _secret);
 
 /// Encrypts plain text using Public key.
-void encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher);
+void encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 
 /// Decrypts cipher using Secret key.
-bool decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext);
+bool decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
 /// Recovers Public key from signed message hash.
-Public recover(Signature _sig, h256 _hash);
+Public recover(Signature const& _sig, h256 const& _hash);
 	
 /// Returns siganture of message hash.
-Signature sign(Secret _k, h256 _hash);
+Signature sign(Secret const& _k, h256 const& _hash);
 	
 /// Verify signature.
-bool verify(Public _k, Signature _s, h256 _hash);
+bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.

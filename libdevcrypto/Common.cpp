@@ -33,33 +33,33 @@ using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-Public dev::toPublic(Secret _secret)
+Public dev::toPublic(Secret const& _secret)
 {
 	Public p;
 	s_secp256k1.toPublic(_secret, p);
 	return std::move(p);
 }
 
-Address dev::toAddress(Public _public)
+Address dev::toAddress(Public const& _public)
 {
 	return s_secp256k1.toAddress(_public);
 }
 
-Address dev::toAddress(Secret _secret)
+Address dev::toAddress(Secret const& _secret)
 {
 	Public p;
 	s_secp256k1.toPublic(_secret, p);
 	return s_secp256k1.toAddress(p);
 }
 
-void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
+void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	bytes io = _plain.toBytes();
 	s_secp256k1.encrypt(_k, io);
 	o_cipher = std::move(io);
 }
 
-bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
+bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
 	bytes io = _cipher.toBytes();
 	s_secp256k1.decrypt(_k, io);
@@ -69,19 +69,19 @@ bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
 	return true;
 }
 
-Public dev::recover(Signature _sig, h256 _message)
+Public dev::recover(Signature const& _sig, h256 const& _message)
 {
 	return s_secp256k1.recover(_sig, _message.ref());
 }
 
-Signature dev::sign(Secret _k, h256 _hash)
+Signature dev::sign(Secret const& _k, h256 const& _hash)
 {
 	return s_secp256k1.sign(_k, _hash);
 }
 
-bool dev::verify(Public _p, Signature _s, h256 _hash)
+bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
-	return s_secp256k1.verify(_p, _s, bytesConstRef(_hash.data(), 32), true);
+	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
 }
 
 KeyPair KeyPair::create()
@@ -91,11 +91,7 @@ KeyPair KeyPair::create()
 
 	for (int i = 0; i < 100; ++i)
 	{
-		h256 sec;
-		for (unsigned i = 0; i < 32; ++i)
-			sec[i] = (byte)d(s_eng);
-
-		KeyPair ret(sec);
+		KeyPair ret(FixedHash<32>::random(s_eng));
 		if (ret.address())
 			return ret;
 	}
@@ -144,7 +140,7 @@ h256 Nonce::get(bool _commit)
 		else
 		{
 			// todo: replace w/entropy from user and system
-			std::mt19937_64 s_eng(time(0));
+			std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
 			std::uniform_int_distribution<uint16_t> d(0, 255);
 			for (unsigned i = 0; i < 32; ++i)
 				s_seed[i] = (byte)d(s_eng);

@@ -53,6 +53,9 @@ public:
 	virtual size_t streamOut(bytes& o_bytes);
 	
 private:
+	Stream(Stream const&) = delete;
+	Stream& operator=(Stream const&) = delete;
+	
 	h128 m_cSecret;
 	bytes m_text;
 
@@ -74,6 +77,9 @@ public:
 	void adjustInterval(unsigned _interval) { m_macInterval = _interval; };
 	
 private:
+	AuthenticatedStream(AuthenticatedStream const&) = delete;
+	AuthenticatedStream& operator=(AuthenticatedStream const&) = delete;
+	
 	std::atomic<unsigned> m_macInterval;
 	h128 m_macSecret;
 };
