@@ -30,6 +30,7 @@ namespace dev
 namespace crypto
 {
 	
+/// Public key of remote and corresponding shared secret.
 typedef std::pair<Public,h256> AliasSession;
 	
 /**
@@ -41,7 +42,7 @@ class Alias
 public:
 	Alias(Secret _s): m_secret(_s) {};
 	
-	AliasSession session(Address _a) { return m_sessions.count(_a) ? AliasSession() : m_sessions.find(_a)->second; }
+	AliasSession session(Address _a) { return m_sessions.count(_a) ? m_sessions.find(_a)->second : AliasSession(); }
 	
 private:
 	std::map<Address,AliasSession> m_sessions;
