@@ -30,7 +30,10 @@ using namespace CryptoPP;
 
 struct aes::Aes128Ctr
 {
-	Aes128Ctr(h128 _k) { mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data()); }
+	Aes128Ctr(h128 _k)
+	{
+		mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data());
+	}
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption mode;
 };
 
