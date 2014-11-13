@@ -80,6 +80,9 @@ Signature Secp256k1::sign(Secret const& _k, bytesConstRef _message)
 
 Signature Secp256k1::sign(Secret const& _key, h256 const& _hash)
 {
+	// assumption made by signing alogrithm
+	asserts(m_q == m_qs);
+	
 	Signature sig;
 	
 	Integer k(kdf(_key, _hash).data(), 32);
@@ -196,7 +199,7 @@ void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 	assert(d.Agree(o_s.data(), _s.data(), remote));
 }
 
-void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& _p)
+void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& o_p)
 {
 	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
 	
@@ -206,10 +209,10 @@ void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& 
 		assert(Public::size + 1 == _k.GetGroupParameters().GetEncodedElementSize(true));
 	}
 
-	memcpy(_p.data(), &prefixedKey[1], Public::size);
+	memcpy(o_p.data(), &prefixedKey[1], Public::size);
 }
 
-void Secp256k1::exponentToPublic(Integer const& _e, Public& _p)
+void Secp256k1::exponentToPublic(Integer const& _e, Public& o_p)
 {
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pk;
 	
@@ -218,6 +221,6 @@ void Secp256k1::exponentToPublic(Integer const& _e, Public& _p)
 		pk.Initialize(m_params, m_params.ExponentiateBase(_e));
 	}
 	
-	exportPublicKey(pk, _p);
+	exportPublicKey(pk, o_p);
 }
 

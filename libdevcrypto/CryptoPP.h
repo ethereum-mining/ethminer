@@ -84,10 +84,10 @@ public:
 	/// @returns siganture of message.
 	Signature sign(Secret const& _k, bytesConstRef _message);
 	
-	/// @returns compact siganture of message hash.
+	/// @returns compact siganture of provided hash.
 	Signature sign(Secret const& _k, h256 const& _hash);
 	
-	/// Verify compact signature (public key is extracted from message).
+	/// Verify compact signature (public key is extracted from signature).
 	bool verify(Signature const& _signature, bytesConstRef _message);
 	
 	/// Verify signature.
@@ -96,17 +96,17 @@ public:
 	/// Recovers public key from compact signature. Uses libsecp256k1.
 	Public recover(Signature _signature, bytesConstRef _message);
 	
-	/// Verify secret key is valid.
+	/// Verifies _s is a valid secret key and returns corresponding public key in o_p.
 	bool verifySecret(Secret const& _s, Public& o_p);
 	
 	void agree(Secret const& _s, Public const& _r, h256& o_s);
 	
 protected:
-	void exportPrivateKey(DL_PrivateKey_EC<ECP> const& _k, Secret& _s) { _k.GetPrivateExponent().Encode(_s.data(), Secret::size); }
+	void exportPrivateKey(DL_PrivateKey_EC<ECP> const& _k, Secret& o_s) { _k.GetPrivateExponent().Encode(o_s.data(), Secret::size); }
 	
-	void exportPublicKey(DL_PublicKey_EC<ECP> const& _k, Public& _p);
+	void exportPublicKey(DL_PublicKey_EC<ECP> const& _k, Public& o_p);
 	
-	void exponentToPublic(Integer const& _e, Public& _p);
+	void exponentToPublic(Integer const& _e, Public& o_p);
 	
 	template <class T> void initializeDLScheme(Secret const& _s, T& io_operator) { std::lock_guard<std::mutex> l(x_params); io_operator.AccessKey().Initialize(m_params, secretToExponent(_s)); }
 	

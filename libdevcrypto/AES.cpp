@@ -37,10 +37,9 @@ struct aes::Aes128Ctr
 	CTR_Mode<AES>::Encryption mode;
 };
 
-Stream::Stream(StreamType _t, h128 _ckey):
+Stream::Stream(StreamType, h128 _ckey):
 	m_cSecret(_ckey)
 {
-	(void)_t; // encrypt and decrypt are same operation w/ctr
 	cryptor = new Aes128Ctr(_ckey);
 }
 
