@@ -154,6 +154,7 @@ private slots:
 	void on_newIdentity_triggered();
 
 	void refreshWhisper();
+	void refreshBlockChain();
 	void addNewId(QString _ids);
 
 signals:
@@ -214,7 +215,6 @@ private:
 	void refreshPending();
 	void refreshAccounts();
 	void refreshDestination();
-	void refreshBlockChain();
 	void refreshBlockCount();
 	void refreshBalances();
 

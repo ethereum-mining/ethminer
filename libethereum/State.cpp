@@ -21,9 +21,10 @@
 
 #include "State.h"
 
-#include <boost/filesystem.hpp>
-#include <time.h>
+#include <ctime>
 #include <random>
+#include <boost/filesystem.hpp>
+#include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
@@ -549,10 +550,12 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				try
 				{
 					uncommitToMine();
+//					boost::timer t;
 					execute(i.second);
 					ret.push_back(m_receipts.back().changes().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
+//					cnote << "TX took:" << t.elapsed() * 1000;
 				}
 				catch (InvalidNonce const& in)
 				{
@@ -1190,11 +1193,14 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas >= it->second.gas)
+		if (*_gas < it->second.gas)
 		{
-			*_gas -= it->second.gas;
-			it->second.exec(_data, _out);
+			*_gas = 0;
+			return false;
 		}
+
+		*_gas -= it->second.gas;
+		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
 	{
@@ -1234,12 +1240,6 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 			evm.revert();
 
 		return !revert;
-	}
-	else
-	{
-		// non-contract call
-		if (o_sub)
-			o_sub->logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
 	}
 	return true;
 }

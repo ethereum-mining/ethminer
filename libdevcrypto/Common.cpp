@@ -21,6 +21,7 @@
  */
 
 #include <random>
+#include <chrono>
 #include <mutex>
 #include "SHA3.h"
 #include "FileSystem.h"
@@ -85,7 +86,7 @@ bool dev::verify(Public _p, Signature _s, h256 _hash)
 
 KeyPair KeyPair::create()
 {
-	static mt19937_64 s_eng(time(0));
+	static mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
 	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
