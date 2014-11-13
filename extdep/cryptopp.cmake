@@ -1,11 +1,11 @@
 if(${APPLE})
 ExternalProject_Add(cryptopp
-	URL http://www.cryptopp.com/cryptopp562.zip
-	BINARY_DIR cryptopp-prefix/src/cryptopp
-	CONFIGURE_COMMAND ""
-	BUILD_COMMAND make -j 3
-	INSTALL_COMMAND make dynamic install PREFIX=${ETH_DEPENDENCY_INSTALL_DIR}
-	)
+     URL https://downloads.sourceforge.net/project/cryptopp/cryptopp/5.6.2/cryptopp562.zip
+     BINARY_DIR cryptopp-prefix/src/cryptopp
+     CONFIGURE_COMMAND ""
+     BUILD_COMMAND make CXX=clang++ CXXFLAGS=-DCRYPTOPP_DISABLE_ASM
+     INSTALL_COMMAND make install PREFIX=${ETH_DEPENDENCY_INSTALL_DIR}
+)
 else()
 ExternalProject_Add(cryptopp
 	URL https://github.com/mmoss/cryptopp/archive/v5.6.2.zip
