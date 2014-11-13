@@ -34,7 +34,7 @@ struct aes::Aes128Ctr
 	{
 		mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data());
 	}
-	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption mode;
+	CTR_Mode<AES>::Encryption mode;
 };
 
 Stream::Stream(StreamType _t, h128 _ckey):
