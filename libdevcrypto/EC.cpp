@@ -37,6 +37,8 @@ using namespace dev::crypto;
 using namespace CryptoPP;
 using namespace pp;
 
+static const int c_publicKeySize = 65;	// Public key size for I/O is 65 bytes (there's an extra byte that we don't really need).
+
 void crypto::toPublic(Secret const& _s, Public& o_public)
 {
 	exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public);
@@ -143,7 +145,7 @@ bool crypto::verify(Public const& _p, Signature const& _sig, bytesConstRef _mess
 		byte dersig[c_derMaxEncodingLength];
 		size_t cssz = DSAConvertSignatureFormat(dersig, c_derMaxEncodingLength, DSA_DER, _sig.data(), 64, DSA_P1363);
 		assert(cssz <= c_derMaxEncodingLength);
-		return (1 == secp256k1_ecdsa_verify(_message.data(), _message.size(), dersig, cssz, encpub, 65));
+		return (1 == secp256k1_ecdsa_verify(_message.data(), _message.size(), dersig, cssz, encpub, c_publicKeySize));
 	}
 	
 	ECDSA<ECP, SHA3_256>::Verifier verifier;
@@ -155,9 +157,9 @@ Public crypto::recover(Signature _signature, bytesConstRef _message)
 {
 	secp256k1_start();
 	
-	int pubkeylen = 65;
-	byte pubkey[pubkeylen];
-	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &pubkeylen, 0, (int)_signature[64]))
+	byte pubkey[c_publicKeySize];
+	int keySize;
+	if (!secp256k1_ecdsa_recover_compact(_message.data(), 32, _signature.data(), pubkey, &keySize, 0, (int)_signature[64]) || keySize != c_publicKeySize)
 		return Public();
 	
 #if ETH_CRYPTO_TRACE
@@ -180,13 +182,14 @@ bool crypto::verifySecret(Secret const& _s, Public const& _p)
 	if (!ok)
 		return false;
 	
-	int pubkeylen = 65;
-	byte pubkey[pubkeylen];
-	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _s.data(), 0);
-	if (!ok || pubkeylen != 65)
+	byte pubkey[c_publicKeySize];
+
+	int keySize;
+	ok = secp256k1_ecdsa_pubkey_create(pubkey, &keySize, _s.data(), 0);
+	if (!ok || keySize != c_publicKeySize)
 		return false;
 	
-	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
+	ok = secp256k1_ecdsa_pubkey_verify(pubkey, c_publicKeySize);
 	if (!ok)
 		return false;
 	

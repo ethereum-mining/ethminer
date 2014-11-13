@@ -131,8 +131,7 @@ programData opcodeify(Node node,
         }
         // Declare variable
         else {
-            Node nodelist[] = { };
-            return pd(aux, multiToken(nodelist, 0, m), 0);
+			return pd(aux, multiToken(nullptr, 0, m), 0);
         }
     }
     // Define functions (TODO: eventually move to rewriter.cpp, keep

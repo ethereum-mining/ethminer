@@ -49,7 +49,7 @@ using LogBloom = h512;
 struct LogEntry
 {
 	LogEntry() {}
-	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = (h256Set)_r[1]; data = (bytes)_r[2]; }
+	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = (h256Set)_r[1]; data = _r[2].toBytes(); }
 	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(toSet(_ts)), data(std::move(_d)) {}
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(3) << address << topics << data; }
