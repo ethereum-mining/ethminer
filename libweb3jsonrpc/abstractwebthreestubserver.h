@@ -26,8 +26,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_codeAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_coinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_coinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_compilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_compilersI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_contractCall", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_contractCallI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_contractCreate", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_contractCreateI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_countAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_defaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_defaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_gasPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_gasPriceI);
@@ -125,16 +123,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void eth_compilersI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_compilers();
-        }
-
-        inline virtual void eth_contractCallI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->eth_contractCall(request[0u].asString(), request[1u].asString());
-        }
-
-        inline virtual void eth_contractCreateI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->eth_contractCreate(request[0u].asString());
         }
 
         inline virtual void eth_countAtI(const Json::Value& request, Json::Value& response) 
@@ -306,8 +294,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string eth_codeAt(const std::string& param1) = 0;
         virtual std::string eth_coinbase() = 0;
         virtual Json::Value eth_compilers() = 0;
-        virtual std::string eth_contractCall(const std::string& param1, const std::string& param2) = 0;
-        virtual std::string eth_contractCreate(const std::string& param1) = 0;
         virtual double eth_countAt(const std::string& param1) = 0;
         virtual int eth_defaultBlock() = 0;
         virtual std::string eth_gasPrice() = 0;

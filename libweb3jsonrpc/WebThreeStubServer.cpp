@@ -369,22 +369,11 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	if (!_json["gasPrice"].empty())
 		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
 	
-	if (!_json["data"].empty() || _json["code"].empty() || _json["dataclose"].empty())
-	{
-		if (_json["data"].isString())
-			ret.data = jsToBytes(_json["data"].asString());
-		else if (_json["code"].isString())
-			ret.data = jsToBytes(_json["code"].asString());
-		else if (_json["data"].isArray())
-			for (auto i: _json["data"])
-				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
-		else if (_json["code"].isArray())
-			for (auto i: _json["code"])
-				dev::operator +=(ret.data, asBytes(jsPadded(i.asString(), 32)));
-		else if (_json["dataclose"].isArray())
-			for (auto i: _json["dataclose"])
-				dev::operator +=(ret.data, asBytes(i.asString()));
-	}
+	if (!_json["data"].empty() && _json["data"].isString())
+		ret.data = jsToBytes(_json["data"].asString());
+	else if (!_json["code"].empty() && _json["code"].isString())
+		ret.data = jsToBytes(_json["code"].asString());
+
 	return ret;
 }
 
@@ -526,45 +515,6 @@ Json::Value WebThreeStubServer::eth_compilers()
 	ret.append("lll");
 	ret.append("solidity");
 	return ret;
-}
-
-static bytes toMethodCall(int const& _index, Json::Value const& _params)
-{
-	bytes data(1, _index);
-	if (_params.isArray())
-		for (auto i: _params)
-			data += asBytes(jsPadded(i.asString(), 32));
-	cwarn << data;
-	return data;
-}
-
-std::string WebThreeStubServer::eth_contractCall(std::string const& _address, std::string const& _bytes)
-{
-	auto from = m_accounts.begin()->first;
-	for (auto a: m_accounts)
-		if (client()->balanceAt(a.first) > client()->balanceAt(from))
-			from = a.first;
-	
-	cwarn << "Silently signing transaction from address" << from.abridged() << ": User validation hook goes here.";
-	
-	auto gasPrice = 10 * dev::eth::szabo;
-	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
-	auto bytes = jsToBytes(_bytes);
-	return toJS(client()->call(m_accounts[from].secret(), 0, jsToAddress(_address), bytes, gas, gasPrice));
-}
-
-std::string WebThreeStubServer::eth_contractCreate(std::string const& _bytecode)
-{
-	auto from = m_accounts.begin()->first;
-	for (auto a: m_accounts)
-		if (client()->balanceAt(a.first) > client()->balanceAt(from))
-			from = a.first;
-	
-	cwarn << "Silently signing transaction from address" << from.abridged() << ": User validation hook goes here.";
-	
-	auto gasPrice = 10 * dev::eth::szabo;
-	auto gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(from) / gasPrice);
-	return toJS(client()->transact(m_accounts[from].secret(), 0, jsToBytes(_bytecode), gas, gasPrice));
 }
 
 std::string WebThreeStubServer::eth_lll(std::string const& _code)
