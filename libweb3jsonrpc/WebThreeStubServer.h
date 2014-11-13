@@ -90,6 +90,7 @@ public:
 	virtual bool eth_setMining(bool const& _mining);
 	virtual std::string eth_solidity(std::string const& _code);
 	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
+	virtual Json::Value eth_storageAt(std::string const& _address);
 	virtual std::string eth_transact(Json::Value const& _json);
 	virtual Json::Value eth_transactionByHash(std::string const& _hash, int const& _i);
 	virtual Json::Value eth_transactionByNumber(int const& _number, int const& _i);

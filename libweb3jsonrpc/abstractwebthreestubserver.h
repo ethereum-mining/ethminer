@@ -43,6 +43,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setMining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_setMiningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_solidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_solidityI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_stateAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_stateAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_storageAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_storageAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByHashI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByNumberI);
@@ -210,6 +211,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_stateAt(request[0u].asString(), request[1u].asString());
         }
 
+        inline virtual void eth_storageAtI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_storageAt(request[0u].asString());
+        }
+
         inline virtual void eth_transactI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_transact(request[0u]);
@@ -311,6 +317,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool eth_setMining(const bool& param1) = 0;
         virtual std::string eth_solidity(const std::string& param1) = 0;
         virtual std::string eth_stateAt(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_storageAt(const std::string& param1) = 0;
         virtual std::string eth_transact(const Json::Value& param1) = 0;
         virtual Json::Value eth_transactionByHash(const std::string& param1, const int& param2) = 0;
         virtual Json::Value eth_transactionByNumber(const int& param1, const int& param2) = 0;
