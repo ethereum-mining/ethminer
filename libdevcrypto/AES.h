@@ -19,10 +19,12 @@
  * @date 2014
  *
  * AES
+ * todo: use openssl
  */
 
 #pragma once
 
+#include <atomic>
 #include "Common.h"
 
 namespace dev
