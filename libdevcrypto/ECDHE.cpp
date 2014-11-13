@@ -62,7 +62,7 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	//
 	// The second part is encrypted using the public key which relates to the prefix.
 	
-	Public encpk = m_known.first | m_remoteEphemeral;
+	Public encpk = m_known.first ? m_known.first : m_remoteEphemeral;
 	bytes exchange(encpk.asBytes());
 	
 	// This is the public key which we would like the remote to use,
@@ -87,7 +87,7 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	memcpy(&exchange[exchange.size() - sizeof(sig)], sig.data(), sizeof(sig));
 	
 	aes::AuthenticatedStream aes(aes::Encrypt, m_ephemeralSecret, 0);
-	h256 prefix(sha3((h256)m_remoteEphemeral | m_known.second));
+	h256 prefix(sha3(m_known.second ? m_known.second : (h256)m_remoteEphemeral));
 	aes.update(prefix.ref());
 	
 	s_secp256k1.encrypt(encpk, exchange);
