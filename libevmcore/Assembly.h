@@ -24,7 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <libdevcore/Common.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include "Exceptions.h"
 
 namespace dev
@@ -32,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-enum AssemblyItemType { UndefinedItem, Operation, Push, PushString, PushTag, PushSub, PushSubSize, Tag, PushData };
+enum AssemblyItemType { UndefinedItem, Operation, Push, PushString, PushTag, PushSub, PushSubSize, Tag, PushData, NoOptimizeBegin, NoOptimizeEnd };
 
 class Assembly;
 

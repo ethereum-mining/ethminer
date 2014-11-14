@@ -26,12 +26,13 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/CommonIO.h>
+#include <libevmcore/Instruction.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
 #include <libsolidity/ASTPrinter.h>
 #include <libsolidity/NameAndTypeResolver.h>
 #include <libsolidity/Exceptions.h>
-#include <libsolidity/Compiler.h>
+#include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 
 using namespace std;
@@ -42,7 +43,8 @@ void help()
 {
 	cout << "Usage solc [OPTIONS] <file>" << endl
 		 << "Options:" << endl
-		 << "    -h,--help  Show this help message and exit." << endl
+		 << "    -o,--optimize Optimize the bytecode for size." << endl
+		 << "    -h,--help     Show this help message and exit." << endl
 		 << "    -V,--version  Show the version and exit." << endl;
 	exit(0);
 }
@@ -58,10 +60,13 @@ void version()
 int main(int argc, char** argv)
 {
 	string infile;
+	bool optimize = false;
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
-		if (arg == "-h" || arg == "--help")
+		if (arg == "-o" || arg == "--optimize")
+			optimize = true;
+		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
 			version();
@@ -81,48 +86,34 @@ int main(int argc, char** argv)
 	else
 		sourceCode = asString(dev::contents(infile));
 
-	ASTPointer<ContractDefinition> ast;
-	shared_ptr<Scanner> scanner = make_shared<Scanner>(CharStream(sourceCode));
-	Parser parser;
-	bytes instructions;
-	Compiler compiler;
+	CompilerStack compiler;
 	try
 	{
-		ast = parser.parse(scanner);
-
-		NameAndTypeResolver resolver;
-		resolver.resolveNamesAndTypes(*ast.get());
-
-		cout << "Syntax tree for the contract:" << endl;
-		dev::solidity::ASTPrinter printer(ast, sourceCode);
-		printer.print(cout);
-
-		compiler.compileContract(*ast);
-		instructions = compiler.getAssembledBytecode();
+		compiler.compile(sourceCode, optimize);
 	}
 	catch (ParserError const& exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Parser error", *scanner);
+		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Parser error", compiler.getScanner());
 		return -1;
 	}
 	catch (DeclarationError const& exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Declaration error", *scanner);
+		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Declaration error", compiler.getScanner());
 		return -1;
 	}
 	catch (TypeError const& exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Type error", *scanner);
+		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Type error", compiler.getScanner());
 		return -1;
 	}
 	catch (CompilerError const& exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Compiler error", *scanner);
+		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Compiler error", compiler.getScanner());
 		return -1;
 	}
 	catch (InternalCompilerError const& exception)
 	{
-		cerr << "Internal compiler error: " << boost::diagnostic_information(exception) << endl;
+		SourceReferenceFormatter::printExceptionInformation(cerr, exception, "Internal compiler error", compiler.getScanner());
 		return -1;
 	}
 	catch (Exception const& exception)
@@ -136,11 +127,15 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	cout << "Syntax tree for the contract:" << endl;
+	ASTPrinter printer(compiler.getAST(), sourceCode);
+	printer.print(cout);
 	cout << "EVM assembly:" << endl;
 	compiler.streamAssembly(cout);
 	cout << "Opcodes:" << endl;
-	cout << eth::disassemble(instructions) << endl;
-	cout << "Binary: " << toHex(instructions) << endl;
+	cout << eth::disassemble(compiler.getBytecode()) << endl;
+	cout << "Binary: " << toHex(compiler.getBytecode()) << endl;
+	cout << "Interface specification: " << compiler.getInterface() << endl;
 
 	return 0;
 }
