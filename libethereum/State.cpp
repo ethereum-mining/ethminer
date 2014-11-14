@@ -795,8 +795,6 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
-	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
