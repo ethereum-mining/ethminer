@@ -368,7 +368,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\liblll\All.h" />
-	<ClInclude Include="..\libevmcore\Assembly.h" />
     <ClInclude Include="..\liblll\CodeFragment.h" />
     <ClInclude Include="..\liblll\Compiler.h" />
     <ClInclude Include="..\liblll\CompilerState.h" />
