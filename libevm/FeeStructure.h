@@ -40,6 +40,9 @@ extern u256 const c_callGas;			///< Once per CALL operation & message call trans
 extern u256 const c_memoryGas;			///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
 extern u256 const c_txDataGas;			///< Per byte of data attached to a transaction. NOTE: Not payable on data of calls between transactions.
 extern u256 const c_txGas;				///< Per transaction. NOTE: Not payable on data of calls between transactions.
+extern u256 const c_logGas;				///< Per LOG* operation.
+extern u256 const c_logDataGas;			///< Per byte in a LOG* operation's data.
+extern u256 const c_logTopicGas;		///< Multiplied by the * of the LOG*, per LOG transaction. e.g. LOG0 incurs 0 * c_txLogTopicGas, LOG4 incurs 4 * c_txLogTopicGas.
 
 }
 }
