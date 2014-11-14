@@ -4,7 +4,7 @@
 #include <QtCore/QtCore>
 #include <QtWebKitWidgets/QWebFrame>
 #include <libdevcrypto/FileSystem.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
