@@ -33,7 +33,7 @@ Topic BuildTopic::toTopic() const
 	Topic ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back((TopicPart)u256(h));
+		ret.push_back(TopicPart(h));
 	return ret;
 }
 
@@ -69,7 +69,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	TopicMask ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(make_pair((TopicPart)u256(h), h ? ~(uint32_t)0 : 0));
+		ret.push_back(make_pair(TopicPart(h), h ? ~TopicPart() : TopicPart()));
 	return ret;
 }
 
