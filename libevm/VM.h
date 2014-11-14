@@ -184,7 +184,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
 			require(n + 2);
-			runGas = c_logGas + c_logTopicGas * n + c_logDataGas * m_stack[m_stack.size() - 2];
+			runGas = c_logGas + c_logTopicGas * n + (bigint)c_logDataGas * m_stack[m_stack.size() - 2];
 			newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
 			break;
 		}
@@ -192,7 +192,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
