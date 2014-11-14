@@ -187,9 +187,6 @@
     <ClCompile Include="..\libethcore\Exceptions.cpp">
       <Filter>libethcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libevm\VMFace.cpp">
-      <Filter>libevm</Filter>
-    </ClCompile>
     <ClCompile Include="..\libdevcrypto\CryptoPP.cpp">
       <Filter>libdevcrypto</Filter>
     </ClCompile>
@@ -204,6 +201,9 @@
     </ClCompile>
     <ClCompile Include="..\libevmcore\Assembly.cpp">
       <Filter>libevmcore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libevm\VMFace.cpp">
+      <Filter>libevm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -251,9 +251,6 @@
     </ClInclude>
     <ClInclude Include="..\liblll\All.h">
       <Filter>liblll</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libevmcore\Assembly.h">
-      <Filter>libevmcore</Filter>
     </ClInclude>
     <ClInclude Include="..\liblll\CodeFragment.h">
       <Filter>liblll</Filter>
@@ -426,9 +423,6 @@
     <ClInclude Include="..\libwebthree\webthree.h">
       <Filter>libwebthree</Filter>
     </ClInclude>
-    <ClInclude Include="..\libevm\VMFace.h">
-      <Filter>libevm</Filter>
-    </ClInclude>
     <ClInclude Include="..\libdevcrypto\CryptoPP.h">
       <Filter>libdevcrypto</Filter>
     </ClInclude>
@@ -441,8 +435,14 @@
     <ClInclude Include="..\libethereum\Account.h">
       <Filter>libethereum</Filter>
     </ClInclude>
+    <ClInclude Include="..\libevmcore\Assembly.h">
+      <Filter>libevmcore</Filter>
+    </ClInclude>
     <ClInclude Include="..\libevmcore\Exceptions.h">
       <Filter>libevmcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\VMFace.h">
+      <Filter>libevm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
