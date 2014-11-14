@@ -59,7 +59,7 @@ enum WhisperPacket
 	PacketCount
 };
 
-using TopicPart = uint32_t;
+using TopicPart = FixedHash<4>;
 
 using Topic = std::vector<TopicPart>;
 
@@ -92,7 +92,15 @@ public:
 	TopicFilter() {}
 	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
-	TopicFilter(RLP const& _r): m_topicMasks(_r.toVector<std::vector<std::pair<uint32_t, uint32_t>>>()) {}
+	TopicFilter(RLP const& _r)//: m_topicMasks(_r.toVector<std::vector<>>())
+	{
+		for (RLP i: _r)
+		{
+			m_topicMasks.push_back(TopicMask());
+			for (RLP j: i)
+				m_topicMasks.back().push_back(j.toPair<FixedHash<4>, FixedHash<4>>());
+		}
+	}
 
 	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
