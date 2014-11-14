@@ -531,8 +531,7 @@ std::string WebThreeStubServer::eth_lll(std::string const& _code)
 
 std::string WebThreeStubServer::eth_solidity(std::string const& _code)
 {
-	shared_ptr<dev::solidity::Scanner> scanner = make_shared<dev::solidity::Scanner>();
-	return toJS(dev::solidity::CompilerStack::compile(_code, scanner));
+	return toJS(dev::solidity::CompilerStack::staticCompile(_code, false));
 }
 
 int WebThreeStubServer::eth_number()
