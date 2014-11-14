@@ -1608,15 +1608,15 @@ void Main::on_data_textChanged()
 		}
 		else if (src.substr(0, 8) == "contract") // improve this heuristic
 		{
-			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
+			dev::solidity::CompilerStack compiler;
 			try
 			{
-				m_data = dev::solidity::CompilerStack::compile(src, scanner, m_enableOptimizer);
+				m_data = compiler.compile(src, m_enableOptimizer);
 			}
 			catch (dev::Exception const& exception)
 			{
 				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 			catch (...)
