@@ -14,7 +14,8 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
+#include <libevm/ExtVMFace.h>
 #include <libevmjit/Compiler.h>
 #include <libevmjit/ExecutionEngine.h>
 
@@ -31,9 +32,12 @@ void parseProgramOptions(int _argc, char** _argv, boost::program_options::variab
 		("gas,g", opt::value<size_t>(), "set initial gas for execution")
 		("disassemble,d", "dissassemble the code")
 		("dump-cfg", "dump control flow graph to graphviz file")
-		("optimize-stack,os", "optimize stack use between basic blocks")
+		("dont-optimize", "turn off optimizations")
+		("optimize-stack", "optimize stack use between basic blocks (default: on)")
+		("rewrite-switch", "rewrite LLVM switch to branches (default: on)")
 		("output-ll", opt::value<std::string>(), "dump generated LLVM IR to file")
 		("output-bc", opt::value<std::string>(), "dump generated LLVM bitcode to file")
+		("show-logs", "output LOG statements to stderr")
 		("verbose,V", "enable verbose output");
 
 	opt::options_description implicitOpts("Input files");
@@ -118,10 +122,12 @@ int main(int argc, char** argv)
 
 		eth::jit::Compiler::Options compilerOptions;
 		compilerOptions.dumpCFG = options.count("dump-cfg") > 0;
-		compilerOptions.optimizeStack = options.count("optimize-stack") > 0;
+		bool optimize = options.count("dont-optimize") == 0;
+		compilerOptions.optimizeStack = optimize || options.count("optimize-stack") > 0;
+		compilerOptions.rewriteSwitchToBranches = optimize || options.count("rewrite-switch") > 0;
 
 		auto compiler = eth::jit::Compiler(compilerOptions);
-		auto module = compiler.compile({bytecode.data(), bytecode.size()});
+		auto module = compiler.compile(bytecode);
 
 		auto compilationEndTime = std::chrono::high_resolution_clock::now();
 
@@ -156,7 +162,6 @@ int main(int argc, char** argv)
 			ofs.close();
 		}
 
-
 		if (options.count("verbose"))
 		{
 			std::cerr << "*** Compilation time: "
@@ -168,7 +173,24 @@ int main(int argc, char** argv)
 		{
 			auto engine = eth::jit::ExecutionEngine();
 			u256 gas = initialGas;
-			auto result = engine.run(std::move(module), gas);
+
+            // Create fake ExtVM interface
+            eth::ExtVMFace ext;
+            ext.myAddress = Address(1122334455667788);
+            ext.caller = Address(0xfacefacefaceface);
+            ext.origin = Address(101010101010101010);
+            ext.value = 0xabcd;
+            ext.gasPrice = 1002;
+            ext.previousBlock.hash = u256(1003);
+            ext.currentBlock.coinbaseAddress = Address(1004);
+            ext.currentBlock.timestamp = 1005;
+            ext.currentBlock.number = 1006;
+            ext.currentBlock.difficulty = 1007;
+            ext.currentBlock.gasLimit = 1008;
+            ext.data = std::string("Hello the Beautiful World of Ethereum!");
+            ext.code = { 0x0d, 0x0e, 0x0a, 0x0d, 0x0b, 0x0e, 0xe, 0xf };
+
+			auto result = engine.run(std::move(module), gas, options.count("show-logs") > 0, ext);
 			return result;
 		}
 	}

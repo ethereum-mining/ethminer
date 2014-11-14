@@ -59,13 +59,13 @@ void QWebThree::poll()
 {
 	if (m_watches.size() > 0)
 	{
-		QString batch = toJsonRpcBatch(m_watches, "changed");
-		emit processData(batch, "changed");
+		QString batch = toJsonRpcBatch(m_watches, "eth_changed");
+		emit processData(batch, "eth_changed");
 	}
 	if (m_shhWatches.size() > 0)
 	{
-		QString batch = toJsonRpcBatch(m_shhWatches, "shhChanged");
-		emit processData(batch, "shhChanged");
+		QString batch = toJsonRpcBatch(m_shhWatches, "shh_changed");
+		emit processData(batch, "shh_changed");
 	}
 }
 
@@ -73,13 +73,13 @@ void QWebThree::clearWatches()
 {
 	if (m_watches.size() > 0)
 	{
-		QString batch = toJsonRpcBatch(m_watches, "uninstallFilter");
+		QString batch = toJsonRpcBatch(m_watches, "eth_uninstallFilter");
 		m_watches.clear();
 		emit processData(batch, "internal");
 	}
 	if (m_shhWatches.size() > 0)
 	{
-		QString batch = toJsonRpcBatch(m_shhWatches, "shhUninstallFilter");
+		QString batch = toJsonRpcBatch(m_shhWatches, "shh_uninstallFilter");
 		m_shhWatches.clear();
 		emit processData(batch, "internal");
 	}
@@ -106,7 +106,12 @@ void QWebThree::postMessage(QString _json)
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 
 	QString method = f["call"].toString();
-	if (!method.compare("uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
+	if (!method.compare("eth_uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
+	{
+		int idToRemove = f["args"].toArray()[0].toInt();
+		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
+	}
+	else if (!method.compare("eth_uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
 	{
 		int idToRemove = f["args"].toArray()[0].toInt();
 		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
@@ -120,6 +125,7 @@ static QString formatOutput(QJsonObject const& _object)
 	QJsonObject res;
 	res["_id"] = _object["id"];
 	res["data"] = _object["result"];
+	res["error"] = _object["error"];
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
@@ -128,7 +134,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	if (!_addInfo.compare("internal"))
 		return;
 
-	if (!_addInfo.compare("changed"))
+	if (!_addInfo.compare("eth_changed"))
 	{
 		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
 		for (int i = 0; i < resultsArray.size(); i++)
@@ -145,7 +151,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 		return;
 	}
 	
-	if (!_addInfo.compare("shhChanged"))
+	if (!_addInfo.compare("shh_changed"))
 	{
 		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
 		for (int i = 0; i < resultsArray.size(); i++)
@@ -164,11 +170,11 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	
-	if ((!_addInfo.compare("newFilter") || !_addInfo.compare("newFilterString")) && f.contains("result"))
+	if ((!_addInfo.compare("eth_newFilter") || !_addInfo.compare("eth_newFilterString")) && f.contains("result"))
 		m_watches.push_back(f["result"].toInt());
-	if (!_addInfo.compare("shhNewFilter") && f.contains("result"))
+	else if (!_addInfo.compare("shh_newFilter") && f.contains("result"))
 		m_shhWatches.push_back(f["result"].toInt());
-	if (!_addInfo.compare("newIdentity") && f.contains("result"))
+	else if (!_addInfo.compare("shh_newIdentity") && f.contains("result"))
 		emit onNewId(f["result"].toString());
 
 	response(formatOutput(f));

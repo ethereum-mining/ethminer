@@ -13,7 +13,7 @@
 #include <llvm/PassManager.h>
 #include <llvm/Transforms/Scalar.h>
 
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 
 #include "Type.h"
 #include "Memory.h"
@@ -39,7 +39,7 @@ Compiler::Compiler(Options const& _options):
 	Type::init(m_builder.getContext());
 }
 
-void Compiler::createBasicBlocks(bytesConstRef _bytecode)
+void Compiler::createBasicBlocks(bytes const& _bytecode)
 {
 	std::set<ProgramCounter> splitPoints; // Sorted collections of instruction indices where basic blocks start/end
 
@@ -151,7 +151,7 @@ void Compiler::createBasicBlocks(bytesConstRef _bytecode)
 		m_indirectJumpTargets.push_back(&basicBlocks.find(*it)->second);
 }
 
-std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef _bytecode)
+std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode)
 {
 	auto module = std::unique_ptr<llvm::Module>(new llvm::Module("main", m_builder.getContext()));
 
@@ -247,7 +247,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytesConstRef _bytecode)
 }
 
 
-void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytesConstRef _bytecode, RuntimeManager& _runtimeManager,
+void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode, RuntimeManager& _runtimeManager,
                                  Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock)
 {
 	if (!_nextBasicBlock) // this is the last block in the code
@@ -508,7 +508,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytesConstRef _bytecod
 
 		case Instruction::POP:
 		{
-			stack.pop();
+			auto val = stack.pop();
+			static_cast<void>(val);
+			// Generate a dummy use of val to make sure that a get(0) will be emitted at this point,
+			// so that StackTooSmall will be thrown
+			// m_builder.CreateICmpEQ(val, val, "dummy");
 			break;
 		}
 
@@ -788,6 +792,25 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytesConstRef _bytecod
 			}
 
 			m_builder.CreateRet(Constant::get(ReturnCode::Stop));
+			break;
+		}
+
+		case Instruction::LOG0:
+		case Instruction::LOG1:
+		case Instruction::LOG2:
+		case Instruction::LOG3:
+		case Instruction::LOG4:
+		{
+			auto beginIdx = stack.pop();
+			auto numBytes = stack.pop();
+			_memory.require(beginIdx, numBytes);
+
+			std::array<llvm::Value*,4> topics;
+			auto numTopics = static_cast<size_t>(inst) - static_cast<size_t>(Instruction::LOG0);
+			for (size_t i = 0; i < numTopics; ++i)
+				topics[i] = stack.pop();
+
+			_ext.log(beginIdx, numBytes, numTopics, topics);
 			break;
 		}
 
