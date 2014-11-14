@@ -116,10 +116,12 @@ public:
 
 	virtual void accept(ASTVisitor& _visitor) override;
 
-	std::vector<ASTPointer<StructDefinition>> const& getDefinedStructs() { return m_definedStructs; }
-	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() { return m_stateVariables; }
-	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() { return m_definedFunctions; }
+	std::vector<ASTPointer<StructDefinition>> const& getDefinedStructs() const { return m_definedStructs; }
+	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() const { return m_stateVariables; }
+	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() const { return m_definedFunctions; }
 
+	/// Returns the functions that make up the calling interface in the intended order.
+	std::vector<FunctionDefinition const*> getInterfaceFunctions() const;
 private:
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
 	std::vector<ASTPointer<VariableDeclaration>> m_stateVariables;
@@ -134,6 +136,8 @@ public:
 					 std::vector<ASTPointer<VariableDeclaration>> const& _members):
 		Declaration(_location, _name), m_members(_members) {}
 	virtual void accept(ASTVisitor& _visitor) override;
+
+	std::vector<ASTPointer<VariableDeclaration>> const& getMembers() const { return m_members; }
 
 private:
 	std::vector<ASTPointer<VariableDeclaration>> m_members;
@@ -565,12 +569,15 @@ public:
 	Expression& getLeftExpression() const { return *m_left; }
 	Expression& getRightExpression() const { return *m_right; }
 	Token::Value getOperator() const { return m_operator; }
+	Type const& getCommonType() const { return *m_commonType; }
 
 private:
 	ASTPointer<Expression> m_left;
 	Token::Value m_operator;
 	ASTPointer<Expression> m_right;
 
+	/// The common type that is used for the operation, not necessarily the result type (e.g. for
+	/// comparisons, this is always bool).
 	std::shared_ptr<Type const> m_commonType;
 };
 

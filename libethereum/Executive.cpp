@@ -80,14 +80,14 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_s.balance(m_sender) < cost)
 	{
 		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
-		BOOST_THROW_EXCEPTION(NotEnoughCash());
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((int)cost, (int)m_s.balance(m_sender)));
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
-		BOOST_THROW_EXCEPTION(BlockGasLimitReached());
+		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((int)(m_s.m_currentBlock.gasLimit - startGasUsed), (int)m_t.gas()));
 	}
 
 	// Increment associated nonce for sender.
@@ -123,11 +123,7 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
 	}
 	else
-	{
 		m_endGas = _gas;
-		if (m_ext)
-			m_ext->sub.logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
-	}
 	return !m_ext;
 }
 
@@ -177,7 +173,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
 			if (m_ext)
+			{
 				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+				m_logs = m_ext->sub.logs;
+			}
 			m_endGas = m_vm->gas();
 		}
 		catch (StepsDone const&)

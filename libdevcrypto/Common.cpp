@@ -21,6 +21,7 @@
  */
 
 #include <random>
+#include <chrono>
 #include <mutex>
 #include "EC.h"
 #include "SHA3.h"
@@ -39,7 +40,7 @@ Address dev::toAddress(Secret _secret)
 
 KeyPair KeyPair::create()
 {
-	static mt19937_64 s_eng(time(0));
+	static mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
 	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
