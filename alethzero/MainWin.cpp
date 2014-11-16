@@ -355,6 +355,9 @@ void Main::on_enableOptimizer_triggered()
 
 void Main::load(QString _s)
 {
+	QString contents = QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+	ui->webView->page()->currentFrame()->evaluateJavaScript(contents);
+	/*
 	QFile fin(_s);
 	if (!fin.open(QFile::ReadOnly))
 		return;
@@ -375,7 +378,7 @@ void Main::load(QString _s)
 			//eval(line);
 			line.clear();
 		}
-	}
+	}*/
 }
 
 void Main::on_loadJS_triggered()
