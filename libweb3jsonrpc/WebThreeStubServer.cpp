@@ -370,10 +370,10 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 			ret.data = jsToBytes(_json["code"].asString());
 		else if (_json["data"].isArray())
 			for (auto i: _json["data"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
 		else if (_json["code"].isArray())
 			for (auto i: _json["code"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
 		else if (_json["dataclose"].isArray())
 			for (auto i: _json["dataclose"])
 				dev::operator +=(ret.data, jsToBytes(i.asString()));
