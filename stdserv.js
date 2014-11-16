@@ -1,7 +1,9 @@
 eth = web3.eth;
+env = web3.env;
 
 env.note('Creating Config...')
-var configCode = eth.lll("
+var config;
+eth.lll("
 {
   [[69]] (caller)
   (returnlll {
@@ -12,13 +14,19 @@ var configCode = eth.lll("
     )
     (return @@ $0)
   })
-}
-")
-env.note('Config code: ' + configCode)
-var config;
-eth.transact({ 'code': configCode }, function(a) { config = a; });
+}"
+).then(function(configCode)
+{
+	console.log('Config code: ' + configCode);
+	return eth.transact({ 'code': configCode });
+}).then(function(configAddress)
+{
+	config = configAddress;
+	console.log('Config at address ' + configAddress);
+});
 
-env.note('Config at address ' + config)
+// marek: TODO
+/*
 
 var nameRegCode = eth.lll("
 {
@@ -306,7 +314,7 @@ eth.transact({ 'to': exchange, 'data': [web3.fromAscii('new'), gavCoin, '5000', 
 
 env.note('Register gav.eth...')
 eth.transact({ 'to': dnsReg, 'data': [web3.fromAscii('register'), web3.fromAscii('gav'), web3.fromAscii('opensecrecy.com')] });
-
+*/
 env.note('All done.')
 
 // env.load('/home/gav/Eth/cpp-ethereum/stdserv.js')
