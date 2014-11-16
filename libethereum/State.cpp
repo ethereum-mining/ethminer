@@ -322,8 +322,8 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
-	cnote << *this;
-	cnote << _c;
+//	cnote << *this;
+//	cnote << _c;
 
 	for (auto i: ads)
 	{
