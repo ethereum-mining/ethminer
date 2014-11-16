@@ -125,8 +125,8 @@
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
     <ClCompile Include="..\libethereum\Utility.cpp" />
-    <ClCompile Include="..\libevmcore\Instruction.cpp" />
     <ClCompile Include="..\libevmcore\Assembly.cpp" />
+    <ClCompile Include="..\libevmcore\Instruction.cpp" />
     <ClCompile Include="..\libevm\ExtVMFace.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -341,7 +341,8 @@
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
     <ClInclude Include="..\libethereum\Utility.h" />
-    <ClCompile Include="..\libevmcore\Assembly.h" />
+    <ClInclude Include="..\libevmcore\Assembly.h" />
+    <ClInclude Include="..\libevmcore\Exceptions.h" />
     <ClInclude Include="..\libevmcore\Instruction.h" />
     <ClInclude Include="..\libevm\All.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
