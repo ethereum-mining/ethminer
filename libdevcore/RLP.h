@@ -158,6 +158,7 @@ public:
 
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
+	explicit operator bytes() const { return toBytes(); }
 	explicit operator RLPs() const { return toList(); }
 	explicit operator uint8_t() const { return toInt<uint8_t>(); }
 	explicit operator uint16_t() const { return toInt<uint16_t>(); }
@@ -341,7 +342,7 @@ public:
 	RLPStream& append(char const* _s) { return append(std::string(_s)); }
 	template <unsigned N> RLPStream& append(FixedHash<N> _s, bool _compact = false, bool _allOrNothing = false) { return _allOrNothing && !_s ? append(bytesConstRef()) : append(_s.ref(), _compact); }
 
-	/// Appends an arbitrary RLP fragment - this *must* be a single item.
+	/// Appends an arbitrary RLP fragment - this *must* be a single item unless @a _itemCount is given.
 	RLPStream& append(RLP const& _rlp, unsigned _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.

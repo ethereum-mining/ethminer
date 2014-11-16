@@ -55,7 +55,7 @@ public:
 	{
 		m_expiry = _m[0].toInt<unsigned>();
 		m_ttl = _m[1].toInt<unsigned>();
-		m_topic = (Topic)_m[2];
+		m_topic = _m[2].toVector<FixedHash<4>>();
 		m_data = _m[3].toBytes();
 		m_nonce = _m[4].toInt<u256>();
 	}
