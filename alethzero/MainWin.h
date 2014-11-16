@@ -85,6 +85,7 @@ public slots:
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+	QString contents(QString _file);
 
 	void onKeysChanged();
 

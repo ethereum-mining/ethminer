@@ -353,6 +353,11 @@ void Main::on_enableOptimizer_triggered()
 	on_data_textChanged();
 }
 
+QString Main::contents(QString _s)
+{
+	return QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+}
+
 void Main::load(QString _s)
 {
 	QString contents = QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
@@ -682,7 +687,7 @@ void Main::on_importKeyFile_triggered()
 	try
 	{
 		js::mValue val;
-		json_spirit::read_string(asString(contents(s.toStdString())), val);
+		json_spirit::read_string(asString(dev::contents(s.toStdString())), val);
 		auto obj = val.get_obj();
 		if (obj["encseed"].type() == js::str_type)
 		{
