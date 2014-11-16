@@ -353,8 +353,16 @@ void Main::on_enableOptimizer_triggered()
 	on_data_textChanged();
 }
 
+QString Main::contents(QString _s)
+{
+	return QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+}
+
 void Main::load(QString _s)
 {
+	QString contents = QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+	ui->webView->page()->currentFrame()->evaluateJavaScript(contents);
+	/*
 	QFile fin(_s);
 	if (!fin.open(QFile::ReadOnly))
 		return;
@@ -375,7 +383,7 @@ void Main::load(QString _s)
 			//eval(line);
 			line.clear();
 		}
-	}
+	}*/
 }
 
 void Main::on_loadJS_triggered()
@@ -679,7 +687,7 @@ void Main::on_importKeyFile_triggered()
 	try
 	{
 		js::mValue val;
-		json_spirit::read_string(asString(contents(s.toStdString())), val);
+		json_spirit::read_string(asString(dev::contents(s.toStdString())), val);
 		auto obj = val.get_obj();
 		if (obj["encseed"].type() == js::str_type)
 		{
@@ -948,7 +956,7 @@ void Main::refreshBlockCount()
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
 	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
+	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
 static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
@@ -1258,9 +1266,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
-			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
+//			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
+			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
 			for (auto u: block[2])
 			{
@@ -1283,6 +1292,7 @@ void Main::on_blocks_currentItemChanged()
 			Transaction tx(block[1][txi].data());
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
+			auto receipt = ethereum()->blockChain().receipts(h).receipts[txi];
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
@@ -1298,6 +1308,10 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
+			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
+			auto r = receipt.rlp();
+			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			if (tx.isCreation())
 			{
 				if (tx.data().size())
@@ -1602,15 +1616,15 @@ void Main::on_data_textChanged()
 		}
 		else if (src.substr(0, 8) == "contract") // improve this heuristic
 		{
-			shared_ptr<solidity::Scanner> scanner = make_shared<solidity::Scanner>();
+			dev::solidity::CompilerStack compiler;
 			try
 			{
-				m_data = dev::solidity::CompilerStack::compile(src, scanner, m_enableOptimizer);
+				m_data = compiler.compile(src, m_enableOptimizer);
 			}
 			catch (dev::Exception const& exception)
 			{
 				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", *scanner);
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 			catch (...)

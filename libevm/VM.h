@@ -71,7 +71,7 @@ public:
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
-	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError(int(_n), m_stack.size())); }
+	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
@@ -206,14 +206,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
 			require(n + 2);
-			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
+			runGas = c_logGas + c_logTopicGas * n + (bigint)c_logDataGas * m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
 			break;
 		}
 
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
@@ -743,18 +744,38 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;*/
 		case Instruction::LOG0:
 			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG1:
 			_ext.log({m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG2:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG3:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG4:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5], m_stack[m_stack.size() - 6]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::CREATE:
 		{

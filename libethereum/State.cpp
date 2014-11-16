@@ -21,9 +21,10 @@
 
 #include "State.h"
 
-#include <boost/filesystem.hpp>
-#include <time.h>
+#include <ctime>
 #include <random>
+#include <boost/filesystem.hpp>
+#include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
@@ -113,8 +114,6 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
@@ -138,8 +137,6 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// TODO THINK: is this necessary?
 	m_state.init();
 
@@ -325,8 +322,8 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
-	cnote << *this;
-	cnote << _c;
+//	cnote << *this;
+//	cnote << _c;
 
 	for (auto i: ads)
 	{
@@ -553,10 +550,12 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				try
 				{
 					uncommitToMine();
+//					boost::timer t;
 					execute(i.second);
 					ret.push_back(m_receipts.back().changes().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
+//					cnote << "TX took:" << t.elapsed() * 1000;
 				}
 				catch (InvalidNonce const& in)
 				{
@@ -792,8 +791,6 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
-	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
@@ -1241,12 +1238,6 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 			evm.revert();
 
 		return !revert;
-	}
-	else
-	{
-		// non-contract call
-		if (o_sub)
-			o_sub->logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
 	}
 	return true;
 }

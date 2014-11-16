@@ -37,3 +37,6 @@ u256 const dev::eth::c_callGas = 20;
 u256 const dev::eth::c_memoryGas = 1;
 u256 const dev::eth::c_txDataGas = 5;
 u256 const dev::eth::c_txGas = 500;
+u256 const dev::eth::c_logGas = 32;
+u256 const dev::eth::c_logDataGas = 1;
+u256 const dev::eth::c_logTopicGas = 32;

@@ -86,6 +86,16 @@ h256 sha3(bytesConstRef _input)
 	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
 }
+	
+void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output)
+{
+	CryptoPP::SHA3_256 ctx;
+	assert(_secret.size() > 0);
+	ctx.Update((byte*)_secret.data(), _secret.size());
+	ctx.Update((byte*)_plain.data(), _plain.size());
+	assert(_output.size() >= 32);
+	ctx.Final(_output.data());
+}
 
 bytes aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)
 {
