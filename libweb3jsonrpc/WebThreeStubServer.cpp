@@ -240,7 +240,7 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 
 static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	shh::BuildTopicMask bt;
 	Public to;
 
 	if (!_json["to"].empty())
@@ -252,12 +252,8 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-			{
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
-				else
-					bt.shift();
-			}
 	}
 	return make_pair(bt.toTopicMask(), to);
 }

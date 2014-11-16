@@ -114,7 +114,7 @@ private:
 class BuildTopicMask: BuildTopic
 {
 public:
-	template <class T> BuildTopicMask() {}
+	BuildTopicMask() {}
 	template <class T> BuildTopicMask(T const& _t) { shift(_t); }
 
 	template <class T> BuildTopicMask& shift(T const& _r) { BuildTopic::shift(_r); return *this; }
