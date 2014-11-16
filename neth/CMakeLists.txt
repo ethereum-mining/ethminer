@@ -4,6 +4,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 include_directories(${LEVELDB_ID})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 set(EXECUTABLE neth)
 
