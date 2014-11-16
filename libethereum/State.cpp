@@ -114,8 +114,6 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
@@ -139,8 +137,6 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// TODO THINK: is this necessary?
 	m_state.init();
 
