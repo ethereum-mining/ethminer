@@ -1,29 +1,23 @@
 eth = web3.eth;
 env = web3.env;
 
-env.note('Creating Config...')
-var config;
-eth.lll("
-{
-  [[69]] (caller)
-  (returnlll {
-    (when (&& (= (calldatasize) 64) (= (caller) @@69))
-      (for {} (< @i (calldatasize)) [i](+ @i 64)
-        [[ (calldataload @i) ]] (calldataload (+ @i 32))
-      )
-    )
-    (return @@ $0)
-  })
-}"
-).then(function(configCode)
-{
-	console.log('Config code: ' + configCode);
-	return eth.transact({ 'code': configCode });
-}).then(function(configAddress)
-{
-	config = configAddress;
-	console.log('Config at address ' + configAddress);
-});
+var configSource =
+"{"+
+"  [[69]] (caller)"+
+"  (returnlll {"+
+"    (when (&& (= (calldatasize) 64) (= (caller) @@69))"+
+"      (for {} (< @i (calldatasize)) [i](+ @i 64)"+
+"        [[ (calldataload @i) ]] (calldataload (+ @i 32))"+
+"      )"+
+"    )"+
+"    (return @@ $0)"+
+"  })"+
+"}";
+
+console.log('Creating Config...')
+var config = eth.lll(configSource);
+config = config.then(function (configCode) { console.log('Config code: ' + configCode); return eth.transact({ 'code': configCode }); });
+config.then(function(configAddress) { console.log('Config at address ' + configAddress); config = configAddress; return configAddress; });
 
 // marek: TODO
 /*
