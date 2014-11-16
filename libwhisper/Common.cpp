@@ -69,7 +69,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	TopicMask ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(make_pair(TopicPart(h), h ? ~TopicPart() : TopicPart()));
+		ret.push_back(make_pair(TopicPart(h), ~TopicPart()));
 	return ret;
 }
 
