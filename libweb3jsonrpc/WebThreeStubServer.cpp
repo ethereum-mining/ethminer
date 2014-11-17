@@ -380,8 +380,13 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 		ret.from = jsToAddress(_json["from"].asString());
 	if (_json["to"].isString())
 		ret.to = jsToAddress(_json["to"].asString());
-	if (_json["value"].isString())
-		ret.value = jsToU256(_json["value"].asString());
+	if (!_json["value"].empty())
+	{
+		if (_json["value"].isString())
+			ret.value = jsToU256(_json["value"].asString());
+		else if (_json["value"].isInt())
+			ret.value = u256(_json["value"].asInt());
+	}
 	if (!_json["gas"].empty())
 	{
 		if (_json["gas"].isString())
