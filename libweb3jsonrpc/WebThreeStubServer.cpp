@@ -131,28 +131,34 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty())
 		return filter;
 
-	if (!_json["earliest"].empty())
+	if (_json["earliest"].isInt())
 		filter.withEarliest(_json["earliest"].asInt());
-	if (!_json["latest"].empty())
+	if (_json["latest"].isInt())
 		filter.withLatest(_json["lastest"].asInt());
-	if (!_json["max"].empty())
+	if (_json["max"].isInt())
 		filter.withMax(_json["max"].asInt());
-	if (!_json["skip"].empty())
+	if (_json["skip"].isInt())
 		filter.withSkip(_json["skip"].asInt());
 	if (!_json["from"].empty())
 	{
 		if (_json["from"].isArray())
+		{
 			for (auto i : _json["from"])
-				filter.from(jsToAddress(i.asString()));
-		else
+				if (i.isString())
+					filter.from(jsToAddress(i.asString()));
+		}
+		else if (_json["from"].isString())
 			filter.from(jsToAddress(_json["from"].asString()));
 	}
 	if (!_json["to"].empty())
 	{
 		if (_json["to"].isArray())
+		{
 			for (auto i : _json["to"])
-				filter.to(jsToAddress(i.asString()));
-		else
+				if (i.isString())
+					filter.to(jsToAddress(i.asString()));
+		}
+		else if (_json["to"].isString())
 			filter.to(jsToAddress(_json["to"].asString()));
 	}
 	if (!_json["altered"].empty())
@@ -177,28 +183,34 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty())
 		return filter;
 
-	if (!_json["earliest"].empty())
+	if (_json["earliest"].isInt())
 		filter.withEarliest(_json["earliest"].asInt());
-	if (!_json["latest"].empty())
+	if (_json["latest"].isInt())
 		filter.withLatest(_json["lastest"].asInt());
-	if (!_json["max"].empty())
+	if (_json["max"].isInt())
 		filter.withMax(_json["max"].asInt());
-	if (!_json["skip"].empty())
+	if (_json["skip"].isInt())
 		filter.withSkip(_json["skip"].asInt());
 	if (!_json["from"].empty())
 	{
 		if (_json["from"].isArray())
+		{
 			for (auto i : _json["from"])
-				filter.from(jsToAddress(i.asString()));
-		else
+				if (i.isString())
+					filter.from(jsToAddress(i.asString()));
+		}
+		else if (_json["from"].isString())
 			filter.from(jsToAddress(_json["from"].asString()));
 	}
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
+		{
 			for (auto i : _json["address"])
-				filter.address(jsToAddress(i.asString()));
-		else
+				if (i.isString())
+					filter.address(jsToAddress(i.asString()));
+		}
+		else if (_json["address"].isString())
 			filter.from(jsToAddress(_json["address"].asString()));
 	}
 	if (!_json["topics"].empty())
@@ -218,11 +230,11 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 static shh::Message toMessage(Json::Value const& _json)
 {
 	shh::Message ret;
-	if (!_json["from"].empty())
+	if (_json["from"].isString())
 		ret.setFrom(jsToPublic(_json["from"].asString()));
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		ret.setTo(jsToPublic(_json["to"].asString()));
-	if (!_json["payload"].empty())
+	if (_json["payload"].isString())
 		ret.setPayload(jsToBytes(_json["payload"].asString()));
 	return ret;
 }
@@ -233,9 +245,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	unsigned workToProve = 50;
 	shh::BuildTopic bt;
 
-	if (!_json["ttl"].empty())
+	if (_json["ttl"].isInt())
 		ttl = _json["ttl"].asInt();
-	if (!_json["workToProve"].empty())
+	if (_json["workToProve"].isInt())
 		workToProve = _json["workToProve"].asInt();
 	if (!_json["topic"].empty())
 	{
@@ -243,7 +255,8 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-				bt.shift(jsToBytes(i.asString()));
+				if (i.isString())
+					bt.shift(jsToBytes(i.asString()));
 	}
 	return _m.seal(_from, bt, ttl, workToProve);
 }
@@ -253,7 +266,7 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 	shh::BuildTopicMask bt;
 	Public to;
 
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		to = jsToPublic(_json["to"].asString());
 
 	if (!_json["topic"].empty())
@@ -361,19 +374,29 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty())
 		return ret;
 
-	if (!_json["from"].empty())
+	if (_json["from"].isString())
 		ret.from = jsToAddress(_json["from"].asString());
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		ret.to = jsToAddress(_json["to"].asString());
-	if (!_json["value"].empty())
+	if (_json["value"].isString())
 		ret.value = jsToU256(_json["value"].asString());
 	if (!_json["gas"].empty())
-		ret.gas = jsToU256(_json["gas"].asString());
+	{
+		if (_json["gas"].isString())
+			ret.gas = jsToU256(_json["gas"].asString());
+		else if (_json["gas"].isInt())
+			ret.gas = u256(_json["gas"].asInt());
+	}
 	if (!_json["gasPrice"].empty())
-		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
-	if (!_json["data"].empty() && _json["data"].isString())
+	{
+		if (_json["gasPrice"].isString())
+			ret.gasPrice = jsToU256(_json["gasPrice"].asString());
+		else if (_json["gasPrice"].isInt())
+			ret.gas = u256(_json["gas"].asInt());
+	}
+	if (_json["data"].isString())
 		ret.data = jsToBytes(_json["data"].asString());
-	else if (!_json["code"].empty() && _json["code"].isString())
+	else if (_json["code"].isString())
 		ret.data = jsToBytes(_json["code"].asString());
 	return ret;
 }
