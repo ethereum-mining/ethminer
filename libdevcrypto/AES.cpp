@@ -14,38 +14,47 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file TestHelperCrypto.h
+/** @file AES.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
-#pragma once
-
-#include <libdevcrypto/CryptoPP.h>
+#include "CryptoPP.h"
+#include "AES.h"
 
 using namespace std;
+using namespace dev;
+using namespace dev::crypto;
+using namespace dev::crypto::aes;
 using namespace CryptoPP;
 
-void SavePrivateKey(const PrivateKey& key, const string& file = "ecies.private.key")
+struct aes::Aes128Ctr
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+	Aes128Ctr(h128 _k)
+	{
+		mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data());
+	}
+	CTR_Mode<AES>::Encryption mode;
+};
+
+Stream::Stream(StreamType, h128 _ckey):
+	m_cSecret(_ckey)
+{
+	cryptor = new Aes128Ctr(_ckey);
 }
 
-void SavePublicKey(const PublicKey& key, const string& file = "ecies.public.key")
+Stream::~Stream()
 {
-	FileSink sink(file.c_str());
-	key.Save(sink);
+	delete cryptor;
 }
 
-void LoadPrivateKey(PrivateKey& key, const string& file = "ecies.private.key")
+void Stream::update(bytesRef)
 {
-	FileSource source(file.c_str(), true);
-	key.Load(source);
+
 }
 
-void LoadPublicKey(PublicKey& key, const string& file = "ecies.public.key")
+size_t Stream::streamOut(bytes&)
 {
-	FileSource source(file.c_str(), true);
-	key.Load(source);
+	return 0;
 }
+
