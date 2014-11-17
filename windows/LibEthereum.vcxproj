@@ -68,14 +68,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\libdevcore\_libdevcore.cpp" />
+    <ClCompile Include="..\libdevcrypto\AES.cpp" />
     <ClCompile Include="..\libdevcrypto\Common.cpp" />
     <ClCompile Include="..\libdevcrypto\CryptoPP.cpp" />
-    <ClCompile Include="..\libdevcrypto\EC.cpp" />
+    <ClCompile Include="..\libdevcrypto\ECDHE.cpp" />
     <ClCompile Include="..\libdevcrypto\FileSystem.cpp" />
     <ClCompile Include="..\libdevcrypto\MemoryDB.cpp" />
     <ClCompile Include="..\libdevcrypto\OverlayDB.cpp" />
     <ClCompile Include="..\libdevcrypto\SHA3.cpp" />
-    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieCommon.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieDB.cpp" />
     <ClCompile Include="..\libethcore\BlockInfo.cpp">

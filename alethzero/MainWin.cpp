@@ -353,8 +353,16 @@ void Main::on_enableOptimizer_triggered()
 	on_data_textChanged();
 }
 
+QString Main::contents(QString _s)
+{
+	return QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+}
+
 void Main::load(QString _s)
 {
+	QString contents = QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
+	ui->webView->page()->currentFrame()->evaluateJavaScript(contents);
+	/*
 	QFile fin(_s);
 	if (!fin.open(QFile::ReadOnly))
 		return;
@@ -375,7 +383,7 @@ void Main::load(QString _s)
 			//eval(line);
 			line.clear();
 		}
-	}
+	}*/
 }
 
 void Main::on_loadJS_triggered()
@@ -679,7 +687,7 @@ void Main::on_importKeyFile_triggered()
 	try
 	{
 		js::mValue val;
-		json_spirit::read_string(asString(contents(s.toStdString())), val);
+		json_spirit::read_string(asString(dev::contents(s.toStdString())), val);
 		auto obj = val.get_obj();
 		if (obj["encseed"].type() == js::str_type)
 		{
@@ -948,7 +956,7 @@ void Main::refreshBlockCount()
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
 	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 N%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
+	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
 static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)

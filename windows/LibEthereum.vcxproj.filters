@@ -435,10 +435,10 @@
     <ClInclude Include="..\libethereum\Account.h">
       <Filter>libethereum</Filter>
     </ClInclude>
-    <ClInclude Include="..\libevmcore\Assembly.h">
+    <ClInclude Include="..\libevmcore\Exceptions.h">
       <Filter>libevmcore</Filter>
     </ClInclude>
-    <ClInclude Include="..\libevmcore\Exceptions.h">
+    <ClInclude Include="..\libevmcore\Assembly.h">
       <Filter>libevmcore</Filter>
     </ClInclude>
     <ClInclude Include="..\libevm\VMFace.h">
