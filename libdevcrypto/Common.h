@@ -43,7 +43,15 @@ using Public = h512;
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Signature = h520;
 
-struct SignatureStruct { h256 r; h256 s; byte v; };
+struct SignatureStruct
+{
+	/// @returns true if r,s,v values are valid, otherwise false
+	bool isValid();
+
+	h256 r;
+	h256 s;
+	byte v;
+};
 
 /// An Ethereum address: 20 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
