@@ -23,6 +23,7 @@ target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 if(EVMJIT)
+	target_link_libraries(${EXECUTABLE} evm)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 
