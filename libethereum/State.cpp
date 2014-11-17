@@ -114,8 +114,6 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
@@ -139,8 +137,6 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// TODO THINK: is this necessary?
 	m_state.init();
 
@@ -326,8 +322,8 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
-	cnote << *this;
-	cnote << _c;
+//	cnote << *this;
+//	cnote << _c;
 
 	for (auto i: ads)
 	{
@@ -795,8 +791,6 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
-	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
