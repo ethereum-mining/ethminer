@@ -2,6 +2,6 @@
 <qresource prefix="/js">
     <file>es6-promise-2.0.0.js</file>
     <file>setup.js</file>
-    <file>ethereum.min.js</file>
+    <file>ethereum.js</file>
 </qresource>
 </RCC>

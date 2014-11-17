@@ -33,6 +33,8 @@
 #include <libwhisper/WhisperHost.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
+#include <libsolidity/SourceReferenceFormatter.h>
+#include <libserpent/funcs.h>
 
 using namespace std;
 using namespace dev;
@@ -538,17 +540,56 @@ Json::Value WebThreeStubServer::eth_compilers()
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
 	ret.append("solidity");
+	ret.append("serpent");
 	return ret;
 }
 
 std::string WebThreeStubServer::eth_lll(std::string const& _code)
 {
-	return toJS(dev::eth::compileLLL(_code));
+	string res;
+	vector<string> errors;
+	res = toJS(dev::eth::compileLLL(_code, true, &errors));
+	cwarn << "LLL compilation errors: " << errors;
+	return res;
+}
+
+std::string WebThreeStubServer::eth_serpent(std::string const& _code)
+{
+	string res;
+	try
+	{
+		res = toJS(dev::asBytes(::compile(_code)));
+	}
+	catch (string err)
+	{
+		cwarn << "Solidity compilation error: " << err;
+	}
+	catch (...)
+	{
+		cwarn << "Uncought serpent compilation exception";
+	}
+	return res;
 }
 
 std::string WebThreeStubServer::eth_solidity(std::string const& _code)
 {
-	return toJS(dev::solidity::CompilerStack::staticCompile(_code, false));
+	string res;
+	dev::solidity::CompilerStack compiler;
+	try
+	{
+		res = toJS(compiler.compile(_code, true));
+	}
+	catch (dev::Exception const& exception)
+	{
+		ostringstream error;
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
+		cwarn << "Solidity compilation error: " << error.str();
+	}
+	catch (...)
+	{
+		cwarn << "Uncought solidity compilation exception";
+	}
+	return res;
 }
 
 int WebThreeStubServer::eth_number()
