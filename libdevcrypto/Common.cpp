@@ -23,19 +23,65 @@
 #include <random>
 #include <chrono>
 #include <mutex>
-#include "EC.h"
 #include "SHA3.h"
 #include "FileSystem.h"
+#include "CryptoPP.h"
 #include "Common.h"
 using namespace std;
 using namespace dev;
-using namespace crypto;
+using namespace dev::crypto;
 
-//#define ETH_ADDRESS_DEBUG 1
+static Secp256k1 s_secp256k1;
 
-Address dev::toAddress(Secret _secret)
+Public dev::toPublic(Secret const& _secret)
 {
-	return KeyPair(_secret).address();
+	Public p;
+	s_secp256k1.toPublic(_secret, p);
+	return std::move(p);
+}
+
+Address dev::toAddress(Public const& _public)
+{
+	return s_secp256k1.toAddress(_public);
+}
+
+Address dev::toAddress(Secret const& _secret)
+{
+	Public p;
+	s_secp256k1.toPublic(_secret, p);
+	return s_secp256k1.toAddress(p);
+}
+
+void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	bytes io = _plain.toBytes();
+	s_secp256k1.encrypt(_k, io);
+	o_cipher = std::move(io);
+}
+
+bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	bytes io = _cipher.toBytes();
+	s_secp256k1.decrypt(_k, io);
+	if (io.empty())
+		return false;
+	o_plaintext = std::move(io);
+	return true;
+}
+
+Public dev::recover(Signature const& _sig, h256 const& _message)
+{
+	return s_secp256k1.recover(_sig, _message.ref());
+}
+
+Signature dev::sign(Secret const& _k, h256 const& _hash)
+{
+	return s_secp256k1.sign(_k, _hash);
+}
+
+bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
+{
+	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
 }
 
 KeyPair KeyPair::create()
@@ -45,11 +91,7 @@ KeyPair KeyPair::create()
 
 	for (int i = 0; i < 100; ++i)
 	{
-		h256 sec;
-		for (unsigned i = 0; i < 32; ++i)
-			sec[i] = (byte)d(s_eng);
-
-		KeyPair ret(sec);
+		KeyPair ret(FixedHash<32>::random(s_eng));
 		if (ret.address())
 			return ret;
 	}
@@ -59,16 +101,8 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
-	toPublic(m_secret, m_public);
-	if (verifySecret(m_secret, m_public))
-		m_address = right160(dev::sha3(m_public.ref()));
-	
-#if ETH_ADDRESS_DEBUG
-	cout << "---- ADDRESS -------------------------------" << endl;
-	cout << "SEC: " << m_secret << endl;
-	cout << "PUB: " << m_public << endl;
-	cout << "ADR: " << m_address << endl;
-#endif
+	if (s_secp256k1.verifySecret(m_secret, m_public))
+		m_address = s_secp256k1.toAddress(m_public);
 }
 
 KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)
@@ -76,36 +110,17 @@ KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _pass
 	return KeyPair(sha3(aesDecrypt(_seed, _password)));
 }
 
-void dev::encrypt(Public _k, bytesConstRef _plain, bytes& o_cipher)
+h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 {
-	bytes io = _plain.toBytes();
-	crypto::encrypt(_k, io);
-	o_cipher = std::move(io);
-}
-
-bool dev::decrypt(Secret _k, bytesConstRef _cipher, bytes& o_plaintext)
-{
-	bytes io = _cipher.toBytes();
-	crypto::decrypt(_k, io);
-	if (io.empty())
-		return false;
-	o_plaintext = std::move(io);
-	return true;
-}
-
-Public dev::recover(Signature _sig, h256 _message)
-{
-	return crypto::recover(_sig, _message.ref());
-}
-
-Signature dev::sign(Secret _k, h256 _hash)
-{
-	return crypto::sign(_k, _hash);
-}
-
-bool dev::verify(Public _p, Signature _s, h256 _hash)
-{
-	return crypto::verify(_p, _s, bytesConstRef(_hash.data(), 32), true);
+	// H(H(r||k)^h)
+	h256 s;
+	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
+	s ^= _hash;
+	sha3(s.ref(), s.ref());
+	
+	if (!s || !_hash || !_priv)
+		BOOST_THROW_EXCEPTION(InvalidState());
+	return std::move(s);
 }
 
 h256 Nonce::get(bool _commit)
@@ -125,7 +140,7 @@ h256 Nonce::get(bool _commit)
 		else
 		{
 			// todo: replace w/entropy from user and system
-			std::mt19937_64 s_eng(time(0));
+			std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
 			std::uniform_int_distribution<uint16_t> d(0, 255);
 			for (unsigned i = 0; i < 32; ++i)
 				s_seed[i] = (byte)d(s_eng);

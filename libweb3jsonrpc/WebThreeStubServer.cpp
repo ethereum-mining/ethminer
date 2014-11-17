@@ -240,7 +240,7 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 
 static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	shh::BuildTopicMask bt;
 	Public to;
 
 	if (!_json["to"].empty())
@@ -252,12 +252,8 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-			{
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
-				else
-					bt.shift();
-			}
 	}
 	return make_pair(bt.toTopicMask(), to);
 }
@@ -374,10 +370,10 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 			ret.data = jsToBytes(_json["code"].asString());
 		else if (_json["data"].isArray())
 			for (auto i: _json["data"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
 		else if (_json["code"].isArray())
 			for (auto i: _json["code"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
 		else if (_json["dataclose"].isArray())
 			for (auto i: _json["dataclose"])
 				dev::operator +=(ret.data, jsToBytes(i.asString()));
@@ -511,7 +507,7 @@ std::string WebThreeStubServer::shh_newGroup(std::string const& _id, std::string
 
 std::string WebThreeStubServer::shh_newIdentity()
 {
-	cnote << this << m_ids;
+//	cnote << this << m_ids;
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.secret();
 	return toJS(kp.pub());
@@ -539,7 +535,7 @@ int WebThreeStubServer::eth_peerCount()
 
 bool WebThreeStubServer::shh_post(Json::Value const& _json)
 {
-	cnote << this << m_ids;
+//	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
 	Secret from;
 
