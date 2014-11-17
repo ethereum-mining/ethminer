@@ -37,6 +37,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newFilterStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_number", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_peerCountI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_serpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_serpentI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setCoinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_setCoinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setDefaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_setDefaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setListening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_setListeningI);
@@ -181,6 +182,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_peerCount();
         }
 
+        inline virtual void eth_serpentI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_serpent(request[0u].asString());
+        }
+
         inline virtual void eth_setCoinbaseI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_setCoinbase(request[0u].asString());
@@ -311,6 +317,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual int eth_newFilterString(const std::string& param1) = 0;
         virtual int eth_number() = 0;
         virtual int eth_peerCount() = 0;
+        virtual std::string eth_serpent(const std::string& param1) = 0;
         virtual bool eth_setCoinbase(const std::string& param1) = 0;
         virtual bool eth_setDefaultBlock(const int& param1) = 0;
         virtual bool eth_setListening(const bool& param1) = 0;
