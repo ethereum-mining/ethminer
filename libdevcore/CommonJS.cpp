@@ -38,31 +38,20 @@ bytes jsToBytes(std::string const& _s)
 		return bytes();
 }
 
-std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r)
+bytes padded(bytes _b, unsigned _l)
 {
-	bytes b = jsToBytes(_s);
-	while (b.size() < _l)
-		b.insert(b.begin(), 0);
-	while (b.size() < _r)
-		b.push_back(0);
-	return asString(b).substr(b.size() - std::max(_l, _r));
+	while (_b.size() < _l)
+		_b.insert(_b.begin(), 0);
+	while (_b.size() < _l)
+		_b.push_back(0);
+	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
 }
 
-std::string jsPadded(std::string const& _s, unsigned _l)
+bytes unpadded(bytes _b)
 {
-	if (_s.substr(0, 2) == "0x" || _s.find_first_not_of("0123456789") == std::string::npos)
-		// Numeric: pad to right
-		return jsPadded(_s, _l, _l);
-	else
-		// Text: pad to the left
-		return jsPadded(_s, 0, _l);
-}
-
-std::string jsUnpadded(std::string _s)
-{
-	auto p = _s.find_last_not_of((char)0);
-	_s.resize(p == std::string::npos ? 0 : (p + 1));
-	return _s;
+	auto p = asString(_b).find_last_not_of((char)0);
+	_b.resize(p == std::string::npos ? 0 : (p + 1));
+	return _b;
 }
 
 }
