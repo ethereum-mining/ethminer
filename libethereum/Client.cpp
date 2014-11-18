@@ -232,18 +232,11 @@ void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
 
 void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 {
-//	auto d = m_bc.details(_block);
-	auto d = m_bc.logBlooms(_block);
-	
-	lock_guard<mutex> l(m_filterLock);
-	for (pair<h256, InstalledFilter> const& i: m_filters)
-		for (auto b: d.blooms)
-			if (i.second.filter.matches(b))
-			{
-				o_changed.insert(i.first);
-				break;
-			}
-//		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
+//	auto d = m_bc.info(_block);
+//	
+//	lock_guard<mutex> l(m_filterLock);
+//	for (pair<h256, InstalledFilter> const& i: m_filters)
+//		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
 //			o_changed.insert(i.first);
 }
 
