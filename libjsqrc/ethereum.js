@@ -905,6 +905,10 @@ Filter.prototype.messages = function() {
     });
 };
 
+Filter.prototype.logs = function () {
+    return this.messages();
+};
+
 function messageHandler(data) {
     if(data._event !== undefined) {
         web3.trigger(data._event, data._id, data.data);
