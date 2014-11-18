@@ -217,7 +217,7 @@ module.exports = {
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file websocket.js
+/** @file autoprovider.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
  *   Marian Oancea <marian@ethdev.com>
@@ -231,7 +231,7 @@ module.exports = {
  */
 if ("build" !== 'build') {/*
     var WebSocket = require('ws'); // jshint ignore:line
-    var web3 = require('./web3'); // jshint ignore:line
+    var web3 = require('./main.js'); // jshint ignore:line
 */}
 
 var AutoProvider = function (userOptions) {
@@ -247,13 +247,13 @@ var AutoProvider = function (userOptions) {
         this.provider = new web3.providers.QtProvider();
         return;
     }
-   
+
     userOptions = userOptions || {};
     var options = {
         httprpc: userOptions.httprpc || 'http://localhost:8080',
         websockets: userOptions.websockets || 'ws://localhost:40404/eth'
     };
-    
+
     var self = this;
     var closeWithSuccess = function (success) {
         ws.close();
@@ -274,7 +274,7 @@ var AutoProvider = function (userOptions) {
     var ws = new WebSocket(options.websockets);
 
     ws.onopen = function() {
-        closeWithSuccess(true);    
+        closeWithSuccess(true);
     };
 
     ws.onerror = function() {
@@ -553,7 +553,8 @@ var ethMethods = function () {
     { name: 'compilers', call: 'eth_compilers' },
     { name: 'lll', call: 'eth_lll' },
     { name: 'solidity', call: 'eth_solidity' },
-    { name: 'serpent', call: 'eth_serpent' }
+    { name: 'serpent', call: 'eth_serpent' },
+    { name: 'logs', call: 'eth_logs' }
     ];
     return methods;
 };
@@ -599,7 +600,7 @@ var ethWatchMethods = function () {
     return [
     { name: 'newFilter', call: newFilter },
     { name: 'uninstallFilter', call: 'eth_uninstallFilter' },
-    { name: 'logs', call: 'eth_getMessages' }
+    { name: 'getMessages', call: 'eth_filterLogs' }
     ];
 };
 
@@ -903,8 +904,6 @@ Filter.prototype.messages = function() {
         return self.impl.getMessages(id);
     });
 };
-
-Filter.prototype.logs = Filter.prototype.messages;
 
 function messageHandler(data) {
     if(data._event !== undefined) {
