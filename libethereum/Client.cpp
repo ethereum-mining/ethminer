@@ -224,6 +224,7 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
 {
+	// TODO: more precise check on whether the txs match.
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
 		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
@@ -232,6 +233,7 @@ void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
 
 void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 {
+	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
 
 	lock_guard<mutex> l(m_filterLock);
