@@ -25,23 +25,27 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_changedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_codeAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_coinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_coinbaseI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_compile", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_compilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_compilersI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_countAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_defaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_defaultBlockI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_filterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_filterLogsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_gasPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_gasPriceI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_getMessagesI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_lll", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_lllI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_logs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_logsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_mining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_miningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newFilterStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_number", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_peerCountI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_serpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_serpentI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setCoinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_setCoinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setDefaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_setDefaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setListening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_setListeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setMining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_setMiningI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_solidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_solidityI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_stateAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_stateAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_storageAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_storageAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_transactI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByHashI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByNumberI);
@@ -119,9 +123,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_coinbase();
         }
 
-        inline virtual void eth_compileI(const Json::Value& request, Json::Value& response) 
+        inline virtual void eth_compilersI(const Json::Value& request, Json::Value& response) 
         {
-            response = this->eth_compile(request[0u].asString());
+            response = this->eth_compilers();
         }
 
         inline virtual void eth_countAtI(const Json::Value& request, Json::Value& response) 
@@ -134,14 +138,14 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_defaultBlock();
         }
 
+        inline virtual void eth_filterLogsI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_filterLogs(request[0u].asInt());
+        }
+
         inline virtual void eth_gasPriceI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_gasPrice();
-        }
-
-        inline virtual void eth_getMessagesI(const Json::Value& request, Json::Value& response) 
-        {
-            response = this->eth_getMessages(request[0u].asInt());
         }
 
         inline virtual void eth_listeningI(const Json::Value& request, Json::Value& response) 
@@ -152,6 +156,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void eth_lllI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_lll(request[0u].asString());
+        }
+
+        inline virtual void eth_logsI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_logs(request[0u]);
         }
 
         inline virtual void eth_miningI(const Json::Value& request, Json::Value& response) 
@@ -179,6 +188,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_peerCount();
         }
 
+        inline virtual void eth_serpentI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_serpent(request[0u].asString());
+        }
+
         inline virtual void eth_setCoinbaseI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_setCoinbase(request[0u].asString());
@@ -199,9 +213,19 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_setMining(request[0u].asBool());
         }
 
+        inline virtual void eth_solidityI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_solidity(request[0u].asString());
+        }
+
         inline virtual void eth_stateAtI(const Json::Value& request, Json::Value& response) 
         {
             response = this->eth_stateAt(request[0u].asString(), request[1u].asString());
+        }
+
+        inline virtual void eth_storageAtI(const Json::Value& request, Json::Value& response) 
+        {
+            response = this->eth_storageAt(request[0u].asString());
         }
 
         inline virtual void eth_transactI(const Json::Value& request, Json::Value& response) 
@@ -287,23 +311,27 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool eth_changed(const int& param1) = 0;
         virtual std::string eth_codeAt(const std::string& param1) = 0;
         virtual std::string eth_coinbase() = 0;
-        virtual std::string eth_compile(const std::string& param1) = 0;
+        virtual Json::Value eth_compilers() = 0;
         virtual double eth_countAt(const std::string& param1) = 0;
         virtual int eth_defaultBlock() = 0;
+        virtual Json::Value eth_filterLogs(const int& param1) = 0;
         virtual std::string eth_gasPrice() = 0;
-        virtual Json::Value eth_getMessages(const int& param1) = 0;
         virtual bool eth_listening() = 0;
         virtual std::string eth_lll(const std::string& param1) = 0;
+        virtual Json::Value eth_logs(const Json::Value& param1) = 0;
         virtual bool eth_mining() = 0;
         virtual int eth_newFilter(const Json::Value& param1) = 0;
         virtual int eth_newFilterString(const std::string& param1) = 0;
         virtual int eth_number() = 0;
         virtual int eth_peerCount() = 0;
+        virtual std::string eth_serpent(const std::string& param1) = 0;
         virtual bool eth_setCoinbase(const std::string& param1) = 0;
         virtual bool eth_setDefaultBlock(const int& param1) = 0;
         virtual bool eth_setListening(const bool& param1) = 0;
         virtual bool eth_setMining(const bool& param1) = 0;
+        virtual std::string eth_solidity(const std::string& param1) = 0;
         virtual std::string eth_stateAt(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_storageAt(const std::string& param1) = 0;
         virtual std::string eth_transact(const Json::Value& param1) = 0;
         virtual Json::Value eth_transactionByHash(const std::string& param1, const int& param2) = 0;
         virtual Json::Value eth_transactionByNumber(const int& param1, const int& param2) = 0;
