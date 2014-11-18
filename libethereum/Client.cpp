@@ -604,30 +604,37 @@ LogEntries Client::logs(LogFilter const& _f) const
 #if ETH_DEBUG
 		int total = 0;
 #endif
-		//? check block bloom
-		for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
-			if (_f.matches(receipt.bloom()))
+		// check block bloom
+		if (_f.matches(m_bc.info(h).logBloom))
+			for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
 			{
-				LogEntries le = _f.matches(receipt);
-				if (le.size())
+				if (_f.matches(receipt.bloom()))
 				{
-#if ETH_DEBUG
-					total += le.size();
-#endif
-					for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
+					LogEntries le = _f.matches(receipt);
+					if (le.size())
 					{
-						if (s)
-							s--;
-						else
-							ret.insert(ret.begin(), le[j]);
+#if ETH_DEBUG
+						total += le.size();
+#endif
+						for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
+						{
+							if (s)
+								s--;
+							else
+								ret.insert(ret.begin(), le[j]);
+						}
 					}
 				}
+				if (!total)
+					falsePos++;
 			}
+		else
+			skipped++;
 		if (n == end)
 			break;
 	}
 #if ETH_DEBUG
-//	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
+	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
 #endif
 	return ret;
 }
