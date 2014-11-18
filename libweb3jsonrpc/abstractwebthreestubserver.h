@@ -26,6 +26,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_number", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_numberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_balanceAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_balanceAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_stateAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_stateAtI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_storageAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_storageAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_countAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_codeAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_codeAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_transactI);
@@ -36,13 +37,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByNumberI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_uncleByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleByHashI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_uncleByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleByNumberI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_compilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_compilersI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_lll", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_lllI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_compile", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_solidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_solidityI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_serpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_serpentI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newFilterStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uninstallFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_changedI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_getMessagesI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_filterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_filterLogsI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_logs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_logsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("db_put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putI);
             this->bindAndAddMethod(new jsonrpc::Procedure("db_get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_getI);
             this->bindAndAddMethod(new jsonrpc::Procedure("db_putString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putStringI);
@@ -121,6 +125,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_stateAt(request[0u].asString(), request[1u].asString());
         }
+        inline virtual void eth_storageAtI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_storageAt(request[0u].asString());
+        }
         inline virtual void eth_countAtI(const Json::Value &request, Json::Value &response)
         {
             response = this->eth_countAt(request[0u].asString());
@@ -161,13 +169,22 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_uncleByNumber(request[0u].asInt(), request[1u].asInt());
         }
+        inline virtual void eth_compilersI(const Json::Value &request, Json::Value &response)
+        {
+            (void)request;
+            response = this->eth_compilers();
+        }
         inline virtual void eth_lllI(const Json::Value &request, Json::Value &response)
         {
             response = this->eth_lll(request[0u].asString());
         }
-        inline virtual void eth_compileI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_solidityI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_compile(request[0u].asString());
+            response = this->eth_solidity(request[0u].asString());
+        }
+        inline virtual void eth_serpentI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_serpent(request[0u].asString());
         }
         inline virtual void eth_newFilterI(const Json::Value &request, Json::Value &response)
         {
@@ -185,9 +202,13 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_changed(request[0u].asInt());
         }
-        inline virtual void eth_getMessagesI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_filterLogsI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_getMessages(request[0u].asInt());
+            response = this->eth_filterLogs(request[0u].asInt());
+        }
+        inline virtual void eth_logsI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_logs(request[0u]);
         }
         inline virtual void db_putI(const Json::Value &request, Json::Value &response)
         {
@@ -252,6 +273,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual int eth_number() = 0;
         virtual std::string eth_balanceAt(const std::string& param1) = 0;
         virtual std::string eth_stateAt(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_storageAt(const std::string& param1) = 0;
         virtual double eth_countAt(const std::string& param1) = 0;
         virtual std::string eth_codeAt(const std::string& param1) = 0;
         virtual std::string eth_transact(const Json::Value& param1) = 0;
@@ -262,13 +284,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value eth_transactionByNumber(const int& param1, const int& param2) = 0;
         virtual Json::Value eth_uncleByHash(const std::string& param1, const int& param2) = 0;
         virtual Json::Value eth_uncleByNumber(const int& param1, const int& param2) = 0;
+        virtual Json::Value eth_compilers() = 0;
         virtual std::string eth_lll(const std::string& param1) = 0;
-        virtual std::string eth_compile(const std::string& param1) = 0;
+        virtual std::string eth_solidity(const std::string& param1) = 0;
+        virtual std::string eth_serpent(const std::string& param1) = 0;
         virtual int eth_newFilter(const Json::Value& param1) = 0;
         virtual int eth_newFilterString(const std::string& param1) = 0;
         virtual bool eth_uninstallFilter(const int& param1) = 0;
         virtual bool eth_changed(const int& param1) = 0;
-        virtual Json::Value eth_getMessages(const int& param1) = 0;
+        virtual Json::Value eth_filterLogs(const int& param1) = 0;
+        virtual Json::Value eth_logs(const Json::Value& param1) = 0;
         virtual bool db_put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string db_get(const std::string& param1, const std::string& param2) = 0;
         virtual bool db_putString(const std::string& param1, const std::string& param2, const std::string& param3) = 0;

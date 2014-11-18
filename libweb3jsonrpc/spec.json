@@ -14,6 +14,7 @@
 
             { "name": "eth_balanceAt", "params": [""], "order": [], "returns" : ""},
             { "name": "eth_stateAt", "params": ["", ""], "order": [], "returns": ""},
+            { "name": "eth_storageAt", "params": [""], "order": [], "returns": {}},
             { "name": "eth_countAt", "params": [""], "order": [], "returns" : 0.0},
             { "name": "eth_codeAt", "params": [""], "order": [], "returns": ""},
 
@@ -27,14 +28,18 @@
             { "name": "eth_uncleByHash", "params": ["", 0], "order": [], "returns": {}},
             { "name": "eth_uncleByNumber", "params": [0, 0], "order": [], "returns": {}},
 
+            { "name": "eth_compilers", "params": [], "order": [], "returns": []},
             { "name": "eth_lll", "params": [""], "order": [], "returns": ""},
-            { "name": "eth_compile", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_solidity", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_serpent", "params": [""], "order": [], "returns": ""},
+
 
             { "name": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
             { "name": "eth_uninstallFilter", "params": [0], "order": [], "returns": true},
             { "name": "eth_changed", "params": [0], "order": [], "returns": false},
-            { "name": "eth_getMessages", "params": [0], "order": [], "returns": []},
+            { "name": "eth_filterLogs", "params": [0], "order": [], "returns": []},
+            { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
 
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
