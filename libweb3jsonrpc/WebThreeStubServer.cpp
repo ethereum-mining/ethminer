@@ -394,12 +394,18 @@ std::string WebThreeStubServer::db_get(std::string const& _name, std::string con
 	return toJS(dev::asBytes(ret));
 }
 
-Json::Value WebThreeStubServer::eth_getLogs(int const& _id)
+Json::Value WebThreeStubServer::eth_filterLogs(int const& _id)
 {
 	if (!client())
-		return Json::Value();
-//	return toJson(client()->messages(_id));
+		return Json::Value(Json::arrayValue);
 	return toJson(client()->logs(_id));
+}
+
+Json::Value WebThreeStubServer::eth_logs(Json::Value const& _json)
+{
+	if (!client())
+		return Json::Value(Json::arrayValue);
+	return toJson(client()->logs(toLogFilter(_json)));
 }
 
 std::string WebThreeStubServer::db_getString(std::string const& _name, std::string const& _key)

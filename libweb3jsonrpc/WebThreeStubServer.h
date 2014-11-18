@@ -76,7 +76,8 @@ public:
 	virtual double eth_countAt(std::string const& _address);
 	virtual int eth_defaultBlock();
 	virtual std::string eth_gasPrice();
-	virtual Json::Value eth_getLogs(int const& _id);
+	virtual Json::Value eth_filterLogs(int const& _id);
+	virtual Json::Value eth_logs(Json::Value const& _json);
 	virtual bool eth_listening();
 	virtual bool eth_mining();
 	virtual int eth_newFilter(Json::Value const& _json);
