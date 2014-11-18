@@ -6,9 +6,14 @@
 #include <libdevcore/CommonIO.h>
 #include <libethcore/CommonEth.h>
 
-namespace dev { namespace eth {
+namespace dev {
+namespace eth {
 class Interface;
-}}
+}
+namespace shh {
+class Interface;
+}
+}
 
 class QJSEngine;
 class QWebFrame;
@@ -203,11 +208,51 @@ private:
 	QList<dev::KeyPair> m_accounts;
 };
 
-#define QETH_INSTALL_JS_NAMESPACE(frame, eth, env) [frame, eth, env]() \
+class QWhisper: public QObject
+{
+	Q_OBJECT
+
+public:
+	QWhisper(QObject* _p, std::shared_ptr<dev::shh::Interface> const& _c);
+	virtual ~QWhisper();
+
+	std::shared_ptr<dev::shh::Interface> face() const;
+	void setFace(std::shared_ptr<dev::shh::Interface> const& _c) { m_face = _c; }
+
+	/// Call when the face() is going to be deleted to make this object useless but safe.
+	void faceDieing();
+
+	Q_INVOKABLE QWhisper* self() { return this; }
+
+	/// Basic message send.
+	Q_INVOKABLE void send(QString /*dev::Address*/ _dest, QString /*ev::KeyPair*/ _from, QString /*dev::h256 const&*/ _topic, QString /*dev::bytes const&*/ _payload);
+
+	// Watches interface
+
+	Q_INVOKABLE unsigned newWatch(QString _json);
+	Q_INVOKABLE QString watchMessages(unsigned _w);
+	Q_INVOKABLE void killWatch(unsigned _w);
+	void clearWatches();
+
+public slots:
+	/// Check to see if anything has changed, fire off signals if so.
+	/// @note Must be called in the QObject's thread.
+	void poll();
+
+signals:
+	void watchChanged(unsigned _w);
+
+private:
+	std::weak_ptr<dev::shh::Interface> m_face;
+	std::vector<unsigned> m_watches;
+};
+
+#define QETH_INSTALL_JS_NAMESPACE(frame, eth, shh, env) [frame, eth, shh, env]() \
 { \
 	frame->disconnect(); \
 	frame->addToJavaScriptWindowObject("env", env, QWebFrame::QtOwnership); \
 	frame->addToJavaScriptWindowObject("eth", eth, QWebFrame::ScriptOwnership); \
+	frame->addToJavaScriptWindowObject("shh", eth, QWebFrame::ScriptOwnership); \
 	frame->evaluateJavaScript("eth.makeWatch = function(a) { var ww = eth.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { eth.killWatch(w); }; ret.changed = function(f) { eth.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(eth.watchMessages(this.w)) }; return ret; }"); \
 	frame->evaluateJavaScript("eth.watch = function(a) { return eth.makeWatch(JSON.stringify(a)) }"); \
 	frame->evaluateJavaScript("eth.watchChain = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.watch('chain') INSTEAD.'); return eth.makeWatch('chain') }"); \
@@ -224,8 +269,8 @@ private:
 	frame->evaluateJavaScript("String.prototype.dec = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toDecimal(this) }"); \
 	frame->evaluateJavaScript("String.prototype.fix = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.toFixed(this) }"); \
 	frame->evaluateJavaScript("String.prototype.sha3 = function() { env.warn('THIS CALL IS DEPRECATED. USE eth.* INSTEAD.'); return eth.sha3old(this) }"); \
-	frame->evaluateJavaScript("console.log = env.note"); \
-	frame->evaluateJavaScript("window.onerror = function (errorMsg, url, lineNumber, column, errorObj) { env.warn('Error: ' + errorMsg + ', Script: ' + url + ', Line: ' + lineNumber + ', Column: ' + column + ', StackTrace: ' + String(errorObj)) }"); \
+	frame->evaluateJavaScript("shh.makeWatch = function(a) { var ww = shh.newWatch(a); var ret = { w: ww }; ret.uninstall = function() { shh.killWatch(w); }; ret.changed = function(f) { shh.watchChanged.connect(function(nw) { if (nw == ww) f() }); }; ret.messages = function() { return JSON.parse(shh.watchMessages(this.w)) }; return ret; }"); \
+	frame->evaluateJavaScript("shh.watch = function(a) { return shh.makeWatch(JSON.stringify(a)) }"); \
 }
 
 template <unsigned N> inline boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> toInt(QString const& _s)
