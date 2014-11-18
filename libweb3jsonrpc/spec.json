@@ -37,8 +37,7 @@
             { "method": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
             { "method": "eth_uninstallFilter", "params": [0], "order": [], "returns": true},
             { "method": "eth_changed", "params": [0], "order": [], "returns": false},
-            { "method": "eth_filterLogs", "params": [0], "order": [], "returns": []},
-            { "method": "eth_logs", "params": [{}], "order": [], "returns": []},
+            { "method": "eth_getLogs", "params": [0], "order": [], "returns": []},
 
             { "method": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "method": "db_get", "params": ["", ""], "order": [], "returns": ""},
