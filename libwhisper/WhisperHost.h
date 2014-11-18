@@ -46,7 +46,7 @@ public:
 	WhisperHost();
 	virtual ~WhisperHost();
 
-	unsigned protocolVersion() const { return 0; }
+	unsigned protocolVersion() const { return 1; }
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 

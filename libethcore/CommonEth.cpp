@@ -28,14 +28,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-//#define ETH_ADDRESS_DEBUG 1
 namespace dev
 {
 namespace eth
 {
 
-const unsigned c_protocolVersion = 38;
-const unsigned c_databaseVersion = 3;
+const unsigned c_protocolVersion = 42;
+const unsigned c_databaseVersion = 4;
 
 static const vector<pair<u256, string>> g_units =
 {
@@ -82,32 +81,6 @@ std::string formatBalance(u256 _b)
 		}
 	ret << _b << " wei";
 	return ret.str();
-}
-
-Address toAddress(Secret _private)
-{
-	secp256k1_start();
-
-	byte pubkey[65];
-	int pubkeylen = 65;
-	int ok = secp256k1_ecdsa_seckey_verify(_private.data());
-	if (!ok)
-		return Address();
-	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _private.data(), 0);
-	assert(pubkeylen == 65);
-	if (!ok)
-		return Address();
-	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
-	if (!ok)
-		return Address();
-	auto ret = right160(dev::sha3(bytesConstRef(&(pubkey[1]), 64)));
-#if ETH_ADDRESS_DEBUG
-	cout << "---- ADDRESS -------------------------------" << endl;
-	cout << "SEC: " << _private << endl;
-	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-	cout << "ADR: " << ret << endl;
-#endif
-	return ret;
 }
 
 }}

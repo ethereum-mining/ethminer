@@ -35,13 +35,14 @@
 #include "TransactionQueue.h"
 #include "Account.h"
 #include "Transaction.h"
+#include "TransactionReceipt.h"
 #include "Executive.h"
 #include "AccountDiff.h"
 
 namespace dev
 {
 
-namespace test { class FakeExtVM; class FakeState; }
+namespace test { class ImportTest; }
 
 namespace eth
 {
@@ -51,37 +52,6 @@ class BlockChain;
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
-
-class TransactionReceipt
-{
-public:
-	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log, Manifest const& _ms): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log), m_changes(_ms) {}
-
-	Manifest const& changes() const { return m_changes; }
-
-	h256 const& stateRoot() const { return m_stateRoot; }
-	u256 const& gasUsed() const { return m_gasUsed; }
-	LogBloom const& bloom() const { return m_bloom; }
-	LogEntries const& log() const { return m_log; }
-
-	void streamRLP(RLPStream& _s) const
-	{
-		_s.appendList(4) << m_stateRoot << m_gasUsed << m_bloom;
-		_s.appendList(m_log.size());
-		for (LogEntry const& l: m_log)
-			l.streamRLP(_s);
-	}
-
-private:
-	h256 m_stateRoot;
-	u256 m_gasUsed;
-	LogBloom m_bloom;
-	LogEntries m_log;
-
-	Manifest m_changes;	///< TODO: PoC-7: KILL
-};
-
-using TransactionReceipts = std::vector<TransactionReceipt>;
 
 struct PrecompiledAddress
 {
@@ -97,8 +67,7 @@ struct PrecompiledAddress
 class State
 {
 	friend class ExtVM;
-	friend class test::FakeExtVM;
-	friend class test::FakeState;
+	friend class dev::test::ImportTest;
 	friend class Executive;
 
 public:

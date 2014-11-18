@@ -167,6 +167,14 @@ void Return::accept(ASTVisitor& _visitor)
 	_visitor.endVisit(*this);
 }
 
+void ExpressionStatement::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+		if (m_expression)
+			m_expression->accept(_visitor);
+	_visitor.endVisit(*this);
+}
+
 void VariableDefinition::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
@@ -255,12 +263,28 @@ TypeError ASTNode::createTypeError(string const& _description)
 	return TypeError() << errinfo_sourceLocation(getLocation()) << errinfo_comment(_description);
 }
 
-void Statement::expectType(Expression& _expression, Type const& _expectedType)
+vector<FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
 {
-	_expression.checkTypeRequirements();
-	if (!_expression.getType()->isImplicitlyConvertibleTo(_expectedType))
-		BOOST_THROW_EXCEPTION(_expression.createTypeError("Type not implicitly convertible to expected type."));
-	//@todo provide more information to the exception
+	vector<FunctionDefinition const*> exportedFunctions;
+	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
+		if (f->isPublic() && f->getName() != getName())
+			exportedFunctions.push_back(f.get());
+	auto compareNames = [](FunctionDefinition const* _a, FunctionDefinition const* _b)
+	{
+		return _a->getName().compare(_b->getName()) < 0;
+	};
+
+	sort(exportedFunctions.begin(), exportedFunctions.end(), compareNames);
+	return exportedFunctions;
+}
+
+void FunctionDefinition::checkTypeRequirements()
+{
+	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
+		if (!var->getType()->canLiveOutsideStorage())
+			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+
+	m_body->checkTypeRequirements();
 }
 
 void Block::checkTypeRequirements()
@@ -271,7 +295,7 @@ void Block::checkTypeRequirements()
 
 void IfStatement::checkTypeRequirements()
 {
-	expectType(*m_condition, BoolType());
+	m_condition->expectType(BoolType());
 	m_trueBody->checkTypeRequirements();
 	if (m_falseBody)
 		m_falseBody->checkTypeRequirements();
@@ -279,39 +303,34 @@ void IfStatement::checkTypeRequirements()
 
 void WhileStatement::checkTypeRequirements()
 {
-	expectType(*m_condition, BoolType());
+	m_condition->expectType(BoolType());
 	m_body->checkTypeRequirements();
-}
-
-void Continue::checkTypeRequirements()
-{
-}
-
-void Break::checkTypeRequirements()
-{
 }
 
 void Return::checkTypeRequirements()
 {
-	assert(m_returnParameters);
+	if (!m_expression)
+		return;
+	if (asserts(m_returnParameters))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Return parameters not assigned."));
 	if (m_returnParameters->getParameters().size() != 1)
 		BOOST_THROW_EXCEPTION(createTypeError("Different number of arguments in return statement "
 											  "than in returns declaration."));
 	// this could later be changed such that the paramaters type is an anonymous struct type,
 	// but for now, we only allow one return parameter
-	expectType(*m_expression, *m_returnParameters->getParameters().front()->getType());
+	m_expression->expectType(*m_returnParameters->getParameters().front()->getType());
 }
 
 void VariableDefinition::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
-	// setsthe type.
+	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
 	if (m_value)
 	{
 		if (m_variable->getType())
-			expectType(*m_value, *m_variable->getType());
+			m_value->expectType(*m_variable->getType());
 		else
 		{
 			// no type declared and no previous assignment, infer the type
@@ -319,27 +338,50 @@ void VariableDefinition::checkTypeRequirements()
 			m_variable->setType(m_value->getType());
 		}
 	}
+	if (m_variable->getType() && !m_variable->getType()->canLiveOutsideStorage())
+		BOOST_THROW_EXCEPTION(m_variable->createTypeError("Type is required to live outside storage."));
 }
 
 void Assignment::checkTypeRequirements()
 {
-	//@todo lefthandside actually has to be assignable
-	// add a feature to the type system to check that
 	m_leftHandSide->checkTypeRequirements();
-	expectType(*m_rightHandSide, *m_leftHandSide->getType());
+	m_leftHandSide->requireLValue();
+	m_rightHandSide->expectType(*m_leftHandSide->getType());
 	m_type = m_leftHandSide->getType();
 	if (m_assigmentOperator != Token::ASSIGN)
-	{
 		// compound assignment
 		if (!m_type->acceptsBinaryOperator(Token::AssignmentToBinaryOp(m_assigmentOperator)))
 			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
-	}
+}
+
+void ExpressionStatement::checkTypeRequirements()
+{
+	m_expression->checkTypeRequirements();
+}
+
+void Expression::expectType(Type const& _expectedType)
+{
+	checkTypeRequirements();
+	Type const& type = *getType();
+	if (!type.isImplicitlyConvertibleTo(_expectedType))
+		BOOST_THROW_EXCEPTION(createTypeError("Type " + type.toString() +
+											  " not implicitly convertible to expected type "
+											  + _expectedType.toString() + "."));
+}
+
+void Expression::requireLValue()
+{
+	if (!isLvalue())
+		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+	m_lvalueRequested = true;
 }
 
 void UnaryOperation::checkTypeRequirements()
 {
-	// INC, DEC, NOT, BIT_NOT, DELETE
+	// INC, DEC, ADD, SUB, NOT, BIT_NOT, DELETE
 	m_subExpression->checkTypeRequirements();
+	if (m_operator == Token::Value::INC || m_operator == Token::Value::DEC || m_operator == Token::Value::DELETE)
+		m_subExpression->requireLValue();
 	m_type = m_subExpression->getType();
 	if (!m_type->acceptsUnaryOperator(m_operator))
 		BOOST_THROW_EXCEPTION(createTypeError("Unary operator not compatible with type."));
@@ -347,22 +389,25 @@ void UnaryOperation::checkTypeRequirements()
 
 void BinaryOperation::checkTypeRequirements()
 {
-	m_right->checkTypeRequirements();
 	m_left->checkTypeRequirements();
+	m_right->checkTypeRequirements();
 	if (m_right->getType()->isImplicitlyConvertibleTo(*m_left->getType()))
 		m_commonType = m_left->getType();
 	else if (m_left->getType()->isImplicitlyConvertibleTo(*m_right->getType()))
 		m_commonType = m_right->getType();
 	else
-		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation."));
+		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation: " +
+											  m_left->getType()->toString() + " vs. " +
+											  m_right->getType()->toString()));
 	if (Token::isCompareOp(m_operator))
 		m_type = make_shared<BoolType>();
 	else
 	{
-		assert(Token::isBinaryOp(m_operator));
 		m_type = m_commonType;
 		if (!m_commonType->acceptsBinaryOperator(m_operator))
-			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
+			BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_operator)) +
+												  " not compatible with type " +
+												  m_commonType->toString()));
 	}
 }
 
@@ -375,25 +420,24 @@ void FunctionCall::checkTypeRequirements()
 	Type const* expressionType = m_expression->getType().get();
 	if (isTypeConversion())
 	{
-		TypeType const* type = dynamic_cast<TypeType const*>(expressionType);
-		assert(type);
+		TypeType const& type = dynamic_cast<TypeType const&>(*expressionType);
 		//@todo for structs, we have to check the number of arguments to be equal to the
 		// number of non-mapping members
 		if (m_arguments.size() != 1)
 			BOOST_THROW_EXCEPTION(createTypeError("More than one argument for "
 														   "explicit type conersion."));
-		if (!m_arguments.front()->getType()->isExplicitlyConvertibleTo(*type->getActualType()))
+		if (!m_arguments.front()->getType()->isExplicitlyConvertibleTo(*type.getActualType()))
 			BOOST_THROW_EXCEPTION(createTypeError("Explicit type conversion not allowed."));
-		m_type = type->getActualType();
+		m_type = type.getActualType();
 	}
 	else
 	{
+		m_expression->requireLValue();
+
 		//@todo would be nice to create a struct type from the arguments
 		// and then ask if that is implicitly convertible to the struct represented by the
 		// function parameters
-		FunctionType const* function = dynamic_cast<FunctionType const*>(expressionType);
-		assert(function);
-		FunctionDefinition const& fun = function->getFunction();
+		FunctionDefinition const& fun = dynamic_cast<FunctionType const&>(*expressionType).getFunction();
 		vector<ASTPointer<VariableDeclaration>> const& parameters = fun.getParameters();
 		if (parameters.size() != m_arguments.size())
 			BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for function call."));
@@ -402,10 +446,10 @@ void FunctionCall::checkTypeRequirements()
 				BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in function call."));
 		// @todo actually the return type should be an anonymous struct,
 		// but we change it to the type of the first return value until we have structs
-		if (fun.getReturnParameterList()->getParameters().empty())
+		if (fun.getReturnParameters().empty())
 			m_type = make_shared<VoidType>();
 		else
-			m_type = fun.getReturnParameterList()->getParameters().front()->getType();
+			m_type = fun.getReturnParameters().front()->getType();
 	}
 }
 
@@ -416,34 +460,44 @@ bool FunctionCall::isTypeConversion() const
 
 void MemberAccess::checkTypeRequirements()
 {
-	assert(false); // not yet implemented
-	// m_type = ;
+	m_expression->checkTypeRequirements();
+	m_expression->requireLValue();
+	if (m_expression->getType()->getCategory() != Type::Category::STRUCT)
+		BOOST_THROW_EXCEPTION(createTypeError("Member access to a non-struct (is " +
+													  m_expression->getType()->toString() + ")"));
+	StructType const& type = dynamic_cast<StructType const&>(*m_expression->getType());
+	unsigned memberIndex = type.memberNameToIndex(*m_memberName);
+	if (memberIndex >= type.getMemberCount())
+		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found in " + type.toString()));
+	m_type = type.getMemberByIndex(memberIndex).getType();
+	m_isLvalue = true;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
-	assert(false); // not yet implemented
-	// m_type = ;
+	m_base->checkTypeRequirements();
+	m_base->requireLValue();
+	if (m_base->getType()->getCategory() != Type::Category::MAPPING)
+		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
+													  m_base->getType()->toString() + ")"));
+	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+	m_index->expectType(*type.getKeyType());
+	m_type = type.getValueType();
+	m_isLvalue = true;
 }
 
 void Identifier::checkTypeRequirements()
 {
-	assert(m_referencedDeclaration);
-	//@todo these dynamic casts here are not really nice...
-	// is i useful to have an AST visitor here?
-	// or can this already be done in NameAndTypeResolver?
-	// the only problem we get there is that in
-	// var x;
-	// x = 2;
-	// var y = x;
-	// the type of x is not yet determined.
+	if (asserts(m_referencedDeclaration))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Identifier not resolved."));
+
 	VariableDeclaration* variable = dynamic_cast<VariableDeclaration*>(m_referencedDeclaration);
 	if (variable)
 	{
 		if (!variable->getType())
-			BOOST_THROW_EXCEPTION(createTypeError("Variable referenced before type "
-														   "could be determined."));
+			BOOST_THROW_EXCEPTION(createTypeError("Variable referenced before type could be determined."));
 		m_type = variable->getType();
+		m_isLvalue = true;
 		return;
 	}
 	//@todo can we unify these with TypeName::toType()?
@@ -461,6 +515,7 @@ void Identifier::checkTypeRequirements()
 		// Calling a function (e.g. function(12), otherContract.function(34)) does not do a type
 		// conversion.
 		m_type = make_shared<FunctionType>(*functionDef);
+		m_isLvalue = true;
 		return;
 	}
 	ContractDefinition* contractDef = dynamic_cast<ContractDefinition*>(m_referencedDeclaration);
@@ -469,7 +524,7 @@ void Identifier::checkTypeRequirements()
 		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef));
 		return;
 	}
-	assert(false); // declaration reference of unknown/forbidden type
+	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Declaration reference of unknown/forbidden type."));
 }
 
 void ElementaryTypeNameExpression::checkTypeRequirements()
@@ -480,6 +535,8 @@ void ElementaryTypeNameExpression::checkTypeRequirements()
 void Literal::checkTypeRequirements()
 {
 	m_type = Type::forLiteral(*this);
+	if (!m_type)
+		BOOST_THROW_EXCEPTION(createTypeError("Literal value too large."));
 }
 
 }

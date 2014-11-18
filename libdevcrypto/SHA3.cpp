@@ -30,6 +30,7 @@ namespace dev
 {
 
 h256 EmptySHA3 = sha3(bytesConstRef());
+h256 EmptyListSHA3 = sha3(RLPEmptyList);
 
 std::string sha3(std::string const& _input, bool _hex)
 {
@@ -84,6 +85,16 @@ h256 sha3(bytesConstRef _input)
 	h256 ret;
 	sha3(_input, bytesRef(&ret[0], 32));
 	return ret;
+}
+	
+void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output)
+{
+	CryptoPP::SHA3_256 ctx;
+	assert(_secret.size() > 0);
+	ctx.Update((byte*)_secret.data(), _secret.size());
+	ctx.Update((byte*)_plain.data(), _plain.size());
+	assert(_output.size() >= 32);
+	ctx.Final(_output.data());
 }
 
 bytes aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)

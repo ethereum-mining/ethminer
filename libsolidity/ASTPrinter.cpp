@@ -30,8 +30,8 @@ namespace dev
 namespace solidity
 {
 
-ASTPrinter::ASTPrinter(ASTPointer<ASTNode> const& _ast, string const& _source):
-	m_indentation(0), m_source(_source), m_ast(_ast)
+ASTPrinter::ASTPrinter(ASTNode& _ast, string const& _source):
+	m_indentation(0), m_source(_source), m_ast(&_ast)
 {
 }
 
@@ -167,6 +167,13 @@ bool ASTPrinter::visit(Return& _node)
 bool ASTPrinter::visit(VariableDefinition& _node)
 {
 	writeLine("VariableDefinition");
+	printSourcePart(_node);
+	return goDeeper();
+}
+
+bool ASTPrinter::visit(ExpressionStatement& _node)
+{
+	writeLine("ExpressionStatement");
 	printSourcePart(_node);
 	return goDeeper();
 }
@@ -358,6 +365,11 @@ void ASTPrinter::endVisit(VariableDefinition&)
 	m_indentation--;
 }
 
+void ASTPrinter::endVisit(ExpressionStatement&)
+{
+	m_indentation--;
+}
+
 void ASTPrinter::endVisit(Expression&)
 {
 	m_indentation--;
@@ -418,8 +430,8 @@ void ASTPrinter::printSourcePart(ASTNode const& _node)
 	if (!m_source.empty())
 	{
 		Location const& location(_node.getLocation());
-		*m_ostream << getIndentation() << "   Source: |"
-				   << m_source.substr(location.start, location.end - location.start) << "|" << endl;
+		*m_ostream << getIndentation() << "   Source: "
+				   << escaped(m_source.substr(location.start, location.end - location.start), false) << endl;
 	}
 }
 

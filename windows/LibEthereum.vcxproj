@@ -68,14 +68,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\libdevcore\_libdevcore.cpp" />
+    <ClCompile Include="..\libdevcrypto\AES.cpp" />
     <ClCompile Include="..\libdevcrypto\Common.cpp" />
     <ClCompile Include="..\libdevcrypto\CryptoPP.cpp" />
-    <ClCompile Include="..\libdevcrypto\EC.cpp" />
+    <ClCompile Include="..\libdevcrypto\ECDHE.cpp" />
     <ClCompile Include="..\libdevcrypto\FileSystem.cpp" />
     <ClCompile Include="..\libdevcrypto\MemoryDB.cpp" />
     <ClCompile Include="..\libdevcrypto\OverlayDB.cpp" />
     <ClCompile Include="..\libdevcrypto\SHA3.cpp" />
-    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieCommon.cpp" />
     <ClCompile Include="..\libdevcrypto\TrieDB.cpp" />
     <ClCompile Include="..\libethcore\BlockInfo.cpp">
@@ -125,7 +125,8 @@
     <ClCompile Include="..\libethereum\Transaction.cpp" />
     <ClCompile Include="..\libethereum\TransactionQueue.cpp" />
     <ClCompile Include="..\libethereum\Utility.cpp" />
-    <ClCompile Include="..\libevmface\Instruction.cpp" />
+    <ClCompile Include="..\libevmcore\Assembly.cpp" />
+    <ClCompile Include="..\libevmcore\Instruction.cpp" />
     <ClCompile Include="..\libevm\ExtVMFace.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -145,7 +146,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\libevm\_libevm.cpp" />
-    <ClCompile Include="..\liblll\Assembly.cpp" />
     <ClCompile Include="..\liblll\CodeFragment.cpp" />
     <ClCompile Include="..\liblll\Compiler.cpp" />
     <ClCompile Include="..\liblll\CompilerState.cpp" />
@@ -341,7 +341,9 @@
     <ClInclude Include="..\libethereum\Transaction.h" />
     <ClInclude Include="..\libethereum\TransactionQueue.h" />
     <ClInclude Include="..\libethereum\Utility.h" />
-    <ClInclude Include="..\libevmface\Instruction.h" />
+    <ClInclude Include="..\libevmcore\Assembly.h" />
+    <ClInclude Include="..\libevmcore\Exceptions.h" />
+    <ClInclude Include="..\libevmcore\Instruction.h" />
     <ClInclude Include="..\libevm\All.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -367,7 +369,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\liblll\All.h" />
-    <ClInclude Include="..\liblll\Assembly.h" />
     <ClInclude Include="..\liblll\CodeFragment.h" />
     <ClInclude Include="..\liblll\Compiler.h" />
     <ClInclude Include="..\liblll\CompilerState.h" />

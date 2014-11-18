@@ -22,10 +22,7 @@
 #pragma once
 
 #include <libdevcore/Common.h>
-#include <libdevcore/Exceptions.h>
-
-namespace boost { namespace spirit { class utree; } }
-namespace sp = boost::spirit;
+#include <libevmcore/Exceptions.h>
 
 namespace dev
 {
@@ -176,6 +173,30 @@ enum class Instruction: uint8_t
 	SUICIDE = 0xff		///< halt execution and register account for later deletion
 };
 
+/// @returns the PUSH<_number> instruction
+inline Instruction pushInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 32))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid PUSH instruction requested."));
+	return Instruction(unsigned(Instruction::PUSH1) + _number - 1);
+}
+
+/// @returns the DUP<_number> instruction
+inline Instruction dupInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 16))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid DUP instruction requested."));
+	return Instruction(unsigned(Instruction::DUP1) + _number - 1);
+}
+
+/// @returns the SWAP<_number> instruction
+inline Instruction swapInstruction(unsigned _number)
+{
+	if (asserts(1 <= _number && _number <= 16))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid SWAP instruction requested."));
+	return Instruction(unsigned(Instruction::SWAP1) + _number - 1);
+}
+
 /// Information structure for a particular instruction.
 struct InstructionInfo
 {
@@ -183,6 +204,7 @@ struct InstructionInfo
 	int additional;		///< Additional items required in memory for this instructions (only for PUSH).
 	int args;			///< Number of items required on the stack for this instruction (and, for the purposes of ret, the number taken from the stack).
 	int ret;			///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
+	bool sideEffects;	///< false if the only effect on the execution environment (apart from gas usage) is a change to a topmost segment of the stack
 };
 
 /// Information on all the instructions.

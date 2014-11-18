@@ -6,18 +6,16 @@ aux_source_directory(. SRC_LIST)
 
 set(EXECUTABLE solidity)
 
-if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST})
-endif()
-
 file(GLOB HEADERS "*.h") 
+if(ETH_STATIC)
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+else()
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+endif()
 
 include_directories(..)
 
-target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} evmface)
+target_link_libraries(${EXECUTABLE} evmcore devcore)
 
 install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
