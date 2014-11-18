@@ -278,6 +278,15 @@ vector<FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() co
 	return exportedFunctions;
 }
 
+void FunctionDefinition::checkTypeRequirements()
+{
+	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
+		if (!var->getType()->canLiveOutsideStorage())
+			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+
+	m_body->checkTypeRequirements();
+}
+
 void Block::checkTypeRequirements()
 {
 	for (shared_ptr<Statement> const& statement: m_statements)
@@ -315,7 +324,7 @@ void Return::checkTypeRequirements()
 void VariableDefinition::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
-	// setsthe type.
+	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
 	if (m_value)
@@ -329,13 +338,14 @@ void VariableDefinition::checkTypeRequirements()
 			m_variable->setType(m_value->getType());
 		}
 	}
+	if (m_variable->getType() && !m_variable->getType()->canLiveOutsideStorage())
+		BOOST_THROW_EXCEPTION(m_variable->createTypeError("Type is required to live outside storage."));
 }
 
 void Assignment::checkTypeRequirements()
 {
 	m_leftHandSide->checkTypeRequirements();
-	if (!m_leftHandSide->isLvalue())
-		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+	m_leftHandSide->requireLValue();
 	m_rightHandSide->expectType(*m_leftHandSide->getType());
 	m_type = m_leftHandSide->getType();
 	if (m_assigmentOperator != Token::ASSIGN)
@@ -359,13 +369,19 @@ void Expression::expectType(Type const& _expectedType)
 											  + _expectedType.toString() + "."));
 }
 
+void Expression::requireLValue()
+{
+	if (!isLvalue())
+		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+	m_lvalueRequested = true;
+}
+
 void UnaryOperation::checkTypeRequirements()
 {
 	// INC, DEC, ADD, SUB, NOT, BIT_NOT, DELETE
 	m_subExpression->checkTypeRequirements();
 	if (m_operator == Token::Value::INC || m_operator == Token::Value::DEC || m_operator == Token::Value::DELETE)
-		if (!m_subExpression->isLvalue())
-			BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+		m_subExpression->requireLValue();
 	m_type = m_subExpression->getType();
 	if (!m_type->acceptsUnaryOperator(m_operator))
 		BOOST_THROW_EXCEPTION(createTypeError("Unary operator not compatible with type."));
@@ -416,6 +432,8 @@ void FunctionCall::checkTypeRequirements()
 	}
 	else
 	{
+		m_expression->requireLValue();
+
 		//@todo would be nice to create a struct type from the arguments
 		// and then ask if that is implicitly convertible to the struct represented by the
 		// function parameters
@@ -442,14 +460,30 @@ bool FunctionCall::isTypeConversion() const
 
 void MemberAccess::checkTypeRequirements()
 {
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Member access not yet implemented."));
-	// m_type = ;
+	m_expression->checkTypeRequirements();
+	m_expression->requireLValue();
+	if (m_expression->getType()->getCategory() != Type::Category::STRUCT)
+		BOOST_THROW_EXCEPTION(createTypeError("Member access to a non-struct (is " +
+													  m_expression->getType()->toString() + ")"));
+	StructType const& type = dynamic_cast<StructType const&>(*m_expression->getType());
+	unsigned memberIndex = type.memberNameToIndex(*m_memberName);
+	if (memberIndex >= type.getMemberCount())
+		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found in " + type.toString()));
+	m_type = type.getMemberByIndex(memberIndex).getType();
+	m_isLvalue = true;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index access not yet implemented."));
-	// m_type = ;
+	m_base->checkTypeRequirements();
+	m_base->requireLValue();
+	if (m_base->getType()->getCategory() != Type::Category::MAPPING)
+		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
+													  m_base->getType()->toString() + ")"));
+	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+	m_index->expectType(*type.getKeyType());
+	m_type = type.getValueType();
+	m_isLvalue = true;
 }
 
 void Identifier::checkTypeRequirements()
@@ -481,6 +515,7 @@ void Identifier::checkTypeRequirements()
 		// Calling a function (e.g. function(12), otherContract.function(34)) does not do a type
 		// conversion.
 		m_type = make_shared<FunctionType>(*functionDef);
+		m_isLvalue = true;
 		return;
 	}
 	ContractDefinition* contractDef = dynamic_cast<ContractDefinition*>(m_referencedDeclaration);

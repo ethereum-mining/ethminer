@@ -76,7 +76,7 @@ void ECDHEKeyExchange::exchange(bytes& o_exchange)
 	memcpy(&exchange[exchange.size() - sizeof(p)], p.data(), sizeof(p));
 	
 	// protocol parameters; should be fixed size
-	bytes v({0x80});
+	bytes v(1, 0x80);
 	exchange.resize(exchange.size() + v.size());
 	memcpy(&exchange[exchange.size() - v.size()], v.data(), v.size());
 	

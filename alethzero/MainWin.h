@@ -85,6 +85,7 @@ public slots:
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+	QString contents(QString _file);
 
 	void onKeysChanged();
 
@@ -188,7 +189,7 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 	void uninstallWatch(unsigned _w);
 

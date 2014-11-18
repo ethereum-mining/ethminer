@@ -385,7 +385,7 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
-	if (_a.port() < 30300 || _a.port() > 30303)
+	if (_a.port() < 30300 || _a.port() > 30305)
 		cwarn << "Weird port being recorded: " << _a.port();
 
 	if (_a.port() >= /*49152*/32768)
@@ -778,7 +778,7 @@ bytes Host::saveNodes() const
 		{
 			Node const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
-			if (!n.dead && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
+			if (!n.dead && chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
@@ -786,8 +786,8 @@ bytes Host::saveNodes() const
 				else
 					nodes << n.address.address().to_v6().to_bytes();
 				nodes << n.address.port() << n.id << (int)n.idOrigin
-					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
-					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
 					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
 				count++;
 			}

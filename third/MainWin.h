@@ -40,7 +40,7 @@ namespace dev { class WebThreeDirect;
 namespace eth {
 class Client;
 class State;
-class MessageFilter;
+class LogFilter;
 }
 namespace shh {
 class WhisperHost;
@@ -95,7 +95,7 @@ private:
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
-	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 
 	void onNewBlock();
