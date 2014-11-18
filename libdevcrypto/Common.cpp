@@ -102,3 +102,9 @@ KeyPair::KeyPair(h256 _sec):
 	cout << "ADR: " << m_address << endl;
 #endif
 }
+
+KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)
+{
+	return KeyPair(sha3(aesDecrypt(_seed, _password)));
+}
+

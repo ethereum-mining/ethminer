@@ -41,7 +41,11 @@ namespace eth {
 class Client;
 class State;
 class MessageFilter;
-}}
+}
+namespace shh {
+class WhisperHost;
+}
+}
 
 class QQuickView;
 
@@ -55,6 +59,7 @@ public:
 
 	dev::WebThreeDirect* web3() const { return m_web3.get(); }
 	dev::eth::Client* ethereum() const;
+	std::shared_ptr<dev::shh::WhisperHost> whisper() const;
 
 	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
 	
@@ -128,4 +133,5 @@ private:
 	QNetworkAccessManager m_webCtrl;
 
 	QEthereum* m_ethereum = nullptr;
+	QWhisper* m_whisper = nullptr;
 };

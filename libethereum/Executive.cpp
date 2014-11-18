@@ -131,11 +131,9 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_newAddress, since
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
-	while (m_s.addressInUse(m_newAddress))
-		m_newAddress = (u160)m_newAddress + 1;
 
 	// Set up new account...
-	m_s.m_cache[m_newAddress] = AddressState(0, _endowment, h256(), h256());
+	m_s.m_cache[m_newAddress] = AddressState(0, m_s.balance(m_newAddress) + _endowment, h256(), h256());
 
 	// Execute _init.
 	m_vm = new VM(_gas);

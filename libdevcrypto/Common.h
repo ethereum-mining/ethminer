@@ -63,6 +63,9 @@ public:
 	/// Create a new, randomly generated object.
 	static KeyPair create();
 
+	/// Create from an encrypted seed.
+	static KeyPair fromEncryptedSeed(bytesConstRef _seed, std::string const& _password);
+
 	/// Retrieve the secret key.
 	Secret const& secret() const { return m_secret; }
 	/// Retrieve the secret key.

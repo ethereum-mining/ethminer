@@ -50,7 +50,7 @@ h256Set DownloadSub::nextFetch(unsigned _n)
 	m_indices.clear();
 	m_remaining.clear();
 
-	if (!m_man)
+	if (!m_man || m_man->chain().empty())
 		return h256Set();
 
 	m_asked = (~(m_man->taken() + m_attempted)).lowest(_n);
