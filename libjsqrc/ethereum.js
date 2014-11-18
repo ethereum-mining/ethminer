@@ -599,7 +599,7 @@ var ethWatchMethods = function () {
     return [
     { name: 'newFilter', call: newFilter },
     { name: 'uninstallFilter', call: 'eth_uninstallFilter' },
-    { name: 'getMessages', call: 'eth_getMessages' }
+    { name: 'logs', call: 'eth_getMessages' }
     ];
 };
 
@@ -903,6 +903,8 @@ Filter.prototype.messages = function() {
         return self.impl.getMessages(id);
     });
 };
+
+Filter.prototype.logs = Filter.prototype.messages;
 
 function messageHandler(data) {
     if(data._event !== undefined) {

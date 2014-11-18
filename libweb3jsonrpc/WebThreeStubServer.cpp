@@ -394,7 +394,7 @@ std::string WebThreeStubServer::db_get(std::string const& _name, std::string con
 	return toJS(dev::asBytes(ret));
 }
 
-Json::Value WebThreeStubServer::eth_getMessages(int const& _id)
+Json::Value WebThreeStubServer::eth_getLogs(int const& _id)
 {
 	if (!client())
 		return Json::Value();
