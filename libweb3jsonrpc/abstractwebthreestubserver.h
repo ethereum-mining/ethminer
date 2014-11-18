@@ -29,7 +29,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_countAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_countAtI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_defaultBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER,  NULL), &AbstractWebThreeStubServer::eth_defaultBlockI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_gasPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_gasPriceI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_getMessagesI);
+			this->bindAndAddMethod(new jsonrpc::Procedure("eth_getLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_getLogsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_listeningI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_lll", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_lllI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_mining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_miningI);
@@ -142,9 +142,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->eth_gasPrice();
         }
 
-        inline virtual void eth_getMessagesI(const Json::Value& request, Json::Value& response) 
+		inline virtual void eth_getLogsI(const Json::Value& request, Json::Value& response)
         {
-            response = this->eth_getMessages(request[0u].asInt());
+			response = this->eth_getLogs(request[0u].asInt());
         }
 
         inline virtual void eth_listeningI(const Json::Value& request, Json::Value& response) 
@@ -309,7 +309,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual double eth_countAt(const std::string& param1) = 0;
         virtual int eth_defaultBlock() = 0;
         virtual std::string eth_gasPrice() = 0;
-        virtual Json::Value eth_getMessages(const int& param1) = 0;
+		virtual Json::Value eth_getLogs(const int& param1) = 0;
         virtual bool eth_listening() = 0;
         virtual std::string eth_lll(const std::string& param1) = 0;
         virtual bool eth_mining() = 0;
