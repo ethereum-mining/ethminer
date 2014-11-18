@@ -310,9 +310,16 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 		else if (_json["gasPrice"].isInt())
 			ret.gas = u256(_json["gas"].asInt());
 	}
-	if (_json["data"].isString())
-		ret.data = jsToBytes(_json["data"].asString());
-	else if (_json["code"].isString())
+	if (!_json["data"].empty())
+	{
+		if (_json["data"].isString())							// ethereum.js has preconstructed the data array
+			ret.data = jsToBytes(_json["data"].asString());
+		else if (_json["data"].isArray())						// old style: array of 32-byte-padded values. TODO: remove PoC-8
+			for (auto i: _json["data"])
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
+	}
+
+	if (_json["code"].isString())
 		ret.data = jsToBytes(_json["code"].asString());
 	return ret;
 }
