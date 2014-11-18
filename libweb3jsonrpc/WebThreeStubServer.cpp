@@ -113,17 +113,6 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		filter.withMax(_json["max"].asInt());
 	if (_json["skip"].isInt())
 		filter.withSkip(_json["skip"].asInt());
-	if (!_json["from"].empty())
-	{
-		if (_json["from"].isArray())
-		{
-			for (auto i : _json["from"])
-				if (i.isString())
-					filter.from(jsToAddress(i.asString()));
-		}
-		else if (_json["from"].isString())
-			filter.from(jsToAddress(_json["from"].asString()));
-	}
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -133,7 +122,7 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 					filter.address(jsToAddress(i.asString()));
 		}
 		else if (_json["address"].isString())
-			filter.from(jsToAddress(_json["address"].asString()));
+			filter.address(jsToAddress(_json["address"].asString()));
 	}
 	if (!_json["topics"].empty())
 	{
