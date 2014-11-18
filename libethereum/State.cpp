@@ -534,10 +534,10 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
+h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h256s ret;
+	h512s ret;
 	auto ts = _tq.transactions();
 
 	for (int goodTxs = 1; goodTxs;)
@@ -552,7 +552,7 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 					uncommitToMine();
 //					boost::timer t;
 					execute(i.second);
-					ret.push_back(m_receipts.back().changes().bloom());
+					ret.push_back(m_receipts.back().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 //					cnote << "TX took:" << t.elapsed() * 1000;

@@ -241,12 +241,21 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
+
+unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
+{
+//	auto ret = ethereum()->installWatch(_tf);
+//	m_handlers[ret] = _f;
+//	return ret;
+}
+
+
 
 unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
@@ -263,8 +272,10 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installCurrenciesWatch(); });
+//	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
+//	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
 	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
 	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }

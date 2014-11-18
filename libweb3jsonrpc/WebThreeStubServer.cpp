@@ -59,34 +59,6 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::PastMessage const& _t)
-{
-	Json::Value res;
-	res["input"] = jsFromBinary(_t.input);
-	res["output"] = jsFromBinary(_t.output);
-	res["to"] = toJS(_t.to);
-	res["from"] = toJS(_t.from);
-	res["value"] = jsToDecimal(toJS(_t.value));
-	res["origin"] = toJS(_t.origin);
-	res["timestamp"] = toJS(_t.timestamp);
-	res["coinbase"] = toJS(_t.coinbase);
-	res["block"] =  toJS(_t.block);
-	Json::Value path;
-	for (int i: _t.path)
-		path.append(i);
-	res["path"] = path;
-	res["number"] = (int)_t.number;
-	return res;
-}
-
-static Json::Value toJson(dev::eth::PastMessages const& _pms)
-{
-	Json::Value res;
-	for (dev::eth::PastMessage const& t: _pms)
-		res.append(toJson(t));
-	return res;
-}
-
 static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
@@ -111,6 +83,14 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
+static Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+{
+	Json::Value res;
+	for (dev::eth::LogEntry const& e: _es)
+		res.append(toJson(e));
+	return res;
+}
+
 static Json::Value toJson(std::map<u256, u256> const& _storage)
 {
 	Json::Value res(Json::objectValue);
@@ -119,67 +99,7 @@ static Json::Value toJson(std::map<u256, u256> const& _storage)
 	return res;
 }
 
-/*static*/ Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
-{
-	Json::Value res;
-	for (dev::eth::LogEntry const& e: _es)
-		res.append(toJson(e));
-	return res;
-}
-
-static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
-{
-	dev::eth::MessageFilter filter;
-	if (!_json.isObject() || _json.empty())
-		return filter;
-
-	if (_json["earliest"].isInt())
-		filter.withEarliest(_json["earliest"].asInt());
-	if (_json["latest"].isInt())
-		filter.withLatest(_json["lastest"].asInt());
-	if (_json["max"].isInt())
-		filter.withMax(_json["max"].asInt());
-	if (_json["skip"].isInt())
-		filter.withSkip(_json["skip"].asInt());
-	if (!_json["from"].empty())
-	{
-		if (_json["from"].isArray())
-		{
-			for (auto i : _json["from"])
-				if (i.isString())
-					filter.from(jsToAddress(i.asString()));
-		}
-		else if (_json["from"].isString())
-			filter.from(jsToAddress(_json["from"].asString()));
-	}
-	if (!_json["to"].empty())
-	{
-		if (_json["to"].isArray())
-		{
-			for (auto i : _json["to"])
-				if (i.isString())
-					filter.to(jsToAddress(i.asString()));
-		}
-		else if (_json["to"].isString())
-			filter.to(jsToAddress(_json["to"].asString()));
-	}
-	if (!_json["altered"].empty())
-	{
-		if (_json["altered"].isArray())
-			for (auto i: _json["altered"])
-				if (i.isObject())
-					filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
-				else
-					filter.altered((jsToAddress(i.asString())));
-				else if (_json["altered"].isObject())
-					filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
-				else
-					filter.altered(jsToAddress(_json["altered"].asString()));
-	}
-	return filter;
-}
-
-/*static*/ dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
 	if (!_json.isObject() || _json.empty())
@@ -478,7 +398,8 @@ Json::Value WebThreeStubServer::eth_getMessages(int const& _id)
 {
 	if (!client())
 		return Json::Value();
-	return toJson(client()->messages(_id));
+//	return toJson(client()->messages(_id));
+	return toJson(client()->logs(_id));
 }
 
 std::string WebThreeStubServer::db_getString(std::string const& _name, std::string const& _key)
@@ -509,7 +430,8 @@ int WebThreeStubServer::eth_newFilter(Json::Value const& _json)
 	unsigned ret = -1;
 	if (!client())
 		return ret;
-	ret = client()->installWatch(toMessageFilter(_json));
+//	ret = client()->installWatch(toMessageFilter(_json));
+	ret = client()->installWatch(toLogFilter(_json));
 	return ret;
 }
 
