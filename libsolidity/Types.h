@@ -35,7 +35,7 @@ namespace dev
 namespace solidity
 {
 
-// @todo realMxN, string<N>, mapping
+// @todo realMxN, string<N>
 
 /**
  * Abstract base class that forms the root of the type hierarchy.
@@ -78,6 +78,8 @@ public:
 	/// @returns number of bytes required to hold this value in storage.
 	/// For dynamically "allocated" types, it returns the size of the statically allocated head,
 	virtual u256 getStorageSize() const { return 1; }
+	/// Returns false if the type cannot live outside the storage, i.e. if it includes some mapping.
+	virtual bool canLiveOutsideStorage() const { return true; }
 
 	virtual std::string toString() const = 0;
 	virtual u256 literalValue(Literal const&) const
@@ -182,7 +184,14 @@ public:
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual u256 getStorageSize() const;
-	virtual std::string toString() const override { return "struct{...}"; }
+	virtual bool canLiveOutsideStorage() const;
+	virtual std::string toString() const override;
+
+	unsigned getMemberCount() const;
+	/// Returns the index of the member with name @a _name or unsigned(-1) if it does not exist.
+	unsigned memberNameToIndex(std::string const& _name) const;
+	VariableDeclaration const& getMemberByIndex(unsigned _index) const;
+	u256 getStorageOffsetOfMember(unsigned _index) const;
 
 private:
 	StructDefinition const& m_struct;
@@ -200,8 +209,9 @@ public:
 	FunctionDefinition const& getFunction() const { return m_function; }
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual std::string toString() const override { return "function(...)returns(...)"; }
+	virtual std::string toString() const override;
 	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable function type requested.")); }
+	virtual bool canLiveOutsideStorage() const { return false; }
 
 private:
 	FunctionDefinition const& m_function;
@@ -214,10 +224,15 @@ class MappingType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::MAPPING; }
-	MappingType() {}
+	MappingType(std::shared_ptr<Type const> _keyType, std::shared_ptr<Type const> _valueType):
+		m_keyType(_keyType), m_valueType(_valueType) {}
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual std::string toString() const override { return "mapping(...=>...)"; }
+	virtual std::string toString() const override;
+	virtual bool canLiveOutsideStorage() const { return false; }
+
+	std::shared_ptr<Type const> getKeyType() const { return m_keyType; }
+	std::shared_ptr<Type const> getValueType() const { return m_valueType; }
 
 private:
 	std::shared_ptr<Type const> m_keyType;
@@ -236,6 +251,7 @@ public:
 
 	virtual std::string toString() const override { return "void"; }
 	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
+	virtual bool canLiveOutsideStorage() const { return false; }
 };
 
 /**
@@ -252,6 +268,7 @@ public:
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
+	virtual bool canLiveOutsideStorage() const { return false; }
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
 
 private:

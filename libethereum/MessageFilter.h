@@ -90,7 +90,6 @@ public:
 	LogEntries matches(TransactionReceipt const& _r) const;
 
 	LogFilter address(Address _a) { m_addresses.insert(_a); return *this; }
-	LogFilter from(Address _a) { return topic(u256((u160)_a) + 1); }
 	LogFilter topic(h256 const& _t) { m_topics.insert(_t); return *this; }
 	LogFilter withMax(unsigned _m) { m_max = _m; return *this; }
 	LogFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
