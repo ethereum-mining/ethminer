@@ -62,8 +62,8 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_ioService(new ba::io_service),
-	m_acceptor(*m_ioService),
-	m_socket(*m_ioService),
+	m_acceptor(new bi::tcp::acceptor(*m_ioService)),
+	m_socket(new bi::tcp::socket(*m_ioService)),
 	m_key(KeyPair::create())
 {
 	populateAddresses();
@@ -91,11 +91,11 @@ void Host::start()
 		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : m_netPrefs.listenPort);
 		try
 		{
-			m_acceptor.open(endpoint.protocol());
-			m_acceptor.set_option(ba::socket_base::reuse_address(true));
-			m_acceptor.bind(endpoint);
-			m_acceptor.listen();
-			m_listenPort = i ? m_acceptor.local_endpoint().port() : m_netPrefs.listenPort;
+			m_acceptor->open(endpoint.protocol());
+			m_acceptor->set_option(ba::socket_base::reuse_address(true));
+			m_acceptor->bind(endpoint);
+			m_acceptor->listen();
+			m_listenPort = i ? m_acceptor->local_endpoint().port() : m_netPrefs.listenPort;
 			break;
 		}
 		catch (...)
@@ -105,7 +105,7 @@ void Host::start()
 				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
 				return;
 			}
-			m_acceptor.close();
+			m_acceptor->close();
 			continue;
 		}
 	}
@@ -118,20 +118,24 @@ void Host::start()
 
 void Host::stop()
 {
+	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
+	if (!m_ioService)
+		return;
+
 	for (auto const& h: m_capabilities)
 		h.second->onStopping();
 
 	stopWorking();
 
-	if (m_acceptor.is_open())
+	if (m_acceptor->is_open())
 	{
 		if (m_accepting)
-			m_acceptor.cancel();
-		m_acceptor.close();
+			m_acceptor->cancel();
+		m_acceptor->close();
 		m_accepting = false;
 	}
-	if (m_socket.is_open())
-		m_socket.close();
+	if (m_socket->is_open())
+		m_socket->close();
 	disconnectPeers();
 
 	if (!!m_ioService)
@@ -147,6 +151,8 @@ void Host::quit()
 	// such tasks may involve socket reads from Capabilities that maintain references
 	// to resources we're about to free.
 	stop();
+	m_acceptor.reset();
+	m_socket.reset();
 	m_ioService.reset();
 	// m_acceptor & m_socket are DANGEROUS now.
 }
@@ -379,8 +385,8 @@ void Host::populateAddresses()
 shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
-	if (_a.port() < 30300 || _a.port() > 30303)
-		cwarn << "Wierd port being recorded!";
+	if (_a.port() < 30300 || _a.port() > 30305)
+		cwarn << "Weird port being recorded: " << _a.port();
 
 	if (_a.port() >= /*49152*/32768)
 	{
@@ -463,18 +469,18 @@ void Host::ensureAccepting()
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
-		m_acceptor.async_accept(m_socket, [=](boost::system::error_code ec)
+		m_acceptor->async_accept(*m_socket, [=](boost::system::error_code ec)
 		{
 			if (!ec)
 			{
 				try
 				{
 					try {
-						clog(NetConnect) << "Accepted connection from " << m_socket.remote_endpoint();
+						clog(NetConnect) << "Accepted connection from " << m_socket->remote_endpoint();
 					} catch (...){}
-					bi::address remoteAddress = m_socket.remote_endpoint().address();
+					bi::address remoteAddress = m_socket->remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<Session>(this, std::move(m_socket), bi::tcp::endpoint(remoteAddress, 0));
+					auto p = std::make_shared<Session>(this, std::move(*m_socket), bi::tcp::endpoint(remoteAddress, 0));
 					p->start();
 				}
 				catch (Exception const& _e)
@@ -772,7 +778,7 @@ bytes Host::saveNodes() const
 		{
 			Node const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
-			if (!n.dead && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
+			if (!n.dead && chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{
 				nodes.appendList(10);
 				if (n.address.address().is_v4())
@@ -780,8 +786,8 @@ bytes Host::saveNodes() const
 				else
 					nodes << n.address.address().to_v6().to_bytes();
 				nodes << n.address.port() << n.id << (int)n.idOrigin
-					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastConnected.time_since_epoch()).count()
-					<< std::chrono::duration_cast<std::chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
 					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
 				count++;
 			}

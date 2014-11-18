@@ -13,7 +13,7 @@ include_directories(..)
 
 target_link_libraries(${EXECUTABLE} serpent)
 target_link_libraries(${EXECUTABLE} lll)
-target_link_libraries(${EXECUTABLE} evmface)
+target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} ${PYTHON_LS})
 

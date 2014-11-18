@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include "FeeStructure.h"
@@ -41,7 +41,7 @@ struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
-struct StackTooSmall: virtual public VMException { StackTooSmall(u256 _req, u256 _got): req(_req), got(_got) {} u256 req; u256 got; };
+struct StackTooSmall: virtual public VMException {};
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -71,7 +71,7 @@ public:
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
-	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall(_n, m_stack.size())); }
+	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
@@ -104,7 +104,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			{
 				int in = _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 				u256 p = 0;
-				for (; in--; i++)
+				for (i++; in--; i++)
 					p = (p << 8) | _ext.getCode(i);
 				if ((_ext.getCode(i) == (byte)Instruction::JUMP || _ext.getCode(i) == (byte)Instruction::JUMPI) && !(_ext.getCode(p) == (byte)Instruction::JUMP || _ext.getCode(p) == (byte)Instruction::JUMPI))
 					if (p >= _ext.code.size())
@@ -112,6 +112,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 					else
 						implicit.insert(p);
 				else {}
+				i--;
 			}
 		for (unsigned i = 0; i < _ext.code.size(); i += instructionInfo((Instruction)_ext.getCode(i)).additional + 1)
 			if (implicit.count(i))
@@ -205,14 +206,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
 			require(n + 2);
-			newTempSize = memNeed(m_stack[m_stack.size() - 1 - n], m_stack[m_stack.size() - 2 - n]);
+			runGas = c_logGas + c_logTopicGas * n + (bigint)c_logDataGas * m_stack[m_stack.size() - 2];
+			newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
 			break;
 		}
 
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			require(7);
-			runGas = c_callGas + m_stack[m_stack.size() - 1];
+			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
 			break;
 
@@ -700,7 +702,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (!m_jumpDests.count((unsigned)nextPC))
+			if (!m_jumpDests.count(nextPC))
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -708,7 +710,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (!m_jumpDests.count((unsigned)nextPC))
+				if (!m_jumpDests.count(nextPC))
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
@@ -742,18 +744,38 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;*/
 		case Instruction::LOG0:
 			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG1:
 			_ext.log({m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG2:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG3:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::LOG4:
 			_ext.log({m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5], m_stack[m_stack.size() - 6]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
+			m_stack.pop_back();
 			break;
 		case Instruction::CREATE:
 		{

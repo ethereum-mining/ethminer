@@ -128,6 +128,7 @@ else()
 	find_path( JSONRPC_ID jsonrpccpp/server.h
 		/usr/include
 		/usr/local/include
+                ../libjson-rpc-cpp/src
 		)
 
 	if ( JSONRPC_ID )
@@ -146,6 +147,7 @@ else()
 			/usr/local/lib
 			/opt/local/lib
 			/usr/lib/*/
+			../libjson-rpc-cpp/build/out
 			)
 
 		find_library( JSONRPC_COMMON_LS NAMES jsonrpccpp-common

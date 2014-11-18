@@ -20,7 +20,6 @@
  * Parser part that determines the declarations corresponding to names and the types of expressions.
  */
 
-#include <cassert>
 #include <libsolidity/NameAndTypeResolver.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Exceptions.h>
@@ -38,7 +37,10 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 	reset();
 	DeclarationRegistrationHelper registrar(m_scopes, _contract);
 	m_currentScope = &m_scopes[&_contract];
-	//@todo structs
+	for (ASTPointer<StructDefinition> const& structDef: _contract.getDefinedStructs())
+		ReferencesResolver resolver(*structDef, *this, nullptr);
+	for (ASTPointer<StructDefinition> const& structDef: _contract.getDefinedStructs())
+		checkForRecursion(*structDef);
 	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
 		ReferencesResolver resolver(*variable, *this, nullptr);
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
@@ -53,7 +55,39 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
 	{
 		m_currentScope = &m_scopes[function.get()];
-		function->getBody().checkTypeRequirements();
+		function->checkTypeRequirements();
+	}
+	m_currentScope = &m_scopes[nullptr];
+}
+
+Declaration* NameAndTypeResolver::resolveName(ASTString const& _name, Declaration const* _scope) const
+{
+	auto iterator = m_scopes.find(_scope);
+	if (iterator == end(m_scopes))
+		return nullptr;
+	return iterator->second.resolveName(_name, false);
+}
+
+Declaration* NameAndTypeResolver::getNameFromCurrentScope(ASTString const& _name, bool _recursive)
+{
+	return m_currentScope->resolveName(_name, _recursive);
+}
+
+void NameAndTypeResolver::checkForRecursion(StructDefinition const& _struct)
+{
+	set<StructDefinition const*> definitionsSeen;
+	vector<StructDefinition const*> queue = {&_struct};
+	while (!queue.empty())
+	{
+		StructDefinition const* def = queue.back();
+		queue.pop_back();
+		if (definitionsSeen.count(def))
+			BOOST_THROW_EXCEPTION(ParserError() << errinfo_sourceLocation(def->getLocation())
+												<< errinfo_comment("Recursive struct definition."));
+		definitionsSeen.insert(def);
+		for (ASTPointer<VariableDeclaration> const& member: def->getMembers())
+			if (member->getType()->getCategory() == Type::Category::STRUCT)
+				queue.push_back(dynamic_cast<UserDefinedTypeName&>(*member->getTypeName()).getReferencedStruct());
 	}
 }
 
@@ -63,13 +97,7 @@ void NameAndTypeResolver::reset()
 	m_currentScope = nullptr;
 }
 
-Declaration* NameAndTypeResolver::getNameFromCurrentScope(ASTString const& _name, bool _recursive)
-{
-	return m_currentScope->resolveName(_name, _recursive);
-}
-
-
-DeclarationRegistrationHelper::DeclarationRegistrationHelper(map<ASTNode*, Scope>& _scopes,
+DeclarationRegistrationHelper::DeclarationRegistrationHelper(map<ASTNode const*, Scope>& _scopes,
 															 ASTNode& _astRoot):
 	m_scopes(_scopes), m_currentScope(&m_scopes[nullptr])
 {
@@ -101,12 +129,23 @@ void DeclarationRegistrationHelper::endVisit(StructDefinition&)
 bool DeclarationRegistrationHelper::visit(FunctionDefinition& _function)
 {
 	registerDeclaration(_function, true);
+	m_currentFunction = &_function;
 	return true;
 }
 
 void DeclarationRegistrationHelper::endVisit(FunctionDefinition&)
 {
+	m_currentFunction = nullptr;
 	closeCurrentScope();
+}
+
+void DeclarationRegistrationHelper::endVisit(VariableDefinition& _variableDefinition)
+{
+	// Register the local variables with the function
+	// This does not fit here perfectly, but it saves us another AST visit.
+	if (asserts(m_currentFunction))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Variable definition without function."));
+	m_currentFunction->addLocalVariable(_variableDefinition.getDeclaration());
 }
 
 bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
@@ -115,28 +154,27 @@ bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
 	return true;
 }
 
-void DeclarationRegistrationHelper::endVisit(VariableDeclaration&)
-{
-}
-
 void DeclarationRegistrationHelper::enterNewSubScope(ASTNode& _node)
 {
-	map<ASTNode*, Scope>::iterator iter;
+	map<ASTNode const*, Scope>::iterator iter;
 	bool newlyAdded;
 	tie(iter, newlyAdded) = m_scopes.emplace(&_node, Scope(m_currentScope));
-	assert(newlyAdded);
+	if (asserts(newlyAdded))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to add new scope."));
 	m_currentScope = &iter->second;
 }
 
 void DeclarationRegistrationHelper::closeCurrentScope()
 {
-	assert(m_currentScope);
+	if (asserts(m_currentScope))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Closed non-existing scope."));
 	m_currentScope = m_currentScope->getEnclosingScope();
 }
 
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
-	assert(m_currentScope);
+	if (asserts(m_currentScope))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Declaration registered without scope."));
 	if (!m_currentScope->registerDeclaration(_declaration))
 		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
 												 << errinfo_comment("Identifier already declared."));
@@ -146,8 +184,8 @@ void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaratio
 }
 
 ReferencesResolver::ReferencesResolver(ASTNode& _root, NameAndTypeResolver& _resolver,
-									   ParameterList* _returnParameters):
-	m_resolver(_resolver), m_returnParameters(_returnParameters)
+									   ParameterList* _returnParameters, bool _allowLazyTypes):
+	m_resolver(_resolver), m_returnParameters(_returnParameters), m_allowLazyTypes(_allowLazyTypes)
 {
 	_root.accept(*this);
 }
@@ -158,19 +196,21 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 	// or mapping
 	if (_variable.getTypeName())
 		_variable.setType(_variable.getTypeName()->toType());
+	else if (!m_allowLazyTypes)
+		BOOST_THROW_EXCEPTION(_variable.createTypeError("Explicit type needed."));
 	// otherwise we have a "var"-declaration whose type is resolved by the first assignment
 }
 
 bool ReferencesResolver::visit(Return& _return)
 {
-	assert(m_returnParameters);
+	if (asserts(m_returnParameters))
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Return parameters not set."));
 	_return.setFunctionReturnParameters(*m_returnParameters);
 	return true;
 }
 
-bool ReferencesResolver::visit(Mapping&)
+bool ReferencesResolver::visit(Mapping& _mapping)
 {
-	// @todo
 	return true;
 }
 

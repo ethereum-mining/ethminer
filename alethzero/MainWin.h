@@ -47,7 +47,7 @@ class MessageFilter;
 }}
 
 class QQuickView;
-class WebThreeStubServer;
+class OurWebThreeStubServer;
 
 struct WorldState
 {
@@ -85,6 +85,7 @@ public slots:
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+	QString contents(QString _file);
 
 	void onKeysChanged();
 
@@ -154,6 +155,7 @@ private slots:
 	void on_newIdentity_triggered();
 
 	void refreshWhisper();
+	void refreshBlockChain();
 	void addNewId(QString _ids);
 
 signals:
@@ -214,7 +216,6 @@ private:
 	void refreshPending();
 	void refreshAccounts();
 	void refreshDestination();
-	void refreshBlockChain();
 	void refreshBlockCount();
 	void refreshBalances();
 
@@ -255,7 +256,7 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	std::unique_ptr<WebThreeStubServer> m_server;
-	QWebThreeConnector m_qwebConnector;
+	QWebThreeConnector* m_qwebConnector;
+	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 };

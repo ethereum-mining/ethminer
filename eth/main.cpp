@@ -31,7 +31,7 @@
 #include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>

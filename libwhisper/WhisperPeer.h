@@ -53,7 +53,7 @@ public:
 	virtual ~WhisperPeer();
 
 	static std::string name() { return "shh"; }
-	static u256 version() { return 1; }
+	static u256 version() { return 2; }
 	static unsigned messageCount() { return PacketCount; }
 
 	WhisperHost* host() const;

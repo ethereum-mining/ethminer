@@ -21,12 +21,13 @@
 
 #include "State.h"
 
-#include <boost/filesystem.hpp>
-#include <time.h>
+#include <ctime>
 #include <random>
+#include <boost/filesystem.hpp>
+#include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VM.h>
 #include "BlockChain.h"
@@ -60,6 +61,7 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
 		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
 
+	memset(ret.data(), 0, 12);
 	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
 }
 
@@ -112,8 +114,6 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
@@ -137,8 +137,6 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// TODO THINK: is this necessary?
 	m_state.init();
 
@@ -324,8 +322,8 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
-	cnote << *this;
-	cnote << _c;
+//	cnote << *this;
+//	cnote << _c;
 
 	for (auto i: ads)
 	{
@@ -520,7 +518,7 @@ bool State::cull(TransactionQueue& _tq) const
 			try
 			{
 				Transaction t(i.second);
-				if (t.nonce <= transactionsFrom(t.sender()))
+				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -552,10 +550,12 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				try
 				{
 					uncommitToMine();
+//					boost::timer t;
 					execute(i.second);
 					ret.push_back(m_receipts.back().changes().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
+//					cnote << "TX took:" << t.elapsed() * 1000;
 				}
 				catch (InvalidNonce const& in)
 				{
@@ -723,9 +723,7 @@ void State::cleanup(bool _fullCommit)
 		m_previousBlock = m_currentBlock;
 	}
 	else
-	{
 		m_db.rollback();
-	}
 
 	resetCurrent();
 }
@@ -793,7 +791,6 @@ h256 State::oldBloom() const
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	ret.shiftBloom<3>(sha3(m_currentBlock.coinbaseAddress.ref()));
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
@@ -1127,10 +1124,10 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
-	ctrace << toHex(e.t().rlp(true));
+	ctrace << toHex(e.t().rlp());
 #endif
 
-	e.go();
+	e.go(e.simpleTrace());
 	e.finalize();
 
 #if ETH_PARANOIA
@@ -1155,10 +1152,10 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 	paranoia("after execution commit.", true);
 
-	if (e.t().receiveAddress)
+	if (e.t().receiveAddress())
 	{
 		EnforceRefs r(m_db, true);
-		if (storageRoot(e.t().receiveAddress) && m_db.lookup(storageRoot(e.t().receiveAddress)).empty())
+		if (storageRoot(e.t().receiveAddress()) && m_db.lookup(storageRoot(e.t().receiveAddress())).empty())
 		{
 			cwarn << "TRIE immediately after execution; no node for receiveAddress";
 			BOOST_THROW_EXCEPTION(InvalidTrie());
@@ -1194,11 +1191,14 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas >= it->second.gas)
+		if (*_gas < it->second.gas)
 		{
-			*_gas -= it->second.gas;
-			it->second.exec(_data, _out);
+			*_gas = 0;
+			return false;
 		}
+
+		*_gas -= it->second.gas;
+		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
 	{
@@ -1214,39 +1214,30 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 				*o_sub += evm.sub;
 			if (o_ms)
 				o_ms->output = out.toBytes();
-		}
-		catch (OutOfGas const& /*_e*/)
-		{
-			clog(StateChat) << "Out of Gas! Reverting.";
-			revert = true;
+			*_gas = vm.gas();
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			revert = true;
+			*_gas = 0;
 		}
 		catch (Exception const& _e)
 		{
-			clog(StateChat) << "Exception in VM: " << diagnostic_information(_e);
+			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
+			// TODO: use fallback known-safe VM.
 		}
 		catch (std::exception const& _e)
 		{
-			clog(StateChat) << "std::exception in VM: " << _e.what();
+			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
+			// TODO: use fallback known-safe VM.
 		}
 
 		// Write state out only in the case of a non-excepted transaction.
 		if (revert)
 			evm.revert();
 
-		*_gas = vm.gas();
-
 		return !revert;
-	}
-	else
-	{
-		// non-contract call
-		if (o_sub)
-			o_sub->logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
 	}
 	return true;
 }
@@ -1282,16 +1273,13 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 			o_ms->output = out.toBytes();
 		if (o_sub)
 			*o_sub += evm.sub;
-	}
-	catch (OutOfGas const& /*_e*/)
-	{
-		clog(StateChat) << "Out of Gas! Reverting.";
-		revert = true;
+		*_gas = vm.gas();
 	}
 	catch (VMException const& _e)
 	{
-		clog(StateChat) << "VM Exception: " << diagnostic_information(_e);
+		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 		revert = true;
+		*_gas = 0;
 	}
 	catch (Exception const& _e)
 	{
@@ -1317,8 +1305,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		// Set code.
 		if (addressInUse(newAddress))
 			m_cache[newAddress].setCode(out);
-
-	*_gas = vm.gas();
 
 	return newAddress;
 }
@@ -1381,7 +1367,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 
 			stringstream contout;
 
-			if ((cache && cache->codeBearing()) || (!cache && r && !r[3].isEmpty()))
+			if ((cache && cache->codeBearing()) || (!cache && r && (h256)r[3] != EmptySHA3))
 			{
 				std::map<u256, u256> mem;
 				std::set<u256> back;
@@ -1410,7 +1396,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				else
 					contout << r[2].toHash<h256>();
 				if (cache && cache->isFreshCode())
-					contout << " $" << cache->code();
+					contout << " $" << toHex(cache->code());
 				else
 					contout << " $" << (cache ? cache->codeHash() : r[3].toHash<h256>());
 

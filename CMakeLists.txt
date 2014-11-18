@@ -106,7 +106,7 @@ include(EthDependenciesDeprecated)
 createBuildInfo()
 
 add_subdirectory(libdevcore)
-add_subdirectory(libevmface)
+add_subdirectory(libevmcore)
 add_subdirectory(liblll)
 add_subdirectory(libserpent)
 add_subdirectory(libsolidity)

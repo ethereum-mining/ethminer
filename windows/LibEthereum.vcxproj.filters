@@ -37,11 +37,8 @@
     <ClCompile Include="..\libevm\VM.cpp">
       <Filter>libevm</Filter>
     </ClCompile>
-    <ClCompile Include="..\libevmface\Instruction.cpp">
-      <Filter>libevmface</Filter>
-    </ClCompile>
-    <ClCompile Include="..\liblll\Assembly.cpp">
-      <Filter>liblll</Filter>
+    <ClCompile Include="..\libevmcore\Instruction.cpp">
+      <Filter>libevmcore</Filter>
     </ClCompile>
     <ClCompile Include="..\liblll\CodeFragment.cpp">
       <Filter>liblll</Filter>
@@ -202,6 +199,9 @@
     <ClCompile Include="..\libethereum\Account.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
+    <ClCompile Include="..\libevmcore\Assembly.cpp">
+      <Filter>libevmcore</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -243,13 +243,10 @@
     <ClInclude Include="..\libevm\All.h">
       <Filter>libevm</Filter>
     </ClInclude>
-    <ClInclude Include="..\libevmface\Instruction.h">
-      <Filter>libevmface</Filter>
+    <ClInclude Include="..\libevmcore\Instruction.h">
+      <Filter>libevmcore</Filter>
     </ClInclude>
     <ClInclude Include="..\liblll\All.h">
-      <Filter>liblll</Filter>
-    </ClInclude>
-    <ClInclude Include="..\liblll\Assembly.h">
       <Filter>liblll</Filter>
     </ClInclude>
     <ClInclude Include="..\liblll\CodeFragment.h">
@@ -435,6 +432,12 @@
     <ClInclude Include="..\libethereum\Account.h">
       <Filter>libethereum</Filter>
     </ClInclude>
+    <ClInclude Include="..\libevmcore\Exceptions.h">
+      <Filter>libevmcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevmcore\Assembly.h">
+      <Filter>libevmcore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Windows">
@@ -449,7 +452,7 @@
     <Filter Include="libevm">
       <UniqueIdentifier>{37c37803-1515-47c1-b7e6-3879f4429ab3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="libevmface">
+    <Filter Include="libevmcore">
       <UniqueIdentifier>{ed9ad1b3-700c-47f9-8548-a90b5ef179ac}</UniqueIdentifier>
     </Filter>
     <Filter Include="liblll">

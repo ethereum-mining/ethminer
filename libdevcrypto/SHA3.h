@@ -55,8 +55,16 @@ inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_inpu
 
 /// Calculate SHA3-256 hash of the given input (presented as a binary-filled string), returning as a 256-bit hash.
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
+	
+/// Calculate SHA3-256 MAC
+void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output);
+
+/// Calculate SHA3-256 hash of the given input (presented as a FixedHash), returns a 256-bit hash.
+template<unsigned N> inline h256 sha3(FixedHash<N> const& _input) { return sha3(_input.ref()); }
 
 extern h256 EmptySHA3;
+
+extern h256 EmptyListSHA3;
 
 // Other crypto convenience routines
 

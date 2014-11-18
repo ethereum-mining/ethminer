@@ -29,6 +29,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "Manifest.h"
+#include "TransactionReceipt.h"
 namespace ldb = leveldb;
 
 namespace dev
@@ -71,14 +72,35 @@ struct BlockTraces
 	Manifests traces;
 };
 
+struct BlockLogBlooms
+{
+	BlockLogBlooms() {}
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<h512>(); }
+	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
+
+	h512s blooms;
+};
+
+struct BlockReceipts
+{
+	BlockReceipts() {}
+	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); }
+	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); return s.out(); }
+
+	TransactionReceipts receipts;
+};
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
 typedef std::map<h256, BlockBlooms> BlockBloomsHash;
 typedef std::map<h256, BlockTraces> BlockTracesHash;
+typedef std::map<h256, BlockLogBlooms> BlockLogBloomsHash;
+typedef std::map<h256, BlockReceipts> BlockReceiptsHash;
 
 static const BlockDetails NullBlockDetails;
 static const BlockBlooms NullBlockBlooms;
 static const BlockTraces NullBlockTraces;
+static const BlockLogBlooms NullBlockLogBlooms;
+static const BlockReceipts NullBlockReceipts;
 
 }
 }

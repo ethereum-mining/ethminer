@@ -8,10 +8,18 @@
 
 struct programAux {
     std::map<std::string, std::string> vars;
+    int nextVarMem;
     bool allocUsed;
     bool calldataUsed;
     int step;
     int labelLength;
+    int functionCount;
+};
+
+struct programVerticalAux {
+    int height;
+    std::map<std::string, int> dupvars;
+    std::map<std::string, int> funvars;
 };
 
 struct programData {
@@ -25,6 +33,16 @@ programAux Aux() {
     o.allocUsed = false;
     o.calldataUsed = false;
     o.step = 0;
+    o.nextVarMem = 32;
+    o.functionCount = 0;
+    return o;
+}
+
+programVerticalAux verticalAux() {
+    programVerticalAux o;
+    o.height = 0;
+    o.dupvars = std::map<std::string, int>();
+    o.funvars = std::map<std::string, int>();
     return o;
 }
 
@@ -57,28 +75,28 @@ Node popwrap(Node node) {
 // Turns LLL tree into tree of code fragments
 programData opcodeify(Node node,
                       programAux aux=Aux(),
-                      int height=0,
-                      std::map<std::string, int> dupvars=
-                          std::map<std::string, int>()) {
+                      programVerticalAux vaux=verticalAux()) {
     std::string symb = "_"+mkUniqueToken();
     Metadata m = node.metadata;
     // Numbers
     if (node.type == TOKEN) {
         return pd(aux, nodeToNumeric(node), 1);
     }
-    else if (node.val == "ref" || node.val == "get" || node.val == "set") {
+    else if (node.val == "ref" || node.val == "get" ||
+             node.val == "set" || node.val == "declare") {
         std::string varname = node.args[0].val;
         if (!aux.vars.count(varname)) {
-            aux.vars[varname] = unsignedToDecimal(aux.vars.size() * 32);
+            aux.vars[varname] = unsignedToDecimal(aux.nextVarMem);
+            aux.nextVarMem += 32;
         }
         if (varname == "'msg.data") aux.calldataUsed = true;
         // Set variable
         if (node.val == "set") {
-            programData sub = opcodeify(node.args[1], aux, height, dupvars);
+            programData sub = opcodeify(node.args[1], aux, vaux);
             if (!sub.outs)
                 err("Value to set variable must have nonzero arity!", m);
-            if (dupvars.count(node.args[0].val)) {
-                int h = height - dupvars[node.args[0].val];
+            if (vaux.dupvars.count(node.args[0].val)) {
+                int h = vaux.height - vaux.dupvars[node.args[0].val];
                 if (h > 16) err("Too deep for stack variable (max 16)", m);
                 Node nodelist[] = {
                     sub.code,
@@ -96,8 +114,8 @@ programData opcodeify(Node node,
         }
         // Get variable
         else if (node.val == "get") {
-             if (dupvars.count(node.args[0].val)) {
-                 int h = height - dupvars[node.args[0].val];
+             if (vaux.dupvars.count(node.args[0].val)) {
+                 int h = vaux.height - vaux.dupvars[node.args[0].val];
                 if (h > 16) err("Too deep for stack variable (max 16)", m);
                 return pd(aux, token("DUP"+unsignedToDecimal(h)), 1);                   
             }
@@ -106,36 +124,156 @@ programData opcodeify(Node node,
             return pd(aux, multiToken(nodelist, 2, m), 1);
         }
         // Refer variable
-        else {
-            if (dupvars.count(node.args[0].val))
+        else if (node.val == "ref") {
+            if (vaux.dupvars.count(node.args[0].val))
                 err("Cannot ref stack variable!", m);
             return pd(aux, token(aux.vars[varname], m), 1);
         }
+        // Declare variable
+        else {
+			return pd(aux, multiToken(nullptr, 0, m), 0);
+        }
+    }
+    // Define functions (TODO: eventually move to rewriter.cpp, keep
+    // compiler pure LLL)
+    if (node.val == "def") {
+        std::vector<std::string> varNames;
+        std::vector<int> varSizes;
+        bool useLt32 = false;
+        int totalSz = 0;
+        if (node.args.size() != 2)
+            err("Malformed def!", m);
+        // Collect the list of variable names and variable byte counts
+        for (unsigned i = 0; i < node.args[0].args.size(); i++) {
+            if (node.args[0].args[i].val == "kv") {
+                if (node.args[0].args[i].args.size() != 2)
+                    err("Malformed def!", m);
+                varNames.push_back(node.args[0].args[i].args[0].val);
+                varSizes.push_back(
+                    decimalToUnsigned(node.args[0].args[i].args[1].val));
+                if (varSizes.back() > 32)
+                    err("Max argument width: 32 bytes", m);
+                useLt32 = true;
+            }
+            else {
+                varNames.push_back(node.args[0].args[i].val);
+                varSizes.push_back(32);
+            }
+            aux.vars[varNames.back()] = unsignedToDecimal(aux.nextVarMem + 32 * i);
+            totalSz += varSizes.back();
+        }
+        int functionCount = aux.functionCount;
+        int nextVarMem = aux.nextVarMem;
+        aux.nextVarMem += 32 * varNames.size();
+        aux.functionCount += 1;
+        programData inner;
+        // If we're only using 32-byte variables, then great, just copy
+        // over the calldata!
+        if (!useLt32) {
+            programData sub = opcodeify(node.args[1], aux, vaux);
+            Node nodelist[] = {
+                token(unsignedToDecimal(totalSz), m),
+                token("1", m),
+                token(unsignedToDecimal(nextVarMem), m),
+                token("CALLDATACOPY", m),
+                sub.code
+            };
+            inner = pd(sub.aux, multiToken(nodelist, 5, m), 0);
+        }
+        else {
+            std::vector<Node> innerList;
+            int cum = 1;
+            for (unsigned i = 0; i < varNames.size();) {
+                // If we get a series of 32-byte values, we calldatacopy them
+                if (varSizes[i] == 32) {
+                    unsigned until = i+1;
+                    while (until < varNames.size() && varSizes[until] == 32)
+                        until += 1;
+                    innerList.push_back(token(unsignedToDecimal((until - i) * 32), m));
+                    innerList.push_back(token(unsignedToDecimal(cum), m));
+                    innerList.push_back(token(unsignedToDecimal(nextVarMem + i * 32), m));
+                    innerList.push_back(token("CALLDATACOPY", m));
+                    cum += (until - i) * 32;
+                    i = until;
+                }
+                // Otherwise, we do a clever trick to extract the value
+                else {
+                    innerList.push_back(token(unsignedToDecimal(32 - varSizes[i]), m));
+                    innerList.push_back(token("256", m));
+                    innerList.push_back(token("EXP", m));
+                    innerList.push_back(token(unsignedToDecimal(cum), m));
+                    innerList.push_back(token("CALLDATALOAD", m));
+                    innerList.push_back(token("DIV", m));
+                    innerList.push_back(token(unsignedToDecimal(nextVarMem + i * 32), m));
+                    innerList.push_back(token("MSTORE", m));
+                    cum += varSizes[i];
+                    i += 1;
+                }
+            }
+            // If caller == origin, then it's from a tx, so unpack, otherwise
+            // plain copy
+            programData sub = opcodeify(node.args[1], aux, vaux);
+            Node ilnode = astnode("", innerList, m);
+            Node nodelist[] = {
+                token(unsignedToDecimal(32 * varNames.size()), m),
+                token("1", m),
+                token(unsignedToDecimal(nextVarMem), m),
+                token("CALLDATACOPY", m),
+                token("CALLER", m),
+                token("ORIGIN", m),
+                token("EQ", m),
+                token("ISZERO", m),
+                token("$maincode"+symb, m),
+                token("JUMPI", m),
+                ilnode,
+                token("~maincode"+symb, m),
+                token("JUMPDEST", m),
+                sub.code
+            };
+            inner = pd(sub.aux, multiToken(nodelist, 14, m), 0);
+        }
+        // Check if the function call byte is the same
+        Node nodelist2[] = {
+            token("0", m),
+            token("CALLDATALOAD", m),
+            token("0", m),
+            token("BYTE", m),
+            token(unsignedToDecimal(functionCount), m),
+            token("EQ", m),
+            token("ISZERO", m),
+            token("$endcode"+symb, m),
+            token("JUMPI", m),
+            inner.code,
+            token("~endcode"+symb, m),
+            token("JUMPDEST", m),
+        };
+        return pd(inner.aux, multiToken(nodelist2, 12, m), 0);
     }
     // Code blocks
     if (node.val == "lll" && node.args.size() == 2) {
         if (node.args[1].val != "0") aux.allocUsed = true;
         std::vector<Node> o;
         o.push_back(finalize(opcodeify(node.args[0])));
-        programData sub = opcodeify(node.args[1], aux, height, dupvars);
+        programData sub = opcodeify(node.args[1], aux, vaux);
         Node code = astnode("____CODE", o, m);
         Node nodelist[] = {
             token("$begincode"+symb+".endcode"+symb, m), token("DUP1", m),
             token("$begincode"+symb, m), sub.code, token("CODECOPY", m),
             token("$endcode"+symb, m), token("JUMP", m),
-            token("~begincode"+symb, m), code, token("~endcode"+symb, m),
-            token("JUMPDEST", m)
+            token("~begincode"+symb, m), code, 
+            token("~endcode"+symb, m), token("JUMPDEST", m)
         };
         return pd(sub.aux, multiToken(nodelist, 11, m), 1);
     }
     // Stack variables
     if (node.val == "with") {
-        std::map<std::string, int> dupvars2 = dupvars;
-        dupvars2[node.args[0].val] = height;
-        programData initial = opcodeify(node.args[1], aux, height, dupvars);
+        programData initial = opcodeify(node.args[1], aux, vaux);
+        programVerticalAux vaux2 = vaux;
+        vaux2.dupvars[node.args[0].val] = vaux.height;
+        vaux2.height += 1;
         if (!initial.outs)
             err("Initial variable value must have nonzero arity!", m);
-        programData sub = opcodeify(node.args[2], initial.aux, height + 1, dupvars2);
+        programData sub = opcodeify(node.args[2], initial.aux, vaux2);
         Node nodelist[] = {
             initial.code,
             sub.code
@@ -151,7 +289,7 @@ programData opcodeify(Node node,
         std::vector<Node> children;
         int lastOut = 0;
         for (unsigned i = 0; i < node.args.size(); i++) {
-            programData sub = opcodeify(node.args[i], aux, height, dupvars);
+            programData sub = opcodeify(node.args[i], aux, vaux);
             aux = sub.aux;
             if (sub.outs == 1) {
                 if (i < node.args.size() - 1) sub.code = popwrap(sub.code);
@@ -163,8 +301,8 @@ programData opcodeify(Node node,
     }
     // 2-part conditional (if gets rewritten to unless in rewrites)
     else if (node.val == "unless" && node.args.size() == 2) {
-        programData cond = opcodeify(node.args[0], aux, height, dupvars);
-        programData action = opcodeify(node.args[1], cond.aux, height, dupvars);
+        programData cond = opcodeify(node.args[0], aux, vaux);
+        programData action = opcodeify(node.args[1], cond.aux, vaux);
         aux = action.aux;
         if (!cond.outs) err("Condition of if/unless statement has arity 0", m);
         if (action.outs) action.code = popwrap(action.code);
@@ -178,9 +316,9 @@ programData opcodeify(Node node,
     }
     // 3-part conditional
     else if (node.val == "if" && node.args.size() == 3) {
-        programData ifd = opcodeify(node.args[0], aux, height, dupvars);
-        programData thend = opcodeify(node.args[1], ifd.aux, height, dupvars);
-        programData elsed = opcodeify(node.args[2], thend.aux, height, dupvars);
+        programData ifd = opcodeify(node.args[0], aux, vaux);
+        programData thend = opcodeify(node.args[1], ifd.aux, vaux);
+        programData elsed = opcodeify(node.args[2], thend.aux, vaux);
         aux = elsed.aux;
         if (!ifd.outs)
             err("Condition of if/unless statement has arity 0", m);
@@ -191,7 +329,7 @@ programData opcodeify(Node node,
         if (elsed.outs > outs) elsed.code = popwrap(elsed.code);
         Node nodelist[] = {
             ifd.code,
-            token("NOT", m),
+            token("ISZERO", m),
             token("$else"+symb, m), token("JUMPI", m),
             thend.code,
             token("$endif"+symb, m), token("JUMP", m),
@@ -203,8 +341,8 @@ programData opcodeify(Node node,
     }
     // While (rewritten to this in rewrites)
     else if (node.val == "until") {
-        programData cond = opcodeify(node.args[0], aux, height, dupvars);
-        programData action = opcodeify(node.args[1], cond.aux, height, dupvars);
+        programData cond = opcodeify(node.args[0], aux, vaux);
+        programData action = opcodeify(node.args[1], cond.aux, vaux);
         aux = action.aux;
         if (!cond.outs)
             err("Condition of while/until loop has arity 0", m);
@@ -215,13 +353,13 @@ programData opcodeify(Node node,
             token("$end"+symb, m), token("JUMPI", m),
             action.code,
             token("$beg"+symb, m), token("JUMP", m),
-            token("~end"+symb, m), token("JUMPDEST", m)
+            token("~end"+symb, m), token("JUMPDEST", m),
         };
         return pd(aux, multiToken(nodelist, 10, m));
     }
     // Memory allocations
     else if (node.val == "alloc") {
-        programData bytez = opcodeify(node.args[0], aux, height, dupvars);
+        programData bytez = opcodeify(node.args[0], aux, vaux);
         aux = bytez.aux;
         if (!bytez.outs)
             err("Alloc input has arity 0", m);
@@ -251,7 +389,9 @@ programData opcodeify(Node node,
         for (unsigned i = 0; i < node.args.size(); i++) {
             Metadata m2 = node.args[i].metadata;
             nodes.push_back(token("DUP1", m2));
-            programData sub = opcodeify(node.args[i], aux, height + 2, dupvars);
+            programVerticalAux vaux2 = vaux;
+            vaux2.height += 2;
+            programData sub = opcodeify(node.args[i], aux, vaux2);
             if (!sub.outs)
                 err("Array_lit item " + unsignedToDecimal(i) + " has zero arity", m2);
             aux = sub.aux;
@@ -276,10 +416,9 @@ programData opcodeify(Node node,
                 err("Invalid arity for "+node.val, m);
         }
         for (int i = node.args.size() - 1; i >= 0; i--) {
-            programData sub = opcodeify(node.args[i],
-                                        aux,
-                                        height - i - 1 + node.args.size(),
-                                        dupvars);
+            programVerticalAux vaux2 = vaux;
+            vaux2.height = vaux.height - i - 1 + node.args.size();
+            programData sub = opcodeify(node.args[i], aux, vaux2);
             aux = sub.aux;
             if (!sub.outs)
                 err("Input "+unsignedToDecimal(i)+" has arity 0", sub.code.metadata);
@@ -305,7 +444,7 @@ Node finalize(programData c) {
     if ((c.aux.allocUsed || c.aux.calldataUsed) && c.aux.vars.size() > 0) {
         Node nodelist[] = {
             token("0", m), 
-            token(unsignedToDecimal(c.aux.vars.size() * 32 - 1)),
+            token(unsignedToDecimal(c.aux.nextVarMem - 1)),
             token("MSTORE8", m)
         };
         bottom.push_back(multiToken(nodelist, 3, m));

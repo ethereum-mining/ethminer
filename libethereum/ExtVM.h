@@ -40,7 +40,7 @@ class ExtVM: public ExtVMFace
 public:
 	/// Full constructor.
 	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, Manifest* o_ms, unsigned _depth = 0):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code, _s.m_previousBlock, _s.m_currentBlock, _depth), m_s(_s), m_origCache(_s.m_cache), m_ms(o_ms)
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _s.m_previousBlock, _s.m_currentBlock, _depth), m_s(_s), m_origCache(_s.m_cache), m_ms(o_ms)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}
@@ -102,7 +102,7 @@ public:
 
 private:
 	State& m_s;										///< A reference to the base state.
-	std::map<Address, Account> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
+	std::map<Address, Account> m_origCache;			///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
 	Manifest* m_ms;
 };
 

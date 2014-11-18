@@ -214,8 +214,8 @@ private:
 	int m_listenPort = NetworkStopped;										///< What port are we listening on?
 
 	std::unique_ptr<ba::io_service> m_ioService;							///< IOService for network stuff.
-	bi::tcp::acceptor m_acceptor;											///< Listening acceptor.
-	bi::tcp::socket m_socket;												///< Listening socket.
+	std::unique_ptr<bi::tcp::acceptor> m_acceptor;											///< Listening acceptor.
+	std::unique_ptr<bi::tcp::socket> m_socket;												///< Listening socket.
 
 	UPnP* m_upnp = nullptr;													///< UPnP helper.
 	bi::tcp::endpoint m_public;												///< Our public listening endpoint.
