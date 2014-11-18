@@ -17,7 +17,7 @@ config.then(function() {
 	web3.eth.accounts.then(function(accounts)
 	{
 		var funded = send(accounts[0], '100000000000000000000', accounts[1]);
-		funded.then(function(){ env.note("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); regName(accounts[1], 'Gav Would'); env.note("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); approve(accounts[1], exchange); });
+		funded.then(function(){ regName(accounts[1], 'Gav Would'); approve(accounts[1], exchange); });
 		regName(accounts[0], 'Gav');
 		approve(accounts[0], exchange).then(function(){ offer(accounts[0], coin, '5000', '0', '5000000000000000000'); });
 

@@ -241,7 +241,7 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -263,8 +263,8 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installCurrenciesWatch(); });
 	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
 	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
@@ -272,29 +272,26 @@ void Main::installWatches()
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	dev::eth::MessageFilter tf;
+	dev::eth::LogFilter tf;
 
 	vector<Address> altCoins;
 	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
 	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
-	{
-		tf.altered(i.address());
 		for (auto c: altCoins)
-			tf.altered(c, (u160)i.address());
-	}
+			tf.address(c).topic(h256(i.address(), h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
@@ -1292,7 +1289,7 @@ void Main::on_blocks_currentItemChanged()
 			Transaction tx(block[1][txi].data());
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
-			auto receipt = ethereum()->blockChain().receipts(h).receipts[txi];
+			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
 			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
@@ -1308,6 +1305,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
+			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
