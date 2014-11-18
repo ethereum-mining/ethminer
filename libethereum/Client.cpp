@@ -159,7 +159,7 @@ void Client::clearPending()
 		if (!m_postMine.pending().size())
 			return;
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-			appendFromNewPending(m_postMine.oldBloom(i), changeds);
+			appendFromNewPending(m_postMine.logBloom(i), changeds);
 		changeds.insert(PendingChangedFilter);
 		m_postMine = m_preMine;
 	}
@@ -181,7 +181,7 @@ unsigned Client::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned Client::installWatch(MessageFilter const& _f)
+unsigned Client::installWatch(LogFilter const& _f)
 {
 	lock_guard<mutex> l(m_filterLock);
 
@@ -222,7 +222,7 @@ void Client::noteChanged(h256Set const& _filters)
 		}
 }
 
-void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
+void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
 {
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
@@ -232,12 +232,19 @@ void Client::appendFromNewPending(h256 _bloom, h256Set& o_changed) const
 
 void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 {
-	auto d = m_bc.details(_block);
-
+//	auto d = m_bc.details(_block);
+	auto d = m_bc.logBlooms(_block);
+	
 	lock_guard<mutex> l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
-			o_changed.insert(i.first);
+		for (auto b: d.blooms)
+			if (i.second.filter.matches(b))
+			{
+				o_changed.insert(i.first);
+				break;
+			}
+//		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.bloom))
+//			o_changed.insert(i.first);
 }
 
 void Client::setForceMining(bool _enable)
@@ -440,7 +447,7 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		h256s newPendingBlooms = m_postMine.sync(m_tq);
+		h512s newPendingBlooms = m_postMine.sync(m_tq);
 		if (newPendingBlooms.size())
 		{
 			for (auto i: newPendingBlooms)
@@ -564,9 +571,9 @@ BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 	return BlockInfo::fromHeader(b[2][_i].data());
 }
 
-PastMessages Client::messages(MessageFilter const& _f) const
+LogEntries Client::logs(LogFilter const& _f) const
 {
-	PastMessages ret;
+	LogEntries ret;
 	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
 	unsigned end = min(begin, (unsigned)_f.earliest());
 	unsigned m = _f.max();
@@ -578,23 +585,22 @@ PastMessages Client::messages(MessageFilter const& _f) const
 		ReadGuard l(x_stateDB);
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
 		{
-			// Might have a transaction that contains a matching message.
-			Manifest const& ms = m_postMine.changesFromPending(i);
-			PastMessages pm = _f.matches(ms, i);
-			if (pm.size())
+			// Might have a transaction that contains a matching log.
+			TransactionReceipt const& tr = m_postMine.receipt(i);
+			LogEntries le = _f.matches(tr);
+			if (le.size())
 			{
-				auto ts = time(0);
-				for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
+				for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
 					if (s)
 						s--;
 					else
-						// Have a transaction that contains a matching message.
-						ret.insert(ret.begin(), pm[j].polish(h256(), ts, m_bc.number() + 1, m_postMine.address()));
+						ret.insert(ret.begin(), le[j]);
 			}
 		}
 	}
 
 #if ETH_DEBUG
+	// fill these params
 	unsigned skipped = 0;
 	unsigned falsePos = 0;
 #endif
@@ -602,50 +608,28 @@ PastMessages Client::messages(MessageFilter const& _f) const
 	unsigned n = begin;
 	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
 	{
-		auto d = m_bc.details(h);
 #if ETH_DEBUG
 		int total = 0;
 #endif
-		if (_f.matches(d.bloom))
-		{
-			// Might have a block that contains a transaction that contains a matching message.
-			auto bs = m_bc.blooms(h).blooms;
-			Manifests ms;
-			BlockInfo bi;
-			for (unsigned i = 0; i < bs.size(); ++i)
-				if (_f.matches(bs[i]))
+		//? check block bloom
+		for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
+			if (_f.matches(receipt.bloom()))
+			{
+				LogEntries le = _f.matches(receipt);
+				if (le.size())
 				{
-					// Might have a transaction that contains a matching message.
-					if (ms.empty())
-						ms = m_bc.traces(h).traces;
-					Manifest const& changes = ms[i];
-					PastMessages pm = _f.matches(changes, i);
-					if (pm.size())
-					{
 #if ETH_DEBUG
-						total += pm.size();
+					total += le.size();
 #endif
-						if (!bi)
-							bi.populate(m_bc.block(h));
-						auto ts = bi.timestamp;
-						auto cb = bi.coinbaseAddress;
-						for (unsigned j = 0; j < pm.size() && ret.size() != m; ++j)
-							if (s)
-								s--;
-							else
-								// Have a transaction that contains a matching message.
-								ret.push_back(pm[j].polish(h, ts, n, cb));
+					for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
+					{
+						if (s)
+							s--;
+						else
+							ret.insert(ret.begin(), le[j]);
 					}
 				}
-#if ETH_DEBUG
-			if (!total)
-				falsePos++;
-		}
-		else
-			skipped++;
-#else
-		}
-#endif
+			}
 		if (n == end)
 			break;
 	}
