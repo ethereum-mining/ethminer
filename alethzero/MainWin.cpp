@@ -248,15 +248,6 @@ unsigned Main::installWatch(dev::eth::LogFilter const& _tf, std::function<void()
 	return ret;
 }
 
-unsigned Main::installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f)
-{
-//	auto ret = ethereum()->installWatch(_tf);
-//	m_handlers[ret] = _f;
-//	return ret;
-}
-
-
-
 unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
@@ -274,8 +265,6 @@ void Main::installWatches()
 {
 	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installNameRegWatch(); });
 	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installCurrenciesWatch(); });
-//	installWatch(dev::eth::MessageFilter().altered(c_config, 0), [=](){ installNameRegWatch(); });
-//	installWatch(dev::eth::MessageFilter().altered(c_config, 1), [=](){ installCurrenciesWatch(); });
 	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
 	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
 }
@@ -283,18 +272,18 @@ void Main::installWatches()
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::MessageFilter().altered((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	dev::eth::MessageFilter tf;
+	dev::eth::LogFilter tf;
 
 	vector<Address> altCoins;
 	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
@@ -302,9 +291,9 @@ void Main::installBalancesWatch()
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 	{
-		tf.altered(i.address());
+		tf.address(i.address());
 		for (auto c: altCoins)
-			tf.altered(c, (u160)i.address());
+			tf.address(c);
 	}
 
 	uninstallWatch(m_balancesFilter);
