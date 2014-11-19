@@ -1,0 +1,29 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:_ZN20QSharedMemoryPrivate6detachEv
+   fun:_ZN13QSharedMemory6detachEv
+   fun:_ZN13QSharedMemory6setKeyERK7QString
+   fun:_ZN13QSharedMemoryD1Ev
+   fun:_ZN20QRasterWindowSurface5flushEP7QWidgetRK7QRegionRK6QPoint
+   fun:_Z8qt_flushP7QWidgetRK7QRegionP14QWindowSurfaceS0_RK6QPoint
+   fun:_ZN19QWidgetBackingStore5flushEP7QWidgetP14QWindowSurface
+   fun:_ZN19QWidgetBackingStore8endPaintERK7QRegionP14QWindowSurfaceP14BeginPaintInfo
+   fun:_ZN19QWidgetBackingStore4syncEv
+   fun:_ZN14QWidgetPrivate16syncBackingStoreEv
+   fun:_ZN7QWidget5eventEP6QEvent
+   fun:_ZN11QMainWindow5eventEP6QEvent
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZN18QtSimulatorPrivate15connectToServerEv
+   fun:_ZN18QtSimulatorPrivate19SimulatorConnection18connectToSimulatorEv
+   fun:_ZN18QtSimulatorPrivate19SimulatorConnection8instanceEv
+   fun:_ZN9QColormap10initializeEv
+   fun:_Z7qt_initP19QApplicationPrivatei
+   fun:_ZN19QApplicationPrivate9constructEv
+   fun:_ZN12QApplicationC1ERiPPci
+   fun:main
+}
