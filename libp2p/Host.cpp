@@ -158,7 +158,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		
 		// iterate m_peerAddresses (populated by populateAddresses())
 		for (auto const& addr : m_peerAddresses)
-			if ((p = m_upnp->addRedirect(addr.to_string().c_str(), m_listenPort)))
+			if (addr.is_v4() && (p = m_upnp->addRedirect(addr.to_string().c_str(), m_listenPort)))
 				break;
 		if (p)
 			clog(NetNote) << "Punched through NAT and mapped local port" << m_listenPort << "onto external port" << p << ".";
@@ -187,7 +187,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	else
 	{
 		// No UPnP - fallback on given public address or, if empty, the assumed peer address.
-		bi::address adr; // = m_peerAddresses.size() ? m_peerAddresses[0] : bi::address();
+		bi::address adr;
 		if (m_peerAddresses.size())
 		{
 			// prefer local ipv4 over local ipv6
@@ -687,7 +687,6 @@ void Host::run(boost::system::error_code const& error)
 		
 		// determine public IP, but only if we're able to listen for connections
 		// todo: visualize when listen is unavailable in UI
-		// tood: only punch hole for ipv4
 		if (m_listenPort)
 		{
 			determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
