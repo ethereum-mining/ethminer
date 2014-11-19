@@ -110,7 +110,7 @@ struct NetworkPreferences
 	bool upnp = true;
 	bool localNetworking = false;
 };
-
+	
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -147,7 +147,7 @@ public:
 	void connect(bi::tcp::endpoint const& _ep);
 	void connect(std::shared_ptr<Node> const& _n);
 
-	/// @returns true iff we have the a peer of the given id.
+	/// @returns true if we have the a peer of the given id.
 	bool havePeer(NodeId _id) const;
 
 	/// Set ideal number of peers.
@@ -175,10 +175,16 @@ public:
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
+	/// Start network.
 	void start();
+	
+	/// Stop network.
 	void stop();
+	
+	/// @returns if network is running
 	bool isStarted() const { return isWorking(); }
 
+	/// Reset acceptor, socket, and IO service. Called by deallocator. Maybe called by implementation when ordered deallocation is required.
 	void quit();
 
 	NodeId id() const { return m_key.pub(); }
@@ -190,17 +196,23 @@ public:
 private:
 	void seal(bytes& _b);
 	void populateAddresses();
+	
+	/// Try UPNP or listen to assumed address. Requires valid m_listenPort.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
+	
+	
 	void ensureAccepting();
 
 	void growPeers();
 	void prunePeers();
 
+	/// Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void startedWorking();
+	/// Called by startedWorking. Not thread-safe; to be called only be worker callback.
+	void run(boost::system::error_code const& error);			///< Run network. Called serially via ASIO deadline timer. Manages connection state transitions.
+	bool m_run = false;
 
-	/// Conduct I/O, polling, syncing, whatever.
-	/// Ideally all time-consuming I/O is done in a background thread or otherwise asynchronously, but you get this call every 100ms or so anyway.
-	/// This won't touch alter the blockchain.
+	/// Run network
 	virtual void doWork();
 
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = NodeId());
@@ -208,18 +220,20 @@ private:
 
 	std::string m_clientVersion;											///< Our version string.
 
-	NetworkPreferences m_netPrefs;											///< Network settings.
+	NetworkPreferences m_netPrefs;										///< Network settings.
 
-	static const int NetworkStopped = -1;									///< The value meaning we're not actually listening.
-	int m_listenPort = NetworkStopped;										///< What port are we listening on?
+	int m_listenPort = -1;												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
 	std::unique_ptr<ba::io_service> m_ioService;							///< IOService for network stuff.
-	std::unique_ptr<bi::tcp::acceptor> m_acceptor;											///< Listening acceptor.
-	std::unique_ptr<bi::tcp::socket> m_socket;												///< Listening socket.
+	std::unique_ptr<bi::tcp::acceptor> m_acceptor;							///< Listening acceptor.
+	std::unique_ptr<bi::tcp::socket> m_socket;								///< Listening socket.
+	
+	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
+	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
 
-	UPnP* m_upnp = nullptr;													///< UPnP helper.
-	bi::tcp::endpoint m_public;												///< Our public listening endpoint.
-	KeyPair m_key;															///< Our unique ID.
+	UPnP* m_upnp = nullptr;												///< UPnP helper.
+	bi::tcp::endpoint m_public;											///< Our public listening endpoint.
+	KeyPair m_key;														///< Our unique ID.
 
 	bool m_hadNewNodes = false;
 
