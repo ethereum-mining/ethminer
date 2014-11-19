@@ -627,11 +627,15 @@ LogEntries Client::logs(LogFilter const& _f) const
 						}
 					}
 				}
+#if ETH_DEBUG
 				if (!total)
 					falsePos++;
+#endif
 			}
+#if ETH_DEBUG
 		else
 			skipped++;
+#endif
 		if (n == end)
 			break;
 	}
