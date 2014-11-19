@@ -71,7 +71,7 @@ public:
 	template <class Ext>
 	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
-	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); }
+	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError(int(_n), m_stack.size())); }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 gas() const { return m_gas; }
 	u256 curPC() const { return m_curPC; }
