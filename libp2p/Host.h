@@ -128,9 +128,6 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 
-	/// Closes all peers.
-	void disconnectPeers();
-
 	/// Basic peer network protocol version.
 	unsigned protocolVersion() const;
 
@@ -199,7 +196,6 @@ private:
 	
 	/// Try UPNP or listen to assumed address. Requires valid m_listenPort.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
-	
 	
 	void ensureAccepting();
 
