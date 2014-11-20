@@ -82,9 +82,7 @@ Address Transaction::sender() const
 void Transaction::sign(Secret _priv)
 {
 	auto sig = dev::sign(_priv, sha3(WithoutSignature));
-	SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
-	if (sigStruct.isValid())
-		m_vrs = sigStruct;
+	m_vrs = *(SignatureStruct const*)&sig;
 }
 
 void Transaction::streamRLP(RLPStream& _s, IncludeSignature _sig) const
