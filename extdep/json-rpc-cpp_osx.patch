@@ -1,9 +1,0 @@
---- ./src/example/CMakeLists.txt	2014-11-12 17:20:52.000000000 +0100
-+++ CMakeListsPatch.txt	2014-11-12 17:26:42.000000000 +0100
-@@ -12,6 +12,3 @@
- add_executable(stubserversample stubserver.cpp)
- target_link_libraries(stubserversample jsonrpc)
- 
--
--add_executable(xbmcremote xbmcremote.cpp)
--target_link_libraries(xbmcremote jsonrpc)
