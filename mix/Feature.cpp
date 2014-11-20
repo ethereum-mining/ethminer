@@ -1,5 +1,5 @@
 #include "Feature.h"
-#include "ApplicationContext.h"
+#include "ApplicationCtx.h"
 #include <libevm/VM.h>
 #include <QMessageBox>
 #include <QDebug>
@@ -16,8 +16,8 @@ void Feature::addContentOn(QObject* tabView) {
 
         QVariant returnValue;
         QQmlComponent* component = new QQmlComponent(
-                    ApplicationContext::GetInstance()->appEngine(),
-                    QUrl(this->tabUrl()));
+                    ApplicationCtx::GetInstance()->appEngine(),
+                    QUrl(this->tabUrl()), tabView);
 
         QMetaObject::invokeMethod(tabView, "addTab",
                                 Q_RETURN_ARG(QVariant, returnValue),
@@ -25,6 +25,7 @@ void Feature::addContentOn(QObject* tabView) {
                                 Q_ARG(QVariant, QVariant::fromValue(component)));
 
         m_view = qvariant_cast<QObject*>(returnValue);
+
     }
     catch (dev::Exception const& exception){
         qDebug() << exception.what();

@@ -8,7 +8,7 @@
 #include "CodeEditorExtensionMan.h"
 #include "ConstantCompilation.h"
 #include "features.h"
-#include "ApplicationContext.h"
+#include "ApplicationCtx.h"
 #include <libevm/VM.h>
 using namespace dev;
 

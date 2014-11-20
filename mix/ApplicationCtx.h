@@ -3,21 +3,21 @@
 
 #include <QQmlApplicationEngine>
 
-class ApplicationContext : public QObject
+class ApplicationCtx : public QObject
 {
     Q_OBJECT
 
 public:
-    ApplicationContext(QQmlApplicationEngine*);
-    ~ApplicationContext();
+    ApplicationCtx(QQmlApplicationEngine*);
+    ~ApplicationCtx();
     QQmlApplicationEngine* appEngine();
-    static ApplicationContext* GetInstance();
+    static ApplicationCtx* GetInstance();
     static void SetApplicationContext(QQmlApplicationEngine*);
 private:
-    static ApplicationContext* m_instance;
+    static ApplicationCtx* m_instance;
     QQmlApplicationEngine* m_applicationEngine;
 public slots:
     void QuitApplication();
 };
 
-#endif // APPLICATIONCONTEXT_H
+#endif // APPLICATIONCTX_H
