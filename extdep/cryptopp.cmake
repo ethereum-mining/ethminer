@@ -1,5 +1,6 @@
 # CryptoPP does not have good cross-platform support, there exist several different other projects to make it work ... 
 
+# TODO the OS X build throws a lot of warnings, but compiles fine
 if(APPLE)
     ExternalProject_Add(cryptopp
          URL https://downloads.sourceforge.net/project/cryptopp/cryptopp/5.6.2/cryptopp562.zip
