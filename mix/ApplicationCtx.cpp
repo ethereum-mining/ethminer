@@ -15,27 +15,41 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file main.cpp
- * @author Yann yann@ethdev.com
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Ethereum IDE client.
+ * Ethereum client.
  */
 
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QQuickItem>
-#include "CodeEditorExtensionMan.h"
 #include "ApplicationCtx.h"
+#include <QQmlApplicationEngine>
 
-int main(int argc, char *argv[])
+ApplicationCtx* ApplicationCtx::m_instance = nullptr;
+
+ApplicationCtx::ApplicationCtx(QQmlApplicationEngine* _engine)
 {
-    QApplication app(argc, argv);
-    QQmlApplicationEngine* engine = new QQmlApplicationEngine();
-    qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
-
-    ApplicationCtx::SetApplicationContext(engine);
-    QObject::connect(&app, SIGNAL(lastWindowClosed()), ApplicationCtx::GetInstance(), SLOT(QuitApplication())); //use to kill ApplicationContext and other stuff
-
-    engine->load(QUrl(QStringLiteral("qrc:/main.qml")));
-    return app.exec();
+    m_applicationEngine = _engine;
 }
 
+ApplicationCtx::~ApplicationCtx()
+{
+    delete m_applicationEngine;
+}
+
+ApplicationCtx* ApplicationCtx::GetInstance()
+{
+    return m_instance;
+}
+
+void ApplicationCtx::SetApplicationContext(QQmlApplicationEngine* engine)
+{
+    m_instance = new ApplicationCtx(engine);
+}
+
+QQmlApplicationEngine* ApplicationCtx::appEngine(){
+    return m_applicationEngine;
+}
+
+void ApplicationCtx::QuitApplication()
+{
+    delete m_instance;
+}

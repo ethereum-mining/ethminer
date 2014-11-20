@@ -29,7 +29,7 @@ void ConstantCompilation::start()
 
 QString ConstantCompilation::title()
 {
-    return "compilation";
+    return "compiler";
 }
 
 void ConstantCompilation::compile()
@@ -60,8 +60,8 @@ void ConstantCompilation::compile()
         content = "Uncaught exception.";
         this->writeOutPut(false, content);
     }
-
 }
+
 void ConstantCompilation::writeOutPut(bool _success, QString _content){
     QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
     QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
@@ -70,13 +70,13 @@ void ConstantCompilation::writeOutPut(bool _success, QString _content){
         content->setProperty("text", "");
     }
     else if (_success){
-        status->setProperty("text", "compile successfull");
+        status->setProperty("text", "succeeded");
         status->setProperty("color", "green");
         content->setProperty("text", _content);
-        qDebug() << QString("compile suceeded " + _content);
+        qDebug() << QString("compile succeeded " + _content);
     }
     else {
-        status->setProperty("text", "compile failed");
+        status->setProperty("text", "failure");
         status->setProperty("color", "red");
         content->setProperty("text", _content);
         qDebug() << QString("compile failed " + _content);
