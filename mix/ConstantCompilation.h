@@ -32,9 +32,9 @@ class ConstantCompilation : public Feature
 
 public:
     ConstantCompilation(QTextDocument* doc);
-    void start();
-    QString title();
-    QString tabUrl();
+    void start() override;
+    QString title() override;
+    QString tabUrl() override;
 
 private:
     QTextDocument* m_editor;
