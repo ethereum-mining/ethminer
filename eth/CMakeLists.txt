@@ -14,6 +14,7 @@ target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
 
 if(EVMJIT)
+	target_link_libraries(${EXECUTABLE} evm)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 

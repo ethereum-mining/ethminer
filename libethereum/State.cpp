@@ -536,10 +536,10 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
+h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h256s ret;
+	h512s ret;
 	auto ts = _tq.transactions();
 
 	for (int goodTxs = 1; goodTxs;)
@@ -554,7 +554,7 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 					uncommitToMine();
 //					boost::timer t;
 					execute(i.second);
-					ret.push_back(m_receipts.back().changes().bloom());
+					ret.push_back(m_receipts.back().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
 //					cnote << "TX took:" << t.elapsed() * 1000;
@@ -804,7 +804,7 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
+//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
 #ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
@@ -879,7 +879,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
+//	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
 //	cnote << m_state;
 //	cnote << *this;
 
