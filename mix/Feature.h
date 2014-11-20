@@ -34,6 +34,7 @@ public:
     Feature();
     virtual QString tabUrl() { return ""; }
     virtual QString title() { return ""; }
+    virtual void start() {}
     void addContentOn(QObject* tabView);
 
 protected:

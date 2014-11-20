@@ -20,11 +20,12 @@
  * Ethereum IDE client.
  */
 
-#ifndef CODEEDITOREXTENSIONMANAGER_H
-#define CODEEDITOREXTENSIONMANAGER_H
+#ifndef CODEEDITOREXTENSIONMAN_H
+#define CODEEDITOREXTENSIONMAN_H
 
 #include <QQuickItem>
 #include <QTextDocument>
+#include <QVector>
 #include "Feature.h"
 
 class CodeEditorExtensionManager : public QObject
@@ -36,15 +37,17 @@ class CodeEditorExtensionManager : public QObject
 
 public:
     CodeEditorExtensionManager();
+    ~CodeEditorExtensionManager();
     void initExtensions();
     void setEditor(QQuickItem*);
     void setTabView(QQuickItem*);
 
 private:
     QQuickItem* m_editor;
+    QVector<Feature*> m_features;
     QQuickItem* m_tabView;
     QTextDocument* m_doc;
     void loadEditor(QQuickItem*);
 };
 
-#endif // CODEEDITOREXTENSIONMANAGER_H
+#endif // CODEEDITOREXTENSIONMAN_H

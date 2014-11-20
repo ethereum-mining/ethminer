@@ -40,18 +40,19 @@ ConstantCompilation::ConstantCompilation(QTextDocument* _doc)
     m_editor = _doc;
 }
 
-QString ConstantCompilation::tabUrl(){
-    return QStringLiteral("qrc:/qml/BasicContent.qml");
-}
-
-void ConstantCompilation::start()
+QString ConstantCompilation::tabUrl()
 {
-    connect(m_editor, SIGNAL(contentsChange(int,int,int)), this, SLOT(compile()));
+    return QStringLiteral("qrc:/qml/BasicContent.qml");
 }
 
 QString ConstantCompilation::title()
 {
     return "compiler";
+}
+
+void ConstantCompilation::start()
+{
+    connect(m_editor, SIGNAL(contentsChange(int,int,int)), this, SLOT(compile()));
 }
 
 void ConstantCompilation::compile()

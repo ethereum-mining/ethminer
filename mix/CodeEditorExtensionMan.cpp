@@ -38,6 +38,13 @@ CodeEditorExtensionManager::CodeEditorExtensionManager()
 {    
 }
 
+CodeEditorExtensionManager::~CodeEditorExtensionManager()
+{
+    for (int k = 0; k < m_features.length(); k++){
+        delete m_features.at(k);
+    }
+}
+
 void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
     if (!_editor)
@@ -61,10 +68,11 @@ void CodeEditorExtensionManager::initExtensions()
 {
     try{
         //only one for now
-        ConstantCompilation* compil = new ConstantCompilation(m_doc);
-        if (compil->tabUrl() != "")
-            compil->addContentOn(m_tabView);
-        compil->start();
+        ConstantCompilation* m_constantCompilation = new ConstantCompilation(m_doc);
+        if (m_constantCompilation->tabUrl() != "")
+            m_constantCompilation->addContentOn(m_tabView);
+        m_constantCompilation->start();
+        m_features.append(m_constantCompilation);
     }
     catch (dev::Exception const& exception){
         qDebug() << "unable to load extensions: ";

@@ -47,7 +47,6 @@ void Feature::addContentOn(QObject* tabView) {
                                 Q_ARG(QVariant, QVariant::fromValue(component)));
 
         m_view = qvariant_cast<QObject*>(returnValue);
-
     }
     catch (dev::Exception const& exception){
         qDebug() << exception.what();
