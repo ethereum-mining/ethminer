@@ -28,24 +28,24 @@
 #include <QQmlComponent>
 #include <QQuickTextDocument>
 #include "CodeEditorExtensionMan.h"
-#include "ConstantCompilation.h"
+#include "ConstantCompilationCtrl.h"
 #include "features.h"
 #include "ApplicationCtx.h"
 #include <libevm/VM.h>
 using namespace dev;
 
-CodeEditorExtensionManager::CodeEditorExtensionManager()
+CodeEditorExtensionMan::CodeEditorExtensionMan()
 {    
 }
 
-CodeEditorExtensionManager::~CodeEditorExtensionManager()
+CodeEditorExtensionMan::~CodeEditorExtensionMan()
 {
     for (int k = 0; k < m_features.length(); k++){
         delete m_features.at(k);
     }
 }
 
-void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
+void CodeEditorExtensionMan::loadEditor(QQuickItem* _editor)
 {
     if (!_editor)
         return;
@@ -64,7 +64,7 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
     }
 }
 
-void CodeEditorExtensionManager::initExtensions()
+void CodeEditorExtensionMan::initExtensions()
 {
     try{
         //only one for now
@@ -80,11 +80,11 @@ void CodeEditorExtensionManager::initExtensions()
     }
 }
 
-void CodeEditorExtensionManager::setEditor(QQuickItem* _editor){
+void CodeEditorExtensionMan::setEditor(QQuickItem* _editor){
     this->loadEditor(_editor);
     this->initExtensions();
 }
 
-void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView){
+void CodeEditorExtensionMan::setTabView(QQuickItem* _tabView){
     m_tabView = _tabView;
 }

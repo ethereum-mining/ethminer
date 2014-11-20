@@ -28,7 +28,7 @@
 #include <QVector>
 #include "Feature.h"
 
-class CodeEditorExtensionManager : public QObject
+class CodeEditorExtensionMan : public QObject
 {
     Q_OBJECT
 
@@ -36,8 +36,8 @@ class CodeEditorExtensionManager : public QObject
     Q_PROPERTY(QQuickItem* tabView MEMBER m_tabView WRITE setTabView)
 
 public:
-    CodeEditorExtensionManager();
-    ~CodeEditorExtensionManager();
+    CodeEditorExtensionMan();
+    ~CodeEditorExtensionMan();
     void initExtensions();
     void setEditor(QQuickItem*);
     void setTabView(QQuickItem*);

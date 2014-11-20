@@ -2,6 +2,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
+
 if (APPLE)
 	# Add homebrew path for qt5
 	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
