@@ -70,7 +70,7 @@ private:
 // INLINE:
 template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
-	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? _offset + _size : 0; };
+	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
 
 	if (m_jumpDests.empty())
 	{
