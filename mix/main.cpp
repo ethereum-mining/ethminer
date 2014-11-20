@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     ApplicationCtx::SetApplicationContext(engine);
     QObject::connect(&app, SIGNAL(lastWindowClosed()), ApplicationCtx::GetInstance(), SLOT(QuitApplication())); //use to kill ApplicationContext and other stuff
 
-    engine->load(QUrl(QStringLiteral("qrc:/main.qml")));
+    engine->load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
     return app.exec();
 }
 
