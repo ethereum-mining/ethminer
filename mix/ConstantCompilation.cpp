@@ -41,7 +41,7 @@ ConstantCompilation::ConstantCompilation(QTextDocument* _doc)
 }
 
 QString ConstantCompilation::tabUrl(){
-    return QStringLiteral("qrc:/BasicContent.qml");
+    return QStringLiteral("qrc:/qml/BasicContent.qml");
 }
 
 void ConstantCompilation::start()
