@@ -9,6 +9,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(..)
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 link_directories(../libethereum)
 
 # Find Qt5 for Apple and update src_list for windows

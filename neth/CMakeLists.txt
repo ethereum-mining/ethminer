@@ -19,7 +19,7 @@ target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 if(JSON_RPC_CPP_FOUND)
-target_link_libraries(${EXECUTABLE} web3jsonrpc)
+    target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
