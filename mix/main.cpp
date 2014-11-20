@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     QQmlApplicationEngine* engine = new QQmlApplicationEngine();
-    qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+    qmlRegisterType<CodeEditorExtensionMan>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 
     ApplicationCtx::SetApplicationContext(engine);
     QObject::connect(&app, SIGNAL(lastWindowClosed()), ApplicationCtx::GetInstance(), SLOT(QuitApplication())); //use to kill ApplicationContext and other stuff

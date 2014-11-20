@@ -24,6 +24,7 @@
 #define CONSTANTCOMPILATION_H
 
 #include <QTextDocument>
+#include "ConstantCompilationModel.h"
 #include "Feature.h"
 
 class ConstantCompilation : public Feature
@@ -32,13 +33,16 @@ class ConstantCompilation : public Feature
 
 public:
     ConstantCompilation(QTextDocument* doc);
+    ~ConstantCompilation();
     void start() override;
     QString title() override;
     QString tabUrl() override;
 
 private:
     QTextDocument* m_editor;
-    void writeOutPut(bool success, QString content);
+    ConstantCompilationModel* compilationModel;
+    void writeOutPut(compilerResult);
+    void resetOutPut();
 
 public Q_SLOTS:
     void compile();
