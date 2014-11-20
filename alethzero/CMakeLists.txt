@@ -1,6 +1,7 @@
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 if (APPLE)
 	# Add homebrew path for qt5
@@ -53,7 +54,7 @@ else ()
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
-target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp serpent lll solidity evmcore devcore web3jsonrpc jsqrc)
+target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp serpent lll solidity evmcore devcore web3jsonrpc jsqrc ${JSONCPP_LIBRARIES})
 
 if (APPLE)
 	# First have qt5 install plugins and frameworks

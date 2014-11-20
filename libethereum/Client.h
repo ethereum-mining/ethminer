@@ -79,9 +79,11 @@ static const int GenesisBlock = INT_MIN;
 
 struct InstalledFilter
 {
-	InstalledFilter(MessageFilter const& _f): filter(_f) {}
+//	InstalledFilter(MessageFilter const& _f): filter(_f) {}
+//	MessageFilter filter;
+	InstalledFilter(LogFilter const& _f): filter(_f) {}
 
-	MessageFilter filter;
+	LogFilter filter;
 	unsigned refCount = 1;
 };
 
@@ -152,14 +154,14 @@ public:
 	virtual bytes codeAt(Address _a, int _block) const;
 	virtual std::map<u256, u256> storageAt(Address _a, int _block) const;
 
-	virtual unsigned installWatch(MessageFilter const& _filter);
+	virtual unsigned installWatch(LogFilter const& _filter);
 	virtual unsigned installWatch(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
 	virtual bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
 	virtual bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
-	virtual PastMessages messages(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return messages(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return PastMessages(); } }
-	virtual PastMessages messages(MessageFilter const& _filter) const;
+	virtual LogEntries logs(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LogEntries(); } }
+	virtual LogEntries logs(LogFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -259,7 +261,7 @@ private:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(h256 _pendingTransactionBloom, h256Set& o_changed) const;
+	void appendFromNewPending(LogBloom _pendingTransactionBloom, h256Set& o_changed) const;
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.

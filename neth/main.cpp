@@ -27,7 +27,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
@@ -476,9 +476,11 @@ int main(int argc, char** argv)
 
 #if ETH_JSONRPC
 	auto_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -552,7 +554,8 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}

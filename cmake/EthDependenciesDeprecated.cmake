@@ -1,6 +1,6 @@
 # search for and configure dependencies
 
-# deprecated. TODO will rewrite to proper CMake packages
+# deprecated. DO NOT ADD any new stuff here. Proper dependency fetching is done in EthDependencies.cmake 
 
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")

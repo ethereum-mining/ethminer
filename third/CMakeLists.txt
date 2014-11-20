@@ -1,6 +1,7 @@
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 if (APPLE)
 	# Add homebrew path for qt5

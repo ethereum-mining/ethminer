@@ -28,7 +28,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
 #include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libdevcrypto/FileSystem.h>
@@ -337,10 +336,12 @@ int main(int argc, char** argv)
 		web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
-	auto_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::CorsHttpServer(jsonrpc));
+		jsonrpcServer = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -428,7 +429,8 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::CorsHttpServer(jsonrpc));
+				jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
 			}
