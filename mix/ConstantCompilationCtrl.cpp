@@ -20,53 +20,55 @@
  * Ethereum IDE client.
  */
 
-#include "ConstantCompilationCtrl.h"
-#include "ConstantCompilationModel.h"
 #include <QQuickItem>
 #include <QtCore/QFileInfo>
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
+#include "ConstantCompilationCtrl.h"
+#include "ConstantCompilationModel.h"
+using namespace dev::mix;
 
-ConstantCompilation::ConstantCompilation(QTextDocument* _doc)
+ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc)
 {
     m_editor = _doc;
-    compilationModel = new ConstantCompilationModel();
+    m_compilationModel = new ConstantCompilationModel();
 }
 
-ConstantCompilation::~ConstantCompilation()
+ConstantCompilationCtrl::~ConstantCompilationCtrl()
 {
-    delete compilationModel;
+    delete m_compilationModel;
 }
 
-QString ConstantCompilation::tabUrl()
+QString ConstantCompilationCtrl::contentUrl() const
 {
     return QStringLiteral("qrc:/qml/BasicContent.qml");
 }
 
-QString ConstantCompilation::title()
+QString ConstantCompilationCtrl::title() const
 {
     return "compiler";
 }
 
-void ConstantCompilation::start()
+void ConstantCompilationCtrl::start() const
 {
     connect(m_editor, SIGNAL(contentsChange(int,int,int)), this, SLOT(compile()));
 }
 
-void ConstantCompilation::compile()
+void ConstantCompilationCtrl::compile()
 {
     QString codeContent = m_editor->toPlainText().replace("\n", "");
-    if (codeContent == ""){
+    if (codeContent == "")
+    {
         resetOutPut();
         return;
     }
-    compilerResult res = compilationModel->compile(m_editor->toPlainText());
+    CompilerResult res = m_compilationModel->compile(m_editor->toPlainText());
     writeOutPut(res);
 }
 
-void ConstantCompilation::resetOutPut()
+void ConstantCompilationCtrl::resetOutPut()
 {
     QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
     QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
@@ -74,24 +76,22 @@ void ConstantCompilation::resetOutPut()
     content->setProperty("text", "");
 }
 
-void ConstantCompilation::writeOutPut(compilerResult res)
+void ConstantCompilationCtrl::writeOutPut(CompilerResult _res)
 {
     QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
     QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
-    if (res.success){
+    if (_res.success)
+    {
         status->setProperty("text", "succeeded");
         status->setProperty("color", "green");
-        content->setProperty("text", res.hexCode);
-        qDebug() << QString("compile succeeded " + res.hexCode);
+        content->setProperty("text", _res.hexCode);
+        qDebug() << QString("compile succeeded " + _res.hexCode);
     }
-    else {
+    else
+    {
         status->setProperty("text", "failure");
         status->setProperty("color", "red");
-        content->setProperty("text", res.comment);
-        qDebug() << QString("compile failed " + res.comment);
+        content->setProperty("text", _res.comment);
+        qDebug() << QString("compile failed " + _res.comment);
     }
 }
-
-
-
-

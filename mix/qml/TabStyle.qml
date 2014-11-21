@@ -8,7 +8,6 @@ TabViewStyle {
             color: "lightgray"
         }
         tab: Rectangle {
-
             color: "lightsteelblue"
             implicitWidth: Math.max(text.width + 4, 80)
             implicitHeight: 20

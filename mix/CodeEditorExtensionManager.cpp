@@ -27,64 +27,66 @@
 #include <QtDeclarative/QDeclarativeView>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
-#include "CodeEditorExtensionMan.h"
+#include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
 #include "features.h"
 #include "ApplicationCtx.h"
-#include <libevm/VM.h>
-using namespace dev;
+#include "CodeEditorExtensionManager.h"
+using namespace dev::mix;
 
-CodeEditorExtensionMan::CodeEditorExtensionMan()
-{    
-}
-
-CodeEditorExtensionMan::~CodeEditorExtensionMan()
+CodeEditorExtensionManager::~CodeEditorExtensionManager()
 {
-    for (int k = 0; k < m_features.length(); k++){
-        delete m_features.at(k);
-    }
+    m_features.clear();
 }
 
-void CodeEditorExtensionMan::loadEditor(QQuickItem* _editor)
+void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
     if (!_editor)
         return;
-    try{
+    try
+    {
         QVariant doc = _editor->property("textDocument");
-        if (doc.canConvert<QQuickTextDocument*>()) {
+        if (doc.canConvert<QQuickTextDocument*>())
+        {
             QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
-            if (qqdoc) {
+            if (qqdoc)
                 m_doc = qqdoc->textDocument();
-            }
         }
     }
-    catch (dev::Exception const& exception){
+    catch (...)
+    {
         qDebug() << "unable to load editor: ";
-        qDebug() << exception.what();
     }
 }
 
-void CodeEditorExtensionMan::initExtensions()
+void CodeEditorExtensionManager::initExtensions()
 {
-    try{
-        //only one for now
-        ConstantCompilation* m_constantCompilation = new ConstantCompilation(m_doc);
-        if (m_constantCompilation->tabUrl() != "")
-            m_constantCompilation->addContentOn(m_tabView);
-        m_constantCompilation->start();
-        m_features.append(m_constantCompilation);
+    //only one for now
+    std::shared_ptr<ConstantCompilationCtrl> m_constantCompilation(new ConstantCompilationCtrl(m_doc));
+    ConstantCompilationCtrl* ext = m_constantCompilation.get();
+    if (ext->contentUrl() != "")
+    {
+        try
+        {
+            ext->addContentOn(m_tabView);
+        }
+        catch (...)
+        {
+            qDebug() << "Exception when adding content into view.";
+            return;
+        }
     }
-    catch (dev::Exception const& exception){
-        qDebug() << "unable to load extensions: ";
-        qDebug() << exception.what();
-    }
+    ext->start();
+    m_features.append(m_constantCompilation);
 }
 
-void CodeEditorExtensionMan::setEditor(QQuickItem* _editor){
+void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
+{
     this->loadEditor(_editor);
     this->initExtensions();
 }
 
-void CodeEditorExtensionMan::setTabView(QQuickItem* _tabView){
+void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
+{
     m_tabView = _tabView;
 }
