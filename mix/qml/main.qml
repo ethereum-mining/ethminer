@@ -4,7 +4,6 @@ import QtQuick.Controls.Styles 1.2
 import CodeEditorExtensionManager 1.0
 
 ApplicationWindow {
-
     visible: true
     width: 1000
     height: 480

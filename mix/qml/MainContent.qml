@@ -13,7 +13,7 @@ Rectangle {
         anchors.fill: parent
         orientation: Qt.Vertical        
         Rectangle {
-            anchors.top : parent.top
+            anchors.top: parent.top
             id: contentView
             width: parent.width
             height: parent.height * 0.7

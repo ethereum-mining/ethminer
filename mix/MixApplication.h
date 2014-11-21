@@ -14,31 +14,33 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Feature.h
+/** @file main.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
+ * This class will be use instead of QApplication to launch the application. the method 'notify' allows to catch all exceptions.
+ * Not use for now: TODO.
  */
 
-#ifndef FEATURE_H
-#define FEATURE_H
+#pragma once
 
 #include <QApplication>
-#include <QQmlComponent>
 
-class Feature : public QObject
+namespace dev
+{
+
+namespace mix
+{
+
+class MixApplication : public QApplication
 {
     Q_OBJECT
 
 public:
-    Feature();
-    virtual QString tabUrl() { return ""; }
-    virtual QString title() { return ""; }
-    virtual void start() {}
-    void addContentOn(QObject* tabView);
-
-protected:
-    QObject* m_view;
+    MixApplication(int _argc, char* _argv[]);
+    virtual ~MixApplication() { }
+    virtual bool notify(QObject* _receiver, QEvent* _event);
 };
 
-#endif // FEATURE_H
+}
+
+}

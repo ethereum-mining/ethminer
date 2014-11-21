@@ -14,16 +14,19 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.h
+/** @file CodeEditorExtensionMan.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Provide an access to the current QQmlApplicationEngine which is used to add QML file on the fly.
- * In the future this class can be extended to add more variable related to the context of the application.
+ * Ethereum IDE client.
  */
 
 #pragma once
 
-#include <QQmlApplicationEngine>
+#include "memory"
+#include <QQuickItem>
+#include <QTextDocument>
+#include <QVector>
+#include "ConstantCompilationCtrl.h"
 
 namespace dev
 {
@@ -31,23 +34,26 @@ namespace dev
 namespace mix
 {
 
-class ApplicationCtx : public QObject
+class CodeEditorExtensionManager : public QObject
 {
     Q_OBJECT
 
+    Q_PROPERTY(QQuickItem* editor MEMBER m_editor WRITE setEditor)
+    Q_PROPERTY(QQuickItem* tabView MEMBER m_tabView WRITE setTabView)
+
 public:
-    ApplicationCtx(QQmlApplicationEngine* _engine) { m_applicationEngine = _engine; }
-    ~ApplicationCtx() { delete m_applicationEngine; }
-    static ApplicationCtx* getInstance() { return Instance; }
-    static void setApplicationContext(QQmlApplicationEngine* _engine) { Instance = new ApplicationCtx(_engine); }
-    QQmlApplicationEngine* appEngine();
+    CodeEditorExtensionManager() {}
+    ~CodeEditorExtensionManager();
+    void initExtensions();
+    void setEditor(QQuickItem*);
+    void setTabView(QQuickItem*);
 
 private:
-    static ApplicationCtx* Instance;
-    QQmlApplicationEngine* m_applicationEngine;
-
-public slots:
-    void quitApplication() { delete Instance; }
+    QQuickItem* m_editor;
+    QVector<std::shared_ptr<ConstantCompilationCtrl>> m_features;
+    QQuickItem* m_tabView;
+    QTextDocument* m_doc;
+    void loadEditor(QQuickItem*);
 };
 
 }

@@ -6,6 +6,7 @@ Rectangle {
     width: parent.width
     height: parent.height
     color: "lightgray"
+
     Text {
         font.pointSize: 7
         anchors.left: parent.left
