@@ -661,6 +661,12 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
+	if (m_currentBlock.logBloom != logBloom())
+	{
+		cwarn << "Bad log bloom!";
+		BOOST_THROW_EXCEPTION(InvalidLogBloom());
+	}
+
 	// Initialise total difficulty calculation.
 	u256 tdIncrease = m_currentBlock.difficulty;
 
