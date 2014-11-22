@@ -757,7 +757,7 @@ void Host::run(boost::system::error_code const& error)
 	}
 	
 	
-	if (s_lasttick == c_timerInterval * 100)
+	if (s_lasttick == c_timerInterval * 10)
 	{
 		growPeers();
 		prunePeers();
@@ -782,7 +782,7 @@ void Host::run(boost::system::error_code const& error)
 		pingAll();
 	}
 
-	auto runcb = [this](boost::system::error_code const& error)->void{ run(error); };
+	auto runcb = [this](boost::system::error_code const& error) -> void{ run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
 	m_timer->async_wait(runcb);
 }
