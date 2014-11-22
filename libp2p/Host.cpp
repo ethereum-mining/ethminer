@@ -793,7 +793,7 @@ void Host::run(boost::system::error_code const& error)
 			
 void Host::startedWorking()
 {
-	if (asserts(!m_timer))
+	if (!m_timer)
 	{
 		// no timer means this is first run and network must be started
 		// (run once when host worker thread calls startedWorking())
