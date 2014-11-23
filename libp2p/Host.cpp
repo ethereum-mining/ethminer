@@ -46,15 +46,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-// Addresses skipped during network interface discovery
-// @todo: filter out ivp6 link-local network mess on macos, ex: fe80::1%lo0
-static const set<bi::address> c_rejectAddresses = {
-	{bi::address_v4::from_string("127.0.0.1")},
-	{bi::address_v4::from_string("0.0.0.0")},
-	{bi::address_v6::from_string("::1")},
-	{bi::address_v6::from_string("::")}
-};
-
 std::vector<bi::address> Host::getInterfaceAddresses()
 {
 	std::vector<bi::address> addresses;
@@ -86,7 +77,7 @@ std::vector<bi::address> Host::getInterfaceAddresses()
 		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
 		char *addrStr = inet_ntoa(addr);
 		bi::address address(bi::address::from_string(addrStr));
-		if (std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), address) == c_rejectAddresses.end())
+		if (!isLocalHostAddress(address))
 			addresses.push_back(ad.to_v4());
 	}
 	
@@ -105,7 +96,7 @@ std::vector<bi::address> Host::getInterfaceAddresses()
 		{
 			in_addr addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			boost::asio::ip::address_v4 address(boost::asio::detail::socket_ops::network_to_host_long(addr.s_addr));
-			if (std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), address) == c_rejectAddresses.end())
+			if (!isLocalHostAddress(address))
 				addresses.push_back(address);
 		}
 		else if (ifa->ifa_addr->sa_family == AF_INET6)
@@ -115,11 +106,13 @@ std::vector<bi::address> Host::getInterfaceAddresses()
 			boost::asio::ip::address_v6::bytes_type bytes;
 			memcpy(&bytes[0], addr.s6_addr, 16);
 			boost::asio::ip::address_v6 address(bytes, sockaddr->sin6_scope_id);
-			if (std::find(c_rejectAddresses.begin(), c_rejectAddresses.end(), address) == c_rejectAddresses.end())
+			if (!isLocalHostAddress(address))
 				addresses.push_back(address);
 		}
 	}
-    if (ifaddr!=NULL) freeifaddrs(ifaddr);
+	
+	if (ifaddr!=NULL)
+		freeifaddrs(ifaddr);
 	
 #endif
 	
@@ -148,7 +141,6 @@ int Host::listen4(bi::tcp::acceptor* _acceptor, unsigned short _listenPort)
 			{
 				// both attempts failed
 				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
-				_acceptor->close();
 			}
 			
 			// first attempt failed
@@ -175,9 +167,9 @@ bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses
 	if (upnp && upnp->isValid())
 	{
 		bi::address paddr;
-		int p;
-		for (auto const& addr : _ifAddresses)
-			if (addr.is_v4() && isPrivateAddress(addr) && (p = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
+		int extPort = 0;
+		for (auto const& addr: _ifAddresses)
+			if (addr.is_v4() && isPrivateAddress(addr) && (extPort = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
 			{
 				paddr = addr;
 				break;
@@ -185,17 +177,17 @@ bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses
 
 		auto eip = upnp->externalIP();
 		bi::address eipaddr(bi::address::from_string(eip));
-		if (p && eip != string("0.0.0.0") && !isPrivateAddress(eipaddr))
+		if (extPort && eip != string("0.0.0.0") && !isPrivateAddress(eipaddr))
 		{
-			clog(NetNote) << "Punched through NAT and mapped local port" << _listenPort << "onto external port" << p << ".";
+			clog(NetNote) << "Punched through NAT and mapped local port" << _listenPort << "onto external port" << extPort << ".";
 			clog(NetNote) << "External addr:" << eip;
 			o_upnpifaddr = paddr;
-			upnpep = bi::tcp::endpoint(eipaddr, (unsigned short)p);
+			upnpep = bi::tcp::endpoint(eipaddr, (unsigned short)extPort);
 		}
 		else
 			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place).";
 		
-		if(upnp)
+		if (upnp)
 			delete upnp;
 	}
 
@@ -385,7 +377,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 
 	// populate interfaces we'll listen on (eth listens on all interfaces); ignores local
 	for (auto addr: m_ifAddresses)
-		if ((m_netPrefs.localNetworking || !isPrivateAddress(addr)) && find(c_rejectAddresses.begin(), c_rejectAddresses.end(), addr) == c_rejectAddresses.end())
+		if ((m_netPrefs.localNetworking || !isPrivateAddress(addr)) && !isLocalHostAddress(addr))
 			m_peerAddresses.insert(addr);
 	
 	// if user supplied address is a public address then we use it
@@ -393,7 +385,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	bi::address reqpublicaddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
 	bi::tcp::endpoint reqpublic(reqpublicaddr, m_listenPort);
 	bool isprivate = isPrivateAddress(reqpublicaddr);
-	bool ispublic = isprivate ? false : find(c_rejectAddresses.begin(), c_rejectAddresses.end(), reqpublicaddr) == c_rejectAddresses.end();
+	bool ispublic = !isprivate && !isLocalHostAddress(reqpublicaddr);
 	if (!reqpublicaddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
 	{
 		if (!m_peerAddresses.count(reqpublicaddr))
@@ -709,7 +701,7 @@ void Host::run(boost::system::error_code const& error)
 	// network running
 	if (m_run)
 	{
-		if (s_lasttick == c_timerInterval * 50)
+		if (s_lasttick >= c_timerInterval * 50)
 		{
 			growPeers();
 			prunePeers();
@@ -734,7 +726,7 @@ void Host::run(boost::system::error_code const& error)
 			pingAll();
 		}
 		
-		auto runcb = [this](boost::system::error_code const& error) -> void{ run(error); };
+		auto runcb = [this](boost::system::error_code const& error) -> void { run(error); };
 		m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
 		m_timer->async_wait(runcb);
 		
