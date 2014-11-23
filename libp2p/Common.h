@@ -47,6 +47,7 @@ namespace p2p
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
+bool isLocalHostAddress(bi::address const& _addressToCheck);
 
 class UPnP;
 class Capability;
