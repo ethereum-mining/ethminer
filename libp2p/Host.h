@@ -110,7 +110,7 @@ struct NetworkPreferences
 	bool upnp = true;
 	bool localNetworking = false;
 };
-	
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
