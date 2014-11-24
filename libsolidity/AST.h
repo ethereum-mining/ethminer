@@ -66,7 +66,7 @@ public:
 
 	/// Creates a @ref TypeError exception and decorates it with the location of the node and
 	/// the given description
-	TypeError createTypeError(std::string const& _description);
+	TypeError createTypeError(std::string const& _description) const;
 
 	///@{
 	///@name equality operators
@@ -122,6 +122,7 @@ public:
 
 	/// Returns the functions that make up the calling interface in the intended order.
 	std::vector<FunctionDefinition const*> getInterfaceFunctions() const;
+
 private:
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
 	std::vector<ASTPointer<VariableDeclaration>> m_stateVariables;
@@ -139,7 +140,14 @@ public:
 
 	std::vector<ASTPointer<VariableDeclaration>> const& getMembers() const { return m_members; }
 
+	/// Checks that the members do not include any recursive structs and have valid types
+	/// (e.g. no functions).
+	void checkValidityOfMembers();
+
 private:
+	void checkMemberTypes();
+	void checkRecursion();
+
 	std::vector<ASTPointer<VariableDeclaration>> m_members;
 };
 
@@ -188,6 +196,7 @@ public:
 
 	/// Checks that all parameters have allowed types and calls checkTypeRequirements on the body.
 	void checkTypeRequirements();
+
 private:
 	bool m_isPublic;
 	ASTPointer<ParameterList> m_parameters;
@@ -210,7 +219,6 @@ public:
 		Declaration(_location, _name), m_typeName(_type) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 
-	bool isTypeGivenExplicitly() const { return bool(m_typeName); }
 	TypeName* getTypeName() const { return m_typeName.get(); }
 
 	/// Returns the declared or inferred type. Can be an empty pointer if no type was explicitly
@@ -222,6 +230,27 @@ private:
 	ASTPointer<TypeName> m_typeName; ///< can be empty ("var")
 
 	std::shared_ptr<Type const> m_type; ///< derived type, initially empty
+};
+
+/**
+ * Pseudo AST node that is used as declaration for "this", "msg", "tx" and "block" when the
+ * identifier is encountered. Will never have a valid location in the source code.
+ */
+class MagicVariableDeclaration: public Declaration
+{
+public:
+	enum class VariableKind { THIS, MSG, TX, BLOCK };
+	MagicVariableDeclaration(VariableKind _kind, ASTString const& _name, std::shared_ptr<Type const> const& _type):
+		Declaration(Location(), std::make_shared<ASTString>(_name)), m_kind(_kind), m_type(_type) {}
+	virtual void accept(ASTVisitor&) override { BOOST_THROW_EXCEPTION(InternalCompilerError()
+							<< errinfo_comment("MagicVariableDeclaration used inside real AST.")); }
+
+	std::shared_ptr<Type const> const& getType() const { return m_type; }
+	VariableKind getKind() const { return m_kind; }
+
+private:
+	VariableKind m_kind;
+	std::shared_ptr<Type const> m_type;
 };
 
 /// Types
@@ -238,6 +267,7 @@ public:
 
 	/// Retrieve the element of the type hierarchy this node refers to. Can return an empty shared
 	/// pointer until the types have been resolved using the @ref NameAndTypeResolver.
+	/// If it returns an empty shared pointer after that, this indicates that the type was not found.
 	virtual std::shared_ptr<Type> toType() const = 0;
 };
 
@@ -263,8 +293,7 @@ private:
 };
 
 /**
- * Name referring to a user-defined type (i.e. a struct).
- * @todo some changes are necessary if this is also used to refer to contract types later
+ * Name referring to a user-defined type (i.e. a struct, contract, etc.).
  */
 class UserDefinedTypeName: public TypeName
 {
@@ -275,13 +304,13 @@ public:
 	virtual std::shared_ptr<Type> toType() const override { return Type::fromUserDefinedTypeName(*this); }
 
 	ASTString const& getName() const { return *m_name; }
-	void setReferencedStruct(StructDefinition& _referencedStruct) { m_referencedStruct = &_referencedStruct; }
-	StructDefinition const* getReferencedStruct() const { return m_referencedStruct; }
+	void setReferencedDeclaration(Declaration& _referencedDeclaration) { m_referencedDeclaration = &_referencedDeclaration; }
+	Declaration const* getReferencedDeclaration() const { return m_referencedDeclaration; }
 
 private:
 	ASTPointer<ASTString> m_name;
 
-	StructDefinition* m_referencedStruct;
+	Declaration* m_referencedDeclaration;
 };
 
 /**
