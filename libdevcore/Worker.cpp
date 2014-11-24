@@ -41,7 +41,8 @@ void Worker::startWorking()
 		startedWorking();
 		while (!m_stop)
 		{
-			this_thread::sleep_for(chrono::milliseconds(30));
+			if (m_idleWaitMs)
+				this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
 			doWork();
 		}
 		cdebug << "Finishing up worker thread";
