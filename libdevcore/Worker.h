@@ -31,7 +31,7 @@ namespace dev
 class Worker
 {
 protected:
-	Worker(std::string const& _name = "anon", unsigned _idlewaitms = 30): m_name(_name), m_idlewaitms(_idlewaitms) {}
+	Worker(std::string const& _name = "anon", unsigned _idleWaitMs = 30): m_name(_name), m_idleWaitMs(_idleWaitMs) {}
 
 	/// Move-constructor.
 	Worker(Worker&& _m) { std::swap(m_name, _m.m_name); }
@@ -56,7 +56,7 @@ protected:
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
 	
-	/// Called continuously following sleep for m_idlewaitms.
+	/// Called continuously following sleep for m_idleWaitMs.
 	virtual void doWork() = 0;
 	
 	/// Called when is to be stopped, just prior to thread being joined.
@@ -64,7 +64,7 @@ protected:
 
 private:
 	std::string m_name;
-	unsigned m_idlewaitms;
+	unsigned m_idleWaitMs;
 	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.
