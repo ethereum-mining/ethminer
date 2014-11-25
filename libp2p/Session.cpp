@@ -344,7 +344,7 @@ bool Session::interpret(RLP const& _r)
 //				goto CONTINUE;	// Wierd port.
 
 			// Avoid our random other addresses that they might end up giving us.
-			for (auto i: m_server->m_addresses)
+			for (auto i: m_server->m_peerAddresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
 
