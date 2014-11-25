@@ -60,13 +60,24 @@ shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 
 shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
 {
-	return make_shared<StructType>(*_typeName.getReferencedStruct());
+	Declaration const* declaration = _typeName.getReferencedDeclaration();
+	if (StructDefinition const* structDef = dynamic_cast<StructDefinition const*>(declaration))
+		return make_shared<StructType>(*structDef);
+	else if (FunctionDefinition const* function = dynamic_cast<FunctionDefinition const*>(declaration))
+		return make_shared<FunctionType>(*function);
+	else if (ContractDefinition const* contract = dynamic_cast<ContractDefinition const*>(declaration))
+		return make_shared<ContractType>(*contract);
+	return shared_ptr<Type>();
 }
 
 shared_ptr<Type> Type::fromMapping(Mapping const& _typeName)
 {
 	shared_ptr<Type const> keyType = _typeName.getKeyType().toType();
+	if (!keyType)
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Error resolving type name."));
 	shared_ptr<Type const> valueType = _typeName.getValueType().toType();
+	if (!valueType)
+		BOOST_THROW_EXCEPTION(_typeName.getValueType().createTypeError("Invalid type name"));
 	return make_shared<MappingType>(keyType, valueType);
 }
 
@@ -85,6 +96,8 @@ shared_ptr<Type> Type::forLiteral(Literal const& _literal)
 		return shared_ptr<Type>();
 	}
 }
+
+const MemberList Type::EmptyMemberList = MemberList();
 
 shared_ptr<IntegerType> IntegerType::smallestTypeForLiteral(string const& _literal)
 {
@@ -176,6 +189,8 @@ u256 IntegerType::literalValue(Literal const& _literal) const
 	return u256(value);
 }
 
+const MemberList IntegerType::AddressMemberList = MemberList({{"balance", std::make_shared<IntegerType const>(256)}});
+
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
 	// conversion to integer is fine, but not to address
@@ -199,6 +214,15 @@ u256 BoolType::literalValue(Literal const& _literal) const
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Bool type constructed from non-boolean literal."));
 }
 
+bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	if (isImplicitlyConvertibleTo(_convertTo))
+		return true;
+	if (_convertTo.getCategory() == Category::INTEGER)
+		return dynamic_cast<IntegerType const&>(_convertTo).isAddress();
+	return false;
+}
+
 bool ContractType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -215,6 +239,11 @@ u256 ContractType::getStorageSize() const
 	return max<u256>(1, size);
 }
 
+string ContractType::toString() const
+{
+	return "contract " + m_contract.getName();
+}
+
 bool StructType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -226,15 +255,15 @@ bool StructType::operator==(Type const& _other) const
 u256 StructType::getStorageSize() const
 {
 	u256 size = 0;
-	for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
-		size += variable->getType()->getStorageSize();
+	for (pair<string, shared_ptr<Type const>> const& member: getMembers())
+		size += member.second->getStorageSize();
 	return max<u256>(1, size);
 }
 
 bool StructType::canLiveOutsideStorage() const
 {
-	for (unsigned i = 0; i < getMemberCount(); ++i)
-		if (!getMemberByIndex(i).getType()->canLiveOutsideStorage())
+	for (pair<string, shared_ptr<Type const>> const& member: getMembers())
+		if (!member.second->canLiveOutsideStorage())
 			return false;
 	return true;
 }
@@ -244,33 +273,30 @@ string StructType::toString() const
 	return string("struct ") + m_struct.getName();
 }
 
-unsigned StructType::getMemberCount() const
+MemberList const& StructType::getMembers() const
 {
-	return m_struct.getMembers().size();
+	// We need to lazy-initialize it because of recursive references.
+	if (!m_members)
+	{
+		map<string, shared_ptr<Type const>> members;
+		for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
+			members[variable->getName()] = variable->getType();
+		m_members.reset(new MemberList(members));
+	}
+	return *m_members;
 }
 
-unsigned StructType::memberNameToIndex(string const& _name) const
-{
-	vector<ASTPointer<VariableDeclaration>> const& members = m_struct.getMembers();
-	for (unsigned index = 0; index < members.size(); ++index)
-		if (members[index]->getName() == _name)
-			return index;
-	return unsigned(-1);
-}
-
-VariableDeclaration const& StructType::getMemberByIndex(unsigned _index) const
-{
-	return *m_struct.getMembers()[_index];
-}
-
-u256 StructType::getStorageOffsetOfMember(unsigned _index) const
+u256 StructType::getStorageOffsetOfMember(string const& _name) const
 {
 	//@todo cache member offset?
 	u256 offset;
-//	vector<ASTPointer<VariableDeclaration>> const& members = m_struct.getMembers();
-	for (unsigned index = 0; index < _index; ++index)
-		offset += getMemberByIndex(index).getType()->getStorageSize();
-	return offset;
+	for (ASTPointer<VariableDeclaration> variable: m_struct.getMembers())
+	{
+		offset += variable->getType()->getStorageSize();
+		if (variable->getName() == _name)
+			return offset;
+	}
+	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage offset of non-existing member requested."));
 }
 
 bool FunctionType::operator==(Type const& _other) const
@@ -283,8 +309,7 @@ bool FunctionType::operator==(Type const& _other) const
 
 string FunctionType::toString() const
 {
-	//@todo nice string for function types
-	return "function(...)returns(...)";
+	return "function " + m_function.getName();
 }
 
 bool MappingType::operator==(Type const& _other) const
@@ -306,6 +331,56 @@ bool TypeType::operator==(Type const& _other) const
 		return false;
 	TypeType const& other = dynamic_cast<TypeType const&>(_other);
 	return *getActualType() == *other.getActualType();
+}
+
+MagicType::MagicType(MagicType::Kind _kind):
+	m_kind(_kind)
+{
+	switch (m_kind)
+	{
+	case Kind::BLOCK:
+		m_members = MemberList({{"coinbase", make_shared<IntegerType const>(0, IntegerType::Modifier::ADDRESS)},
+								{"timestamp", make_shared<IntegerType const>(256)},
+								{"prevhash", make_shared<IntegerType const>(256, IntegerType::Modifier::HASH)},
+								{"difficulty", make_shared<IntegerType const>(256)},
+								{"number", make_shared<IntegerType const>(256)},
+								{"gaslimit", make_shared<IntegerType const>(256)}});
+		break;
+	case Kind::MSG:
+		m_members = MemberList({{"sender", make_shared<IntegerType const>(0, IntegerType::Modifier::ADDRESS)},
+								{"value", make_shared<IntegerType const>(256)}});
+		break;
+	case Kind::TX:
+		m_members = MemberList({{"origin", make_shared<IntegerType const>(0, IntegerType::Modifier::ADDRESS)},
+								{"gas", make_shared<IntegerType const>(256)},
+								{"gasprice", make_shared<IntegerType const>(256)}});
+		break;
+	default:
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown kind of magic."));
+	}
+}
+
+bool MagicType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	MagicType const& other = dynamic_cast<MagicType const&>(_other);
+	return other.m_kind == m_kind;
+}
+
+string MagicType::toString() const
+{
+	switch (m_kind)
+	{
+	case Kind::BLOCK:
+		return "block";
+	case Kind::MSG:
+		return "msg";
+	case Kind::TX:
+		return "tx";
+	default:
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown kind of magic."));
+	}
 }
 
 }
