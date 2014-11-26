@@ -137,7 +137,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = VMFace::create(VMFace::JIT, _gas).release();
+	m_vm = VMFace::create(VMFace::Interpreter, _gas).release();
 	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
 	return _init.empty();
 }
