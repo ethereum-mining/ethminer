@@ -160,6 +160,7 @@ bool ExpressionCompiler::visit(BinaryOperation& _binaryOperation)
 
 bool ExpressionCompiler::visit(FunctionCall& _functionCall)
 {
+	using Location = FunctionType::Location;
 	if (_functionCall.isTypeConversion())
 	{
 		//@todo struct construction
@@ -179,33 +180,90 @@ bool ExpressionCompiler::visit(FunctionCall& _functionCall)
 	}
 	else
 	{
-		//@todo: check for "external call" (to be stored in type)
-
-		// Calling convention: Caller pushes return address and arguments
-		// Callee removes them and pushes return values
-		FunctionDefinition const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType()).getFunction();
-
-		eth::AssemblyItem returnLabel = m_context.pushNewTag();
+		FunctionType const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType());
 		std::vector<ASTPointer<Expression>> const& arguments = _functionCall.getArguments();
-		if (asserts(arguments.size() == function.getParameters().size()))
+		if (asserts(arguments.size() == function.getParameterTypes().size()))
 			BOOST_THROW_EXCEPTION(InternalCompilerError());
-		for (unsigned i = 0; i < arguments.size(); ++i)
+
+		if (function.getLocation() == Location::INTERNAL)
 		{
-			arguments[i]->accept(*this);
-			appendTypeConversion(*arguments[i]->getType(), *function.getParameters()[i]->getType());
+			// Calling convention: Caller pushes return address and arguments
+			// Callee removes them and pushes return values
+
+			eth::AssemblyItem returnLabel = m_context.pushNewTag();
+			for (unsigned i = 0; i < arguments.size(); ++i)
+			{
+				arguments[i]->accept(*this);
+				appendTypeConversion(*arguments[i]->getType(), *function.getParameterTypes()[i]);
+			}
+			_functionCall.getExpression().accept(*this);
+
+			m_context.appendJump();
+			m_context << returnLabel;
+
+			// callee adds return parameters, but removes arguments and return label
+			m_context.adjustStackOffset(function.getReturnParameterTypes().size() - arguments.size() - 1);
+
+			// @todo for now, the return value of a function is its first return value, so remove
+			// all others
+			for (unsigned i = 1; i < function.getReturnParameterTypes().size(); ++i)
+				m_context << eth::Instruction::POP;
 		}
-		_functionCall.getExpression().accept(*this);
-
-		m_context.appendJump();
-		m_context << returnLabel;
-
-		// callee adds return parameters, but removes arguments and return label
-		m_context.adjustStackOffset(function.getReturnParameters().size() - arguments.size() - 1);
-
-		// @todo for now, the return value of a function is its first return value, so remove
-		// all others
-		for (unsigned i = 1; i < function.getReturnParameters().size(); ++i)
-			m_context << eth::Instruction::POP;
+		else if (function.getLocation() == Location::EXTERNAL)
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("External function calls not implemented yet."));
+		else
+		{
+			switch (function.getLocation())
+			{
+			case Location::SEND:
+				m_context << u256(0) << u256(0) << u256(0) << u256(0);
+				arguments.front()->accept(*this);
+				//@todo might not be necessary
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				_functionCall.getExpression().accept(*this);
+				m_context << u256(25) << eth::Instruction::GAS << eth::Instruction::SUB
+						  << eth::Instruction::CALL
+						  << eth::Instruction::POP;
+				break;
+			case Location::SUICIDE:
+				arguments.front()->accept(*this);
+				//@todo might not be necessary
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				m_context << eth::Instruction::SUICIDE;
+				break;
+			case Location::SHA3:
+				arguments.front()->accept(*this);
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				// @todo move this once we actually use memory
+				m_context << u256(0) << eth::Instruction::MSTORE << u256(32) << u256(0) << eth::Instruction::SHA3;
+				break;
+			case Location::ECRECOVER:
+			case Location::SHA256:
+			case Location::RIPEMD160:
+			{
+				static const map<Location, u256> contractAddresses{{Location::ECRECOVER, 1},
+																   {Location::SHA256, 2},
+																   {Location::RIPEMD160, 3}};
+				u256 contractAddress = contractAddresses.find(function.getLocation())->second;
+				// @todo later, combine this code with external function call
+				for (unsigned i = 0; i < arguments.size(); ++i)
+				{
+					arguments[i]->accept(*this);
+					appendTypeConversion(*arguments[i]->getType(), *function.getParameterTypes()[i], true);
+					// @todo move this once we actually use memory
+					m_context << u256(i * 32) << eth::Instruction::MSTORE;
+				}
+				m_context << u256(32) << u256(0) << u256(arguments.size() * 32) << u256(0) << u256(0)
+						  << contractAddress << u256(500) //@todo determine actual gas requirement
+						  << eth::Instruction::CALL
+						  << eth::Instruction::POP
+						  << u256(0) << eth::Instruction::MLOAD;
+				break;
+			}
+			default:
+				BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Function not yet implemented."));
+			}
+		}
 	}
 	return false;
 }
@@ -216,9 +274,19 @@ void ExpressionCompiler::endVisit(MemberAccess& _memberAccess)
 	switch (_memberAccess.getExpression().getType()->getCategory())
 	{
 	case Type::Category::INTEGER:
-		if (asserts(member == "balance"))
+		if (member == "balance")
+		{
+			appendTypeConversion(*_memberAccess.getExpression().getType(),
+								 IntegerType(0, IntegerType::Modifier::ADDRESS), true);
+			m_context << eth::Instruction::BALANCE;
+		}
+		else if (member == "send")
+		{
+			appendTypeConversion(*_memberAccess.getExpression().getType(),
+								 IntegerType(0, IntegerType::Modifier::ADDRESS), true);
+		}
+		else
 			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to integer."));
-		m_context << eth::Instruction::BALANCE;
 		break;
 	case Type::Category::CONTRACT:
 		// call function
@@ -286,7 +354,7 @@ void ExpressionCompiler::endVisit(Identifier& _identifier)
 	Declaration* declaration = _identifier.getReferencedDeclaration();
 	if (MagicVariableDeclaration* magicVar = dynamic_cast<MagicVariableDeclaration*>(declaration))
 	{
-		if (magicVar->getKind() == MagicVariableDeclaration::VariableKind::THIS)
+		if (magicVar->getType()->getCategory() == Type::Category::CONTRACT) // must be "this"
 			m_context << eth::Instruction::ADDRESS;
 		return;
 	}
