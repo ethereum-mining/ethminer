@@ -2,7 +2,8 @@ if(APPLE)
 
 elseif(WIN32)
 ExternalProject_Add(argtable2
-    URL http://sourceforge.net/projects/argtable/files/argtable/argtable-2.13/argtable2-13.tar.gz
+    GIT_REPOSITORY https://github.com/debris/argtable.git
+    GIT_TAG master
     BINARY_DIR argtable2-prefix/src/argtable2
     CONFIGURE_COMMAND cmake .
     BUILD_COMMAND devenv argtable2.sln /build release

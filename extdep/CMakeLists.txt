@@ -9,11 +9,13 @@ set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/install/${_system_na
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/lib)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/include)
 
+include(curl.cmake)
 include(jsoncpp.cmake)
-#include(argtable2.cmake)
-#include(cryptopp.cmake)
+include(argtable2.cmake)
+include(json-rpc-cpp.cmake)
+include(cryptopp.cmake)
+
 # will be re-eanbled later
 # include(curl.cmake)
-#include(json-rpc-cpp.cmake)
-#include(miniupnpc.cmake)
+# include(miniupnpc.cmake)
 
