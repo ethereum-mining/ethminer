@@ -160,67 +160,181 @@ bool ExpressionCompiler::visit(BinaryOperation& _binaryOperation)
 
 bool ExpressionCompiler::visit(FunctionCall& _functionCall)
 {
+	using Location = FunctionType::Location;
 	if (_functionCall.isTypeConversion())
 	{
-		//@todo we only have integers and bools for now which cannot be explicitly converted
+		//@todo struct construction
 		if (asserts(_functionCall.getArguments().size() == 1))
 			BOOST_THROW_EXCEPTION(InternalCompilerError());
 		Expression& firstArgument = *_functionCall.getArguments().front();
 		firstArgument.accept(*this);
-		appendTypeConversion(*firstArgument.getType(), *_functionCall.getType());
+		if (firstArgument.getType()->getCategory() == Type::Category::CONTRACT &&
+				_functionCall.getType()->getCategory() == Type::Category::INTEGER)
+		{
+			// explicit type conversion contract -> address, nothing to do.
+		}
+		else
+		{
+			appendTypeConversion(*firstArgument.getType(), *_functionCall.getType());
+		}
 	}
 	else
 	{
-		// Calling convention: Caller pushes return address and arguments
-		// Callee removes them and pushes return values
-		FunctionDefinition const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType()).getFunction();
-
-		eth::AssemblyItem returnLabel = m_context.pushNewTag();
+		FunctionType const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType());
 		std::vector<ASTPointer<Expression>> const& arguments = _functionCall.getArguments();
-		if (asserts(arguments.size() == function.getParameters().size()))
+		if (asserts(arguments.size() == function.getParameterTypes().size()))
 			BOOST_THROW_EXCEPTION(InternalCompilerError());
-		for (unsigned i = 0; i < arguments.size(); ++i)
+
+		if (function.getLocation() == Location::INTERNAL)
 		{
-			arguments[i]->accept(*this);
-			appendTypeConversion(*arguments[i]->getType(), *function.getParameters()[i]->getType());
+			// Calling convention: Caller pushes return address and arguments
+			// Callee removes them and pushes return values
+
+			eth::AssemblyItem returnLabel = m_context.pushNewTag();
+			for (unsigned i = 0; i < arguments.size(); ++i)
+			{
+				arguments[i]->accept(*this);
+				appendTypeConversion(*arguments[i]->getType(), *function.getParameterTypes()[i]);
+			}
+			_functionCall.getExpression().accept(*this);
+
+			m_context.appendJump();
+			m_context << returnLabel;
+
+			// callee adds return parameters, but removes arguments and return label
+			m_context.adjustStackOffset(function.getReturnParameterTypes().size() - arguments.size() - 1);
+
+			// @todo for now, the return value of a function is its first return value, so remove
+			// all others
+			for (unsigned i = 1; i < function.getReturnParameterTypes().size(); ++i)
+				m_context << eth::Instruction::POP;
 		}
-		_functionCall.getExpression().accept(*this);
-		if (asserts(m_currentLValue.isInCode()))
-			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Code reference expected."));
-		m_currentLValue.reset();
-
-		m_context.appendJump();
-		m_context << returnLabel;
-
-		// callee adds return parameters, but removes arguments and return label
-		m_context.adjustStackOffset(function.getReturnParameters().size() - arguments.size() - 1);
-
-		// @todo for now, the return value of a function is its first return value, so remove
-		// all others
-		for (unsigned i = 1; i < function.getReturnParameters().size(); ++i)
-			m_context << eth::Instruction::POP;
+		else if (function.getLocation() == Location::EXTERNAL)
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("External function calls not implemented yet."));
+		else
+		{
+			switch (function.getLocation())
+			{
+			case Location::SEND:
+				m_context << u256(0) << u256(0) << u256(0) << u256(0);
+				arguments.front()->accept(*this);
+				//@todo might not be necessary
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				_functionCall.getExpression().accept(*this);
+				m_context << u256(25) << eth::Instruction::GAS << eth::Instruction::SUB
+						  << eth::Instruction::CALL
+						  << eth::Instruction::POP;
+				break;
+			case Location::SUICIDE:
+				arguments.front()->accept(*this);
+				//@todo might not be necessary
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				m_context << eth::Instruction::SUICIDE;
+				break;
+			case Location::SHA3:
+				arguments.front()->accept(*this);
+				appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
+				// @todo move this once we actually use memory
+				m_context << u256(0) << eth::Instruction::MSTORE << u256(32) << u256(0) << eth::Instruction::SHA3;
+				break;
+			case Location::ECRECOVER:
+			case Location::SHA256:
+			case Location::RIPEMD160:
+			{
+				static const map<Location, u256> contractAddresses{{Location::ECRECOVER, 1},
+																   {Location::SHA256, 2},
+																   {Location::RIPEMD160, 3}};
+				u256 contractAddress = contractAddresses.find(function.getLocation())->second;
+				// @todo later, combine this code with external function call
+				for (unsigned i = 0; i < arguments.size(); ++i)
+				{
+					arguments[i]->accept(*this);
+					appendTypeConversion(*arguments[i]->getType(), *function.getParameterTypes()[i], true);
+					// @todo move this once we actually use memory
+					m_context << u256(i * 32) << eth::Instruction::MSTORE;
+				}
+				m_context << u256(32) << u256(0) << u256(arguments.size() * 32) << u256(0) << u256(0)
+						  << contractAddress << u256(500) //@todo determine actual gas requirement
+						  << eth::Instruction::CALL
+						  << eth::Instruction::POP
+						  << u256(0) << eth::Instruction::MLOAD;
+				break;
+			}
+			default:
+				BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Function not yet implemented."));
+			}
+		}
 	}
 	return false;
 }
 
 void ExpressionCompiler::endVisit(MemberAccess& _memberAccess)
 {
-	if (asserts(m_currentLValue.isInStorage()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Member access to a non-storage value."));
-	StructType const& type = dynamic_cast<StructType const&>(*_memberAccess.getExpression().getType());
-	unsigned memberIndex = type.memberNameToIndex(_memberAccess.getMemberName());
-	if (asserts(memberIndex <= type.getMemberCount()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Member not found in struct during compilation."));
-	m_context << type.getStorageOffsetOfMember(memberIndex) << eth::Instruction::ADD;
-	m_currentLValue.retrieveValueIfLValueNotRequested(_memberAccess);
+	ASTString const& member = _memberAccess.getMemberName();
+	switch (_memberAccess.getExpression().getType()->getCategory())
+	{
+	case Type::Category::INTEGER:
+		if (member == "balance")
+		{
+			appendTypeConversion(*_memberAccess.getExpression().getType(),
+								 IntegerType(0, IntegerType::Modifier::ADDRESS), true);
+			m_context << eth::Instruction::BALANCE;
+		}
+		else if (member == "send")
+		{
+			appendTypeConversion(*_memberAccess.getExpression().getType(),
+								 IntegerType(0, IntegerType::Modifier::ADDRESS), true);
+		}
+		else
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to integer."));
+		break;
+	case Type::Category::CONTRACT:
+		// call function
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Contract variables not yet implemented."));
+		break;
+	case Type::Category::MAGIC:
+		// we can ignore the kind of magic and only look at the name of the member
+		if (member == "coinbase")
+			m_context << eth::Instruction::COINBASE;
+		else if (member == "timestamp")
+			m_context << eth::Instruction::TIMESTAMP;
+		else if (member == "prevhash")
+			m_context << eth::Instruction::PREVHASH;
+		else if (member == "difficulty")
+			m_context << eth::Instruction::DIFFICULTY;
+		else if (member == "number")
+			m_context << eth::Instruction::NUMBER;
+		else if (member == "gaslimit")
+			m_context << eth::Instruction::GASLIMIT;
+		else if (member == "sender")
+			m_context << eth::Instruction::CALLER;
+		else if (member == "value")
+			m_context << eth::Instruction::CALLVALUE;
+		else if (member == "origin")
+			m_context << eth::Instruction::ORIGIN;
+		else if (member == "gas")
+			m_context << eth::Instruction::GAS;
+		else if (member == "gasprice")
+			m_context << eth::Instruction::GASPRICE;
+		else
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown magic member."));
+		break;
+	case Type::Category::STRUCT:
+	{
+		StructType const& type = dynamic_cast<StructType const&>(*_memberAccess.getExpression().getType());
+		m_context << type.getStorageOffsetOfMember(member) << eth::Instruction::ADD;
+		m_currentLValue = LValue(m_context, LValue::STORAGE);
+		m_currentLValue.retrieveValueIfLValueNotRequested(_memberAccess);
+		break;
+	}
+	default:
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Member access to unknown type."));
+	}
 }
 
 bool ExpressionCompiler::visit(IndexAccess& _indexAccess)
 {
-	m_currentLValue.reset();
 	_indexAccess.getBaseExpression().accept(*this);
-	if (asserts(m_currentLValue.isInStorage()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index access to a non-storage value."));
 	_indexAccess.getIndexExpression().accept(*this);
 	appendTypeConversion(*_indexAccess.getIndexExpression().getType(),
 						 *dynamic_cast<MappingType const&>(*_indexAccess.getBaseExpression().getType()).getKeyType(),
@@ -237,8 +351,25 @@ bool ExpressionCompiler::visit(IndexAccess& _indexAccess)
 
 void ExpressionCompiler::endVisit(Identifier& _identifier)
 {
-	m_currentLValue.fromDeclaration(_identifier, *_identifier.getReferencedDeclaration());
-	m_currentLValue.retrieveValueIfLValueNotRequested(_identifier);
+	Declaration* declaration = _identifier.getReferencedDeclaration();
+	if (MagicVariableDeclaration* magicVar = dynamic_cast<MagicVariableDeclaration*>(declaration))
+	{
+		if (magicVar->getType()->getCategory() == Type::Category::CONTRACT) // must be "this"
+			m_context << eth::Instruction::ADDRESS;
+		return;
+	}
+	if (FunctionDefinition* functionDef = dynamic_cast<FunctionDefinition*>(declaration))
+	{
+		m_context << m_context.getFunctionEntryLabel(*functionDef).pushTag();
+		return;
+	}
+	if (VariableDeclaration* varDef = dynamic_cast<VariableDeclaration*>(declaration))
+	{
+		m_currentLValue.fromIdentifier(_identifier, *_identifier.getReferencedDeclaration());
+		m_currentLValue.retrieveValueIfLValueNotRequested(_identifier);
+		return;
+	}
+	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Identifier type not expected in expression context."));
 }
 
 void ExpressionCompiler::endVisit(Literal& _literal)
@@ -405,9 +536,6 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 {
 	switch (m_type)
 	{
-	case CODE:
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Tried to retrieve value of a function."));
-		break;
 	case STACK:
 	{
 		unsigned stackPos = m_context->baseToCurrentStackOffset(unsigned(m_baseStackOffset));
@@ -418,11 +546,15 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 		break;
 	}
 	case STORAGE:
+		if (!_expression.getType()->isValueType())
+			break; // no distinction between value and reference for non-value types
 		if (!_remove)
 			*m_context << eth::Instruction::DUP1;
 		*m_context << eth::Instruction::SLOAD;
 		break;
 	case MEMORY:
+		if (!_expression.getType()->isValueType())
+			break; // no distinction between value and reference for non-value types
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
 													  << errinfo_comment("Location type not yet implemented."));
 		break;
@@ -450,15 +582,15 @@ void ExpressionCompiler::LValue::storeValue(Expression const& _expression, bool 
 		break;
 	}
 	case LValue::STORAGE:
+		if (!_expression.getType()->isValueType())
+			break; // no distinction between value and reference for non-value types
 		if (!_move)
 			*m_context << eth::Instruction::DUP2 << eth::Instruction::SWAP1;
 		*m_context << eth::Instruction::SSTORE;
 		break;
-	case LValue::CODE:
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
-													  << errinfo_comment("Location type does not support assignment."));
-		break;
 	case LValue::MEMORY:
+		if (!_expression.getType()->isValueType())
+			break; // no distinction between value and reference for non-value types
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
 													  << errinfo_comment("Location type not yet implemented."));
 		break;
@@ -469,7 +601,7 @@ void ExpressionCompiler::LValue::storeValue(Expression const& _expression, bool 
 	}
 }
 
-void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(const Expression& _expression)
+void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(Expression const& _expression)
 {
 	if (!_expression.lvalueRequested())
 	{
@@ -478,7 +610,7 @@ void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(const Express
 	}
 }
 
-void ExpressionCompiler::LValue::fromDeclaration( Expression const& _expression, Declaration const& _declaration)
+void ExpressionCompiler::LValue::fromIdentifier(Identifier const& _identifier, Declaration const& _declaration)
 {
 	if (m_context->isLocalVariable(&_declaration))
 	{
@@ -490,13 +622,8 @@ void ExpressionCompiler::LValue::fromDeclaration( Expression const& _expression,
 		m_type = STORAGE;
 		*m_context << m_context->getStorageLocationOfVariable(_declaration);
 	}
-	else if (m_context->isFunctionDefinition(&_declaration))
-	{
-		m_type = CODE;
-		*m_context << m_context->getFunctionEntryLabel(dynamic_cast<FunctionDefinition const&>(_declaration)).pushTag();
-	}
 	else
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_identifier.getLocation())
 													  << errinfo_comment("Identifier type not supported or identifier not found."));
 }
 
