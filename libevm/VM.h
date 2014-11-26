@@ -45,7 +45,7 @@ public:
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
-	void require(u256 _n) { if (m_stack.size() < _n) BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); }
+	void require(u256 _n) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); } }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 	u256 curPC() const { return m_curPC; }
 
@@ -63,6 +63,7 @@ private:
 	bytes m_temp;
 	u256s m_stack;
 	std::set<u256> m_jumpDests;
+	std::function<void()> m_onFail;
 };
 
 }
@@ -107,6 +108,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		// FEES...
 		bigint runGas = c_stepGas;
 		bigint newTempSize = m_temp.size();
+
+		auto onOperation = [&]()
+		{
+			if (_onOp)
+				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
+		};
+		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
+		//m_onFail = std::function<void()>(onOperation);
+
 		switch (inst)
 		{
 		case Instruction::STOP:
@@ -333,8 +343,9 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		if (newTempSize > m_temp.size())
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
 
-		if (_onOp)
-			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
+		onOperation();
+//		if (_onOp)
+//			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
 		if (m_gas < runGas)
 		{
