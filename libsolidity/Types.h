@@ -39,6 +39,8 @@ namespace solidity
 // @todo realMxN, string<N>
 
 class Type; // forward
+using TypePointer = std::shared_ptr<Type const>;
+using TypePointers = std::vector<TypePointer>;
 
 /**
  * List of members of a type.
@@ -46,7 +48,6 @@ class Type; // forward
 class MemberList
 {
 public:
-	using TypePointer = std::shared_ptr<Type const>;
 	using MemberMap = std::map<std::string, TypePointer>;
 
 	MemberList() {}
@@ -54,7 +55,7 @@ public:
 	TypePointer getMemberType(std::string const& _name) const
 	{
 		auto it = m_memberTypes.find(_name);
-		return it != m_memberTypes.end() ? it->second : std::shared_ptr<Type const>();
+		return it != m_memberTypes.end() ? it->second : TypePointer();
 	}
 
 	MemberMap::const_iterator begin() const { return m_memberTypes.begin(); }
@@ -82,6 +83,7 @@ public:
 	static std::shared_ptr<Type> fromElementaryTypeName(Token::Value _typeToken);
 	static std::shared_ptr<Type> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
 	static std::shared_ptr<Type> fromMapping(Mapping const& _typeName);
+	static std::shared_ptr<Type> fromFunction(FunctionDefinition const& _function);
 	/// @}
 
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
@@ -113,11 +115,12 @@ public:
 	/// Returns true if the type can be stored as a value (as opposed to a reference) on the stack,
 	/// i.e. it behaves differently in lvalue context and in value context.
 	virtual bool isValueType() const { return false; }
+	virtual unsigned getSizeOnStack() const { return 1; }
 
 	/// Returns the list of all members of this type. Default implementation: no members.
 	virtual MemberList const& getMembers() const { return EmptyMemberList; }
 	/// Convenience method, returns the type of the given named member or an empty pointer if no such member exists.
-	std::shared_ptr<Type const> getMemberType(std::string const& _name) const { return getMembers().getMemberType(_name); }
+	TypePointer getMemberType(std::string const& _name) const { return getMembers().getMemberType(_name); }
 
 	virtual std::string toString() const = 0;
 	virtual u256 literalValue(Literal const&) const
@@ -233,6 +236,7 @@ public:
 	virtual bool operator==(Type const& _other) const override;
 	virtual u256 getStorageSize() const override;
 	virtual bool canLiveOutsideStorage() const override;
+	virtual unsigned getSizeOnStack() const override { return 1; /*@todo*/ }
 	virtual std::string toString() const override;
 
 	virtual MemberList const& getMembers() const override;
@@ -246,24 +250,41 @@ private:
 };
 
 /**
- * The type of a function, there is one distinct type per function definition.
+ * The type of a function, identified by its (return) parameter types.
+ * @todo the return parameters should also have names, i.e. return parameters should be a struct
+ * type.
  */
 class FunctionType: public Type
 {
 public:
-	virtual Category getCategory() const override { return Category::FUNCTION; }
-	FunctionType(FunctionDefinition const& _function): m_function(_function) {}
+	/// The meaning of the value(s) on the stack referencing the function:
+	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
+	/// OTHERS: special virtual function, nothing on the stack
+	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160 };
 
-	FunctionDefinition const& getFunction() const { return m_function; }
+	virtual Category getCategory() const override { return Category::FUNCTION; }
+	explicit FunctionType(FunctionDefinition const& _function);
+	FunctionType(TypePointers const& _parameterTypes, TypePointers const& _returnParameterTypes,
+				 Location _location = Location::INTERNAL):
+		m_parameterTypes(_parameterTypes), m_returnParameterTypes(_returnParameterTypes),
+		m_location(_location) {}
+
+	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
+	TypePointers const& getReturnParameterTypes() const { return m_returnParameterTypes; }
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString() const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable function type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override;
+
+	Location getLocation() const { return m_location; }
 
 private:
-	FunctionDefinition const& m_function;
+	TypePointers m_parameterTypes;
+	TypePointers m_returnParameterTypes;
+	Location m_location;
 };
 
 /**
@@ -273,19 +294,19 @@ class MappingType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::MAPPING; }
-	MappingType(std::shared_ptr<Type const> _keyType, std::shared_ptr<Type const> _valueType):
+	MappingType(TypePointer const& _keyType, TypePointer const& _valueType):
 		m_keyType(_keyType), m_valueType(_valueType) {}
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 
-	std::shared_ptr<Type const> getKeyType() const { return m_keyType; }
-	std::shared_ptr<Type const> getValueType() const { return m_valueType; }
+	TypePointer getKeyType() const { return m_keyType; }
+	TypePointer getValueType() const { return m_valueType; }
 
 private:
-	std::shared_ptr<Type const> m_keyType;
-	std::shared_ptr<Type const> m_valueType;
+	TypePointer m_keyType;
+	TypePointer m_valueType;
 };
 
 /**
@@ -302,6 +323,7 @@ public:
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
 };
 
 /**
@@ -312,9 +334,9 @@ class TypeType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::TYPE; }
-	TypeType(std::shared_ptr<Type const> const& _actualType): m_actualType(_actualType) {}
+	TypeType(TypePointer const& _actualType): m_actualType(_actualType) {}
 
-	std::shared_ptr<Type const> const& getActualType() const { return m_actualType; }
+	TypePointer const& getActualType() const { return m_actualType; }
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
@@ -323,7 +345,7 @@ public:
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
 
 private:
-	std::shared_ptr<Type const> m_actualType;
+	TypePointer m_actualType;
 };
 
 
@@ -334,13 +356,14 @@ private:
 class MagicType: public Type
 {
 public:
-	enum class Kind { BLOCK, MSG, TX }; //@todo should be unified with MagicVariableDeclaration::VariableKind;
+	enum class Kind { BLOCK, MSG, TX };
 	virtual Category getCategory() const override { return Category::MAGIC; }
 
 	MagicType(Kind _kind);
 	virtual bool operator==(Type const& _other) const;
 	virtual bool canBeStored() const override { return false; }
 	virtual bool canLiveOutsideStorage() const override { return true; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
 	virtual MemberList const& getMembers() const override { return m_members; }
 
 	virtual std::string toString() const override;
