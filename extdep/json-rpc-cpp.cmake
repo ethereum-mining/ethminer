@@ -21,7 +21,7 @@ ExternalProject_Add(json-rpc-cpp
 	GIT_REPOSITORY https://github.com/debris/libjson-rpc-cpp.git 
 	GIT_TAG windows
 	BINARY_DIR json-rpc-cpp-prefix/src/json-rpc-cpp
-    CONFIGURE_COMMAND cmake -DCMAKE_INSTALL_PREFIX=${ETH_DEPENDENCY_INSTALL_DIR} -DJSONCPP_INCLUDE_DIRS=${ETH_DEPENDENCY_INSTALL_DIR}/include -DJSONCPP_LIBRARIES=${ETH_DEPENDENCY_INSTALL_DIR}/lib/jsoncpp.lib -DCURL_LIBRARIES=${ETH_DEPENDENCY_INSTALL_DIR}/lib/libcurl.lib -DCURL_INCLUDE_DIRS=${ETH_DEPENDENCY_INSTALL_DIR}/include .
+    CONFIGURE_COMMAND cmake -DCMAKE_PREFIX_PATH=${ETH_DEPENDENCY_INSTALL_DIR} -DCURL_LIBRARIES=${ETH_DEPENDENCY_INSTALL_DIR}/lib/libcurl.lib .
 	BUILD_COMMAND devenv libjson-rpc-cpp.sln /build release
 	INSTALL_COMMAND cmd /c cp lib/Release/* ${ETH_DEPENDENCY_INSTALL_DIR}/lib && cp -R src/jsonrpccpp ${ETH_DEPENDENCY_INSTALL_DIR}/include
 	)
