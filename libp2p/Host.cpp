@@ -34,6 +34,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
+#include <mutex>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
@@ -199,7 +200,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_ifAddresses(getInterfaceAddresses()),
-	m_ioService(new ba::io_service),
+	m_ioService(new ba::io_service(2)),
 	m_acceptor(new bi::tcp::acceptor(*m_ioService)),
 	m_socket(new bi::tcp::socket(*m_ioService)),
 	m_key(KeyPair::create())
@@ -536,7 +537,16 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
 	if (!m_ioService)
 		return;
-
+	
+	// prevent concurrently connecting to a node; tood: better abstraction
+	Node *nptr = _n.get();
+	{
+		lock_guard<mutex> l(x_pendingNodeConnsMutex);
+		if (m_pendingNodeConns.count(nptr))
+			return;
+		m_pendingNodeConns.insert(nptr);
+	}
+	
 	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
 	_n->lastAttempted = std::chrono::system_clock::now();
 	_n->failedAttempts++;
@@ -559,6 +569,8 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 			p->start();
 		}
 		delete s;
+		lock_guard<mutex> l(x_pendingNodeConnsMutex);
+		m_pendingNodeConns.erase(nptr);
 	});
 }
 
@@ -685,7 +697,7 @@ PeerInfos Host::peers(bool _updatePing) const
 				ret.push_back(j->m_info);
 	return ret;
 }
-			
+
 void Host::run(boost::system::error_code const& error)
 {
 	static unsigned s_lasttick = 0;
@@ -701,7 +713,7 @@ void Host::run(boost::system::error_code const& error)
 	// network running
 	if (m_run)
 	{
-		if (s_lasttick >= c_timerInterval * 50)
+		if (s_lasttick >= c_timerInterval * 10)
 		{
 			growPeers();
 			prunePeers();
