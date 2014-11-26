@@ -23,6 +23,7 @@
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
+#include <libsolidity/GlobalContext.h>
 #include <libsolidity/NameAndTypeResolver.h>
 #include <libsolidity/Compiler.h>
 #include <libsolidity/CompilerStack.h>
@@ -45,7 +46,9 @@ void CompilerStack::parse()
 	if (!m_scanner)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Source not available."));
 	m_contractASTNode = Parser().parse(m_scanner);
-	NameAndTypeResolver().resolveNamesAndTypes(*m_contractASTNode);
+	m_globalContext = make_shared<GlobalContext>();
+	m_globalContext->setCurrentContract(*m_contractASTNode);
+	NameAndTypeResolver(m_globalContext->getDeclarations()).resolveNamesAndTypes(*m_contractASTNode);
 	m_parseSuccessful = true;
 }
 
@@ -61,7 +64,7 @@ bytes const& CompilerStack::compile(bool _optimize)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Parsing was not successful."));
 	m_bytecode.clear();
 	m_compiler = make_shared<Compiler>();
-	m_compiler->compileContract(*m_contractASTNode);
+	m_compiler->compileContract(*m_contractASTNode, m_globalContext->getMagicVariables());
 	return m_bytecode = m_compiler->getAssembledBytecode(_optimize);
 }
 

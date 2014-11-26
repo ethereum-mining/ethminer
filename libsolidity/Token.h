@@ -160,7 +160,6 @@ namespace solidity
 	K(RETURNS, "returns", 0)                                           \
 	K(STRUCT, "struct", 0)                                             \
 	K(SWITCH, "switch", 0)                                             \
-	K(THIS, "this", 0)                                                 \
 	K(VAR, "var", 0)                                                   \
 	K(WHILE, "while", 0)                                               \
 	\
@@ -281,6 +280,7 @@ namespace solidity
 	K(FALSE_LITERAL, "false", 0)                                       \
 	T(NUMBER, NULL, 0)                                                 \
 	T(STRING_LITERAL, NULL, 0)                                         \
+	T(COMMENT_LITERAL, NULL, 0)                                        \
 	\
 	/* Identifiers (not keywords or future reserved words). */         \
 	T(IDENTIFIER, NULL, 0)                                             \
