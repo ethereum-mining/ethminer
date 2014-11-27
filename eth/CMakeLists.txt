@@ -4,6 +4,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(${LEVELDB_INCLUDE_DIR})
 
 set(EXECUTABLE eth)
 
@@ -16,7 +17,7 @@ target_link_libraries(${EXECUTABLE} gmp)
 if(MINIUPNPC_LS)
 	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 if(JSON_RPC_CPP_FOUND)
     target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()

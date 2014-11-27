@@ -13,11 +13,12 @@ endif()
 
 include_directories(..) 
 include_directories(${CRYPTOPP_INCLUDE_DIR})
+include_directories(${LEVELDB_INCLUDE_DIR})
 
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")

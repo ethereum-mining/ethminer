@@ -14,6 +14,7 @@ else()
 endif()
 
 include_directories(..)
+include_directories(${LEVELDB_INCLUDE_DIR})
 
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
@@ -25,7 +26,7 @@ target_link_libraries(${EXECUTABLE} secp256k1)
 if(MINIUPNPC_LS)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 target_link_libraries(${EXECUTABLE} gmp)
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")

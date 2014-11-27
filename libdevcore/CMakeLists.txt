@@ -7,6 +7,8 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
+include_directories(..)
+include_directories(${LEVELDB_INCLUDE_DIR})
 
 set(EXECUTABLE devcore)
 
@@ -16,8 +18,6 @@ if(ETH_STATIC)
 else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
-
-include_directories(..)
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_system-mt-s)

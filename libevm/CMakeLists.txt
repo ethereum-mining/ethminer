@@ -14,6 +14,7 @@ else()
 endif()
 
 include_directories(..)
+include_directories(${LEVELDB_INCLUDE_DIR})
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
@@ -24,7 +25,7 @@ target_link_libraries(${EXECUTABLE} gmp)
 if(MINIUPNPC_LS)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
 endif()
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 	target_link_libraries(${EXECUTABLE} boost_system-mt-s)
