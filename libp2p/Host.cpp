@@ -228,7 +228,7 @@ void Host::stop()
 {
 	{
 		// prevent m_run from being set to false at same time as set to true by start()
-		lock_guard<mutex> l(x_runtimer);
+		Guard l(x_runtimer);
 		// once m_run is false the scheduler will shutdown network and stopWorking()
 		m_run = false;
 	}
@@ -538,10 +538,10 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	if (!m_ioService)
 		return;
 	
-	// prevent concurrently connecting to a node; tood: better abstraction
+	// prevent concurrently connecting to a node; todo: better abstraction
 	Node *nptr = _n.get();
 	{
-		lock_guard<mutex> l(x_pendingNodeConnsMutex);
+		Guard l(x_pendingNodeConnsMutex);
 		if (m_pendingNodeConns.count(nptr))
 			return;
 		m_pendingNodeConns.insert(nptr);
@@ -569,7 +569,7 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 			p->start();
 		}
 		delete s;
-		lock_guard<mutex> l(x_pendingNodeConnsMutex);
+		Guard l(x_pendingNodeConnsMutex);
 		m_pendingNodeConns.erase(nptr);
 	});
 }
@@ -806,7 +806,7 @@ void Host::startedWorking()
 			// prevent m_run from being set to true at same time as set to false by stop()
 			// don't release mutex until m_timer is set so in case stop() is called at same
 			// time, stop will wait on m_timer and graceful network shutdown.
-			lock_guard<mutex> l(x_runtimer);
+			Guard l(x_runtimer);
 			// reset io service and create deadline timer
 			m_timer.reset(new boost::asio::deadline_timer(*m_ioService));
 			m_run = true;
