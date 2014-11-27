@@ -13,14 +13,14 @@
 find_path(
     LEVELDB_INCLUDE_DIR 
     NAMES leveldb/db.h
-    DOC "leveldb include dir"
-)
+	DOC "leveldb include dir"
+	)
 
 find_library(
     LEVELDB_LIBRARY
     NAMES leveldb
     DOC "leveldb library"
-)
+	)
 
 # message (" - leveldb header : ${LEVELDB_INCLUDE_DIR}")
 # message (" - leveldb lib    : ${LEVELDB_LIBRARY}")

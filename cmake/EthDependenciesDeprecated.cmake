@@ -5,33 +5,7 @@
 
 if("${TARGET_PLATFORM}" STREQUAL "w64")
 #	set(MINIUPNPC_LS /usr/x86_64-w64-mingw32/lib/libminiupnpc.a)
-	set(LEVELDB_LS leveldb)
 else()
-
-	find_path( LEVELDB_ID leveldb/db.h
-		/usr/include
-		/usr/local/include
-		)
-	if ( LEVELDB_ID STREQUAL "LEVELDB_ID-NOTFOUND" )
-		message(FATAL_ERROR "Failed to find the LevelDB headers")
-	else ()
-		message(STATUS "Found LevelDB Headers")
-
-		# Check for accessory dev libraries leveldb and miniupnpc
-		find_library( LEVELDB_LS NAMES leveldb
-			PATHS
-			/usr/lib
-			/usr/local/lib
-			/opt/local/lib
-			/usr/lib/*/
-			)
-		if ( LEVELDB_LS STREQUAL "LEVELDB_LS-NOTFOUND" )
-			message(FATAL_ERROR "Failed to find the LevelDB Library!")
-		else ()
-			message(STATUS "Found LevelDB Library: ${LEVELDB_LS}")
-			add_definitions(-DETH_LEVELDB)
-		endif ()
-	endif ()
 
 	find_path( PYTHON_ID pyconfig.h
 		${PYTHON_INCLUDE_DIR}
@@ -122,9 +96,6 @@ if(PYTHON_ID)
 endif()
 if(MINIUPNPC_ID)
 	include_directories(${MINIUPNPC_ID})
-endif()
-if(LEVELDB_ID)
-	include_directories(${LEVELDB_ID})
 endif()
 if(READLINE_ID)
 	include_directories(${READLINE_ID})
