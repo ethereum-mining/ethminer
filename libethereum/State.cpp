@@ -51,14 +51,16 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 		h256 s;
 	} in;
 
-	h256 ret;
-
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
+	memset(_out.data(), 0, _out.size());
+	if (in.v > 28)
+		return;
 	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
-	if (!sig.isValid() || in.v > 28)
+	if (!sig.isValid())
 		return;
 
+	h256 ret;
 	byte pubkey[65];
 	int pubkeylen = 65;
 	secp256k1_start();
