@@ -14,6 +14,12 @@ message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
 message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
 
 # TODO the Jsoncpp package does not yet check for correct version number
+
+find_package (LevelDB REQUIRED)
+message(" - LevelDB header: ${LEVELDB_INCLUDE_DIR}")
+message(" - LevelDB lib: ${LEVELDB_LIBRARY}")
+
+# TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 EXACT REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")

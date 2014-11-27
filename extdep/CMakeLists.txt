@@ -17,6 +17,5 @@ include(snappy.cmake)
 include(leveldb.cmake)
 
 # will be re-eanbled later
-# include(curl.cmake)
 # include(miniupnpc.cmake)
 
