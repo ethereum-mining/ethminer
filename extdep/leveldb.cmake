@@ -9,12 +9,12 @@ ExternalProject_Add(leveldb
 	)
 elseif(WIN32)
 ExternalProject_Add(leveldb
-	GIT_REPOSITORY https://code.google.com/p/leveldb
-	GIT_TAG windows
+	GIT_REPOSITORY https://github.com/debris/leveldb-win32.git
+	GIT_TAG master
 	BINARY_DIR leveldb-prefix/src/leveldb
 	CONFIGURE_COMMAND ""
 	BUILD_COMMAND ""
-	INSTALL_COMMAND ""
+	INSTALL_COMMAND cmd /c cp lib/LibLevelDB.lib ${ETH_DEPENDENCY_INSTALL_DIR}/lib/leveldb.lib && cp -R include/leveldb ${ETH_DEPENDENCY_INSTALL_DIR}/include
 	)
 else()
 
