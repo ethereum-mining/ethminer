@@ -36,6 +36,8 @@ namespace dev
 namespace eth
 {
 
+class VMFactory;
+
 /**
  */
 class VM : public VMFace
@@ -53,7 +55,7 @@ public:
 	u256s const& stack() const { return m_stack; }
 
 private:
-	friend VMFace;
+	friend VMFactory;
 	explicit VM(u256 _gas = 0): VMFace(_gas) {}
 
 	template <class Ext>

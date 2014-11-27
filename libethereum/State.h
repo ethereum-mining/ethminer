@@ -30,6 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
+#include <libethereum/VMFactory.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
 #include <libevm/VMFace.h>
@@ -39,6 +40,7 @@
 #include "TransactionReceipt.h"
 #include "Executive.h"
 #include "AccountDiff.h"
+#include "VMFactory.h"
 
 namespace dev
 {
@@ -261,10 +263,10 @@ public:
 	void cleanup(bool _fullCommit);
 
 	/// Sets VM kind to be used by the state
-	void setVMKind(VMFace::Kind _kind) { m_vmKind = _kind; }
+	void setVMKind(VMFactory::Kind _kind) { m_vmKind = _kind; }
 
 	/// Get the kind of VM used by the state
-	VMFace::Kind getVMKind() const { return m_vmKind; }
+	VMFactory::Kind getVMKind() const { return m_vmKind; }
 
 private:
 	/// Undo the changes to the state for committing to mine.
@@ -333,7 +335,7 @@ private:
 
 	u256 m_blockReward;
 
-	VMFace::Kind m_vmKind = VMFace::Interpreter;	///< The kind of VM used by the state
+	VMFactory::Kind m_vmKind = VMFactory::Interpreter;	///< The kind of VM used by the state
 
 	static std::string c_defaultPath;
 
