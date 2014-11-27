@@ -18,6 +18,7 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 
 if(EVMJIT)
+  	target_link_libraries(${EXECUTABLE} evm)
 	target_link_libraries(${EXECUTABLE} evmjit)
 endif()
 
