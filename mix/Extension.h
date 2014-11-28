@@ -28,7 +28,7 @@ namespace dev
 namespace mix
 {
 
-class Extension : public QObject
+class Extension: public QObject
 {
     Q_OBJECT
 

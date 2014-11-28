@@ -76,7 +76,7 @@ void ConstantCompilationCtrl::resetOutPut()
     content->setProperty("text", "");
 }
 
-void ConstantCompilationCtrl::writeOutPut(CompilerResult _res)
+void ConstantCompilationCtrl::writeOutPut(const CompilerResult& _res)
 {
     QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
     QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);

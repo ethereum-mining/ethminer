@@ -29,7 +29,7 @@ namespace dev
 namespace mix
 {
 
-class ConstantCompilationCtrl : public Extension
+class ConstantCompilationCtrl: public Extension
 {
     Q_OBJECT
 
@@ -43,7 +43,7 @@ public:
 private:
     QTextDocument* m_editor;
     ConstantCompilationModel* m_compilationModel;
-    void writeOutPut(CompilerResult);
+    void writeOutPut(const CompilerResult&);
     void resetOutPut();
 
 public Q_SLOTS:

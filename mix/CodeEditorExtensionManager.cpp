@@ -62,13 +62,12 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 void CodeEditorExtensionManager::initExtensions()
 {
     //only one for now
-    std::shared_ptr<ConstantCompilationCtrl> m_constantCompilation(new ConstantCompilationCtrl(m_doc));
-    ConstantCompilationCtrl* ext = m_constantCompilation.get();
-    if (ext->contentUrl() != "")
+    std::shared_ptr<ConstantCompilationCtrl> constantCompilation = std::make_shared<ConstantCompilationCtrl>(m_doc);
+    if (constantCompilation.get()->contentUrl() != "")
     {
         try
         {
-            ext->addContentOn(m_tabView);
+            constantCompilation.get()->addContentOn(m_tabView);
         }
         catch (...)
         {
@@ -76,8 +75,8 @@ void CodeEditorExtensionManager::initExtensions()
             return;
         }
     }
-    ext->start();
-    m_features.append(m_constantCompilation);
+    constantCompilation.get()->start();
+    m_features.append(constantCompilation);
 }
 
 void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
