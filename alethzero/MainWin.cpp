@@ -1664,7 +1664,7 @@ void Main::on_data_textChanged()
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
 		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
-		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
+		ui->gas->setMinimum((qint64)Client::txGas(m_data, 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
@@ -1675,7 +1675,7 @@ void Main::on_data_textChanged()
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
 		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
-			ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 1));
+			ui->gas->setMinimum((qint64)Client::txGas(m_data, 1));
 			if (!ui->gas->isEnabled())
 				ui->gas->setValue(m_backupGas);
 			ui->gas->setEnabled(true);
@@ -1684,7 +1684,7 @@ void Main::on_data_textChanged()
 		{
 			if (ui->gas->isEnabled())
 				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)Client::txGas(m_data.size()));
+			ui->gas->setValue((qint64)Client::txGas(m_data));
 			ui->gas->setEnabled(false);
 		}
 	}
