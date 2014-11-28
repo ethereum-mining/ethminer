@@ -22,6 +22,7 @@
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libevm/VM.h>
+#include "Interface.h"
 #include "Executive.h"
 #include "State.h"
 #include "ExtVM.h"
@@ -59,7 +60,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	}
 
 	// Check gas cost is enough.
-	u256 gasCost = m_t.data().size() * c_txDataGas + c_txGas;
+	auto gasCost = Interface::txGas(m_t.data());
 
 	if (m_t.gas() < gasCost)
 	{
@@ -99,9 +100,9 @@ bool Executive::setup(bytesConstRef _rlp)
 	}
 
 	if (m_t.isCreation())
-		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - gasCost, &m_t.data(), m_sender);
+		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
 	else
-		return call(m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - gasCost, m_sender);
+		return call(m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_sender);
 }
 
 bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)

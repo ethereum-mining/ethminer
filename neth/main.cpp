@@ -646,7 +646,7 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)Client::txGas(data.size(), 0);
+				u256 minGas = (u256)Client::txGas(data, 0);
 				if (size < 40)
 				{
 					if (size > 0)
@@ -700,9 +700,9 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)Client::txGas(0, 0);
+					u256 minGas = (u256)Client::txGas(bytes(), 0);
 					Address dest = h160(fromHex(fields[0]));
-					c.transact(us.secret(), amount, dest, bytes(), minGas, 10 * dev::eth::szabo);
+					c.transact(us.secret(), amount, dest, bytes(), minGas);
 				}
 			}
 		}
@@ -761,14 +761,14 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)Client::txGas(init.size(), 0);
+				u256 minGas = (u256)Client::txGas(init, 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
 				else if (gas < minGas)
 					cwarn << "Minimum gas amount is" << minGas;
 				else
 				{
-					c.transact(us.secret(), endowment, init, gas, 10 * dev::eth::szabo);
+					c.transact(us.secret(), endowment, init, gas);
 				}
 			}
 		}
