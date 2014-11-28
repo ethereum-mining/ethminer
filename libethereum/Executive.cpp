@@ -58,13 +58,6 @@ bool Executive::setup(bytesConstRef _rlp)
 		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce()));
 	}
 
-	// Don't like transactions whose gas price is too low. NOTE: this won't stay here forever - it's just until we get a proper gas price discovery protocol going.
-	if (m_t.gasPrice() < m_s.m_currentBlock.minGasPrice)
-	{
-		clog(StateDetail) << "Offered gas-price is too low: Require >" << m_s.m_currentBlock.minGasPrice << " Got" << m_t.gasPrice();
-		BOOST_THROW_EXCEPTION(GasPriceTooLow());
-	}
-
 	// Check gas cost is enough.
 	u256 gasCost = m_t.data().size() * c_txDataGas + c_txGas;
 
