@@ -498,8 +498,6 @@ int main(int argc, char** argv)
 						if (size > 0)
 							cwarn << "Invalid address length:" << size;
 					}
-					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else if (ssize < 40)
@@ -561,7 +559,7 @@ int main(int argc, char** argv)
 						BlockInfo info(blockData);
 						u256 minGas = (u256)Client::txGas(0, 0);
 						Address dest = h160(fromHex(hexAddr));
-						c->transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+						c->transact(us.secret(), amount, dest, bytes(), minGas);
 					}
 				} 
 				else
@@ -601,8 +599,6 @@ int main(int argc, char** argv)
 					u256 minGas = (u256)Client::txGas(init.size(), 0);
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
-					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
