@@ -34,7 +34,7 @@ namespace dev
 namespace mix
 {
 
-class CodeEditorExtensionManager : public QObject
+class CodeEditorExtensionManager: public QObject
 {
     Q_OBJECT
 

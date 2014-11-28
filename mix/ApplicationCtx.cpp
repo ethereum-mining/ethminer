@@ -28,3 +28,9 @@ QQmlApplicationEngine* ApplicationCtx::appEngine()
 {
     return m_applicationEngine;
 }
+
+void ApplicationCtx::setApplicationContext(QQmlApplicationEngine* _engine)
+{
+    if (Instance == nullptr)
+        Instance = new ApplicationCtx(_engine);
+}

@@ -38,5 +38,9 @@ bool MixApplication::notify(QObject* _receiver, QEvent* _event)
     {
         qDebug() << "std::exception was caught " << _ex.what();
     }
+    catch (...)
+    {
+        qDebug() << "uncaught exception ";
+    }
     return false;
 }

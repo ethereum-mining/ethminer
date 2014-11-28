@@ -31,7 +31,7 @@ namespace dev
 namespace mix
 {
 
-class MixApplication : public QApplication
+class MixApplication: public QApplication
 {
     Q_OBJECT
 

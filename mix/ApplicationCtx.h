@@ -31,7 +31,7 @@ namespace dev
 namespace mix
 {
 
-class ApplicationCtx : public QObject
+class ApplicationCtx: public QObject
 {
     Q_OBJECT
 
@@ -39,7 +39,7 @@ public:
     ApplicationCtx(QQmlApplicationEngine* _engine) { m_applicationEngine = _engine; }
     ~ApplicationCtx() { delete m_applicationEngine; }
     static ApplicationCtx* getInstance() { return Instance; }
-    static void setApplicationContext(QQmlApplicationEngine* _engine) { Instance = new ApplicationCtx(_engine); }
+    static void setApplicationContext(QQmlApplicationEngine* _engine);
     QQmlApplicationEngine* appEngine();
 
 private:
