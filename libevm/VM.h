@@ -242,6 +242,13 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
             runGas = c_createGas;
 			break;
 		}
+		case Instruction::EXP:
+		{
+			require(2);
+			auto expon = m_stack[m_stack.size() - 2];
+			runGas = c_expGas + c_extByteGas * (32 - (h256(expon).firstBitSet() / 8));
+			break;
+		}
 
 		case Instruction::PC:
 		case Instruction::MSIZE:
@@ -308,7 +315,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SDIV:
 		case Instruction::MOD:
 		case Instruction::SMOD:
-		case Instruction::EXP:
 		case Instruction::LT:
 		case Instruction::GT:
 		case Instruction::SLT:
