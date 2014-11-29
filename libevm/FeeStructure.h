@@ -37,6 +37,8 @@ extern u256 const c_sstoreResetGas;		///< Once per SSTORE operation if the zeron
 extern u256 const c_sstoreRefundGas;	///< Refunded gas, once per SSTORE operation if the zeroness changes to zero.
 extern u256 const c_createGas;			///< Once per CREATE operation & contract-creation transaction.
 extern u256 const c_callGas;			///< Once per CALL operation & message call transaction.
+extern u256 const c_expGas;				///< Once per EXP instuction.
+extern u256 const c_expByteGas;			///< Times ceil(log256(exponent)) for the EXP instruction.
 extern u256 const c_memoryGas;			///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
 extern u256 const c_txDataZeroGas;		///< Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
 extern u256 const c_txDataNonZeroGas;	///< Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
