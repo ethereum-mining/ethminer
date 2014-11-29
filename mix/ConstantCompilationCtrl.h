@@ -1,15 +1,15 @@
 /*
-    This file is part of cpp-ethereum.
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	This file is part of cpp-ethereum.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file ConstantCompilation.h
  * @author Yann yann@ethdev.com
@@ -31,23 +31,23 @@ namespace mix
 
 class ConstantCompilationCtrl: public Extension
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    ConstantCompilationCtrl(QTextDocument*);
-    ~ConstantCompilationCtrl();
-    void start() const override;
-    QString title() const override;
-    QString contentUrl() const override;
+	ConstantCompilationCtrl(QTextDocument*);
+	~ConstantCompilationCtrl();
+	void start() const override;
+	QString title() const override;
+	QString contentUrl() const override;
 
 private:
-    QTextDocument* m_editor;
-    ConstantCompilationModel* m_compilationModel;
-    void writeOutPut(const CompilerResult&);
-    void resetOutPut();
+	QTextDocument* m_editor;
+	ConstantCompilationModel* m_compilationModel;
+	void writeOutPut(CompilerResult const&);
+	void resetOutPut();
 
 public Q_SLOTS:
-    void compile();
+	void compile();
 };
 
 }
