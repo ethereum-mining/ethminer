@@ -246,7 +246,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		{
 			require(2);
 			auto expon = m_stack[m_stack.size() - 2];
-			runGas = c_expGas + c_extByteGas * (32 - (h256(expon).firstBitSet() / 8));
+			runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
 			break;
 		}
 
