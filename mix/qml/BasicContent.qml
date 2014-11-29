@@ -2,6 +2,7 @@ import QtQuick 2.3
 import QtQuick.Controls 1.2
 
 Rectangle {
+
     anchors.fill: parent
     width: parent.width
     height: parent.height
@@ -19,7 +20,7 @@ Rectangle {
         id: status
     }
 
-    TextArea{
+    TextArea {
         readOnly: true
         anchors.left: parent.left
         anchors.leftMargin: 10
