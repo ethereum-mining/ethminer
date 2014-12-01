@@ -18,4 +18,6 @@ include(leveldb.cmake)
 
 # will be re-eanbled later
 # include(miniupnpc.cmake)
+# include(curl.cmake)
 
+#include(miniupnpc.cmake)
