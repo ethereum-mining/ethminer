@@ -23,7 +23,8 @@
 
 #include <random>
 #include "Exceptions.h"
-#include <libdevcore/Log.h>
+#include "Log.h"
+
 using namespace std;
 using namespace dev;
 
