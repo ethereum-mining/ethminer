@@ -72,7 +72,6 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		for (auto i: _r)
 			if (n++)
 				host()->inject(Envelope(i), this);
-		sendMessages();
 		break;
 	}
 	default:
@@ -97,10 +96,15 @@ void WhisperPeer::sendMessages()
 		}
 	}
 
-	if (!n)
-		// pause for a bit if no messages to send - this is horrible and broken.
-		// the message subsystem should really just keep pumping out messages while m_unseen.size() and there's bandwidth for them.
-		this_thread::sleep_for(chrono::milliseconds(20));
+	// the message subsystem should really just keep pumping out messages while m_unseen.size() and there's bandwidth for them.
+	auto diff = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - m_timer);
+	if (n || diff.count() > 0)
+	{
+		RLPStream s;
+		prep(s, MessagesPacket, n).appendRaw(amalg.out(), n);
+		sealAndSend(s);
+		m_timer = chrono::system_clock::now();
+	}
 
 	{
 		RLPStream s;
