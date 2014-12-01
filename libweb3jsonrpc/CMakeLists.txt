@@ -19,7 +19,8 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_COMMON_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARY})
 
 if (MINIUPNPC_LS)
 	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
