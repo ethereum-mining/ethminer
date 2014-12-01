@@ -22,15 +22,7 @@
 using namespace dev;
 using namespace dev::eth;
 
-std::unique_ptr<VMFace> VMFace::create(VMFace::Kind _kind, u256 _gas)
+void VMFace::reset(u256 _gas) noexcept
 {
-	std::unique_ptr<VMFace> vm;
-#if ETH_EVMJIT
-	vm.reset(_kind == Kind::JIT ? static_cast<VMFace*>(new jit::VM) : new VM);
-#else
-	(void) _kind; // suppress unused var warning
-	vm.reset(new VM);
-#endif
-	vm->reset(_gas);
-	return vm;
+	m_gas = _gas;
 }
