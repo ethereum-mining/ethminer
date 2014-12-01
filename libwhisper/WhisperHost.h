@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 #include <libdevcore/RLP.h>
+#include <libdevcore/Worker.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/SHA3.h>
 #include "Common.h"
@@ -38,7 +39,7 @@ namespace dev
 namespace shh
 {
 
-class WhisperHost: public HostCapability<WhisperPeer>, public Interface
+class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public Worker
 {
 	friend class WhisperPeer;
 
@@ -64,7 +65,13 @@ public:
 
 	void cleanup();
 
+protected:
+	void doWork();
+
 private:
+	virtual void onStarting() { startWorking(); }
+	virtual void onStopping() { stopWorking(); }
+
 	void streamMessage(h256 _m, RLPStream& _s) const;
 
 	void noteChanged(h256 _messageHash, h256 _filter);

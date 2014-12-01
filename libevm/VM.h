@@ -110,6 +110,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		// FEES...
 		bigint runGas = c_stepGas;
 		bigint newTempSize = m_temp.size();
+		bigint copySize = 0;
 
 		auto onOperation = [&]()
 		{
@@ -172,14 +173,17 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CALLDATACOPY:
 			require(3);
+			copySize = m_stack[m_stack.size() - 3];
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::CODECOPY:
 			require(3);
+			copySize = m_stack[m_stack.size() - 3];
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
 			break;
 		case Instruction::EXTCODECOPY:
 			require(4);
+			copySize = m_stack[m_stack.size() - 4];
 			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
 			break;
 			
@@ -215,6 +219,13 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			auto inSize = m_stack[m_stack.size() - 3];
 			newTempSize = inOff + inSize;
             runGas = c_createGas;
+			break;
+		}
+		case Instruction::EXP:
+		{
+			require(2);
+			auto expon = m_stack[m_stack.size() - 2];
+			runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
 			break;
 		}
 
@@ -283,7 +294,6 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::SDIV:
 		case Instruction::MOD:
 		case Instruction::SMOD:
-		case Instruction::EXP:
 		case Instruction::LT:
 		case Instruction::GT:
 		case Instruction::SLT:
@@ -344,6 +354,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
 			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+		runGas += c_copyGas * (copySize + 31) / 32;
 
 		onOperation();
 //		if (_onOp)

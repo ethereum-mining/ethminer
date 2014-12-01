@@ -51,7 +51,6 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
 	res["difficulty"] = toJS(_bi.difficulty);
 	res["number"] = (int)_bi.number;
-	res["minGasPrice"] = toJS(_bi.minGasPrice);
 	res["gasLimit"] = (int)_bi.gasLimit;
 	res["timestamp"] = (int)_bi.timestamp;
 	res["extraData"] = jsFromBinary(_bi.extraData);
