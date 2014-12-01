@@ -29,3 +29,17 @@ if (${JSON_RPC_CPP_FOUND})
     message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 endif()
+
+find_package (QT5Core REQUIRED)
+find_package (QT5Gui REQUIRED)
+find_package (Qt5Quick REQUIRED)
+find_package (Qt5Qml REQUIRED)
+find_package (Qt5Network REQUIRED)
+find_package (Qt5Widgets REQUIRED)
+find_package (Qt5WebKit REQUIRED)
+find_package (Qt5WebKitWidgets REQUIRED)
+
+
+
+
+
