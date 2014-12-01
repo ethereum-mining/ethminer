@@ -2,7 +2,6 @@
 # DO NOT MESS WITH THESE SETTINGS! IF YOU HAVE TO MAKE CHANGES HERE, CONSULT sven@ethdev.com BEFOREHAND!!
 
 # DO NOT CHANGE ANYTHING HERE!
-
 if(APPLE)
 ExternalProject_Add(json-rpc-cpp
 	# DEPENDS argtable2 jsoncpp

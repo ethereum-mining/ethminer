@@ -7,25 +7,23 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
 
 
-# Dependencies must have a version number + EXACT, to ensure reproducible builds
+# Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
 find_package (CryptoPP 5.6.2 EXACT REQUIRED)
 message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
 message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
-
-# TODO the Jsoncpp package does not yet check for correct version number
 
 find_package (LevelDB REQUIRED)
 message(" - LevelDB header: ${LEVELDB_INCLUDE_DIR}")
 message(" - LevelDB lib: ${LEVELDB_LIBRARY}")
 
 # TODO the Jsoncpp package does not yet check for correct version number
-find_package (Jsoncpp 0.60 EXACT REQUIRED)
+find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
 # TODO the JsonRpcCpp package does not yet check for correct version number
-find_package (JsonRpcCpp 0.3.2 EXACT REQUIRED)
+find_package (JsonRpcCpp 0.3.2 REQUIRED)
 if (${JSON_RPC_CPP_FOUND})
     message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
     message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
