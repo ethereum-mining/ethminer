@@ -11,7 +11,8 @@ elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
 	include_directories(/usr/x86_64-w64-mingw32/include /usr/x86_64-w64-mingw32/include/QtCore /usr/x86_64-w64-mingw32/include/QtGui /usr/x86_64-w64-mingw32/include/QtQuick /usr/x86_64-w64-mingw32/include/QtQml /usr/x86_64-w64-mingw32/include/QtNetwork /usr/x86_64-w64-mingw32/include/QtWidgets /usr/x86_64-w64-mingw32/include/QtWebKit /usr/x86_64-w64-mingw32/include/QtWebKitWidgets)
 elseif (UNIX)
-   set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";/opt/Qt5.3.2/5.3/gcc_64/lib/cmake")
 endif ()
 
 find_package(Qt5Core REQUIRED)
@@ -46,14 +47,14 @@ if (APPLE)
 	set(MACOSX_BUNDLE_ICON_FILE mix)
 	include(BundleUtilities)
 
-        add_executable(${EXECUTEABLE} MACOSX_BUNDLE ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
+		add_executable(${EXECUTEABLE} MACOSX_BUNDLE ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
 	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
 	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
 	SET_SOURCE_FILES_PROPERTIES(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
 else ()
 	set(EXECUTEABLE mix)
-        add_executable(${EXECUTEABLE} ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
+		add_executable(${EXECUTEABLE} ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
 endif ()
 
 qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
@@ -64,7 +65,7 @@ if (APPLE)
 	add_custom_command(TARGET ${EXECUTEABLE} POST_BUILD
 		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-		
+
 	# This tool and next will inspect linked libraries in order to determine which dependencies are required
 	if (${CMAKE_CFG_INTDIR} STREQUAL ".")
 		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTEABLE}.app")
