@@ -1,29 +1,34 @@
-cmake_policy(SET CMP0015 NEW)
+cmake_policy(SET CMP0015 OLD)
+set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(..)
 
 set(EXECUTABLE eth)
 
 file(GLOB HEADERS "*.h")
+
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
+
+if(MINIUPNPC_LS)
+	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
+endif()
+
+if(JSON_RPC_CPP_FOUND)
+    target_link_libraries(${EXECUTABLE} web3jsonrpc)
+endif()
+
+if(READLINE_LS)
+target_link_libraries(${EXECUTABLE} ${READLINE_LS})
+endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} gmp)
-if(MINIUPNPC_LS)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
-endif()
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
-if(JSON_RPC_CPP_FOUND)
-    target_link_libraries(${EXECUTABLE} web3jsonrpc)
-endif()
-if(READLINE_LS)
-target_link_libraries(${EXECUTABLE} ${READLINE_LS})
-endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
@@ -39,10 +44,10 @@ if ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 elseif (UNIX)
 else ()
-	target_link_libraries(${EXECUTABLE} boost_system)
-	target_link_libraries(${EXECUTABLE} boost_filesystem)
-	find_package(Threads REQUIRED)
-	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
+	#target_link_libraries(${EXECUTABLE} boost_system)
+	#target_link_libraries(${EXECUTABLE} boost_filesystem)
+	#find_package(Threads REQUIRED)
+	#target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )

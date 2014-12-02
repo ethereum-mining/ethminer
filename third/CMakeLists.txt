@@ -5,8 +5,8 @@ include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 if (APPLE)
 	# Add homebrew path for qt5
-	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
-	include_directories(/usr/local/opt/qt5/include /usr/local/include)
+	#set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
+	#include_directories(/usr/local/opt/qt5/include /usr/local/include)
 elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
 	include_directories(/usr/x86_64-w64-mingw32/include /usr/x86_64-w64-mingw32/include/QtCore /usr/x86_64-w64-mingw32/include/QtGui /usr/x86_64-w64-mingw32/include/QtQuick /usr/x86_64-w64-mingw32/include/QtQml /usr/x86_64-w64-mingw32/include/QtNetwork /usr/x86_64-w64-mingw32/include/QtWidgets /usr/x86_64-w64-mingw32/include/QtWebKit /usr/x86_64-w64-mingw32/include/QtWebKitWidgets)
@@ -14,14 +14,6 @@ elseif (UNIX)
    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake") 
 endif ()
 
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5Quick REQUIRED)
-find_package(Qt5Qml REQUIRED)
-find_package(Qt5Network REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5WebKit REQUIRED)
-find_package(Qt5WebKitWidgets REQUIRED)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
@@ -59,7 +51,7 @@ target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore sec
 if (APPLE)
 	# First have qt5 install plugins and frameworks
 	add_custom_command(TARGET ${EXECUTEABLE} POST_BUILD
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
+		COMMAND ${CMAKE_PREFIX_PATH}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 		
 	# This tool and next will inspect linked libraries in order to determine which dependencies are required

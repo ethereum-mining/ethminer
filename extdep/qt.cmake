@@ -1,5 +1,12 @@
 if(APPLE)
-
+ExternalProject_add(qt
+	URL http://qtmirror.ics.com/pub/qtproject/official_releases/qt/5.3/5.3.2/single/qt-everywhere-opensource-src-5.3.2.tar.gz
+	BINARY_DIR qt-prefix/src/qt
+	PATCH_COMMAND patch -d qtmultimedia/src/plugins/avfoundation/mediaplayer < ${CMAKE_CURRENT_SOURCE_DIR}/qt_osx.patch
+	CONFIGURE_COMMAND ./configure -prefix ${ETH_DEPENDENCY_INSTALL_DIR} -system-zlib -qt-libpng -qt-libjpeg -confirm-license -opensource -nomake tests -release -nomake examples -no-xcb -arch x86_64
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install
+	)
 elseif(WIN32)
 ExternalProject_Add(qt
 	DEPENDS icu jom
