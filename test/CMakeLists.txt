@@ -19,12 +19,12 @@ target_link_libraries(testeth gmp)
 target_link_libraries(testeth solidity)
 target_link_libraries(testeth webthree)
 
-#TODO this on should not be necessary, it should have been brought in from ethcore dependency...
 target_link_libraries(testeth ${CRYPTOPP_LIBRARIES})
 
 if(JSON_RPC_CPP_FOUND)
     target_link_libraries(testeth ${JSONCPP_LIBRARIES})
 	target_link_libraries(testeth web3jsonrpc)
+	target_link_libraries(testeth ${JSON_RPC_CPP_CLIENT_LIBRARY})
 endif()
 
 target_link_libraries(createRandomTest ethereum)
