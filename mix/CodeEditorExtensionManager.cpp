@@ -22,9 +22,7 @@
 
 #include <QQuickItem>
 #include <QGraphicsObject>
-#include <QtDeclarative/QDeclarativeEngine>
 #include <QQmlEngine>
-#include <QtDeclarative/QDeclarativeView>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
