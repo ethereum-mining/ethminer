@@ -19,12 +19,6 @@ ExternalProject_Add_Step(qt configure_paths
 	DEPENDERS configure
 	)
 
-#ExternalProject_Add_Step(qt configure_visual
-#	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools.bat
-#	DEPENDEES patch
-#	DEPENDERS configure
-#	)
-
 else()
 
 endif()
