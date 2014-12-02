@@ -11,8 +11,7 @@ elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
 	include_directories(/usr/x86_64-w64-mingw32/include /usr/x86_64-w64-mingw32/include/QtCore /usr/x86_64-w64-mingw32/include/QtGui /usr/x86_64-w64-mingw32/include/QtQuick /usr/x86_64-w64-mingw32/include/QtQml /usr/x86_64-w64-mingw32/include/QtNetwork /usr/x86_64-w64-mingw32/include/QtWidgets /usr/x86_64-w64-mingw32/include/QtWebKit /usr/x86_64-w64-mingw32/include/QtWebKitWidgets)
 elseif (UNIX)
-	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
-	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";/opt/Qt5.3.2/5.3/gcc_64/lib/cmake")
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake;../cmake/")
 endif ()
 
 find_package(Qt5Core REQUIRED)
@@ -23,7 +22,6 @@ find_package(Qt5Network REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5WebKit REQUIRED)
 find_package(Qt5WebKitWidgets REQUIRED)
-find_package(Qt5Declarative REQUIRED)
 
 #qt5_wrap_ui(ui_Main.h Main.ui)
 
