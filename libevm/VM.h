@@ -53,9 +53,6 @@ inline Address asAddress(u256 _item)
 inline u256 fromAddress(Address _a)
 {
 	return (u160)_a;
-//	h256 ret;
-//	memcpy(&ret, &_a, sizeof(_a));
-//	return ret;
 }
 
 /**
