@@ -155,7 +155,7 @@ bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses
 {
 	asserts(_listenPort != 0);
 	
-	UPnP* upnp;
+	UPnP* upnp = nullptr;
 	try
 	{
 		upnp = new UPnP;

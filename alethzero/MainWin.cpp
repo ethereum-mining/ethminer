@@ -1261,6 +1261,9 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
+			s << "<br/>Hash w/o nonce: <b>" << info.headerHashWithoutNonce() << "</b>";
+			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
+			s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info.headerHashWithoutNonce(), info.nonce) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
@@ -1281,6 +1284,7 @@ void Main::on_blocks_currentItemChanged()
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
+			s << "<br/>Dump: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[0].data()) << "</span>";
 		}
 		else
 		{

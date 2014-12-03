@@ -272,7 +272,7 @@ LogEntries importLog(json_spirit::mObject& _o)
 		LogEntry log;
 		log.address = Address(o["address"].get_str());
 		for (auto const& t: o["topics"].get_array())
-			log.topics.insert(h256(t.get_str()));
+			log.topics.push_back(h256(t.get_str()));
 		log.data = importData(o);
 		logEntries.push_back(log);
 	}
