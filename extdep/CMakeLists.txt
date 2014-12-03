@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 include(ExternalProject)
+include(eth_download.cmake)
 
 # all dependencies will be installed into this directory, separated by platform
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
@@ -26,12 +27,17 @@ if (ETH_COMPILE)
 	include(compile/snappy.cmake)
 	include(compile/leveldb.cmake)
 
+	# cryptopp
+	include(compile/cryptopp.cmake)
 else()	
-	include(precompiled/json-rpc-cpp.cmake)
+	eth_download("json-rpc-cpp")
+	eth_download("qt")
+	eth_download("cryptopp")
+	#include(compile/snappy.cmake)
+	eth_download("leveldb")
 endif()
 
 # will be re-eanbled later
 # include(miniupnpc.cmake)
-
 # if install phase of extep fails, even if libs are already created, the ethereum install will fail
 
