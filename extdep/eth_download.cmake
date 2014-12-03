@@ -48,6 +48,8 @@ macro(eth_download eth_package_name)
 
 	if (eth_package_install)
 		message(STATUS "install script is at: ${eth_package_install}")
+	else ()
+		set (eth_package_install echo 0) # cause empty string is not handled properly
 	endif()
 
 	ExternalProject_Add(${eth_package_name}
@@ -55,7 +57,7 @@ macro(eth_download eth_package_name)
 		BINARY_DIR ${eth_package_name}-prefix/src/${eth_package_name}
 		CONFIGURE_COMMAND ""
 		BUILD_COMMAND ${eth_package_copy}
-		INSTALL_COMMAND ${eth_package_install}
+		INSTALL_COMMAND ${eth_package_install} . ${ETH_DEPENDENCY_INSTALL_DIR}
 	)
 endmacro()
 

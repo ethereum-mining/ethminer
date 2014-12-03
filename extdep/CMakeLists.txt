@@ -34,7 +34,8 @@ else()
 	eth_download(json-rpc-cpp VERSION 0.3.2)
 	eth_download(qt)
 	eth_download(cryptopp)
-	eth_download(snappy)
+	eth_download(snappy
+		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
 	eth_download(leveldb)
 
 	#include(compile/leveldb.cmake)
