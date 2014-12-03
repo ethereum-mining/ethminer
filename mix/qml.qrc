@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/BasicContent.qml</file>
+        <file>qml/main.qml</file>
+        <file>qml/MainContent.qml</file>
+        <file>qml/TabStyle.qml</file>
+    </qresource>
+</RCC>
