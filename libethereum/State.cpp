@@ -55,6 +55,10 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
+	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
+	if (!sig.isValid() || in.v > 28)
+		return;
+
 	byte pubkey[65];
 	int pubkeylen = 65;
 	secp256k1_start();
@@ -659,6 +663,12 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	{
 		cwarn << "Bad receipts state root!";
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
+	}
+
+	if (m_currentBlock.logBloom != logBloom())
+	{
+		cwarn << "Bad log bloom!";
+		BOOST_THROW_EXCEPTION(InvalidLogBloom());
 	}
 
 	// Initialise total difficulty calculation.
