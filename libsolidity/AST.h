@@ -88,11 +88,16 @@ public:
 	Declaration(Location const& _location, ASTPointer<ASTString> const& _name):
 		ASTNode(_location), m_name(_name) {}
 
-	/// Returns the declared name.
+	/// @returns the declared name.
 	ASTString const& getName() const { return *m_name; }
+	/// @returns the scope this declaration resides in. Can be nullptr if it is the global scope.
+	/// Available only after name and type resolution step.
+	Declaration* getScope() const { return m_scope; }
+	void setScope(Declaration* const& _scope) { m_scope = _scope; }
 
 private:
 	ASTPointer<ASTString> m_name;
+	Declaration* m_scope;
 };
 
 /**
@@ -173,14 +178,21 @@ private:
 class FunctionDefinition: public Declaration
 {
 public:
-	FunctionDefinition(Location const& _location, ASTPointer<ASTString> const& _name, bool _isPublic,
-					   ASTPointer<ParameterList> const& _parameters,
-					   bool _isDeclaredConst,
-					   ASTPointer<ParameterList> const& _returnParameters,
-					   ASTPointer<Block> const& _body):
-		Declaration(_location, _name), m_isPublic(_isPublic), m_parameters(_parameters),
-		m_isDeclaredConst(_isDeclaredConst), m_returnParameters(_returnParameters),
-		m_body(_body) {}
+	FunctionDefinition(Location const& _location, ASTPointer<ASTString> const& _name,
+					bool _isPublic,
+					ASTPointer<ASTString> const& _documentation,
+					ASTPointer<ParameterList> const& _parameters,
+					bool _isDeclaredConst,
+					ASTPointer<ParameterList> const& _returnParameters,
+					ASTPointer<Block> const& _body):
+	Declaration(_location, _name), m_isPublic(_isPublic),
+	m_parameters(_parameters),
+	m_isDeclaredConst(_isDeclaredConst),
+	m_returnParameters(_returnParameters),
+	m_body(_body),
+	m_documentation(_documentation)
+	{}
+
 	virtual void accept(ASTVisitor& _visitor) override;
 
 	bool isPublic() const { return m_isPublic; }
@@ -190,6 +202,9 @@ public:
 	std::vector<ASTPointer<VariableDeclaration>> const& getReturnParameters() const { return m_returnParameters->getParameters(); }
 	ASTPointer<ParameterList> const& getReturnParameterList() const { return m_returnParameters; }
 	Block& getBody() { return *m_body; }
+	/// @return A shared pointer of an ASTString.
+	/// Can contain a nullptr in which case indicates absence of documentation
+	ASTPointer<ASTString> const& getDocumentation() { return m_documentation; }
 
 	void addLocalVariable(VariableDeclaration const& _localVariable) { m_localVariables.push_back(&_localVariable); }
 	std::vector<VariableDeclaration const*> const& getLocalVariables() const { return m_localVariables; }
@@ -203,6 +218,7 @@ private:
 	bool m_isDeclaredConst;
 	ASTPointer<ParameterList> m_returnParameters;
 	ASTPointer<Block> m_body;
+	ASTPointer<ASTString> m_documentation;
 
 	std::vector<VariableDeclaration const*> m_localVariables;
 };
@@ -225,6 +241,8 @@ public:
 	/// declared and there is no assignment to the variable that fixes the type.
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
 	void setType(std::shared_ptr<Type const> const& _type) { m_type = _type; }
+
+	bool isLocalVariable() const { return !!dynamic_cast<FunctionDefinition*>(getScope()); }
 
 private:
 	ASTPointer<TypeName> m_typeName; ///< can be empty ("var")
@@ -510,12 +528,16 @@ private:
  */
 class Expression: public ASTNode
 {
+protected:
+	enum class LValueType { NONE, LOCAL, STORAGE };
+
 public:
-	Expression(Location const& _location): ASTNode(_location), m_isLvalue(false), m_lvalueRequested(false) {}
+	Expression(Location const& _location): ASTNode(_location), m_lvalue(LValueType::NONE), m_lvalueRequested(false) {}
 	virtual void checkTypeRequirements() = 0;
 
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
-	bool isLvalue() const { return m_isLvalue; }
+	bool isLValue() const { return m_lvalue != LValueType::NONE; }
+	bool isLocalLValue() const { return m_lvalue == LValueType::LOCAL; }
 
 	/// Helper function, infer the type via @ref checkTypeRequirements and then check that it
 	/// is implicitly convertible to @a _expectedType. If not, throw exception.
@@ -530,9 +552,9 @@ public:
 protected:
 	//! Inferred type of the expression, only filled after a call to checkTypeRequirements().
 	std::shared_ptr<Type const> m_type;
-	//! Whether or not this expression is an lvalue, i.e. something that can be assigned to.
-	//! This is set during calls to @a checkTypeRequirements()
-	bool m_isLvalue;
+	//! If this expression is an lvalue (i.e. something that can be assigned to) and is stored
+	//! locally or in storage. This is set during calls to @a checkTypeRequirements()
+	LValueType m_lvalue;
 	//! Whether the outer expression requested the address (true) or the value (false) of this expression.
 	bool m_lvalueRequested;
 };

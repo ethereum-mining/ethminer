@@ -101,14 +101,6 @@ public:
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
 	BlockDetails details() const { return details(currentHash()); }
 
-	/// Get the transactions' bloom filters of a block (or the most recent mined if none given). Thread-safe.
-	BlockBlooms blooms(h256 _hash) const { return queryExtras<BlockBlooms, 1>(_hash, m_blooms, x_blooms, NullBlockBlooms); }
-	BlockBlooms blooms() const { return blooms(currentHash()); }
-
-	/// Get the transactions' trace manifests of a block (or the most recent mined if none given). Thread-safe.
-	BlockTraces traces(h256 _hash) const { return queryExtras<BlockTraces, 2>(_hash, m_traces, x_traces, NullBlockTraces); }
-	BlockTraces traces() const { return traces(currentHash()); }
-
 	/// Get the transactions' log blooms of a block (or the most recent mined if none given). Thread-safe.
 	BlockLogBlooms logBlooms(h256 _hash) const { return queryExtras<BlockLogBlooms, 3>(_hash, m_logBlooms, x_logBlooms, NullBlockLogBlooms); }
 	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
@@ -193,10 +185,6 @@ private:
 	/// The caches of the disk DB and their locks.
 	mutable boost::shared_mutex x_details;
 	mutable BlockDetailsHash m_details;
-	mutable boost::shared_mutex x_blooms;
-	mutable BlockBloomsHash m_blooms;
-	mutable boost::shared_mutex x_traces;
-	mutable BlockTracesHash m_traces;
 	mutable boost::shared_mutex x_logBlooms;
 	mutable BlockLogBloomsHash m_logBlooms;
 	mutable boost::shared_mutex x_receipts;
