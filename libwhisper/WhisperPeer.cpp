@@ -85,9 +85,10 @@ void WhisperPeer::sendMessages()
 	if (m_unseen.size())
 	{
 		RLPStream amalg;
-		unsigned msgCount = m_unseen.size();
+		unsigned msgCount;
 		{
 			Guard l(x_unseen);
+			msgCount = m_unseen.size();
 			while (m_unseen.size())
 			{
 				auto p = *m_unseen.begin();
