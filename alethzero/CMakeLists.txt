@@ -94,6 +94,6 @@ elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
 	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 elseif (UNIX)
 else ()
-	message(STATUS "platform not supported")
+	message(ERROR "platform not supported")
 endif ()
 
