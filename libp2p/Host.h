@@ -224,7 +224,7 @@ private:
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
 	bool m_run = false;													///< Whether network is running.
-	std::mutex x_runtimer;													///< Start/stop mutex.
+	std::mutex x_runTimer;													///< Start/stop mutex.
 	
 	std::string m_clientVersion;											///< Our version string.
 
@@ -243,7 +243,7 @@ private:
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
 	
 	std::set<Node*> m_pendingNodeConns;									/// Used only by connect(Node&) to limit concurrently connecting to same node. See connect(shared_ptr<Node>const&).
-	std::mutex x_pendingNodeConnsMutex;
+	Mutex x_pendingNodeConns;
 
 	bi::tcp::endpoint m_public;											///< Our public listening endpoint.
 	KeyPair m_key;														///< Our unique ID.

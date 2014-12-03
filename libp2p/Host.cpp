@@ -228,7 +228,7 @@ void Host::stop()
 {
 	{
 		// prevent m_run from being set to false at same time as set to true by start()
-		Guard l(x_runtimer);
+		Guard l(x_runTimer);
 		// once m_run is false the scheduler will shutdown network and stopWorking()
 		m_run = false;
 	}
@@ -541,7 +541,7 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	// prevent concurrently connecting to a node; todo: better abstraction
 	Node *nptr = _n.get();
 	{
-		Guard l(x_pendingNodeConnsMutex);
+		Guard l(x_pendingNodeConns);
 		if (m_pendingNodeConns.count(nptr))
 			return;
 		m_pendingNodeConns.insert(nptr);
@@ -569,7 +569,7 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 			p->start();
 		}
 		delete s;
-		Guard l(x_pendingNodeConnsMutex);
+		Guard l(x_pendingNodeConns);
 		m_pendingNodeConns.erase(nptr);
 	});
 }
@@ -700,8 +700,8 @@ PeerInfos Host::peers(bool _updatePing) const
 
 void Host::run(boost::system::error_code const& error)
 {
-	static unsigned s_lasttick = 0;
-	s_lasttick += c_timerInterval;
+	static unsigned s_lastTick = 0;
+	s_lastTick += c_timerInterval;
 	
 	if (error || !m_ioService)
 	{
@@ -713,11 +713,11 @@ void Host::run(boost::system::error_code const& error)
 	// network running
 	if (m_run)
 	{
-		if (s_lasttick >= c_timerInterval * 10)
+		if (s_lastTick >= c_timerInterval * 10)
 		{
 			growPeers();
 			prunePeers();
-			s_lasttick = 0;
+			s_lastTick = 0;
 		}
 		
 		if (m_hadNewNodes)
@@ -783,7 +783,7 @@ void Host::run(boost::system::error_code const& error)
 			m_socket->close();
 		
 		// m_run is false, so we're stopping; kill timer
-		s_lasttick = 0;
+		s_lastTick = 0;
 		
 		// causes parent thread's stop() to continue which calls stopWorking()
 		m_timer.reset();
@@ -806,7 +806,7 @@ void Host::startedWorking()
 			// prevent m_run from being set to true at same time as set to false by stop()
 			// don't release mutex until m_timer is set so in case stop() is called at same
 			// time, stop will wait on m_timer and graceful network shutdown.
-			Guard l(x_runtimer);
+			Guard l(x_runTimer);
 			// reset io service and create deadline timer
 			m_timer.reset(new boost::asio::deadline_timer(*m_ioService));
 			m_run = true;
