@@ -241,6 +241,7 @@ private:
 	
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
+	unsigned m_lastTick = 0;											///< Used by run() for scheduling; must not be mutated outside of run().
 	
 	std::set<Node*> m_pendingNodeConns;									/// Used only by connect(Node&) to limit concurrently connecting to same node. See connect(shared_ptr<Node>const&).
 	Mutex x_pendingNodeConns;

@@ -700,8 +700,7 @@ PeerInfos Host::peers(bool _updatePing) const
 
 void Host::run(boost::system::error_code const& error)
 {
-	static unsigned s_lastTick = 0;
-	s_lastTick += c_timerInterval;
+	m_lastTick += c_timerInterval;
 	
 	if (error || !m_ioService)
 	{
@@ -713,11 +712,11 @@ void Host::run(boost::system::error_code const& error)
 	// network running
 	if (m_run)
 	{
-		if (s_lastTick >= c_timerInterval * 10)
+		if (m_lastTick >= c_timerInterval * 10)
 		{
 			growPeers();
 			prunePeers();
-			s_lastTick = 0;
+			m_lastTick = 0;
 		}
 		
 		if (m_hadNewNodes)
@@ -783,7 +782,7 @@ void Host::run(boost::system::error_code const& error)
 			m_socket->close();
 		
 		// m_run is false, so we're stopping; kill timer
-		s_lastTick = 0;
+		m_lastTick = 0;
 		
 		// causes parent thread's stop() to continue which calls stopWorking()
 		m_timer.reset();
