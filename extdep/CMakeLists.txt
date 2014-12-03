@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 include(ExternalProject)
+include(CMakeParseArguments)
 include(eth_download.cmake)
 
 # all dependencies will be installed into this directory, separated by platform
@@ -30,11 +31,14 @@ if (ETH_COMPILE)
 	# cryptopp
 	include(compile/cryptopp.cmake)
 else()	
-	eth_download("json-rpc-cpp")
-	eth_download("qt")
-	eth_download("cryptopp")
-	#include(compile/snappy.cmake)
-	eth_download("leveldb")
+	eth_download(json-rpc-cpp VERSION 0.3.2)
+	eth_download(qt)
+	eth_download(cryptopp)
+	eth_download(snappy)
+	eth_download(leveldb)
+
+	#include(compile/leveldb.cmake)
+	#eth_download("leveldb")
 endif()
 
 # will be re-eanbled later
