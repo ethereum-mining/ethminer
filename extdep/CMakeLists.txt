@@ -5,20 +5,30 @@ include(ExternalProject)
 # all dependencies will be installed into this directory, separated by platform
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/install/${_system_name}")
+set(ETH_DEPENDENCY_SERVER "http://poc-7.ethdev.com/precompiled/${_system_name}")
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/lib)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/include)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/bin)
 
-include(icu.cmake)
-include(jom.cmake)
-include(qt.cmake)
-include(curl.cmake)
-include(jsoncpp.cmake)
-include(argtable2.cmake)
-include(json-rpc-cpp.cmake)
-include(cryptopp.cmake)
-include(snappy.cmake)
-include(leveldb.cmake)
+if (ETH_COMPILE)
+	# json-rpc-cpp and its dependencies
+	include(compile/jsoncpp.cmake)
+	include(compile/argtable2.cmake)
+	include(compile/curl.cmake)
+	include(compile/json-rpc-cpp.cmake)
+
+	# qt at its dependencies 
+	include(compile/icu.cmake)
+	include(compile/jom.cmake)
+	include(compile/qt.cmake)
+
+	# leveldb and its dependencies
+	include(compile/snappy.cmake)
+	include(compile/leveldb.cmake)
+
+else()	
+	include(precompiled/json-rpc-cpp.cmake)
+endif()
 
 # will be re-eanbled later
 # include(miniupnpc.cmake)
