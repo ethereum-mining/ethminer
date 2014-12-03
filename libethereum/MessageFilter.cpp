@@ -198,7 +198,7 @@ LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 		if (!m_addresses.empty() && !m_addresses.count(e.address))
 			continue;
 		for (auto const& t: m_topics)
-			if (!e.topics.count(t))
+			if (!std::count(e.topics.begin(), e.topics.end(), t))
 				continue;
 		ret.push_back(e);
 	}
