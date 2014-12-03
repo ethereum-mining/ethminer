@@ -475,10 +475,10 @@ int main(int argc, char** argv)
 		c.startMining();
 
 #if ETH_JSONRPC
-	auto_ptr<WebThreeStubServer> jsonrpcServer;
+	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
+		jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::HttpServer(jsonrpc), web3, vector<KeyPair>({us}));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -552,7 +552,7 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::HttpServer(jsonrpc), web3, {us}));
+			jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::HttpServer(jsonrpc), web3, vector<KeyPair>({us}));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}
