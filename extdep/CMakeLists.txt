@@ -23,7 +23,5 @@ include(leveldb.cmake)
 # will be re-eanbled later
 # include(miniupnpc.cmake)
 
-
-# BUG
-# becouse extdep/cmakelist.txt is subfolder of ethereum project its being install into binary destination on macos. it's a bug
+# if install phase of extep fails, even if libs are already created, the ethereum install will fail
 
