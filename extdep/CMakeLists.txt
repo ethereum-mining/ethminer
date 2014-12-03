@@ -36,7 +36,8 @@ else()
 	eth_download(cryptopp)
 	eth_download(snappy
 		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
-	eth_download(leveldb)
+	eth_download(leveldb
+		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
 
 	#include(compile/leveldb.cmake)
 	#eth_download("leveldb")
