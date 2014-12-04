@@ -66,7 +66,6 @@ public:
 	h512 logBloom;	// TODO LogBloom - get include
 	u256 difficulty;
 	u256 number;
-	u256 minGasPrice;
 	u256 gasLimit;
 	u256 gasUsed;
 	u256 timestamp;
@@ -95,7 +94,6 @@ public:
 				logBloom == _cmp.logBloom &&
 				difficulty == _cmp.difficulty &&
 				number == _cmp.number &&
-				minGasPrice == _cmp.minGasPrice &&
 				gasLimit == _cmp.gasLimit &&
 				gasUsed == _cmp.gasUsed &&
 				timestamp == _cmp.timestamp &&
@@ -122,7 +120,7 @@ public:
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
-			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.minGasPrice << " " << _bi.gasLimit << " " <<
+			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
 			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
 	return _out;
 }

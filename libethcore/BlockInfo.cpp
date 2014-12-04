@@ -58,9 +58,9 @@ h256 BlockInfo::headerHashWithoutNonce() const
 
 void BlockInfo::streamRLP(RLPStream& _s, bool _nonce) const
 {
-	_s.appendList(_nonce ? 15 : 14)
+	_s.appendList(_nonce ? 14 : 13)
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
-		<< difficulty << number << minGasPrice << gasLimit << gasUsed << timestamp << extraData;
+		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData;
 	if (_nonce)
 		_s << nonce;
 }
@@ -86,12 +86,11 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		logBloom = _header[field = 6].toHash<h512>();
 		difficulty = _header[field = 7].toInt<u256>();
 		number = _header[field = 8].toInt<u256>();
-		minGasPrice = _header[field = 9].toInt<u256>();
-		gasLimit = _header[field = 10].toInt<u256>();
-		gasUsed = _header[field = 11].toInt<u256>();
-		timestamp = _header[field = 12].toInt<u256>();
-		extraData = _header[field = 13].toBytes();
-		nonce = _header[field = 14].toHash<h256>();
+		gasLimit = _header[field = 9].toInt<u256>();
+		gasUsed = _header[field = 10].toInt<u256>();
+		timestamp = _header[field = 11].toInt<u256>();
+		extraData = _header[field = 12].toBytes();
+		nonce = _header[field = 13].toHash<h256>();
 	}
 
 	catch (Exception const& _e)
@@ -146,9 +145,6 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	}
 	if (transactionsRoot != t.root())
 		BOOST_THROW_EXCEPTION(InvalidTransactionsHash(t.root(), transactionsRoot));
-
-	if (minGasPrice > mgp)
-		BOOST_THROW_EXCEPTION(InvalidMinGasPrice(minGasPrice, mgp));
 
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());

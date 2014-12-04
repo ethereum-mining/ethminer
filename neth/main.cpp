@@ -26,16 +26,12 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
-#include <jsonrpccpp/server/connectors/httpserver.h>
-#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/abstractwebthreestubserver.h>
-#include <libdevcore/CommonJS.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
@@ -475,12 +471,12 @@ int main(int argc, char** argv)
 		c.startMining();
 
 #if ETH_JSONRPC
-	auto_ptr<WebThreeStubServer> jsonrpcServer;
+	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
-		jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -555,7 +551,7 @@ int main(int argc, char** argv)
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
 			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
-			jsonrpcServer = auto_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, {us}));
+			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}
@@ -606,7 +602,7 @@ int main(int argc, char** argv)
 			vector<string> l;
 			l.push_back("Amount");
 			stringstream label;
-			label << "Gas price (" << info.minGasPrice << ")";
+			label << "Gas price";
 			l.push_back(label.str());
 			l.push_back("Gas");
 			vector<string> b;
@@ -649,14 +645,12 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)Client::txGas(data.size(), 0);
+				u256 minGas = (u256)Client::txGas(data, 0);
 				if (size < 40)
 				{
 					if (size > 0)
 						cwarn << "Invalid address length:" << size;
 				}
-				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
 					cwarn << "Minimum gas amount is" << minGas;
 				else if (ssize < 40)
@@ -705,9 +699,9 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)Client::txGas(0, 0);
+					u256 minGas = (u256)Client::txGas(bytes(), 0);
 					Address dest = h160(fromHex(fields[0]));
-					c.transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+					c.transact(us.secret(), amount, dest, bytes(), minGas);
 				}
 			}
 		}
@@ -721,7 +715,7 @@ int main(int argc, char** argv)
 			vector<string> l;
 			l.push_back("Endowment");
 			stringstream label;
-			label << "Gas price (" << info.minGasPrice << ")";
+			label << "Gas price";
 			l.push_back(label.str());
 			l.push_back("Gas");
 			vector<string> b;
@@ -766,16 +760,14 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)Client::txGas(init.size(), 0);
+				u256 minGas = (u256)Client::txGas(init, 0);
 				if (endowment < 0)
 					cwarn << "Invalid endowment";
-				else if (gasPrice < info.minGasPrice)
-					cwarn << "Minimum gas price is" << info.minGasPrice;
 				else if (gas < minGas)
 					cwarn << "Minimum gas amount is" << minGas;
 				else
 				{
-					c.transact(us.secret(), endowment, init, gas, gasPrice);
+					c.transact(us.secret(), endowment, init, gas);
 				}
 			}
 		}

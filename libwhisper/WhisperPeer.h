@@ -68,6 +68,8 @@ private:
 
 	mutable dev::Mutex x_unseen;
 	std::map<unsigned, h256> m_unseen;	///< Rated according to what they want.
+
+	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
 };
 
 }
