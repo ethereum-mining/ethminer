@@ -31,7 +31,7 @@ namespace dev
 class Worker
 {
 protected:
-	Worker(std::string const& _name = "anon"): m_name(_name) {}
+	Worker(std::string const& _name = "anon", unsigned _idleWaitMs = 30): m_name(_name), m_idleWaitMs(_idleWaitMs) {}
 
 	/// Move-constructor.
 	Worker(Worker&& _m) { std::swap(m_name, _m.m_name); }
@@ -41,20 +41,34 @@ protected:
 
 	virtual ~Worker() { stopWorking(); }
 
+	/// Allows changing worker name if work is stopped.
 	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
 
+	/// Starts worker thread; causes startedWorking() to be called.
 	void startWorking();
+	
+	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
+	
+	/// Returns if worker thread is present.
 	bool isWorking() const { Guard l(x_work); return !!m_work; }
+	
+	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
+	
+	/// Called continuously following sleep for m_idleWaitMs.
 	virtual void doWork() = 0;
+	
+	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
 
 private:
+	std::string m_name;
+	unsigned m_idleWaitMs;
+	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.
 	bool m_stop = false;
-	std::string m_name;
 };
 
 }

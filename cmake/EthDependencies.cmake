@@ -6,10 +6,6 @@
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
 
-# mac os
-# https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/UsingDynamicLibraries.html
-set(ENV{DYLD_FALLBACK_LIBRARY_PATH} ${CMAKE_PREFIX_PATH}/lib)
-
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
 find_package (CryptoPP 5.6.2 EXACT REQUIRED)

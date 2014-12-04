@@ -1259,9 +1259,11 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
-			s << "&nbsp;&emsp;&nbsp;Minimum gas price: <b>" << formatBalance(info.minGasPrice) << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
+			s << "<br/>Hash w/o nonce: <b>" << info.headerHashWithoutNonce() << "</b>";
+			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
+			s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info.headerHashWithoutNonce(), info.nonce) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
@@ -1282,6 +1284,7 @@ void Main::on_blocks_currentItemChanged()
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
+			s << "<br/>Dump: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[0].data()) << "</span>";
 		}
 		else
 		{
@@ -1665,7 +1668,7 @@ void Main::on_data_textChanged()
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
 		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
-		ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 0));
+		ui->gas->setMinimum((qint64)Client::txGas(m_data, 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
@@ -1676,7 +1679,7 @@ void Main::on_data_textChanged()
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
 		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
-			ui->gas->setMinimum((qint64)Client::txGas(m_data.size(), 1));
+			ui->gas->setMinimum((qint64)Client::txGas(m_data, 1));
 			if (!ui->gas->isEnabled())
 				ui->gas->setValue(m_backupGas);
 			ui->gas->setEnabled(true);
@@ -1685,7 +1688,7 @@ void Main::on_data_textChanged()
 		{
 			if (ui->gas->isEnabled())
 				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)Client::txGas(m_data.size()));
+			ui->gas->setValue((qint64)Client::txGas(m_data));
 			ui->gas->setEnabled(false);
 		}
 	}
