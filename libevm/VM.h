@@ -529,7 +529,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			else
 			{
 				h256 r;
-				for (uint64_t i = (unsigned)m_stack.back(), e = (unsigned)m_stack.back() + 32, j = 0; i < e; ++i, ++j)
+				for (uint64_t i = (unsigned)m_stack.back(), e = (unsigned)m_stack.back() + (uint64_t)32, j = 0; i < e; ++i, ++j)
 					r[j] = i < _ext.data.size() ? _ext.data[i] : 0;
 				m_stack.back() = (u256)r;
 			}
