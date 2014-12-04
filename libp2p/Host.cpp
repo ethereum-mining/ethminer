@@ -78,7 +78,7 @@ std::vector<bi::address> Host::getInterfaceAddresses()
 		char *addrStr = inet_ntoa(addr);
 		bi::address address(bi::address::from_string(addrStr));
 		if (!isLocalHostAddress(address))
-			addresses.push_back(ad.to_v4());
+			addresses.push_back(address.to_v4());
 	}
 	
 	WSACleanup();
@@ -153,7 +153,7 @@ int Host::listen4(bi::tcp::acceptor* _acceptor, unsigned short _listenPort)
 
 bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
 {
-	asserts(_listenPort);
+	asserts(_listenPort != 0);
 	
 	UPnP* upnp;
 	try

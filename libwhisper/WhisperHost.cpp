@@ -156,6 +156,12 @@ void WhisperHost::uninstallWatch(unsigned _i)
 			m_filters.erase(fit);
 }
 
+void WhisperHost::doWork()
+{
+	for (auto& i: peers())
+		i->cap<WhisperPeer>()->sendMessages();
+}
+
 void WhisperHost::cleanup()
 {
 	// remove old messages.
