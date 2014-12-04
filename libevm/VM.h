@@ -538,50 +538,46 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CALLDATASIZE:
 			m_stack.push_back(_ext.data.size());
 			break;
-		case Instruction::CALLDATACOPY:
-		{
-			unsigned offset = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			u256 dataIndex = m_stack.back();
-			m_stack.pop_back();
-			unsigned size = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned el = dataIndex + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < dataIndex ? 0 : _ext.data.size() - (unsigned)dataIndex : size;
-			memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)dataIndex, el);
-			memset(m_temp.data() + offset + el, 0, size - el);
-			break;
-		}
 		case Instruction::CODESIZE:
 			m_stack.push_back(_ext.code.size());
 			break;
-		case Instruction::CODECOPY:
-		{
-			unsigned offset = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			u256 dataIndex = (u256)m_stack.back();
-			m_stack.pop_back();
-			unsigned size = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned el = dataIndex + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < dataIndex ? 0 : _ext.code.size() - (unsigned)dataIndex : size;
-			memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)dataIndex, el);
-			memset(m_temp.data() + offset + el, 0, size - el);
-			break;
-		}
 		case Instruction::EXTCODESIZE:
 			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
 			break;
+		case Instruction::CALLDATACOPY:
+		case Instruction::CODECOPY:
 		case Instruction::EXTCODECOPY:
 		{
-			Address a = asAddress(m_stack.back());
-			m_stack.pop_back();
+			Address a;
+			if (inst == Instruction::EXTCODECOPY)
+			{
+				a = asAddress(m_stack.back());
+				m_stack.pop_back();
+			}
 			unsigned offset = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			u256 dataIndex = m_stack.back();
+			u256 index = m_stack.back();
 			m_stack.pop_back();
 			unsigned size = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el = dataIndex + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < dataIndex ? 0 : _ext.codeAt(a).size() - (unsigned)dataIndex : size;
-			memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)dataIndex, el);
+			unsigned el;
+			switch(inst)
+			{
+			case Instruction::CALLDATACOPY:
+				el = index + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < index ? 0 : _ext.data.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)index, el);
+				break;
+			case Instruction::CODECOPY:
+				el = index + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < index ? 0 : _ext.code.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)index, el);
+				break;
+			case Instruction::EXTCODECOPY:
+				el = index + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < index ? 0 : _ext.codeAt(a).size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)index, el);
+				break;
+			default:
+				break;
+			}
 			memset(m_temp.data() + offset + el, 0, size - el);
 			break;
 		}
