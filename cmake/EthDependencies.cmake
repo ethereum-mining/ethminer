@@ -22,10 +22,11 @@ message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
 # TODO the JsonRpcCpp package does not yet check for correct version number
-find_package (JsonRpcCpp 0.3.2 REQUIRED)
+# json-rpc-cpp support is currently not mandatory
+find_package (JsonRpcCpp 0.3.2)
 if (${JSON_RPC_CPP_FOUND})
-    message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
-    message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
+	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
+	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 endif()
 
