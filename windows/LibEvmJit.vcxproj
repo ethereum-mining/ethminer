@@ -131,6 +131,7 @@
     <ClCompile Include="..\libevmjit\ExecutionEngine.cpp" />
     <ClCompile Include="..\libevmjit\Ext.cpp" />
     <ClCompile Include="..\libevmjit\GasMeter.cpp" />
+    <ClCompile Include="..\libevmjit\interface.c" />
     <ClCompile Include="..\libevmjit\Memory.cpp" />
     <ClCompile Include="..\libevmjit\Runtime.cpp" />
     <ClCompile Include="..\libevmjit\Stack.cpp" />

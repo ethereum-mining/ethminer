@@ -48,6 +48,9 @@
     <ClCompile Include="..\libevmjit\Arith256.cpp">
       <Filter>libevmjit</Filter>
     </ClCompile>
+    <ClCompile Include="..\libevmjit\interface.c">
+      <Filter>libevmjit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libevmjit\BasicBlock.h">
