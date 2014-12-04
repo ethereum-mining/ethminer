@@ -61,7 +61,7 @@ target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore dev
 if (APPLE)
 	# First have qt5 install plugins and frameworks
 	add_custom_command(TARGET ${EXECUTEABLE} POST_BUILD
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
+		COMMAND /usr/local/opt/qt5/bin/macdeployqt -qmldir=${CMAKE_CURRENT_SOURCE_DIR}/qml ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 	# This tool and next will inspect linked libraries in order to determine which dependencies are required
