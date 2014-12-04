@@ -53,9 +53,6 @@ inline Address asAddress(u256 _item)
 inline u256 fromAddress(Address _a)
 {
 	return (u160)_a;
-//	h256 ret;
-//	memcpy(&ret, &_a, sizeof(_a));
-//	return ret;
 }
 
 /**
@@ -173,15 +170,15 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		// These all operate on memory and therefore potentially expand it:
 		case Instruction::MSTORE:
 			require(2);
-			newTempSize = m_stack.back() + 32;
+			newTempSize = (bigint)m_stack.back() + 32;
 			break;
 		case Instruction::MSTORE8:
 			require(2);
-			newTempSize = m_stack.back() + 1;
+			newTempSize = (bigint)m_stack.back() + 1;
 			break;
 		case Instruction::MLOAD:
 			require(1);
-			newTempSize = m_stack.back() + 32;
+			newTempSize = (bigint)m_stack.back() + 32;
 			break;
 		case Instruction::RETURN:
 			require(2);
@@ -236,10 +233,10 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CREATE:
 		{
 			require(3);
-			auto inOff = m_stack[m_stack.size() - 2];
-			auto inSize = m_stack[m_stack.size() - 3];
-			newTempSize = inOff + inSize;
-            runGas = c_createGas;
+			u256 inOff = m_stack[m_stack.size() - 2];
+			u256 inSize = m_stack[m_stack.size() - 3];
+			newTempSize = (bigint)inOff + inSize;
+			runGas = c_createGas;
 			break;
 		}
 		case Instruction::EXP:

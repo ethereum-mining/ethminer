@@ -14,20 +14,32 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file main.cpp
+ * @author Yann yann@ethdev.com
  * @date 2014
  */
 
-#include "Common.h"
+#include <QDebug>
+#include "MixApplication.h"
+using namespace dev::mix;
 
-using namespace std;
-using namespace dev;
-
-namespace dev
+MixApplication::MixApplication(int _argc, char *_argv[]): QApplication(_argc, _argv)
 {
-
-char const* Version = "0.7.12";
-
 }
 
+bool MixApplication::notify(QObject* _receiver, QEvent* _event)
+{
+	try
+	{
+		return MixApplication::notify(_receiver, _event);
+	}
+	catch (std::exception& _ex)
+	{
+		qDebug() << "std::exception was caught " << _ex.what();
+	}
+	catch (...)
+	{
+		qDebug() << "uncaught exception ";
+	}
+	return false;
+}

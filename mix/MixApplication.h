@@ -14,20 +14,33 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file main.cpp
+ * @author Yann yann@ethdev.com
  * @date 2014
+ * This class will be use instead of QApplication to launch the application. the method 'notify' allows to catch all exceptions.
+ * Not use for now: TODO.
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include <QApplication>
 
 namespace dev
 {
 
-char const* Version = "0.7.12";
+namespace mix
+{
+
+class MixApplication: public QApplication
+{
+	Q_OBJECT
+
+public:
+	MixApplication(int _argc, char* _argv[]);
+	virtual ~MixApplication() {}
+	virtual bool notify(QObject* _receiver, QEvent* _event);
+};
 
 }
 
+}
