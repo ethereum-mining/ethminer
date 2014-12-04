@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9C816740-5C11-4377-A3A7-46BE12F35FA0}</ProjectGuid>
-    <RootNamespace>LibEvmJit</RootNamespace>
+    <ProjectGuid>{A5D8764C-FD17-4364-AFCF-5BAF78777569}</ProjectGuid>
+    <RootNamespace>LibEvmJitCpp</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -123,48 +123,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="LibEthereum.vcxproj">
-      <Project>{826e68cb-d3ee-4a8a-b540-59a8c3f38d4f}</Project>
+    <Text Include="..\evmjit\libevmjit-cpp\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\evmjit\libevmjit-cpp\Env.cpp" />
+    <ClCompile Include="..\evmjit\libevmjit-cpp\VM.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\evmjit\libevmjit-cpp\VM.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="LibEvmJit.vcxproj">
+      <Project>{9c816740-5c11-4377-a3a7-46be12f35fa0}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\evmjit\libevmjit\Arith256.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\BasicBlock.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Compiler.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\CompilerHelper.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Endianness.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\ExecutionEngine.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Ext.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\GasMeter.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\interface.c" />
-    <ClCompile Include="..\evmjit\libevmjit\Memory.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Runtime.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\RuntimeManager.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Stack.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Type.cpp" />
-    <ClCompile Include="..\evmjit\libevmjit\Utils.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\evmjit\libevmjit\Arith256.h" />
-    <ClInclude Include="..\evmjit\libevmjit\BasicBlock.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Common.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Compiler.h" />
-    <ClInclude Include="..\evmjit\libevmjit\CompilerHelper.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Endianness.h" />
-    <ClInclude Include="..\evmjit\libevmjit\ExecutionEngine.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Ext.h" />
-    <ClInclude Include="..\evmjit\libevmjit\GasMeter.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Instruction.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Memory.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Runtime.h" />
-    <ClInclude Include="..\evmjit\libevmjit\RuntimeData.h" />
-    <ClInclude Include="..\evmjit\libevmjit\RuntimeManager.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Stack.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Type.h" />
-    <ClInclude Include="..\evmjit\libevmjit\Utils.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\evmjit\libevmjit\CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
