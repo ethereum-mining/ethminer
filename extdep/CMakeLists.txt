@@ -34,7 +34,9 @@ if (ETH_COMPILE)
 	# boost
 	include(compile/boost.cmake)
 else()	
+	eth_download(jsoncpp)
 	eth_download(json-rpc-cpp OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh)
+	
 	if (APPLE)
 		eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
 	endif()
