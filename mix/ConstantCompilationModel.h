@@ -14,20 +14,38 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
+/** @file ApplicationCtx.h
+ * @author Yann yann@ethdev.com
  * @date 2014
+ * Ethereum IDE client.
  */
 
-#include "Common.h"
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include <QObject>
 
 namespace dev
 {
 
-char const* Version = "0.7.12";
+namespace mix
+{
+
+struct CompilerResult
+{
+	QString hexCode;
+	QString comment;
+	bool success;
+};
+
+class ConstantCompilationModel
+{
+
+public:
+	ConstantCompilationModel() {}
+	~ConstantCompilationModel() {}
+	CompilerResult compile(QString code);
+};
 
 }
 
+}
