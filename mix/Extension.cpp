@@ -25,7 +25,7 @@
 using namespace dev;
 using namespace dev::mix;
 
-void Extension::addContentOn(QObject* _tabView)
+void Extension::addTabOn(QObject* _view)
 {
 	if (contentUrl() == "")
 		return;
@@ -33,12 +33,29 @@ void Extension::addContentOn(QObject* _tabView)
 	QVariant returnValue;
 	QQmlComponent* component = new QQmlComponent(
 				ApplicationCtx::getInstance()->appEngine(),
-				QUrl(this->contentUrl()), _tabView);
+				QUrl(contentUrl()), _view);
 
-	QMetaObject::invokeMethod(_tabView, "addTab",
-							  Q_RETURN_ARG(QVariant, returnValue),
-							  Q_ARG(QVariant, this->title()),
-							  Q_ARG(QVariant, QVariant::fromValue(component)));
+	QMetaObject::invokeMethod(_view, "addTab",
+							Q_RETURN_ARG(QVariant, returnValue),
+							Q_ARG(QVariant, this->title()),
+							Q_ARG(QVariant, QVariant::fromValue(component)));
 
 	m_view = qvariant_cast<QObject*>(returnValue);
 }
+
+void Extension::addContentOn(QObject* _view)
+{
+	Q_UNUSED(_view);
+	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
+	{
+		QQmlComponent component(ApplicationCtx::getInstance()->appEngine(), QUrl(contentUrl()));
+		QObject* dialog = component.create();
+		QObject* dialogWin = ApplicationCtx::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QMetaObject::invokeMethod(dialogWin, "close");
+		dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
+		dialogWin->setProperty("title", title());
+		QMetaObject::invokeMethod(dialogWin, "open");
+	}
+	//TODO add more view type.
+}
+
