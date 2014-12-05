@@ -1,7 +1,7 @@
 #include <libevm/VM.h>
 
 #if ETH_EVMJIT
-	#include<evmjit/libevmjit-cpp/VM.h>
+	#include<evmjit/libevmjit-cpp/JitVM.h>
 #endif
 
 #include "VMFactory.h"
@@ -14,7 +14,7 @@ namespace eth
 std::unique_ptr<VMFace> VMFactory::create(VMFactory::Kind _kind, u256 _gas)
 {
 #if ETH_EVMJIT
-	auto vm = _kind == Kind::JIT ? static_cast<VMFace*>(new jit::VM)
+	auto vm = _kind == Kind::JIT ? static_cast<VMFace*>(new JitVM)
 								 : static_cast<VMFace*>(new VM);
 #else
 	VMFace* vm = new VM;
