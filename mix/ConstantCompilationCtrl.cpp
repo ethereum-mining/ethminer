@@ -30,7 +30,7 @@
 #include "ConstantCompilationModel.h"
 using namespace dev::mix;
 
-ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc)
+ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
 {
 	m_editor = _doc;
 	m_compilationModel = new ConstantCompilationModel();
@@ -64,7 +64,7 @@ void ConstantCompilationCtrl::compile()
 		resetOutPut();
 		return;
 	}
-	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText());
+	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "    "));
 	writeOutPut(res);
 }
 

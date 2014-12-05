@@ -14,40 +14,30 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.h
+/** @file KeyEventManager.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
+ * Used as an event handler for all classes which need keyboard interactions.
+ * Can be improve by adding the possibility to register to a specific key.
  */
 
-#pragma once
+#include <QDebug>
+#include <QKeySequence>
+#include "KeyEventManager.h"
 
-#include <libevm/VM.h>
-#include <QObject>
-
-namespace dev
+void KeyEventManager::registerEvent(const QObject* _receiver, const char* _slot)
 {
-
-namespace mix
-{
-
-struct CompilerResult
-{
-	QString hexCode;
-	QString comment;
-	dev::bytes bytes;
-	bool success;
-};
-
-class ConstantCompilationModel
-{
-
-public:
-	ConstantCompilationModel() {}
-	~ConstantCompilationModel() {}
-	CompilerResult compile(QString code);
-};
-
+	QObject::connect(this, SIGNAL(onKeyPressed(int)), _receiver, _slot);
 }
 
+void KeyEventManager::unRegisterEvent(QObject* _receiver)
+{
+	QObject::disconnect(_receiver);
 }
+
+void KeyEventManager::keyPressed(QVariant _event)
+{
+	emit onKeyPressed(_event.toInt());
+}
+
+
