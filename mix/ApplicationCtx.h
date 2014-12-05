@@ -42,7 +42,7 @@ class ApplicationCtx: public QObject
 
 public:
 	ApplicationCtx(QQmlApplicationEngine* _engine);
-	~ApplicationCtx();
+	~ApplicationCtx() {}
 	static ApplicationCtx* getInstance() { return Instance; }
 	static void setApplicationContext(QQmlApplicationEngine* _engine);
 	QQmlApplicationEngine* appEngine();
@@ -53,7 +53,7 @@ public:
 
 private:
 	static ApplicationCtx* Instance;
-	QQmlApplicationEngine* m_applicationEngine;
+	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<KeyEventManager> m_keyEventManager;
 
