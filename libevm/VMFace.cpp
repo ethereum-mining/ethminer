@@ -17,7 +17,6 @@
 
 #include "VMFace.h"
 #include "VM.h"
-#include <libevmjit/VM.h>
 
 using namespace dev;
 using namespace dev::eth;
