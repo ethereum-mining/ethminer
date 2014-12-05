@@ -5,8 +5,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(${LEVELDB_INCLUDE_DIR})
 include_directories(..)
+include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE devcore)
 
@@ -18,16 +19,13 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
+target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARY})
+
 if (APPLE)
-	# Latest mavericks boost libraries only come with -mt
-	target_link_libraries(${EXECUTABLE} boost_system-mt)
-	target_link_libraries(${EXECUTABLE} boost_filesystem-mt)
-	target_link_libraries(${EXECUTABLE} boost_thread-mt)
 	find_package(Threads REQUIRED)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 elseif (UNIX)
-	find_package(Boost 1.53 REQUIRED COMPONENTS thread system)
-	target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 	find_package(Threads REQUIRED)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif()

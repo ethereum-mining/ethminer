@@ -53,6 +53,23 @@ set(Boost_COMPILER -vc120)
 
 find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex)
 
+if (Boost_FOUND)
+	message(" - boost header: ${Boost_INCLUDE_DIRS}")
+	message(" - boost lib   : ${Boost_LIBRARIES}")
+endif()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
