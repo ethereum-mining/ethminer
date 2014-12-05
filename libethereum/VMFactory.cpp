@@ -1,7 +1,7 @@
 #include <libevm/VM.h>
 
 #if ETH_EVMJIT
-	#include<libevmjit/VM.h>
+	#include<evmjit/libevmjit-cpp/VM.h>
 #endif
 
 #include "VMFactory.h"
