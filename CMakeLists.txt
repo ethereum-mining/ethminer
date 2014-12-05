@@ -51,7 +51,7 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msys")
 	elseif (CMAKE_COMPILER_IS_GNUCXX)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/g++")
-	elseif (CMAKE_COMPILER_IS_MSVC)
+	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/msvc")
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
@@ -59,8 +59,15 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 	endif ()
 
+	#cmake build type may be not specified when using msvc
+	if (${CMAKE_BUILD_TYPE})
+		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
+	else()
+		set(_cmake_build_type "undefined")
+	endif()
+
 	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BUILD_TYPE} ${ETH_BUILD_PLATFORM})
+	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${_cmake_build_type} ${ETH_BUILD_PLATFORM})
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
