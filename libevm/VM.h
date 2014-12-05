@@ -560,25 +560,27 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			unsigned size = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			bytes toBeCopied;
+			unsigned sizeToBeCopied;
 			switch(inst)
 			{
 			case Instruction::CALLDATACOPY:
-				toBeCopied = _ext.data.toBytes();
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < index ? 0 : _ext.data.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)index, sizeToBeCopied);
 				break;
 			case Instruction::CODECOPY:
-				toBeCopied = _ext.code;
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < index ? 0 : _ext.code.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)index, sizeToBeCopied);
 				break;
 			case Instruction::EXTCODECOPY:
-				toBeCopied = _ext.codeAt(a);
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < index ? 0 : _ext.codeAt(a).size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)index, sizeToBeCopied);
 				break;
 			default:
+				// this is unreachable, but if someone introduces a bug in the future, he may get here.
 				BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("CALLDATACOPY, CODECOPY or EXTCODECOPY instruction requested."));
 				break;
 			}
-			unsigned el = index + (bigint)size > (u256)toBeCopied.size() ? (u256)toBeCopied.size() < index ? 0 : toBeCopied.size() - (unsigned)index : size;
-			memcpy(m_temp.data() + offset, toBeCopied.data() + (unsigned)index, el);
-			memset(m_temp.data() + offset + el, 0, size - el);
+			memset(m_temp.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
 			break;
 		}
 		case Instruction::GASPRICE:
