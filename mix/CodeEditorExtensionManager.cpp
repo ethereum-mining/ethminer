@@ -64,15 +64,15 @@ void CodeEditorExtensionManager::initExtensions()
 	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
 }
 
-void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> ext)
+void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 {
-	if (!ext.get()->contentUrl().isEmpty())
+	if (!_ext.get()->contentUrl().isEmpty())
 	{
 		try
 		{
-			if (ext.get()->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
+			if (_ext.get()->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
 			{
-				ext.get()->addTabOn(m_tabView);
+				_ext.get()->addTabOn(m_tabView);
 			}
 		}
 		catch (...)
@@ -81,8 +81,8 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> ext)
 			return;
 		}
 	}
-	ext.get()->start();
-	m_features.append(ext);
+	_ext.get()->start();
+	m_features.append(_ext);
 }
 
 void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)

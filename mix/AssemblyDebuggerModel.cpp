@@ -78,7 +78,6 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 	return d;
 }
 
-
 DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u256 _value,
 																			   dev::u256 _gasPrice,
 																			   dev::u256 _gas,

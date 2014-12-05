@@ -38,10 +38,8 @@ ApplicationCtx* ApplicationCtx::Instance = nullptr;
 ApplicationCtx::ApplicationCtx(QQmlApplicationEngine* _engine)
 {
 	m_applicationEngine = _engine;
-	m_keyEventManager = std::unique_ptr<KeyEventManager>();
-	m_webThree = std::unique_ptr<dev::WebThreeDirect>();
-	m_webThree.reset(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
-	m_keyEventManager.reset(new KeyEventManager());
+	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
+	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 }
 
 ApplicationCtx::~ApplicationCtx()
