@@ -37,19 +37,14 @@ ApplicationCtx* ApplicationCtx::Instance = nullptr;
 
 ApplicationCtx::ApplicationCtx(QQmlApplicationEngine* _engine)
 {
-	m_applicationEngine = _engine;
+	m_applicationEngine = std::unique_ptr<QQmlApplicationEngine>(_engine);
 	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
 	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 }
 
-ApplicationCtx::~ApplicationCtx()
-{
-	delete m_applicationEngine;
-}
-
 QQmlApplicationEngine* ApplicationCtx::appEngine()
 {
-	return m_applicationEngine;
+	return m_applicationEngine.get();
 }
 
 dev::eth::Client* ApplicationCtx::getEthereumClient()
@@ -81,7 +76,7 @@ void ApplicationCtx::setApplicationContext(QQmlApplicationEngine* _engine)
 
 void ApplicationCtx::displayMessageDialog(QString _title, QString _message)
 {
-	QQmlComponent component(m_applicationEngine, QUrl("qrc:/qml/BasicMessage.qml"));
+	QQmlComponent component(m_applicationEngine.get(), QUrl("qrc:/qml/BasicMessage.qml"));
 	QObject* dialog = component.create();
 	dialog->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QObject* dialogWin = ApplicationCtx::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("messageDialog", Qt::FindChildrenRecursively);
