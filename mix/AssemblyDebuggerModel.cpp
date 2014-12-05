@@ -102,9 +102,9 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u2
 	return getContractInitiationDebugStates(bytesRef);
 }
 
-bool AssemblyDebuggerModel::compile(QString code)
+bool AssemblyDebuggerModel::compile(QString _code)
 {
 	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(code);
+	CompilerResult res = compiler.compile(_code);
 	return res.success;
 }
