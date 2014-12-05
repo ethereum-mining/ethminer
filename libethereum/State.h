@@ -36,7 +36,6 @@
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
-#include "Executive.h"
 #include "AccountDiff.h"
 
 namespace dev
