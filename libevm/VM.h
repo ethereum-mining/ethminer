@@ -573,6 +573,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 				toBeCopied = _ext.codeAt(a);
 				break;
 			default:
+				BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("CALLDATACOPY, CODECOPY or EXTCODECOPY instruction requested."));
 				break;
 			}
 			unsigned el = index + (bigint)size > (u256)toBeCopied.size() ? (u256)toBeCopied.size() < index ? 0 : toBeCopied.size() - (unsigned)index : size;
