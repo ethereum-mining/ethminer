@@ -560,24 +560,23 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			unsigned size = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned el;
+			bytes toBeCopied;
 			switch(inst)
 			{
 			case Instruction::CALLDATACOPY:
-				el = index + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < index ? 0 : _ext.data.size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)index, el);
+				toBeCopied = _ext.data.toBytes();
 				break;
 			case Instruction::CODECOPY:
-				el = index + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < index ? 0 : _ext.code.size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)index, el);
+				toBeCopied = _ext.code;
 				break;
 			case Instruction::EXTCODECOPY:
-				el = index + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < index ? 0 : _ext.codeAt(a).size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)index, el);
+				toBeCopied = _ext.codeAt(a);
 				break;
 			default:
 				break;
 			}
+			unsigned el = index + (bigint)size > (u256)toBeCopied.size() ? (u256)toBeCopied.size() < index ? 0 : toBeCopied.size() - (unsigned)index : size;
+			memcpy(m_temp.data() + offset, toBeCopied.data() + (unsigned)index, el);
 			memset(m_temp.data() + offset + el, 0, size - el);
 			break;
 		}
