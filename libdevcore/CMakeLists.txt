@@ -19,8 +19,8 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY})
 
 if (APPLE)
 	find_package(Threads REQUIRED)
