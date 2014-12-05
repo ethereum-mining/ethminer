@@ -31,7 +31,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& code)
+std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& code, QObject* _objUsedAsParent)
 {
 	QList<QObject*> codeStr;
 	QMap<int, int> codeMapping;
@@ -51,7 +51,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
 				i += bc;
 			}
-			HumanReadableCode* humanCode = new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line);
+			HumanReadableCode* humanCode = new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line, _objUsedAsParent);
 			codeStr.append(humanCode);
 		}
 		catch (...)
@@ -61,7 +61,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			break;	// probably hit data segment
 		}
 	}
-	return std::make_tuple(codeStr, new QQMLMap(codeMapping));
+	return std::make_tuple(codeStr, new QQMLMap(codeMapping, _objUsedAsParent));
 }
 
 QString DebuggingStateWrapper::debugStack()

@@ -45,7 +45,7 @@ class ConstantCompilationModel
 public:
 	ConstantCompilationModel() {}
 	~ConstantCompilationModel() {}
-	CompilerResult compile(QString code);
+	CompilerResult compile(QString);
 };
 
 }

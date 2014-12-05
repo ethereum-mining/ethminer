@@ -84,7 +84,7 @@ Rectangle {
 			anchors.top: statesList.bottom
 			height: parent.height * 0.35
 			width: parent.width
-			anchors.topMargin: 13
+			anchors.topMargin: 15
 			color: "transparent"
 			Label {
 				id: callStackLabel

@@ -65,7 +65,7 @@ class HumanReadableCode: public QObject
 	Q_PROPERTY(int processIndex READ processIndex)
 
 public:
-	HumanReadableCode(QString _line, int _processIndex) : m_line(_line), m_processIndex(_processIndex) {}
+	HumanReadableCode(QString _line, int _processIndex, QObject* _parent) : m_line(_line), m_processIndex(_processIndex), QObject(_parent) {}
 	QString line() { return m_line; }
 	int processIndex() { return m_processIndex; }
 
@@ -80,7 +80,7 @@ class QQMLMap : public QObject
 	Q_OBJECT
 
 public:
-	QQMLMap(QMap<int, int> _map) : m_map(_map) { }
+	QQMLMap(QMap<int, int> _map, QObject* _parent) : m_map(_map), QObject(_parent) { }
 	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key);   }
 
 private:
@@ -118,7 +118,7 @@ public:
 	QStringList levels();
 	DebuggingState state() { return m_state; }
 	void setState(DebuggingState _state) { m_state = _state;  }
-	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& code);
+	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& code, QObject* _objUsedAsParent);
 
 private:
 	DebuggingState m_state;
