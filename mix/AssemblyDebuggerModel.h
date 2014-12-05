@@ -38,7 +38,7 @@ public:
 	AssemblyDebuggerModel();
 	DebuggingContent getContractInitiationDebugStates(dev::u256, dev::u256, dev::u256, QString, KeyPair);
 	DebuggingContent getContractInitiationDebugStates(dev::bytesConstRef);
-	bool compile(QString code);
+	bool compile(QString);
 
 private:
 	std::unique_ptr<dev::eth::Executive> m_currentExecution;

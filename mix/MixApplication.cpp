@@ -23,7 +23,7 @@
 #include "MixApplication.h"
 using namespace dev::mix;
 
-MixApplication::MixApplication(int _argc, char *_argv[]): QApplication(_argc, _argv)
+MixApplication::MixApplication(int _argc, char* _argv[]): QApplication(_argc, _argv)
 {
 }
 

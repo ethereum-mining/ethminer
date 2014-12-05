@@ -31,13 +31,13 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& code, QObject* _objUsedAsParent)
+std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& _code, QObject* _objUsedAsParent)
 {
 	QList<QObject*> codeStr;
 	QMap<int, int> codeMapping;
-	for (unsigned i = 0; i <= code.size(); ++i)
+	for (unsigned i = 0; i <= _code.size(); ++i)
 	{
-		byte b = i < code.size() ? code[i] : 0;
+		byte b = i < _code.size() ? _code[i] : 0;
 		try
 		{
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
@@ -48,7 +48,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
 			{
 				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
+				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
 			HumanReadableCode* humanCode = new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line, _objUsedAsParent);
