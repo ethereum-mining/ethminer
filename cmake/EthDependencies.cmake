@@ -44,6 +44,16 @@ find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
 
 
+# we have to specify here if we want static and boost version, that is really important
+
+# win32 msvc 2013 boost
+set(Boost_USE_STATIC_LIBS ON) 
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_COMPILER -vc120)
+
+find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex)
+
+
 
 
 
