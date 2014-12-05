@@ -23,8 +23,7 @@ target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 if(EVMJIT)
-	target_link_libraries(${EXECUTABLE} evm)
-	target_link_libraries(${EXECUTABLE} evmjit)
+	target_link_libraries(${EXECUTABLE} evmjit-cpp)
 endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")

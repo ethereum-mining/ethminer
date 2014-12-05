@@ -18,7 +18,7 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 
 if(EVMJIT)
-	target_link_libraries(${EXECUTABLE} evmjit)
+	target_link_libraries(${EXECUTABLE} evmjit-cpp)
 endif()
 
 if ("${TARGET_PLATFORM}" STREQUAL "w64")
