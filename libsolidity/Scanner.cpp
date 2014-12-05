@@ -102,18 +102,55 @@ int hexValue(char c)
 }
 } // end anonymous namespace
 
+
+
+/// Scoped helper for literal recording. Automatically drops the literal
+/// if aborting the scanning before it's complete.
+enum LiteralType {
+	LITERAL_TYPE_STRING,
+	LITERAL_TYPE_NUMBER, // not really different from string type in behaviour
+	LITERAL_TYPE_COMMENT
+};
+
+class LiteralScope
+{
+public:
+	explicit LiteralScope(Scanner* _self, enum LiteralType _type): m_type(_type)
+	, m_scanner(_self)
+	, m_complete(false)
+	{
+		if (_type == LITERAL_TYPE_COMMENT)
+			m_scanner->m_nextSkippedComment.literal.clear();
+		else
+			m_scanner->m_nextToken.literal.clear();
+	}
+	~LiteralScope()
+	{
+		if (!m_complete)
+		{
+			if (m_type == LITERAL_TYPE_COMMENT)
+				m_scanner->m_nextSkippedComment.literal.clear();
+			else
+				m_scanner->m_nextToken.literal.clear();
+		}
+	}
+	void complete() { m_complete = true; }
+
+private:
+	enum LiteralType m_type;
+	Scanner* m_scanner;
+	bool m_complete;
+}; // end of LiteralScope class
+
+
 void Scanner::reset(CharStream const& _source)
 {
-	bool foundDocComment;
 	m_source = _source;
 	m_char = m_source.get();
 	skipWhitespace();
-	foundDocComment = scanToken();
+	scanToken();
 
-	// special version of Scanner:next() taking the previous scanToken() result into account
-	m_currentToken = m_nextToken;
-	if (scanToken() || foundDocComment)
-		m_skippedComment = m_nextSkippedComment;
+	next();
 }
 
 
@@ -142,8 +179,9 @@ BOOST_STATIC_ASSERT(Token::NUM_TOKENS <= 0x100);
 Token::Value Scanner::next()
 {
 	m_currentToken = m_nextToken;
-	if (scanToken())
-		m_skippedComment = m_nextSkippedComment;
+	m_skippedComment = m_nextSkippedComment;
+	scanToken();
+
 	return m_currentToken.token;
 }
 
@@ -156,7 +194,6 @@ Token::Value Scanner::selectToken(char _next, Token::Value _then, Token::Value _
 		return _else;
 }
 
-
 bool Scanner::skipWhitespace()
 {
 	int const startPosition = getSourcePos();
@@ -165,7 +202,6 @@ bool Scanner::skipWhitespace()
 	// Return whether or not we skipped any characters.
 	return getSourcePos() != startPosition;
 }
-
 
 Token::Value Scanner::skipSingleLineComment()
 {
@@ -177,13 +213,28 @@ Token::Value Scanner::skipSingleLineComment()
 	return Token::WHITESPACE;
 }
 
-/// For the moment this function simply consumes a single line triple slash doc comment
 Token::Value Scanner::scanDocumentationComment()
 {
-	LiteralScope literal(this);
+	LiteralScope literal(this, LITERAL_TYPE_COMMENT);
 	advance(); //consume the last '/'
-	while (!isSourcePastEndOfInput() && !isLineTerminator(m_char))
+	while (!isSourcePastEndOfInput())
 	{
+		if (isLineTerminator(m_char))
+		{
+			// check if next line is also a documentation comment
+			skipWhitespace();
+			if (!m_source.isPastEndOfInput(3) &&
+				m_source.get(0) == '/' &&
+				m_source.get(1) == '/' &&
+				m_source.get(2) == '/')
+			{
+				addCommentLiteralChar('\n');
+				m_char = m_source.advanceAndGet(3);
+			}
+			else
+				break; // next line is not a documentation comment, we are done
+
+		}
 		addCommentLiteralChar(m_char);
 		advance();
 	}
@@ -214,10 +265,10 @@ Token::Value Scanner::skipMultiLineComment()
 	return Token::ILLEGAL;
 }
 
-bool Scanner::scanToken()
+void Scanner::scanToken()
 {
-	bool foundDocComment = false;
 	m_nextToken.literal.clear();
+	m_nextSkippedComment.literal.clear();
 	Token::Value token;
 	do
 	{
@@ -329,7 +380,6 @@ bool Scanner::scanToken()
 					m_nextSkippedComment.location.end = getSourcePos();
 					m_nextSkippedComment.token = comment;
 					token = Token::WHITESPACE;
-					foundDocComment = true;
 				}
 				else
 					token = skipSingleLineComment();
@@ -425,8 +475,6 @@ bool Scanner::scanToken()
 	while (token == Token::WHITESPACE);
 	m_nextToken.location.end = getSourcePos();
 	m_nextToken.token = token;
-
-	return foundDocComment;
 }
 
 bool Scanner::scanEscape()
@@ -474,7 +522,7 @@ Token::Value Scanner::scanString()
 {
 	char const quote = m_char;
 	advance();  // consume quote
-	LiteralScope literal(this);
+	LiteralScope literal(this, LITERAL_TYPE_STRING);
 	while (m_char != quote && !isSourcePastEndOfInput() && !isLineTerminator(m_char))
 	{
 		char c = m_char;
@@ -494,18 +542,16 @@ Token::Value Scanner::scanString()
 	return Token::STRING_LITERAL;
 }
 
-
 void Scanner::scanDecimalDigits()
 {
 	while (isDecimalDigit(m_char))
 		addLiteralCharAndAdvance();
 }
 
-
 Token::Value Scanner::scanNumber(char _charSeen)
 {
 	enum { DECIMAL, HEX, BINARY } kind = DECIMAL;
-	LiteralScope literal(this);
+	LiteralScope literal(this, LITERAL_TYPE_NUMBER);
 	if (_charSeen == '.')
 	{
 		// we have already seen a decimal point of the float
@@ -572,209 +618,41 @@ Token::Value Scanner::scanNumber(char _charSeen)
 // ----------------------------------------------------------------------------
 // Keyword Matcher
 
-#define KEYWORDS(KEYWORD_GROUP, KEYWORD)                                       \
-	KEYWORD_GROUP('a')                                                         \
-	KEYWORD("address", Token::ADDRESS)                                         \
-	KEYWORD_GROUP('b')                                                         \
-	KEYWORD("break", Token::BREAK)                                             \
-	KEYWORD("bool", Token::BOOL)                                               \
-	KEYWORD_GROUP('c')                                                         \
-	KEYWORD("case", Token::CASE)                                               \
-	KEYWORD("const", Token::CONST)                                             \
-	KEYWORD("continue", Token::CONTINUE)                                       \
-	KEYWORD("contract", Token::CONTRACT)                                       \
-	KEYWORD_GROUP('d')                                                         \
-	KEYWORD("default", Token::DEFAULT)                                         \
-	KEYWORD("delete", Token::DELETE)                                           \
-	KEYWORD("do", Token::DO)                                                   \
-	KEYWORD_GROUP('e')                                                         \
-	KEYWORD("else", Token::ELSE)                                               \
-	KEYWORD("extends", Token::EXTENDS)                                         \
-	KEYWORD_GROUP('f')                                                         \
-	KEYWORD("false", Token::FALSE_LITERAL)                                     \
-	KEYWORD("for", Token::FOR)                                                 \
-	KEYWORD("function", Token::FUNCTION)                                       \
-	KEYWORD_GROUP('h')                                                         \
-	KEYWORD("hash", Token::HASH)                                               \
-	KEYWORD("hash8", Token::HASH8)                                             \
-	KEYWORD("hash16", Token::HASH16)                                           \
-	KEYWORD("hash24", Token::HASH24)                                           \
-	KEYWORD("hash32", Token::HASH32)                                           \
-	KEYWORD("hash40", Token::HASH40)                                           \
-	KEYWORD("hash48", Token::HASH48)                                           \
-	KEYWORD("hash56", Token::HASH56)                                           \
-	KEYWORD("hash64", Token::HASH64)                                           \
-	KEYWORD("hash72", Token::HASH72)                                           \
-	KEYWORD("hash80", Token::HASH80)                                           \
-	KEYWORD("hash88", Token::HASH88)                                           \
-	KEYWORD("hash96", Token::HASH96)                                           \
-	KEYWORD("hash104", Token::HASH104)                                         \
-	KEYWORD("hash112", Token::HASH112)                                         \
-	KEYWORD("hash120", Token::HASH120)                                         \
-	KEYWORD("hash128", Token::HASH128)                                         \
-	KEYWORD("hash136", Token::HASH136)                                         \
-	KEYWORD("hash144", Token::HASH144)                                         \
-	KEYWORD("hash152", Token::HASH152)                                         \
-	KEYWORD("hash160", Token::HASH160)                                         \
-	KEYWORD("hash168", Token::HASH168)                                         \
-	KEYWORD("hash178", Token::HASH176)                                         \
-	KEYWORD("hash184", Token::HASH184)                                         \
-	KEYWORD("hash192", Token::HASH192)                                         \
-	KEYWORD("hash200", Token::HASH200)                                         \
-	KEYWORD("hash208", Token::HASH208)                                         \
-	KEYWORD("hash216", Token::HASH216)                                         \
-	KEYWORD("hash224", Token::HASH224)                                         \
-	KEYWORD("hash232", Token::HASH232)                                         \
-	KEYWORD("hash240", Token::HASH240)                                         \
-	KEYWORD("hash248", Token::HASH248)                                         \
-	KEYWORD("hash256", Token::HASH256)                                         \
-	KEYWORD_GROUP('i')                                                         \
-	KEYWORD("if", Token::IF)                                                   \
-	KEYWORD("in", Token::IN)                                                   \
-	KEYWORD("int", Token::INT)                                                 \
-	KEYWORD("int8", Token::INT8)                                               \
-	KEYWORD("int16", Token::INT16)                                             \
-	KEYWORD("int24", Token::INT24)                                             \
-	KEYWORD("int32", Token::INT32)                                             \
-	KEYWORD("int40", Token::INT40)                                             \
-	KEYWORD("int48", Token::INT48)                                             \
-	KEYWORD("int56", Token::INT56)                                             \
-	KEYWORD("int64", Token::INT64)                                             \
-	KEYWORD("int72", Token::INT72)                                             \
-	KEYWORD("int80", Token::INT80)                                             \
-	KEYWORD("int88", Token::INT88)                                             \
-	KEYWORD("int96", Token::INT96)                                             \
-	KEYWORD("int104", Token::INT104)                                           \
-	KEYWORD("int112", Token::INT112)                                           \
-	KEYWORD("int120", Token::INT120)                                           \
-	KEYWORD("int128", Token::INT128)                                           \
-	KEYWORD("int136", Token::INT136)                                           \
-	KEYWORD("int144", Token::INT144)                                           \
-	KEYWORD("int152", Token::INT152)                                           \
-	KEYWORD("int160", Token::INT160)                                           \
-	KEYWORD("int168", Token::INT168)                                           \
-	KEYWORD("int178", Token::INT176)                                           \
-	KEYWORD("int184", Token::INT184)                                           \
-	KEYWORD("int192", Token::INT192)                                           \
-	KEYWORD("int200", Token::INT200)                                           \
-	KEYWORD("int208", Token::INT208)                                           \
-	KEYWORD("int216", Token::INT216)                                           \
-	KEYWORD("int224", Token::INT224)                                           \
-	KEYWORD("int232", Token::INT232)                                           \
-	KEYWORD("int240", Token::INT240)                                           \
-	KEYWORD("int248", Token::INT248)                                           \
-	KEYWORD("int256", Token::INT256)                                           \
-	KEYWORD_GROUP('l')                                                         \
-	KEYWORD_GROUP('m')                                                         \
-	KEYWORD("mapping", Token::MAPPING)                                         \
-	KEYWORD_GROUP('n')                                                         \
-	KEYWORD("new", Token::NEW)                                                 \
-	KEYWORD("null", Token::NULL_LITERAL)                                       \
-	KEYWORD_GROUP('p')                                                         \
-	KEYWORD("private", Token::PRIVATE)                                         \
-	KEYWORD("public", Token::PUBLIC)                                           \
-	KEYWORD_GROUP('r')                                                         \
-	KEYWORD("real", Token::REAL)                                               \
-	KEYWORD("return", Token::RETURN)                                           \
-	KEYWORD("returns", Token::RETURNS)                                         \
-	KEYWORD_GROUP('s')                                                         \
-	KEYWORD("string", Token::STRING_TYPE)                                      \
-	KEYWORD("struct", Token::STRUCT)                                           \
-	KEYWORD("switch", Token::SWITCH)                                           \
-	KEYWORD_GROUP('t')                                                         \
-	KEYWORD("text", Token::TEXT)                                               \
-	KEYWORD("true", Token::TRUE_LITERAL)                                       \
-	KEYWORD_GROUP('u')                                                         \
-	KEYWORD("uint", Token::UINT)                                               \
-	KEYWORD("uint8", Token::UINT8)                                             \
-	KEYWORD("uint16", Token::UINT16)                                           \
-	KEYWORD("uint24", Token::UINT24)                                           \
-	KEYWORD("uint32", Token::UINT32)                                           \
-	KEYWORD("uint40", Token::UINT40)                                           \
-	KEYWORD("uint48", Token::UINT48)                                           \
-	KEYWORD("uint56", Token::UINT56)                                           \
-	KEYWORD("uint64", Token::UINT64)                                           \
-	KEYWORD("uint72", Token::UINT72)                                           \
-	KEYWORD("uint80", Token::UINT80)                                           \
-	KEYWORD("uint88", Token::UINT88)                                           \
-	KEYWORD("uint96", Token::UINT96)                                           \
-	KEYWORD("uint104", Token::UINT104)                                         \
-	KEYWORD("uint112", Token::UINT112)                                         \
-	KEYWORD("uint120", Token::UINT120)                                         \
-	KEYWORD("uint128", Token::UINT128)                                         \
-	KEYWORD("uint136", Token::UINT136)                                         \
-	KEYWORD("uint144", Token::UINT144)                                         \
-	KEYWORD("uint152", Token::UINT152)                                         \
-	KEYWORD("uint160", Token::UINT160)                                         \
-	KEYWORD("uint168", Token::UINT168)                                         \
-	KEYWORD("uint178", Token::UINT176)                                         \
-	KEYWORD("uint184", Token::UINT184)                                         \
-	KEYWORD("uint192", Token::UINT192)                                         \
-	KEYWORD("uint200", Token::UINT200)                                         \
-	KEYWORD("uint208", Token::UINT208)                                         \
-	KEYWORD("uint216", Token::UINT216)                                         \
-	KEYWORD("uint224", Token::UINT224)                                         \
-	KEYWORD("uint232", Token::UINT232)                                         \
-	KEYWORD("uint240", Token::UINT240)                                         \
-	KEYWORD("uint248", Token::UINT248)                                         \
-	KEYWORD("uint256", Token::UINT256)                                         \
-	KEYWORD("ureal", Token::UREAL)                                             \
-	KEYWORD_GROUP('v')                                                         \
-	KEYWORD("var", Token::VAR)                                                 \
-	KEYWORD_GROUP('w')                                                         \
-	KEYWORD("while", Token::WHILE)                                             \
 
-
-static Token::Value KeywordOrIdentifierToken(string const& _input)
+static Token::Value keywordOrIdentifierToken(string const& _input)
 {
-	if (asserts(!_input.empty()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
-	int const kMinLength = 2;
-	int const kMaxLength = 10;
-	if (_input.size() < kMinLength || _input.size() > kMaxLength)
-		return Token::IDENTIFIER;
-	switch (_input[0])
-	{
-	default:
-#define KEYWORD_GROUP_CASE(ch)					\
-		break;									\
-	case ch:
-#define KEYWORD(keyword, token)                                         \
-		{                                                               \
-			/* 'keyword' is a char array, so sizeof(keyword) is */      \
-			/* strlen(keyword) plus 1 for the NUL char. */              \
-			int const keywordLength = sizeof(keyword) - 1;              \
-			BOOST_STATIC_ASSERT(keywordLength >= kMinLength);           \
-			BOOST_STATIC_ASSERT(keywordLength <= kMaxLength);           \
-			if (_input == keyword)                                     \
-				return token;                                           \
-	}
-		KEYWORDS(KEYWORD_GROUP_CASE, KEYWORD)
-	}
-	return Token::IDENTIFIER;
+	// The following macros are used inside TOKEN_LIST and cause non-keyword tokens to be ignored
+	// and keywords to be put inside the keywords variable.
+#define KEYWORD(name, string, precedence) {string, Token::name},
+#define TOKEN(name, string, precedence)
+	static const map<string, Token::Value> keywords({TOKEN_LIST(TOKEN, KEYWORD)});
+#undef KEYWORD
+#undef TOKEN
+	auto it = keywords.find(_input);
+	return it == keywords.end() ? Token::IDENTIFIER : it->second;
 }
 
 Token::Value Scanner::scanIdentifierOrKeyword()
 {
 	if (asserts(isIdentifierStart(m_char)))
 		BOOST_THROW_EXCEPTION(InternalCompilerError());
-	LiteralScope literal(this);
+	LiteralScope literal(this, LITERAL_TYPE_STRING);
 	addLiteralCharAndAdvance();
 	// Scan the rest of the identifier characters.
 	while (isIdentifierPart(m_char))
 		addLiteralCharAndAdvance();
 	literal.complete();
-	return KeywordOrIdentifierToken(m_nextToken.literal);
+	return keywordOrIdentifierToken(m_nextToken.literal);
 }
 
-char CharStream::advanceAndGet()
+char CharStream::advanceAndGet(size_t _chars)
 {
 	if (isPastEndOfInput())
 		return 0;
-	++m_pos;
+	m_pos += _chars;
 	if (isPastEndOfInput())
 		return 0;
-	return get();
+	return m_source[m_pos];
 }
 
 char CharStream::rollback(size_t _amount)
