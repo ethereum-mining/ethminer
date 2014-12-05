@@ -167,6 +167,7 @@ if (NOT LANGUAGES)
 		add_subdirectory(libqethereum)
 		add_subdirectory(alethzero)
 		add_subdirectory(third)
+		add_subdirectory(mix)
 		if(QTQML)
 			#add_subdirectory(iethxi)
 			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
@@ -184,4 +185,5 @@ enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
 #unset(TARGET_PLATFORM CACHE)
+
 
