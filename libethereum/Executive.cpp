@@ -32,13 +32,6 @@ using namespace dev::eth;
 
 #define ETH_VMTRACE 1
 
-Executive::~Executive()
-{
-	// TODO: Make safe.
-	delete m_ext;
-	delete m_vm;
-}
-
 u256 Executive::gasUsed() const
 {
 	return m_t.gas() - m_endGas;
@@ -112,9 +105,9 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 	if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm = new VM(_gas);
+		m_vm.reset(new VM(_gas));
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
+		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms));
 	}
 	else
 		m_endGas = _gas;
@@ -131,8 +124,8 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
+	m_vm.reset(new VM(_gas));
+	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms));
 	return _init.empty();
 }
 
