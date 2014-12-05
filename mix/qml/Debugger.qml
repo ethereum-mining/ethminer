@@ -7,7 +7,9 @@ import "js/Debugger.js" as Debugger
 
 Rectangle {
 	anchors.fill: parent;
+	color: "lightgrey"
 	Rectangle {
+		color: "transparent"
 		id: headerInfo
 		width: parent.width
 		height: 30
@@ -30,8 +32,10 @@ Rectangle {
 	}
 
 	Rectangle {
+		color: "transparent"
 		id: stateListContainer
 		focus: true
+		anchors.topMargin: 10
 		anchors.top: headerInfo.bottom
 		anchors.left: parent.left
 		height: parent.height - 30
@@ -39,7 +43,7 @@ Rectangle {
 
 		ListView {
 			anchors.top: parent.top
-			height: parent.height * 0.55
+			height: parent.height * 0.60
 			width: 200
 			anchors.horizontalCenter: parent.horizontalCenter
 			id: statesList
@@ -65,7 +69,7 @@ Rectangle {
 			id: renderDelegate
 			Item {
 				id: wrapperItem
-				height:20
+				height: 20
 				width: parent.width
 				Text {
 					anchors.centerIn: parent
@@ -76,13 +80,14 @@ Rectangle {
 		}
 
 		Rectangle {
+			id: callStackPanel
 			anchors.top: statesList.bottom
-			height: parent.height * 0.30
+			height: parent.height * 0.35
 			width: parent.width
-
+			anchors.topMargin: 13
+			color: "transparent"
 			Label {
 				id: callStackLabel
-				anchors.top: statesList.bottom
 				anchors.bottomMargin: 10
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
@@ -113,6 +118,7 @@ Rectangle {
 	}
 
 	Rectangle {
+		color: "transparent"
 		anchors.topMargin: 5
 		anchors.bottomMargin: 10
 		anchors.rightMargin: 10
@@ -127,7 +133,7 @@ Rectangle {
 			anchors.top: parent.top
 			width: parent.width
 			height: parent.height * 0.25
-
+			color: "transparent"
 			Label {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
@@ -155,6 +161,7 @@ Rectangle {
 			anchors.top: debugStack.bottom
 			width: parent.width
 			height: parent.height * 0.25
+			color: "transparent"
 			Label {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
@@ -182,6 +189,7 @@ Rectangle {
 			anchors.top: debugMemory.bottom
 			width: parent.width
 			height: parent.height * 0.25
+			color: "transparent"
 			Label {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
@@ -209,6 +217,7 @@ Rectangle {
 			anchors.top: debugStorage.bottom
 			width: parent.width
 			height: parent.height * 0.25
+			color: "transparent"
 			Label {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
