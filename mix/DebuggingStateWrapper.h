@@ -65,7 +65,7 @@ class HumanReadableCode: public QObject
 	Q_PROPERTY(int processIndex READ processIndex)
 
 public:
-	HumanReadableCode(QString _line, int _processIndex, QObject* _parent) : m_line(_line), m_processIndex(_processIndex), QObject(_parent) {}
+	HumanReadableCode(QString _line, int _processIndex, QObject* _parent): QObject(_parent), m_line(_line), m_processIndex(_processIndex) {}
 	QString line() { return m_line; }
 	int processIndex() { return m_processIndex; }
 
@@ -75,12 +75,12 @@ private:
 };
 
 /* used to publish QMap type to QML */
-class QQMLMap : public QObject
+class QQMLMap: public QObject
 {
 	Q_OBJECT
 
 public:
-	QQMLMap(QMap<int, int> _map, QObject* _parent) : m_map(_map), QObject(_parent) { }
+	QQMLMap(QMap<int, int> _map, QObject* _parent): QObject(_parent), m_map(_map)  { }
 	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key);   }
 
 private:
@@ -88,7 +88,7 @@ private:
 };
 
 /* used to publish DebuggingState struct to QML */
-class DebuggingStateWrapper : public QObject
+class DebuggingStateWrapper: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(int step READ step)
