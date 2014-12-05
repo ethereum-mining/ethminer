@@ -8,7 +8,7 @@ ExternalProject_Add(jom
 	BINARY_DIR jom-prefix/src/jom
 	CONFIGURE_COMMAND ""
 	BUILD_COMMAND ""
-	INSTALL_COMMAND cp jom.exe ${ETH_DEPENDENCY_INSTALL_DIR}/bin
+INSTALL_COMMAND cmake -E copy jom.exe ${ETH_DEPENDENCY_INSTALL_DIR}/bin
 	)
 
 else()
