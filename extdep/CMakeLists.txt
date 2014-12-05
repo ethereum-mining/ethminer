@@ -30,15 +30,19 @@ if (ETH_COMPILE)
 
 	# cryptopp
 	include(compile/cryptopp.cmake)
+
+	# boost
+	include(compile/boost.cmake)
 else()	
 	eth_download(json-rpc-cpp OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh)
-	eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
+	if (APPLE)
+		eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
+	endif()
 	eth_download(leveldb OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
 	eth_download(qt)
 	eth_download(cryptopp)
+	eth_download(boost)
 
-	#include(compile/leveldb.cmake)
-	#eth_download("leveldb")
 endif()
 
 # will be re-eanbled later
