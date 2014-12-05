@@ -19,12 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\evmcc\evmcc.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="LibEvmJitCpp.vcxproj">
       <Project>{a5d8764c-fd17-4364-afcf-5baf78777569}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\evmjit\evmcc\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\evmjit\evmcc\evmcc.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D51A4898-BD9E-4961-BCAE-1FE7F854BB4D}</ProjectGuid>
