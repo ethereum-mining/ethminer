@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.30723.0
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{988F2383-FA1D-408B-BCF6-C0EE7AB0A560}"
 EndProject
@@ -46,6 +46,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "evmcc", "evmcc.vcxproj", "{
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibEvmJit", "LibEvmJit.vcxproj", "{9C816740-5C11-4377-A3A7-46BE12F35FA0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibEvmJitCpp", "LibEvmJitCpp.vcxproj", "{A5D8764C-FD17-4364-AFCF-5BAF78777569}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -257,6 +259,18 @@ Global
 		{9C816740-5C11-4377-A3A7-46BE12F35FA0}.Release|Win32.Build.0 = Release|Win32
 		{9C816740-5C11-4377-A3A7-46BE12F35FA0}.Release|x64.ActiveCfg = Release|x64
 		{9C816740-5C11-4377-A3A7-46BE12F35FA0}.Release|x64.Build.0 = Release|x64
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|Win32.Build.0 = Debug|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|x64.ActiveCfg = Debug|x64
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Debug|x64.Build.0 = Debug|x64
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|Win32.ActiveCfg = Release|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|Win32.Build.0 = Release|Win32
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|x64.ActiveCfg = Release|x64
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -272,5 +286,6 @@ Global
 		{DF3C5B07-A1A2-4F16-B37F-A27333622CDD} = {988F2383-FA1D-408B-BCF6-C0EE7AB0A560}
 		{F174E81A-2A66-4693-B917-11BB42D3658C} = {988F2383-FA1D-408B-BCF6-C0EE7AB0A560}
 		{9C816740-5C11-4377-A3A7-46BE12F35FA0} = {988F2383-FA1D-408B-BCF6-C0EE7AB0A560}
+		{A5D8764C-FD17-4364-AFCF-5BAF78777569} = {988F2383-FA1D-408B-BCF6-C0EE7AB0A560}
 	EndGlobalSection
 EndGlobal

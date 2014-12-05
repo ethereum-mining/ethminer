@@ -38,6 +38,18 @@ namespace eth
 
 class VMFactory;
 
+// Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
+// Currently we just pull out the right (low-order in BE) 160-bits.
+inline Address asAddress(u256 _item)
+{
+	return right160(h256(_item));
+}
+
+inline u256 fromAddress(Address _a)
+{
+	return (u160)_a;
+}
+
 /**
  */
 class VM : public VMFace
@@ -146,21 +158,21 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 
 		case Instruction::SLOAD:
 			require(1);
-            runGas = c_sloadGas;
+			runGas = c_sloadGas;
 			break;
 
 		// These all operate on memory and therefore potentially expand it:
 		case Instruction::MSTORE:
 			require(2);
-			newTempSize = m_stack.back() + 32;
+			newTempSize = (bigint)m_stack.back() + 32;
 			break;
 		case Instruction::MSTORE8:
 			require(2);
-			newTempSize = m_stack.back() + 1;
+			newTempSize = (bigint)m_stack.back() + 1;
 			break;
 		case Instruction::MLOAD:
 			require(1);
-			newTempSize = m_stack.back() + 32;
+			newTempSize = (bigint)m_stack.back() + 32;
 			break;
 		case Instruction::RETURN:
 			require(2);
@@ -215,10 +227,10 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CREATE:
 		{
 			require(3);
-			auto inOff = m_stack[m_stack.size() - 2];
-			auto inSize = m_stack[m_stack.size() - 3];
-			newTempSize = inOff + inSize;
-            runGas = c_createGas;
+			u256 inOff = m_stack[m_stack.size() - 2];
+			u256 inSize = m_stack[m_stack.size() - 3];
+			newTempSize = (bigint)inOff + inSize;
+			runGas = c_createGas;
 			break;
 		}
 		case Instruction::EXP:
@@ -394,7 +406,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SDIV:
-            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) / u2s(m_stack[m_stack.size() - 2])) : 0;
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) / u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::MOD:
@@ -402,7 +414,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SMOD:
-            m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) % u2s(m_stack[m_stack.size() - 2])) : 0;
+			m_stack[m_stack.size() - 2] = m_stack[m_stack.size() - 2] ? s2u(u2s(m_stack.back()) % u2s(m_stack[m_stack.size() - 2])) : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EXP:
@@ -425,11 +437,11 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			m_stack.pop_back();
 			break;
 		case Instruction::SLT:
-            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) < u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
+			m_stack[m_stack.size() - 2] = u2s(m_stack.back()) < u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::SGT:
-            m_stack[m_stack.size() - 2] = u2s(m_stack.back()) > u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
+			m_stack[m_stack.size() - 2] = u2s(m_stack.back()) > u2s(m_stack[m_stack.size() - 2]) ? 1 : 0;
 			m_stack.pop_back();
 			break;
 		case Instruction::EQ:

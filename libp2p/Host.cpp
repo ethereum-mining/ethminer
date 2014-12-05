@@ -34,6 +34,7 @@
 #include <set>
 #include <chrono>
 #include <thread>
+#include <mutex>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
@@ -78,7 +79,7 @@ std::vector<bi::address> Host::getInterfaceAddresses()
 		char *addrStr = inet_ntoa(addr);
 		bi::address address(bi::address::from_string(addrStr));
 		if (!isLocalHostAddress(address))
-			addresses.push_back(ad.to_v4());
+			addresses.push_back(address.to_v4());
 	}
 	
 	WSACleanup();
@@ -153,9 +154,9 @@ int Host::listen4(bi::tcp::acceptor* _acceptor, unsigned short _listenPort)
 
 bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
 {
-	asserts(_listenPort);
+	asserts(_listenPort != 0);
 	
-	UPnP* upnp;
+	UPnP* upnp = nullptr;
 	try
 	{
 		upnp = new UPnP;
@@ -199,7 +200,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_ifAddresses(getInterfaceAddresses()),
-	m_ioService(new ba::io_service),
+	m_ioService(new ba::io_service(2)),
 	m_acceptor(new bi::tcp::acceptor(*m_ioService)),
 	m_socket(new bi::tcp::socket(*m_ioService)),
 	m_key(KeyPair::create())
@@ -227,7 +228,7 @@ void Host::stop()
 {
 	{
 		// prevent m_run from being set to false at same time as set to true by start()
-		lock_guard<mutex> l(x_runtimer);
+		Guard l(x_runTimer);
 		// once m_run is false the scheduler will shutdown network and stopWorking()
 		m_run = false;
 	}
@@ -536,7 +537,16 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
 	if (!m_ioService)
 		return;
-
+	
+	// prevent concurrently connecting to a node; todo: better abstraction
+	Node *nptr = _n.get();
+	{
+		Guard l(x_pendingNodeConns);
+		if (m_pendingNodeConns.count(nptr))
+			return;
+		m_pendingNodeConns.insert(nptr);
+	}
+	
 	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
 	_n->lastAttempted = std::chrono::system_clock::now();
 	_n->failedAttempts++;
@@ -559,6 +569,8 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 			p->start();
 		}
 		delete s;
+		Guard l(x_pendingNodeConns);
+		m_pendingNodeConns.erase(nptr);
 	});
 }
 
@@ -685,11 +697,10 @@ PeerInfos Host::peers(bool _updatePing) const
 				ret.push_back(j->m_info);
 	return ret;
 }
-			
+
 void Host::run(boost::system::error_code const& error)
 {
-	static unsigned s_lasttick = 0;
-	s_lasttick += c_timerInterval;
+	m_lastTick += c_timerInterval;
 	
 	if (error || !m_ioService)
 	{
@@ -701,11 +712,11 @@ void Host::run(boost::system::error_code const& error)
 	// network running
 	if (m_run)
 	{
-		if (s_lasttick >= c_timerInterval * 50)
+		if (m_lastTick >= c_timerInterval * 10)
 		{
 			growPeers();
 			prunePeers();
-			s_lasttick = 0;
+			m_lastTick = 0;
 		}
 		
 		if (m_hadNewNodes)
@@ -771,7 +782,7 @@ void Host::run(boost::system::error_code const& error)
 			m_socket->close();
 		
 		// m_run is false, so we're stopping; kill timer
-		s_lasttick = 0;
+		m_lastTick = 0;
 		
 		// causes parent thread's stop() to continue which calls stopWorking()
 		m_timer.reset();
@@ -794,7 +805,7 @@ void Host::startedWorking()
 			// prevent m_run from being set to true at same time as set to false by stop()
 			// don't release mutex until m_timer is set so in case stop() is called at same
 			// time, stop will wait on m_timer and graceful network shutdown.
-			lock_guard<mutex> l(x_runtimer);
+			Guard l(x_runTimer);
 			// reset io service and create deadline timer
 			m_timer.reset(new boost::asio::deadline_timer(*m_ioService));
 			m_run = true;

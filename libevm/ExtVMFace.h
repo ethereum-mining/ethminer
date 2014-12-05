@@ -36,21 +36,13 @@ namespace dev
 namespace eth
 {
 
-template <class T> inline std::set<T> toSet(std::vector<T> const& _ts)
-{
-	std::set<T> ret;
-	for (auto const& t: _ts)
-		ret.insert(t);
-	return ret;
-}
-
 using LogBloom = h512;
 
 struct LogEntry
 {
 	LogEntry() {}
-	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = (h256Set)_r[1]; data = _r[2].toBytes(); }
-	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(toSet(_ts)), data(std::move(_d)) {}
+	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = _r[1].toVector<h256>(); data = _r[2].toBytes(); }
+	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(_ts), data(std::move(_d)) {}
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(3) << address << topics << data; }
 
@@ -64,7 +56,7 @@ struct LogEntry
 	}
 
 	Address address;
-	h256Set topics;
+	h256s topics;
 	bytes data;
 };
 
