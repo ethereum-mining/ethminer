@@ -1285,6 +1285,7 @@ void Main::on_blocks_currentItemChanged()
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Dump: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[0].data()) << "</span>";
+			s << "<div>Receipts-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(ethereum()->blockChain().receipts(h).rlp()) << "</span></div>";
 		}
 		else
 		{
