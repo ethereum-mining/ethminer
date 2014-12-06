@@ -27,7 +27,6 @@
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
-#include "features.h"
 #include "ApplicationCtx.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
