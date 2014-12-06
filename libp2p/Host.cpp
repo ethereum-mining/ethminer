@@ -355,13 +355,12 @@ void Host::runAcceptor()
 				}
 			}
 			
-			if (!success)
-				if (m_socket->is_open())
-				{
-					boost::system::error_code ec;
-					m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-					m_socket->close();
-				}
+			if (!success && m_socket->is_open())
+			{
+				boost::system::error_code ec;
+				m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+				m_socket->close();
+			}
 
 			m_accepting = false;
 			if (ec.value() < 1)

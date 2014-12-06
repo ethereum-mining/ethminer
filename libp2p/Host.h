@@ -194,13 +194,13 @@ private:
 
 	/// Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void startedWorking();
-	/// Called by startedWorking. Not thread-safe; to be called only be worker callback.
+	/// Called by startedWorking. Not thread-safe; to be called only be Worker.
 	void run(boost::system::error_code const& error);			///< Run network. Called serially via ASIO deadline timer. Manages connection state transitions.
 
-	/// Run network. Called by Worker. Not thread-safe; to be called only by worker.
+	/// Run network. Not thread-safe; to be called only by worker.
 	virtual void doWork();
 	
-	/// Shutdown network. Called by Worker. Not thread-safe; to be called only by worker.
+	/// Shutdown network. Not thread-safe; to be called only by worker.
 	virtual void doneWorking();
 
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = NodeId());
