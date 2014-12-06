@@ -14,7 +14,8 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthereumHost.h
+/** @file Host.h
+ * @author Alex Leverington <nessence@gmail.com>
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -34,9 +35,10 @@
 #include <libdevcore/RangeMask.h>
 #include <libdevcrypto/Common.h>
 #include "HostCapability.h"
+#include "Network.h"
 #include "Common.h"
 namespace ba = boost::asio;
-namespace bi = boost::asio::ip;
+namespace bi = ba::ip;
 
 namespace dev
 {
@@ -101,16 +103,6 @@ struct Node
 
 using Nodes = std::vector<Node>;
 
-struct NetworkPreferences
-{
-	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), publicIP(i), upnp(u), localNetworking(l) {}
-
-	unsigned short listenPort = 30303;
-	std::string publicIP;
-	bool upnp = true;
-	bool localNetworking = false;
-};
-
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -120,17 +112,6 @@ class Host: public Worker
 	friend class Session;
 	friend class HostCapabilityFace;
 	friend struct Node;
-
-	/// Static network interface methods
-public:
-	/// @returns public and private interface addresses
-	static std::vector<bi::address> getInterfaceAddresses();
-	
-	/// Try to bind and listen on _listenPort, else attempt net-allocated port.
-	static int listen4(bi::tcp::acceptor* _acceptor, unsigned short _listenPort);
-	
-	/// Return public endpoint of upnp interface. If successful o_upnpifaddr will be a private interface address and endpoint will contain public address and port.
-	static bi::tcp::endpoint traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
 	
 public:
 	/// Start server, listening for connections on the given port.
@@ -187,13 +168,11 @@ public:
 	void start();
 	
 	/// Stop network. @threadsafe
+	/// Resets acceptor, socket, and IO service. Called by deallocator.
 	void stop();
 	
 	/// @returns if network is running.
 	bool isStarted() const { return m_run; }
-
-	/// Reset acceptor, socket, and IO service. Called by deallocator. Maybe called by implementation when ordered deallocation is required.
-	void quit();
 
 	NodeId id() const { return m_key.pub(); }
 
@@ -205,7 +184,8 @@ private:
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
-	void ensureAccepting();
+	/// Called only from startedWorking().
+	void runAcceptor();
 	
 	void seal(bytes& _b);
 
@@ -217,8 +197,11 @@ private:
 	/// Called by startedWorking. Not thread-safe; to be called only be worker callback.
 	void run(boost::system::error_code const& error);			///< Run network. Called serially via ASIO deadline timer. Manages connection state transitions.
 
-	/// Run network
+	/// Run network. Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void doWork();
+	
+	/// Shutdown network. Called by Worker. Not thread-safe; to be called only by worker.
+	virtual void doneWorking();
 
 	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = NodeId());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
@@ -235,8 +218,8 @@ private:
 
 	int m_listenPort = -1;												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
-	std::unique_ptr<ba::io_service> m_ioService;							///< IOService for network stuff.
-	std::unique_ptr<bi::tcp::acceptor> m_acceptor;							///< Listening acceptor.
+	ba::io_service m_ioService;							///< IOService for network stuff.
+	bi::tcp::acceptor m_acceptorV4;							///< Listening acceptor.
 	std::unique_ptr<bi::tcp::socket> m_socket;								///< Listening socket.
 	
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
