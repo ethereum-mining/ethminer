@@ -5,6 +5,10 @@
 # this must be set to point to the same directory as $ETH_DEPENDENCY_INSTALL_DIR in /extdep directory
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
+if (WIN32)
+	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
+	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
+endif()
 
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
@@ -38,6 +42,33 @@ find_package (Qt5Network REQUIRED)
 find_package (Qt5Widgets REQUIRED)
 find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
+
+
+# we have to specify here if we want static and boost version, that is really important
+
+# win32 msvc 2013 boost
+set(Boost_USE_STATIC_LIBS ON) 
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_COMPILER -vc120)
+
+find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex)
+
+if (Boost_FOUND)
+	message(" - boost header: ${Boost_INCLUDE_DIRS}")
+	message(" - boost lib   : ${Boost_LIBRARIES}")
+endif()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
