@@ -82,21 +82,21 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 void WhisperPeer::sendMessages()
 {
-	if (m_unseen.size())
+	RLPStream amalg;
+	unsigned msgCount = 0;
 	{
-		RLPStream amalg;
-		unsigned msgCount;
+		Guard l(x_unseen);
+		msgCount = m_unseen.size();
+		while (m_unseen.size())
 		{
-			Guard l(x_unseen);
-			msgCount = m_unseen.size();
-			while (m_unseen.size())
-			{
-				auto p = *m_unseen.begin();
-				m_unseen.erase(m_unseen.begin());
-				host()->streamMessage(p.second, amalg);
-			}
+			auto p = *m_unseen.begin();
+			m_unseen.erase(m_unseen.begin());
+			host()->streamMessage(p.second, amalg);
 		}
-		
+	}
+	
+	if (msgCount)
+	{
 		RLPStream s;
 		prep(s, MessagesPacket, msgCount).appendRaw(amalg.out(), msgCount);
 		sealAndSend(s);
