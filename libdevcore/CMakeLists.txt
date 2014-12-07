@@ -18,6 +18,11 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
+target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY_RELEASE})
+target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARY_RELEASE})
+target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARY_RELEASE})
+target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARY_RELEASE})
+
 if (APPLE)
 	find_package(Threads REQUIRED)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
