@@ -5,7 +5,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(${LEVELDB_INCLUDE_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(..)
 
@@ -18,9 +17,6 @@ if(ETH_STATIC)
 else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
-
-target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARY})
-target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARY})
 
 if (APPLE)
 	find_package(Threads REQUIRED)
