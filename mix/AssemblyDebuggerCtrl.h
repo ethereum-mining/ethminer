@@ -37,7 +37,6 @@ Q_DECLARE_METATYPE(DebuggingStatusResult)
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -56,7 +55,7 @@ private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	QTextDocument* m_doc;
 
-public Q_SLOTS:
+public slots:
 	void keyPressed(int);
 	void updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
 

@@ -90,7 +90,6 @@ QString DebuggingStateWrapper::debugMemory()
 
 QString DebuggingStateWrapper::debugCallData()
 {
-
 	return QString::fromStdString(memDump(m_data, 16, false));
 }
 

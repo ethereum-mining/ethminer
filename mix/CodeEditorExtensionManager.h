@@ -30,7 +30,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 

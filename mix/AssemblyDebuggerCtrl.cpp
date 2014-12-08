@@ -58,11 +58,11 @@ void AssemblyDebuggerCtrl::start() const
 
 void AssemblyDebuggerCtrl::keyPressed(int _key)
 {
-
 	if (_key == Qt::Key_F5)
 	{
 		QString code = m_doc->toPlainText();
-		QtConcurrent::run([this, code](){
+		QtConcurrent::run([this, code]()
+		{
 
 			if (!m_modelDebugger->compile(m_doc->toPlainText()))
 			{

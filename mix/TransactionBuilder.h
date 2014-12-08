@@ -25,7 +25,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 

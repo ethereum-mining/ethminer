@@ -70,9 +70,7 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 		try
 		{
 			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
-			{
 				_ext->addTabOn(m_tabView);
-			}
 		}
 		catch (...)
 		{

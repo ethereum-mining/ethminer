@@ -25,7 +25,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -46,7 +45,7 @@ private:
 	void writeOutPut(CompilerResult const&);
 	void resetOutPut();
 
-public Q_SLOTS:
+public slots:
 	void compile();
 };
 
