@@ -34,10 +34,9 @@ else ()
 	add_executable(${EXECUTEABLE} ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
 endif ()
 
-#qt5_use_modules(${EXECUTEABLE} Core Gui Widgets Network WebKit WebKitWidgets)
 target_link_libraries(${EXECUTEABLE} Qt5::Core)
 target_link_libraries(${EXECUTEABLE} Qt5::Gui)
-target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 ${CRYPTOPP_LS} serpent lll solidity evmcore devcore web3jsonrpc jsqrc)
+target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 serpent lll solidity evmcore devcore web3jsonrpc jsqrc)
 
 if (APPLE)
 	# First have qt5 install plugins and frameworks

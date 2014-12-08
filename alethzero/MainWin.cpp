@@ -2240,18 +2240,3 @@ void Main::refreshWhispers()
 		ui->whispers->addItem(item);
 	}
 }
-
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_MainWin.cpp"
-
-#include\
-"moc_MiningView.cpp"
-
-#include\
-"moc_DownloadView.cpp"
-
-#endif

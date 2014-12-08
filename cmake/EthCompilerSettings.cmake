@@ -19,6 +19,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	# specify Exception Handling Model in msvc
+	set(CMAKE_C_FLAGS "/EHsc")
 	set(CMAKE_CXX_FLAGS "/EHsc")
 	# windows likes static
 	set(ETH_STATIC 1)

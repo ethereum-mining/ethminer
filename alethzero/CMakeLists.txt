@@ -34,11 +34,10 @@ else ()
 	add_executable(${EXECUTABLE} Main.ui ${SRC_LIST} ${HEADERS})
 endif ()
 
+add_dependencies(${EXECUTABLE} BuildInfo.h)
+
 qt5_use_modules(${EXECUTABLE} Core)
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-#target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
-#target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_COMMON_LIBRARY})
-#target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARY})
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qethereum)
 target_link_libraries(${EXECUTABLE} ethereum)
