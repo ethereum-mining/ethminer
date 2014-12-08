@@ -91,7 +91,6 @@ Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigne
 
 Envelope::Envelope(RLP const& _m)
 {
-	cdebug << _m;
 	m_expiry = _m[0].toInt<unsigned>();
 	m_ttl = _m[1].toInt<unsigned>();
 	m_topic = _m[2].toVector<FixedHash<4>>();
