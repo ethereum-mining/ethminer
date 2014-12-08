@@ -17,6 +17,7 @@
  * display opcode debugging.
  */
 
+#include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
 #include <QModelIndex>
@@ -31,6 +32,9 @@ using namespace dev::mix;
 
 AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::ModalDialog)
 {
+	qRegisterMetaType<AssemblyDebuggerData>();
+	connect(this, SIGNAL(dataAvailable(QList<QObject*>, AssemblyDebuggerData)),
+			this, SLOT(updateGUI(QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
 	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
 	m_doc = _doc;
 }
@@ -56,6 +60,9 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 
 	if (_key == Qt::Key_F5)
 	{
+		QString code = m_doc->toPlainText();
+		QtConcurrent::run([this, code](){
+
 			if (!m_modelDebugger->compile(m_doc->toPlainText()))
 			{
 				AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
@@ -76,10 +83,16 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 				s->setState(debuggingContent.states.at(i));
 				wStates.append(s);
 			}
-			std::tuple<QList<QObject*>, QQMLMap*> code = DebuggingStateWrapper::getHumanReadableCode(debuggingContent.executionCode, this);
-			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(wStates));
-			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(code)));
-			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(code)));
-			this->addContentOn(this);
-	};
+			AssemblyDebuggerData code = DebuggingStateWrapper::getHumanReadableCode(debuggingContent.executionCode, this);
+			emit dataAvailable(wStates, code);
+		});
+	}
+}
+
+void AssemblyDebuggerCtrl::updateGUI(QList<QObject*> _wStates, AssemblyDebuggerData _code)
+{
+	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
+	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
+	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
+	this->addContentOn(this);
 }
