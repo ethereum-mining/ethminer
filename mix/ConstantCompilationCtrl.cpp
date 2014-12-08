@@ -33,12 +33,7 @@ using namespace dev::mix;
 ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
 {
 	m_editor = _doc;
-	m_compilationModel = new ConstantCompilationModel();
-}
-
-ConstantCompilationCtrl::~ConstantCompilationCtrl()
-{
-	delete m_compilationModel;
+	m_compilationModel = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel());
 }
 
 QString ConstantCompilationCtrl::contentUrl() const

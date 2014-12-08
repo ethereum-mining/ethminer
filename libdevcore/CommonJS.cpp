@@ -54,4 +54,74 @@ bytes unpadded(bytes _b)
 	return _b;
 }
 
+std::string prettyU256(u256 _n)
+{
+	unsigned inc = 0;
+	std::string raw;
+	std::ostringstream s;
+	if (!(_n >> 64))
+		s << " " << (uint64_t)_n << " (0x" << (uint64_t)_n << ")";
+	else if (!~(_n >> 64))
+		s << " " << (int64_t)_n << " (0x" << (int64_t)_n << ")";
+	else if ((_n >> 160) == 0)
+	{
+		Address a = right160(_n);
+
+		std::string n = a.abridged();
+		if (n.empty())
+			s << "0x" << a;
+		else
+			s << n << "(0x" << a.abridged() << ")";
+	}
+	else if ((raw = fromRaw((h256)_n, &inc)).size())
+		return "\"" + raw + "\"" + (inc ? " + " + std::to_string(inc) : "");
+	else
+		s << "" << (h256)_n;
+	return s.str();
+}
+
+std::string fromRaw(h256 _n, unsigned* _inc)
+{
+	if (_n)
+	{
+		std::string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return NULL;
+		if (l != std::string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == std::string::npos || (_inc && p == 31)))
+				return NULL;
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return NULL;
+		return s;
+	}
+	return NULL;
+}
+
+Address fromString(std::string _sn)
+{
+	if (_sn.size() > 32)
+		_sn.resize(32);
+	h256 n;
+	memcpy(n.data(), _sn.data(), _sn.size());
+	memset(n.data() + _sn.size(), 0, 32 - _sn.size());
+	if (_sn.size() == 40)
+		return Address(fromHex(_sn));
+	else
+		return Address();
+		//we try to resolve the recipient adress using nameReg contract state
+		/*const Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f"); //NameReg contract
+		if (h160 nameReg = (u160)ethClient->stateAt(c_config, 0))
+			if (h256 a = ethClient->stateAt(nameReg, n))
+				return right160(a);*/
+}
+
+
 }

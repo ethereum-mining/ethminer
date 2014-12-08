@@ -21,7 +21,7 @@
 #include <QDebug>
 #include <libevm/VM.h>
 #include "Extension.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 using namespace dev;
 using namespace dev::mix;
 
@@ -32,7 +32,7 @@ void Extension::addTabOn(QObject* _view)
 
 	QVariant returnValue;
 	QQmlComponent* component = new QQmlComponent(
-				ApplicationCtx::getInstance()->appEngine(),
+				AppContext::getInstance()->appEngine(),
 				QUrl(contentUrl()), _view);
 
 	QMetaObject::invokeMethod(_view, "addTab",
@@ -48,9 +48,9 @@ void Extension::addContentOn(QObject* _view)
 	Q_UNUSED(_view);
 	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
 	{
-		QQmlComponent component(ApplicationCtx::getInstance()->appEngine(), QUrl(contentUrl()));
+		QQmlComponent component(AppContext::getInstance()->appEngine(), QUrl(contentUrl()));
 		QObject* dialog = component.create();
-		QObject* dialogWin = ApplicationCtx::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
 		QMetaObject::invokeMethod(dialogWin, "close");
 		dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
 		dialogWin->setProperty("title", title());
