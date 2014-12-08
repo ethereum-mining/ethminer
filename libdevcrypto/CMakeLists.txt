@@ -18,7 +18,7 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARY_RELEASE})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
-target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARY})
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
