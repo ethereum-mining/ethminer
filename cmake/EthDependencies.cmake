@@ -6,7 +6,12 @@
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (CMAKE_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
 set (CMAKE_PREFIX_PATH ${CMAKE_DEPENDENCY_INSTALL_DIR})
-if (WIN32)
+
+# Qt5 requires opengl
+# TODO use proper version of windows SDK (32 vs 64)
+# TODO make it possible to use older versions of windows SDK (7.0+ should also work)
+# TODO it windows SDK is NOT FOUND, throw ERROR
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
 	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
 	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
 endif()
@@ -28,6 +33,7 @@ message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
 # TODO the JsonRpcCpp package does not yet check for correct version number
 # json-rpc-cpp support is currently not mandatory
+# TODO make headless client optional
 find_package (JsonRpcCpp 0.3.2)
 if (${JSON_RPC_CPP_FOUND})
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
@@ -35,6 +41,13 @@ if (${JSON_RPC_CPP_FOUND})
 	add_definitions(-DETH_JSONRPC)
 endif()
 
+# TODO gmp package does not yet check for correct version number
+# TODO it is also not required in msvc build
+find_package (Gmp 6.0.0)
+message(" - Gmp Header: ${GMP_INCLUDE_DIR}")
+message(" - Gmp lib   : ${GMP_LIBRARY}")
+
+# TODO make headless client optional
 find_package (QT5Core REQUIRED)
 find_package (QT5Gui REQUIRED)
 find_package (Qt5Quick REQUIRED)
@@ -46,18 +59,18 @@ find_package (Qt5WebKitWidgets REQUIRED)
 
 
 # we have to specify here if we want static and boost version, that is really important
-
-# win32 msvc 2013 boost
 set(Boost_USE_STATIC_LIBS ON) 
 set(Boost_USE_MULTITHREADED ON)
-set(Boost_COMPILER -vc120)
+
+# TODO hanlde other msvc versions or it will fail find them
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
+	set(Boost_COMPILER -vc120)
+endif()
 
 find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem)
 
-if (Boost_FOUND)
-	message(" - boost header: ${Boost_INCLUDE_DIRS}")
-	message(" - boost lib   : ${Boost_LIBRARIES}")
-endif()
+message(" - boost header: ${Boost_INCLUDE_DIRS}")
+message(" - boost lib   : ${Boost_LIBRARIES}")
 
 
 

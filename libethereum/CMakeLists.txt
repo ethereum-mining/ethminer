@@ -5,6 +5,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(..)
+
 set(EXECUTABLE ethereum)
 
 file(GLOB HEADERS "*.h")
@@ -15,10 +18,8 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-include_directories(${LEVELDB_INCLUDE_DIR})
-include_directories(..)
-
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
 
 if (MINIUPNPC_LS)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
