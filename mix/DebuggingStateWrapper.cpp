@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file DebuggingStateWrapper.h
+/** @file DebuggingStateWrapper.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Used to translate c++ type (u256, bytes, ...) into friendly value (to be used by QML).

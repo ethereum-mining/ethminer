@@ -55,8 +55,6 @@ public:
 private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	QTextDocument* m_doc;
-	AppContext* m_ctx;
-	QQmlApplicationEngine* m_appEngine;
 
 public slots:
 	void keyPressed(int);

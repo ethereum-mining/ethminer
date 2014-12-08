@@ -21,6 +21,7 @@
 
 #include <QApplication>
 #include <QQmlComponent>
+#include "AppContext.h"
 
 namespace dev
 {
@@ -39,8 +40,8 @@ class Extension: public QObject
 	Q_OBJECT
 
 public:
-	Extension() {}
-	Extension(ExtensionDisplayBehavior _displayBehavior) { m_displayBehavior = _displayBehavior; }
+	Extension();
+	Extension(ExtensionDisplayBehavior _displayBehavior);
 	virtual QString contentUrl() const { return ""; }
 	virtual QString title() const { return ""; }
 	virtual void start() const {}
@@ -52,6 +53,11 @@ public:
 protected:
 	QObject* m_view;
 	ExtensionDisplayBehavior m_displayBehavior;
+	AppContext* m_ctx;
+	QQmlApplicationEngine* m_appEngine;
+
+private:
+	void init();
 };
 
 }
