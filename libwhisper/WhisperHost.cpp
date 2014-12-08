@@ -68,7 +68,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			return;
 		UpgradeGuard ll(l);
 		m_messages[h] = _m;
-		m_expiryQueue[_m.expiry()] = h;
+		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
 //	if (_p)
