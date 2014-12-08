@@ -11,8 +11,9 @@ set (CMAKE_PREFIX_PATH ${CMAKE_DEPENDENCY_INSTALL_DIR})
 # TODO use proper version of windows SDK (32 vs 64)
 # TODO make it possible to use older versions of windows SDK (7.0+ should also work)
 # TODO it windows SDK is NOT FOUND, throw ERROR
-if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
+if (WIN32)
 	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
+	message(" - Found windows 8.1 SDK")
 	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
 endif()
 
@@ -65,8 +66,10 @@ endif()
 # TODO gmp package does not yet check for correct version number
 # TODO it is also not required in msvc build
 find_package (Gmp 6.0.0)
-message(" - gmp Header: ${GMP_INCLUDE_DIR}")
-message(" - gmp lib   : ${GMP_LIBRARY}")
+if (GMP_FOUND)
+	message(" - gmp Header: ${GMP_INCLUDE_DIR}")
+	message(" - gmp lib   : ${GMP_LIBRARY}")
+endif()
 
 # TODO make headless client optional
 find_package (QT5Core REQUIRED)
