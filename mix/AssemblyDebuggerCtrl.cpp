@@ -25,7 +25,7 @@
 #include "AssemblyDebuggerCtrl.h"
 #include "TransactionBuilder.h"
 #include "KeyEventManager.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 using namespace dev::mix;
 
@@ -48,16 +48,17 @@ QString AssemblyDebuggerCtrl::title() const
 void AssemblyDebuggerCtrl::start() const
 {
 	//start to listen on F5
-	ApplicationCtx::getInstance()->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
+	AppContext::getInstance()->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
 }
 
 void AssemblyDebuggerCtrl::keyPressed(int _key)
 {
+
 	if (_key == Qt::Key_F5)
 	{
 			if (!m_modelDebugger->compile(m_doc->toPlainText()))
 			{
-				ApplicationCtx::getInstance()->displayMessageDialog("debugger","compilation failed");
+				AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
 				return;
 			}
 
@@ -71,14 +72,14 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 			QList<QObject*> wStates;
 			for(int i = 0; i < debuggingContent.states.size(); i++)
 			{
-				DebuggingStateWrapper* s = new DebuggingStateWrapper(debuggingContent.executionCode, debuggingContent.executionData.toBytes());
+				DebuggingStateWrapper* s = new DebuggingStateWrapper(debuggingContent.executionCode, debuggingContent.executionData.toBytes(), this);
 				s->setState(debuggingContent.states.at(i));
 				wStates.append(s);
 			}
 			std::tuple<QList<QObject*>, QQMLMap*> code = DebuggingStateWrapper::getHumanReadableCode(debuggingContent.executionCode, this);
-			ApplicationCtx::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(wStates));
-			ApplicationCtx::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(code)));
-			ApplicationCtx::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(code)));
+			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(wStates));
+			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(code)));
+			AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(code)));
 			this->addContentOn(this);
 	};
 }

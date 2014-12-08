@@ -22,7 +22,7 @@
 #include "libethereum/ExtVM.h"
 #include "libevm/VM.h"
 #include "libdevcore/Common.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 #include "TransactionBuilder.h"
 #include "AssemblyDebuggerModel.h"
 #include "ConstantCompilationModel.h"
@@ -40,7 +40,7 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 {
 	QList<DebuggingState> states;
 	Transaction tr(_rawTransaction);
-	m_currentExecution.get()->create(tr.sender(), tr.value(), tr.gasPrice(), tr.gas(), &tr.data(), tr.sender());
+	m_currentExecution->create(tr.sender(), tr.value(), tr.gasPrice(), tr.gas(), &tr.data(), tr.sender());
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -66,8 +66,8 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
-	m_currentExecution.get()->go(onOp);
-	m_currentExecution.get()->finalize(onOp);
+	m_currentExecution->go(onOp);
+	m_currentExecution->finalize(onOp);
 
 	DebuggingContent d;
 	d.states = states;

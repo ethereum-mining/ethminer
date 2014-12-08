@@ -28,7 +28,7 @@
 #include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
 #include "AssemblyDebuggerCtrl.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
 
@@ -65,13 +65,13 @@ void CodeEditorExtensionManager::initExtensions()
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 {
-	if (!_ext.get()->contentUrl().isEmpty())
+	if (!_ext->contentUrl().isEmpty())
 	{
 		try
 		{
-			if (_ext.get()->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
 			{
-				_ext.get()->addTabOn(m_tabView);
+				_ext->addTabOn(m_tabView);
 			}
 		}
 		catch (...)
@@ -80,7 +80,7 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 			return;
 		}
 	}
-	_ext.get()->start();
+	_ext->start();
 	m_features.append(_ext);
 }
 
