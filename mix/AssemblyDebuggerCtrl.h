@@ -26,7 +26,14 @@
 #include "AssemblyDebuggerModel.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
+enum DebuggingStatusResult
+{
+	Ok,
+	Compilationfailed
+};
+
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
+Q_DECLARE_METATYPE(DebuggingStatusResult)
 
 namespace dev
 {
@@ -51,10 +58,10 @@ private:
 
 public Q_SLOTS:
 	void keyPressed(int);
-	void updateGUI(QList<QObject*> _wStates, AssemblyDebuggerData _code);
+	void updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
 
 signals:
-	void dataAvailable(QList<QObject*> _wStates, AssemblyDebuggerData _code);
+	void dataAvailable(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
 
 };
 

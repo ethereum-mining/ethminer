@@ -111,7 +111,7 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(QStringList levels READ levels)
 
 public:
-	DebuggingStateWrapper(bytes _code, bytes _data, QObject* parent): QObject(parent), m_code(_code), m_data(_data) {}
+	DebuggingStateWrapper(bytes _code, bytes _data, QObject* _parent): QObject(_parent), m_code(_code), m_data(_data) {}
 	int step() { return  (int)m_state.steps; }
 	int curPC() { return (int)m_state.curPC; }
 	int gasCost() { return (int)m_state.gasCost; }
@@ -125,7 +125,7 @@ public:
 	QStringList levels();
 	DebuggingState state() { return m_state; }
 	void setState(DebuggingState _state) { m_state = _state;  }
-	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& code, QObject* _objUsedAsParent);
+	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code, QObject* _objUsedAsParent);
 
 private:
 	DebuggingState m_state;
