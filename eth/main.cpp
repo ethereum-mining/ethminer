@@ -427,8 +427,7 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-
-				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::CorsHttpServer(jsonrpc));
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
 				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();

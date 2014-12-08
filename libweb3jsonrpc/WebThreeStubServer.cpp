@@ -21,6 +21,9 @@
  * @date 2014
  */
 
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include "WebThreeStubServer.h"
 #include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
@@ -31,9 +34,6 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#include <libsolidity/CompilerStack.h>
-#include <libsolidity/Scanner.h>
-#include <libsolidity/SourceReferenceFormatter.h>
 #include <libserpent/funcs.h>
 
 using namespace std;

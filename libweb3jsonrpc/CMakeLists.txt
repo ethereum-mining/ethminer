@@ -3,9 +3,9 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIR})
-include_directories(..)
 
 set(EXECUTABLE web3jsonrpc)
 
@@ -28,7 +28,6 @@ endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} gmp)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} serpent)
 
