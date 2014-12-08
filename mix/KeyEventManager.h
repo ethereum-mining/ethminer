@@ -36,7 +36,7 @@ public:
 signals:
 	void onKeyPressed(int);
 
-public Q_SLOTS:
+public slots:
 	void keyPressed(QVariant _event);
 };
 

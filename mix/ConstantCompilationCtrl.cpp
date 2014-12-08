@@ -59,7 +59,7 @@ void ConstantCompilationCtrl::compile()
 		resetOutPut();
 		return;
 	}
-	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "    "));
+	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "        "));
 	writeOutPut(res);
 }
 
