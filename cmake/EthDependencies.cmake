@@ -90,7 +90,7 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
 	set(Boost_COMPILER -vc120)
 endif()
 
-find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem)
+find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework)
 
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
