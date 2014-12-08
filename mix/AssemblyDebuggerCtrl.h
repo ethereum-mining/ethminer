@@ -25,6 +25,9 @@
 #include "ConstantCompilationModel.h"
 #include "AssemblyDebuggerModel.h"
 
+using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
+Q_DECLARE_METATYPE(AssemblyDebuggerData)
+
 namespace dev
 {
 
@@ -48,6 +51,11 @@ private:
 
 public Q_SLOTS:
 	void keyPressed(int);
+	void updateGUI(QList<QObject*> _wStates, AssemblyDebuggerData _code);
+
+signals:
+	void dataAvailable(QList<QObject*> _wStates, AssemblyDebuggerData _code);
+
 };
 
 }
