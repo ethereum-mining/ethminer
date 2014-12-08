@@ -24,6 +24,7 @@
 #include "Extension.h"
 #include "ConstantCompilationModel.h"
 #include "AssemblyDebuggerModel.h"
+#include "AppContext.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 enum DebuggingStatusResult
@@ -54,6 +55,8 @@ public:
 private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	QTextDocument* m_doc;
+	AppContext* m_ctx;
+	QQmlApplicationEngine* m_appEngine;
 
 public slots:
 	void keyPressed(int);
