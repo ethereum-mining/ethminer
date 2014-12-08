@@ -57,11 +57,11 @@ WebThreeDirect::~WebThreeDirect()
 	// eth::Client (owned by us via a unique_ptr) uses eth::EthereumHost (via a weak_ptr).
 	// Really need to work out a clean way of organising ownership and guaranteeing startup/shutdown is perfect.
 
-	// Have to call quit here to get the Host to kill its io_service otherwise we end up with left-over reads,
+	// Have to call stop here to get the Host to kill its io_service otherwise we end up with left-over reads,
 	// still referencing Sessions getting deleted *after* m_ethereum is reset, causing bad things to happen, since
 	// the guarantee is that m_ethereum is only reset *after* all sessions have ended (sessions are allowed to
 	// use bits of data owned by m_ethereum).
-	m_net.quit();
+	m_net.stop();
 	m_ethereum.reset();
 }
 
