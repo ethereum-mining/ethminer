@@ -34,18 +34,39 @@ message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 # TODO the JsonRpcCpp package does not yet check for correct version number
 # json-rpc-cpp support is currently not mandatory
 # TODO make headless client optional
+# TODO get rid of -DETH_JSONRPC
 find_package (JsonRpcCpp 0.3.2)
-if (${JSON_RPC_CPP_FOUND})
+if (JSON_RPC_CPP_FOUND)
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 endif()
 
+# TODO readline package does not yet check for correct version number
+# TODO make readline package dependent on cmake options
+# TODO get rid of -DETH_READLINE
+find_package (Readline 6.3.8)
+if (READLINE_FOUND)
+	message (" - readline header: ${READLINE_INCLUDE_DIR}")
+	message (" - readline lib   : ${READLINE_LIBRARY}")
+	add_definitions(-DETH_READLINE)
+endif ()
+
+# TODO miniupnpc package does not yet check for correct version number
+# TODO make miniupnpc package dependent on cmake options
+# TODO get rid of -DMINIUPNPC
+find_package (Miniupnpc 1.8.2013)
+if (MINIUPNPC_FOUND)
+	message (" - miniupnpc header: ${MINIUPNPC_INCLUDE_DIR}")
+	message (" - miniupnpc lib   : ${MINIUPNPC_LIBRARY}")
+	add_definitions(-DETH_MINIUPNPC)
+endif()
+
 # TODO gmp package does not yet check for correct version number
 # TODO it is also not required in msvc build
 find_package (Gmp 6.0.0)
-message(" - Gmp Header: ${GMP_INCLUDE_DIR}")
-message(" - Gmp lib   : ${GMP_LIBRARY}")
+message(" - gmp Header: ${GMP_INCLUDE_DIR}")
+message(" - gmp lib   : ${GMP_LIBRARY}")
 
 # TODO make headless client optional
 find_package (QT5Core REQUIRED)
@@ -56,7 +77,6 @@ find_package (Qt5Network REQUIRED)
 find_package (Qt5Widgets REQUIRED)
 find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
-
 
 # we have to specify here if we want static and boost version, that is really important
 set(Boost_USE_STATIC_LIBS ON) 
@@ -72,19 +92,8 @@ find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex chro
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if (APPLE)
+	link_directories(/usr/local/lib)
+	include_directories(/usr/local/include)
+endif()
 

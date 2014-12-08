@@ -19,8 +19,8 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 
-if(MINIUPNPC_LS)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
+if(MINIUPNPC_FOUND)
+target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
 endif()
 
 target_link_libraries(${EXECUTABLE} ethcore)
