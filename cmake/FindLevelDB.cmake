@@ -26,7 +26,7 @@ find_library(
 # message (" - leveldb lib    : ${LEVELDB_LIBRARY}")
 
 
-# handle the QUIETLY and REQUIRED arguments and set JSON_RPC_CPP_FOUND to TRUE
+# handle the QUIETLY and REQUIRED arguments and set LEVELDB_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(leveldb DEFAULT_MSG
