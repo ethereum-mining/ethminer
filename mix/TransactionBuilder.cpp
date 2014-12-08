@@ -33,8 +33,8 @@ Transaction TransactionBuilder::getCreationTransaction(u256 _value, u256 _gasPri
 }
 
 Transaction TransactionBuilder::getBasicTransaction(u256 _value, u256 _gasPrice, u256 _gas,
-										QString address, bytes _data, u256 _nonce, Secret _secret) const
+										QString _address, bytes _data, u256 _nonce, Secret _secret) const
 {
-	return Transaction(_value, _gasPrice, _gas, dev::fromString(address.toStdString()), _data, _nonce, _secret);
+	return Transaction(_value, _gasPrice, _gas, dev::fromString(_address.toStdString()), _data, _nonce, _secret);
 }
 

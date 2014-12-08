@@ -81,11 +81,11 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u256 _value,
 																			   dev::u256 _gasPrice,
 																			   dev::u256 _gas,
-																			   QString code,
+																			   QString _code,
 																			   KeyPair _key)
 {
 	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(code);
+	CompilerResult res = compiler.compile(_code);
 	if (!res.success)
 	{
 		DebuggingContent r;
