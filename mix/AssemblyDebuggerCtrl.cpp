@@ -32,6 +32,8 @@ using namespace dev::mix;
 
 AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::ModalDialog)
 {
+	m_ctx = AppContext::getInstance();
+	m_appEngine = m_ctx->appEngine();
 	qRegisterMetaType<AssemblyDebuggerData>();
 	qRegisterMetaType<DebuggingStatusResult>();
 	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QObject*>, AssemblyDebuggerData)),
@@ -53,7 +55,7 @@ QString AssemblyDebuggerCtrl::title() const
 void AssemblyDebuggerCtrl::start() const
 {
 	//start to listen on F5
-	AppContext::getInstance()->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
+	m_ctx->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
 }
 
 void AssemblyDebuggerCtrl::keyPressed(int _key)
@@ -95,11 +97,11 @@ void AssemblyDebuggerCtrl::updateGUI(bool success, DebuggingStatusResult reason,
 	Q_UNUSED(reason);
 	if (success)
 	{
-		AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
-		AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
-		AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
+		m_appEngine->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
+		m_appEngine->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
+		m_appEngine->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
 		this->addContentOn(this);
 	}
 	else
-		AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
+		m_ctx->displayMessageDialog("debugger","compilation failed");
 }

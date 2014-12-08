@@ -23,6 +23,7 @@
 #include <QDebug>
 #include <QString>
 #include <QTextStream>
+#include "libevmcore/Instruction.h"
 #include "libdevcore/CommonJS.h"
 #include "libdevcrypto/Common.h"
 #include "libevmcore/Instruction.h"
@@ -48,7 +49,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			int line = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
 			{
-				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+				unsigned bc = getPushNumber((Instruction)b);
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
