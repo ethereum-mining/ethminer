@@ -105,10 +105,6 @@ message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 # this must be an include, as a function it would messs up with variable scope!
 include(EthDependencies)
 
-
-# TODO this will go away soon!
-include(EthDependenciesDeprecated)
-
 createBuildInfo()
 
 add_subdirectory(libdevcore)

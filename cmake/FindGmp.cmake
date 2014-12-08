@@ -6,8 +6,8 @@
 # 
 # This module defines
 #  GMP_INCLUDE_DIR, where to find header, etc.
-#  GMP_LIBRARY, the libraries needed to use leveldb.
-#  GMP_FOUND, If false, do not try to use leveldb.
+#  GMP_LIBRARY, the libraries needed to use gmp.
+#  GMP_FOUND, If false, do not try to use gmp.
 
 # only look in default directories
 find_path(
@@ -21,7 +21,6 @@ find_library(
     NAMES gmp
     DOC "gmp library"
 	)
-
 
 # handle the QUIETLY and REQUIRED arguments and set GMP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
