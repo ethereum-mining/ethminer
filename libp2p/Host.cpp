@@ -447,26 +447,31 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	_n->failedAttempts++;
 	m_ready -= _n->index;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
-	s->async_connect(_n->address, [=](boost::system::error_code const& ec)
-	{
-		if (ec)
+
+	auto n = node(_n->id);
+	if (n)
+		s->async_connect(_n->address, [=](boost::system::error_code const& ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
-			_n->lastDisconnect = TCPError;
-			_n->lastAttempted = std::chrono::system_clock::now();
-			m_ready += _n->index;
-		}
-		else
-		{
-			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
-			_n->lastConnected = std::chrono::system_clock::now();
-			auto p = make_shared<Session>(this, std::move(*s), node(_n->id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
-			p->start();
-		}
-		delete s;
-		Guard l(x_pendingNodeConns);
-		m_pendingNodeConns.erase(nptr);
-	});
+			if (ec)
+			{
+				clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
+				_n->lastDisconnect = TCPError;
+				_n->lastAttempted = std::chrono::system_clock::now();
+				m_ready += _n->index;
+			}
+			else
+			{
+				clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
+				_n->lastConnected = std::chrono::system_clock::now();
+				auto p = make_shared<Session>(this, std::move(*s), n, true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+				p->start();
+			}
+			delete s;
+			Guard l(x_pendingNodeConns);
+			m_pendingNodeConns.erase(nptr);
+		});
+	else
+		clog(NetWarn) << "Trying to connect to node not in node table.";
 }
 
 bool Host::havePeer(NodeId _id) const
