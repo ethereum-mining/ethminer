@@ -4,7 +4,8 @@
 # by defining this variable, cmake will look for dependencies first in our own repository before looking in system paths like /usr/local/ ...
 # this must be set to point to the same directory as $ETH_DEPENDENCY_INSTALL_DIR in /extdep directory
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
-set (CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
+set (CMAKE_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
+set (CMAKE_PREFIX_PATH ${CMAKE_DEPENDENCY_INSTALL_DIR})
 if (WIN32)
 	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
 	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
