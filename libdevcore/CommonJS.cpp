@@ -116,11 +116,6 @@ Address fromString(std::string _sn)
 		return Address(fromHex(_sn));
 	else
 		return Address();
-		//we try to resolve the recipient adress using nameReg contract state
-		/*const Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f"); //NameReg contract
-		if (h160 nameReg = (u160)ethClient->stateAt(c_config, 0))
-			if (h256 a = ethClient->stateAt(nameReg, n))
-				return right160(a);*/
 }
 
 
