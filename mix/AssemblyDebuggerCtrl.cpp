@@ -32,8 +32,6 @@ using namespace dev::mix;
 
 AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::ModalDialog)
 {
-	m_ctx = AppContext::getInstance();
-	m_appEngine = m_ctx->appEngine();
 	qRegisterMetaType<AssemblyDebuggerData>();
 	qRegisterMetaType<DebuggingStatusResult>();
 	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QObject*>, AssemblyDebuggerData)),

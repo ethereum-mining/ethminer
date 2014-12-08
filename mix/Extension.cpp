@@ -25,6 +25,23 @@
 using namespace dev;
 using namespace dev::mix;
 
+Extension::Extension()
+{
+	init();
+}
+
+Extension::Extension(ExtensionDisplayBehavior _displayBehavior)
+{
+	init();
+	m_displayBehavior = _displayBehavior;
+}
+
+void Extension::init()
+{
+	m_ctx = AppContext::getInstance();
+	m_appEngine = m_ctx->appEngine();
+}
+
 void Extension::addTabOn(QObject* _view)
 {
 	if (contentUrl() == "")
