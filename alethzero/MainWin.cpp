@@ -1626,7 +1626,7 @@ void Main::on_data_textChanged()
 			catch (dev::Exception const& exception)
 			{
 				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 			catch (...)
