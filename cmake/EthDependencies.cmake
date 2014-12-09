@@ -71,6 +71,12 @@ if (GMP_FOUND)
 	message(" - gmp lib   : ${GMP_LIBRARY}")
 endif()
 
+# curl is only requried for tests
+# TODO specify min curl version, on windows we are currenly using 7.29
+find_package (curl)
+message(" - curl header: ${CURL_INCLUDE_DIR}")
+message(" - curl lib   : ${CURL_LIBRARY}")
+
 # TODO make headless client optional
 find_package (QT5Core REQUIRED)
 find_package (QT5Gui REQUIRED)

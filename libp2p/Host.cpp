@@ -42,7 +42,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_ifAddresses(Network::getInterfaceAddresses()),
-	m_ioService(2),
+	m_ioService(),
 	m_acceptorV4(m_ioService),
 	m_key(KeyPair::create())
 {
