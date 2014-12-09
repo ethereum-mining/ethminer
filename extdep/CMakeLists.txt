@@ -44,6 +44,7 @@ else()
 	eth_download(qt)
 	eth_download(cryptopp)
 	eth_download(boost)
+	eth_download(curl)
 
 endif()
 
