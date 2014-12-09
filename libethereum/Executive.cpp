@@ -162,7 +162,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 	{
 		boost::timer t;
 		auto sgas = m_vm->gas();
-		bool revert = false;
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
@@ -171,7 +170,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 				m_logs = m_ext->sub.logs;
 			}
-			m_endGas = m_vm->gas();
+			if (m_out.size() * c_createDataGas <= m_endGas)
+				m_endGas -= m_out.size() * c_createDataGas;
+			else
+				m_out.reset();
 		}
 		catch (StepsDone const&)
 		{
@@ -181,7 +183,16 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			m_endGas = 0;//m_vm->gas();
-			revert = true;
+
+			// Write state out only in the case of a non-excepted transaction.
+			m_ext->revert();
+
+			// Explicitly delete a newly created address - this will still be in the reverted state.
+/*			if (m_newAddress)
+			{
+				m_s.m_cache.erase(m_newAddress);
+				m_newAddress = Address();
+			}*/
 		}
 		catch (Exception const& _e)
 		{
@@ -194,18 +205,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
 		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
-
-		// Write state out only in the case of a non-excepted transaction.
-		if (revert)
-		{
-			m_ext->revert();
-			// Explicitly delete a newly created address - this will still be in the reverted state.
-			if (m_newAddress)
-			{
-				m_s.m_cache.erase(m_newAddress);
-				m_newAddress = Address();
-			}
-		}
 	}
 	return true;
 }
@@ -217,9 +216,11 @@ u256 Executive::gas() const
 
 void Executive::finalize(OnOpFunc const&)
 {
-	if (m_t.isCreation() && m_newAddress && m_out.size())
-		// non-reverted creation - put code in place.
+	if (m_t.isCreation() && !m_ext->sub.suicides.count(m_newAddress))
+	{
+		// creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
+	}
 
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());

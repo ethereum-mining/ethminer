@@ -186,7 +186,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::SHA3:
 			require(2);
-			runGas = c_sha3Gas;
+			runGas = c_sha3Gas + (m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:
