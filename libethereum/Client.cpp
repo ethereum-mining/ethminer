@@ -217,7 +217,7 @@ void Client::noteChanged(h256Set const& _filters)
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
 		{
-			cwatch << "!!!" << i.first << i.second.id;
+//			cwatch << "!!!" << i.first << i.second.id;
 			i.second.changes++;
 		}
 }
