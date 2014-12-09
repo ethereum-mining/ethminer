@@ -28,6 +28,7 @@
 #include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
 #include "AssemblyDebuggerCtrl.h"
+#include "TransactionListView.h"
 #include "AppContext.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
@@ -61,6 +62,7 @@ void CodeEditorExtensionManager::initExtensions()
 {
 	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
 	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
+	initExtension(std::make_shared<TransactionListView>(m_doc));
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
@@ -71,6 +73,8 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 		{
 			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
 				_ext->addTabOn(m_tabView);
+			else if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightTab)
+				_ext->addTabOn(m_rightTabView);
 		}
 		catch (...)
 		{
@@ -86,6 +90,11 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 {
 	this->loadEditor(_editor);
 	this->initExtensions();
+}
+
+void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
+{
+	m_rightTabView = _tabView;
 }
 
 void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)

@@ -31,6 +31,7 @@ namespace mix
 enum ExtensionDisplayBehavior
 {
 	Tab,
+	RightTab,
 	ModalDialog
 };
 
