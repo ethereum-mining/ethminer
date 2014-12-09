@@ -77,6 +77,8 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIR}")
 message(" - curl lib   : ${CURL_LIBRARY}")
 
+# find all of the Qt packages
+# remember to use 'Qt' instead of 'QT', cause unix is case sensitive
 # TODO make headless client optional
 find_package (Qt5Core REQUIRED)
 find_package (Qt5Gui REQUIRED)
@@ -87,17 +89,26 @@ find_package (Qt5Widgets REQUIRED)
 find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
 
-if (WIN32)
+# use multithreaded boost libraries, with -mt suffix
+set(Boost_USE_MULTITHREADED ON)
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
 	# TODO hanlde other msvc versions or it will fail find them
 	set(Boost_COMPILER -vc120)
+	# use static boost libraries *.lib
 	set(Boost_USE_STATIC_LIBS ON) 
-	set(Boost_USE_MULTITHREADED ON)
-elseif(APPLE)
+
+elseif (APPLE)
+
+	# use static boost libraries *.a
 	set(Boost_USE_STATIC_LIBS ON) 
-	set(Boost_USE_MULTITHREADED ON)
-elseif(UNIX)
+
+elseif (UNIX)
+
+	# use dynamic boost libraries .dll
 	set(Boost_USE_STATIC_LIBS OFF) 
-	set(Boost_USE_MULTITHREADED ON)
+
 endif()
 
 find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework)
