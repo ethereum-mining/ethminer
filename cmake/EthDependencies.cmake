@@ -87,7 +87,7 @@ find_package (Qt5Widgets REQUIRED)
 find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
 
-if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
+if (WIN32)
 	# TODO hanlde other msvc versions or it will fail find them
 	set(Boost_COMPILER -vc120)
 	set(Boost_USE_STATIC_LIBS ON) 
