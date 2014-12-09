@@ -5,7 +5,7 @@
 # this must be set to point to the same directory as $ETH_DEPENDENCY_INSTALL_DIR in /extdep directory
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (CMAKE_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
-set (CMAKE_PREFIX_PATH ${CMAKE_DEPENDENCY_INSTALL_DIR})
+set (CMAKE_PREFIX_PATH ${CMAKE_DEPENDENCY_INSTALL_DIR} ";/usr")
 
 # Qt5 requires opengl
 # TODO use proper version of windows SDK (32 vs 64)
@@ -73,13 +73,13 @@ endif()
 
 # curl is only requried for tests
 # TODO specify min curl version, on windows we are currenly using 7.29
-find_package (curl)
+find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIR}")
 message(" - curl lib   : ${CURL_LIBRARY}")
 
 # TODO make headless client optional
-find_package (QT5Core REQUIRED)
-find_package (QT5Gui REQUIRED)
+find_package (Qt5Core REQUIRED)
+find_package (Qt5Gui REQUIRED)
 find_package (Qt5Quick REQUIRED)
 find_package (Qt5Qml REQUIRED)
 find_package (Qt5Network REQUIRED)
@@ -87,16 +87,20 @@ find_package (Qt5Widgets REQUIRED)
 find_package (Qt5WebKit REQUIRED)
 find_package (Qt5WebKitWidgets REQUIRED)
 
-# we have to specify here if we want static and boost version, that is really important
-set(Boost_USE_STATIC_LIBS ON) 
-set(Boost_USE_MULTITHREADED ON)
-
-# TODO hanlde other msvc versions or it will fail find them
 if (${CMAKE_CXX_COMPILER_ID} MATCHES "MSVC")
+	# TODO hanlde other msvc versions or it will fail find them
 	set(Boost_COMPILER -vc120)
+	set(Boost_USE_STATIC_LIBS ON) 
+	set(Boost_USE_MULTITHREADED ON)
+elseif(APPLE)
+	set(Boost_USE_STATIC_LIBS ON) 
+	set(Boost_USE_MULTITHREADED ON)
+elseif(UNIX)
+	set(Boost_USE_STATIC_LIBS OFF) 
+	set(Boost_USE_MULTITHREADED ON)
 endif()
 
-find_package(Boost 1.55.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework)
+find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework)
 
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
