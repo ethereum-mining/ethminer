@@ -1285,11 +1285,20 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		if (o_sub)
 			*o_sub += evm.sub;
 		*_gas = vm.gas();
+
+		if (out.size() * c_createDataGas <= *_gas)
+			*_gas -= out.size() * c_createDataGas;
+		else
+			out.reset();
+
+		// Set code.
+		if (!evm.sub.suicides.count(newAddress))
+			m_cache[newAddress].setCode(out);
 	}
 	catch (VMException const& _e)
 	{
 		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		revert = true;
+		evm.revert();
 		*_gas = 0;
 	}
 	catch (Exception const& _e)
@@ -1302,20 +1311,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 	}
-
-	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
-
-	// Write state out only in the case of a non-out-of-gas transaction.
-	if (revert)
-	{
-		evm.revert();
-		m_cache.erase(newAddress);
-		newAddress = Address();
-	}
-	else
-		// Set code.
-		if (addressInUse(newAddress))
-			m_cache[newAddress].setCode(out);
 
 	return newAddress;
 }
