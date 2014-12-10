@@ -15,6 +15,7 @@ function(createDefaultCacheConfig)
 	set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
 	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
+	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 endfunction()
 
 
@@ -85,7 +86,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
-message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}")
+message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -107,23 +108,27 @@ include(EthDependencies)
 
 createBuildInfo()
 
-add_subdirectory(libdevcore)
-add_subdirectory(libevmcore)
-add_subdirectory(liblll)
-add_subdirectory(libserpent)
-add_subdirectory(libsolidity)
+# TODO discuss that during PR. are we still using that?
+
 if(NOT APPLE)
 	if(PYTHON_LS)
 		add_subdirectory(libpyserpent)
 	endif()
 endif()
 
+add_subdirectory(libdevcore)
+add_subdirectory(libevmcore)
+add_subdirectory(liblll)
+add_subdirectory(libserpent)
+add_subdirectory(libsolidity)
 add_subdirectory(lllc)
 add_subdirectory(solc)
 add_subdirectory(sc)
-if (JSON_RPC_CPP_FOUND)
+
+if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
 endif()
+
 if (NOT LANGUAGES)
 	add_subdirectory(secp256k1)
 	add_subdirectory(libp2p)
@@ -133,6 +138,8 @@ if (NOT LANGUAGES)
 	add_subdirectory(libethcore)
 	add_subdirectory(libevm)
 	add_subdirectory(libethereum)
+
+# TODO is this 'TODO remove' still valid?
 #	add_subdirectory(libethereumx)	 # TODO remove
 
 	add_subdirectory(libwebthree)
@@ -141,37 +148,38 @@ if (NOT LANGUAGES)
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 		add_subdirectory(exp)
 	endif ()
+
+	# TODO check msvc
 	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
 		add_subdirectory(neth)
 	endif ()
-	if(QTQML)
-		add_definitions(-DETH_QTQML)
-	endif()
 
-	if(NOT HEADLESS)
+	# TODO discuss that during PR. are we still using that?
+	#if(QTQML)
+		#add_definitions(-DETH_QTQML)
+	#endif()
+
+	if (NOT HEADLESS)
+
+		# TODO move that somewhere else!
 		if ("${TARGET_PLATFORM}" STREQUAL "w64")
 			cmake_policy(SET CMP0020 NEW)
 		endif ()
-        if (NOT JSON_RPC_CPP_FOUND)
-			message(FATAL_ERROR "Alethzero requires jsonrpc.")
-		endif()
-
+		
 		add_subdirectory(libjsqrc)
         add_subdirectory(libqethereum)
-        if (NOT JSON_RPC_CPP_FOUND)
-            message (FATAL_ERROR "AlethZero requires json-rpc-cpp!")
-        else()
-            add_subdirectory(alethzero)
-        endif()
+        add_subdirectory(alethzero)
 		add_subdirectory(third)
 		add_subdirectory(mix)
-		if(QTQML)
+	
+		# TODO discuss that during PR. are we still using that?
+		#if(QTQML)
 			#add_subdirectory(iethxi)
 			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
-		endif()
+		#endif()
+		
 	endif()
 endif()
-
 
 enable_testing()
 add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
