@@ -36,12 +36,17 @@ message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 # json-rpc-cpp support is currently not mandatory
 # TODO make headless client optional
 # TODO get rid of -DETH_JSONRPC
-find_package (JsonRpcCpp 0.3.2)
-if (JSON_RPC_CPP_FOUND)
+if (JSONRPC)
+
+	find_package (JsonRpcCpp 0.3.2)
+	if (NOT JSON_RPC_CPP_FOUND)
+		message (FATAL_ERROR "JSONRPC 0.3.2. not found")
+	endif()
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
-endif()
+
+endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
 # TODO make readline package dependent on cmake options
@@ -77,36 +82,45 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIR}")
 message(" - curl lib   : ${CURL_LIBRARY}")
 
+# do not compile GUI
+if (NOT HEADLESS) 
+
+# we need json rpc to build alethzero
+	if (NOT JSON_RPC_CPP_FOUND)
+		message (FATAL_ERROR "JSONRPC is required for GUI client")
+	endif()
+
 # find all of the Qt packages
 # remember to use 'Qt' instead of 'QT', cause unix is case sensitive
 # TODO make headless client optional
-find_package (Qt5Core REQUIRED)
-find_package (Qt5Gui REQUIRED)
-find_package (Qt5Quick REQUIRED)
-find_package (Qt5Qml REQUIRED)
-find_package (Qt5Network REQUIRED)
-find_package (Qt5Widgets REQUIRED)
-find_package (Qt5WebKit REQUIRED)
-find_package (Qt5WebKitWidgets REQUIRED)
+	find_package (Qt5Core REQUIRED)
+	find_package (Qt5Gui REQUIRED)
+	find_package (Qt5Quick REQUIRED)
+	find_package (Qt5Qml REQUIRED)
+	find_package (Qt5Network REQUIRED)
+	find_package (Qt5Widgets REQUIRED)
+	find_package (Qt5WebKit REQUIRED)
+	find_package (Qt5WebKitWidgets REQUIRED)
+
+endif() #HEADLESS
 
 # use multithreaded boost libraries, with -mt suffix
 set(Boost_USE_MULTITHREADED ON)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	# TODO hanlde other msvc versions or it will fail find them
+# TODO hanlde other msvc versions or it will fail find them
 	set(Boost_COMPILER -vc120)
-	# use static boost libraries *.lib
+# use static boost libraries *.lib
 	set(Boost_USE_STATIC_LIBS ON) 
 
 elseif (APPLE)
 
-	# use static boost libraries *.a
+# use static boost libraries *.a
 	set(Boost_USE_STATIC_LIBS ON) 
 
 elseif (UNIX)
-
-	# use dynamic boost libraries .dll
+# use dynamic boost libraries .dll
 	set(Boost_USE_STATIC_LIBS OFF) 
 
 endif()
