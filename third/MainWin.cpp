@@ -611,15 +611,3 @@ void Main::on_mine_triggered()
 	else
 		ethereum()->stopMining();
 }
-
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_MainWin.cpp"
-
-#include\
-"moc_MiningView.cpp"
-
-#endif
