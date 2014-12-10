@@ -1,4 +1,9 @@
-cmake_policy(SET CMP0015 OLD)
+cmake_policy(SET CMP0015 NEW)
+# this policy was introduced in cmake 3.0
+# remove if, once 3.0 will be used on unix
+if (APPLE)
+	cmake_policy(SET CMP0043 OLD)
+endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
@@ -36,7 +41,7 @@ endif ()
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
-qt5_use_modules(${EXECUTABLE} Core)
+target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qethereum)
@@ -57,7 +62,7 @@ if (APPLE)
 	# First have qt5 install plugins and frameworks
 	# replace CMAKE_PREFIX_PATH with QT_PATH ?
 	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-		COMMAND ${CMAKE_PREFIX_PATH}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
+		COMMAND ${CMAKE_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 		
 	# This tool and next will inspect linked libraries in order to determine which dependencies are required
