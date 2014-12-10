@@ -21,6 +21,7 @@
 
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
+#include <libevm/VMFactory.h>
 #include <libevm/VM.h>
 #include "Interface.h"
 #include "Executive.h"
@@ -105,7 +106,7 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 	if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm.reset(new VM(_gas));
+		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
 		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms));
 	}
@@ -124,7 +125,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm.reset(new VM(_gas));
+	m_vm = VMFactory::create(_gas);
 	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms));
 	return _init.empty();
 }
