@@ -1,5 +1,8 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.9)
+# let cmake autolink dependencies on windows
+# it's specified globally, cause qt libraries requires that on windows and they are also found globally
+cmake_policy(SET CMP0020 NEW)
 
 project(ethereum)
 

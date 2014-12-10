@@ -178,11 +178,3 @@ void QmlEthereum::transact(Secret _secret, Address _dest, u256 _amount, u256 _ga
 
 #endif
 
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_QmlEthereum.cpp"
-
-#endif
