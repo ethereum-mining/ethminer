@@ -15,13 +15,31 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "VMFace.h"
+#include "VMFactory.h"
 #include "VM.h"
 
-using namespace dev;
-using namespace dev::eth;
-
-void VMFace::reset(u256 _gas) noexcept
+namespace dev
 {
-	m_gas = _gas;
+namespace eth
+{
+namespace
+{
+	VMKind g_kind = VMKind::Interpreter;
 }
+
+void VMFactory::setKind(VMKind _kind)
+{
+	g_kind = _kind;
+}
+
+std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
+{
+	asserts(g_kind == VMKind::Interpreter && "Only interpreter supported for now");
+	return std::unique_ptr<VMFace>(new VM(_gas));
+}
+
+}
+}
+
+
+

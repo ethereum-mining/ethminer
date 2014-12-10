@@ -27,16 +27,13 @@
 #include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include "VMFace.h"
 #include "FeeStructure.h"
-#include "ExtVMFace.h"
+#include "VMFace.h"
 
 namespace dev
 {
 namespace eth
 {
-
-class VMFactory;
 
 // Convert from a 256-bit integer stack/memory entry into a 160-bit Address hash.
 // Currently we just pull out the right (low-order in BE) 160-bits.
@@ -52,7 +49,7 @@ inline u256 fromAddress(Address _a)
 
 /**
  */
-class VM : public VMFace
+class VM: public VMFace
 {
 public:
 	virtual void reset(u256 _gas = 0) noexcept override final;
@@ -61,17 +58,20 @@ public:
 
 	void require(u256 _n) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); } }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
+
 	u256 curPC() const { return m_curPC; }
 
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
 private:
-	friend VMFactory;
+	friend class VMFactory;
+
+	/// Construct VM object.
 	explicit VM(u256 _gas = 0): VMFace(_gas) {}
 
 	template <class Ext>
-	bytesConstRef go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps);
+	bytesConstRef goImpl(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
 	u256 m_curPC = 0;
 	bytes m_temp;
@@ -83,7 +83,7 @@ private:
 }
 
 // INLINE:
-template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+template <class Ext> dev::bytesConstRef dev::eth::VM::goImpl(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
 
@@ -518,12 +518,12 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 			break;
 		case Instruction::CALLDATALOAD:
 		{
-			if ((unsigned)m_stack.back() + 31 < _ext.data.size())
+			if ((unsigned)m_stack.back() + (uint64_t)31 < _ext.data.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (unsigned)m_stack.back());
 			else
 			{
 				h256 r;
-				for (unsigned i = (unsigned)m_stack.back(), e = (unsigned)m_stack.back() + 32, j = 0; i < e; ++i, ++j)
+				for (uint64_t i = (unsigned)m_stack.back(), e = (unsigned)m_stack.back() + (uint64_t)32, j = 0; i < e; ++i, ++j)
 					r[j] = i < _ext.data.size() ? _ext.data[i] : 0;
 				m_stack.back() = (u256)r;
 			}
@@ -532,51 +532,49 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::go(Ext& _ext, OnOpFunc con
 		case Instruction::CALLDATASIZE:
 			m_stack.push_back(_ext.data.size());
 			break;
-		case Instruction::CALLDATACOPY:
-		{
-			unsigned mf = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			u256 cf = m_stack.back();
-			m_stack.pop_back();
-			unsigned l = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned el = cf + l > (u256)_ext.data.size() ? (u256)_ext.data.size() < cf ? 0 : _ext.data.size() - (unsigned)cf : l;
-			memcpy(m_temp.data() + mf, _ext.data.data() + (unsigned)cf, el);
-			memset(m_temp.data() + mf + el, 0, l - el);
-			break;
-		}
 		case Instruction::CODESIZE:
 			m_stack.push_back(_ext.code.size());
 			break;
-		case Instruction::CODECOPY:
-		{
-			unsigned mf = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			u256 cf = (u256)m_stack.back();
-			m_stack.pop_back();
-			unsigned l = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned el = cf + l > (u256)_ext.code.size() ? (u256)_ext.code.size() < cf ? 0 : _ext.code.size() - (unsigned)cf : l;
-			memcpy(m_temp.data() + mf, _ext.code.data() + (unsigned)cf, el);
-			memset(m_temp.data() + mf + el, 0, l - el);
-			break;
-		}
 		case Instruction::EXTCODESIZE:
 			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
 			break;
+		case Instruction::CALLDATACOPY:
+		case Instruction::CODECOPY:
 		case Instruction::EXTCODECOPY:
 		{
-			Address a = asAddress(m_stack.back());
+			Address a;
+			if (inst == Instruction::EXTCODECOPY)
+			{
+				a = asAddress(m_stack.back());
+				m_stack.pop_back();
+			}
+			unsigned offset = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned mf = (unsigned)m_stack.back();
+			u256 index = m_stack.back();
 			m_stack.pop_back();
-			u256 cf = m_stack.back();
+			unsigned size = (unsigned)m_stack.back();
 			m_stack.pop_back();
-			unsigned l = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned el = cf + l > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < cf ? 0 : _ext.codeAt(a).size() - (unsigned)cf : l;
-			memcpy(m_temp.data() + mf, _ext.codeAt(a).data() + (unsigned)cf, el);
-			memset(m_temp.data() + mf + el, 0, l - el);
+			unsigned sizeToBeCopied;
+			switch(inst)
+			{
+			case Instruction::CALLDATACOPY:
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < index ? 0 : _ext.data.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)index, sizeToBeCopied);
+				break;
+			case Instruction::CODECOPY:
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < index ? 0 : _ext.code.size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)index, sizeToBeCopied);
+				break;
+			case Instruction::EXTCODECOPY:
+				sizeToBeCopied = index + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < index ? 0 : _ext.codeAt(a).size() - (unsigned)index : size;
+				memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)index, sizeToBeCopied);
+				break;
+			default:
+				// this is unreachable, but if someone introduces a bug in the future, he may get here.
+				BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("CALLDATACOPY, CODECOPY or EXTCODECOPY instruction requested."));
+				break;
+			}
+			memset(m_temp.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
 			break;
 		}
 		case Instruction::GASPRICE:

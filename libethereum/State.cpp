@@ -29,10 +29,11 @@
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
 #include "ExtVM.h"
+#include "Executive.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -171,8 +172,7 @@ State::State(State const& _s):
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
 	m_ourAddress(_s.m_ourAddress),
-	m_blockReward(_s.m_blockReward),
-	m_vmKind(_s.m_vmKind)
+	m_blockReward(_s.m_blockReward)
 {
 	paranoia("after state cloning (copy cons).", true);
 }
@@ -206,7 +206,6 @@ State& State::operator=(State const& _s)
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
 	m_lastTx = _s.m_lastTx;
-	m_vmKind = _s.m_vmKind;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
 }
@@ -1103,7 +1102,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 					return false;
 			}
 		}
-		catch (InvalidTrie)
+		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
@@ -1215,20 +1214,19 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		auto vmObj = VMFactory::create(getVMKind(), *_gas);
-		auto& vm = *vmObj;
+		auto vm = VMFactory::create(*_gas);
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
 		bool revert = false;
 
 		try
 		{
-			auto out = vm.go(evm, _onOp);
+			auto out = vm->go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 			if (o_sub)
 				*o_sub += evm.sub;
 			if (o_ms)
 				o_ms->output = out.toBytes();
-			*_gas = vm.gas();
+			*_gas = vm->gas();
 		}
 		catch (VMException const& _e)
 		{
@@ -1275,20 +1273,19 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
 
 	// Execute init code.
-	auto vmObj = VMFactory::create(getVMKind(), *_gas);
-	auto& vm = *vmObj;
+	auto vm = VMFactory::create(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
 	bool revert = false;
 	bytesConstRef out;
 
 	try
 	{
-		out = vm.go(evm, _onOp);
+		out = vm->go(evm, _onOp);
 		if (o_ms)
 			o_ms->output = out.toBytes();
 		if (o_sub)
 			*o_sub += evm.sub;
-		*_gas = vm.gas();
+		*_gas = vm->gas();
 	}
 	catch (VMException const& _e)
 	{
