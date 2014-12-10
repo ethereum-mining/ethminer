@@ -32,7 +32,7 @@ struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
-struct StackTooSmall: virtual public VMException {};
+struct StackTooSmall: virtual VMException {};
 
 /**
  */
@@ -47,7 +47,7 @@ public:
 	VMFace(VMFace const&) = delete;
 	void operator=(VMFace const&) = delete;
 
-	virtual void reset(u256 _gas = 0) noexcept;
+	virtual void reset(u256 _gas = 0) noexcept { m_gas = _gas; }
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
 

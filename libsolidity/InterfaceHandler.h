@@ -37,15 +37,15 @@ namespace solidity
 
 // Forward declarations
 class ContractDefinition;
-enum DocumentationType: unsigned short;
+enum class DocumentationType: uint8_t;
 
-enum DocTagType
+enum class DocTagType: uint8_t
 {
-	DOCTAG_NONE = 0,
-	DOCTAG_DEV,
-	DOCTAG_NOTICE,
-	DOCTAG_PARAM,
-	DOCTAG_RETURN
+	NONE = 0,
+	DEV,
+	NOTICE,
+	PARAM,
+	RETURN
 };
 
 class InterfaceHandler
@@ -59,23 +59,23 @@ public:
 	///                     types provided by @c DocumentationType
 	/// @return             A unique pointer contained string with the json
 	///                     representation of provided type
-	std::unique_ptr<std::string> getDocumentation(std::shared_ptr<ContractDefinition> _contractDef,
-												  enum DocumentationType _type);
+	std::unique_ptr<std::string> getDocumentation(ContractDefinition& _contractDef,
+												  DocumentationType _type);
 	/// Get the ABI Interface of the contract
 	/// @param _contractDef The contract definition
 	/// @return             A unique pointer contained string with the json
 	///                     representation of the contract's ABI Interface
-	std::unique_ptr<std::string> getABIInterface(std::shared_ptr<ContractDefinition> _contractDef);
+	std::unique_ptr<std::string> getABIInterface(ContractDefinition& _contractDef);
 	/// Get the User documentation of the contract
 	/// @param _contractDef The contract definition
 	/// @return             A unique pointer contained string with the json
 	///                     representation of the contract's user documentation
-	std::unique_ptr<std::string> getUserDocumentation(std::shared_ptr<ContractDefinition> _contractDef);
+	std::unique_ptr<std::string> getUserDocumentation(ContractDefinition& _contractDef);
 	/// Get the Developer's documentation of the contract
 	/// @param _contractDef The contract definition
 	/// @return             A unique pointer contained string with the json
 	///                     representation of the contract's developer documentation
-	std::unique_ptr<std::string> getDevDocumentation(std::shared_ptr<ContractDefinition> _contractDef);
+	std::unique_ptr<std::string> getDevDocumentation(ContractDefinition& _contractDef);
 
 private:
 	void resetUser();
@@ -84,7 +84,7 @@ private:
 	std::string::const_iterator parseDocTagLine(std::string::const_iterator _pos,
 												std::string::const_iterator _end,
 												std::string& _tagString,
-												enum DocTagType _tagType);
+												DocTagType _tagType);
 	std::string::const_iterator parseDocTagParam(std::string::const_iterator _pos,
 												 std::string::const_iterator _end);
 	std::string::const_iterator appendDocTagParam(std::string::const_iterator _pos,
@@ -99,7 +99,7 @@ private:
 	Json::StyledWriter m_writer;
 
 	// internal state
-	enum DocTagType m_lastTag;
+	DocTagType m_lastTag;
 	std::string m_notice;
 	std::string m_dev;
 	std::string m_return;

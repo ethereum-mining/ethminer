@@ -15,21 +15,10 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Host.cpp
- * @authors:
- *   Gav Wood <i@gavwood.com>
- *   Eric Lombrozo <elombrozo@gmail.com> (Windows version of populateAddresses())
+ * @author Alex Leverington <nessence@gmail.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
-
-#include "Host.h"
-
-#include <sys/types.h>
-#ifdef _WIN32
-// winsock is already included
-// #include <winsock.h>
-#else
-#include <ifaddrs.h>
-#endif
 
 #include <set>
 #include <chrono>
@@ -43,166 +32,18 @@
 #include "Common.h"
 #include "Capability.h"
 #include "UPnP.h"
+#include "Host.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
-
-std::vector<bi::address> Host::getInterfaceAddresses()
-{
-	std::vector<bi::address> addresses;
-	
-#ifdef _WIN32
-	WSAData wsaData;
-	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
-		BOOST_THROW_EXCEPTION(NoNetworking());
-	
-	char ac[80];
-	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
-	{
-		clog(NetWarn) << "Error " << WSAGetLastError() << " when getting local host name.";
-		WSACleanup();
-		BOOST_THROW_EXCEPTION(NoNetworking());
-	}
-	
-	struct hostent* phe = gethostbyname(ac);
-	if (phe == 0)
-	{
-		clog(NetWarn) << "Bad host lookup.";
-		WSACleanup();
-		BOOST_THROW_EXCEPTION(NoNetworking());
-	}
-	
-	for (int i = 0; phe->h_addr_list[i] != 0; ++i)
-	{
-		struct in_addr addr;
-		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-		char *addrStr = inet_ntoa(addr);
-		bi::address address(bi::address::from_string(addrStr));
-		if (!isLocalHostAddress(address))
-			addresses.push_back(address.to_v4());
-	}
-	
-	WSACleanup();
-#else
-	ifaddrs* ifaddr;
-	if (getifaddrs(&ifaddr) == -1)
-		BOOST_THROW_EXCEPTION(NoNetworking());
-	
-	for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
-	{
-		if (!ifa->ifa_addr || string(ifa->ifa_name) == "lo0")
-			continue;
-		
-		if (ifa->ifa_addr->sa_family == AF_INET)
-		{
-			in_addr addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-			boost::asio::ip::address_v4 address(boost::asio::detail::socket_ops::network_to_host_long(addr.s_addr));
-			if (!isLocalHostAddress(address))
-				addresses.push_back(address);
-		}
-		else if (ifa->ifa_addr->sa_family == AF_INET6)
-		{
-			sockaddr_in6* sockaddr = ((struct sockaddr_in6 *)ifa->ifa_addr);
-			in6_addr addr = sockaddr->sin6_addr;
-			boost::asio::ip::address_v6::bytes_type bytes;
-			memcpy(&bytes[0], addr.s6_addr, 16);
-			boost::asio::ip::address_v6 address(bytes, sockaddr->sin6_scope_id);
-			if (!isLocalHostAddress(address))
-				addresses.push_back(address);
-		}
-	}
-	
-	if (ifaddr!=NULL)
-		freeifaddrs(ifaddr);
-	
-#endif
-	
-	return std::move(addresses);
-}
-
-int Host::listen4(bi::tcp::acceptor* _acceptor, unsigned short _listenPort)
-{
-	int retport = -1;
-	for (unsigned i = 0; i < 2; ++i)
-	{
-		// try to connect w/listenPort, else attempt net-allocated port
-		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : _listenPort);
-		try
-		{
-			_acceptor->open(endpoint.protocol());
-			_acceptor->set_option(ba::socket_base::reuse_address(true));
-			_acceptor->bind(endpoint);
-			_acceptor->listen();
-			retport = _acceptor->local_endpoint().port();
-			break;
-		}
-		catch (...)
-		{
-			if (i)
-			{
-				// both attempts failed
-				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
-			}
-			
-			// first attempt failed
-			_acceptor->close();
-			continue;
-		}
-	}
-	return retport;
-}
-
-bi::tcp::endpoint Host::traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
-{
-	asserts(_listenPort != 0);
-	
-	UPnP* upnp = nullptr;
-	try
-	{
-		upnp = new UPnP;
-	}
-	// let m_upnp continue as null - we handle it properly.
-	catch (NoUPnPDevice) {}
-	
-	bi::tcp::endpoint upnpep;
-	if (upnp && upnp->isValid())
-	{
-		bi::address paddr;
-		int extPort = 0;
-		for (auto const& addr: _ifAddresses)
-			if (addr.is_v4() && isPrivateAddress(addr) && (extPort = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
-			{
-				paddr = addr;
-				break;
-			}
-
-		auto eip = upnp->externalIP();
-		bi::address eipaddr(bi::address::from_string(eip));
-		if (extPort && eip != string("0.0.0.0") && !isPrivateAddress(eipaddr))
-		{
-			clog(NetNote) << "Punched through NAT and mapped local port" << _listenPort << "onto external port" << extPort << ".";
-			clog(NetNote) << "External addr:" << eip;
-			o_upnpifaddr = paddr;
-			upnpep = bi::tcp::endpoint(eipaddr, (unsigned short)extPort);
-		}
-		else
-			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place).";
-		
-		if (upnp)
-			delete upnp;
-	}
-
-	return upnpep;
-}
 
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool _start):
 	Worker("p2p", 0),
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
-	m_ifAddresses(getInterfaceAddresses()),
-	m_ioService(new ba::io_service(2)),
-	m_acceptor(new bi::tcp::acceptor(*m_ioService)),
-	m_socket(new bi::tcp::socket(*m_ioService)),
+	m_ifAddresses(Network::getInterfaceAddresses()),
+	m_ioService(2),
+	m_acceptorV4(m_ioService),
 	m_key(KeyPair::create())
 {
 	for (auto address: m_ifAddresses)
@@ -216,7 +57,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 
 Host::~Host()
 {
-	quit();
+	stop();
 }
 
 void Host::start()
@@ -226,30 +67,78 @@ void Host::start()
 
 void Host::stop()
 {
-	{
-		// prevent m_run from being set to false at same time as set to true by start()
-		Guard l(x_runTimer);
-		// once m_run is false the scheduler will shutdown network and stopWorking()
-		m_run = false;
-	}
-	
-	// we know shutdown is complete when m_timer is reset
-	while (m_timer)
-		this_thread::sleep_for(chrono::milliseconds(50));
-	stopWorking();
-}
-
-void Host::quit()
-{
 	// called to force io_service to kill any remaining tasks it might have -
 	// such tasks may involve socket reads from Capabilities that maintain references
 	// to resources we're about to free.
-	if (isWorking())
-		stop();
-	m_acceptor.reset();
-	m_socket.reset();
+
+	{
+		// Although m_run is set by stop() or start(), it effects m_runTimer so x_runTimer is used instead of a mutex for m_run.
+		// when m_run == false, run() will cause this::run() to stop() ioservice
+		Guard l(x_runTimer);
+		// ignore if already stopped/stopping
+		if (!m_run)
+			return;
+		m_run = false;
+	}
+	
+	// wait for m_timer to reset (indicating network scheduler has stopped)
+	while (!!m_timer)
+		this_thread::sleep_for(chrono::milliseconds(50));
+	
+	// stop worker thread
+	stopWorking();
+}
+
+void Host::doneWorking()
+{
+	// reset ioservice (allows manually polling network, below)
 	m_ioService.reset();
-	// m_acceptor & m_socket are DANGEROUS now.
+	
+	// shutdown acceptor
+	m_acceptorV4.cancel();
+	if (m_acceptorV4.is_open())
+		m_acceptorV4.close();
+	
+	// There maybe an incoming connection which started but hasn't finished.
+	// Wait for acceptor to end itself instead of assuming it's complete.
+	// This helps ensure a peer isn't stopped at the same time it's starting
+	// and that socket for pending connection is closed.
+	while (m_accepting)
+		m_ioService.poll();
+
+	// stop capabilities (eth: stops syncing or block/tx broadcast)
+	for (auto const& h: m_capabilities)
+		h.second->onStopping();
+
+	// disconnect peers
+	for (unsigned n = 0;; n = 0)
+	{
+		{
+			RecursiveGuard l(x_peers);
+			for (auto i: m_peers)
+				if (auto p = i.second.lock())
+					if (p->isOpen())
+					{
+						p->disconnect(ClientQuit);
+						n++;
+					}
+		}
+		if (!n)
+			break;
+		
+		// poll so that peers send out disconnect packets
+		m_ioService.poll();
+	}
+	
+	// stop network (again; helpful to call before subsequent reset())
+	m_ioService.stop();
+	
+	// reset network (allows reusing ioservice in future)
+	m_ioService.reset();
+	
+	// finally, clear out peers (in case they're lingering)
+	RecursiveGuard l(x_peers);
+	m_peers.clear();
 }
 
 unsigned Host::protocolVersion() const
@@ -407,7 +296,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	if (_upnp)
 	{
 		bi::address upnpifaddr;
-		bi::tcp::endpoint upnpep = traverseNAT(m_ifAddresses, m_listenPort, upnpifaddr);
+		bi::tcp::endpoint upnpep = Network::traverseNAT(m_ifAddresses, m_listenPort, upnpifaddr);
 		if (!upnpep.address().is_unspecified() && !upnpifaddr.is_unspecified())
 		{
 			if (!m_peerAddresses.count(upnpep.address()))
@@ -431,18 +320,18 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
 }
 
-void Host::ensureAccepting()
+void Host::runAcceptor()
 {
-	// return if there's no io-server (quit called) or we're not listening
-	if (!m_ioService || m_listenPort < 1)
-		return;
-
-	if (!m_accepting)
+	assert(m_listenPort > 0);
+	
+	if (m_run && !m_accepting)
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
 		m_accepting = true;
-		m_acceptor->async_accept(*m_socket, [=](boost::system::error_code ec)
+		m_socket.reset(new bi::tcp::socket(m_ioService));
+		m_acceptorV4.async_accept(*m_socket, [=](boost::system::error_code ec)
 		{
+			bool success = false;
 			if (!ec)
 			{
 				try
@@ -452,8 +341,9 @@ void Host::ensureAccepting()
 					} catch (...){}
 					bi::address remoteAddress = m_socket->remote_endpoint().address();
 					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<Session>(this, std::move(*m_socket), bi::tcp::endpoint(remoteAddress, 0));
+					auto p = std::make_shared<Session>(this, std::move(*m_socket.release()), bi::tcp::endpoint(remoteAddress, 0));
 					p->start();
+					success = true;
 				}
 				catch (Exception const& _e)
 				{
@@ -464,9 +354,17 @@ void Host::ensureAccepting()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			}
+			
+			if (!success && m_socket->is_open())
+			{
+				boost::system::error_code ec;
+				m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+				m_socket->close();
+			}
+
 			m_accepting = false;
 			if (ec.value() < 1)
-				ensureAccepting();
+				runAcceptor();
 		});
 	}
 }
@@ -480,17 +378,16 @@ string Host::pocHost()
 
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
-	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
-	if (!m_ioService)
+	if (!m_run)
 		return;
 
-	for (int i = 0; i < 2; ++i)
+	for (auto first: {true, false})
 	{
 		try
 		{
-			if (i == 0)
+			if (first)
 			{
-				bi::tcp::resolver r(*m_ioService);
+				bi::tcp::resolver r(m_ioService);
 				connect(r.resolve({_addr, toString(_port)})->endpoint());
 			}
 			else
@@ -512,12 +409,11 @@ void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 
 void Host::connect(bi::tcp::endpoint const& _ep)
 {
-	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
-	if (!m_ioService)
+	if (!m_run)
 		return;
 
 	clog(NetConnect) << "Attempting single-shot connection to " << _ep;
-	bi::tcp::socket* s = new bi::tcp::socket(*m_ioService);
+	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 	s->async_connect(_ep, [=](boost::system::error_code const& ec)
 	{
 		if (ec)
@@ -534,8 +430,7 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 
 void Host::connect(std::shared_ptr<Node> const& _n)
 {
-	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
-	if (!m_ioService)
+	if (!m_run)
 		return;
 	
 	// prevent concurrently connecting to a node; todo: better abstraction
@@ -551,27 +446,32 @@ void Host::connect(std::shared_ptr<Node> const& _n)
 	_n->lastAttempted = std::chrono::system_clock::now();
 	_n->failedAttempts++;
 	m_ready -= _n->index;
-	bi::tcp::socket* s = new bi::tcp::socket(*m_ioService);
-	s->async_connect(_n->address, [=](boost::system::error_code const& ec)
-	{
-		if (ec)
+	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+
+	auto n = node(_n->id);
+	if (n)
+		s->async_connect(_n->address, [=](boost::system::error_code const& ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
-			_n->lastDisconnect = TCPError;
-			_n->lastAttempted = std::chrono::system_clock::now();
-			m_ready += _n->index;
-		}
-		else
-		{
-			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
-			_n->lastConnected = std::chrono::system_clock::now();
-			auto p = make_shared<Session>(this, std::move(*s), node(_n->id), true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
-			p->start();
-		}
-		delete s;
-		Guard l(x_pendingNodeConns);
-		m_pendingNodeConns.erase(nptr);
-	});
+			if (ec)
+			{
+				clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
+				_n->lastDisconnect = TCPError;
+				_n->lastAttempted = std::chrono::system_clock::now();
+				m_ready += _n->index;
+			}
+			else
+			{
+				clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
+				_n->lastConnected = std::chrono::system_clock::now();
+				auto p = make_shared<Session>(this, std::move(*s), n, true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+				p->start();
+			}
+			delete s;
+			Guard l(x_pendingNodeConns);
+			m_pendingNodeConns.erase(nptr);
+		});
+	else
+		clog(NetWarn) << "Trying to connect to node not in node table.";
 }
 
 bool Host::havePeer(NodeId _id) const
@@ -680,8 +580,7 @@ void Host::prunePeers()
 
 PeerInfos Host::peers(bool _updatePing) const
 {
-	// if there's no ioService, it means we've had quit() called - bomb out - we're not allowed in here.
-	if (!m_ioService)
+	if (!m_run)
 		return PeerInfos();
 
 	RecursiveGuard l(x_peers);
@@ -698,152 +597,95 @@ PeerInfos Host::peers(bool _updatePing) const
 	return ret;
 }
 
-void Host::run(boost::system::error_code const& error)
+void Host::run(boost::system::error_code const&)
 {
-	m_lastTick += c_timerInterval;
-	
-	if (error || !m_ioService)
+	if (!m_run)
 	{
-		// timer died or io service went away, so stop here
+		// stopping io service allows running manual network operations for shutdown
+		// and also stops blocking worker thread, allowing worker thread to exit
+		m_ioService.stop();
+		
+		// resetting timer signals network that nothing else can be scheduled to run
 		m_timer.reset();
 		return;
 	}
 
-	// network running
-	if (m_run)
+	m_lastTick += c_timerInterval;
+	if (m_lastTick >= c_timerInterval * 10)
 	{
-		if (m_lastTick >= c_timerInterval * 10)
-		{
-			growPeers();
-			prunePeers();
-			m_lastTick = 0;
-		}
-		
-		if (m_hadNewNodes)
-		{
-			for (auto p: m_peers)
-				if (auto pp = p.second.lock())
-					pp->serviceNodesRequest();
-			
-			m_hadNewNodes = false;
-		}
-		
-		if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
-		{
-			for (auto p: m_peers)
-				if (auto pp = p.second.lock())
-					if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(60))
-						pp->disconnect(PingTimeout);
-			pingAll();
-		}
-		
-		auto runcb = [this](boost::system::error_code const& error) -> void { run(error); };
-		m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
-		m_timer->async_wait(runcb);
-		
-		return;
+		growPeers();
+		prunePeers();
+		m_lastTick = 0;
 	}
 	
-	// network stopping
-	if (!m_run)
+	if (m_hadNewNodes)
 	{
-		// close acceptor
-		if (m_acceptor->is_open())
-		{
-			if (m_accepting)
-				m_acceptor->cancel();
-			m_acceptor->close();
-			m_accepting = false;
-		}
+		for (auto p: m_peers)
+			if (auto pp = p.second.lock())
+				pp->serviceNodesRequest();
 		
-		// stop capabilities (eth: stops syncing or block/tx broadcast)
-		for (auto const& h: m_capabilities)
-			h.second->onStopping();
-		
-		// disconnect peers
-		for (unsigned n = 0;; n = 0)
-		{
-			{
-				RecursiveGuard l(x_peers);
-				for (auto i: m_peers)
-					if (auto p = i.second.lock())
-						if (p->isOpen())
-						{
-							p->disconnect(ClientQuit);
-							n++;
-						}
-			}
-			if (!n)
-				break;
-			this_thread::sleep_for(chrono::milliseconds(100));
-		}
-		
-		if (m_socket->is_open())
-			m_socket->close();
-		
-		// m_run is false, so we're stopping; kill timer
-		m_lastTick = 0;
-		
-		// causes parent thread's stop() to continue which calls stopWorking()
-		m_timer.reset();
-		
-		// stop ioservice (stops blocking worker thread, allowing thread to join)
-		if (!!m_ioService)
-			m_ioService->stop();
-		return;
+		m_hadNewNodes = false;
 	}
+	
+	if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
+	{
+		for (auto p: m_peers)
+			if (auto pp = p.second.lock())
+				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(60))
+					pp->disconnect(PingTimeout);
+		pingAll();
+	}
+	
+	auto runcb = [this](boost::system::error_code const& error) -> void { run(error); };
+	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
+	m_timer->async_wait(runcb);
 }
 			
 void Host::startedWorking()
 {
-	if (!m_timer)
+	asserts(!m_timer);
+
 	{
-		// no timer means this is first run and network must be started
-		// (run once when host worker thread calls startedWorking())
-		
-		{
-			// prevent m_run from being set to true at same time as set to false by stop()
-			// don't release mutex until m_timer is set so in case stop() is called at same
-			// time, stop will wait on m_timer and graceful network shutdown.
-			Guard l(x_runTimer);
-			// reset io service and create deadline timer
-			m_timer.reset(new boost::asio::deadline_timer(*m_ioService));
-			m_run = true;
-		}
-		m_ioService->reset();
-		
-		// try to open acceptor (todo: ipv6)
-		m_listenPort = listen4(m_acceptor.get(), m_netPrefs.listenPort);
-		
-		// start capability threads
-		for (auto const& h: m_capabilities)
-			h.second->onStarting();
-		
-		// determine public IP, but only if we're able to listen for connections
-		// todo: GUI when listen is unavailable in UI
-		if (m_listenPort)
-		{
-			determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
-			ensureAccepting();
-		}
-		
-		// if m_public address is valid then add us to node list
-		// todo: abstract empty() and emplace logic
-		if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-			noteNode(id(), m_public, Origin::Perfect, false);
-		
-		clog(NetNote) << "Id:" << id().abridged();
+		// prevent m_run from being set to true at same time as set to false by stop()
+		// don't release mutex until m_timer is set so in case stop() is called at same
+		// time, stop will wait on m_timer and graceful network shutdown.
+		Guard l(x_runTimer);
+		// create deadline timer
+		m_timer.reset(new boost::asio::deadline_timer(m_ioService));
+		m_run = true;
 	}
+	
+	// try to open acceptor (todo: ipv6)
+	m_listenPort = Network::listen4(m_acceptorV4, m_netPrefs.listenPort);
+	
+	// start capability threads
+	for (auto const& h: m_capabilities)
+		h.second->onStarting();
+	
+	// determine public IP, but only if we're able to listen for connections
+	// todo: GUI when listen is unavailable in UI
+	if (m_listenPort)
+	{
+		determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+		
+		if (m_listenPort > 0)
+			runAcceptor();
+	}
+	
+	// if m_public address is valid then add us to node list
+	// todo: abstract empty() and emplace logic
+	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
+		noteNode(id(), m_public, Origin::Perfect, false);
+	
+	clog(NetNote) << "Id:" << id().abridged();
 	
 	run(boost::system::error_code());
 }
 
 void Host::doWork()
 {
-	// no ioService means we've had quit() called - bomb out - we're not allowed in here.
-	if (asserts(!!m_ioService))
-		return;
-	m_ioService->run();
+	if (m_run)
+		m_ioService.run();
 }
 
 void Host::pingAll()

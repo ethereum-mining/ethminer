@@ -21,6 +21,7 @@
 
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
+#include <libevm/VMFactory.h>
 #include <libevm/VM.h>
 #include "Interface.h"
 #include "Executive.h"
@@ -31,13 +32,6 @@ using namespace dev;
 using namespace dev::eth;
 
 #define ETH_VMTRACE 1
-
-Executive::~Executive()
-{
-	// TODO: Make safe.
-	delete m_ext;
-	delete m_vm;
-}
 
 u256 Executive::gasUsed() const
 {
@@ -112,9 +106,9 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 	if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm = VMFactory::create(VMFactory::Interpreter, _gas).release();
+		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
+		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms));
 	}
 	else
 		m_endGas = _gas;
@@ -131,8 +125,8 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = VMFactory::create(VMFactory::Interpreter, _gas).release();
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
+	m_vm = VMFactory::create(_gas);
+	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms));
 	return _init.empty();
 }
 
@@ -141,7 +135,7 @@ OnOpFunc Executive::simpleTrace()
 	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
 	{
 		ExtVM const& ext = *(ExtVM const*)voidExt;
-		VM& vm = *(VM*)voidVM;	// TODO: Ok for now, because only interpeter/VM supports OnOp callback, but safer solution would be nice
+		VM& vm = *(VM*)voidVM;
 
 		ostringstream o;
 		o << endl << "    STACK" << endl;

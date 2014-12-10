@@ -32,7 +32,7 @@ namespace dev
 namespace solidity
 {
 
-shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
+shared_ptr<Type const> Type::fromElementaryTypeName(Token::Value _typeToken)
 {
 	if (asserts(Token::isElementaryTypeName(_typeToken)))
 		BOOST_THROW_EXCEPTION(InternalCompilerError());
@@ -44,33 +44,33 @@ shared_ptr<Type> Type::fromElementaryTypeName(Token::Value _typeToken)
 		if (bytes == 0)
 			bytes = 32;
 		int modifier = offset / 33;
-		return make_shared<IntegerType>(bytes * 8,
+		return make_shared<IntegerType const>(bytes * 8,
 										modifier == 0 ? IntegerType::Modifier::SIGNED :
 										modifier == 1 ? IntegerType::Modifier::UNSIGNED :
 										IntegerType::Modifier::HASH);
 	}
 	else if (_typeToken == Token::ADDRESS)
-		return make_shared<IntegerType>(0, IntegerType::Modifier::ADDRESS);
+		return make_shared<IntegerType const>(0, IntegerType::Modifier::ADDRESS);
 	else if (_typeToken == Token::BOOL)
-		return make_shared<BoolType>();
+		return make_shared<BoolType const>();
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
 																		 std::string(Token::toString(_typeToken)) + " to type."));
 }
 
-shared_ptr<Type> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
+shared_ptr<Type const> Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
 {
 	Declaration const* declaration = _typeName.getReferencedDeclaration();
 	if (StructDefinition const* structDef = dynamic_cast<StructDefinition const*>(declaration))
-		return make_shared<StructType>(*structDef);
+		return make_shared<StructType const>(*structDef);
 	else if (FunctionDefinition const* function = dynamic_cast<FunctionDefinition const*>(declaration))
-		return make_shared<FunctionType>(*function);
+		return make_shared<FunctionType const>(*function);
 	else if (ContractDefinition const* contract = dynamic_cast<ContractDefinition const*>(declaration))
-		return make_shared<ContractType>(*contract);
-	return shared_ptr<Type>();
+		return make_shared<ContractType const>(*contract);
+	return shared_ptr<Type const>();
 }
 
-shared_ptr<Type> Type::fromMapping(Mapping const& _typeName)
+shared_ptr<Type const> Type::fromMapping(Mapping const& _typeName)
 {
 	shared_ptr<Type const> keyType = _typeName.getKeyType().toType();
 	if (!keyType)
@@ -78,28 +78,28 @@ shared_ptr<Type> Type::fromMapping(Mapping const& _typeName)
 	shared_ptr<Type const> valueType = _typeName.getValueType().toType();
 	if (!valueType)
 		BOOST_THROW_EXCEPTION(_typeName.getValueType().createTypeError("Invalid type name"));
-	return make_shared<MappingType>(keyType, valueType);
+	return make_shared<MappingType const>(keyType, valueType);
 }
 
-shared_ptr<Type> Type::forLiteral(Literal const& _literal)
+shared_ptr<Type const> Type::forLiteral(Literal const& _literal)
 {
 	switch (_literal.getToken())
 	{
 	case Token::TRUE_LITERAL:
 	case Token::FALSE_LITERAL:
-		return make_shared<BoolType>();
+		return make_shared<BoolType const>();
 	case Token::NUMBER:
 		return IntegerType::smallestTypeForLiteral(_literal.getValue());
 	case Token::STRING_LITERAL:
-		return shared_ptr<Type>(); // @todo add string literals
+		return shared_ptr<Type const>(); // @todo add string literals
 	default:
-		return shared_ptr<Type>();
+		return shared_ptr<Type const>();
 	}
 }
 
 const MemberList Type::EmptyMemberList = MemberList();
 
-shared_ptr<IntegerType> IntegerType::smallestTypeForLiteral(string const& _literal)
+shared_ptr<IntegerType const> IntegerType::smallestTypeForLiteral(string const& _literal)
 {
 	bigint value(_literal);
 	bool isSigned = value < 0 || (!_literal.empty() && _literal.front() == '-');
@@ -108,8 +108,8 @@ shared_ptr<IntegerType> IntegerType::smallestTypeForLiteral(string const& _liter
 		value = ((-value) - 1) << 1;
 	unsigned bytes = max(bytesRequired(value), 1u);
 	if (bytes > 32)
-		return shared_ptr<IntegerType>();
-	return make_shared<IntegerType>(bytes * 8, isSigned ? Modifier::SIGNED : Modifier::UNSIGNED);
+		return shared_ptr<IntegerType const>();
+	return make_shared<IntegerType const>(bytes * 8, isSigned ? Modifier::SIGNED : Modifier::UNSIGNED);
 }
 
 IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
@@ -140,7 +140,7 @@ bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	return _convertTo.getCategory() == getCategory();
+	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::CONTRACT;
 }
 
 bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
@@ -247,6 +247,31 @@ string ContractType::toString() const
 	return "contract " + m_contract.getName();
 }
 
+MemberList const& ContractType::getMembers() const
+{
+	// We need to lazy-initialize it because of recursive references.
+	if (!m_members)
+	{
+		map<string, shared_ptr<Type const>> members;
+		for (FunctionDefinition const* function: m_contract.getInterfaceFunctions())
+			members[function->getName()] = make_shared<FunctionType>(*function, false);
+		m_members.reset(new MemberList(members));
+	}
+	return *m_members;
+}
+
+unsigned ContractType::getFunctionIndex(string const& _functionName) const
+{
+	unsigned index = 0;
+	for (FunctionDefinition const* function: m_contract.getInterfaceFunctions())
+	{
+		if (function->getName() == _functionName)
+			return index;
+		++index;
+	}
+	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index of non-existing contract function requested."));
+}
+
 bool StructType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -302,7 +327,7 @@ u256 StructType::getStorageOffsetOfMember(string const& _name) const
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage offset of non-existing member requested."));
 }
 
-FunctionType::FunctionType(FunctionDefinition const& _function)
+FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal)
 {
 	TypePointers params;
 	TypePointers retParams;
@@ -314,7 +339,7 @@ FunctionType::FunctionType(FunctionDefinition const& _function)
 		retParams.push_back(var->getType());
 	swap(params, m_parameterTypes);
 	swap(retParams, m_returnParameterTypes);
-	m_location = Location::INTERNAL;
+	m_location = _isInternal ? Location::INTERNAL : Location::EXTERNAL;
 }
 
 bool FunctionType::operator==(Type const& _other) const
@@ -323,6 +348,8 @@ bool FunctionType::operator==(Type const& _other) const
 		return false;
 	FunctionType const& other = dynamic_cast<FunctionType const&>(_other);
 
+	if (m_location != other.m_location)
+		return false;
 	if (m_parameterTypes.size() != other.m_parameterTypes.size() ||
 			m_returnParameterTypes.size() != other.m_returnParameterTypes.size())
 		return false;
