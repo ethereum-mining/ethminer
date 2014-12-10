@@ -150,7 +150,7 @@ public:
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
-	unsigned depth;				///< Depth of the present call.
+	unsigned depth = 0;			///< Depth of the present call.
 };
 
 }

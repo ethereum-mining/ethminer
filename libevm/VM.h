@@ -52,9 +52,6 @@ inline u256 fromAddress(Address _a)
 class VM : public VMFace
 {
 public:
-	/// Construct VM object.
-	explicit VM(u256 _gas = 0) : VMFace(_gas) {}
-
 	virtual void reset(u256 _gas = 0) noexcept override final;
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
@@ -68,6 +65,11 @@ public:
 	u256s const& stack() const { return m_stack; }
 
 private:
+	friend class VMFactory;
+
+	/// Construct VM object.
+	explicit VM(u256 _gas = 0) : VMFace(_gas) {}
+
 	template <class Ext>
 	bytesConstRef goImpl(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
 
