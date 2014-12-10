@@ -16,7 +16,6 @@
 */
 
 #include "VMFactory.h"
-#include <cassert>
 #include "VM.h"
 
 namespace dev
@@ -35,7 +34,7 @@ void VMFactory::setKind(VMKind _kind)
 
 std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
 {
-	assert(g_kind == VMKind::Interpreter && "Only interpreter supported for now");
+	asserts(g_kind == VMKind::Interpreter && "Only interpreter supported for now");
 	return std::unique_ptr<VMFace>(new VM(_gas));
 }
 

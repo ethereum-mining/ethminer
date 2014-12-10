@@ -14,6 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
+#pragma once
 
 #include "VMFace.h"
 
@@ -22,7 +23,7 @@ namespace dev
 namespace eth
 {
 
-enum class VMKind : bool
+enum class VMKind: bool
 {
 	Interpreter,
 	JIT
