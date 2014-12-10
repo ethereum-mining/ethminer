@@ -46,7 +46,7 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 	catch (dev::Exception const& _exception)
 	{
 		ostringstream error;
-		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler.getScanner());
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler);
 		res.success = false;
 		res.comment = QString::fromStdString(error.str()).toHtmlEscaped();
 		res.hexCode = "";
