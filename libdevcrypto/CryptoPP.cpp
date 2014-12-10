@@ -52,6 +52,12 @@ void Secp256k1::decrypt(Secret const& _k, bytes& io_text)
 {
 	CryptoPP::ECIES<CryptoPP::ECP>::Decryptor d;
 	initializeDLScheme(_k, d);
+
+	if (!io_text.size())
+	{
+		io_text.resize(1);
+		io_text[0] = 0;
+	}
 	
 	size_t clen = io_text.size();
 	bytes plain;
