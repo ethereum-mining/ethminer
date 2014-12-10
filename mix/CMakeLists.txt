@@ -1,8 +1,13 @@
+cmake_policy(SET CMP0015 NEW)
+# this policy was introduced in cmake 3.0
+# remove if, once 3.0 will be used on unix
+if (APPLE)
+	cmake_policy(SET CMP0043 OLD)
+endif()
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
-
-#qt5_wrap_ui(ui_Main.h Main.ui)
 
 qt5_add_resources(UI_RESOURCES qml.qrc)
 
@@ -54,7 +59,7 @@ target_link_libraries(${EXECUTEABLE} jsqrc)
 if (APPLE)
 	# First have qt5 install plugins and frameworks
 	add_custom_command(TARGET ${EXECUTEABLE} POST_BUILD
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt -qmldir=${CMAKE_CURRENT_SOURCE_DIR}/qml ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
+		COMMAND ${CMAKE_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt -qmldir=${CMAKE_CURRENT_SOURCE_DIR}/qml ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
 		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 	# This tool and next will inspect linked libraries in order to determine which dependencies are required
