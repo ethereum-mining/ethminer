@@ -1102,7 +1102,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 					return false;
 			}
 		}
-		catch (InvalidTrie)
+		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
