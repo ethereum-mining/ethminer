@@ -26,13 +26,13 @@ namespace dev
 namespace eth
 {
 
-struct VMException : virtual Exception {};
-struct StepsDone : virtual VMException {};
-struct BreakPointHit : virtual VMException {};
-struct BadInstruction : virtual VMException {};
-struct BadJumpDestination : virtual VMException {};
-struct OutOfGas : virtual VMException {};
-struct StackTooSmall : virtual public VMException {};
+struct VMException: virtual Exception {};
+struct StepsDone: virtual VMException {};
+struct BreakPointHit: virtual VMException {};
+struct BadInstruction: virtual VMException {};
+struct BadJumpDestination: virtual VMException {};
+struct OutOfGas: virtual VMException {};
+struct StackTooSmall: virtual VMException {};
 
 /**
  */

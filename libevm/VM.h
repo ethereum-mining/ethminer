@@ -49,7 +49,7 @@ inline u256 fromAddress(Address _a)
 
 /**
  */
-class VM : public VMFace
+class VM: public VMFace
 {
 public:
 	virtual void reset(u256 _gas = 0) noexcept override final;
@@ -68,7 +68,7 @@ private:
 	friend class VMFactory;
 
 	/// Construct VM object.
-	explicit VM(u256 _gas = 0) : VMFace(_gas) {}
+	explicit VM(u256 _gas = 0): VMFace(_gas) {}
 
 	template <class Ext>
 	bytesConstRef goImpl(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
