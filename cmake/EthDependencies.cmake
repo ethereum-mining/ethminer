@@ -125,7 +125,7 @@ elseif (UNIX)
 
 endif()
 
-find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework)
+find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework program_options)
 
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
