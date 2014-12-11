@@ -43,7 +43,7 @@ struct VMTraceChannel: public LogChannel { static const char* name() { return "E
 class Executive
 {
 public:
-	Executive(State& _s, Manifest* o_ms = nullptr): m_s(_s), m_ms(o_ms) {}
+	Executive(State& _s): m_s(_s){}
 	~Executive();
 
 	bool setup(bytesConstRef _transaction);
@@ -69,9 +69,8 @@ public:
 
 private:
 	State& m_s;
-	ExtVM* m_ext = nullptr;	// TODO: make safe.
-	VM* m_vm = nullptr;
-	Manifest* m_ms = nullptr;
+	std::shared_ptr<ExtVM> m_ext;
+	std::shared_ptr<VM> m_vm;
 	bytesConstRef m_out;
 	Address m_newAddress;
 

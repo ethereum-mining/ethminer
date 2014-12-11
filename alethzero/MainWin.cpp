@@ -1398,10 +1398,10 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
+		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
 		{
-			dev::eth::VM& vm = *(dev::eth::VM*)voidVM;
-			dev::eth::ExtVM const& ext = *(dev::eth::ExtVM const*)voidExt;
+			dev::eth::VM& vm = *voidVM;
+			dev::eth::ExtVM const& ext = *static_cast<dev::eth::ExtVM const*>(voidExt);
 			if (ext.code != lastExtCode)
 			{
 				lastExtCode = ext.code;

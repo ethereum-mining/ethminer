@@ -34,9 +34,6 @@ using namespace dev::eth;
 
 Executive::~Executive()
 {
-	// TODO: Make safe.
-	delete m_ext;
-	delete m_vm;
 }
 
 u256 Executive::gasUsed() const
@@ -91,14 +88,6 @@ bool Executive::setup(bytesConstRef _rlp)
 	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
 	m_s.subBalance(m_sender, cost);
 
-	if (m_ms)
-	{
-		m_ms->from = m_sender;
-		m_ms->to = m_t.receiveAddress();
-		m_ms->value = m_t.value();
-		m_ms->input = m_t.data();
-	}
-
 	if (m_t.isCreation())
 		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
 	else
@@ -125,9 +114,9 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	}
 	else if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm = new VM(_gas);
+		m_vm = make_shared<VM>(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms);
+		m_ext = make_shared<ExtVM>(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
 	}
 	else
 		m_endGas = _gas;
@@ -144,17 +133,17 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = new VM(_gas);
-	m_ext = new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms);
+	m_vm = make_shared<VM>(_gas);
+	m_ext = make_shared<ExtVM>(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
 	return _init.empty();
 }
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
 	{
-		ExtVM const& ext = *(ExtVM const*)voidExt;
-		VM& vm = *(VM*)voidVM;
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		VM& vm = *voidVM;
 
 		ostringstream o;
 		o << endl << "    STACK" << endl;
@@ -178,11 +167,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
-			if (m_ext)
-			{
-				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
-				m_logs = m_ext->sub.logs;
-			}
+			m_endGas = m_vm->gas();
+			m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+			m_logs = m_ext->sub.logs;
 			if (m_out.size() * c_createDataGas <= m_endGas)
 				m_endGas -= m_out.size() * c_createDataGas;
 			else
@@ -241,9 +228,6 @@ void Executive::finalize(OnOpFunc const&)
 	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
-
-	if (m_ms)
-		m_ms->output = m_out.toBytes();
 
 	// Suicides...
 	if (m_ext)
