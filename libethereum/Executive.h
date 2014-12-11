@@ -42,7 +42,7 @@ struct VMTraceChannel: public LogChannel { static const char* name() { return "E
 class Executive
 {
 public:
-	Executive(State& _s, Manifest* o_ms = nullptr): m_s(_s), m_ms(o_ms) {}
+	Executive(State& _s): m_s(_s) {}
 	~Executive() = default;
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
@@ -72,7 +72,6 @@ private:
 	State& m_s;
 	std::unique_ptr<ExtVM> m_ext;
 	std::unique_ptr<VMFace> m_vm;
-	Manifest* m_ms = nullptr;
 	bytesConstRef m_out;
 	Address m_newAddress;
 
