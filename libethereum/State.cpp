@@ -89,9 +89,9 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
 {
-	{ 1, { [](bytesConstRef){ return (bigint)500; }, ecrecoverCode }},
-	{ 2, { [](bytesConstRef i){ return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
-	{ 3, { [](bytesConstRef i){ return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
+	{ 1, { [](bytesConstRef) -> bigint { return (bigint)500; }, ecrecoverCode }},
+	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
+	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
 };
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
@@ -1202,13 +1202,14 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas < it->second.gas(_data))
+		bigint g = it->second.gas(_data);
+		if (*_gas < g)
 		{
 			*_gas = 0;
 			return false;
 		}
 
-		*_gas -= (u256)it->second.gas(_data);
+		*_gas -= (u256)g;
 		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
