@@ -40,6 +40,7 @@ else()
 	if (APPLE)
 		eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
 	endif()
+
 	eth_download(leveldb OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
 	eth_download(qt)
 	eth_download(cryptopp)

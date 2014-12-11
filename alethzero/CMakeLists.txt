@@ -3,43 +3,29 @@ cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0020 NEW)
 # this policy was introduced in cmake 3.0
 # remove if, once 3.0 will be used on unix
-if (APPLE)
+if (${CMAKE_MAJOR_VERSION} GREATER 2)
 	cmake_policy(SET CMP0043 OLD)
 endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
-include_directories(..)
+
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(..)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
-# Set name of binary and add_executable()
 file(GLOB HEADERS "*.h")
+
 if (APPLE)
 	set(EXECUTABLE AlethZero)
-	set(BIN_INSTALL_DIR ".")
-	set(DOC_INSTALL_DIR ".")
-
-	set(PROJECT_VERSION "${ETH_VERSION}")
-	set(MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_COPYRIGHT "${PROJECT_COPYRIGHT_YEAR} ${PROJECT_VENDOR}")
-	set(MACOSX_BUNDLE_GUI_IDENTIFIER "${PROJECT_DOMAIN_SECOND}.${PROJECT_DOMAIN_FIRST}")
-	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTABLE})
-	set(MACOSX_BUNDLE_ICON_FILE alethzero)
-	include(BundleUtilities)
-
-	add_executable(${EXECUTABLE} MACOSX_BUNDLE alethzero.icns Main.ui ${SRC_LIST} ${HEADERS})
-	set_target_properties(${EXECUTABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
-	SET_SOURCE_FILES_PROPERTIES(${EXECUTABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
-	SET_SOURCE_FILES_PROPERTIES(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 else ()
 	set(EXECUTABLE alethzero)
-	add_executable(${EXECUTABLE} Main.ui ${SRC_LIST} ${HEADERS})
 endif ()
+	
+# eth_add_executable is defined in cmake/EthExecutableHelper.cmake
+# including SRC_LIST && HEADERS is implicit
+eth_add_executable(${EXECUTABLE} ICON alethzero)
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
@@ -60,48 +46,6 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 
-if (APPLE)
-	# First have qt5 install plugins and frameworks
-	# replace CMAKE_PREFIX_PATH with QT_PATH ?
-	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-		COMMAND ${CMAKE_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
-		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-		
-	# This tool and next will inspect linked libraries in order to determine which dependencies are required
-	if (${CMAKE_CFG_INTDIR} STREQUAL ".")
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE}.app")
-	else ()
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
-	endif ()
-	install(CODE "
-		include(BundleUtilities)
-		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APP_BUNDLE_PATH}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
-		" COMPONENT RUNTIME )
-	# Cleanup duplicate libs from macdeployqt
-	install(CODE "
-		file(GLOB LINGER_RM \"${APP_BUNDLE_PATH}/Contents/Frameworks/*.dylib\")
-		if (LINGER_RM)
-			file(REMOVE \${LINGER_RM})
-		endif ()
-	")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
-
-	file (GLOB DLLS ${CMAKE_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
-
-	foreach(DLL ${DLLS})
-		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmake -E copy ${DLL} $<TARGET_FILE_DIR:${EXECUTABLE}>
-		)
-	endforeach()
-
-	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-		COMMAND cmake -E copy_directory
-		"${CMAKE_DEPENDENCY_INSTALL_DIR}/plugins/platforms"
-		$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
-	)
-else()
-	install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
-endif ()
+# eth_install_executable is defined in cmake/EthExecutableHelper.cmake
+eth_install_executable(${EXECUTABLE})
 
