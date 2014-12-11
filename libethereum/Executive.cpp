@@ -113,12 +113,13 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	auto it = !(_receiveAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_receiveAddress) : State::precompiled().end();
 	if (it != State::precompiled().end())
 	{
-		if (_gas < it->second.gas(_data))
+		bigint g = it->second.gas(_data);
+		if (_gas < g)
 		{
 			m_endGas = 0;
 			return false;
 		}
-		m_endGas = (u256)(_gas - it->second.gas(_data));
+		m_endGas = (u256)(_gas - g);
 		it->second.exec(_data, bytesRef());
 		return true;
 	}

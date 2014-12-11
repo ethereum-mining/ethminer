@@ -1216,8 +1216,6 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	{
 		VM vm(*_gas);
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
-		bool revert = false;
-
 		try
 		{
 			auto out = vm.go(evm, _onOp);
@@ -1227,29 +1225,30 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 			if (o_ms)
 				o_ms->output = out.toBytes();
 			*_gas = vm.gas();
+			// Write state out only in the case of a non-excepted transaction.
+			return true;
 		}
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			revert = true;
+			evm.revert();
 			*_gas = 0;
+			return false;
 		}
 		catch (Exception const& _e)
 		{
 			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
 			// TODO: use fallback known-safe VM.
+			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
+			throw;
 		}
 		catch (std::exception const& _e)
 		{
 			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
 			// TODO: use fallback known-safe VM.
+			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
+			throw;
 		}
-
-		// Write state out only in the case of a non-excepted transaction.
-		if (revert)
-			evm.revert();
-
-		return !revert;
 	}
 	return true;
 }
@@ -1305,11 +1304,13 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
+		throw;
 	}
 	catch (std::exception const& _e)
 	{
 		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
+		throw;
 	}
 
 	return newAddress;
