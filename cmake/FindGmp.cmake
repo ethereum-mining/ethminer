@@ -18,14 +18,14 @@ find_path(
 
 find_library(
 	GMP_LIBRARY
-    NAMES gmp
-    DOC "gmp library"
+	NAMES gmp
+	DOC "gmp library"
 	)
 
 # handle the QUIETLY and REQUIRED arguments and set GMP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(gmp DEFAULT_MSG
-	GMP_INCLUDE_DIR GMP_LIBRARY)                             
+	GMP_INCLUDE_DIR GMP_LIBRARY)
 mark_as_advanced (GMP_INCLUDE_DIR GMP_LIBRARY)
 

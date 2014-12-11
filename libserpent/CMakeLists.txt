@@ -16,6 +16,7 @@ include_directories(..)
 set(EXECUTABLE serpent)
 
 file(GLOB HEADERS "*.h")
+
 if(ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()

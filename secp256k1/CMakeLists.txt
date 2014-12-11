@@ -24,7 +24,8 @@ if (APPLE OR UNIX)
 else()
 
 	include_directories(${Boost_INCLUDE_DIRS})
-	if(ETH_STATIC)
+
+	if (ETH_STATIC)
 		add_library(${EXECUTABLE} STATIC ${EXECUTABLE}.c)
 	else()
 		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c)

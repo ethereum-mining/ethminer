@@ -11,15 +11,15 @@
 
 # only look in default directories
 find_path(
-    LEVELDB_INCLUDE_DIR 
-    NAMES leveldb/db.h
+	LEVELDB_INCLUDE_DIR 
+	NAMES leveldb/db.h
 	DOC "leveldb include dir"
 	)
 
 find_library(
-    LEVELDB_LIBRARY
-    NAMES leveldb
-    DOC "leveldb library"
+	LEVELDB_LIBRARY
+	NAMES leveldb
+	DOC "leveldb library"
 	)
 
 # message (" - leveldb header : ${LEVELDB_INCLUDE_DIR}")
@@ -30,6 +30,6 @@ find_library(
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(leveldb DEFAULT_MSG
-    LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)                             
+	LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)
 mark_as_advanced (LEVELDB_INCLUDE_DIR LEVELDB_LIBRARY)
 

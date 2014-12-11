@@ -14,12 +14,12 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 
-if(MINIUPNPC_FOUND)
+if (MINIUPNPC_FOUND)
 target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
 endif()
 
-if(JSON_RPC_CPP_FOUND)
-    target_link_libraries(${EXECUTABLE} web3jsonrpc)
+if (JSONRPC)
+	target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 target_link_libraries(${EXECUTABLE} webthree)

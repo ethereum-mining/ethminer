@@ -1,6 +1,6 @@
-if(APPLE)
+if (APPLE)
 
-elseif(WIN32)
+elseif (WIN32)
 set(boost_address_model)
 # on windows 64:
 # set(boost_address_model address-model=64)

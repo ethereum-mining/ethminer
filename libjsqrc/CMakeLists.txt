@@ -10,6 +10,6 @@ set(CMAKE_AUTOMOC OFF)
 
 qt5_add_resources(JSQRC js.qrc)
 add_library(jsqrc STATIC ${JSQRC})
-qt5_use_modules(jsqrc Core)
+target_link_libraries(jsqrc Qt5::Core)
 
 install( TARGETS jsqrc ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )

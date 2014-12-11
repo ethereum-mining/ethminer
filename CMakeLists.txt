@@ -146,8 +146,8 @@ if (NOT LANGUAGES)
 #	add_subdirectory(libethereumx)	 # TODO remove
 
 	add_subdirectory(libwebthree)
-    add_subdirectory(test)
-    add_subdirectory(eth)
+	add_subdirectory(test)
+	add_subdirectory(eth)
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 		add_subdirectory(exp)
 	endif ()
@@ -170,8 +170,8 @@ if (NOT LANGUAGES)
 		endif ()
 		
 		add_subdirectory(libjsqrc)
-        add_subdirectory(libqethereum)
-        add_subdirectory(alethzero)
+		add_subdirectory(libqethereum)
+		add_subdirectory(alethzero)
 		add_subdirectory(third)
 		add_subdirectory(mix)
 	

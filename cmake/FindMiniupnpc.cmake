@@ -18,14 +18,14 @@ find_path(
 
 find_library(
 	MINIUPNPC_LIBRARY
-    NAMES miniupnpc
-    DOC "miniupnpc library"
+	NAMES miniupnpc
+	DOC "miniupnpc library"
 	)
 
 # handle the QUIETLY and REQUIRED arguments and set MINIUPNPC_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(miniupnpc DEFAULT_MSG
-	MINIUPNPC_INCLUDE_DIR MINIUPNPC_LIBRARY)                             
+	MINIUPNPC_INCLUDE_DIR MINIUPNPC_LIBRARY)
 mark_as_advanced (MINIUPNPC_INCLUDE_DIR MINIUPNPC_LIBRARY)
 

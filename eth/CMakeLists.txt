@@ -17,16 +17,16 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
 target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARY_RELEASE})
 
-if(MINIUPNPC_FOUND)
+if (MINIUPNPC_FOUND)
 	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
 endif()
 
-if(JSON_RPC_CPP_FOUND)
-    target_link_libraries(${EXECUTABLE} web3jsonrpc)
+if (READLINE_FOUND)
+	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARY})
 endif()
 
-if (READLINE_FOUND)
-target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARY})
+if (JSONRPC)
+	target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
 target_link_libraries(${EXECUTABLE} webthree)

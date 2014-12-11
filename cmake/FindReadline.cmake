@@ -18,14 +18,14 @@ find_path(
 
 find_library(
 	READLINE_LIBRARY
-    NAMES readline
-    DOC "readline library"
+	NAMES readline
+	DOC "readline library"
 	)
 
 # handle the QUIETLY and REQUIRED arguments and set READLINE_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(readline DEFAULT_MSG
-	READLINE_INCLUDE_DIR READLINE_LIBRARY)                             
+	READLINE_INCLUDE_DIR READLINE_LIBRARY)
 mark_as_advanced (READLINE_INCLUDE_DIR READLINE_LIBRARY)
 
