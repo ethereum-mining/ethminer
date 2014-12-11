@@ -17,6 +17,7 @@ include_directories(${LEVELDB_INCLUDE_DIR})
 set(EXECUTABLE p2p)
 
 file(GLOB HEADERS "*.h")
+
 if(ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()
@@ -24,8 +25,9 @@ else()
 endif()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
+
 if(MINIUPNPC_FOUND)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
 endif()
 
 target_link_libraries(${EXECUTABLE} devcrypto)

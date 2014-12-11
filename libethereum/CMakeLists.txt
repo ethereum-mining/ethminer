@@ -28,7 +28,7 @@ target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
 
 if (MINIUPNPC_FOUND)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
 endif()
 
 target_link_libraries(${EXECUTABLE} evm)

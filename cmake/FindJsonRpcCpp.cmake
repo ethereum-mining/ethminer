@@ -11,33 +11,32 @@
 
 # only look in default directories
 find_path(
-    JSON_RPC_CPP_INCLUDE_DIR 
-    NAMES jsonrpccpp/server.h
-    PATH_SUFFIXES jsonrpc
-    DOC "json-rpc-cpp include dir"
+	JSON_RPC_CPP_INCLUDE_DIR 
+	NAMES jsonrpccpp/server.h
+	PATH_SUFFIXES jsonrpc
+	DOC "json-rpc-cpp include dir"
 )
 
 find_library(
-    JSON_RPC_CPP_COMMON_LIBRARY
-    NAMES jsonrpccpp-common
-    DOC "json-rpc-cpp common library"
+	JSON_RPC_CPP_COMMON_LIBRARY
+	NAMES jsonrpccpp-common
+	DOC "json-rpc-cpp common library"
 )
 
 find_library(
-    JSON_RPC_CPP_SERVER_LIBRARY
-    NAMES jsonrpccpp-server
-    DOC "json-rpc-cpp server library"
+	JSON_RPC_CPP_SERVER_LIBRARY
+	NAMES jsonrpccpp-server
+	DOC "json-rpc-cpp server library"
 )
 
 find_library(
-    JSON_RPC_CPP_CLIENT_LIBRARY
-    NAMES jsonrpccpp-client
-    DOC "json-rpc-cpp client library"
+	JSON_RPC_CPP_CLIENT_LIBRARY
+	NAMES jsonrpccpp-client
+	DOC "json-rpc-cpp client library"
 )
 
 # message (" - json-rcp-cpp header : ${JSON_RPC_CPP_INCLUDE_DIRS}")
 # message (" - json-rcp-cpp lib    : ${JSON_RPC_CPP_LIBRARIES}")
-
 
 # handle the QUIETLY and REQUIRED arguments and set JSON_RPC_CPP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view

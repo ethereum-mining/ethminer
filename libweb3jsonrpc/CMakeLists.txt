@@ -9,9 +9,9 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(..)
 
 set(EXECUTABLE web3jsonrpc)
 
