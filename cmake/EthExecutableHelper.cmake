@@ -92,11 +92,11 @@ macro(eth_install_executable EXECUTABLE)
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 		# copy all dlls to executable directory
-		file (GLOB DLLS ${CMAKE_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
+		file (GLOB DLLS ${ETH_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
 
 		foreach(DLL ${DLLS})
 			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-				COMMAND cmake -E copy ${DLL} $<TARGET_FILE_DIR:${EXECUTABLE}>
+				COMMAND cmake -E copy "${DLL}" "$<TARGET_FILE_DIR:${EXECUTABLE}>"
 			)
 		endforeach()
 
@@ -105,8 +105,9 @@ macro(eth_install_executable EXECUTABLE)
 			"${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms"
 			$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
 		)
-		
+
 		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
+
 	else()
 		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
 	endif ()
