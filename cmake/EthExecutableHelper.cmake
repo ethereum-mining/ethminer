@@ -18,12 +18,12 @@ macro(eth_add_executable EXECUTABLE)
 	set (extra_macro_args ${ARGN})
 	set (options)
 	set (one_value_args ICON)
-	set (multi_value_args)
+	set (multi_value_args UI_RESOURCES)
 	cmake_parse_arguments (ETH_ADD_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
 
 	if (APPLE)
 
-		add_executable(${EXECUTABLE} MACOSX_BUNDLE alethzero.icns Main.ui ${SRC_LIST} ${HEADERS})
+		add_executable(${EXECUTABLE} MACOSX_BUNDLE ${SRC_LIST} ${HEADERS} ${ETH_ADD_EXECUTABLE_UI_RESOURCES})
 		set(PROJECT_VERSION "${ETH_VERSION}")
 		set(MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
 		set(MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_NAME} ${PROJECT_VERSION}")
@@ -38,7 +38,7 @@ macro(eth_add_executable EXECUTABLE)
 		set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 	else ()
-		add_executable(${EXECUTABLE} Main.ui ${SRC_LIST} ${HEADERS})
+		add_executable(${EXECUTABLE} ${ETH_ADD_EXECUTABLE_UI_RESOURCES} ${SRC_LIST} ${HEADERS})
 	endif()
 
 endmacro()
@@ -47,13 +47,26 @@ endmacro()
 # this function requires the following variables to be specified:
 # ETH_DEPENDENCY_INSTALL_DIR
 #
+# params: 
+# QMLDIR
+#
 
 macro(eth_install_executable EXECUTABLE)
+
+	set (extra_macro_args ${ARGN})
+	set (options)
+	set (one_value_args QMLDIR)
+	set (multi_value_args)
+	cmake_parse_arguments (ETH_INSTALL_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
+	
+	if (ETH_INSTALL_EXECUTABLE_QMLDIR)
+		set(eth_qml_dir "-qmldir=${ETH_INSTALL_EXECUTABLE_QMLDIR}")
+	endif()
 
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${ETH_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
+			COMMAND ${ETH_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${eth_qml_dir} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
