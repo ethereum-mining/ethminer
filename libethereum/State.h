@@ -55,7 +55,7 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 
 struct PrecompiledAddress
 {
-	unsigned gas;
+	std::function<bigint(bytesConstRef)> gas;
 	std::function<void(bytesConstRef, bytesRef)> exec;
 };
 
@@ -258,6 +258,9 @@ public:
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
+
+	/// Info on precompiled contract accounts baked into the protocol.
+	static std::map<unsigned, PrecompiledAddress> const& precompiled() { return c_precompiled; }
 
 private:
 	/// Undo the changes to the state for committing to mine.

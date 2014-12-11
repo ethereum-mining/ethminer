@@ -89,9 +89,9 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
 {
-	{ 1, { 500, ecrecoverCode }},
-	{ 2, { 100, sha256Code }},
-	{ 3, { 100, ripemd160Code }}
+	{ 1, { [](bytesConstRef){ return (bigint)500; }, ecrecoverCode }},
+	{ 2, { [](bytesConstRef i){ return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
+	{ 3, { [](bytesConstRef i){ return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
 };
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
@@ -1202,13 +1202,13 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas < it->second.gas)
+		if (*_gas < it->second.gas(_data))
 		{
 			*_gas = 0;
 			return false;
 		}
 
-		*_gas -= it->second.gas;
+		*_gas -= (u256)it->second.gas(_data);
 		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
@@ -1274,7 +1274,6 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	// Execute init code.
 	VM vm(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
-	bool revert = false;
 	bytesConstRef out;
 
 	try
