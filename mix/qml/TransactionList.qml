@@ -11,29 +11,36 @@ Rectangle {
 	focus: true
 	anchors.topMargin: 10
 	anchors.left: parent.left
-	height: parent.height - 30
-	width: parent.width * 0.5
+	height: parent.height
+	width: parent.width
 
 	ListView {
 		anchors.top: parent.top
 		height: parent.height
 		width: parent.width
-		anchors.horizontalCenter: parent.horizontalCenter
-		id: statesList
+		id: transactionList
 		model: transactionListModel
 		delegate: renderDelegate
-		highlight: highlightBar
-		highlightFollowsCurrentItem: true
 	}
 
-	Component {
-		id: highlightBar
-		Rectangle {
-			height: statesList.currentItem.height
-			width: statesList.currentItem.width
-			border.color: "orange"
-			border.width: 1
-			Behavior on y { SpringAnimation { spring: 2; damping: 0.1 } }
+	Button {
+		anchors.bottom: parent.bottom
+		text: qsTr("Add")
+		onClicked:
+		{
+			// Set next id here to work around Qt bug
+			// https://bugreports.qt-project.org/browse/QTBUG-41327
+			// Second call to signal handle would just edit the item that was just created, no harm done
+			transactionDialog.reset(transactionListModel.count, transactionListModel);
+			transactionDialog.open();
+			transactionDialog.focus = true;
+		}
+	}
+
+	TransactionDialog {
+		id: transactionDialog
+		onAccepted: {
+			transactionListModel.edit(transactionDialog);
 		}
 	}
 
@@ -43,10 +50,38 @@ Rectangle {
 			id: wrapperItem
 			height: 20
 			width: parent.width
-			Text {
-				anchors.centerIn: parent
-				text: title
-				font.pointSize: 9
+			RowLayout
+			{
+				anchors.fill: parent
+				Text {
+					//anchors.fill: parent
+					Layout.fillWidth: true
+					Layout.fillHeight: true
+					text: title
+					font.pointSize: 12
+					verticalAlignment: Text.AlignBottom
+				}
+				ToolButton {
+					text: qsTr("Edit");
+					Layout.fillHeight: true
+					onClicked: {
+						transactionDialog.reset(transactionId, transactionListModel);
+						transactionDialog.open();
+						transactionDialog.focus = true;
+					}
+				}
+				ToolButton {
+					text: qsTr("Delete");
+					Layout.fillHeight: true
+					onClicked: {
+					}
+				}
+				ToolButton {
+					text: qsTr("Run");
+					Layout.fillHeight: true
+					onClicked: {
+					}
+				}
 			}
 		}
 	}
