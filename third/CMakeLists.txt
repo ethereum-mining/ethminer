@@ -9,38 +9,25 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
-include_directories(..)
+
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(..)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
-# Set name of binary and add_executable()
 file(GLOB HEADERS "*.h")
+
 if (APPLE)
 	set(EXECUTABLE Third)
-	set(BIN_INSTALL_DIR ".")
-	set(DOC_INSTALL_DIR ".")
-
-	set(PROJECT_VERSION "${ETH_VERSION}")
-	set(MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_COPYRIGHT "${PROJECT_COPYRIGHT_YEAR} ${PROJECT_VENDOR}")
-	set(MACOSX_BUNDLE_GUI_IDENTIFIER "${PROJECT_DOMAIN_SECOND}.${PROJECT_DOMAIN_FIRST}")
-	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTABLE})
-	set(MACOSX_BUNDLE_ICON_FILE third)
-	include(BundleUtilities)
-
-	add_executable(${EXECUTABLE} MACOSX_BUNDLE third.icns Main.ui ${SRC_LIST} ${HEADERS})
-	set_target_properties(${EXECUTABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
-	SET_SOURCE_FILES_PROPERTIES(${EXECUTABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
-	SET_SOURCE_FILES_PROPERTIES(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-
 else ()
 	set(EXECUTABLE third)
-	add_executable(${EXECUTABLE} Main.ui ${SRC_LIST} ${HEADERS})
 endif ()
+
+# eth_add_executable is defined in cmake/EthExecutableHelper.cmake
+eth_add_executable(${EXECUTABLE}
+	ICON third
+	UI_RESOURCES third.icns Main.ui
+)
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
@@ -58,31 +45,6 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc) 
 target_link_libraries(${EXECUTABLE} jsqrc) 
 
-if (APPLE)
-	# First have qt5 install plugins and frameworks
-	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-		COMMAND ${ETH_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
-		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-		
-	# This tool and next will inspect linked libraries in order to determine which dependencies are required
-	if (${CMAKE_CFG_INTDIR} STREQUAL ".")
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE}.app")
-	else ()
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
-	endif ()
-	install(CODE "
-		include(BundleUtilities)
-		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APP_BUNDLE_PATH}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
-		" COMPONENT RUNTIME )
-	# Cleanup duplicate libs from macdeployqt
-	install(CODE "
-		file(GLOB LINGER_RM \"${APP_BUNDLE_PATH}/Contents/Frameworks/*.dylib\")
-		if (LINGER_RM)
-			file(REMOVE \${LINGER_RM})
-		endif ()
-	")
-else ()
-	install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
-endif ()
+# eth_install_executable is defined in cmake/EthExecutableHelper.cmake
+eth_install_executable(${EXECUTABLE})
 

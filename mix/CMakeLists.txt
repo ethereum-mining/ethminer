@@ -18,6 +18,7 @@ file(GLOB HEADERS "*.h")
 
 set(EXECUTABLE mix)
 
+# eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON mix
 	UI_RESOURCES ${UI_RESOURCES}
@@ -40,6 +41,7 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 
+# eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE}
 	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
 )
