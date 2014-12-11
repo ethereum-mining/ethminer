@@ -40,6 +40,3 @@ std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
 
 }
 }
-
-
-

@@ -68,10 +68,7 @@ private:
 	friend class VMFactory;
 
 	/// Construct VM object.
-	explicit VM(u256 _gas = 0): VMFace(_gas) {}
-
-	template <class Ext>
-	bytesConstRef goImpl(Ext& _ext, OnOpFunc const& _onOp = OnOpFunc(), uint64_t _steps = (uint64_t)-1);
+	explicit VM(u256 _gas): VMFace(_gas) {}
 
 	u256 m_curPC = 0;
 	bytes m_temp;
@@ -80,10 +77,8 @@ private:
 	std::function<void()> m_onFail;
 };
 
-}
-
-// INLINE:
-template <class Ext> dev::bytesConstRef dev::eth::VM::goImpl(Ext& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+// TODO: Move it to cpp file. Not done to make review easier.
+inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
 
@@ -863,5 +858,7 @@ template <class Ext> dev::bytesConstRef dev::eth::VM::goImpl(Ext& _ext, OnOpFunc
 	if (_steps == (uint64_t)-1)
 		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();
+}
+
 }
 }
