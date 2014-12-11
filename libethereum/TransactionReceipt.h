@@ -38,9 +38,7 @@ class TransactionReceipt
 {
 public:
 	TransactionReceipt(bytesConstRef _rlp) { RLP r(_rlp); m_stateRoot = (h256)r[0]; m_gasUsed = (u256)r[1]; m_bloom = (LogBloom)r[2]; for (auto const& i: r[3]) m_log.emplace_back(i); }
-	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log, Manifest const& _ms): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log), m_changes(_ms) {}
-
-	Manifest const& changes() const { return m_changes; }
+	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log) {}
 
 	h256 const& stateRoot() const { return m_stateRoot; }
 	u256 const& gasUsed() const { return m_gasUsed; }
@@ -62,8 +60,6 @@ private:
 	u256 m_gasUsed;
 	LogBloom m_bloom;
 	LogEntries m_log;
-
-	Manifest m_changes;	///< TODO: PoC-7: KILL
 };
 
 using TransactionReceipts = std::vector<TransactionReceipt>;

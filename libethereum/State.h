@@ -55,7 +55,7 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 
 struct PrecompiledAddress
 {
-	unsigned gas;
+	std::function<bigint(bytesConstRef)> gas;
 	std::function<void(bytesConstRef, bytesRef)> exec;
 };
 
@@ -211,15 +211,6 @@ public:
 	/// Get the list of pending transactions.
 	Transactions const& pending() const { return m_transactions; }
 
-	/// Get the list of pending transactions. TODO: PoC-7: KILL
-	Manifest changesFromPending(unsigned _i) const { return m_receipts[_i].changes(); }
-
-	/// Get the bloom filter of all changes happened in the block. TODO: PoC-7: KILL
-	h256 oldBloom() const;
-
-	/// Get the bloom filter of a particular transaction that happened in the block. TODO: PoC-7: KILL
-	h256 oldBloom(unsigned _i) const { return m_receipts[_i].changes().bloom(); }
-
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
@@ -259,6 +250,9 @@ public:
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
 
+	/// Info on precompiled contract accounts baked into the protocol.
+	static std::map<unsigned, PrecompiledAddress> const& precompiled() { return c_precompiled; }
+
 private:
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
@@ -283,12 +277,12 @@ private:
 	// We assume all instrinsic fees are paid up before this point.
 
 	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Execute a call.
 	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
 	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
+	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
