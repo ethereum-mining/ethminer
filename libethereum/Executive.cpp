@@ -110,7 +110,19 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
-	if (m_s.addressHasCode(_receiveAddress))
+	auto it = !(_receiveAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_receiveAddress) : State::precompiled().end();
+	if (it != State::precompiled().end())
+	{
+		if (_gas < it->second.gas(_data))
+		{
+			m_endGas = 0;
+			return false;
+		}
+		m_endGas = (u256)(_gas - it->second.gas(_data));
+		it->second.exec(_data, bytesRef());
+		return true;
+	}
+	else if (m_s.addressHasCode(_receiveAddress))
 	{
 		m_vm = new VM(_gas);
 		bytes const& c = m_s.code(_receiveAddress);

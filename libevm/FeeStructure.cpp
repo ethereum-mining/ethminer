@@ -27,8 +27,8 @@ using namespace dev::eth;
 
 u256 const dev::eth::c_stepGas = 1;
 u256 const dev::eth::c_balanceGas = 20;
-u256 const dev::eth::c_sha3Gas = 20;
-u256 const dev::eth::c_sha3WordGas = 1;
+u256 const dev::eth::c_sha3Gas = 10;
+u256 const dev::eth::c_sha3WordGas = 10;
 u256 const dev::eth::c_sloadGas = 20;
 u256 const dev::eth::c_sstoreSetGas = 300;
 u256 const dev::eth::c_sstoreResetGas = 100;
