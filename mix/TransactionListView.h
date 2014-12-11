@@ -30,22 +30,6 @@ namespace mix
 
 class TransactionListModel;
 
-class TransactionListItem: public QObject
-{
-	Q_OBJECT
-	Q_PROPERTY(QString title READ title)
-	Q_PROPERTY(int selected READ selected)
-
-public:
-	TransactionListItem(QString _title, bool _selected, QObject* _parent): QObject(_parent), m_title(_title), m_selected(_selected) {}
-	QString title() { return m_title; }
-	bool selected() { return m_selected; }
-
-private:
-	QString m_title;
-	bool m_selected;
-};
-
 class TransactionListView: public Extension
 {
 	Q_OBJECT

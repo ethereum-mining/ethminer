@@ -24,7 +24,6 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-//#include <QtCore/QtCore>
 #include <QDebug>
 #include "TransactionListView.h"
 #include "TransactionListModel.h"
@@ -33,10 +32,8 @@ using namespace dev::mix;
 TransactionListView::TransactionListView(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::RightTab)
 {
 	m_editor = _doc;
-	m_model.reset(new TransactionListModel());
-	QList<QObject*> list;
-	list.append(new TransactionListItem("Sample", false, nullptr));
-	m_appEngine->rootContext()->setContextProperty("transactionListModel", QVariant::fromValue(list));
+	m_model.reset(new TransactionListModel(this));
+	m_appEngine->rootContext()->setContextProperty("transactionListModel", m_model.get());
 }
 
 TransactionListView::~TransactionListView()
