@@ -25,7 +25,10 @@ endif ()
 	
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 # including SRC_LIST && HEADERS is implicit
-eth_add_executable(${EXECUTABLE} ICON alethzero)
+eth_add_executable(${EXECUTABLE} 
+	ICON alethzero 
+	UI_RESOURCES alethzero.icns Main.ui
+)
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
