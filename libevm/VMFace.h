@@ -14,7 +14,6 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #pragma once
 
 #include <memory>
@@ -34,24 +33,19 @@ struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
 struct StackTooSmall: virtual VMException {};
 
-/**
- */
+/// EVM Virtual Machine interface
 class VMFace
 {
 public:
-	/// Construct VM object.
-	explicit VMFace(u256 _gas = 0): m_gas(_gas) {}
-
+	explicit VMFace(u256 _gas): m_gas(_gas) {}
 	virtual ~VMFace() = default;
-
 	VMFace(VMFace const&) = delete;
 	void operator=(VMFace const&) = delete;
 
 	virtual void reset(u256 _gas = 0) noexcept { m_gas = _gas; }
+	u256 gas() const noexcept { return m_gas; }
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
-
-	u256 gas() const { return m_gas; }
 
 protected:
 	u256 m_gas = 0;
