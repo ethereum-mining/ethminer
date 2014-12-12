@@ -179,6 +179,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
+				m_s.m_cache[m_newAddress].setCode(m_out);
 			}
 		}
 		catch (StepsDone const&)
@@ -216,10 +217,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 void Executive::finalize(OnOpFunc const&)
 {
-	if (m_t.isCreation() && !m_ext->sub.suicides.count(m_newAddress))
-		// creation - put code in place.
-		m_s.m_cache[m_newAddress].setCode(m_out);
-
 	// SSTORE refunds.
 	m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 
