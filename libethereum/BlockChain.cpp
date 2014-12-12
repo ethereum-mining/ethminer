@@ -145,7 +145,7 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
+		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
 	}
@@ -303,7 +303,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
-		auto b = s.oldBloom();
 		BlockLogBlooms blb;
 		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -320,7 +319,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// All ok - insert into DB
 		{
 			WriteGuard l(x_details);
-			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}, b);
+			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
