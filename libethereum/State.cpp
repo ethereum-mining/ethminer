@@ -29,10 +29,11 @@
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
 #include "ExtVM.h"
+#include "Executive.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -1093,7 +1094,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 					return false;
 			}
 		}
-		catch (InvalidTrie)
+		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
@@ -1196,15 +1197,15 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		VM vm(*_gas);
+		auto vm = VMFactory::create(*_gas);
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
 		try
 		{
-			auto out = vm.go(evm, _onOp);
+			auto out = vm->go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 			if (o_sub)
 				*o_sub += evm.sub;
-			*_gas = vm.gas();
+			*_gas = vm->gas();
 			// Write state out only in the case of a non-excepted transaction.
 			return true;
 		}
@@ -1244,16 +1245,16 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
 
 	// Execute init code.
-	VM vm(*_gas);
+	auto vm = VMFactory::create(*_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
 	bytesConstRef out;
 
 	try
 	{
-		out = vm.go(evm, _onOp);
+		out = vm->go(evm, _onOp);
 		if (o_sub)
 			*o_sub += evm.sub;
-		*_gas = vm.gas();
+		*_gas = vm->gas();
 
 		if (out.size() * c_createDataGas <= *_gas)
 			*_gas -= out.size() * c_createDataGas;
