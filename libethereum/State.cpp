@@ -82,6 +82,9 @@ bytes ripemd160Code(bytesConstRef _in)
 {
 	bytes ret(32);
 	ripemd160(_in, &ret);
+	// leaves the 20-byte hash left-aligned. we want it right-aligned:
+	memmove(ret.data() + 12, ret.data(), 20);
+	memset(ret.data(), 0, 12);
 	return ret;
 }
 
