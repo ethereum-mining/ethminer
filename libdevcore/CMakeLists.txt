@@ -1,4 +1,4 @@
-cmake_policy(SET CMP0015 OLD)
+cmake_policy(SET CMP0015 NEW)
 # this policy was introduced in cmake 3.0
 # remove if, once 3.0 will be used on unix
 if (${CMAKE_MAJOR_VERSION} GREATER 2)
