@@ -198,6 +198,12 @@
     </ClCompile>
     <ClCompile Include="..\libdevcrypto\AES.cpp" />
     <ClCompile Include="..\libdevcrypto\ECDHE.cpp" />
+    <ClCompile Include="..\libevm\VMFactory.cpp">
+      <Filter>libevm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libp2p\Network.cpp">
+      <Filter>libp2p</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -436,6 +442,12 @@
     </ClInclude>
     <ClInclude Include="..\libevm\VMFace.h">
       <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\VMFactory.h">
+      <Filter>libevm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libp2p\Network.h">
+      <Filter>libp2p</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
