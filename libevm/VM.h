@@ -175,7 +175,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			break;
 		case Instruction::SHA3:
 			require(2);
-			runGas = c_sha3Gas;
+			runGas = c_sha3Gas + (m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
 			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 			break;
 		case Instruction::CALLDATACOPY:

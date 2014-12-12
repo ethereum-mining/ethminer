@@ -85,14 +85,6 @@ bool Executive::setup(bytesConstRef _rlp)
 	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
 	m_s.subBalance(m_sender, cost);
 
-	if (m_ms)
-	{
-		m_ms->from = m_sender;
-		m_ms->to = m_t.receiveAddress();
-		m_ms->value = m_t.value();
-		m_ms->input = m_t.data();
-	}
-
 	if (m_t.isCreation())
 		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
 	else
@@ -104,11 +96,24 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
-	if (m_s.addressHasCode(_receiveAddress))
+	auto it = !(_receiveAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_receiveAddress) : State::precompiled().end();
+	if (it != State::precompiled().end())
+	{
+		bigint g = it->second.gas(_data);
+		if (_gas < g)
+		{
+			m_endGas = 0;
+			return false;
+		}
+		m_endGas = (u256)(_gas - g);
+		it->second.exec(_data, bytesRef());
+		return true;
+	}
+	else if (m_s.addressHasCode(_receiveAddress))
 	{
 		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_ms));
+		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c));
 	}
 	else
 		m_endGas = _gas;
@@ -126,16 +131,16 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = VMFactory::create(_gas);
-	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_ms));
+	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init));
 	return _init.empty();
 }
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, void* voidVM, void const* voidExt)
+	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
 	{
-		ExtVM const& ext = *(ExtVM const*)voidExt;
-		VM& vm = *(VM*)voidVM;
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		VM& vm = *voidVM;
 
 		ostringstream o;
 		o << endl << "    STACK" << endl;
@@ -156,16 +161,16 @@ bool Executive::go(OnOpFunc const& _onOp)
 	{
 		boost::timer t;
 		auto sgas = m_vm->gas();
-		bool revert = false;
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
-			if (m_ext)
-			{
-				m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
-				m_logs = m_ext->sub.logs;
-			}
 			m_endGas = m_vm->gas();
+			m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+			m_logs = m_ext->sub.logs;
+			if (m_out.size() * c_createDataGas <= m_endGas)
+				m_endGas -= m_out.size() * c_createDataGas;
+			else
+				m_out.reset();
 		}
 		catch (StepsDone const&)
 		{
@@ -175,7 +180,16 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			m_endGas = 0;//m_vm->gas();
-			revert = true;
+
+			// Write state out only in the case of a non-excepted transaction.
+			m_ext->revert();
+
+			// Explicitly delete a newly created address - this will still be in the reverted state.
+/*			if (m_newAddress)
+			{
+				m_s.m_cache.erase(m_newAddress);
+				m_newAddress = Address();
+			}*/
 		}
 		catch (Exception const& _e)
 		{
@@ -188,18 +202,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
 		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
-
-		// Write state out only in the case of a non-excepted transaction.
-		if (revert)
-		{
-			m_ext->revert();
-			// Explicitly delete a newly created address - this will still be in the reverted state.
-			if (m_newAddress)
-			{
-				m_s.m_cache.erase(m_newAddress);
-				m_newAddress = Address();
-			}
-		}
 	}
 	return true;
 }
@@ -211,9 +213,11 @@ u256 Executive::gas() const
 
 void Executive::finalize(OnOpFunc const&)
 {
-	if (m_t.isCreation() && m_newAddress && m_out.size())
-		// non-reverted creation - put code in place.
+	if (m_t.isCreation() && !m_ext->sub.suicides.count(m_newAddress))
+	{
+		// creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
+	}
 
 //	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
@@ -221,9 +225,6 @@ void Executive::finalize(OnOpFunc const&)
 	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
 //	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
-
-	if (m_ms)
-		m_ms->output = m_out.toBytes();
 
 	// Suicides...
 	if (m_ext)
