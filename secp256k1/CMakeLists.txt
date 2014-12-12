@@ -20,7 +20,7 @@ if (APPLE OR UNIX)
 		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c field_5x52_asm.asm)
 	endif()
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
-	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})
 else()
 
 	include_directories(${Boost_INCLUDE_DIRS})

@@ -5,8 +5,8 @@
 # if you nee to add a custom library search path, do it via via CMAKE_FIND_ROOT_PATH 
 # 
 # This module defines
-#  READLINE_INCLUDE_DIR, where to find header, etc.
-#  READLINE_LIBRARY, the libraries needed to use readline.
+#  READLINE_INCLUDE_DIRS, where to find header, etc.
+#  READLINE_LIBRARIES, the libraries needed to use readline.
 #  READLINE_FOUND, If false, do not try to use readline.
 
 # only look in default directories
@@ -21,6 +21,9 @@ find_library(
 	NAMES readline
 	DOC "readline library"
 	)
+
+set(READLINE_INCLUDE_DIRS ${READLINE_INCLUDE_DIR})
+set(READLINE_LIBRARIES ${READLINE_LIBRARY})
 
 # handle the QUIETLY and REQUIRED arguments and set READLINE_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view

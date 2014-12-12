@@ -10,7 +10,7 @@ set(CMAKE_AUTOMOC OFF)
 aux_source_directory(. SRC_LIST)
 
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(${LEVELDB_INCLUDE_DIRS})
 include_directories(..)
 
 set(EXECUTABLE web3jsonrpc)
@@ -23,13 +23,13 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_COMMON_LIBRARY})
 target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARY})
 
 if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
 endif()
 
 target_link_libraries(${EXECUTABLE} webthree)

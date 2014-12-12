@@ -5,8 +5,8 @@
 # if you nee to add a custom library search path, do it via via CMAKE_FIND_ROOT_PATH 
 # 
 # This module defines
-#  GMP_INCLUDE_DIR, where to find header, etc.
-#  GMP_LIBRARY, the libraries needed to use gmp.
+#  GMP_INCLUDE_DIRS, where to find header, etc.
+#  GMP_LIBRARIES, the libraries needed to use gmp.
 #  GMP_FOUND, If false, do not try to use gmp.
 
 # only look in default directories
@@ -21,6 +21,9 @@ find_library(
 	NAMES gmp
 	DOC "gmp library"
 	)
+
+set(GMP_INCLUDE_DIRS ${GMP_INCLUDE_DIR})
+set(GMP_LIBRARIES ${GMP_LIBRARY})
 
 # handle the QUIETLY and REQUIRED arguments and set GMP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view

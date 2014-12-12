@@ -3,7 +3,7 @@ cmake_policy(SET CMP0015 NEW)
 aux_source_directory(. SRC_LIST)
 
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(${LEVELDB_INCLUDE_DIRS})
 include_directories(..)
 
 set(EXECUTABLE neth)
@@ -12,10 +12,10 @@ add_executable(${EXECUTABLE} ${SRC_LIST})
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 
 if (MINIUPNPC_FOUND)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
 endif()
 
 if (JSONRPC)
