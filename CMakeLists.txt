@@ -15,7 +15,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Normally, set(...CACHE...) creates cache variables, but does not modify them.
 function(createDefaultCacheConfig)
 	set(HEADLESS OFF CACHE BOOL "Do not compile GUI (AlethZero)")
-	set(LANGUAGES OFF CACHE BOOL "Limit build to Serpent/LLL tools")
 	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
@@ -24,10 +23,6 @@ endfunction()
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
-	if (LANGUAGES)
-		add_definitions(-DETH_LANGUAGES)
-	endif ()
-
 	if (PARANOIA)
 		if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 			add_definitions(-DETH_PARANOIA)
@@ -89,7 +84,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
-message("-- LANGUAGES: ${LANGUAGES}; VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -125,40 +120,38 @@ if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
 endif()
 
-if (NOT LANGUAGES)
-	add_subdirectory(secp256k1)
-	add_subdirectory(libp2p)
-	add_subdirectory(libdevcrypto)
-	add_subdirectory(libwhisper)
+add_subdirectory(secp256k1)
+add_subdirectory(libp2p)
+add_subdirectory(libdevcrypto)
+add_subdirectory(libwhisper)
 
-	add_subdirectory(libethcore)
-	add_subdirectory(libevm)
-	add_subdirectory(libethereum)
+add_subdirectory(libethcore)
+add_subdirectory(libevm)
+add_subdirectory(libethereum)
 
 # TODO is this 'TODO remove' still valid?
 #	add_subdirectory(libethereumx)	 # TODO remove
 
-	add_subdirectory(libwebthree)
-	add_subdirectory(test)
-	add_subdirectory(eth)
-	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		add_subdirectory(exp)
-	endif ()
+add_subdirectory(libwebthree)
+add_subdirectory(test)
+add_subdirectory(eth)
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+	add_subdirectory(exp)
+endif ()
 
-	# TODO check msvc
-	if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-		add_subdirectory(neth)
-	endif ()
+# TODO check msvc
+if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	add_subdirectory(neth)
+endif ()
 
-	if (NOT HEADLESS)
-		
-		add_subdirectory(libjsqrc)
-		add_subdirectory(libqethereum)
-		add_subdirectory(alethzero)
-		add_subdirectory(third)
-		add_subdirectory(mix)
-		
-	endif()
+if (NOT HEADLESS)
+	
+	add_subdirectory(libjsqrc)
+	add_subdirectory(libqethereum)
+	add_subdirectory(alethzero)
+	add_subdirectory(third)
+	add_subdirectory(mix)
+	
 endif()
 
 enable_testing()

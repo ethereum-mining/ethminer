@@ -19,8 +19,6 @@
  * @date 2014
  */
 
-#if !ETH_LANGUAGES
-
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
@@ -197,5 +195,3 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 			BOOST_THROW_EXCEPTION(InvalidNumber());
 	}
 }
-
-#endif
