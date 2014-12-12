@@ -67,7 +67,7 @@ bytes ecrecoverCode(bytesConstRef _in)
 	secp256k1_start();
 	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
 		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
-
+	memset(ret.data(), 0, 12);
 	return ret.asBytes();
 }
 
