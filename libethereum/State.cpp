@@ -1119,7 +1119,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this);
+	Executive e(*this, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1174,8 +1174,24 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256& io_gas, bytesRef _out, Address _originAddress, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
 {
+#if 0
+	// TODO: TEST TEST TEST!!!
+	Executive e(*this, _level);
+
+	if (!e.call(_receiveAddress, _codeAddress, _senderAddress, _value, _gasPrice, _data, io_gas, _originAddress))
+	{
+		e.go(_onOp);
+		io_sub += e.ext().sub;
+	}
+
+	e.out().copyTo(_out);
+	io_gas = e.gas();
+
+	return !e.excepted();
+
+#else
 	if (!_originAddress)
 		_originAddress = _senderAddress;
 
@@ -1186,26 +1202,25 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	if (it != c_precompiled.end())
 	{
 		bigint g = it->second.gas(_data);
-		if (*_gas < g)
+		if (io_gas < g)
 		{
-			*_gas = 0;
+			io_gas = 0;
 			return false;
 		}
 
-		*_gas -= (u256)g;
+		io_gas -= (u256)g;
 		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		auto vm = VMFactory::create(*_gas);
+		auto vm = VMFactory::create(io_gas);
 		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
 		try
 		{
 			auto out = vm->go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_sub)
-				*o_sub += evm.sub;
-			*_gas = vm->gas();
+			io_sub += evm.sub;
+			io_gas = vm->gas();
 			// Write state out only in the case of a non-excepted transaction.
 			return true;
 		}
@@ -1213,7 +1228,7 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			evm.revert();
-			*_gas = 0;
+			io_gas = 0;
 			return false;
 		}
 		catch (Exception const& _e)
@@ -1232,9 +1247,10 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 		}
 	}
 	return true;
+#endif
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256& io_gas, bytesConstRef _code, Address _origin, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
@@ -1245,19 +1261,18 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
 
 	// Execute init code.
-	auto vm = VMFactory::create(*_gas);
+	auto vm = VMFactory::create(io_gas);
 	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
 	bytesConstRef out;
 
 	try
 	{
 		out = vm->go(evm, _onOp);
-		if (o_sub)
-			*o_sub += evm.sub;
-		*_gas = vm->gas();
+		io_sub += evm.sub;
+		io_gas = vm->gas();
 
-		if (out.size() * c_createDataGas <= *_gas)
-			*_gas -= out.size() * c_createDataGas;
+		if (out.size() * c_createDataGas <= io_gas)
+			io_gas -= out.size() * c_createDataGas;
 		else
 			out.reset();
 
@@ -1269,7 +1284,7 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	{
 		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 		evm.revert();
-		*_gas = 0;
+		io_gas = 0;
 	}
 	catch (Exception const& _e)
 	{

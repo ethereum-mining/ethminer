@@ -798,7 +798,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 				if (_ext.depth == 1024)
 					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(endowment);
-				m_stack.push_back((u160)_ext.create(endowment, &m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
 			else
 				m_stack.push_back(0);
@@ -828,7 +828,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 				if (_ext.depth == 1024)
 					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(value);
-				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), &gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
+				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, Address(), receiveAddress));
 			}
 			else
 				m_stack.push_back(0);

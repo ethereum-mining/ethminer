@@ -1350,7 +1350,7 @@ void Main::on_debugCurrent_triggered()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
 			auto r = t.rlp();
@@ -1855,7 +1855,7 @@ void Main::on_debug_clicked()
 			{
 				Secret s = i.secret();
 				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);

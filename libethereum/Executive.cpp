@@ -19,12 +19,13 @@
  * @date 2014
  */
 
+#include "Executive.h"
+
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libevm/VMFactory.h>
 #include <libevm/VM.h>
 #include "Interface.h"
-#include "Executive.h"
 #include "State.h"
 #include "ExtVM.h"
 using namespace std;
@@ -88,11 +89,12 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_t.isCreation())
 		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
 	else
-		return call(m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_sender);
+		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_sender);
 }
 
-bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
+bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
 {
+	m_isCreation = false;
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
@@ -109,11 +111,11 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 		it->second.exec(_data, bytesRef());
 		return true;
 	}
-	else if (m_s.addressHasCode(_receiveAddress))
+	else if (m_s.addressHasCode(_codeAddress))
 	{
 		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c));
+		m_ext = make_shared<ExtVM>(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
 	}
 	else
 		m_endGas = _gas;
@@ -122,6 +124,8 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 
 bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
+	m_isCreation = true;
+
 	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_newAddress, since
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
@@ -131,7 +135,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = VMFactory::create(_gas);
-	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init));
+	m_ext = make_shared<ExtVM>(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
 	return _init.empty();
 }
 
@@ -163,14 +167,18 @@ bool Executive::go(OnOpFunc const& _onOp)
 		auto sgas = m_vm->gas();
 		try
 		{
-			m_out = m_vm->go(*m_ext, _onOp);
+			m_out = m_vm->go(*m_ext, _onOp, 0);
 			m_endGas = m_vm->gas();
 			m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 			m_logs = m_ext->sub.logs;
-			if (m_out.size() * c_createDataGas <= m_endGas)
-				m_endGas -= m_out.size() * c_createDataGas;
-			else
-				m_out.reset();
+
+			if (m_isCreation)
+			{
+				if (m_out.size() * c_createDataGas <= m_endGas)
+					m_endGas -= m_out.size() * c_createDataGas;
+				else
+					m_out.reset();
+			}
 		}
 		catch (StepsDone const&)
 		{
@@ -184,12 +192,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 			// Write state out only in the case of a non-excepted transaction.
 			m_ext->revert();
 
-			// Explicitly delete a newly created address - this will still be in the reverted state.
-/*			if (m_newAddress)
-			{
-				m_s.m_cache.erase(m_newAddress);
-				m_newAddress = Address();
-			}*/
+			m_excepted = true;
 		}
 		catch (Exception const& _e)
 		{
@@ -214,12 +217,10 @@ u256 Executive::gas() const
 void Executive::finalize(OnOpFunc const&)
 {
 	if (m_t.isCreation() && !m_ext->sub.suicides.count(m_newAddress))
-	{
 		// creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
-	}
 
-//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
+	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
 
 	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
