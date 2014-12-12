@@ -42,7 +42,7 @@ using namespace dev::eth;
 
 static const u256 c_blockReward = 1500 * finney;
 
-void ecrecoverCode(bytesConstRef _in, bytesRef _out)
+bytes ecrecoverCode(bytesConstRef _in)
 {
 	struct inType
 	{
@@ -54,38 +54,38 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
-	memset(_out.data(), 0, _out.size());
+	h256 ret;
+
 	if ((u256)in.v > 28)
-		return;
+		return ret.asBytes();
 	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
 	if (!sig.isValid())
-		return;
+		return ret.asBytes();
 
-	h256 ret;
 	byte pubkey[65];
 	int pubkeylen = 65;
 	secp256k1_start();
 	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
 		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
 
+	return ret.asBytes();
+}
+
+bytes sha256Code(bytesConstRef _in)
+{
+	bytes ret(32);
+	sha256(_in, &ret);
+	return ret;
+}
+
+bytes ripemd160Code(bytesConstRef _in)
+{
+	bytes ret(32);
+	ripemd160(_in, &ret);
+	// leaves the 20-byte hash left-aligned. we want it right-aligned:
+	memmove(ret.data() + 12, ret.data(), 20);
 	memset(ret.data(), 0, 12);
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void sha256Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	sha256(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void ripemd160Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	ripemd160(_in, bytesRef(ret.data(), 32));
-	memset(_out.data(), 0, std::min<int>(12, _out.size()));
-	if (_out.size() > 12)
-		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
+	return ret;
 }
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
@@ -1119,7 +1119,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this);
+	Executive e(*this, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1172,119 +1172,6 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
-}
-
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_originAddress)
-		_originAddress = _senderAddress;
-
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	addBalance(_receiveAddress, _value);
-
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
-	if (it != c_precompiled.end())
-	{
-		bigint g = it->second.gas(_data);
-		if (*_gas < g)
-		{
-			*_gas = 0;
-			return false;
-		}
-
-		*_gas -= (u256)g;
-		it->second.exec(_data, _out);
-	}
-	else if (addressHasCode(_codeAddress))
-	{
-		auto vm = VMFactory::create(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
-		try
-		{
-			auto out = vm->go(evm, _onOp);
-			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_sub)
-				*o_sub += evm.sub;
-			*_gas = vm->gas();
-			// Write state out only in the case of a non-excepted transaction.
-			return true;
-		}
-		catch (VMException const& _e)
-		{
-			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			evm.revert();
-			*_gas = 0;
-			return false;
-		}
-		catch (Exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-		catch (std::exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-	}
-	return true;
-}
-
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_origin)
-		_origin = _sender;
-
-	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-
-	// Set up new account...
-	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
-
-	// Execute init code.
-	auto vm = VMFactory::create(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
-	bytesConstRef out;
-
-	try
-	{
-		out = vm->go(evm, _onOp);
-		if (o_sub)
-			*o_sub += evm.sub;
-		*_gas = vm->gas();
-
-		if (out.size() * c_createDataGas <= *_gas)
-			*_gas -= out.size() * c_createDataGas;
-		else
-			out.reset();
-
-		// Set code.
-		if (!evm.sub.suicides.count(newAddress))
-			m_cache[newAddress].setCode(out);
-	}
-	catch (VMException const& _e)
-	{
-		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		evm.revert();
-		*_gas = 0;
-	}
-	catch (Exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
-		throw;
-	}
-	catch (std::exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
-		throw;
-	}
-
-	return newAddress;
 }
 
 State State::fromPending(unsigned _i) const
