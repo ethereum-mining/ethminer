@@ -167,7 +167,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		auto sgas = m_vm->gas();
 		try
 		{
-			m_out = m_vm->go(*m_ext, _onOp, 0);
+			m_out = m_vm->go(*m_ext, _onOp);
 			m_endGas = m_vm->gas();
 			m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 			m_logs = m_ext->sub.logs;
