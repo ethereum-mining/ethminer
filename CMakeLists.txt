@@ -129,9 +129,6 @@ add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
 
-# TODO is this 'TODO remove' still valid?
-#	add_subdirectory(libethereumx)	 # TODO remove
-
 add_subdirectory(libwebthree)
 add_subdirectory(test)
 add_subdirectory(eth)

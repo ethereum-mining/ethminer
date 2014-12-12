@@ -10,11 +10,8 @@ set(EXECUTABLE exp)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
-
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} p2p)
-target_link_libraries(${EXECUTABLE} gmp)
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin) 
 
