@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MessageFilter.cpp
+/** @file LogFilter.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "MessageFilter.h"
+#include "LogFilter.h"
 
 #include <libdevcrypto/SHA3.h>
 #include "State.h"

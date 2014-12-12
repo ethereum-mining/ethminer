@@ -36,7 +36,6 @@
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
-#include "Executive.h"
 #include "AccountDiff.h"
 
 namespace dev
@@ -56,7 +55,7 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 struct PrecompiledAddress
 {
 	std::function<bigint(bytesConstRef)> gas;
-	std::function<void(bytesConstRef, bytesRef)> exec;
+	std::function<bytes(bytesConstRef)> exec;
 };
 
 /**
@@ -272,17 +271,6 @@ private:
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _bc is passed, it will be used to check the uncles.
 	/// Throws on failure.
 	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
-
-	// Two priviledged entry points for the VM (these don't get added to the Transaction lists):
-	// We assume all instrinsic fees are paid up before this point.
-
-	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
-
-	/// Execute a call.
-	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
-	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
 
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();

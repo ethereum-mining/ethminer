@@ -14,20 +14,38 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file VM.cpp
+/** @file TransactionReceipt.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "VM.h"
-#include <libethereum/ExtVM.h>
+#include "TransactionReceipt.h"
 
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas) noexcept
+TransactionReceipt::TransactionReceipt(bytesConstRef _rlp)
 {
-	VMFace::reset(_gas);
-	m_curPC = 0;
-	m_jumpDests.clear();
+	RLP r(_rlp);
+	m_stateRoot = (h256)r[0];
+	m_gasUsed = (u256)r[1];
+	m_bloom = (LogBloom)r[2];
+	for (auto const& i: r[3])
+		m_log.emplace_back(i);
+}
+
+TransactionReceipt::TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log):
+	m_stateRoot(_root),
+	m_gasUsed(_gasUsed),
+	m_bloom(eth::bloom(_log)),
+	m_log(_log)
+{}
+
+void TransactionReceipt::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(4) << m_stateRoot << m_gasUsed << m_bloom;
+	_s.appendList(m_log.size());
+	for (LogEntry const& l: m_log)
+		l.streamRLP(_s);
 }
