@@ -49,19 +49,19 @@ BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
 	return ret;
 }
 
-h256 BlockInfo::headerHashWithoutNonce() const
+h256 BlockInfo::headerHash(IncludeNonce _n) const
 {
 	RLPStream s;
-	streamRLP(s, false);
+	streamRLP(s, _n);
 	return sha3(s.out());
 }
 
-void BlockInfo::streamRLP(RLPStream& _s, bool _nonce) const
+void BlockInfo::streamRLP(RLPStream& _s, IncludeNonce _n) const
 {
-	_s.appendList(_nonce ? 14 : 13)
+	_s.appendList(_n == WithNonce ? 14 : 13)
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData;
-	if (_nonce)
+	if (_n == WithNonce)
 		_s << nonce;
 }
 
@@ -100,8 +100,8 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHashWithoutNonce(), nonce, difficulty))
-		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHashWithoutNonce(), nonce, difficulty));
+	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHash(WithoutNonce), nonce, difficulty))
+		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHash(WithoutNonce), nonce, difficulty));
 
 	if (gasUsed > gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed());

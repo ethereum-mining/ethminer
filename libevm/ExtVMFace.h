@@ -83,9 +83,19 @@ struct SubState
 		logs += _s.logs;
 		return *this;
 	}
+
+	void clear()
+	{
+		suicides.clear();
+		logs.clear();
+		refunds = 0;
+	}
 };
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
+class ExtVMFace;
+class VM;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
@@ -126,10 +136,10 @@ public:
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256*, bytesConstRef, OnOpFunc const&) { return h160(); }
+	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
@@ -146,11 +156,11 @@ public:
 	u256 value;					///< Value (in Wei) that was passed to this address.
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
-	bytes code;			///< Current code that is executing.
+	bytes code;					///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
-	unsigned depth;				///< Depth of the present call.
+	unsigned depth = 0;			///< Depth of the present call.
 };
 
 }

@@ -1261,9 +1261,12 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
-			s << "<br/>Hash w/o nonce: <b>" << info.headerHashWithoutNonce() << "</b>";
+			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
 			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
-			s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info.headerHashWithoutNonce(), info.nonce) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
+			if (info.number)
+				s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info.headerHash(WithoutNonce), info.nonce) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
+			else
+				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
@@ -1280,7 +1283,7 @@ void Main::on_blocks_currentItemChanged()
 			if (info.parentHash)
 				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			else
-				s << "<br/>Pre: <i>Nothing is before the Gensesis</i>";
+				s << "<br/>Pre: <i>Nothing is before Phil</i>";
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
@@ -1347,7 +1350,7 @@ void Main::on_debugCurrent_triggered()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
 			auto r = t.rlp();
@@ -1395,10 +1398,10 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
+		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
 		{
-			dev::eth::VM& vm = *(dev::eth::VM*)voidVM;
-			dev::eth::ExtVM const& ext = *(dev::eth::ExtVM const*)voidExt;
+			dev::eth::VM& vm = *voidVM;
+			dev::eth::ExtVM const& ext = *static_cast<dev::eth::ExtVM const*>(voidExt);
 			if (ext.code != lastExtCode)
 			{
 				lastExtCode = ext.code;
@@ -1626,7 +1629,7 @@ void Main::on_data_textChanged()
 			catch (dev::Exception const& exception)
 			{
 				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler.getScanner());
+				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
 				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
 			}
 			catch (...)
@@ -1852,7 +1855,7 @@ void Main::on_debug_clicked()
 			{
 				Secret s = i.secret();
 				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);

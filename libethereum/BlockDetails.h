@@ -40,7 +40,7 @@ namespace eth
 struct BlockDetails
 {
 	BlockDetails(): number(0), totalDifficulty(0) {}
-	BlockDetails(unsigned _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
+	BlockDetails(unsigned _n, u256 _tD, h256 _p, h256s _c): number(_n), totalDifficulty(_tD), parent(_p), children(_c) {}
 	BlockDetails(RLP const& _r);
 	bytes rlp() const;
 
@@ -51,7 +51,6 @@ struct BlockDetails
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
-	h256 bloom;
 };
 
 struct BlockLogBlooms
