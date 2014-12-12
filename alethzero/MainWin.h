@@ -44,7 +44,6 @@ class Main;
 namespace dev { namespace eth {
 class Client;
 class State;
-class MessageFilter;
 }}
 
 class QQuickView;
