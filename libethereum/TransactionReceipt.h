@@ -36,21 +36,15 @@ namespace eth
 class TransactionReceipt
 {
 public:
-	TransactionReceipt(bytesConstRef _rlp) { RLP r(_rlp); m_stateRoot = (h256)r[0]; m_gasUsed = (u256)r[1]; m_bloom = (LogBloom)r[2]; for (auto const& i: r[3]) m_log.emplace_back(i); }
-	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log): m_stateRoot(_root), m_gasUsed(_gasUsed), m_bloom(eth::bloom(_log)), m_log(_log) {}
+	TransactionReceipt(bytesConstRef _rlp);
+	TransactionReceipt(h256 _root, u256 _gasUsed, LogEntries const& _log);
 
 	h256 const& stateRoot() const { return m_stateRoot; }
 	u256 const& gasUsed() const { return m_gasUsed; }
 	LogBloom const& bloom() const { return m_bloom; }
 	LogEntries const& log() const { return m_log; }
 
-	void streamRLP(RLPStream& _s) const
-	{
-		_s.appendList(4) << m_stateRoot << m_gasUsed << m_bloom;
-		_s.appendList(m_log.size());
-		for (LogEntry const& l: m_log)
-			l.streamRLP(_s);
-	}
+	void streamRLP(RLPStream& _s) const;
 
 	bytes rlp() const { RLPStream s; streamRLP(s); return s.out(); }
 
