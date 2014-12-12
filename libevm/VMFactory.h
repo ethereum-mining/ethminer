@@ -14,20 +14,29 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file VM.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
+#pragma once
 
-#include "VM.h"
-#include <libethereum/ExtVM.h>
+#include "VMFace.h"
 
-using namespace dev;
-using namespace dev::eth;
-
-void VM::reset(u256 _gas) noexcept
+namespace dev
 {
-	VMFace::reset(_gas);
-	m_curPC = 0;
-	m_jumpDests.clear();
+namespace eth
+{
+
+enum class VMKind: bool
+{
+	Interpreter,
+	JIT
+};
+
+class VMFactory
+{
+public:
+	VMFactory() = delete;
+
+	static std::unique_ptr<VMFace> create(u256 _gas);
+	static void setKind(VMKind _kind);
+};
+
+}
 }
