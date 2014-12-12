@@ -18,11 +18,11 @@ target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
 target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARY_RELEASE})
 
 if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
 endif()
 
 if (READLINE_FOUND)
-	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARY})
+	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
 endif()
 
 if (JSONRPC)

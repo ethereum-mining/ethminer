@@ -9,8 +9,8 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(${CRYPTOPP_INCLUDE_DIR})
-include_directories(${LEVELDB_INCLUDE_DIR})
+include_directories(${CRYPTOPP_INCLUDE_DIRS})
+include_directories(${LEVELDB_INCLUDE_DIRS})
 include_directories(..) 
 
 set(EXECUTABLE devcrypto)
@@ -23,8 +23,8 @@ else()
 endif()
 
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARY_RELEASE})
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARY})
-target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARY})
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 

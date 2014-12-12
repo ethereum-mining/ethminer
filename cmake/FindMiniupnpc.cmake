@@ -5,8 +5,8 @@
 # if you nee to add a custom library search path, do it via via CMAKE_FIND_ROOT_PATH 
 # 
 # This module defines
-#  MINIUPNPC_INCLUDE_DIR, where to find header, etc.
-#  MINIUPNPC_LIBRARY, the libraries needed to use gmp.
+#  MINIUPNPC_INCLUDE_DIRS, where to find header, etc.
+#  MINIUPNPC_LIBRARIES, the libraries needed to use gmp.
 #  MINIUPNPC_FOUND, If false, do not try to use gmp.
 
 # only look in default directories
@@ -21,6 +21,9 @@ find_library(
 	NAMES miniupnpc
 	DOC "miniupnpc library"
 	)
+
+set(MINIUPNPC_INCLUDE_DIRS ${MINIUPNPC_INCLUDE_DIR})
+set(MINIUPNPC_LIBRARIES ${MINIUPNPC_LIBRARY})
 
 # handle the QUIETLY and REQUIRED arguments and set MINIUPNPC_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view

@@ -24,8 +24,8 @@ message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
 message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
 
 find_package (LevelDB REQUIRED)
-message(" - LevelDB header: ${LEVELDB_INCLUDE_DIR}")
-message(" - LevelDB lib: ${LEVELDB_LIBRARY}")
+message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
+message(" - LevelDB lib: ${LEVELDB_LIBRARIES}")
 
 # TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 REQUIRED)
@@ -53,8 +53,8 @@ endif() #JSONRPC
 # TODO get rid of -DETH_READLINE
 find_package (Readline 6.3.8)
 if (READLINE_FOUND)
-	message (" - readline header: ${READLINE_INCLUDE_DIR}")
-	message (" - readline lib   : ${READLINE_LIBRARY}")
+	message (" - readline header: ${READLINE_INCLUDE_DIRS}")
+	message (" - readline lib   : ${READLINE_LIBRARIES}")
 	add_definitions(-DETH_READLINE)
 endif ()
 
@@ -63,8 +63,8 @@ endif ()
 # TODO get rid of -DMINIUPNPC
 find_package (Miniupnpc 1.8.2013)
 if (MINIUPNPC_FOUND)
-	message (" - miniupnpc header: ${MINIUPNPC_INCLUDE_DIR}")
-	message (" - miniupnpc lib   : ${MINIUPNPC_LIBRARY}")
+	message (" - miniupnpc header: ${MINIUPNPC_INCLUDE_DIRS}")
+	message (" - miniupnpc lib   : ${MINIUPNPC_LIBRARIES}")
 	add_definitions(-DETH_MINIUPNPC)
 endif()
 
@@ -72,15 +72,15 @@ endif()
 # TODO it is also not required in msvc build
 find_package (Gmp 6.0.0)
 if (GMP_FOUND)
-	message(" - gmp Header: ${GMP_INCLUDE_DIR}")
-	message(" - gmp lib   : ${GMP_LIBRARY}")
+	message(" - gmp Header: ${GMP_INCLUDE_DIRS}")
+	message(" - gmp lib   : ${GMP_LIBRARIES}")
 endif()
 
 # curl is only requried for tests
 # TODO specify min curl version, on windows we are currenly using 7.29
 find_package (CURL)
-message(" - curl header: ${CURL_INCLUDE_DIR}")
-message(" - curl lib   : ${CURL_LIBRARY}")
+message(" - curl header: ${CURL_INCLUDE_DIRS}")
+message(" - curl lib   : ${CURL_LIBRARIES}")
 
 # do not compile GUI
 if (NOT HEADLESS) 
