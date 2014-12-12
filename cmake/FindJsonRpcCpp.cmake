@@ -7,6 +7,8 @@
 # This module defines
 #  JSON_RCP_CPP_INCLUDE_DIRS, where to find header, etc.
 #  JSON_RCP_CPP_LIBRARIES, the libraries needed to use json-rpc-cpp.
+#  JSON_RPC_CPP_SERVER_LIBRARIES, the libraries needed to use json-rpc-cpp-server
+#  JSON_RPC_CPP_CLIENT_LIBRARIES, the libraries needed to use json-rpc-cpp-client
 #  JSON_RCP_CPP_FOUND, If false, do not try to use json-rpc-cpp.
 
 # only look in default directories
@@ -35,8 +37,11 @@ find_library(
 	DOC "json-rpc-cpp client library"
 )
 
-# message (" - json-rcp-cpp header : ${JSON_RPC_CPP_INCLUDE_DIRS}")
-# message (" - json-rcp-cpp lib    : ${JSON_RPC_CPP_LIBRARIES}")
+# these are the variables to be uses by the calling script
+set (JSON_RPC_CPP_INCLUDE_DIRS ${JSON_RPC_CPP_INCLUDE_DIR})
+set (JSON_RPC_CPP_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_SERVER_LIBRARY} ${JSON_RPC_CPP_CLIENT_LIBRARY})
+set (JSON_RPC_CPP_SERVER_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_SERVER_LIBRARY})
+set (JSON_RPC_CPP_CLIENT_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_CLIENT_LIBRARY})
 
 # handle the QUIETLY and REQUIRED arguments and set JSON_RPC_CPP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
@@ -45,9 +50,3 @@ find_package_handle_standard_args(json_rpc_cpp DEFAULT_MSG
     JSON_RPC_CPP_COMMON_LIBRARY JSON_RPC_CPP_SERVER_LIBRARY JSON_RPC_CPP_CLIENT_LIBRARY JSON_RPC_CPP_INCLUDE_DIR)                             
 mark_as_advanced (JSON_RPC_CPP_COMMON_LIBRARY JSON_RPC_CPP_SERVER_LIBRARY JSON_RPC_CPP_CLIENT_LIBRARY JSON_RPC_CPP_INCLUDE_DIR)
 
-# these are the variables to be uses by the calling script
-set (JSON_RPC_CPP_INCLUDE_DIRS ${JSON_RPC_CPP_INCLUDE_DIR})
-set (JSON_RPC_CPP_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_SERVER_LIBRARY} ${JSON_RPC_CPP_CLIENT_LIBRARY})
-
-# message (" - json-rcp-cpp header : ${JSON_RPC_CPP_INCLUDE_DIRS}")
-# message (" - json-rcp-cpp lib    : ${JSON_RPC_CPP_LIBRARIES}")
