@@ -16,6 +16,7 @@
     <ClCompile Include="..\evmjit\libevmjit\Stack.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\Type.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\Utils.cpp" />
+    <ClCompile Include="..\evmjit\libevmjit\Cache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\evmjit\libevmjit\Arith256.h" />
@@ -35,6 +36,7 @@
     <ClInclude Include="..\evmjit\libevmjit\Stack.h" />
     <ClInclude Include="..\evmjit\libevmjit\Type.h" />
     <ClInclude Include="..\evmjit\libevmjit\Utils.h" />
+    <ClInclude Include="..\evmjit\libevmjit\Cache.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\evmjit\libevmjit\CMakeLists.txt" />

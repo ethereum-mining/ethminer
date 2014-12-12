@@ -130,6 +130,7 @@
   <ItemGroup>
     <ClCompile Include="..\evmjit\libevmjit\Arith256.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\BasicBlock.cpp" />
+    <ClCompile Include="..\evmjit\libevmjit\Cache.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\Compiler.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\CompilerHelper.cpp" />
     <ClCompile Include="..\evmjit\libevmjit\Endianness.cpp" />
@@ -147,6 +148,7 @@
   <ItemGroup>
     <ClInclude Include="..\evmjit\libevmjit\Arith256.h" />
     <ClInclude Include="..\evmjit\libevmjit\BasicBlock.h" />
+    <ClInclude Include="..\evmjit\libevmjit\Cache.h" />
     <ClInclude Include="..\evmjit\libevmjit\Common.h" />
     <ClInclude Include="..\evmjit\libevmjit\Compiler.h" />
     <ClInclude Include="..\evmjit\libevmjit\CompilerHelper.h" />
