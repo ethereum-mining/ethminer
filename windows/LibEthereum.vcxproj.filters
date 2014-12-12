@@ -196,14 +196,8 @@
     <ClCompile Include="..\libevmcore\Assembly.cpp">
       <Filter>libevmcore</Filter>
     </ClCompile>
-    <ClCompile Include="..\libevm\VMFace.cpp">
-      <Filter>libevm</Filter>
-    </ClCompile>
     <ClCompile Include="..\libdevcrypto\AES.cpp" />
     <ClCompile Include="..\libdevcrypto\ECDHE.cpp" />
-    <ClCompile Include="..\libethereum\VMFactory.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -442,9 +436,6 @@
     </ClInclude>
     <ClInclude Include="..\libevm\VMFace.h">
       <Filter>libevm</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethereum\VMFactory.h">
-      <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

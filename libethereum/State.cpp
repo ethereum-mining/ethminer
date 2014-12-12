@@ -29,10 +29,11 @@
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
 #include "ExtVM.h"
+#include "Executive.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -89,9 +90,9 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
 {
-	{ 1, { 500, ecrecoverCode }},
-	{ 2, { 100, sha256Code }},
-	{ 3, { 100, ripemd160Code }}
+	{ 1, { [](bytesConstRef) -> bigint { return (bigint)500; }, ecrecoverCode }},
+	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
+	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
 };
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
@@ -171,8 +172,7 @@ State::State(State const& _s):
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
 	m_ourAddress(_s.m_ourAddress),
-	m_blockReward(_s.m_blockReward),
-	m_vmKind(_s.m_vmKind)
+	m_blockReward(_s.m_blockReward)
 {
 	paranoia("after state cloning (copy cons).", true);
 }
@@ -206,7 +206,6 @@ State& State::operator=(State const& _s)
 	m_ourAddress = _s.m_ourAddress;
 	m_blockReward = _s.m_blockReward;
 	m_lastTx = _s.m_lastTx;
-	m_vmKind = _s.m_vmKind;
 	paranoia("after state cloning (assignment op)", true);
 	return *this;
 }
@@ -766,7 +765,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	// Compile block:
 	RLPStream block;
 	block.appendList(3);
-	m_currentBlock.streamRLP(block, true);
+	m_currentBlock.streamRLP(block, WithNonce);
 	block.appendRaw(m_currentTxs);
 	block.appendRaw(m_currentUncles);
 
@@ -791,14 +790,6 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	}
 
 	return false;
-}
-
-h256 State::oldBloom() const
-{
-	h256 ret = m_currentBlock.coinbaseAddress.bloom();
-	for (auto const& i: m_receipts)
-		ret |= i.changes().bloom();
-	return ret;
 }
 
 LogBloom State::logBloom() const
@@ -841,7 +832,7 @@ void State::commitToMine(BlockChain const& _bc)
 				if (!knownUncles.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
-					ubi.streamRLP(unclesData, true);
+					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
@@ -905,13 +896,13 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
 	{
-		cnote << "Completed" << m_currentBlock.headerHashWithoutNonce().abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHashWithoutNonce(), m_currentBlock.nonce, m_currentBlock.difficulty);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
 	}
 
 	return ret;
@@ -925,7 +916,7 @@ void State::completeMine()
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
-	m_currentBlock.streamRLP(ret, true);
+	m_currentBlock.streamRLP(ret, WithNonce);
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
@@ -1103,7 +1094,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 					return false;
 			}
 		}
-		catch (InvalidTrie)
+		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
@@ -1128,9 +1119,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Manifest ms;
-
-	Executive e(*this, &ms);
+	Executive e(*this);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1180,12 +1169,12 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(e.t());
-	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs(), ms));
+	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_originAddress)
 		_originAddress = _senderAddress;
@@ -1193,81 +1182,62 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 
-	if (o_ms)
-	{
-		o_ms->from = _senderAddress;
-		o_ms->to = _receiveAddress;
-		o_ms->value = _value;
-		o_ms->input = _data.toBytes();
-	}
-
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
 	if (it != c_precompiled.end())
 	{
-		if (*_gas < it->second.gas)
+		bigint g = it->second.gas(_data);
+		if (*_gas < g)
 		{
 			*_gas = 0;
 			return false;
 		}
 
-		*_gas -= it->second.gas;
+		*_gas -= (u256)g;
 		it->second.exec(_data, _out);
 	}
 	else if (addressHasCode(_codeAddress))
 	{
-		auto vmObj = VMFactory::create(getVMKind(), *_gas);
-		auto& vm = *vmObj;
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
-		bool revert = false;
-
+		auto vm = VMFactory::create(*_gas);
+		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
 		try
 		{
-			auto out = vm.go(evm, _onOp);
+			auto out = vm->go(evm, _onOp);
 			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
 			if (o_sub)
 				*o_sub += evm.sub;
-			if (o_ms)
-				o_ms->output = out.toBytes();
-			*_gas = vm.gas();
+			*_gas = vm->gas();
+			// Write state out only in the case of a non-excepted transaction.
+			return true;
 		}
 		catch (VMException const& _e)
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			revert = true;
+			evm.revert();
 			*_gas = 0;
+			return false;
 		}
 		catch (Exception const& _e)
 		{
 			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
 			// TODO: use fallback known-safe VM.
+			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
+			throw;
 		}
 		catch (std::exception const& _e)
 		{
 			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
 			// TODO: use fallback known-safe VM.
+			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
+			throw;
 		}
-
-		// Write state out only in the case of a non-excepted transaction.
-		if (revert)
-			evm.revert();
-
-		return !revert;
 	}
 	return true;
 }
 
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
+h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
 {
 	if (!_origin)
 		_origin = _sender;
-
-	if (o_ms)
-	{
-		o_ms->from = _sender;
-		o_ms->to = Address();
-		o_ms->value = _endowment;
-		o_ms->input = _code.toBytes();
-	}
 
 	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
 
@@ -1275,51 +1245,44 @@ h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas,
 	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
 
 	// Execute init code.
-	auto vmObj = VMFactory::create(getVMKind(), *_gas);
-	auto& vm = *vmObj;
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
-	bool revert = false;
+	auto vm = VMFactory::create(*_gas);
+	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
 	bytesConstRef out;
 
 	try
 	{
-		out = vm.go(evm, _onOp);
-		if (o_ms)
-			o_ms->output = out.toBytes();
+		out = vm->go(evm, _onOp);
 		if (o_sub)
 			*o_sub += evm.sub;
-		*_gas = vm.gas();
+		*_gas = vm->gas();
+
+		if (out.size() * c_createDataGas <= *_gas)
+			*_gas -= out.size() * c_createDataGas;
+		else
+			out.reset();
+
+		// Set code.
+		if (!evm.sub.suicides.count(newAddress))
+			m_cache[newAddress].setCode(out);
 	}
 	catch (VMException const& _e)
 	{
 		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		revert = true;
+		evm.revert();
 		*_gas = 0;
 	}
 	catch (Exception const& _e)
 	{
 		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
+		throw;
 	}
 	catch (std::exception const& _e)
 	{
 		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
+		throw;
 	}
-
-	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
-
-	// Write state out only in the case of a non-out-of-gas transaction.
-	if (revert)
-	{
-		evm.revert();
-		m_cache.erase(newAddress);
-		newAddress = Address();
-	}
-	else
-		// Set code.
-		if (addressInUse(newAddress))
-			m_cache[newAddress].setCode(out);
 
 	return newAddress;
 }

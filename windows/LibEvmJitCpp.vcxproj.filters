@@ -4,10 +4,10 @@
     <Text Include="..\evmjit\libevmjit-cpp\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\evmjit\libevmjit-cpp\VM.cpp" />
     <ClCompile Include="..\evmjit\libevmjit-cpp\Env.cpp" />
+    <ClCompile Include="..\evmjit\libevmjit-cpp\JitVM.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\evmjit\libevmjit-cpp\VM.h" />
+    <ClInclude Include="..\evmjit\libevmjit-cpp\JitVM.h" />
   </ItemGroup>
 </Project>

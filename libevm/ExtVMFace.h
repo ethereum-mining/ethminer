@@ -80,11 +80,15 @@ struct SubState
 	{
 		suicides += _s.suicides;
 		refunds += _s.refunds;
+		logs += _s.logs;
 		return *this;
 	}
 };
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
+class ExtVMFace;
+class VM;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
@@ -145,11 +149,11 @@ public:
 	u256 value;					///< Value (in Wei) that was passed to this address.
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
-	bytes code;			///< Current code that is executing.
+	bytes code;					///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
-	unsigned depth;				///< Depth of the present call.
+	unsigned depth = 0;			///< Depth of the present call.
 };
 
 }

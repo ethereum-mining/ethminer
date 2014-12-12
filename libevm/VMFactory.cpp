@@ -15,13 +15,36 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "VMFace.h"
+#include "VMFactory.h"
 #include "VM.h"
 
-using namespace dev;
-using namespace dev::eth;
+#if ETH_EVMJIT
+#include <evmjit/libevmjit-cpp/JitVM.h>
+#endif
 
-void VMFace::reset(u256 _gas) noexcept
+namespace dev
 {
-	m_gas = _gas;
+namespace eth
+{
+namespace
+{
+	VMKind g_kind = VMKind::Interpreter;
+}
+
+void VMFactory::setKind(VMKind _kind)
+{
+	g_kind = _kind;
+}
+
+std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
+{
+#if ETH_EVMJIT
+	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? (VMFace*)new JitVM(_gas) : new VM(_gas));
+#else
+	asserts(g_kind == VMKind::Interpreter && "JIT disabled in build configuration");
+	return std::unique_ptr<VMFace>(new VM(_gas));
+#endif
+}
+
+}
 }
