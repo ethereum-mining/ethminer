@@ -620,7 +620,7 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state);
+					Executive e(state, 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();
