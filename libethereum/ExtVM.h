@@ -55,18 +55,10 @@ public:
 	virtual bytes const& codeAt(Address _a) override final { return m_s.code(_a); }
 
 	/// Create a new contract.
-	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final
-	{
-		// Increment associated nonce for sender.
-		m_s.noteSending(myAddress);
-		return m_s.create(myAddress, _endowment, gasPrice, io_gas, _code, origin, sub, _onOp, depth + 1);
-	}
+	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final;
 
 	/// Create a new message call. Leave _myAddressOverride as the default to use the present address as caller.
-	virtual bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp = {}, Address _myAddressOverride = {}, Address _codeAddressOverride = {}) override final
-	{
-		return m_s.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, _out, origin, sub, _onOp, depth + 1);
-	}
+	virtual bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp = {}, Address _myAddressOverride = {}, Address _codeAddressOverride = {}) override final;
 
 	/// Read address's balance.
 	virtual u256 balance(Address _a) override final { return m_s.balance(_a); }

@@ -1174,32 +1174,6 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	return e.gasUsed();
 }
 
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256& io_gas, bytesRef _out, Address _originAddress, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	Executive e(*this, _level);
-	if (!e.call(_receiveAddress, _codeAddress, _senderAddress, _value, _gasPrice, _data, io_gas, _originAddress))
-	{
-		e.go(_onOp);
-		io_sub += e.ext().sub;
-	}
-	io_gas = e.endGas();
-	e.out().copyTo(_out);
-
-	return !e.excepted();
-}
-
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256& io_gas, bytesConstRef _code, Address _origin, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	Executive e(*this, _level);
-	if (!e.create(_sender, _endowment, _gasPrice, io_gas, _code, _origin))
-	{
-		e.go(_onOp);
-		io_sub += e.ext().sub;
-	}
-	io_gas = e.endGas();
-	return e.newAddress();
-}
-
 State State::fromPending(unsigned _i) const
 {
 	State ret = *this;
