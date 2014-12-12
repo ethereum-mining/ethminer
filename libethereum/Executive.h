@@ -67,8 +67,8 @@ public:
 	bool excepted() const { return m_excepted; }
 
 	VMFace const& vm() const { return *m_vm; }
-	State const& state() const { return m_s; }
 	ExtVM const& ext() const { return *m_ext; }
+	State const& state() const { return m_s; }
 
 private:
 	State& m_s;

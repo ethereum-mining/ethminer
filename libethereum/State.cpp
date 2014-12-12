@@ -73,16 +73,16 @@ bytes ecrecoverCode(bytesConstRef _in)
 
 bytes sha256Code(bytesConstRef _in)
 {
-	h256 ret;
-	sha256(_in, bytesRef(ret.data(), 32));
-	return ret.asBytes();
+	bytes ret(32);
+	sha256(_in, &ret);
+	return ret;
 }
 
 bytes ripemd160Code(bytesConstRef _in)
 {
-	h256 ret;
-	ripemd160(_in, bytesRef(ret.data(), 32));
-	return ret.asBytes();
+	bytes ret(32);
+	ripemd160(_in, &ret);
+	return ret;
 }
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
@@ -1173,8 +1173,6 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256& io_gas, bytesRef _out, Address _originAddress, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
 {
-#if 1
-	// TODO: TEST TEST TEST!!!
 	Executive e(*this, _level);
 	if (!e.call(_receiveAddress, _codeAddress, _senderAddress, _value, _gasPrice, _data, io_gas, _originAddress))
 	{
@@ -1185,112 +1183,18 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	e.out().copyTo(_out);
 
 	return !e.excepted();
-#else
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	addBalance(_receiveAddress, _value);
-
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
-	if (it != c_precompiled.end())
-	{
-		bigint g = it->second.gas(_data);
-		if (io_gas < g)
-		{
-			io_gas = 0;
-			return false;
-		}
-
-		io_gas -= (u256)g;
-		it->second.exec(_data, _out);
-	}
-	else if (addressHasCode(_codeAddress))
-	{
-		auto vm = VMFactory::create(io_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
-		try
-		{
-			auto out = vm->go(evm, _onOp);
-			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			io_sub += evm.sub;
-			io_gas = vm->gas();
-			// Write state out only in the case of a non-excepted transaction.
-			return true;
-		}
-		catch (VMException const& _e)
-		{
-			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			evm.revert();
-			io_gas = 0;
-			return false;
-		}
-		catch (Exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-		catch (std::exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-	}
-	return true;
-#endif
 }
 
 h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256& io_gas, bytesConstRef _code, Address _origin, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
 {
-	if (!_origin)
-		_origin = _sender;
-
-	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-
-	// Set up new account...
-	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
-
-	// Execute init code.
-	auto vm = VMFactory::create(io_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
-	bytesConstRef out;
-
-	try
+	Executive e(*this, _level);
+	if (!e.create(_sender, _endowment, _gasPrice, io_gas, _code, _origin))
 	{
-		out = vm->go(evm, _onOp);
-		io_sub += evm.sub;
-		io_gas = vm->gas();
-
-		if (out.size() * c_createDataGas <= io_gas)
-			io_gas -= out.size() * c_createDataGas;
-		else
-			out.reset();
-
-		// Set code.
-		if (!evm.sub.suicides.count(newAddress))
-			m_cache[newAddress].setCode(out);
+		e.go(_onOp);
+		io_sub += e.ext().sub;
 	}
-	catch (VMException const& _e)
-	{
-		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		evm.revert();
-		io_gas = 0;
-	}
-	catch (Exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
-		throw;
-	}
-	catch (std::exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
-		throw;
-	}
-
-	return newAddress;
+	io_gas = e.endGas();
+	return e.newAddress();
 }
 
 State State::fromPending(unsigned _i) const
