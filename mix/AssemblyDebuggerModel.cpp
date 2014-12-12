@@ -17,6 +17,7 @@
  * used as a model to debug contract assembly code.
  */
 
+#include <QApplication>
 #include "libethereum/Executive.h"
 #include "libethereum/Transaction.h"
 #include "libethereum/ExtVM.h"
@@ -90,7 +91,7 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u2
 	{
 		DebuggingContent r;
 		r.contentAvailable = false;
-		r.message = "compile failed";
+		r.message = QApplication::tr("compilation failed");
 		return r;
 	}
 
