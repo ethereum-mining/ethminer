@@ -92,6 +92,7 @@ macro(eth_install_executable EXECUTABLE)
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 		# copy all dlls to executable directory
+		# TODO improve that by copying only required dlls
 		file (GLOB DLLS ${ETH_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
 
 		foreach(DLL ${DLLS})
