@@ -26,10 +26,6 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 
-if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
-endif()
-
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
