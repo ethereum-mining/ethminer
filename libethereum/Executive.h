@@ -25,26 +25,27 @@
 #include <libdevcore/Log.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/CommonEth.h>
-#include <libevm/ExtVMFace.h>
+#include <libevm/VMFace.h>
 #include "Transaction.h"
-#include "Manifest.h"
+#include "ExtVM.h"
 
 namespace dev
 {
 namespace eth
 {
 
-class VM;
-class ExtVM;
 class State;
+struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
 
 class Executive
 {
 public:
-	Executive(State& _s, Manifest* o_ms = nullptr): m_s(_s), m_ms(o_ms) {}
-	~Executive();
+	Executive(State& _s): m_s(_s) {}
+	~Executive() = default;
+	Executive(Executive const&) = delete;
+	void operator=(Executive) = delete;
 
 	bool setup(bytesConstRef _transaction);
 	bool create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
@@ -63,15 +64,14 @@ public:
 	h160 newAddress() const { return m_newAddress; }
 	LogEntries const& logs() const { return m_logs; }
 
-	VM const& vm() const { return *m_vm; }
+	VMFace const& vm() const { return *m_vm; }
 	State const& state() const { return m_s; }
 	ExtVM const& ext() const { return *m_ext; }
 
 private:
 	State& m_s;
-	ExtVM* m_ext = nullptr;	// TODO: make safe.
-	VM* m_vm = nullptr;
-	Manifest* m_ms = nullptr;
+	std::unique_ptr<ExtVM> m_ext;
+	std::unique_ptr<VMFace> m_vm;
 	bytesConstRef m_out;
 	Address m_newAddress;
 

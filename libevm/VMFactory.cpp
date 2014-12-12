@@ -14,27 +14,29 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file BlockDetails.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
-#include "BlockDetails.h"
+#include "VMFactory.h"
+#include "VM.h"
 
-#include <libdevcore/Common.h>
-using namespace std;
-using namespace dev;
-using namespace dev::eth;
-
-BlockDetails::BlockDetails(RLP const& _r)
+namespace dev
 {
-	number = _r[0].toInt<unsigned>();
-	totalDifficulty = _r[1].toInt<u256>();
-	parent = _r[2].toHash<h256>();
-	children = _r[3].toVector<h256>();
+namespace eth
+{
+namespace
+{
+	VMKind g_kind = VMKind::Interpreter;
 }
 
-bytes BlockDetails::rlp() const
+void VMFactory::setKind(VMKind _kind)
 {
-	return rlpList(number, totalDifficulty, parent, children);
+	g_kind = _kind;
+}
+
+std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
+{
+	asserts(g_kind == VMKind::Interpreter && "Only interpreter supported for now");
+	return std::unique_ptr<VMFace>(new VM(_gas));
+}
+
+}
 }

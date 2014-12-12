@@ -190,18 +190,14 @@
     <ClCompile Include="..\libdevcrypto\CryptoPP.cpp">
       <Filter>libdevcrypto</Filter>
     </ClCompile>
-    <ClCompile Include="..\libdevcrypto\EC.cpp">
-      <Filter>libdevcrypto</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libdevcrypto\SHA3MAC.cpp">
-      <Filter>libdevcrypto</Filter>
-    </ClCompile>
     <ClCompile Include="..\libethereum\Account.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
     <ClCompile Include="..\libevmcore\Assembly.cpp">
       <Filter>libevmcore</Filter>
     </ClCompile>
+    <ClCompile Include="..\libdevcrypto\AES.cpp" />
+    <ClCompile Include="..\libdevcrypto\ECDHE.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -437,6 +433,9 @@
     </ClInclude>
     <ClInclude Include="..\libevmcore\Assembly.h">
       <Filter>libevmcore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libevm\VMFace.h">
+      <Filter>libevm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -33,6 +33,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include <libqethereum/QEthereum.h>
 #include <libwebthree/WebThree.h>
 

@@ -368,6 +368,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\libevm\VMFace.h" />
     <ClInclude Include="..\liblll\All.h" />
     <ClInclude Include="..\liblll\CodeFragment.h" />
     <ClInclude Include="..\liblll\Compiler.h" />
