@@ -42,7 +42,7 @@ using namespace dev::eth;
 
 static const u256 c_blockReward = 1500 * finney;
 
-void ecrecoverCode(bytesConstRef _in, bytesRef _out)
+bytes ecrecoverCode(bytesConstRef _in)
 {
 	struct inType
 	{
@@ -54,38 +54,35 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
-	memset(_out.data(), 0, _out.size());
+	h256 ret;
+
 	if ((u256)in.v > 28)
-		return;
+		return ret.asBytes();
 	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
 	if (!sig.isValid())
-		return;
+		return ret.asBytes();
 
-	h256 ret;
 	byte pubkey[65];
 	int pubkeylen = 65;
 	secp256k1_start();
 	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
 		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
 
-	memset(ret.data(), 0, 12);
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+	return ret.asBytes();
 }
 
-void sha256Code(bytesConstRef _in, bytesRef _out)
+bytes sha256Code(bytesConstRef _in)
 {
 	h256 ret;
 	sha256(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
+	return ret.asBytes();
 }
 
-void ripemd160Code(bytesConstRef _in, bytesRef _out)
+bytes ripemd160Code(bytesConstRef _in)
 {
 	h256 ret;
 	ripemd160(_in, bytesRef(ret.data(), 32));
-	memset(_out.data(), 0, std::min<int>(12, _out.size()));
-	if (_out.size() > 12)
-		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
+	return ret.asBytes();
 }
 
 const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
@@ -1176,24 +1173,19 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256& io_gas, bytesRef _out, Address _originAddress, SubState& io_sub, OnOpFunc const& _onOp, unsigned _level)
 {
-#if 0
+#if 1
 	// TODO: TEST TEST TEST!!!
 	Executive e(*this, _level);
-
 	if (!e.call(_receiveAddress, _codeAddress, _senderAddress, _value, _gasPrice, _data, io_gas, _originAddress))
 	{
 		e.go(_onOp);
 		io_sub += e.ext().sub;
 	}
-
-	e.out().copyTo(_out);
 	io_gas = e.endGas();
+	e.out().copyTo(_out);
 
 	return !e.excepted();
 #else
-	if (!_originAddress)
-		_originAddress = _senderAddress;
-
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	addBalance(_receiveAddress, _value);
 

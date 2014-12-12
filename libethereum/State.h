@@ -55,7 +55,7 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 struct PrecompiledAddress
 {
 	std::function<bigint(bytesConstRef)> gas;
-	std::function<void(bytesConstRef, bytesRef)> exec;
+	std::function<bytes(bytesConstRef)> exec;
 };
 
 /**
