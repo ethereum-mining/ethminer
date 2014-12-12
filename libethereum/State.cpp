@@ -1187,10 +1187,9 @@ bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderA
 	}
 
 	e.out().copyTo(_out);
-	io_gas = e.gas();
+	io_gas = e.endGas();
 
 	return !e.excepted();
-
 #else
 	if (!_originAddress)
 		_originAddress = _senderAddress;

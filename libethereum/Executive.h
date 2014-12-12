@@ -59,7 +59,7 @@ public:
 
 	Transaction const& t() const { return m_t; }
 
-	u256 gas() const;
+	u256 endGas() const { return m_endGas; }
 
 	bytesConstRef out() const { return m_out; }
 	h160 newAddress() const { return m_newAddress; }
