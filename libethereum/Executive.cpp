@@ -98,7 +98,7 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
-	auto it = !(_receiveAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_receiveAddress) : State::precompiled().end();
+	auto it = !(_codeAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_codeAddress) : State::precompiled().end();
 	if (it != State::precompiled().end())
 	{
 		bigint g = it->second.gas(_data);
@@ -110,13 +110,14 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 		else
 		{
 			m_endGas = (u256)(_gas - g);
-			it->second.exec(_data, bytesRef());
+			m_precompiledOut = it->second.exec(_data);
+			m_out = &m_precompiledOut;
 		}
 	}
 	else if (m_s.addressHasCode(_codeAddress))
 	{
 		m_vm = VMFactory::create(_gas);
-		bytes const& c = m_s.code(_receiveAddress);
+		bytes const& c = m_s.code(_codeAddress);
 		m_ext = make_shared<ExtVM>(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
 	}
 	else
@@ -166,7 +167,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 	if (m_vm)
 	{
 		boost::timer t;
-		auto sgas = m_vm->gas();
+//		auto sgas = m_vm->gas();
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
@@ -203,7 +204,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
-		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
+//		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
 	}
 	return true;
 }

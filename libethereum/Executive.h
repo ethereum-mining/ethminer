@@ -74,7 +74,8 @@ private:
 	State& m_s;
 	std::shared_ptr<ExtVM> m_ext;
 	std::unique_ptr<VMFace> m_vm;
-	bytesConstRef m_out;
+	bytes m_precompiledOut;				///< Used for the output when there is no VM for a contract (i.e. precompiled).
+	bytesConstRef m_out;				///< Holds the copyable output.
 	Address m_newAddress;
 
 	Transaction m_t;
