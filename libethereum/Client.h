@@ -36,7 +36,6 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "PastMessage.h"
 #include "LogFilter.h"
 #include "Miner.h"
 #include "Interface.h"
