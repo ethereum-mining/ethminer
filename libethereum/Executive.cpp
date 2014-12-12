@@ -105,11 +105,13 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 		if (_gas < g)
 		{
 			m_endGas = 0;
-			return false;
+			m_excepted = true;
 		}
-		m_endGas = (u256)(_gas - g);
-		it->second.exec(_data, bytesRef());
-		return true;
+		else
+		{
+			m_endGas = (u256)(_gas - g);
+			it->second.exec(_data, bytesRef());
+		}
 	}
 	else if (m_s.addressHasCode(_codeAddress))
 	{
@@ -169,8 +171,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
 			m_endGas = m_vm->gas();
-			m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
-			m_logs = m_ext->sub.logs;
 
 			if (m_isCreation)
 			{
@@ -188,11 +188,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
 			m_endGas = 0;//m_vm->gas();
+			m_excepted = true;
 
 			// Write state out only in the case of a non-excepted transaction.
 			m_ext->revert();
-
-			m_excepted = true;
 		}
 		catch (Exception const& _e)
 		{
@@ -209,16 +208,19 @@ bool Executive::go(OnOpFunc const& _onOp)
 	return true;
 }
 
-u256 Executive::gas() const
+/*u256 Executive::gas() const
 {
 	return m_vm ? m_vm->gas() : m_endGas;
-}
+}*/
 
 void Executive::finalize(OnOpFunc const&)
 {
 	if (m_t.isCreation() && !m_ext->sub.suicides.count(m_newAddress))
 		// creation - put code in place.
 		m_s.m_cache[m_newAddress].setCode(m_out);
+
+	// SSTORE refunds.
+	m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
@@ -231,4 +233,7 @@ void Executive::finalize(OnOpFunc const&)
 	if (m_ext)
 		for (auto a: m_ext->sub.suicides)
 			m_s.m_cache[a].kill();
+
+	// Logs
+	m_logs = m_ext->sub.logs;
 }

@@ -55,7 +55,7 @@ public:
 	virtual bytes const& codeAt(Address _a) override final { return m_s.code(_a); }
 
 	/// Create a new contract.
-	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = OnOpFunc()) override final
+	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final
 	{
 		// Increment associated nonce for sender.
 		m_s.noteSending(myAddress);
