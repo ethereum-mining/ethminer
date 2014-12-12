@@ -1,4 +1,4 @@
 [submodule "evmjit"]
 	path = evmjit
-	url = ../evmjit
+	url = https://github.com/ethereum/evmjit
 	branch = develop
