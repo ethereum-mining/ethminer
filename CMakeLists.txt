@@ -112,14 +112,6 @@ include(EthExecutableHelper)
 
 createBuildInfo()
 
-# TODO discuss that during PR. are we still using that?
-
-if(NOT APPLE)
-	if(PYTHON_LS)
-		add_subdirectory(libpyserpent)
-	endif()
-endif()
-
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
@@ -158,11 +150,6 @@ if (NOT LANGUAGES)
 		add_subdirectory(neth)
 	endif ()
 
-	# TODO discuss that during PR. are we still using that?
-	#if(QTQML)
-		#add_definitions(-DETH_QTQML)
-	#endif()
-
 	if (NOT HEADLESS)
 		
 		add_subdirectory(libjsqrc)
@@ -170,12 +157,6 @@ if (NOT LANGUAGES)
 		add_subdirectory(alethzero)
 		add_subdirectory(third)
 		add_subdirectory(mix)
-	
-		# TODO discuss that during PR. are we still using that?
-		#if(QTQML)
-			#add_subdirectory(iethxi)
-			#add_subdirectory(walleth)	// resurect once we want to submit ourselves to QML.
-		#endif()
 		
 	endif()
 endif()
