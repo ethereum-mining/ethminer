@@ -154,7 +154,7 @@ if (NOT LANGUAGES)
 	endif ()
 
 	# TODO check msvc
-	if(NOT ("${TARGET_PLATFORM}" STREQUAL "w64"))
+	if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 		add_subdirectory(neth)
 	endif ()
 
@@ -164,11 +164,6 @@ if (NOT LANGUAGES)
 	#endif()
 
 	if (NOT HEADLESS)
-
-		# TODO move that somewhere else!
-		if ("${TARGET_PLATFORM}" STREQUAL "w64")
-			cmake_policy(SET CMP0020 NEW)
-		endif ()
 		
 		add_subdirectory(libjsqrc)
 		add_subdirectory(libqethereum)
