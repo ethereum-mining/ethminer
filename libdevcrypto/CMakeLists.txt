@@ -9,6 +9,7 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CRYPTOPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIRS})
 include_directories(..) 
@@ -26,7 +27,6 @@ target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARY_RELEASE})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} secp256k1)
 
 install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
