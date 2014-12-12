@@ -21,6 +21,7 @@
 
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
+#include <libevm/VMFactory.h>
 #include <libevm/VM.h>
 #include "Interface.h"
 #include "Executive.h"
@@ -31,10 +32,6 @@ using namespace dev;
 using namespace dev::eth;
 
 #define ETH_VMTRACE 1
-
-Executive::~Executive()
-{
-}
 
 u256 Executive::gasUsed() const
 {
@@ -114,9 +111,9 @@ bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _valu
 	}
 	else if (m_s.addressHasCode(_receiveAddress))
 	{
-		m_vm = make_shared<VM>(_gas);
+		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_receiveAddress);
-		m_ext = make_shared<ExtVM>(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c);
+		m_ext.reset(new ExtVM(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c));
 	}
 	else
 		m_endGas = _gas;
@@ -133,8 +130,8 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = make_shared<VM>(_gas);
-	m_ext = make_shared<ExtVM>(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init);
+	m_vm = VMFactory::create(_gas);
+	m_ext.reset(new ExtVM(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init));
 	return _init.empty();
 }
 
