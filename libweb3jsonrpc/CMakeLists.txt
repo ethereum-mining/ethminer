@@ -27,10 +27,6 @@ target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 
-if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
-endif()
-
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} solidity)

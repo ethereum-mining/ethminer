@@ -14,10 +14,6 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 
-if (MINIUPNPC_FOUND)
-target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
-endif()
-
 if (JSONRPC)
 	target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()

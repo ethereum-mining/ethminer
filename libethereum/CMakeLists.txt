@@ -27,10 +27,6 @@ endif()
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
 
-if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
-endif()
-
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} whisper)

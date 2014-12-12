@@ -12,10 +12,6 @@ add_executable(${EXECUTABLE} ${SRC_LIST})
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 
-if (MINIUPNPC_FOUND)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
-endif()
-
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} p2p)
 target_link_libraries(${EXECUTABLE} gmp)
