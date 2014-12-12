@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include <QApplication>
 #include <QObject>
 #include <libevm/VM.h>
 #include <libsolidity/Scanner.h>
@@ -55,7 +56,7 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 	catch (...)
 	{
 		res.success = false;
-		res.comment = "Uncaught exception.";
+		res.comment = QApplication::tr("Uncaught exception.");
 		res.hexCode = "";
 	}
 	return res;

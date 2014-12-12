@@ -43,7 +43,7 @@ QString ConstantCompilationCtrl::contentUrl() const
 
 QString ConstantCompilationCtrl::title() const
 {
-	return "compiler";
+	return QApplication::tr("compiler");
 }
 
 void ConstantCompilationCtrl::start() const
@@ -80,13 +80,13 @@ void ConstantCompilationCtrl::writeOutPut(CompilerResult const& _res)
 		status->setProperty("text", "succeeded");
 		status->setProperty("color", "green");
 		content->setProperty("text", _res.hexCode);
-		qDebug() << QString("compile succeeded " + _res.hexCode);
+		qDebug() << QString(QApplication::tr("compile succeeded") + " " + _res.hexCode);
 	}
 	else
 	{
 		status->setProperty("text", "failure");
 		status->setProperty("color", "red");
 		content->setProperty("text", _res.comment);
-		qDebug() << QString("compile failed " + _res.comment);
+		qDebug() << QString(QApplication::tr("compile failed") + " " + _res.comment);
 	}
 }

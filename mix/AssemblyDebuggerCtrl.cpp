@@ -47,7 +47,7 @@ QString AssemblyDebuggerCtrl::contentUrl() const
 
 QString AssemblyDebuggerCtrl::title() const
 {
-	return "debugger";
+	return QApplication::tr("debugger");
 }
 
 void AssemblyDebuggerCtrl::start() const
@@ -63,7 +63,6 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 		QString code = m_doc->toPlainText();
 		QtConcurrent::run([this, code]()
 		{
-
 			if (!m_modelDebugger->compile(m_doc->toPlainText()))
 			{
 				emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
@@ -101,5 +100,5 @@ void AssemblyDebuggerCtrl::updateGUI(bool success, DebuggingStatusResult reason,
 		this->addContentOn(this);
 	}
 	else
-		m_ctx->displayMessageDialog("debugger","compilation failed");
+		m_ctx->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("compilation failed"));
 }
