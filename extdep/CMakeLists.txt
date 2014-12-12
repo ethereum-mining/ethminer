@@ -19,7 +19,7 @@ if (ETH_COMPILE)
 	include(compile/curl.cmake)
 	include(compile/json-rpc-cpp.cmake)
 
-	# qt at its dependencies 
+	# qt and its dependencies 
 	include(compile/icu.cmake)
 	include(compile/jom.cmake)
 	include(compile/qt.cmake)
