@@ -28,7 +28,6 @@
 
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
-#include "Manifest.h"
 #include "TransactionReceipt.h"
 namespace ldb = leveldb;
 
