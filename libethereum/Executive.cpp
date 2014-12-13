@@ -188,7 +188,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
+			clog(StateChat) << "Safe VM Exception";
 			m_endGas = 0;//m_vm->gas();
 			m_excepted = true;
 
