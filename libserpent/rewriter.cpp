@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <string>
 #include "util.h"
 #include "lllparser.h"
 #include "bignum.h"

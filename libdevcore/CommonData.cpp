@@ -23,7 +23,8 @@
 
 #include <random>
 #include "Exceptions.h"
-#include <libdevcore/Log.h>
+#include "Log.h"
+
 using namespace std;
 using namespace dev;
 
@@ -88,13 +89,25 @@ bytes dev::fromHex(std::string const& _s)
 		{
 			ret.push_back(fromHex(_s[s++]));
 		}
-		catch (...){ ret.push_back(0); cwarn << boost::current_exception_diagnostic_information(); }
+		catch (...)
+		{ 
+			ret.push_back(0);
+			// msvc does not support it
+#ifndef BOOST_NO_EXCEPTIONS
+			cwarn << boost::current_exception_diagnostic_information(); 
+#endif
+		}
 	for (unsigned i = s; i < _s.size(); i += 2)
 		try
 		{
 			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 		}
-		catch (...){ ret.push_back(0); cwarn << boost::current_exception_diagnostic_information(); }
+		catch (...){
+			ret.push_back(0);
+#ifndef BOOST_NO_EXCEPTIONS
+			cwarn << boost::current_exception_diagnostic_information();
+#endif
+		}
 	return ret;
 }
 
