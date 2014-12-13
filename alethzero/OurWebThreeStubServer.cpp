@@ -24,7 +24,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	WebThreeStubServer(_conn, _web3, _accounts)
 {}
 
