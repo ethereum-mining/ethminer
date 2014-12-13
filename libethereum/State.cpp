@@ -63,7 +63,7 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 	return OverlayDB(db);
 }
 
-State::State(Address _coinbaseAddress, OverlayDB const& _db):
+State::State(Address _coinbaseAddress, OverlayDB const& _db, BaseState _bs):
 	m_db(_db),
 	m_state(&m_db),
 	m_ourAddress(_coinbaseAddress),
@@ -74,12 +74,19 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 
 	paranoia("beginning of normal construction.", true);
 
-	dev::eth::commit(genesisState(), m_db, m_state);
-	m_db.commit();
+	if (_bs == BaseState::Genesis)
+	{
+		dev::eth::commit(genesisState(), m_db, m_state);
+		m_db.commit();
 
-	paranoia("after DB commit of normal construction.", true);
+		paranoia("after DB commit of normal construction.", true);
+		m_previousBlock = BlockChain::genesis();
+	}
+	else
+	{
+		m_previousBlock.setEmpty();
+	}
 
-	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
@@ -857,6 +864,23 @@ void State::subBalance(Address _id, bigint _amount)
 		it->second.addBalance(-_amount);
 }
 
+Address State::newContract(u256 _balance, bytes const& _code)
+{
+	auto h = sha3(_code);
+	m_db.insert(h, &_code);
+	while (true)
+	{
+		Address ret = Address::random();
+		ensureCached(ret, false, false);
+		auto it = m_cache.find(ret);
+		if (it == m_cache.end())
+		{
+			m_cache[ret] = Account(0, _balance, EmptyTrie, h);
+			return ret;
+		}
+	}
+}
+
 u256 State::transactionsFrom(Address _id) const
 {
 	ensureCached(_id, false, false);
@@ -993,8 +1017,11 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
 #endif
-
+#if ETH_TRACE
 	e.go(e.simpleTrace());
+#else
+	e.go();
+#endif
 	e.finalize();
 
 #if ETH_PARANOIA
