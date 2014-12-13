@@ -33,6 +33,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include <libqethereum/QEthereum.h>
 #include <libwebthree/WebThree.h>
 
@@ -43,7 +44,6 @@ class Main;
 namespace dev { namespace eth {
 class Client;
 class State;
-class MessageFilter;
 }}
 
 class QQuickView;
@@ -85,6 +85,7 @@ public slots:
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+	QString contents(QString _file);
 
 	void onKeysChanged();
 
@@ -154,6 +155,7 @@ private slots:
 	void on_newIdentity_triggered();
 
 	void refreshWhisper();
+	void refreshBlockChain();
 	void addNewId(QString _ids);
 
 signals:
@@ -187,7 +189,7 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
 	void uninstallWatch(unsigned _w);
 
@@ -214,7 +216,6 @@ private:
 	void refreshPending();
 	void refreshAccounts();
 	void refreshDestination();
-	void refreshBlockChain();
 	void refreshBlockCount();
 	void refreshBalances();
 
@@ -255,7 +256,7 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	QWebThreeConnector* m_qwebConnector;
+	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 };

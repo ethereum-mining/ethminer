@@ -20,14 +20,14 @@
  */
 
 #include "VM.h"
+#include <libethereum/ExtVM.h>
 
-using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas)
+void VM::reset(u256 _gas) noexcept
 {
-	m_gas = _gas;
+	VMFace::reset(_gas);
 	m_curPC = 0;
 	m_jumpDests.clear();
 }

@@ -47,9 +47,8 @@ inline std::string toJS(dev::bytes const& _n)
 }
 
 bytes jsToBytes(std::string const& _s);
-std::string jsPadded(std::string const& _s, unsigned _l, unsigned _r);
-std::string jsPadded(std::string const& _s, unsigned _l);
-std::string jsUnpadded(std::string _s);
+bytes padded(bytes _b, unsigned _l);
+bytes unpadded(bytes _s);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 {
@@ -61,7 +60,7 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 		return (typename FixedHash<N>::Arith)(_s);
 	else
 		// Binary
-		return FixedHash<N>(asBytes(jsPadded(_s, N)));
+		return FixedHash<N>();	// FAIL
 }
 
 inline std::string jsToFixed(double _s)
@@ -79,7 +78,7 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 		return boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>(_s);
 	else
 		// Binary
-		return fromBigEndian<boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>>(asBytes(jsPadded(_s, N)));
+		return 0;			// FAIL
 }
 
 inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
@@ -89,7 +88,7 @@ inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
 inline std::string jsToBinary(std::string const& _s)
 {
-	return jsUnpadded(dev::toString(jsToBytes(_s)));
+	return dev::toString(unpadded(jsToBytes(_s)));
 }
 
 inline std::string jsToDecimal(std::string const& _s)

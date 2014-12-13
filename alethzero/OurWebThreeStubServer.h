@@ -29,7 +29,7 @@ class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 	Q_OBJECT
 
 public:
-	OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 
 	virtual std::string shh_newIdentity() override;
 

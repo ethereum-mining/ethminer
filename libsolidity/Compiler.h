@@ -27,35 +27,39 @@
 namespace dev {
 namespace solidity {
 
-class Compiler: private ASTVisitor
+class Compiler: private ASTConstVisitor
 {
 public:
-	Compiler(): m_returnTag(m_context.newTag()) {}
+	explicit Compiler(bool _optimize = false): m_optimize(_optimize), m_returnTag(m_context.newTag()) {}
 
-	void compileContract(ContractDefinition& _contract);
-	bytes getAssembledBytecode(bool _optimize = false) { return m_context.getAssembledBytecode(_optimize); }
+	void compileContract(ContractDefinition const& _contract, std::vector<MagicVariableDeclaration const*> const& _magicGlobals);
+	bytes getAssembledBytecode() { return m_context.getAssembledBytecode(m_optimize); }
 	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
 
-	/// Compile the given contract and return the EVM bytecode.
-	static bytes compile(ContractDefinition& _contract, bool _optimize);
-
 private:
-	/// Creates a new compiler context / assembly and packs the current code into the data part.
-	void packIntoContractCreator();
-	void appendFunctionSelector(std::vector<ASTPointer<FunctionDefinition> > const& _functions);
-	void appendCalldataUnpacker(FunctionDefinition const& _function);
+	/// Creates a new compiler context / assembly, packs the current code into the data part and
+	/// adds the constructor code.
+	void packIntoContractCreator(ContractDefinition const& _contract);
+	void appendFunctionSelector(ContractDefinition const& _contract);
+	/// Creates code that unpacks the arguments for the given function, from memory if
+	/// @a _fromMemory is true, otherwise from call data. @returns the size of the data in bytes.
+	unsigned appendCalldataUnpacker(FunctionDefinition const& _function, bool _fromMemory = false);
 	void appendReturnValuePacker(FunctionDefinition const& _function);
 
-	virtual bool visit(FunctionDefinition& _function) override;
-	virtual bool visit(IfStatement& _ifStatement) override;
-	virtual bool visit(WhileStatement& _whileStatement) override;
-	virtual bool visit(Continue& _continue) override;
-	virtual bool visit(Break& _break) override;
-	virtual bool visit(Return& _return) override;
-	virtual bool visit(VariableDefinition& _variableDefinition) override;
-	virtual bool visit(ExpressionStatement& _expressionStatement) override;
+	void registerStateVariables(ContractDefinition const& _contract);
 
+	virtual bool visit(FunctionDefinition const& _function) override;
+	virtual bool visit(IfStatement const& _ifStatement) override;
+	virtual bool visit(WhileStatement const& _whileStatement) override;
+	virtual bool visit(Continue const& _continue) override;
+	virtual bool visit(Break const& _break) override;
+	virtual bool visit(Return const& _return) override;
+	virtual bool visit(VariableDefinition const& _variableDefinition) override;
+	virtual bool visit(ExpressionStatement const& _expressionStatement) override;
 
+	void compileExpression(Expression const& _expression);
+
+	bool const m_optimize;
 	CompilerContext m_context;
 	std::vector<eth::AssemblyItem> m_breakTags; ///< tag to jump to for a "break" statement
 	std::vector<eth::AssemblyItem> m_continueTags; ///< tag to jump to for a "continue" statement

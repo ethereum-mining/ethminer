@@ -75,7 +75,11 @@ Session::~Session()
 	try
 	{
 		if (m_socket.is_open())
+		{
+			boost::system::error_code ec;
+			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_socket.close();
+		}
 	}
 	catch (...){}
 }
@@ -344,7 +348,7 @@ bool Session::interpret(RLP const& _r)
 //				goto CONTINUE;	// Wierd port.
 
 			// Avoid our random other addresses that they might end up giving us.
-			for (auto i: m_server->m_addresses)
+			for (auto i: m_server->m_peerAddresses)
 				if (ep.address() == i && ep.port() == m_server->listenPort())
 					goto CONTINUE;
 
@@ -479,6 +483,8 @@ void Session::drop(DisconnectReason _reason)
 		try
 		{
 			clogS(NetConnect) << "Closing " << m_socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
+			boost::system::error_code ec;
+			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_socket.close();
 		}
 		catch (...) {}

@@ -21,17 +21,20 @@
 
 #include "State.h"
 
-#include <boost/filesystem.hpp>
-#include <time.h>
+#include <ctime>
 #include <random>
+#include <boost/filesystem.hpp>
+#include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
-#include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
 #include "ExtVM.h"
+#include "Executive.h"
+#include "CachedAddressState.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -39,53 +42,6 @@ using namespace dev::eth;
 #define ctrace clog(StateTrace)
 
 static const u256 c_blockReward = 1500 * finney;
-
-void ecrecoverCode(bytesConstRef _in, bytesRef _out)
-{
-	struct inType
-	{
-		h256 hash;
-		h256 v;
-		h256 r;
-		h256 s;
-	} in;
-
-	h256 ret;
-
-	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
-
-	byte pubkey[65];
-	int pubkeylen = 65;
-	secp256k1_start();
-	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
-		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
-
-	memset(ret.data(), 0, 12);
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void sha256Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	sha256(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void ripemd160Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	ripemd160(_in, bytesRef(ret.data(), 32));
-	memset(_out.data(), 0, std::min<int>(12, _out.size()));
-	if (_out.size() > 12)
-		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
-}
-
-const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
-{
-	{ 1, { 500, ecrecoverCode }},
-	{ 2, { 100, sha256Code }},
-	{ 3, { 100, ripemd160Code }}
-};
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
@@ -113,8 +69,6 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
 	m_state.init();
 
@@ -138,8 +92,6 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	secp256k1_start();
-
 	// TODO THINK: is this necessary?
 	m_state.init();
 
@@ -222,89 +174,6 @@ Address State::nextActiveAddress(Address _a) const
 	return (*it).first;
 }
 
-// TODO: repot
-struct CachedAddressState
-{
-	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
-
-	bool exists() const
-	{
-		return (r && (!s || s->isAlive())) || (s && s->isAlive());
-	}
-
-	u256 balance() const
-	{
-		return r ? s ? s->balance() : r[1].toInt<u256>() : 0;
-	}
-
-	u256 nonce() const
-	{
-		return r ? s ? s->nonce() : r[0].toInt<u256>() : 0;
-	}
-
-	bytes code() const
-	{
-		if (s && s->codeCacheValid())
-			return s->code();
-		h256 h = r ? s ? s->codeHash() : r[3].toHash<h256>() : EmptySHA3;
-		return h == EmptySHA3 ? bytes() : asBytes(o->lookup(h));
-	}
-
-	std::map<u256, u256> storage() const
-	{
-		std::map<u256, u256> ret;
-		if (r)
-		{
-			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-			for (auto const& j: memdb)
-				ret[j.first] = RLP(j.second).toInt<u256>();
-		}
-		if (s)
-			for (auto const& j: s->storageOverlay())
-				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
-					ret[j.first] = j.second;
-		return ret;
-	}
-
-	AccountDiff diff(CachedAddressState const& _c)
-	{
-		AccountDiff ret;
-		ret.exist = Diff<bool>(exists(), _c.exists());
-		ret.balance = Diff<u256>(balance(), _c.balance());
-		ret.nonce = Diff<u256>(nonce(), _c.nonce());
-		ret.code = Diff<bytes>(code(), _c.code());
-		auto st = storage();
-		auto cst = _c.storage();
-		auto it = st.begin();
-		auto cit = cst.begin();
-		while (it != st.end() || cit != cst.end())
-		{
-			if (it != st.end() && cit != cst.end() && it->first == cit->first && (it->second || cit->second) && (it->second != cit->second))
-				ret.storage[it->first] = Diff<u256>(it->second, cit->second);
-			else if (it != st.end() && (cit == cst.end() || it->first < cit->first) && it->second)
-				ret.storage[it->first] = Diff<u256>(it->second, 0);
-			else if (cit != cst.end() && (it == st.end() || it->first > cit->first) && cit->second)
-				ret.storage[cit->first] = Diff<u256>(0, cit->second);
-			if (it == st.end())
-				++cit;
-			else if (cit == cst.end())
-				++it;
-			else if (it->first < cit->first)
-				++it;
-			else if (it->first > cit->first)
-				++cit;
-			else
-				++it, ++cit;
-		}
-		return ret;
-	}
-
-	std::string rS;
-	RLP r;
-	Account const* s;
-	OverlayDB const* o;
-};
-
 StateDiff State::diff(State const& _c) const
 {
 	StateDiff ret;
@@ -325,8 +194,8 @@ StateDiff State::diff(State const& _c) const
 	for (auto i: _c.m_cache)
 		ads.insert(i.first);
 
-	cnote << *this;
-	cnote << _c;
+//	cnote << *this;
+//	cnote << _c;
 
 	for (auto i: ads)
 	{
@@ -498,7 +367,6 @@ void State::resetCurrent()
 	m_currentBlock.timestamp = time(0);
 	m_currentBlock.transactionsRoot = h256();
 	m_currentBlock.sha3Uncles = h256();
-	m_currentBlock.minGasPrice = 10 * szabo;
 	m_currentBlock.populateFromParent(m_previousBlock);
 
 	// Update timestamp according to clock.
@@ -537,10 +405,10 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
+h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h256s ret;
+	h512s ret;
 	auto ts = _tq.transactions();
 
 	for (int goodTxs = 1; goodTxs;)
@@ -553,10 +421,12 @@ h256s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				try
 				{
 					uncommitToMine();
+//					boost::timer t;
 					execute(i.second);
-					ret.push_back(m_receipts.back().changes().bloom());
+					ret.push_back(m_receipts.back().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
+//					cnote << "TX took:" << t.elapsed() * 1000;
 				}
 				catch (InvalidNonce const& in)
 				{
@@ -662,6 +532,12 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
+	if (m_currentBlock.logBloom != logBloom())
+	{
+		cwarn << "Bad log bloom!";
+		BOOST_THROW_EXCEPTION(InvalidLogBloom());
+	}
+
 	// Initialise total difficulty calculation.
 	u256 tdIncrease = m_currentBlock.difficulty;
 
@@ -754,7 +630,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	// Compile block:
 	RLPStream block;
 	block.appendList(3);
-	m_currentBlock.streamRLP(block, true);
+	m_currentBlock.streamRLP(block, WithNonce);
 	block.appendRaw(m_currentTxs);
 	block.appendRaw(m_currentUncles);
 
@@ -781,19 +657,9 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	return false;
 }
 
-h256 State::oldBloom() const
-{
-	h256 ret = m_currentBlock.coinbaseAddress.bloom();
-	for (auto const& i: m_receipts)
-		ret |= i.changes().bloom();
-	return ret;
-}
-
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
-	auto sa = sha3(m_currentBlock.coinbaseAddress.ref());
-	ret.shiftBloom<3>(sa);
 	for (TransactionReceipt const& i: m_receipts)
 		ret |= i.bloom();
 	return ret;
@@ -805,7 +671,7 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
+//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
 #ifdef ETH_PARANOIA
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
@@ -831,7 +697,7 @@ void State::commitToMine(BlockChain const& _bc)
 				if (!knownUncles.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
-					ubi.streamRLP(unclesData, true);
+					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
@@ -880,7 +746,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
+//	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
 //	cnote << m_state;
 //	cnote << *this;
 
@@ -895,13 +761,13 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHashWithoutNonce(), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
 	{
-		cnote << "Completed" << m_currentBlock.headerHashWithoutNonce().abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHashWithoutNonce(), m_currentBlock.nonce, m_currentBlock.difficulty);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
 	}
 
 	return ret;
@@ -915,7 +781,7 @@ void State::completeMine()
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
-	m_currentBlock.streamRLP(ret, true);
+	m_currentBlock.streamRLP(ret, WithNonce);
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
@@ -1093,7 +959,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 					return false;
 			}
 		}
-		catch (InvalidTrie)
+		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
@@ -1118,9 +984,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Manifest ms;
-
-	Executive e(*this, &ms);
+	Executive e(*this, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1170,152 +1034,9 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 
 	// Add to the user-originated transactions that we've executed.
 	m_transactions.push_back(e.t());
-	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs(), ms));
+	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
-}
-
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_originAddress)
-		_originAddress = _senderAddress;
-
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	addBalance(_receiveAddress, _value);
-
-	if (o_ms)
-	{
-		o_ms->from = _senderAddress;
-		o_ms->to = _receiveAddress;
-		o_ms->value = _value;
-		o_ms->input = _data.toBytes();
-	}
-
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
-	if (it != c_precompiled.end())
-	{
-		if (*_gas < it->second.gas)
-		{
-			*_gas = 0;
-			return false;
-		}
-
-		*_gas -= it->second.gas;
-		it->second.exec(_data, _out);
-	}
-	else if (addressHasCode(_codeAddress))
-	{
-		VM vm(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), o_ms, _level);
-		bool revert = false;
-
-		try
-		{
-			auto out = vm.go(evm, _onOp);
-			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_sub)
-				*o_sub += evm.sub;
-			if (o_ms)
-				o_ms->output = out.toBytes();
-			*_gas = vm.gas();
-		}
-		catch (VMException const& _e)
-		{
-			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			revert = true;
-			*_gas = 0;
-		}
-		catch (Exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-		}
-		catch (std::exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-		}
-
-		// Write state out only in the case of a non-excepted transaction.
-		if (revert)
-			evm.revert();
-
-		return !revert;
-	}
-	else
-	{
-		// non-contract call
-		if (o_sub)
-			o_sub->logs.push_back(LogEntry(_receiveAddress, {u256((u160)_senderAddress) + 1}, bytes()));
-	}
-	return true;
-}
-
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, Manifest* o_ms, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_origin)
-		_origin = _sender;
-
-	if (o_ms)
-	{
-		o_ms->from = _sender;
-		o_ms->to = Address();
-		o_ms->value = _endowment;
-		o_ms->input = _code.toBytes();
-	}
-
-	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-
-	// Set up new account...
-	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
-
-	// Execute init code.
-	VM vm(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, o_ms, _level);
-	bool revert = false;
-	bytesConstRef out;
-
-	try
-	{
-		out = vm.go(evm, _onOp);
-		if (o_ms)
-			o_ms->output = out.toBytes();
-		if (o_sub)
-			*o_sub += evm.sub;
-		*_gas = vm.gas();
-	}
-	catch (VMException const& _e)
-	{
-		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		revert = true;
-		*_gas = 0;
-	}
-	catch (Exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
-	}
-	catch (std::exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
-	}
-
-	// TODO: CHECK: AUDIT: IS THIS CORRECT?! (esp. given account created prior to revertion init.)
-
-	// Write state out only in the case of a non-out-of-gas transaction.
-	if (revert)
-	{
-		evm.revert();
-		m_cache.erase(newAddress);
-		newAddress = Address();
-	}
-	else
-		// Set code.
-		if (addressInUse(newAddress))
-			m_cache[newAddress].setCode(out);
-
-	return newAddress;
 }
 
 State State::fromPending(unsigned _i) const

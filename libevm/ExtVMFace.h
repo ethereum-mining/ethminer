@@ -36,21 +36,11 @@ namespace dev
 namespace eth
 {
 
-template <class T> inline std::set<T> toSet(std::vector<T> const& _ts)
-{
-	std::set<T> ret;
-	for (auto const& t: _ts)
-		ret.insert(t);
-	return ret;
-}
-
-using LogBloom = h512;
-
 struct LogEntry
 {
 	LogEntry() {}
-	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = (h256Set)_r[1]; data = (bytes)_r[2]; }
-	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(toSet(_ts)), data(std::move(_d)) {}
+	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = _r[1].toVector<h256>(); data = _r[2].toBytes(); }
+	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(_ts), data(std::move(_d)) {}
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(3) << address << topics << data; }
 
@@ -64,7 +54,7 @@ struct LogEntry
 	}
 
 	Address address;
-	h256Set topics;
+	h256s topics;
 	bytes data;
 };
 
@@ -88,11 +78,22 @@ struct SubState
 	{
 		suicides += _s.suicides;
 		refunds += _s.refunds;
+		logs += _s.logs;
 		return *this;
+	}
+
+	void clear()
+	{
+		suicides.clear();
+		logs.clear();
+		refunds = 0;
 	}
 };
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
+class ExtVMFace;
+class VM;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
@@ -133,10 +134,10 @@ public:
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256*, bytesConstRef, OnOpFunc const&) { return h160(); }
+	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
@@ -153,11 +154,11 @@ public:
 	u256 value;					///< Value (in Wei) that was passed to this address.
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
-	bytes code;			///< Current code that is executing.
+	bytes code;					///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
-	unsigned depth;				///< Depth of the present call.
+	unsigned depth = 0;			///< Depth of the present call.
 };
 
 }

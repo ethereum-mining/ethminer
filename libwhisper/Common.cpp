@@ -33,7 +33,7 @@ Topic BuildTopic::toTopic() const
 	Topic ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back((TopicPart)u256(h));
+		ret.push_back(TopicPart(h));
 	return ret;
 }
 
@@ -54,10 +54,16 @@ bool TopicFilter::matches(Envelope const& _e) const
 {
 	for (TopicMask const& t: m_topicMasks)
 	{
-		if (_e.topics().size() == t.size())
-			for (unsigned i = 0; i < t.size(); ++i)
-				if (((t[i].first ^ _e.topics()[i]) & t[i].second) != 0)
-					goto NEXT_TOPICMASK;
+		for (unsigned i = 0; i < t.size(); ++i)
+		{
+			for (auto et: _e.topics())
+				if (((t[i].first ^ et) & t[i].second) == 0)
+					goto NEXT_TOPICPART;
+			// failed to match topicmask against any topics: move on to next mask
+			goto NEXT_TOPICMASK;
+			NEXT_TOPICPART:;
+		}
+		// all topicmasks matched.
 		return true;
 		NEXT_TOPICMASK:;
 	}
@@ -69,7 +75,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	TopicMask ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(make_pair((TopicPart)u256(h), h ? ~(uint32_t)0 : 0));
+		ret.push_back(make_pair(TopicPart(h), ~TopicPart()));
 	return ret;
 }
 

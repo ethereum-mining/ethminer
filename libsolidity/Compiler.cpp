@@ -26,96 +26,107 @@
 #include <libsolidity/AST.h>
 #include <libsolidity/Compiler.h>
 #include <libsolidity/ExpressionCompiler.h>
+#include <libsolidity/CompilerUtils.h>
 
 using namespace std;
 
 namespace dev {
 namespace solidity {
 
-bytes Compiler::compile(ContractDefinition& _contract, bool _optimize)
-{
-	Compiler compiler;
-	compiler.compileContract(_contract);
-	return compiler.m_context.getAssembledBytecode(_optimize);
-}
-
-void Compiler::compileContract(ContractDefinition& _contract)
+void Compiler::compileContract(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals)
 {
 	m_context = CompilerContext(); // clear it just in case
 
-	//@todo constructor
+	for (MagicVariableDeclaration const* variable: _magicGlobals)
+		m_context.addMagicGlobal(*variable);
 
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
-		m_context.addFunction(*function);
-	//@todo sort them?
-	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
-		m_context.addStateVariable(*variable);
+		if (function->getName() != _contract.getName()) // don't add the constructor here
+			m_context.addFunction(*function);
+	registerStateVariables(_contract);
 
-	appendFunctionSelector(_contract.getDefinedFunctions());
+	appendFunctionSelector(_contract);
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
-		function->accept(*this);
+		if (function->getName() != _contract.getName()) // don't add the constructor here
+			function->accept(*this);
 
-	packIntoContractCreator();
+	packIntoContractCreator(_contract);
 }
 
-void Compiler::packIntoContractCreator()
+void Compiler::packIntoContractCreator(ContractDefinition const& _contract)
 {
-	CompilerContext creatorContext;
-	eth::AssemblyItem sub = creatorContext.addSubroutine(m_context.getAssembly());
+	CompilerContext runtimeContext;
+	swap(m_context, runtimeContext);
+
+	registerStateVariables(_contract);
+
+	FunctionDefinition* constructor = nullptr;
+	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
+		if (function->getName() == _contract.getName())
+		{
+			constructor = function.get();
+			break;
+		}
+	if (constructor)
+	{
+		eth::AssemblyItem returnTag = m_context.pushNewTag();
+		m_context.addFunction(*constructor); // note that it cannot be called due to syntactic reasons
+		//@todo copy constructor arguments from calldata to memory prior to this
+		//@todo calling other functions inside the constructor should either trigger a parse error
+		//or we should copy them here (register them above and call "accept") - detecting which
+		// functions are referenced / called needs to be done in a recursive way.
+		appendCalldataUnpacker(*constructor, true);
+		m_context.appendJumpTo(m_context.getFunctionEntryLabel(*constructor));
+		constructor->accept(*this);
+		m_context << returnTag;
+	}
+
+	eth::AssemblyItem sub = m_context.addSubroutine(runtimeContext.getAssembly());
 	// stack contains sub size
-	creatorContext << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
-	creatorContext << u256(0) << eth::Instruction::RETURN;
-	swap(m_context, creatorContext);
+	m_context << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
+	m_context << u256(0) << eth::Instruction::RETURN;
 }
 
-void Compiler::appendFunctionSelector(vector<ASTPointer<FunctionDefinition>> const& _functions)
+void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 {
-	// sort all public functions and store them together with a tag for their argument decoding section
-	map<string, pair<FunctionDefinition const*, eth::AssemblyItem>> publicFunctions;
-	for (ASTPointer<FunctionDefinition> const& f: _functions)
-		if (f->isPublic())
-			publicFunctions.insert(make_pair(f->getName(), make_pair(f.get(), m_context.newTag())));
+	vector<FunctionDefinition const*> interfaceFunctions = _contract.getInterfaceFunctions();
+	vector<eth::AssemblyItem> callDataUnpackerEntryPoints;
 
-	//@todo remove constructor
-
-	if (publicFunctions.size() > 255)
+	if (interfaceFunctions.size() > 255)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("More than 255 public functions for contract."));
 
-	//@todo check for calldatasize?
-	// retrieve the first byte of the call data
-	m_context << u256(0) << eth::Instruction::CALLDATALOAD << u256(0) << eth::Instruction::BYTE;
-	// check that it is not too large
-	m_context << eth::Instruction::DUP1 << u256(publicFunctions.size() - 1) << eth::Instruction::LT;
-	eth::AssemblyItem returnTag = m_context.appendConditionalJump();
+	// retrieve the first byte of the call data, which determines the called function
+	// @todo This code had a jump table in a previous version which was more efficient but also
+	// error prone (due to the optimizer and variable length tag addresses)
+	m_context << u256(1) << u256(0) // some constants
+			  << eth::dupInstruction(1) << eth::Instruction::CALLDATALOAD
+			  << eth::dupInstruction(2) << eth::Instruction::BYTE
+			  << eth::dupInstruction(2);
 
-	// otherwise, jump inside jump table (each entry of the table has size 4)
-	m_context << u256(4) << eth::Instruction::MUL;
-	eth::AssemblyItem jumpTableStart = m_context.pushNewTag();
-	m_context << eth::Instruction::ADD << eth::Instruction::JUMP;
-
-	// jump table, tell the optimizer not to remove the JUMPDESTs
-	m_context << eth::AssemblyItem(eth::NoOptimizeBegin) << jumpTableStart;
-	for (pair<string, pair<FunctionDefinition const*, eth::AssemblyItem>> const& f: publicFunctions)
-		m_context.appendJumpTo(f.second.second) << eth::Instruction::JUMPDEST;
-	m_context << eth::AssemblyItem(eth::NoOptimizeEnd);
-
-	m_context << returnTag << eth::Instruction::STOP;
-
-	for (pair<string, pair<FunctionDefinition const*, eth::AssemblyItem>> const& f: publicFunctions)
+	// stack here: 1 0 <funid> 0, stack top will be counted up until it matches funid
+	for (unsigned funid = 0; funid < interfaceFunctions.size(); ++funid)
 	{
-		FunctionDefinition const& function = *f.second.first;
-		m_context << f.second.second;
+		callDataUnpackerEntryPoints.push_back(m_context.newTag());
+		m_context << eth::dupInstruction(2) << eth::dupInstruction(2) << eth::Instruction::EQ;
+		m_context.appendConditionalJumpTo(callDataUnpackerEntryPoints.back());
+		if (funid < interfaceFunctions.size() - 1)
+			m_context << eth::dupInstruction(4) << eth::Instruction::ADD;
+	}
+	m_context << eth::Instruction::STOP; // function not found
 
+	for (unsigned funid = 0; funid < interfaceFunctions.size(); ++funid)
+	{
+		FunctionDefinition const& function = *interfaceFunctions[funid];
+		m_context << callDataUnpackerEntryPoints[funid];
 		eth::AssemblyItem returnTag = m_context.pushNewTag();
 		appendCalldataUnpacker(function);
 		m_context.appendJumpTo(m_context.getFunctionEntryLabel(function));
 		m_context << returnTag;
-
 		appendReturnValuePacker(function);
 	}
 }
 
-void Compiler::appendCalldataUnpacker(FunctionDefinition const& _function)
+unsigned Compiler::appendCalldataUnpacker(FunctionDefinition const& _function, bool _fromMemory)
 {
 	// We do not check the calldata size, everything is zero-padded.
 	unsigned dataOffset = 1;
@@ -124,17 +135,15 @@ void Compiler::appendCalldataUnpacker(FunctionDefinition const& _function)
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
 	{
 		unsigned const numBytes = var->getType()->getCalldataEncodedSize();
-		if (numBytes == 0)
+		if (numBytes > 32)
 			BOOST_THROW_EXCEPTION(CompilerError()
 								  << errinfo_sourceLocation(var->getLocation())
 								  << errinfo_comment("Type " + var->getType()->toString() + " not yet supported."));
-		if (numBytes == 32)
-			m_context << u256(dataOffset) << eth::Instruction::CALLDATALOAD;
-		else
-			m_context << (u256(1) << ((32 - numBytes) * 8)) << u256(dataOffset)
-					  << eth::Instruction::CALLDATALOAD << eth::Instruction::DIV;
+		bool leftAligned = var->getType()->getCategory() == Type::Category::STRING;
+		CompilerUtils(m_context).loadFromMemory(dataOffset, numBytes, leftAligned, !_fromMemory);
 		dataOffset += numBytes;
 	}
+	return dataOffset;
 }
 
 void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
@@ -142,25 +151,33 @@ void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
 	//@todo this can be also done more efficiently
 	unsigned dataOffset = 0;
 	vector<ASTPointer<VariableDeclaration>> const& parameters = _function.getReturnParameters();
+	unsigned stackDepth = CompilerUtils(m_context).getSizeOnStack(parameters);
 	for (unsigned i = 0; i < parameters.size(); ++i)
 	{
 		Type const& paramType = *parameters[i]->getType();
 		unsigned numBytes = paramType.getCalldataEncodedSize();
-		if (numBytes == 0)
+		if (numBytes > 32)
 			BOOST_THROW_EXCEPTION(CompilerError()
 								  << errinfo_sourceLocation(parameters[i]->getLocation())
 								  << errinfo_comment("Type " + paramType.toString() + " not yet supported."));
-		m_context << eth::dupInstruction(parameters.size() - i);
-		if (numBytes != 32)
-			m_context << (u256(1) << ((32 - numBytes) * 8)) << eth::Instruction::MUL;
-		m_context << u256(dataOffset) << eth::Instruction::MSTORE;
+		CompilerUtils(m_context).copyToStackTop(stackDepth, paramType);
+		bool const leftAligned = paramType.getCategory() == Type::Category::STRING;
+		CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, leftAligned);
+		stackDepth -= paramType.getSizeOnStack();
 		dataOffset += numBytes;
 	}
 	// note that the stack is not cleaned up here
 	m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
 }
 
-bool Compiler::visit(FunctionDefinition& _function)
+void Compiler::registerStateVariables(ContractDefinition const& _contract)
+{
+	//@todo sort them?
+	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
+		m_context.addStateVariable(*variable);
+}
+
+bool Compiler::visit(FunctionDefinition const& _function)
 {
 	//@todo to simplify this, the calling convention could by changed such that
 	// caller puts: [retarg0] ... [retargm] [return address] [arg0] ... [argn]
@@ -176,15 +193,12 @@ bool Compiler::visit(FunctionDefinition& _function)
 	// stack upon entry: [return address] [arg0] [arg1] ... [argn]
 	// reserve additional slots: [retarg0] ... [retargm] [localvar0] ... [localvarp]
 
-	unsigned const numArguments = _function.getParameters().size();
-	unsigned const numReturnValues = _function.getReturnParameters().size();
-	unsigned const numLocalVariables = _function.getLocalVariables().size();
-
-	for (ASTPointer<VariableDeclaration> const& variable: _function.getParameters() + _function.getReturnParameters())
+	for (ASTPointer<VariableDeclaration const> const& variable: _function.getParameters())
 		m_context.addVariable(*variable);
+	for (ASTPointer<VariableDeclaration const> const& variable: _function.getReturnParameters())
+		m_context.addAndInitializeVariable(*variable);
 	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
-		m_context.addVariable(*localVariable);
-	m_context.initializeLocalVariables(numReturnValues + numLocalVariables);
+		m_context.addAndInitializeVariable(*localVariable);
 
 	_function.getBody().accept(*this);
 
@@ -196,12 +210,16 @@ bool Compiler::visit(FunctionDefinition& _function)
 	// Note that the fact that the return arguments are of increasing index is vital for this
 	// algorithm to work.
 
+	unsigned const argumentsSize = CompilerUtils::getSizeOnStack(_function.getParameters());
+	unsigned const returnValuesSize = CompilerUtils::getSizeOnStack(_function.getReturnParameters());
+	unsigned const localVariablesSize = CompilerUtils::getSizeOnStack(_function.getLocalVariables());
+
 	vector<int> stackLayout;
-	stackLayout.push_back(numReturnValues); // target of return address
-	stackLayout += vector<int>(numArguments, -1); // discard all arguments
-	for (unsigned i = 0; i < numReturnValues; ++i)
+	stackLayout.push_back(returnValuesSize); // target of return address
+	stackLayout += vector<int>(argumentsSize, -1); // discard all arguments
+	for (unsigned i = 0; i < returnValuesSize; ++i)
 		stackLayout.push_back(i);
-	stackLayout += vector<int>(numLocalVariables, -1);
+	stackLayout += vector<int>(localVariablesSize, -1);
 
 	while (stackLayout.back() != int(stackLayout.size() - 1))
 		if (stackLayout.back() < 0)
@@ -221,20 +239,20 @@ bool Compiler::visit(FunctionDefinition& _function)
 	return false;
 }
 
-bool Compiler::visit(IfStatement& _ifStatement)
+bool Compiler::visit(IfStatement const& _ifStatement)
 {
-	ExpressionCompiler::compileExpression(m_context, _ifStatement.getCondition());
+	compileExpression(_ifStatement.getCondition());
 	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
 	if (_ifStatement.getFalseStatement())
 		_ifStatement.getFalseStatement()->accept(*this);
-	eth::AssemblyItem endTag = m_context.appendJump();
+	eth::AssemblyItem endTag = m_context.appendJumpToNew();
 	m_context << trueTag;
 	_ifStatement.getTrueStatement().accept(*this);
 	m_context << endTag;
 	return false;
 }
 
-bool Compiler::visit(WhileStatement& _whileStatement)
+bool Compiler::visit(WhileStatement const& _whileStatement)
 {
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
@@ -242,7 +260,7 @@ bool Compiler::visit(WhileStatement& _whileStatement)
 	m_breakTags.push_back(loopEnd);
 
 	m_context << loopStart;
-	ExpressionCompiler::compileExpression(m_context, _whileStatement.getCondition());
+	compileExpression(_whileStatement.getCondition());
 	m_context << eth::Instruction::ISZERO;
 	m_context.appendConditionalJumpTo(loopEnd);
 
@@ -256,58 +274,59 @@ bool Compiler::visit(WhileStatement& _whileStatement)
 	return false;
 }
 
-bool Compiler::visit(Continue&)
+bool Compiler::visit(Continue const&)
 {
 	if (!m_continueTags.empty())
 		m_context.appendJumpTo(m_continueTags.back());
 	return false;
 }
 
-bool Compiler::visit(Break&)
+bool Compiler::visit(Break const&)
 {
 	if (!m_breakTags.empty())
 		m_context.appendJumpTo(m_breakTags.back());
 	return false;
 }
 
-bool Compiler::visit(Return& _return)
+bool Compiler::visit(Return const& _return)
 {
 	//@todo modifications are needed to make this work with functions returning multiple values
-	if (Expression* expression = _return.getExpression())
+	if (Expression const* expression = _return.getExpression())
 	{
-		ExpressionCompiler::compileExpression(m_context, *expression);
+		compileExpression(*expression);
 		VariableDeclaration const& firstVariable = *_return.getFunctionReturnParameters().getParameters().front();
 		ExpressionCompiler::appendTypeConversion(m_context, *expression->getType(), *firstVariable.getType());
 
-		unsigned stackPosition = m_context.baseToCurrentStackOffset(m_context.getBaseStackOffsetOfVariable(firstVariable));
-		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
+		CompilerUtils(m_context).moveToStackVariable(firstVariable);
 	}
 	m_context.appendJumpTo(m_returnTag);
 	return false;
 }
 
-bool Compiler::visit(VariableDefinition& _variableDefinition)
+bool Compiler::visit(VariableDefinition const& _variableDefinition)
 {
-	if (Expression* expression = _variableDefinition.getExpression())
+	if (Expression const* expression = _variableDefinition.getExpression())
 	{
-		ExpressionCompiler::compileExpression(m_context, *expression);
+		compileExpression(*expression);
 		ExpressionCompiler::appendTypeConversion(m_context,
 												 *expression->getType(),
 												 *_variableDefinition.getDeclaration().getType());
-		unsigned baseStackOffset = m_context.getBaseStackOffsetOfVariable(_variableDefinition.getDeclaration());
-		unsigned stackPosition = m_context.baseToCurrentStackOffset(baseStackOffset);
-		m_context << eth::swapInstruction(stackPosition) << eth::Instruction::POP;
+		CompilerUtils(m_context).moveToStackVariable(_variableDefinition.getDeclaration());
 	}
 	return false;
 }
 
-bool Compiler::visit(ExpressionStatement& _expressionStatement)
+bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 {
-	Expression& expression = _expressionStatement.getExpression();
-	ExpressionCompiler::compileExpression(m_context, expression);
-	if (expression.getType()->getCategory() != Type::Category::VOID)
-		m_context << eth::Instruction::POP;
+	Expression const& expression = _expressionStatement.getExpression();
+	compileExpression(expression);
+	CompilerUtils(m_context).popStackElement(*expression.getType());
 	return false;
+}
+
+void Compiler::compileExpression(Expression const& _expression)
+{
+	ExpressionCompiler::compileExpression(m_context, _expression, m_optimize);
 }
 
 }

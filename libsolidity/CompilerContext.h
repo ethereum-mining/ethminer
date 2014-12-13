@@ -25,6 +25,7 @@
 #include <ostream>
 #include <libevmcore/Instruction.h>
 #include <libevmcore/Assembly.h>
+#include <libsolidity/ASTForward.h>
 #include <libsolidity/Types.h>
 
 namespace dev {
@@ -40,14 +41,16 @@ class CompilerContext
 public:
 	CompilerContext(): m_stateVariablesSize(0) {}
 
+	void addMagicGlobal(MagicVariableDeclaration const& _declaration);
 	void addStateVariable(VariableDeclaration const& _declaration);
 	void startNewFunction() { m_localVariables.clear(); m_asm.setDeposit(0); }
-	void initializeLocalVariables(unsigned _numVariables);
-	void addVariable(VariableDeclaration const& _declaration) { m_localVariables.push_back(&_declaration); }
-	void addFunction(FunctionDefinition const& _function) { m_functionEntryLabels.insert(std::make_pair(&_function, m_asm.newTag())); }
+	void addVariable(VariableDeclaration const& _declaration);
+	void addAndInitializeVariable(VariableDeclaration const& _declaration);
+	void addFunction(FunctionDefinition const& _function);
 
 	void adjustStackOffset(int _adjustment) { m_asm.adjustDeposit(_adjustment); }
 
+	bool isMagicGlobal(Declaration const* _declaration) const { return m_magicGlobals.count(_declaration); }
 	bool isFunctionDefinition(Declaration const* _declaration) const { return m_functionEntryLabels.count(_declaration); }
 	bool isLocalVariable(Declaration const* _declaration) const;
 	bool isStateVariable(Declaration const* _declaration) const { return m_stateVariables.count(_declaration); }
@@ -65,7 +68,9 @@ public:
 	/// Appends a JUMPI instruction to @a _tag
 	CompilerContext& appendConditionalJumpTo(eth::AssemblyItem const& _tag) { m_asm.appendJumpI(_tag); return *this; }
 	/// Appends a JUMP to a new tag and @returns the tag
-	eth::AssemblyItem appendJump() { return m_asm.appendJump().tag(); }
+	eth::AssemblyItem appendJumpToNew() { return m_asm.appendJump().tag(); }
+	/// Appends a JUMP to a tag already on the stack
+	CompilerContext&  appendJump() { return *this << eth::Instruction::JUMP; }
 	/// Appends a JUMP to a specific tag
 	CompilerContext& appendJumpTo(eth::AssemblyItem const& _tag) { m_asm.appendJump(_tag); return *this; }
 	/// Appends pushing of a new tag and @returns the new tag.
@@ -88,12 +93,16 @@ public:
 private:
 	eth::Assembly m_asm;
 
+	/// Magic global variables like msg, tx or this, distinguished by type.
+	std::set<Declaration const*> m_magicGlobals;
 	/// Size of the state variables, offset of next variable to be added.
 	u256 m_stateVariablesSize;
 	/// Storage offsets of state variables
 	std::map<Declaration const*, u256> m_stateVariables;
-	/// Offsets of local variables on the stack.
-	std::vector<Declaration const*> m_localVariables;
+	/// Offsets of local variables on the stack (relative to stack base).
+	std::map<Declaration const*, unsigned> m_localVariables;
+	/// Sum of stack sizes of local variables
+	unsigned m_localVariablesSize;
 	/// Labels pointing to the entry points of funcitons.
 	std::map<Declaration const*, eth::AssemblyItem> m_functionEntryLabels;
 };
