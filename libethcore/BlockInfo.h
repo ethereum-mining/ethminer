@@ -69,7 +69,7 @@ public:
 	h256 stateRoot;
 	h256 transactionsRoot;
 	h256 receiptsRoot;
-	h512 logBloom;	// TODO LogBloom - get include
+	LogBloom logBloom;
 	u256 difficulty;
 	u256 number;
 	u256 gasLimit;
@@ -118,7 +118,7 @@ public:
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 calculateGasLimit(BlockInfo const& _parent) const;
 
-	/// No-nonce sha3 of the header only.
+	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
 	void streamRLP(RLPStream& _s, IncludeNonce _n) const;
 };
