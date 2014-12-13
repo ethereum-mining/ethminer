@@ -36,7 +36,6 @@
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
-#include "Executive.h"
 #include "AccountDiff.h"
 
 namespace dev
@@ -52,12 +51,7 @@ class BlockChain;
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
-
-struct PrecompiledAddress
-{
-	unsigned gas;
-	std::function<void(bytesConstRef, bytesRef)> exec;
-};
+struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
 /**
  * @brief Model of the current state of the ledger.
@@ -147,7 +141,7 @@ public:
 	/// @returns a list of bloom filters one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	h256s sync(TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	h512s sync(TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
@@ -211,15 +205,6 @@ public:
 	/// Get the list of pending transactions.
 	Transactions const& pending() const { return m_transactions; }
 
-	/// Get the list of pending transactions. TODO: PoC-7: KILL
-	Manifest changesFromPending(unsigned _i) const { return m_receipts[_i].changes(); }
-
-	/// Get the bloom filter of all changes happened in the block. TODO: PoC-7: KILL
-	h256 oldBloom() const;
-
-	/// Get the bloom filter of a particular transaction that happened in the block. TODO: PoC-7: KILL
-	h256 oldBloom(unsigned _i) const { return m_receipts[_i].changes().bloom(); }
-
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
@@ -279,17 +264,6 @@ private:
 	/// Throws on failure.
 	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
 
-	// Two priviledged entry points for the VM (these don't get added to the Transaction lists):
-	// We assume all instrinsic fees are paid up before this point.
-
-	/// Execute a contract-creation transaction.
-	h160 create(Address _txSender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
-
-	/// Execute a call.
-	/// @a _gas points to the amount of gas to use for the call, and will lower it accordingly.
-	/// @returns false if the call ran out of gas before completion. true otherwise.
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256* _gas, bytesRef _out, Address _originAddress = Address(), SubState* o_sub = nullptr, Manifest* o_ms = nullptr, OnOpFunc const& _onOp = OnOpFunc(), unsigned _level = 0);
-
 	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
 	void resetCurrent();
 
@@ -327,8 +301,6 @@ private:
 	u256 m_blockReward;
 
 	static std::string c_defaultPath;
-
-	static const std::map<unsigned, PrecompiledAddress> c_precompiled;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

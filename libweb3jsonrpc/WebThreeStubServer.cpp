@@ -21,6 +21,9 @@
  * @date 2014
  */
 
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include "WebThreeStubServer.h"
 #include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
@@ -31,6 +34,7 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
+#include <libserpent/funcs.h>
 
 using namespace std;
 using namespace dev;
@@ -47,39 +51,10 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
 	res["difficulty"] = toJS(_bi.difficulty);
 	res["number"] = (int)_bi.number;
-	res["minGasPrice"] = toJS(_bi.minGasPrice);
 	res["gasLimit"] = (int)_bi.gasLimit;
 	res["timestamp"] = (int)_bi.timestamp;
 	res["extraData"] = jsFromBinary(_bi.extraData);
 	res["nonce"] = toJS(_bi.nonce);
-	return res;
-}
-
-static Json::Value toJson(dev::eth::PastMessage const& _t)
-{
-	Json::Value res;
-	res["input"] = jsFromBinary(_t.input);
-	res["output"] = jsFromBinary(_t.output);
-	res["to"] = toJS(_t.to);
-	res["from"] = toJS(_t.from);
-	res["value"] = jsToDecimal(toJS(_t.value));
-	res["origin"] = toJS(_t.origin);
-	res["timestamp"] = toJS(_t.timestamp);
-	res["coinbase"] = toJS(_t.coinbase);
-	res["block"] =  toJS(_t.block);
-	Json::Value path;
-	for (int i: _t.path)
-		path.append(i);
-	res["path"] = path;
-	res["number"] = (int)_t.number;
-	return res;
-}
-
-static Json::Value toJson(dev::eth::PastMessages const& _pms)
-{
-	Json::Value res;
-	for (dev::eth::PastMessage const& t: _pms)
-		res.append(toJson(t));
 	return res;
 }
 
@@ -100,6 +75,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 static Json::Value toJson(dev::eth::LogEntry const& _e)
 {
 	Json::Value res;
+	
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
@@ -107,7 +83,7 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
-/*static*/ Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+static Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
 	Json::Value res;
 	for (dev::eth::LogEntry const& e: _es)
@@ -115,81 +91,38 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
-static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
+static Json::Value toJson(std::map<u256, u256> const& _storage)
 {
-	dev::eth::MessageFilter filter;
-	if (!_json.isObject() || _json.empty())
-		return filter;
-
-	if (!_json["earliest"].empty())
-		filter.withEarliest(_json["earliest"].asInt());
-	if (!_json["latest"].empty())
-		filter.withLatest(_json["lastest"].asInt());
-	if (!_json["max"].empty())
-		filter.withMax(_json["max"].asInt());
-	if (!_json["skip"].empty())
-		filter.withSkip(_json["skip"].asInt());
-	if (!_json["from"].empty())
-	{
-		if (_json["from"].isArray())
-			for (auto i : _json["from"])
-				filter.from(jsToAddress(i.asString()));
-		else
-			filter.from(jsToAddress(_json["from"].asString()));
-	}
-	if (!_json["to"].empty())
-	{
-		if (_json["to"].isArray())
-			for (auto i : _json["to"])
-				filter.to(jsToAddress(i.asString()));
-		else
-			filter.to(jsToAddress(_json["to"].asString()));
-	}
-	if (!_json["altered"].empty())
-	{
-		if (_json["altered"].isArray())
-			for (auto i: _json["altered"])
-				if (i.isObject())
-					filter.altered(jsToAddress(i["id"].asString()), jsToU256(i["at"].asString()));
-				else
-					filter.altered((jsToAddress(i.asString())));
-				else if (_json["altered"].isObject())
-					filter.altered(jsToAddress(_json["altered"]["id"].asString()), jsToU256(_json["altered"]["at"].asString()));
-				else
-					filter.altered(jsToAddress(_json["altered"].asString()));
-	}
-	return filter;
+	Json::Value res(Json::objectValue);
+	for (auto i: _storage)
+		res[toJS(i.first)] = toJS(i.second);
+	return res;
 }
 
-/*static*/ dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
 	if (!_json.isObject() || _json.empty())
 		return filter;
 
-	if (!_json["earliest"].empty())
+	if (_json["earliest"].isInt())
 		filter.withEarliest(_json["earliest"].asInt());
-	if (!_json["latest"].empty())
+	if (_json["latest"].isInt())
 		filter.withLatest(_json["lastest"].asInt());
-	if (!_json["max"].empty())
+	if (_json["max"].isInt())
 		filter.withMax(_json["max"].asInt());
-	if (!_json["skip"].empty())
+	if (_json["skip"].isInt())
 		filter.withSkip(_json["skip"].asInt());
-	if (!_json["from"].empty())
-	{
-		if (_json["from"].isArray())
-			for (auto i : _json["from"])
-				filter.from(jsToAddress(i.asString()));
-		else
-			filter.from(jsToAddress(_json["from"].asString()));
-	}
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
+		{
 			for (auto i : _json["address"])
-				filter.address(jsToAddress(i.asString()));
-		else
-			filter.from(jsToAddress(_json["address"].asString()));
+				if (i.isString())
+					filter.address(jsToAddress(i.asString()));
+		}
+		else if (_json["address"].isString())
+			filter.address(jsToAddress(_json["address"].asString()));
 	}
 	if (!_json["topics"].empty())
 	{
@@ -208,11 +141,11 @@ static dev::eth::MessageFilter toMessageFilter(Json::Value const& _json)
 static shh::Message toMessage(Json::Value const& _json)
 {
 	shh::Message ret;
-	if (!_json["from"].empty())
+	if (_json["from"].isString())
 		ret.setFrom(jsToPublic(_json["from"].asString()));
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		ret.setTo(jsToPublic(_json["to"].asString()));
-	if (!_json["payload"].empty())
+	if (_json["payload"].isString())
 		ret.setPayload(jsToBytes(_json["payload"].asString()));
 	return ret;
 }
@@ -223,9 +156,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	unsigned workToProve = 50;
 	shh::BuildTopic bt;
 
-	if (!_json["ttl"].empty())
+	if (_json["ttl"].isInt())
 		ttl = _json["ttl"].asInt();
-	if (!_json["workToProve"].empty())
+	if (_json["workToProve"].isInt())
 		workToProve = _json["workToProve"].asInt();
 	if (!_json["topic"].empty())
 	{
@@ -233,17 +166,18 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-				bt.shift(jsToBytes(i.asString()));
+				if (i.isString())
+					bt.shift(jsToBytes(i.asString()));
 	}
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
 static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt(shh::BuildTopicMask::Empty);
+	shh::BuildTopicMask bt;
 	Public to;
 
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		to = jsToPublic(_json["to"].asString());
 
 	if (!_json["topic"].empty())
@@ -252,12 +186,8 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 			bt.shift(jsToBytes(_json["topic"].asString()));
 		else if (_json["topic"].isArray())
 			for (auto i: _json["topic"])
-			{
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
-				else
-					bt.shift();
-			}
 	}
 	return make_pair(bt.toTopicMask(), to);
 }
@@ -271,15 +201,14 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
 	for (auto const& t: _e.topics())
-		res["topics"].append(toJS((u256)t));
+		res["topics"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
 }
 
-
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
 {
@@ -356,33 +285,42 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty())
 		return ret;
 
-	if (!_json["from"].empty())
+	if (_json["from"].isString())
 		ret.from = jsToAddress(_json["from"].asString());
-	if (!_json["to"].empty())
+	if (_json["to"].isString())
 		ret.to = jsToAddress(_json["to"].asString());
 	if (!_json["value"].empty())
-		ret.value = jsToU256(_json["value"].asString());
-	if (!_json["gas"].empty())
-		ret.gas = jsToU256(_json["gas"].asString());
-	if (!_json["gasPrice"].empty())
-		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
-	
-	if (!_json["data"].empty() || _json["code"].empty() || _json["dataclose"].empty())
 	{
-		if (_json["data"].isString())
-			ret.data = jsToBytes(_json["data"].asString());
-		else if (_json["code"].isString())
-			ret.data = jsToBytes(_json["code"].asString());
-		else if (_json["data"].isArray())
-			for (auto i: _json["data"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
-		else if (_json["code"].isArray())
-			for (auto i: _json["code"])
-				dev::operator +=(ret.data, jsToBytes(jsPadded(i.asString(), 32)));
-		else if (_json["dataclose"].isArray())
-			for (auto i: _json["dataclose"])
-				dev::operator +=(ret.data, jsToBytes(i.asString()));
+		if (_json["value"].isString())
+			ret.value = jsToU256(_json["value"].asString());
+		else if (_json["value"].isInt())
+			ret.value = u256(_json["value"].asInt());
 	}
+	if (!_json["gas"].empty())
+	{
+		if (_json["gas"].isString())
+			ret.gas = jsToU256(_json["gas"].asString());
+		else if (_json["gas"].isInt())
+			ret.gas = u256(_json["gas"].asInt());
+	}
+	if (!_json["gasPrice"].empty())
+	{
+		if (_json["gasPrice"].isString())
+			ret.gasPrice = jsToU256(_json["gasPrice"].asString());
+		else if (_json["gasPrice"].isInt())
+			ret.gas = u256(_json["gas"].asInt());
+	}
+	if (!_json["data"].empty())
+	{
+		if (_json["data"].isString())							// ethereum.js has preconstructed the data array
+			ret.data = jsToBytes(_json["data"].asString());
+		else if (_json["data"].isArray())						// old style: array of 32-byte-padded values. TODO: remove PoC-8
+			for (auto i: _json["data"])
+				dev::operator +=(ret.data, padded(jsToBytes(i.asString()), 32));
+	}
+
+	if (_json["code"].isString())
+		ret.data = jsToBytes(_json["code"].asString());
 	return ret;
 }
 
@@ -452,11 +390,18 @@ std::string WebThreeStubServer::db_get(std::string const& _name, std::string con
 	return toJS(dev::asBytes(ret));
 }
 
-Json::Value WebThreeStubServer::eth_getMessages(int const& _id)
+Json::Value WebThreeStubServer::eth_filterLogs(int const& _id)
 {
 	if (!client())
-		return Json::Value();
-	return toJson(client()->messages(_id));
+		return Json::Value(Json::arrayValue);
+	return toJson(client()->logs(_id));
+}
+
+Json::Value WebThreeStubServer::eth_logs(Json::Value const& _json)
+{
+	if (!client())
+		return Json::Value(Json::arrayValue);
+	return toJson(client()->logs(toLogFilter(_json)));
 }
 
 std::string WebThreeStubServer::db_getString(std::string const& _name, std::string const& _key)
@@ -487,7 +432,8 @@ int WebThreeStubServer::eth_newFilter(Json::Value const& _json)
 	unsigned ret = -1;
 	if (!client())
 		return ret;
-	ret = client()->installWatch(toMessageFilter(_json));
+//	ret = client()->installWatch(toMessageFilter(_json));
+	ret = client()->installWatch(toLogFilter(_json));
 	return ret;
 }
 
@@ -512,20 +458,67 @@ std::string WebThreeStubServer::shh_newGroup(std::string const& _id, std::string
 
 std::string WebThreeStubServer::shh_newIdentity()
 {
-	cnote << this << m_ids;
+//	cnote << this << m_ids;
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.secret();
 	return toJS(kp.pub());
 }
 
-std::string WebThreeStubServer::eth_compile(string const& _s)
+Json::Value WebThreeStubServer::eth_compilers()
 {
-	return toJS(dev::eth::compileLLL(_s));
+	Json::Value ret(Json::arrayValue);
+	ret.append("lll");
+	ret.append("solidity");
+	ret.append("serpent");
+	return ret;
 }
 
-std::string WebThreeStubServer::eth_lll(string const& _s)
+std::string WebThreeStubServer::eth_lll(std::string const& _code)
 {
-	return toJS(dev::eth::compileLLL(_s));
+	string res;
+	vector<string> errors;
+	res = toJS(dev::eth::compileLLL(_code, true, &errors));
+	cwarn << "LLL compilation errors: " << errors;
+	return res;
+}
+
+std::string WebThreeStubServer::eth_serpent(std::string const& _code)
+{
+	string res;
+	try
+	{
+		res = toJS(dev::asBytes(::compile(_code)));
+	}
+	catch (string err)
+	{
+		cwarn << "Solidity compilation error: " << err;
+	}
+	catch (...)
+	{
+		cwarn << "Uncought serpent compilation exception";
+	}
+	return res;
+}
+
+std::string WebThreeStubServer::eth_solidity(std::string const& _code)
+{
+	string res;
+	dev::solidity::CompilerStack compiler;
+	try
+	{
+		res = toJS(compiler.compile(_code, true));
+	}
+	catch (dev::Exception const& exception)
+	{
+		ostringstream error;
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
+		cwarn << "Solidity compilation error: " << error.str();
+	}
+	catch (...)
+	{
+		cwarn << "Uncought solidity compilation exception";
+	}
+	return res;
 }
 
 int WebThreeStubServer::eth_number()
@@ -540,7 +533,7 @@ int WebThreeStubServer::eth_peerCount()
 
 bool WebThreeStubServer::shh_post(Json::Value const& _json)
 {
-	cnote << this << m_ids;
+//	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
 	Secret from;
 
@@ -650,6 +643,13 @@ std::string WebThreeStubServer::eth_stateAt(string const& _address, string const
 {
 	int block = 0;
 	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
+}
+
+Json::Value WebThreeStubServer::eth_storageAt(string const& _address)
+{
+	if (!client())
+		return Json::Value(Json::objectValue);
+	return toJson(client()->storageAt(jsToAddress(_address)));
 }
 
 std::string WebThreeStubServer::eth_transact(Json::Value const& _json)

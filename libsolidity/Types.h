@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
 #include <libsolidity/Exceptions.h>
@@ -35,7 +36,35 @@ namespace dev
 namespace solidity
 {
 
-// @todo realMxN, string<N>, mapping
+// @todo realMxN, dynamic strings, text, arrays
+
+class Type; // forward
+using TypePointer = std::shared_ptr<Type const>;
+using TypePointers = std::vector<TypePointer>;
+
+/**
+ * List of members of a type.
+ */
+class MemberList
+{
+public:
+	using MemberMap = std::map<std::string, TypePointer>;
+
+	MemberList() {}
+	explicit MemberList(MemberMap const& _members): m_memberTypes(_members) {}
+	TypePointer getMemberType(std::string const& _name) const
+	{
+		auto it = m_memberTypes.find(_name);
+		return it != m_memberTypes.end() ? it->second : TypePointer();
+	}
+
+	MemberMap::const_iterator begin() const { return m_memberTypes.begin(); }
+	MemberMap::const_iterator end() const { return m_memberTypes.end(); }
+
+private:
+	MemberMap m_memberTypes;
+};
+
 
 /**
  * Abstract base class that forms the root of the type hierarchy.
@@ -45,20 +74,21 @@ class Type: private boost::noncopyable
 public:
 	enum class Category
 	{
-		INTEGER, BOOL, REAL, STRING, CONTRACT, STRUCT, FUNCTION, MAPPING, VOID, TYPE
+		INTEGER, BOOL, REAL, STRING, CONTRACT, STRUCT, FUNCTION, MAPPING, VOID, TYPE, MAGIC
 	};
 
 	///@{
 	///@name Factory functions
 	/// Factory functions that convert an AST @ref TypeName to a Type.
-	static std::shared_ptr<Type> fromElementaryTypeName(Token::Value _typeToken);
-	static std::shared_ptr<Type> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
-	static std::shared_ptr<Type> fromMapping(Mapping const& _typeName);
+	static std::shared_ptr<Type const> fromElementaryTypeName(Token::Value _typeToken);
+	static std::shared_ptr<Type const> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
+	static std::shared_ptr<Type const> fromMapping(Mapping const& _typeName);
+	static std::shared_ptr<Type const> fromFunction(FunctionDefinition const& _function);
 	/// @}
 
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
 	/// not fit any type.
-	static std::shared_ptr<Type> forLiteral(Literal const& _literal);
+	static std::shared_ptr<Type const> forLiteral(Literal const& _literal);
 
 	virtual Category getCategory() const = 0;
 	virtual bool isImplicitlyConvertibleTo(Type const& _other) const { return *this == _other; }
@@ -78,6 +108,19 @@ public:
 	/// @returns number of bytes required to hold this value in storage.
 	/// For dynamically "allocated" types, it returns the size of the statically allocated head,
 	virtual u256 getStorageSize() const { return 1; }
+	/// Returns true if the type can be stored in storage.
+	virtual bool canBeStored() const { return true; }
+	/// Returns false if the type cannot live outside the storage, i.e. if it includes some mapping.
+	virtual bool canLiveOutsideStorage() const { return true; }
+	/// Returns true if the type can be stored as a value (as opposed to a reference) on the stack,
+	/// i.e. it behaves differently in lvalue context and in value context.
+	virtual bool isValueType() const { return false; }
+	virtual unsigned getSizeOnStack() const { return 1; }
+
+	/// Returns the list of all members of this type. Default implementation: no members.
+	virtual MemberList const& getMembers() const { return EmptyMemberList; }
+	/// Convenience method, returns the type of the given named member or an empty pointer if no such member exists.
+	TypePointer getMemberType(std::string const& _name) const { return getMembers().getMemberType(_name); }
 
 	virtual std::string toString() const = 0;
 	virtual u256 literalValue(Literal const&) const
@@ -85,6 +128,10 @@ public:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Literal value requested "
 																		  "for type without literals."));
 	}
+
+protected:
+	/// Convenience object used when returning an empty member list.
+	static const MemberList EmptyMemberList;
 };
 
 /**
@@ -101,7 +148,7 @@ public:
 
 	/// @returns the smallest integer type for the given literal or an empty pointer
 	/// if no type fits.
-	static std::shared_ptr<IntegerType> smallestTypeForLiteral(std::string const& _literal);
+	static std::shared_ptr<IntegerType const> smallestTypeForLiteral(std::string const& _literal);
 
 	explicit IntegerType(int _bits, Modifier _modifier = Modifier::UNSIGNED);
 
@@ -112,7 +159,10 @@ public:
 
 	virtual bool operator==(Type const& _other) const override;
 
-	virtual unsigned getCalldataEncodedSize() const { return m_bits / 8; }
+	virtual unsigned getCalldataEncodedSize() const override { return m_bits / 8; }
+	virtual bool isValueType() const override { return true; }
+
+	virtual MemberList const& getMembers() const { return isAddress() ? AddressMemberList : EmptyMemberList; }
 
 	virtual std::string toString() const override;
 	virtual u256 literalValue(Literal const& _literal) const override;
@@ -125,6 +175,36 @@ public:
 private:
 	int m_bits;
 	Modifier m_modifier;
+	static const MemberList AddressMemberList;
+};
+
+/**
+ * String type with fixed length, up to 32 bytes.
+ */
+class StaticStringType: public Type
+{
+public:
+	virtual Category getCategory() const override { return Category::STRING; }
+
+	/// @returns the smallest string type for the given literal or an empty pointer
+	/// if no type fits.
+	static std::shared_ptr<StaticStringType> smallestTypeForLiteral(std::string const& _literal);
+
+	StaticStringType(int _bytes);
+
+	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual bool operator==(Type const& _other) const override;
+
+	virtual unsigned getCalldataEncodedSize() const override { return m_bytes; }
+	virtual bool isValueType() const override { return true; }
+
+	virtual std::string toString() const override { return "string" + dev::toString(m_bytes); }
+	virtual u256 literalValue(Literal const& _literal) const override;
+
+	int getNumBytes() const { return m_bytes; }
+
+private:
+	int m_bytes;
 };
 
 /**
@@ -133,6 +213,7 @@ private:
 class BoolType: public Type
 {
 public:
+	BoolType() {}
 	virtual Category getCategory() const { return Category::BOOL; }
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool acceptsBinaryOperator(Token::Value _operator) const override
@@ -145,6 +226,7 @@ public:
 	}
 
 	virtual unsigned getCalldataEncodedSize() const { return 1; }
+	virtual bool isValueType() const override { return true; }
 
 	virtual std::string toString() const override { return "bool"; }
 	virtual u256 literalValue(Literal const& _literal) const override;
@@ -158,13 +240,21 @@ class ContractType: public Type
 public:
 	virtual Category getCategory() const override { return Category::CONTRACT; }
 	ContractType(ContractDefinition const& _contract): m_contract(_contract) {}
-
+	/// Contracts can be converted to themselves and to addresses.
+	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool operator==(Type const& _other) const override;
-	virtual u256 getStorageSize() const;
-	virtual std::string toString() const override { return "contract{...}"; }
+	virtual u256 getStorageSize() const override;
+	virtual bool isValueType() const override { return true; }
+	virtual std::string toString() const override;
+
+	virtual MemberList const& getMembers() const override;
+
+	unsigned getFunctionIndex(std::string const& _functionName) const;
 
 private:
 	ContractDefinition const& m_contract;
+	/// List of member types, will be lazy-initialized because of recursive references.
+	mutable std::unique_ptr<MemberList> m_members;
 };
 
 /**
@@ -181,30 +271,57 @@ public:
 	}
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual u256 getStorageSize() const;
-	virtual std::string toString() const override { return "struct{...}"; }
+	virtual u256 getStorageSize() const override;
+	virtual bool canLiveOutsideStorage() const override;
+	virtual unsigned getSizeOnStack() const override { return 1; /*@todo*/ }
+	virtual std::string toString() const override;
+
+	virtual MemberList const& getMembers() const override;
+
+	u256 getStorageOffsetOfMember(std::string const& _name) const;
 
 private:
 	StructDefinition const& m_struct;
+	/// List of member types, will be lazy-initialized because of recursive references.
+	mutable std::unique_ptr<MemberList> m_members;
 };
 
 /**
- * The type of a function, there is one distinct type per function definition.
+ * The type of a function, identified by its (return) parameter types.
+ * @todo the return parameters should also have names, i.e. return parameters should be a struct
+ * type.
  */
 class FunctionType: public Type
 {
 public:
-	virtual Category getCategory() const override { return Category::FUNCTION; }
-	FunctionType(FunctionDefinition const& _function): m_function(_function) {}
+	/// The meaning of the value(s) on the stack referencing the function:
+	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
+	/// OTHERS: special virtual function, nothing on the stack
+	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160 };
 
-	FunctionDefinition const& getFunction() const { return m_function; }
+	virtual Category getCategory() const override { return Category::FUNCTION; }
+	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
+	FunctionType(TypePointers const& _parameterTypes, TypePointers const& _returnParameterTypes,
+				 Location _location = Location::INTERNAL):
+		m_parameterTypes(_parameterTypes), m_returnParameterTypes(_returnParameterTypes),
+		m_location(_location) {}
+
+	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
+	TypePointers const& getReturnParameterTypes() const { return m_returnParameterTypes; }
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual std::string toString() const override { return "function(...)returns(...)"; }
-	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable function type requested.")); }
+	virtual std::string toString() const override;
+	virtual bool canBeStored() const override { return false; }
+	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable function type requested.")); }
+	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override;
+
+	Location const& getLocation() const { return m_location; }
 
 private:
-	FunctionDefinition const& m_function;
+	TypePointers m_parameterTypes;
+	TypePointers m_returnParameterTypes;
+	Location m_location;
 };
 
 /**
@@ -214,14 +331,19 @@ class MappingType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::MAPPING; }
-	MappingType() {}
+	MappingType(TypePointer const& _keyType, TypePointer const& _valueType):
+		m_keyType(_keyType), m_valueType(_valueType) {}
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual std::string toString() const override { return "mapping(...=>...)"; }
+	virtual std::string toString() const override;
+	virtual bool canLiveOutsideStorage() const override { return false; }
+
+	TypePointer getKeyType() const { return m_keyType; }
+	TypePointer getValueType() const { return m_valueType; }
 
 private:
-	std::shared_ptr<Type const> m_keyType;
-	std::shared_ptr<Type const> m_valueType;
+	TypePointer m_keyType;
+	TypePointer m_valueType;
 };
 
 /**
@@ -235,7 +357,10 @@ public:
 	VoidType() {}
 
 	virtual std::string toString() const override { return "void"; }
-	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
+	virtual bool canBeStored() const override { return false; }
+	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
+	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
 };
 
 /**
@@ -246,18 +371,45 @@ class TypeType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::TYPE; }
-	TypeType(std::shared_ptr<Type const> const& _actualType): m_actualType(_actualType) {}
+	TypeType(TypePointer const& _actualType): m_actualType(_actualType) {}
 
-	std::shared_ptr<Type const> const& getActualType() const { return m_actualType; }
+	TypePointer const& getActualType() const { return m_actualType; }
 
 	virtual bool operator==(Type const& _other) const override;
-	virtual u256 getStorageSize() const { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
+	virtual bool canBeStored() const override { return false; }
+	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
+	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
 
 private:
-	std::shared_ptr<Type const> m_actualType;
+	TypePointer m_actualType;
 };
 
+
+/**
+ * Special type for magic variables (block, msg, tx), similar to a struct but without any reference
+ * (it always references a global singleton by name).
+ */
+class MagicType: public Type
+{
+public:
+	enum class Kind { BLOCK, MSG, TX };
+	virtual Category getCategory() const override { return Category::MAGIC; }
+
+	MagicType(Kind _kind);
+	virtual bool operator==(Type const& _other) const;
+	virtual bool canBeStored() const override { return false; }
+	virtual bool canLiveOutsideStorage() const override { return true; }
+	virtual unsigned getSizeOnStack() const override { return 0; }
+	virtual MemberList const& getMembers() const override { return m_members; }
+
+	virtual std::string toString() const override;
+
+private:
+	Kind m_kind;
+
+	MemberList m_members;
+};
 
 }
 }

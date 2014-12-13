@@ -26,7 +26,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libevm/FeeStructure.h>
-#include "MessageFilter.h"
+#include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
 #include "BlockDetails.h"
@@ -84,13 +84,13 @@ public:
 	virtual bytes codeAt(Address _a, int _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, int _block) const = 0;
 
-	// [MESSAGE API]
-
-	virtual PastMessages messages(unsigned _watchId) const = 0;
-	virtual PastMessages messages(MessageFilter const& _filter) const = 0;
+	// [LOGS API]
+	
+	virtual LogEntries logs(unsigned _watchId) const = 0;
+	virtual LogEntries logs(LogFilter const& _filter) const = 0;
 
 	/// Install, uninstall and query watches.
-	virtual unsigned installWatch(MessageFilter const& _filter) = 0;
+	virtual unsigned installWatch(LogFilter const& _filter) = 0;
 	virtual unsigned installWatch(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual bool peekWatch(unsigned _watchId) const = 0;
@@ -123,7 +123,7 @@ public:
 	virtual Addresses addresses(int _block) const = 0;
 
 	/// Get the fee associated for a transaction with the given data.
-	static u256 txGas(unsigned _dataCount, u256 _gas = 0) { return c_txDataGas * _dataCount + c_txGas + _gas; }
+	template <class T> static bigint txGas(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
@@ -175,12 +175,13 @@ class Watch: public boost::noncopyable
 public:
 	Watch() {}
 	Watch(Interface& _c, h256 _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
-	Watch(Interface& _c, MessageFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
+	Watch(Interface& _c, LogFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
 	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
 	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
-	PastMessages messages() const { return m_c->messages(m_id); }
+//	PastMessages messages() const { return m_c->messages(m_id); }
+	LogEntries logs() const { return m_c->logs(m_id); }
 
 private:
 	Interface* m_c = nullptr;

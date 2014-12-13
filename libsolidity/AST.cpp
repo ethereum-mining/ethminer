@@ -25,6 +25,7 @@
 #include <libsolidity/AST.h>
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/Exceptions.h>
+#include <libsolidity/AST_accept.h>
 
 using namespace std;
 
@@ -33,234 +34,61 @@ namespace dev
 namespace solidity
 {
 
-void ContractDefinition::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		listAccept(m_definedStructs, _visitor);
-		listAccept(m_stateVariables, _visitor);
-		listAccept(m_definedFunctions, _visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void StructDefinition::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		listAccept(m_members, _visitor);
-	_visitor.endVisit(*this);
-}
-
-void ParameterList::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		listAccept(m_parameters, _visitor);
-	_visitor.endVisit(*this);
-}
-
-void FunctionDefinition::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_parameters->accept(_visitor);
-		if (m_returnParameters)
-			m_returnParameters->accept(_visitor);
-		m_body->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void VariableDeclaration::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		if (m_typeName)
-			m_typeName->accept(_visitor);
-	_visitor.endVisit(*this);
-}
-
-void TypeName::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void ElementaryTypeName::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void UserDefinedTypeName::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void Mapping::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_keyType->accept(_visitor);
-		m_valueType->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void Statement::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void Block::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		listAccept(m_statements, _visitor);
-	_visitor.endVisit(*this);
-}
-
-void IfStatement::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_condition->accept(_visitor);
-		m_trueBody->accept(_visitor);
-		if (m_falseBody)
-			m_falseBody->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void BreakableStatement::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void WhileStatement::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_condition->accept(_visitor);
-		m_body->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void Continue::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void Break::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void Return::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		if (m_expression)
-			m_expression->accept(_visitor);
-	_visitor.endVisit(*this);
-}
-
-void ExpressionStatement::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		if (m_expression)
-			m_expression->accept(_visitor);
-	_visitor.endVisit(*this);
-}
-
-void VariableDefinition::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_variable->accept(_visitor);
-		if (m_value)
-			m_value->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void Assignment::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_leftHandSide->accept(_visitor);
-		m_rightHandSide->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void UnaryOperation::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		m_subExpression->accept(_visitor);
-	_visitor.endVisit(*this);
-}
-
-void BinaryOperation::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_left->accept(_visitor);
-		m_right->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void FunctionCall::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_expression->accept(_visitor);
-		listAccept(m_arguments, _visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void MemberAccess::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-		m_expression->accept(_visitor);
-	_visitor.endVisit(*this);
-}
-
-void IndexAccess::accept(ASTVisitor& _visitor)
-{
-	if (_visitor.visit(*this))
-	{
-		m_base->accept(_visitor);
-		m_index->accept(_visitor);
-	}
-	_visitor.endVisit(*this);
-}
-
-void Identifier::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void ElementaryTypeNameExpression::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-void Literal::accept(ASTVisitor& _visitor)
-{
-	_visitor.visit(*this);
-	_visitor.endVisit(*this);
-}
-
-TypeError ASTNode::createTypeError(string const& _description)
+TypeError ASTNode::createTypeError(string const& _description) const
 {
 	return TypeError() << errinfo_sourceLocation(getLocation()) << errinfo_comment(_description);
+}
+
+vector<FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
+{
+	vector<FunctionDefinition const*> exportedFunctions;
+	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
+		if (f->isPublic() && f->getName() != getName())
+			exportedFunctions.push_back(f.get());
+	auto compareNames = [](FunctionDefinition const* _a, FunctionDefinition const* _b)
+	{
+		return _a->getName().compare(_b->getName()) < 0;
+	};
+
+	sort(exportedFunctions.begin(), exportedFunctions.end(), compareNames);
+	return exportedFunctions;
+}
+
+void StructDefinition::checkMemberTypes() const
+{
+	for (ASTPointer<VariableDeclaration> const& member: getMembers())
+		if (!member->getType()->canBeStored())
+			BOOST_THROW_EXCEPTION(member->createTypeError("Type cannot be used in struct."));
+}
+
+void StructDefinition::checkRecursion() const
+{
+	set<StructDefinition const*> definitionsSeen;
+	vector<StructDefinition const*> queue = {this};
+	while (!queue.empty())
+	{
+		StructDefinition const* def = queue.back();
+		queue.pop_back();
+		if (definitionsSeen.count(def))
+			BOOST_THROW_EXCEPTION(ParserError() << errinfo_sourceLocation(def->getLocation())
+												<< errinfo_comment("Recursive struct definition."));
+		definitionsSeen.insert(def);
+		for (ASTPointer<VariableDeclaration> const& member: def->getMembers())
+			if (member->getType()->getCategory() == Type::Category::STRUCT)
+			{
+				UserDefinedTypeName const& typeName = dynamic_cast<UserDefinedTypeName const&>(*member->getTypeName());
+				queue.push_back(&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()));
+			}
+	}
+}
+
+void FunctionDefinition::checkTypeRequirements()
+{
+	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
+		if (!var->getType()->canLiveOutsideStorage())
+			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+
+	m_body->checkTypeRequirements();
 }
 
 void Block::checkTypeRequirements()
@@ -300,7 +128,7 @@ void Return::checkTypeRequirements()
 void VariableDefinition::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
-	// setsthe type.
+	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
 	if (m_value)
@@ -319,8 +147,10 @@ void VariableDefinition::checkTypeRequirements()
 void Assignment::checkTypeRequirements()
 {
 	m_leftHandSide->checkTypeRequirements();
-	if (!m_leftHandSide->isLvalue())
-		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+	m_leftHandSide->requireLValue();
+	//@todo later, assignments to structs might be possible, but not to mappings
+	if (!m_leftHandSide->getType()->isValueType() && !m_leftHandSide->isLocalLValue())
+		BOOST_THROW_EXCEPTION(createTypeError("Assignment to non-local non-value lvalue."));
 	m_rightHandSide->expectType(*m_leftHandSide->getType());
 	m_type = m_leftHandSide->getType();
 	if (m_assigmentOperator != Token::ASSIGN)
@@ -344,13 +174,19 @@ void Expression::expectType(Type const& _expectedType)
 											  + _expectedType.toString() + "."));
 }
 
+void Expression::requireLValue()
+{
+	if (!isLValue())
+		BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+	m_lvalueRequested = true;
+}
+
 void UnaryOperation::checkTypeRequirements()
 {
 	// INC, DEC, ADD, SUB, NOT, BIT_NOT, DELETE
 	m_subExpression->checkTypeRequirements();
 	if (m_operator == Token::Value::INC || m_operator == Token::Value::DEC || m_operator == Token::Value::DELETE)
-		if (!m_subExpression->isLvalue())
-			BOOST_THROW_EXCEPTION(createTypeError("Expression has to be an lvalue."));
+		m_subExpression->requireLValue();
 	m_type = m_subExpression->getType();
 	if (!m_type->acceptsUnaryOperator(m_operator))
 		BOOST_THROW_EXCEPTION(createTypeError("Unary operator not compatible with type."));
@@ -404,19 +240,19 @@ void FunctionCall::checkTypeRequirements()
 		//@todo would be nice to create a struct type from the arguments
 		// and then ask if that is implicitly convertible to the struct represented by the
 		// function parameters
-		FunctionDefinition const& fun = dynamic_cast<FunctionType const&>(*expressionType).getFunction();
-		vector<ASTPointer<VariableDeclaration>> const& parameters = fun.getParameters();
-		if (parameters.size() != m_arguments.size())
+		FunctionType const& functionType = dynamic_cast<FunctionType const&>(*expressionType);
+		TypePointers const& parameterTypes = functionType.getParameterTypes();
+		if (parameterTypes.size() != m_arguments.size())
 			BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for function call."));
 		for (size_t i = 0; i < m_arguments.size(); ++i)
-			if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameters[i]->getType()))
+			if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
 				BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in function call."));
 		// @todo actually the return type should be an anonymous struct,
 		// but we change it to the type of the first return value until we have structs
-		if (fun.getReturnParameters().empty())
+		if (functionType.getReturnParameterTypes().empty())
 			m_type = make_shared<VoidType>();
 		else
-			m_type = fun.getReturnParameters().front()->getType();
+			m_type = functionType.getReturnParameterTypes().front();
 	}
 }
 
@@ -427,14 +263,25 @@ bool FunctionCall::isTypeConversion() const
 
 void MemberAccess::checkTypeRequirements()
 {
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Member access not yet implemented."));
-	// m_type = ;
+	m_expression->checkTypeRequirements();
+	Type const& type = *m_expression->getType();
+	m_type = type.getMemberType(*m_memberName);
+	if (!m_type)
+		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found in " + type.toString()));
+	//@todo later, this will not always be STORAGE
+	m_lvalue = type.getCategory() == Type::Category::STRUCT ? LValueType::STORAGE : LValueType::NONE;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index access not yet implemented."));
-	// m_type = ;
+	m_base->checkTypeRequirements();
+	if (m_base->getType()->getCategory() != Type::Category::MAPPING)
+		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
+													  m_base->getType()->toString() + ")"));
+	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+	m_index->expectType(*type.getKeyType());
+	m_type = type.getValueType();
+	m_lvalue = LValueType::STORAGE;
 }
 
 void Identifier::checkTypeRequirements()
@@ -442,36 +289,42 @@ void Identifier::checkTypeRequirements()
 	if (asserts(m_referencedDeclaration))
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Identifier not resolved."));
 
-	VariableDeclaration* variable = dynamic_cast<VariableDeclaration*>(m_referencedDeclaration);
+	VariableDeclaration const* variable = dynamic_cast<VariableDeclaration const*>(m_referencedDeclaration);
 	if (variable)
 	{
 		if (!variable->getType())
 			BOOST_THROW_EXCEPTION(createTypeError("Variable referenced before type could be determined."));
 		m_type = variable->getType();
-		m_isLvalue = true;
+		m_lvalue = variable->isLocalVariable() ? LValueType::LOCAL : LValueType::STORAGE;
 		return;
 	}
 	//@todo can we unify these with TypeName::toType()?
-	StructDefinition* structDef = dynamic_cast<StructDefinition*>(m_referencedDeclaration);
+	StructDefinition const* structDef = dynamic_cast<StructDefinition const*>(m_referencedDeclaration);
 	if (structDef)
 	{
 		// note that we do not have a struct type here
-		m_type = make_shared<TypeType>(make_shared<StructType>(*structDef));
+		m_type = make_shared<TypeType const>(make_shared<StructType const>(*structDef));
 		return;
 	}
-	FunctionDefinition* functionDef = dynamic_cast<FunctionDefinition*>(m_referencedDeclaration);
+	FunctionDefinition const* functionDef = dynamic_cast<FunctionDefinition const*>(m_referencedDeclaration);
 	if (functionDef)
 	{
 		// a function reference is not a TypeType, because calling a TypeType converts to the type.
 		// Calling a function (e.g. function(12), otherContract.function(34)) does not do a type
 		// conversion.
-		m_type = make_shared<FunctionType>(*functionDef);
+		m_type = make_shared<FunctionType const>(*functionDef);
 		return;
 	}
-	ContractDefinition* contractDef = dynamic_cast<ContractDefinition*>(m_referencedDeclaration);
+	ContractDefinition const* contractDef = dynamic_cast<ContractDefinition const*>(m_referencedDeclaration);
 	if (contractDef)
 	{
-		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef));
+		m_type = make_shared<TypeType const>(make_shared<ContractType>(*contractDef));
+		return;
+	}
+	MagicVariableDeclaration const* magicVariable = dynamic_cast<MagicVariableDeclaration const*>(m_referencedDeclaration);
+	if (magicVariable)
+	{
+		m_type = magicVariable->getType();
 		return;
 	}
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Declaration reference of unknown/forbidden type."));
@@ -479,7 +332,7 @@ void Identifier::checkTypeRequirements()
 
 void ElementaryTypeNameExpression::checkTypeRequirements()
 {
-	m_type = make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
+	m_type = make_shared<TypeType const>(Type::fromElementaryTypeName(m_typeToken));
 }
 
 void Literal::checkTypeRequirements()

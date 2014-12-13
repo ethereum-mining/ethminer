@@ -44,6 +44,9 @@ std::string formatBalance(u256 _b);
 /// Get information concerning the currency denominations.
 std::vector<std::pair<u256, std::string>> const& units();
 
+/// The log bloom's size (512 bit).
+using LogBloom = h512;
+
 // The various denominations; here for ease of use where needed within code.
 static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
 static const u256 Vether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;

@@ -47,6 +47,7 @@ namespace p2p
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
+bool isLocalHostAddress(bi::address const& _addressToCheck);
 
 class UPnP;
 class Capability;
@@ -56,7 +57,7 @@ class Session;
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 4; };
+struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 10; };
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
 struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
 struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };

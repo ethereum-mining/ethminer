@@ -101,9 +101,8 @@ bytes BlockChain::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(15)
-			// TODO: maybe make logbloom correct?
-		<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
+	block.appendList(14)
+		<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -146,7 +145,7 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
+		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
 	}
@@ -169,8 +168,6 @@ void BlockChain::close()
 	delete m_db;
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
-	m_blooms.clear();
-	m_traces.clear();
 	m_cache.clear();
 }
 
@@ -306,15 +303,10 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
-		auto b = s.oldBloom();
-		BlockBlooms bb;
-		BlockTraces bt;
 		BlockLogBlooms blb;
 		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
-			bb.blooms.push_back(s.changesFromPending(i).bloom());
-			bt.traces.push_back(s.changesFromPending(i));
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
 		}
@@ -327,16 +319,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// All ok - insert into DB
 		{
 			WriteGuard l(x_details);
-			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}, b);
+			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
-		}
-		{
-			WriteGuard l(x_blooms);
-			m_blooms[newHash] = bb;
-		}
-		{
-			WriteGuard l(x_traces);
-			m_traces[newHash] = bt;
 		}
 		{
 			WriteGuard l(x_logBlooms);
@@ -349,8 +333,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)dev::ref(m_blooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)dev::ref(m_traces[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));

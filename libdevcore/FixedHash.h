@@ -83,6 +83,7 @@ public:
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
+	bool operator>=(FixedHash const& _c) const { return m_data >= _c.m_data; }
 
 	// The obvious binary operators.
 	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
@@ -240,6 +241,7 @@ using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
+using h128 = FixedHash<16>;
 using h512s = std::vector<h512>;
 using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;

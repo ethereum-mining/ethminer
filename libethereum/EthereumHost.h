@@ -51,6 +51,7 @@ class BlockQueue;
 /**
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
+ * @doWork Syncs to peers and sends new blocks and transactions.
  */
 class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
 {
