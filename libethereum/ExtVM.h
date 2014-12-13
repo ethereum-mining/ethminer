@@ -73,6 +73,7 @@ public:
 	virtual void suicide(Address _a) override final
 	{
 		m_s.addBalance(_a, m_s.balance(myAddress));
+		m_s.subBalance(myAddress, m_s.balance(myAddress));
 		ExtVMFace::suicide(_a);
 	}
 

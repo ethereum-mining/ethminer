@@ -29,6 +29,7 @@
 #include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/All.h>
+#include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
 using namespace std;
@@ -79,11 +80,19 @@ int main()
 	KeyPair u = KeyPair::create();
 	KeyPair cb = KeyPair::create();
 	OverlayDB db;
-	State s(cb.address(), db);
+	State s(cb.address(), db, BaseState::Empty);
 	cnote << s.rootHash();
-	s.addBalance(u.address(), 1000 * ether);
+	s.addBalance(u.address(), 1 * ether);
+	Address c = s.newContract(1000 * ether, compileLLL("(suicide (caller))"));
 	s.commit();
 	cnote << s.rootHash();
+	State before = s;
+	cnote << s;
+	Transaction t(0, 10000, 10000, c, bytes(), 0, u.secret());
+	cnote << s.balance(c);
+	s.execute(t.rlp());
+	cnote << before.diff(s);
+	cnote << s;
 }
 #endif
 
