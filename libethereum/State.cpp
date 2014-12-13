@@ -34,6 +34,7 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 #include "Executive.h"
+#include "CachedAddressState.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -41,59 +42,6 @@ using namespace dev::eth;
 #define ctrace clog(StateTrace)
 
 static const u256 c_blockReward = 1500 * finney;
-
-bytes ecrecoverCode(bytesConstRef _in)
-{
-	struct inType
-	{
-		h256 hash;
-		h256 v;
-		h256 r;
-		h256 s;
-	} in;
-
-	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
-
-	h256 ret;
-
-	if ((u256)in.v > 28)
-		return ret.asBytes();
-	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
-	if (!sig.isValid())
-		return ret.asBytes();
-
-	byte pubkey[65];
-	int pubkeylen = 65;
-	secp256k1_start();
-	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
-		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
-	memset(ret.data(), 0, 12);
-	return ret.asBytes();
-}
-
-bytes sha256Code(bytesConstRef _in)
-{
-	bytes ret(32);
-	sha256(_in, &ret);
-	return ret;
-}
-
-bytes ripemd160Code(bytesConstRef _in)
-{
-	bytes ret(32);
-	ripemd160(_in, &ret);
-	// leaves the 20-byte hash left-aligned. we want it right-aligned:
-	memmove(ret.data() + 12, ret.data(), 20);
-	memset(ret.data(), 0, 12);
-	return ret;
-}
-
-const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
-{
-	{ 1, { [](bytesConstRef) -> bigint { return (bigint)500; }, ecrecoverCode }},
-	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
-	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
-};
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
@@ -225,89 +173,6 @@ Address State::nextActiveAddress(Address _a) const
 		return Address();
 	return (*it).first;
 }
-
-// TODO: repot
-struct CachedAddressState
-{
-	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
-
-	bool exists() const
-	{
-		return (r && (!s || s->isAlive())) || (s && s->isAlive());
-	}
-
-	u256 balance() const
-	{
-		return r ? s ? s->balance() : r[1].toInt<u256>() : 0;
-	}
-
-	u256 nonce() const
-	{
-		return r ? s ? s->nonce() : r[0].toInt<u256>() : 0;
-	}
-
-	bytes code() const
-	{
-		if (s && s->codeCacheValid())
-			return s->code();
-		h256 h = r ? s ? s->codeHash() : r[3].toHash<h256>() : EmptySHA3;
-		return h == EmptySHA3 ? bytes() : asBytes(o->lookup(h));
-	}
-
-	std::map<u256, u256> storage() const
-	{
-		std::map<u256, u256> ret;
-		if (r)
-		{
-			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-			for (auto const& j: memdb)
-				ret[j.first] = RLP(j.second).toInt<u256>();
-		}
-		if (s)
-			for (auto const& j: s->storageOverlay())
-				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
-					ret[j.first] = j.second;
-		return ret;
-	}
-
-	AccountDiff diff(CachedAddressState const& _c)
-	{
-		AccountDiff ret;
-		ret.exist = Diff<bool>(exists(), _c.exists());
-		ret.balance = Diff<u256>(balance(), _c.balance());
-		ret.nonce = Diff<u256>(nonce(), _c.nonce());
-		ret.code = Diff<bytes>(code(), _c.code());
-		auto st = storage();
-		auto cst = _c.storage();
-		auto it = st.begin();
-		auto cit = cst.begin();
-		while (it != st.end() || cit != cst.end())
-		{
-			if (it != st.end() && cit != cst.end() && it->first == cit->first && (it->second || cit->second) && (it->second != cit->second))
-				ret.storage[it->first] = Diff<u256>(it->second, cit->second);
-			else if (it != st.end() && (cit == cst.end() || it->first < cit->first) && it->second)
-				ret.storage[it->first] = Diff<u256>(it->second, 0);
-			else if (cit != cst.end() && (it == st.end() || it->first > cit->first) && cit->second)
-				ret.storage[cit->first] = Diff<u256>(0, cit->second);
-			if (it == st.end())
-				++cit;
-			else if (cit == cst.end())
-				++it;
-			else if (it->first < cit->first)
-				++it;
-			else if (it->first > cit->first)
-				++cit;
-			else
-				++it, ++cit;
-		}
-		return ret;
-	}
-
-	std::string rS;
-	RLP r;
-	Account const* s;
-	OverlayDB const* o;
-};
 
 StateDiff State::diff(State const& _c) const
 {

@@ -53,12 +53,6 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-struct PrecompiledAddress
-{
-	std::function<bigint(bytesConstRef)> gas;
-	std::function<bytes(bytesConstRef)> exec;
-};
-
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -250,9 +244,6 @@ public:
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
 
-	/// Info on precompiled contract accounts baked into the protocol.
-	static std::map<unsigned, PrecompiledAddress> const& precompiled() { return c_precompiled; }
-
 private:
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
@@ -310,8 +301,6 @@ private:
 	u256 m_blockReward;
 
 	static std::string c_defaultPath;
-
-	static const std::map<unsigned, PrecompiledAddress> c_precompiled;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

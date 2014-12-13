@@ -28,6 +28,7 @@
 #include "Interface.h"
 #include "State.h"
 #include "ExtVM.h"
+#include "Precompiled.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -98,8 +99,8 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	m_s.addBalance(_receiveAddress, _value);
 
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? State::precompiled().find((unsigned)(u160)_codeAddress) : State::precompiled().end();
-	if (it != State::precompiled().end())
+	auto it = !(_codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_codeAddress) : precompiled().end();
+	if (it != precompiled().end())
 	{
 		bigint g = it->second.gas(_data);
 		if (_gas < g)
