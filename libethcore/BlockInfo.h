@@ -108,6 +108,8 @@ public:
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
+	void setEmpty();
+
 	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
 	void populate(bytesConstRef _block, bool _checkNonce = true);
 	void populate(bytes const& _block, bool _checkNonce = true) { populate(&_block, _checkNonce); }
