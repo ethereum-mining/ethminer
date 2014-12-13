@@ -166,8 +166,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
 	{
+#if ETH_TIMED_EXECUTIONS
 		boost::timer t;
-//		auto sgas = m_vm->gas();
+#endif
 		try
 		{
 			m_out = m_vm->go(*m_ext, _onOp);
@@ -188,11 +189,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateChat) << "Safe VM Exception";
-			m_endGas = 0;//m_vm->gas();
+			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
+			m_endGas = 0;
 			m_excepted = true;
-
-			// Write state out only in the case of a non-excepted transaction.
 			m_ext->revert();
 		}
 		catch (Exception const& _e)
@@ -205,7 +204,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
 		}
-//		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
+#if ETH_TIMED_EXECUTIONS
+		cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);
+#endif
 	}
 	return true;
 }
