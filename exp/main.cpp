@@ -28,6 +28,7 @@
 #include <libp2p/All.h>
 #include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>
+#include <libethereum/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
 using namespace std;
@@ -36,7 +37,7 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-#if 1
+#if 0
 int main()
 {
 	DownloadMan man;
@@ -72,72 +73,17 @@ int main()
 		cnote << i;*/
 	return 0;
 }
+#else
+int main()
+{
+	KeyPair u = KeyPair::create();
+	KeyPair cb = KeyPair::create();
+	OverlayDB db;
+	State s(cb.address(), db);
+	cnote << s.rootHash();
+	s.addBalance(u.address(), 1000 * ether);
+	s.commit();
+	cnote << s.rootHash();
+}
 #endif
 
-/*int other(bool& o_started)
-{
-	setThreadName("other");
-
-	short listenPort = 30300;
-
-	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
-	auto wh = ph.registerCapability(new WhisperHost());
-
-	ph.start();
-
-	o_started = true;
-
-	/// Only interested in odd packets
-	auto w = wh->installWatch(BuildTopicMask()("odd"));
-
-	unsigned last = 0;
-	unsigned total = 0;
-
-	for (int i = 0; i < 100 && last < 81; ++i)
-	{
-		for (auto i: wh->checkWatch(w))
-		{
-			Message msg = wh->envelope(i).open();
-			last = RLP(msg.payload()).toInt<unsigned>();
-			cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
-			total += last;
-		}
-		this_thread::sleep_for(chrono::milliseconds(50));
-	}
-	return total;
-}
-
-int main(int, char**)
-{
-	g_logVerbosity = 0;
-
-	bool started = false;
-	unsigned result;
-	std::thread listener([&](){ return (result = other(started)); });
-	while (!started)
-		this_thread::sleep_for(chrono::milliseconds(50));
-
-	short listenPort = 30303;
-	string remoteHost = "127.0.0.1";
-	short remotePort = 30300;
-
-	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
-	auto wh = ph.registerCapability(new WhisperHost());
-
-	ph.start();
-
-	if (!remoteHost.empty())
-		ph.connect(remoteHost, remotePort);
-
-	KeyPair us = KeyPair::create();
-	for (int i = 0; i < 10; ++i)
-	{
-		wh->post(us.sec(), RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"));
-		this_thread::sleep_for(chrono::milliseconds(250));
-	}
-
-	listener.join();
-	assert(result == 1 + 9 + 25 + 49 + 81);
-
-	return 0;
-}*/

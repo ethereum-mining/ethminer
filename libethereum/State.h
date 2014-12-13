@@ -244,6 +244,12 @@ public:
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
 
+	/// Commit all changes waiting in the address cache to the DB.
+	void commit();
+
+	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
+	void resetCurrent();
+
 private:
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
@@ -257,25 +263,19 @@ private:
 	/// Retrieve all information about a given address into a cache.
 	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
-	/// Commit all changes waiting in the address cache to the DB.
-	void commit();
-
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _bc is passed, it will be used to check the uncles.
 	/// Throws on failure.
 	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
 
-	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
-	void resetCurrent();
-
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);
-
-	void refreshManifest(RLPStream* _txs = nullptr);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
 
+	/// Debugging only. Good for checking the Trie is in shape.
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
+	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
