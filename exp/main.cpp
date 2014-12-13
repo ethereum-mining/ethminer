@@ -85,14 +85,14 @@ int main()
 	s.addBalance(u.address(), 1 * ether);
 	Address c = s.newContract(1000 * ether, compileLLL("(suicide (caller))"));
 	s.commit();
-	cnote << s.rootHash();
 	State before = s;
-	cnote << s;
+	cnote << "State before transaction: " << before;
 	Transaction t(0, 10000, 10000, c, bytes(), 0, u.secret());
+	cnote << "Transaction: " << t;
 	cnote << s.balance(c);
 	s.execute(t.rlp());
+	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
-	cnote << s;
 }
 #endif
 
