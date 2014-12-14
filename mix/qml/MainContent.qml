@@ -32,8 +32,8 @@ Rectangle {
                 TextArea {
                     id: codeEditor
                     height: parent.height
-                    font.family: "Verdana"
-                    font.pointSize: 9
+					font.family: "Monospace"
+					font.pointSize: 12
                     width: parent.width
                     anchors.centerIn: parent
                     tabChangesFocus: false

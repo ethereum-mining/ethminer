@@ -38,7 +38,7 @@ AssemblyDebuggerModel::AssemblyDebuggerModel()
 
 DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::bytesConstRef _rawTransaction)
 {
-	QList<DebuggingState> states;
+	QList<DebuggingState> machineStates;
 	Transaction tr(_rawTransaction);
 	m_currentExecution->create(tr.sender(), tr.value(), tr.gasPrice(), tr.gas(), &tr.data(), tr.sender());
 	std::vector<DebuggingState const*> levels;
@@ -58,11 +58,11 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 		}
 
 		if (levels.size() < ext.depth)
-			levels.push_back(&states.back());
+			levels.push_back(&machineStates.back());
 		else
 			levels.resize(ext.depth);
 
-		states.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+		machineStates.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
@@ -70,7 +70,7 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 	m_currentExecution->finalize(onOp);
 
 	DebuggingContent d;
-	d.states = states;
+	d.machineStates = machineStates;
 	d.executionCode = code;
 	d.executionData = data;
 	d.contentAvailable = true;

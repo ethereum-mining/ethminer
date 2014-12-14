@@ -49,7 +49,7 @@ struct DebuggingState
 
 struct DebuggingContent
 {
-	QList<DebuggingState> states;
+	QList<DebuggingState> machineStates;
 	bytes executionCode;
 	bytesConstRef executionData;
 	bool contentAvailable;

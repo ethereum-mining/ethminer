@@ -49,7 +49,17 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 		{
 			QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
 			if (qqdoc)
-				m_doc = qqdoc->textDocument();
+			{
+				m_doc = qqdoc->textDocument();					
+				auto args = QApplication::arguments();
+				if (args.length() > 1)
+				{
+					QString path = args[1];
+					QFile file(path);
+					if (file.exists() && file.open(QFile::ReadOnly))
+						m_doc->setPlainText(file.readAll());
+				}
+			}
 		}
 	}
 	catch (...)

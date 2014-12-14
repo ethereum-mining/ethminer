@@ -30,6 +30,8 @@ namespace mix
 
 class TransactionListModel;
 
+/// Transactions list control
+/// @todo This should be moved into state as a sequence
 class TransactionListView: public Extension
 {
 	Q_OBJECT

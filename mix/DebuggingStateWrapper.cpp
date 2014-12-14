@@ -44,7 +44,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 		{
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 			std::ostringstream out;
-			out << hex << std::setw(4) << std::setfill('0') << i;
+			out << std::hex << std::setw(4) << std::setfill('0') << i;
 			codeMapping[i] = codeStr.size();
 			int line = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
@@ -103,7 +103,7 @@ QStringList DebuggingStateWrapper::levels()
 		std::ostringstream out;
 		out << m_state.cur.abridged();
 		if (i)
-			out << " " << instructionInfo(m_state.inst).name << " @0x" << hex << m_state.curPC;
+			out << " " << instructionInfo(m_state.inst).name << " @0x" << std::hex << m_state.curPC;
 		levelsStr.append(QString::fromStdString(out.str()));
 	}
 	return levelsStr;
@@ -112,7 +112,7 @@ QStringList DebuggingStateWrapper::levels()
 QString DebuggingStateWrapper::headerInfo()
 {
 	std::ostringstream ss;
-	ss << dec << " STEP: " << m_state.steps << "  |  PC: 0x" << hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << dec << m_state.newMemSize << " words  |  COST: " << dec << m_state.gasCost <<  "  |  GAS: " << dec << m_state.gas;
+	ss << std::dec << " STEP: " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " words  |  COST: " << std::dec << m_state.gasCost <<  "  |  GAS: " << std::dec << m_state.gas;
 	return QString::fromStdString(ss.str());
 }
 
