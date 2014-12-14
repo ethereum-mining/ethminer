@@ -32,7 +32,7 @@ bool ExtVM::call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, 
 	if (!e.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, origin))
 	{
 		e.go(_onOp);
-		sub += e.ext().sub;
+		e.accrueSubState(sub);
 	}
 	io_gas = e.endGas();
 	e.out().copyTo(_out);
@@ -49,7 +49,7 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
 	{
 		e.go(_onOp);
-		sub += e.ext().sub;
+		e.accrueSubState(sub);
 	}
 	io_gas = e.endGas();
 	return e.newAddress();
