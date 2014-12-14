@@ -236,5 +236,6 @@ void Executive::finalize(OnOpFunc const&)
 			m_s.m_cache[a].kill();
 
 	// Logs
-	m_logs = m_ext->sub.logs;
+	if (m_ext)
+		m_logs = m_ext->sub.logs;
 }
