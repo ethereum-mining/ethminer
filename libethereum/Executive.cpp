@@ -220,7 +220,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 void Executive::finalize(OnOpFunc const&)
 {
 	// SSTORE refunds.
-	m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+	if (m_ext)
+		m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
