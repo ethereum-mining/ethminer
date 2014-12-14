@@ -66,7 +66,7 @@ macro(eth_install_executable EXECUTABLE)
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${ETH_DEPENDENCY_INSTALL_DIR}/bin/macdeployqt ${eth_qml_dir} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
+			COMMAND ${MACDEPLOYQT_APP} ${eth_qml_dir} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
