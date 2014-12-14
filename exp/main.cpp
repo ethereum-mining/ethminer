@@ -20,6 +20,7 @@
  * Ethereum client.
  */
 #include <functional>
+#include <libethereum/AccountDiff.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
