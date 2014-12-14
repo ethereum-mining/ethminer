@@ -29,54 +29,96 @@
 #include <QByteArray>
 #include <libdevcore/Common.h>
 
+class QTextDocument;
+
 namespace dev
 {
 namespace mix
 {
 
-struct TransacionParameterValue
-{
-	QVariant value;
-};
-
+/// Backend transaction config class
 struct Transaction
 {
 	Transaction():
-		id(-1), value(0), gas(10000), gasPrice(10) {}
+		value(0), gas(10000), gasPrice(10) {}
 
-	Transaction(int _id, QString const& _title, u256 _value, u256 _gas, u256 _gasPrice):
-		id(_id), title(_title), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	Transaction(QString const& _title, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		title(_title), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 
-	int id;
+	/// User specified transaction title
 	QString title;
-	u256 value;
-	u256 gas;
-	u256 gasPrice;
+	/// Contract function name
 	QString functionId;
-	std::vector<TransacionParameterValue> parameterValues;
+	/// Transaction value
+	u256 value;
+	/// Gas
+	u256 gas;
+	/// Gas price
+	u256 gasPrice;
+	/// Mapping from contract function parameter name to value
+	std::map<QString, u256> parameterValues;
+};
+
+/// QML transaction parameter class
+class TransactionParameterItem: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(QString name READ name CONSTANT)
+	Q_PROPERTY(QString type READ type CONSTANT)
+	Q_PROPERTY(QString value READ value CONSTANT)
+public:
+	TransactionParameterItem(QString const& _name, QString const& _type, QString const& _value):
+		m_name(_name), m_type(_type), m_value(_value) {}
+
+	/// Parameter name, set by contract definition
+	QString name() { return m_name; }
+	/// Parameter type, set by contract definition
+	QString type() { return m_type; }
+	/// Parameter value, set by user
+	QString value() { return m_value; }
+
+private:
+	QString m_name;
+	QString m_type;
+	QString m_value;
 };
 
 class TransactionListItem: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(int transactionId READ transactionId CONSTANT)
+	Q_PROPERTY(int index READ index CONSTANT)
 	Q_PROPERTY(QString title READ title CONSTANT)
-	Q_PROPERTY(bool selected READ selected CONSTANT)
+	Q_PROPERTY(QString functionId READ functionId CONSTANT)
+	Q_PROPERTY(QString gas READ gas CONSTANT)
+	Q_PROPERTY(QString gasPrice READ gasPrice CONSTANT)
+	Q_PROPERTY(QString value READ value CONSTANT)
 
 public:
-	TransactionListItem(Transaction const& _t, QObject* _parent):
-		QObject(_parent), m_id(_t.id), m_title(_t.title), m_selected(false) {}
+	TransactionListItem(int _index, Transaction const& _t, QObject* _parent);
+
+	/// User specified transaction title
 	QString title() { return m_title; }
-	int transactionId() { return m_id; }
-	bool selected() { return m_selected; }
+	/// Gas
+	QString gas() { return m_gas; }
+	/// Gas cost
+	QString gasPrice() { return m_gasPrice; }
+	/// Transaction value
+	QString value() { return m_value; }
+	/// Contract function name
+	QString functionId() { return m_functionId; }
+	/// Index of this transaction in the transactions list
+	int index() { return m_index; }
 
 private:
-	int m_id;
+	int m_index;
 	QString m_title;
-	bool m_selected;
+	QString m_functionId;
+	QString m_value;
+	QString m_gas;
+	QString m_gasPrice;
 };
 
-
+/// QML model for a list of transactions
 class TransactionListModel: public QAbstractListModel
 {
 	Q_OBJECT
@@ -89,15 +131,22 @@ enum Roles
 	};
 
 public:
-	TransactionListModel(QObject* _parent);
+	TransactionListModel(QObject* _parent, QTextDocument* _document);
 	~TransactionListModel() {}
 
 	QHash<int, QByteArray> roleNames() const override;
 	int rowCount(QModelIndex const& _parent) const override;
 	QVariant data(QModelIndex const& _index, int _role) const override;
 	int getCount() const;
+	/// Apply changes from transaction dialog. Argument is a dialog model as defined in TransactionDialog.qml
+	/// @todo Change that to transaction item
 	Q_INVOKABLE void edit(QObject* _data);
+	/// @returns transaction item for a give index
 	Q_INVOKABLE QObject* getItem(int _index);
+	/// @returns a list of functions for current contract
+	Q_INVOKABLE QList<QString> getFunctions();
+	/// @returns function parameters along with parameter values if set. @see TransactionParameterItem
+	Q_INVOKABLE QVariantList getParameters(int _id, QString const& _functionId);
 
 signals:
 	void transactionAdded();
@@ -105,8 +154,10 @@ signals:
 
 private:
 	std::vector<Transaction> m_transactions;
+	QTextDocument* m_document;
 };
 
 }
 
 }
+

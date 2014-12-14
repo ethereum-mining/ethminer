@@ -13,13 +13,44 @@ Dialog {
 
 	property alias focus : titleField.focus
 	property alias transactionTitle : titleField.text
-	property int transactionId
-	property int transactionParams;
+	property int transactionIndex
+	property alias transactionParams : paramsModel;
+	property alias gas : gasField.text;
+	property alias gasPrice : gasPriceField.text;
+	property alias transactionValue : valueField.text;
+	property alias functionId : functionComboBox.currentText;
+	property var model;
 
-	function reset(id, model) {
-		var item = model.getItem(id);
-		transactionId = id;
+	function reset(index, m) {
+		model = m;
+		var item = model.getItem(index);
+		transactionIndex = index;
 		transactionTitle = item.title;
+		gas = item.gas;
+		gasPrice = item.gasPrice;
+		transactionValue = item.value;
+		var functionId = item.functionId;
+		functionsModel.clear();
+		var functionIndex = -1;
+		var functions = model.getFunctions();
+		for (var f = 0; f < functions.length; f++) {
+			functionsModel.append({ text: functions[f] });
+			if (functions[f] === item.functionId)
+				functionIndex = f;
+		}
+		functionComboBox.currentIndex = functionIndex;
+	}
+
+	function loadParameters() {
+		if (!paramsModel)
+			return;
+		paramsModel.clear();
+		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
+			var parameters = model.getParameters(transactionIndex, functionsModel.get(functionComboBox.currentIndex).text);
+			for (var p = 0; p < parameters.length; p++) {
+				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value });
+			}
+		}
 	}
 
 	GridLayout {
@@ -41,11 +72,20 @@ Dialog {
 		Label {
 			text: qsTr("Function")
 		}
-		TextField {
-			id: functionField
-			Layout.fillWidth: true
-		}
 
+		ComboBox {
+			id: functionComboBox
+			Layout.fillWidth: true
+			currentIndex: -1
+			textRole: "text"
+			editable: false
+			model: ListModel {
+				id: functionsModel
+			}
+			onCurrentIndexChanged: {
+				loadParameters();
+			}
+		}
 		Label {
 			text: qsTr("Value")
 		}
@@ -97,14 +137,9 @@ Dialog {
 				return editableDelegate;
 			}
 		}
-
 	}
 	ListModel {
 		id: paramsModel
-		Component.onCompleted: {
-			for (var i=0 ; i < 3 ; ++i)
-				paramsModel.append({"name":"Param " + i , "Type": "int", "value": i})
-		}
 	}
 
 	Component {
@@ -127,14 +162,11 @@ Dialog {
 				anchors.margins: 4
 				Connections {
 					target: loaderEditor.item
-					onAccepted: {
-						//if (typeof styleData.value === 'number')
-						//    paramsModel.setProperty(styleData.row, styleData.role, Number(parseFloat(loaderEditor.item.text).toFixed(0)))
-						//else
-						//    paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text)
+					onTextChanged: {
+						paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
-				sourceComponent: styleData.selected ? editor : null
+				sourceComponent: (styleData.selected /*&& styleData.role === "value"*/) ? editor : null
 				Component {
 					id: editor
 					TextInput {

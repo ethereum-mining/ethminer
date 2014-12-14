@@ -65,7 +65,7 @@ Rectangle {
 					text: qsTr("Edit");
 					Layout.fillHeight: true
 					onClicked: {
-						transactionDialog.reset(transactionId, transactionListModel);
+						transactionDialog.reset(index, transactionListModel);
 						transactionDialog.open();
 						transactionDialog.focus = true;
 					}

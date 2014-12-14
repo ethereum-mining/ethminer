@@ -32,7 +32,7 @@ using namespace dev::mix;
 TransactionListView::TransactionListView(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::RightTab)
 {
 	m_editor = _doc;
-	m_model.reset(new TransactionListModel(this));
+	m_model.reset(new TransactionListModel(this, _doc));
 	m_appEngine->rootContext()->setContextProperty("transactionListModel", m_model.get());
 }
 

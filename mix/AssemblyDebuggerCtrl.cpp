@@ -78,10 +78,10 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 
 			//we need to wrap states in a QObject before sending to QML.
 			QList<QObject*> wStates;
-			for(int i = 0; i < debuggingContent.states.size(); i++)
+			for (int i = 0; i < debuggingContent.machineStates.size(); i++)
 			{
 				DebuggingStateWrapper* s = new DebuggingStateWrapper(debuggingContent.executionCode, debuggingContent.executionData.toBytes(), this);
-				s->setState(debuggingContent.states.at(i));
+				s->setState(debuggingContent.machineStates.at(i));
 				wStates.append(s);
 			}
 			AssemblyDebuggerData code = DebuggingStateWrapper::getHumanReadableCode(debuggingContent.executionCode, this);
