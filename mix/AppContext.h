@@ -59,6 +59,7 @@ private:
 
 public slots:
 	void quitApplication() { delete Instance; }
+	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_obj); Q_UNUSED(_url); initKeyEventManager(); }
 };
 
 }
