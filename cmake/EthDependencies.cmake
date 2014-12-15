@@ -141,10 +141,6 @@ find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chro
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
 
-message("debug ${Boost_SYSTEM_LIBRARY_DEBUG}")
-message("release ${Boost_SYSTEM_LIBRARY_RELEASE}")
-message("other ${Boost_SYSTEM_LIBRARY}")
-
 if (APPLE)
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
