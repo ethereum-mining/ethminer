@@ -52,9 +52,9 @@ dev::eth::Client* AppContext::getEthereumClient()
 	return m_webThree->ethereum();
 }
 
-void AppContext::initKeyEventManager()
+void AppContext::initKeyEventManager(QObject* _res)
 {
-	QObject* mainContent = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
+	QObject* mainContent = _res->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
 	if (mainContent)
 		QObject::connect(mainContent, SIGNAL(keyPressed(QVariant)), m_keyEventManager.get(), SLOT(keyPressed(QVariant)));
 	else
