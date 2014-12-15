@@ -36,8 +36,6 @@ namespace dev
 namespace eth
 {
 
-using LogBloom = h512;
-
 struct LogEntry
 {
 	LogEntry() {}
@@ -82,6 +80,13 @@ struct SubState
 		refunds += _s.refunds;
 		logs += _s.logs;
 		return *this;
+	}
+
+	void clear()
+	{
+		suicides.clear();
+		logs.clear();
+		refunds = 0;
 	}
 };
 
@@ -129,10 +134,10 @@ public:
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256*, bytesConstRef, OnOpFunc const&) { return h160(); }
+	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
