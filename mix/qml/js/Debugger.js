@@ -57,7 +57,6 @@ function endOfDebug()
 	debugStorageTxt.text = "";
 	debugCallDataTxt.text = "";
 	debugStackTxt.text = "";
-	debugMemoryTxt.text = state.endOfDebug
-	var gascost = state.gas - state.gasCost;
-	headerInfoLabel.text = "EXIT  |  GAS: " + gascost;
+	debugMemoryTxt.text = state.endOfDebug;
+	headerInfoLabel.text = "EXIT  |  GAS: " + state.gasLeft;
 }
