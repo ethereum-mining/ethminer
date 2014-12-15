@@ -35,9 +35,7 @@ int main(int _argc, char *_argv[])
 	QQmlApplicationEngine* engine = new QQmlApplicationEngine();
 	AppContext::setApplicationContext(engine);
 	QObject::connect(&app, SIGNAL(lastWindowClosed()), AppContext::getInstance(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-
-	engine->load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
-
-	AppContext::getInstance()->initKeyEventManager(); //has to be called after the loading of the main view.
+	QObject::connect(engine, SIGNAL(objectCreated(QObject*, QUrl)), AppContext::getInstance(), SLOT(resourceLoaded(QObject*, QUrl)));
+	engine->load(QUrl("qrc:/qml/main.qml"));
 	return app.exec();
 }
