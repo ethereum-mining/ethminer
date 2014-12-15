@@ -40,15 +40,19 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_endGas;
 }
 
+void Executive::accrueSubState(SubState& _parentContext)
+{
+	if (m_ext)
+		_parentContext += m_ext->sub;
+}
+
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
 	m_t = Transaction(_rlp);
 
-	m_sender = m_t.sender();
-
 	// Avoid invalid transactions.
-	auto nonceReq = m_s.transactionsFrom(m_sender);
+	auto nonceReq = m_s.transactionsFrom(m_t.sender());
 	if (m_t.nonce() != nonceReq)
 	{
 		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
@@ -67,10 +71,10 @@ bool Executive::setup(bytesConstRef _rlp)
 	u256 cost = m_t.value() + m_t.gas() * m_t.gasPrice();
 
 	// Avoid unaffordable transactions.
-	if (m_s.balance(m_sender) < cost)
+	if (m_s.balance(m_t.sender()) < cost)
 	{
-		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_sender);
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)cost, (bigint)m_s.balance(m_sender)));
+		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_t.sender());
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)cost, (bigint)m_s.balance(m_t.sender())));
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
@@ -81,16 +85,16 @@ bool Executive::setup(bytesConstRef _rlp)
 	}
 
 	// Increment associated nonce for sender.
-	m_s.noteSending(m_sender);
+	m_s.noteSending(m_t.sender());
 
 	// Pay...
 	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
-	m_s.subBalance(m_sender, cost);
+	m_s.subBalance(m_t.sender(), cost);
 
 	if (m_t.isCreation())
-		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_sender);
+		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_t.sender());
 }
 
 bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
@@ -212,21 +216,17 @@ bool Executive::go(OnOpFunc const& _onOp)
 	return true;
 }
 
-/*u256 Executive::gas() const
-{
-	return m_vm ? m_vm->gas() : m_endGas;
-}*/
-
 void Executive::finalize(OnOpFunc const&)
 {
-	// SSTORE refunds.
-	m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+	// SSTORE refunds...
+	// must be done before the miner gets the fees.
+	if (m_ext)
+		m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_sender, m_endGas * m_t.gasPrice());
+	m_s.addBalance(m_t.sender(), m_endGas * m_t.gasPrice());
 
 	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
-//	cnote << "Transferring" << formatBalance(gasSpent) << "to miner.";
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Suicides...
@@ -234,6 +234,7 @@ void Executive::finalize(OnOpFunc const&)
 		for (auto a: m_ext->sub.suicides)
 			m_s.m_cache[a].kill();
 
-	// Logs
-	m_logs = m_ext->sub.logs;
+	// Logs..
+	if (m_ext)
+		m_logs = m_ext->sub.logs;
 }

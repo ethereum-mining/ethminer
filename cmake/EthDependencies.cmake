@@ -17,6 +17,11 @@ if (WIN32)
 	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
 endif()
 
+# homebrew installs qts in opt
+if (APPLE)
+	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local/opt/qt5")
+endif()
+
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
 find_package (CryptoPP 5.6.2 EXACT REQUIRED)
@@ -101,6 +106,12 @@ if (NOT HEADLESS)
 	find_package (Qt5Widgets REQUIRED)
 	find_package (Qt5WebKit REQUIRED)
 	find_package (Qt5WebKitWidgets REQUIRED)
+
+	# we need to find path to macdeployqt on mac
+	if (APPLE)
+		set (MACDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/macdeployqt)
+		message(" - macdeployqt path: ${MACDEPLOYQT_APP}")
+	endif()
 
 endif() #HEADLESS
 

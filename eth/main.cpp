@@ -441,9 +441,8 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl;
-				const char* addchr = toHex(us.address().asArray()).c_str();
-				cout << addchr << endl;
+				cout << "Current address:" << endl
+					 << toHex(us.address().asArray()) << endl;
 			}
 			else if (cmd == "secret")
 			{
