@@ -11,26 +11,39 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.cpp
+/** @file AssemblyDebuggerModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Provide an access to the current QQmlApplicationEngine which is used to add QML file on the fly.
- * In the future this class can be extended to add more variable related to the context of the application.
+ * serves as a model to debug contract assembly code.
  */
 
-#include <QQmlApplicationEngine>
-#include "ApplicationCtx.h"
-using namespace dev::mix;
+#pragma once
 
-ApplicationCtx* ApplicationCtx::Instance = nullptr;
+#include <QObject>
+#include <QList>
+#include "libethereum/State.h"
+#include "libethereum/Executive.h"
+#include "libdevcore/Common.h"
+#include "DebuggingStateWrapper.h"
 
-QQmlApplicationEngine* ApplicationCtx::appEngine()
+namespace dev
 {
-	return m_applicationEngine;
+namespace mix
+{
+
+class AssemblyDebuggerModel
+{
+public:
+	AssemblyDebuggerModel();
+	DebuggingContent getContractInitiationDebugStates(dev::u256, dev::u256, dev::u256, QString, KeyPair);
+	DebuggingContent getContractInitiationDebugStates(dev::bytesConstRef);
+	bool compile(QString);
+
+private:
+	std::unique_ptr<dev::eth::Executive> m_currentExecution;
+	dev::eth::State m_executiveState;
+};
+
 }
 
-void ApplicationCtx::setApplicationContext(QQmlApplicationEngine* _engine)
-{
-	if (Instance == nullptr)
-		Instance = new ApplicationCtx(_engine);
 }

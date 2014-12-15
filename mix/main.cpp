@@ -24,7 +24,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
 #include "CodeEditorExtensionManager.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 #include "MixApplication.h"
 using namespace dev::mix;
 
@@ -33,8 +33,11 @@ int main(int _argc, char *_argv[])
 	QApplication app(_argc, _argv);
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	QQmlApplicationEngine* engine = new QQmlApplicationEngine();
-	ApplicationCtx::setApplicationContext(engine);
-	QObject::connect(&app, SIGNAL(lastWindowClosed()), ApplicationCtx::getInstance(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
+	AppContext::setApplicationContext(engine);
+	QObject::connect(&app, SIGNAL(lastWindowClosed()), AppContext::getInstance(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
+
 	engine->load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
+
+	AppContext::getInstance()->initKeyEventManager(); //has to be called after the loading of the main view.
 	return app.exec();
 }

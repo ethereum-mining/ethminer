@@ -113,8 +113,8 @@ private:
 	bool m_excepted = false;			///< True if the VM execution resulted in an exception.
 	u256 m_endGas;						///< The final amount of gas for the transaction.
 
-	Transaction m_t;					///< The original transaction in the case that setup() was called.
-	LogEntries m_logs;					///< The log entries created by this transaction. Only valid
+	Transaction m_t;					///< The original transaction. Set by setup().
+	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
 };
 
 }
