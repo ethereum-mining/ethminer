@@ -47,7 +47,7 @@ public:
 	static void setApplicationContext(QQmlApplicationEngine* _engine);
 	QQmlApplicationEngine* appEngine();
 	dev::eth::Client* getEthereumClient();
-	void initKeyEventManager();
+	void initKeyEventManager(QObject* _obj);
 	KeyEventManager* getKeyEventManager();
 	void displayMessageDialog(QString _title, QString _message);
 
@@ -59,7 +59,7 @@ private:
 
 public slots:
 	void quitApplication() { delete Instance; }
-	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_obj); Q_UNUSED(_url); initKeyEventManager(); }
+	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
 };
 
 }
