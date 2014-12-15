@@ -58,6 +58,15 @@ void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, QString _value)
 	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
 }
 
+void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, u256 _value)
+{
+	int padding = this->padding(_dec->type());
+	std::ostringstream s;
+	s << _value;
+	bytes data = padded(jsToBytes(s.str()), padding);
+	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
+}
+
 QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;

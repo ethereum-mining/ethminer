@@ -50,6 +50,9 @@ bytes jsToBytes(std::string const& _s);
 bytes padded(bytes _b, unsigned _l);
 bytes unpadded(bytes _s);
 std::string unpadded(std::string _s);
+std::string prettyU256(u256 _n);
+std::string fromRaw(h256 _n, unsigned* _inc = nullptr);
+Address fromString(std::string _a);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 {

@@ -38,9 +38,9 @@ class QFunctionDefinition: public QBasicNodeDefinition
 
 public:
 	QFunctionDefinition(std::shared_ptr<dev::solidity::FunctionDefinition> _f, int _index): QBasicNodeDefinition(_f), m_index(_index) { initQParameters(); }
-	QList<QObject*> parameters() { return m_parameters; }
-	QList<QObject*> returnParameters() { return m_returnParameters; }
-	int index() { return m_index; }
+	QList<QObject*> parameters() const { return m_parameters; }
+	QList<QObject*> returnParameters() const { return m_returnParameters; }
+	int index() const { return m_index; }
 
 private:
 	QList<QObject*> m_parameters;

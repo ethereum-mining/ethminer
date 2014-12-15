@@ -35,6 +35,7 @@ class ContractCallDataEncoder
 public:
 	ContractCallDataEncoder();
 	void encode(QVariableDeclaration* _dec, QString _value);
+	void encode(QVariableDeclaration* _dec, u256 _value);
 	QList<QVariableDefinition*> decode(QList<QObject*> _dec, bytes _value);
 	void encode(QVariableDeclaration* _dec, bool _value);
 	void encode(int _functionIndex);

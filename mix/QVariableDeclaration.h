@@ -36,7 +36,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 
 public:
 	QVariableDeclaration(std::shared_ptr<dev::solidity::VariableDeclaration> _v): QBasicNodeDefinition(_v), m_var(_v) {}
-	QString type() { return QString::fromStdString(m_var.get()->getType()->toString());  }
+	QString type() const { return QString::fromStdString(m_var.get()->getType()->toString());  }
 
 private:
 	std::shared_ptr<dev::solidity::VariableDeclaration> m_var;

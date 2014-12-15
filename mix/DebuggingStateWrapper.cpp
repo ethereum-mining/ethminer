@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file DebuggingState.h
+/** @file DebuggingStateWrapper.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Used to translate c++ type (u256, bytes, ...) into friendly value (to be used by QML).
@@ -23,6 +23,8 @@
 #include <QDebug>
 #include <QString>
 #include <QTextStream>
+#include "libevmcore/Instruction.h"
+#include "libdevcore/CommonJS.h"
 #include "libdevcrypto/Common.h"
 #include "libevmcore/Instruction.h"
 #include "libdevcore/Common.h"
@@ -42,12 +44,12 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 		{
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 			std::ostringstream out;
-			out << std::setw(4) << std::setfill('0') << i;
+			out << std::hex << std::setw(4) << std::setfill('0') << i;
 			codeMapping[i] = codeStr.size();
 			int line = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
 			{
-				unsigned bc = b - (byte)Instruction::PUSH1 + 1;
+				unsigned bc = getPushNumber((Instruction)b);
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
@@ -68,7 +70,7 @@ QString DebuggingStateWrapper::debugStack()
 {
 	QString stack;
 	for (auto i: m_state.stack)
-		stack.prepend(prettyU256(i) + "\n");
+		stack.prepend(QString::fromStdString(prettyU256(i)) + "\n");
 
 	return stack;
 }
@@ -77,7 +79,7 @@ QString DebuggingStateWrapper::debugStorage()
 {
 	std::stringstream s;
 	for (auto const& i: m_state.storage)
-		s << "@" << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second).toStdString();
+		s << "@" << prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second);
 
 	return QString::fromStdString(s.str());
 }
@@ -89,7 +91,6 @@ QString DebuggingStateWrapper::debugMemory()
 
 QString DebuggingStateWrapper::debugCallData()
 {
-
 	return QString::fromStdString(memDump(m_data, 16, false));
 }
 
@@ -102,7 +103,7 @@ QStringList DebuggingStateWrapper::levels()
 		std::ostringstream out;
 		out << m_state.cur.abridged();
 		if (i)
-			out << " " << instructionInfo(m_state.inst).name << " @0x" << m_state.curPC;
+			out << " " << instructionInfo(m_state.inst).name << " @0x" << std::hex << m_state.curPC;
 		levelsStr.append(QString::fromStdString(out.str()));
 	}
 	return levelsStr;
@@ -111,7 +112,7 @@ QStringList DebuggingStateWrapper::levels()
 QString DebuggingStateWrapper::headerInfo()
 {
 	std::ostringstream ss;
-	ss << dec << " STEP: " << m_state.steps << "  |  PC: 0x" << hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << dec << m_state.newMemSize << " words  |  COST: " << dec << m_state.gasCost <<  "  |  GAS: " << dec << m_state.gas;
+	ss << std::dec << " STEP: " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " words  |  COST: " << std::dec << m_state.gasCost <<  "  |  GAS: " << std::dec << m_state.gas;
 	return QString::fromStdString(ss.str());
 }
 
@@ -130,60 +131,9 @@ QString DebuggingStateWrapper::endOfDebug()
 		return "RETURN " + QString::fromStdString(dev::memDump(out, 16, false));
 	}
 	else if (m_state.inst == Instruction::STOP)
-		 return "STOP";
+		return "STOP";
 	else if (m_state.inst == Instruction::SUICIDE && m_state.stack.size() >= 1)
-		 return "SUICIDE 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
+		return "SUICIDE 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
 	else
 		return "EXCEPTION";
-}
-
-QString DebuggingStateWrapper::prettyU256(u256 _n)
-{
-	unsigned inc = 0;
-	QString raw;
-	std::ostringstream s;
-	if (!(_n >> 64))
-		s << " " << (uint64_t)_n << " (0x" << (uint64_t)_n << ")";
-	else if (!~(_n >> 64))
-		s << " " << (int64_t)_n << " (0x" << (int64_t)_n << ")";
-	else if ((_n >> 160) == 0)
-	{
-		Address a = right160(_n);
-
-		QString n = QString::fromStdString(a.abridged());//pretty(a);
-		if (n.isNull())
-			s << "0x" << a;
-		else
-			s << n.toHtmlEscaped().toStdString() << "(0x" << a.abridged() << ")";
-	}
-	else if ((raw = fromRaw((h256)_n, &inc)).size())
-		return "\"" + raw.toHtmlEscaped() + "\"" + (inc ? " + " + QString::number(inc) : "");
-	else
-		s << "" << (h256)_n;
-	return QString::fromStdString(s.str());
-}
-
-QString DebuggingStateWrapper::fromRaw(h256 _n, unsigned* _inc)
-{
-	if (_n)
-	{
-		std::string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return QString();
-		if (l != std::string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == std::string::npos || (_inc && p == 31)))
-				return QString();
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return QString();
-		return QString::fromStdString(s);
-	}
-	return QString();
 }

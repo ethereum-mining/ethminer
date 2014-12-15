@@ -38,8 +38,8 @@ class QVariableDefinition: public QObject
 public:
 	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(_def->parent()), m_value(_value), m_dec(_def) {}
 
-	QVariableDeclaration* declaration() { return m_dec; }
-	QString value() { return m_value; }
+	QVariableDeclaration* declaration() const { return m_dec; }
+	QString value() const { return m_value; }
 
 private:
 	QVariableDeclaration* m_dec;

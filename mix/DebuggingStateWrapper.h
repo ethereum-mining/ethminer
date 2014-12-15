@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file DebuggingState.h
+/** @file DebuggingStateWrapper.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -30,7 +30,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -51,7 +50,7 @@ struct DebuggingState
 
 struct DebuggingContent
 {
-	QList<DebuggingState> states;
+	QList<DebuggingState> machineStates;
 	bytes executionCode;
 	bytesConstRef executionData;
 	Address contractAddress;
@@ -61,7 +60,9 @@ struct DebuggingContent
 	QList<QVariableDefinition*> returnParameters;
 };
 
-/* contains the line nb of the assembly code and the corresponding index in the code bytes array */
+/**
+ * @brief Contains the line nb of the assembly code and the corresponding index in the code bytes array.
+ */
 class HumanReadableCode: public QObject
 {
 	Q_OBJECT
@@ -78,20 +79,25 @@ private:
 	int m_processIndex;
 };
 
-/* used to publish QMap type to QML */
+
+/**
+ * @brief Publish QMap type to QML.
+ */
 class QQMLMap: public QObject
 {
 	Q_OBJECT
 
 public:
-	QQMLMap(QMap<int, int> _map, QObject* _parent): QObject(_parent), m_map(_map)  { }
-	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key);   }
+	QQMLMap(QMap<int, int> _map, QObject* _parent): QObject(_parent), m_map(_map) { }
+	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key); }
 
 private:
 	QMap<int, int> m_map;
 };
 
-/* used to publish DebuggingState struct to QML */
+/**
+ * @brief Wrap DebuggingState in QObject
+ */
 class DebuggingStateWrapper: public QObject
 {
 	Q_OBJECT
@@ -108,7 +114,7 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(QStringList levels READ levels)
 
 public:
-	DebuggingStateWrapper(bytes _code, bytes _data) : m_code(_code), m_data(_data) {}
+	DebuggingStateWrapper(bytes _code, bytes _data, QObject* _parent): QObject(_parent), m_code(_code), m_data(_data) {}
 	int step() { return  (int)m_state.steps; }
 	int curPC() { return (int)m_state.curPC; }
 	int gasCost() { return (int)m_state.gasCost; }
@@ -122,14 +128,12 @@ public:
 	QStringList levels();
 	DebuggingState state() { return m_state; }
 	void setState(DebuggingState _state) { m_state = _state;  }
-	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& code, QObject* _objUsedAsParent);
+	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code, QObject* _objUsedAsParent);
 
 private:
 	DebuggingState m_state;
 	bytes m_code;
 	bytes m_data;
-	QString prettyU256(u256 _n);
-	QString fromRaw(h256 _n, unsigned* _inc = nullptr);
 };
 
 }
