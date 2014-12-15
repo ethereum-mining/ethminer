@@ -54,4 +54,11 @@ bytes unpadded(bytes _b)
 	return _b;
 }
 
+std::string unpadded(std::string _b)
+{
+	auto p = _b.find_last_not_of((char)0);
+	_b = _b.substr(p, _b.length() - 1);
+	return _b;
+}
+
 }

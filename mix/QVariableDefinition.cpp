@@ -14,28 +14,42 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file QFunctionDefinition.cpp
+/** @file QVariableDefinition.h
  * @author Yann yann@ethdev.com
  * @date 2014
  */
 
-#include "QVariableDeclaration.h"
-#include "QFunctionDefinition.h"
-#include "libsolidity/AST.h"
-using namespace dev::solidity;
+#include "QVariableDefinition.h"
+
 using namespace dev::mix;
-
-void QFunctionDefinition::initQParameters()
+int QVariableDefinitionList::rowCount(const QModelIndex& parent) const
 {
-	std::vector<std::shared_ptr<VariableDeclaration>> parameters = ((FunctionDefinition*)m_dec.get())->getParameterList().getParameters();
-	for (unsigned i = 0; i < parameters.size(); i++)
-	{
-		m_parameters.append(new QVariableDeclaration(parameters.at(i)));
-	}
+	return m_def.size();
+}
 
-	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = ((FunctionDefinition*)m_dec.get())->getReturnParameters();
-	for (unsigned i = 0; i < returnParameters.size(); i++)
-	{
-		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i)));
-	}
+QVariant QVariableDefinitionList::data(const QModelIndex& index, int role) const
+{
+	if (role != Qt::DisplayRole)
+		return QVariant();
+
+	int i = index.row();
+	if (i < 0 || i >= m_def.size())
+		return QVariant(QVariant::Invalid);
+
+	return QVariant::fromValue(m_def.at(i));
+}
+
+QHash<int, QByteArray> QVariableDefinitionList::roleNames() const
+{
+	QHash<int, QByteArray> roles;
+	roles[Qt::DisplayRole] = "variable";
+	return roles;
+}
+
+QVariableDefinition* QVariableDefinitionList::val(int idx)
+{
+	if (idx < 0 || idx >= m_def.size())
+		return nullptr;
+
+	return m_def.at(idx);
 }

@@ -24,6 +24,7 @@
 #include "Extension.h"
 #include "ConstantCompilationModel.h"
 #include "AssemblyDebuggerModel.h"
+#include "TransactionBuilder.h"
 
 namespace dev
 {
@@ -44,7 +45,15 @@ public:
 
 private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
+	std::unique_ptr<ConstantCompilationModel> m_compilation;
 	QTextDocument* m_doc;
+	TransactionBuilder m_trBuilder;
+	KeyPair m_senderAddress;
+	DebuggingContent deployContract();
+	void callContract(Address contractAddress);
+	void finalizeExecution(DebuggingContent content);
+
+	DebuggingContent m_previousDebugResult;
 
 public Q_SLOTS:
 	void keyPressed(int);

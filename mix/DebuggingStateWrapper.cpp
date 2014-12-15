@@ -42,7 +42,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 		{
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 			std::ostringstream out;
-			out << hex << std::setw(4) << std::setfill('0') << i;
+			out << std::setw(4) << std::setfill('0') << i;
 			codeMapping[i] = codeStr.size();
 			int line = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
@@ -102,7 +102,7 @@ QStringList DebuggingStateWrapper::levels()
 		std::ostringstream out;
 		out << m_state.cur.abridged();
 		if (i)
-			out << " " << instructionInfo(m_state.inst).name << " @0x" << hex << m_state.curPC;
+			out << " " << instructionInfo(m_state.inst).name << " @0x" << m_state.curPC;
 		levelsStr.append(QString::fromStdString(out.str()));
 	}
 	return levelsStr;
@@ -143,9 +143,9 @@ QString DebuggingStateWrapper::prettyU256(u256 _n)
 	QString raw;
 	std::ostringstream s;
 	if (!(_n >> 64))
-		s << " " << (uint64_t)_n << " (0x" << hex << (uint64_t)_n << ")";
+		s << " " << (uint64_t)_n << " (0x" << (uint64_t)_n << ")";
 	else if (!~(_n >> 64))
-		s << " " << (int64_t)_n << " (0x" << hex << (int64_t)_n << ")";
+		s << " " << (int64_t)_n << " (0x" << (int64_t)_n << ")";
 	else if ((_n >> 160) == 0)
 	{
 		Address a = right160(_n);

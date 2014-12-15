@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.h
+/** @file ContractCallDataEncoder.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -22,33 +22,35 @@
 
 #pragma once
 
-#include <libevm/VM.h>
-#include <libsolidity/AST.h>
-#include <QObject>
+#include "QVariableDeclaration.h"
+#include "QVariableDefinition.h"
 
 namespace dev
 {
-
 namespace mix
 {
 
-struct CompilerResult
+class ContractCallDataEncoder
 {
-	QString hexCode;
-	QString comment;
-	dev::bytes bytes;
-	bool success;
-};
-
-class ConstantCompilationModel
-{
-
 public:
-	ConstantCompilationModel() {}
-	~ConstantCompilationModel() {}
-	CompilerResult compile(QString);
+	ContractCallDataEncoder();
+	void encode(QVariableDeclaration* _dec, QString _value);
+	QList<QVariableDefinition*> decode(QList<QObject*> _dec, bytes _value);
+	void encode(QVariableDeclaration* _dec, bool _value);
+	void encode(int _functionIndex);
+	bytes encodedData();
+
+private:
+	QMap<QString, int> typePadding;
+	int padding(QString _type);
+	static QString convertToReadable(std::string _v, QVariableDeclaration* _dec);
+	static QString convertToBool(std::string _v);
+	static QString convertToInt(std::string _v);
+	static int integerPadding(int _bitValue);
+	static QString formatBool(bool _value);
+	bytes m_encodedData;
+
 };
 
 }
-
 }

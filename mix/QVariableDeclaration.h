@@ -35,7 +35,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 	Q_PROPERTY(QString type READ type)
 
 public:
-	QVariableDeclaration(std::shared_ptr<dev::solidity::VariableDeclaration> _v, QObject* _parent): QBasicNodeDefinition(_v, _parent), m_var(_v) {}
+	QVariableDeclaration(std::shared_ptr<dev::solidity::VariableDeclaration> _v): QBasicNodeDefinition(_v), m_var(_v) {}
 	QString type() { return QString::fromStdString(m_var.get()->getType()->toString());  }
 
 private:
@@ -44,3 +44,5 @@ private:
 
 }
 }
+
+Q_DECLARE_METATYPE(dev::mix::QVariableDeclaration*)

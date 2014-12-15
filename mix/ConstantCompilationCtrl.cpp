@@ -20,14 +20,17 @@
  * Ethereum IDE client.
  */
 
+#include <QQmlContext>
 #include <QQuickItem>
 #include <QtCore/QFileInfo>
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
+#include "ApplicationCtx.h"
 #include "ConstantCompilationCtrl.h"
 #include "ConstantCompilationModel.h"
+#include "QContractDefinition.h"
 using namespace dev::mix;
 
 ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
