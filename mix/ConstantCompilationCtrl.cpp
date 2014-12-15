@@ -27,7 +27,6 @@
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
-#include "ApplicationCtx.h"
 #include "ConstantCompilationCtrl.h"
 #include "ConstantCompilationModel.h"
 #include "QContractDefinition.h"
@@ -36,12 +35,7 @@ using namespace dev::mix;
 ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
 {
 	m_editor = _doc;
-	m_compilationModel = new ConstantCompilationModel();
-}
-
-ConstantCompilationCtrl::~ConstantCompilationCtrl()
-{
-	delete m_compilationModel;
+	m_compilationModel = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel());
 }
 
 QString ConstantCompilationCtrl::contentUrl() const
@@ -67,7 +61,7 @@ void ConstantCompilationCtrl::compile()
 		resetOutPut();
 		return;
 	}
-	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "    "));
+	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "        "));
 	writeOutPut(res);
 }
 

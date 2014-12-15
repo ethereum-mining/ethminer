@@ -22,9 +22,9 @@
 #include "libethereum/ExtVM.h"
 #include "libevm/VM.h"
 #include "libdevcore/Common.h"
-#include "libdevcore/CommonJS.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 #include "TransactionBuilder.h"
+#include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
 #include "ConstantCompilationModel.h"
 #include "DebuggingStateWrapper.h"
@@ -46,7 +46,7 @@ void AssemblyDebuggerModel::addBalance(KeyPair address, u256 amount)
 
 DebuggingContent AssemblyDebuggerModel::executeTransaction()
 {
-	QList<DebuggingState> states;
+	QList<DebuggingState> machineStates;
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -64,11 +64,11 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction()
 		}
 
 		if (levels.size() < ext.depth)
-			levels.push_back(&states.back());
+			levels.push_back(&machineStates.back());
 		else
 			levels.resize(ext.depth);
 
-		states.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+		machineStates.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
@@ -78,7 +78,7 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction()
 
 	DebuggingContent d;
 	d.returnValue = m_currentExecution.get()->out().toVector();
-	d.states = states;
+	d.machineStates = machineStates;
 	d.executionCode = code;
 	d.executionData = data;
 	d.contentAvailable = true;
@@ -86,8 +86,11 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction()
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(Transaction _tr)
+DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(bytes _code, KeyPair _sender)
 {
+	TransactionBuilder trBuilder;
+	dev::eth::Transaction _tr = trBuilder.getDefaultCreationTransaction(_code, _sender,
+																		m_executiveState.transactionsFrom(dev::toAddress(_sender.secret())));
 	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	m_currentExecution.get()->forceSetup(bytesRef);
@@ -99,15 +102,21 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(Transac
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Transaction _tr)
+DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Address _contract, bytes _data,
+																   KeyPair _sender, dev::mix::TransactionSettings _tr)
 {
+
+	TransactionBuilder trBuilder;
+	dev::eth::Transaction tr = trBuilder.getBasicTransaction(_tr.value,_tr.gasPrice,_tr.gas, _contract, _data,
+												   m_executiveState.transactionsFrom(dev::toAddress(_sender.secret())), _sender.secret());
+
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
-	bytes b = _tr.rlp();
+	bytes b = tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	m_currentExecution.get()->forceSetup(bytesRef);
 	DebuggingContent d = executeTransaction();
 
-	d.contractAddress = _tr.receiveAddress();
+	d.contractAddress = tr.receiveAddress();
 	m_currentExecution.reset();
 	return d;
 }

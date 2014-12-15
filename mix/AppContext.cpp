@@ -11,12 +11,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.cpp
+/** @file AppContext.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Provides an access to the current QQmlApplicationEngine which is used to add QML file on the fly.
+ * Provides access to the current QQmlApplicationEngine which is used to add QML file on the fly.
  * In the future this class can be extended to add more variable related to the context of the application.
- * For now ApplicationCtx provides reference to:
+ * For now AppContext provides reference to:
  * - QQmlApplicationEngine
  * - dev::WebThreeDirect (and dev::eth::Client)
  * - KeyEventManager
@@ -28,63 +28,56 @@
 #include <QQmlApplicationEngine>
 #include "libdevcrypto/FileSystem.h"
 #include "KeyEventManager.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 using namespace dev;
 using namespace dev::mix;
 using namespace dev::eth;
 
-ApplicationCtx* ApplicationCtx::Instance = nullptr;
+AppContext* AppContext::Instance = nullptr;
 
-ApplicationCtx::ApplicationCtx(QQmlApplicationEngine* _engine)
+AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
-	m_applicationEngine = _engine;
+	m_applicationEngine = std::unique_ptr<QQmlApplicationEngine>(_engine);
 	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
 	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 }
 
-ApplicationCtx::~ApplicationCtx()
+QQmlApplicationEngine* AppContext::appEngine()
 {
-	delete m_applicationEngine;
+	return m_applicationEngine.get();
 }
 
-QQmlApplicationEngine* ApplicationCtx::appEngine()
+dev::eth::Client* AppContext::getEthereumClient()
 {
-	return m_applicationEngine;
+	return m_webThree->ethereum();
 }
 
-dev::eth::Client* ApplicationCtx::getEthereumClient()
-{
-	return m_webThree.get()->ethereum();
-}
-
-void ApplicationCtx::initKeyEventManager()
+void AppContext::initKeyEventManager()
 {
 	QObject* mainContent = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
 	if (mainContent)
-	{
 		QObject::connect(mainContent, SIGNAL(keyPressed(QVariant)), m_keyEventManager.get(), SLOT(keyPressed(QVariant)));
-	}
 	else
 		qDebug() << "Unable to find QObject of mainContent.qml. KeyEvent will not be handled!";
 }
 
-KeyEventManager* ApplicationCtx::getKeyEventManager()
+KeyEventManager* AppContext::getKeyEventManager()
 {
 	return m_keyEventManager.get();
 }
 
-void ApplicationCtx::setApplicationContext(QQmlApplicationEngine* _engine)
+void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 {
 	if (Instance == nullptr)
-		Instance = new ApplicationCtx(_engine);
+		Instance = new AppContext(_engine);
 }
 
-void ApplicationCtx::displayMessageDialog(QString _title, QString _message)
+void AppContext::displayMessageDialog(QString _title, QString _message)
 {
-	QQmlComponent component(m_applicationEngine, QUrl("qrc:/qml/BasicMessage.qml"));
+	QQmlComponent component(m_applicationEngine.get(), QUrl("qrc:/qml/BasicMessage.qml"));
 	QObject* dialog = component.create();
 	dialog->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
-	QObject* dialogWin = ApplicationCtx::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("messageDialog", Qt::FindChildrenRecursively);
+	QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("messageDialog", Qt::FindChildrenRecursively);
 	QMetaObject::invokeMethod(dialogWin, "close");
 	dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
 	dialogWin->setProperty("title", _title);

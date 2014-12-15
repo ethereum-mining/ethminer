@@ -22,10 +22,10 @@
 #include <QString>
 #include "libdevcore/Common.h"
 #include "libethereum/Transaction.h"
+#include "TransactionListModel.h"
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -37,8 +37,9 @@ public:
 											dev::Address address, bytes _data, dev::u256 _nonce, Secret _secret) const;
 	dev::eth::Transaction getCreationTransaction(dev::u256 _value, dev::u256 _gasPrice, dev::u256 _gas,
 											dev::bytes _data, dev::u256 _nonce, Secret _secret) const;
-	dev::eth::Transaction getDefaultCreationTransaction(dev::bytes code, KeyPair sender) const;
-	dev::eth::Transaction getDefaultBasicTransaction(dev::Address contractAddress, dev::bytes data, KeyPair sender) const;
+	dev::eth::Transaction getDefaultCreationTransaction(dev::bytes code, KeyPair sender, dev::u256 _nonce) const;
+	dev::eth::Transaction getDefaultBasicTransaction(dev::Address contractAddress, dev::bytes data, KeyPair sender, dev::u256 _nonce) const;
+	dev::eth::Transaction getTransaction(Address _contractAddress, dev::bytes _data, KeyPair _sender, u256 _nonce, dev::mix::TransactionSettings _tr);
 
 private:
 	bytes fromHex(std::string const& _s) const;

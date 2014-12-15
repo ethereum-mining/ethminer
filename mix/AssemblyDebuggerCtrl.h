@@ -23,12 +23,23 @@
 #include "QTextDocument"
 #include "Extension.h"
 #include "ConstantCompilationModel.h"
+#include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
 #include "TransactionBuilder.h"
+#include "AppContext.h"
+
+using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
+enum DebuggingStatusResult
+{
+	Ok,
+	Compilationfailed
+};
+
+Q_DECLARE_METATYPE(AssemblyDebuggerData)
+Q_DECLARE_METATYPE(DebuggingStatusResult)
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -50,13 +61,19 @@ private:
 	TransactionBuilder m_trBuilder;
 	KeyPair m_senderAddress;
 	DebuggingContent deployContract();
-	void callContract(Address contractAddress);
+	void callContract(dev::mix::TransactionSettings contractAddress);
 	void finalizeExecution(DebuggingContent content);
 
 	DebuggingContent m_previousDebugResult;
 
-public Q_SLOTS:
+public slots:
 	void keyPressed(int);
+	void updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
+	void runTransaction(dev::mix::TransactionSettings _tr);
+
+signals:
+	void dataAvailable(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
+
 };
 
 }

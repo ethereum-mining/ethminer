@@ -26,10 +26,10 @@
 #include "libethereum/Executive.h"
 #include "libdevcore/Common.h"
 #include "DebuggingStateWrapper.h"
+#include "TransactionListModel.h"
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -37,8 +37,8 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractInitiationDebugStates(dev::eth::Transaction);
-	DebuggingContent getContractCallDebugStates(dev::eth::Transaction);
+	DebuggingContent getContractInitiationDebugStates(bytes code, KeyPair _sender);
+	DebuggingContent getContractCallDebugStates(Address _contract, bytes _data, KeyPair _sender, dev::mix::TransactionSettings _tr);
 	void addBalance(KeyPair address, u256 amount);
 	void resetState();
 

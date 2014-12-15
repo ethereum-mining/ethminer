@@ -25,7 +25,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -35,18 +34,18 @@ class ConstantCompilationCtrl: public Extension
 
 public:
 	ConstantCompilationCtrl(QTextDocument*);
-	~ConstantCompilationCtrl();
+	~ConstantCompilationCtrl() {}
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
 
 private:
 	QTextDocument* m_editor;
-	ConstantCompilationModel* m_compilationModel;
+	std::unique_ptr<ConstantCompilationModel> m_compilationModel;
 	void writeOutPut(CompilerResult const&);
 	void resetOutPut();
 
-public Q_SLOTS:
+public slots:
 	void compile();
 };
 

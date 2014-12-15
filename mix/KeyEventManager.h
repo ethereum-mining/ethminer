@@ -30,13 +30,13 @@ class KeyEventManager: public QObject
 
 public:
 	KeyEventManager() {}
-	void registerEvent(const QObject* receiver, const char* slot);
-	void unRegisterEvent(QObject* receiver);
+	void registerEvent(const QObject* _receiver, const char* _slot);
+	void unRegisterEvent(QObject* _receiver);
 
 signals:
 	void onKeyPressed(int);
 
-public Q_SLOTS:
-	void keyPressed(QVariant event);
+public slots:
+	void keyPressed(QVariant _event);
 };
 

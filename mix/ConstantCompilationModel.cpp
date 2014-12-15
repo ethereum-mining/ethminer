@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.h
+/** @file ConstantCompilationModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -52,7 +52,7 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 		ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler.getScanner());
 		res.success = false;
-		res.comment = QString::fromStdString(error.str()).toHtmlEscaped();
+		res.comment = QString::fromStdString(error.str());
 		res.hexCode = "";
 	}
 	catch (...)
