@@ -26,6 +26,7 @@
 #include "libethereum/State.h"
 #include "libethereum/Executive.h"
 #include "libdevcore/Common.h"
+#include "QVariableDefinition.h"
 
 namespace dev
 {
@@ -53,8 +54,11 @@ struct DebuggingContent
 	QList<DebuggingState> states;
 	bytes executionCode;
 	bytesConstRef executionData;
+	Address contractAddress;
 	bool contentAvailable;
 	QString message;
+	bytes returnValue;
+	QList<QVariableDefinition*> returnParameters;
 };
 
 /* contains the line nb of the assembly code and the corresponding index in the code bytes array */

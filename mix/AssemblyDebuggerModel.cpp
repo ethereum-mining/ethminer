@@ -22,6 +22,7 @@
 #include "libethereum/ExtVM.h"
 #include "libevm/VM.h"
 #include "libdevcore/Common.h"
+#include "libdevcore/CommonJS.h"
 #include "ApplicationCtx.h"
 #include "TransactionBuilder.h"
 #include "AssemblyDebuggerModel.h"
@@ -36,11 +37,16 @@ AssemblyDebuggerModel::AssemblyDebuggerModel()
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::bytesConstRef _rawTransaction)
+void AssemblyDebuggerModel::addBalance(KeyPair address, u256 amount)
+{
+	//m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
+	m_executiveState.addBalance(dev::toAddress(address.secret()), amount);
+	//m_currentExecution.reset();
+}
+
+DebuggingContent AssemblyDebuggerModel::executeTransaction()
 {
 	QList<DebuggingState> states;
-	Transaction tr(_rawTransaction);
-	m_currentExecution.get()->create(tr.sender(), tr.value(), tr.gasPrice(), tr.gas(), &tr.data(), tr.sender());
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -68,8 +74,10 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 
 	m_currentExecution.get()->go(onOp);
 	m_currentExecution.get()->finalize(onOp);
+	m_executiveState.completeMine();
 
 	DebuggingContent d;
+	d.returnValue = m_currentExecution.get()->out().toVector();
 	d.states = states;
 	d.executionCode = code;
 	d.executionData = data;
@@ -78,33 +86,34 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u256 _value,
-																			   dev::u256 _gasPrice,
-																			   dev::u256 _gas,
-																			   QString code,
-																			   KeyPair _key)
+DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(Transaction _tr)
 {
-	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(code);
-	if (!res.success)
-	{
-		DebuggingContent r;
-		r.contentAvailable = false;
-		r.message = "compile failed";
-		return r;
-	}
-
-	TransactionBuilder trBuild;
-	Transaction tr = trBuild.getCreationTransaction(_value, _gasPrice, _gas, res.bytes,
-													m_executiveState.transactionsFrom(dev::toAddress(_key.secret())), _key.secret());
-	bytes b = tr.rlp();
+	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
-	return getContractInitiationDebugStates(bytesRef);
+	m_currentExecution.get()->forceSetup(bytesRef);
+	DebuggingContent d = executeTransaction();
+
+	h256 th = sha3(rlpList(_tr.sender(), _tr.nonce()));
+	d.contractAddress = right160(th);
+	m_currentExecution.reset();
+	return d;
 }
 
-bool AssemblyDebuggerModel::compile(QString _code)
+DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Transaction _tr)
 {
-	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(_code);
-	return res.success;
+	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
+	bytes b = _tr.rlp();
+	dev::bytesConstRef bytesRef = &b;
+	m_currentExecution.get()->forceSetup(bytesRef);
+	DebuggingContent d = executeTransaction();
+
+	d.contractAddress = _tr.receiveAddress();
+	m_currentExecution.reset();
+	return d;
 }
+
+void AssemblyDebuggerModel::resetState()
+{
+	m_executiveState = State();
+}
+

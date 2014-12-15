@@ -22,6 +22,7 @@
 #include <QObject>
 #include <QList>
 #include "libethereum/State.h"
+#include "libethereum/Transaction.h"
 #include "libethereum/Executive.h"
 #include "libdevcore/Common.h"
 #include "DebuggingStateWrapper.h"
@@ -36,11 +37,13 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractInitiationDebugStates(dev::u256, dev::u256, dev::u256, QString, KeyPair);
-	DebuggingContent getContractInitiationDebugStates(dev::bytesConstRef);
-	bool compile(QString);
+	DebuggingContent getContractInitiationDebugStates(dev::eth::Transaction);
+	DebuggingContent getContractCallDebugStates(dev::eth::Transaction);
+	void addBalance(KeyPair address, u256 amount);
+	void resetState();
 
 private:
+	DebuggingContent executeTransaction();
 	std::unique_ptr<dev::eth::Executive> m_currentExecution;
 	dev::eth::State m_executiveState;
 };

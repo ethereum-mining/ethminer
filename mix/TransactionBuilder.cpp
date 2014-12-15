@@ -32,9 +32,25 @@ Transaction TransactionBuilder::getCreationTransaction(u256 _value, u256 _gasPri
 }
 
 Transaction TransactionBuilder::getBasicTransaction(u256 _value, u256 _gasPrice, u256 _gas,
-										QString address, bytes _data, u256 _nonce, Secret _secret) const
+										Address address, bytes _data, u256 _nonce, Secret _secret) const
 {
-	return Transaction(_value, _gasPrice, _gas, fromString(address), _data, _nonce, _secret);
+	return Transaction(_value, _gasPrice, _gas, address, _data, _nonce, _secret);
+}
+
+Transaction TransactionBuilder::getDefaultCreationTransaction(dev::bytes code, KeyPair sender) const
+{
+	u256 gasPrice = 10000000000000;
+	u256 gas = 1000000;
+	u256 amount = 100;
+	return getCreationTransaction(amount, gasPrice, gas, code, 0, sender.secret());
+}
+
+Transaction TransactionBuilder::getDefaultBasicTransaction(Address contractAddress, dev::bytes data, KeyPair sender) const
+{
+	u256 gasPrice = 10000000000000;
+	u256 gas = 1000000;
+	u256 amount = 100;
+	return getBasicTransaction(amount, gasPrice, gas, contractAddress, data, 0, sender.secret());
 }
 
 int TransactionBuilder::fromHex(char _i) const

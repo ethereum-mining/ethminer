@@ -44,6 +44,36 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_endGas;
 }
 
+bool Executive::forceSetup(bytesConstRef _rlp)
+{
+	// Entry point for a user-executed transaction.
+	m_t = Transaction(_rlp);
+
+	m_sender = m_t.sender();
+
+	// Increment associated nonce for sender.
+	m_s.noteSending(m_sender);
+	u256 cost = m_t.value() + m_t.gas() * m_t.gasPrice();
+	// Pay...
+	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+	m_s.subBalance(m_sender, cost);
+
+	if (m_ms)
+	{
+		m_ms->from = m_sender;
+		m_ms->to = m_t.receiveAddress();
+		m_ms->value = m_t.value();
+		m_ms->input = m_t.data();
+	}
+
+	auto gasCost = Interface::txGas(m_t.data());
+
+	if (m_t.isCreation())
+		return create(m_sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_sender);
+	else
+		return call(m_t.receiveAddress(), m_sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_sender);
+}
+
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.

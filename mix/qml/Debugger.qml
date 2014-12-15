@@ -11,17 +11,49 @@ Rectangle {
 	Rectangle {
 		color: "transparent"
 		id: headerInfo
+		anchors.horizontalCenter: parent.horizontalCenter
 		width: parent.width
-		height: 30
+		height: 60
 		anchors.top: parent.top
-		Label {
-			anchors.centerIn: parent
-			font.family: "Verdana"
-			font.pointSize: 9
-			font.italic: true
-			id: headerInfoLabel
+		Column {
+			width: parent.width
+			height: parent.height
+			Rectangle {
+				color: "transparent"
+				width: parent.width
+				height: 30
+				Label {
+					anchors.centerIn: parent
+					font.family: "Verdana"
+					font.pointSize: 9
+					font.italic: true
+					id: headerInfoLabel
+				}
+			}
+			Rectangle {
+				color: "transparent"
+				width: parent.width
+				height: 30
+				ListView {
+					orientation: ListView.Horizontal
+					anchors.centerIn: parent;
+					id: headerReturnList
+					delegate: renderDelegateReturnValues
+				}
+				Component {
+					id: renderDelegateReturnValues
+					Item {
+						id: wrapperItem
+						width: parent.width
+						Text {
+							anchors.centerIn: parent
+							text: variable.declaration.name + " : " + variable.value
+							font.pointSize: 9
+						}
+					}
+				}
+			}
 		}
-
 	}
 
 	Keys.onPressed: {
@@ -38,7 +70,7 @@ Rectangle {
 		anchors.topMargin: 10
 		anchors.top: headerInfo.bottom
 		anchors.left: parent.left
-		height: parent.height - 30
+		height: parent.height - 70
 		width: parent.width * 0.5
 
 		ListView {
@@ -232,6 +264,9 @@ Rectangle {
 				anchors.bottom: parent.bottom
 				width: parent.width
 				height: parent.height - 15
+				font.family: "Verdana"
+				font.pointSize: 8
+				font.letterSpacing: 2
 				id: debugCallDataTxt
 				readOnly: true;
 			}

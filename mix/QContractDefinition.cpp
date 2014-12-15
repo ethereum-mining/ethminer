@@ -29,27 +29,27 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QContractDefinition* QContractDefinition::Contract(QString _source, QObject* _parent)
+std::shared_ptr<QContractDefinition> QContractDefinition::Contract(QString _source)
 {
 	Parser parser;
 	std::shared_ptr<ContractDefinition> contract = parser.parse(std::make_shared<Scanner>(CharStream(_source.toStdString())));
 	NameAndTypeResolver resolver({});
 	resolver.resolveNamesAndTypes(*contract);
-	return new QContractDefinition(contract, _parent);
+	return std::make_shared<QContractDefinition>(contract);
 }
 
-QContractDefinition::QContractDefinition(std::shared_ptr<ContractDefinition> _contract, QObject* _parent): QBasicNodeDefinition(_contract, _parent), m_def(_contract)
+QContractDefinition::QContractDefinition(std::shared_ptr<ContractDefinition> _contract): QBasicNodeDefinition(_contract)
 {
 	initQFunctions();
 }
 
 void QContractDefinition::initQFunctions()
 {
-	std::vector<FunctionDefinition const*> functions = m_def.get()->getInterfaceFunctions();
+	std::vector<FunctionDefinition const*> functions = ((ContractDefinition*)m_dec.get())->getInterfaceFunctions();
 	for (unsigned i = 0; i < functions.size(); i++)
 	{
 		FunctionDefinition* func = (FunctionDefinition*)functions.at(i);
 		std::shared_ptr<FunctionDefinition> sharedFunc(func);
-		m_functions.append(new QFunctionDefinition(sharedFunc, parent(), i));
+		m_functions.append(new QFunctionDefinition(sharedFunc, i));
 	}
 }
