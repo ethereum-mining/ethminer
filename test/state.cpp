@@ -45,7 +45,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
 	for (auto& i: v.get_obj())
 	{
-		cnote << i.first;
+		cerr << i.first << endl;
 		mObject& o = i.second.get_obj();
 
 		BOOST_REQUIRE(o.count("env") > 0);
@@ -128,6 +128,11 @@ BOOST_AUTO_TEST_CASE(stPreCompiledContracts)
 BOOST_AUTO_TEST_CASE(stLogTests)
 {
 	dev::test::executeTests("stLogTests", "/StateTests", dev::test::doStateTests);
+}
+
+BOOST_AUTO_TEST_CASE(stRecursiveCreate)
+{
+	dev::test::executeTests("stRecursiveCreate", "/StateTests", dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_CASE(stSpecialTest)

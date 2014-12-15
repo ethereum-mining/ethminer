@@ -25,7 +25,7 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QString>
-#include <jsonrpc/rpc.h>
+#include <jsonrpccpp/server.h>
 
 class QWebThree: public QObject
 {

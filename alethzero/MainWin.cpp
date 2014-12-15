@@ -43,6 +43,7 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
+#include <libethereum/Utility.h>
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
@@ -153,9 +154,8 @@ Main::Main(QWidget *parent) :
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
-	// w3stubserver, on dealloc, deletes m_qwebConnector
-	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
-	m_server.reset(new OurWebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_qwebConnector.reset(new QWebThreeConnector());
+	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -1350,7 +1350,7 @@ void Main::on_debugCurrent_triggered()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
 			auto r = t.rlp();
@@ -1500,58 +1500,6 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
-static bytes dataFromText(QString _s)
-{
-	bytes ret;
-	while (_s.size())
-	{
-		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
-		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
-		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
-		if (r.exactMatch(_s))
-		{
-			for (auto i: r.cap(2))
-				ret.push_back((byte)i.toLatin1());
-			if (r.cap(1) != "$")
-				for (int i = r.cap(2).size(); i < 32; ++i)
-					ret.push_back(0);
-			else
-				ret.push_back(0);
-			_s = r.cap(3);
-		}
-		else if (d.exactMatch(_s))
-		{
-			u256 v(d.cap(2).toStdString());
-			if (d.cap(6) == "szabo")
-				v *= dev::eth::szabo;
-			else if (d.cap(5) == "finney")
-				v *= dev::eth::finney;
-			else if (d.cap(4) == "ether")
-				v *= dev::eth::ether;
-			bytes bs = dev::toCompactBigEndian(v);
-			if (d.cap(1) != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					ret.push_back(0);
-			for (auto b: bs)
-				ret.push_back(b);
-			_s = d.cap(7);
-		}
-		else if (h.exactMatch(_s))
-		{
-			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
-			if (h.cap(1) != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					ret.push_back(0);
-			for (auto b: bs)
-				ret.push_back(b);
-			_s = h.cap(5);
-		}
-		else
-			_s = _s.mid(1);
-	}
-	return ret;
-}
-
 static shh::Topic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
@@ -1679,7 +1627,7 @@ void Main::on_data_textChanged()
 	}
 	else
 	{
-		m_data = dataFromText(ui->data->toPlainText());
+		m_data = parseData(ui->data->toPlainText().toStdString());
 		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
 		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
 		{
@@ -1855,7 +1803,7 @@ void Main::on_debug_clicked()
 			{
 				Secret s = i.secret();
 				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState));
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
@@ -2207,7 +2155,7 @@ void Main::on_post_clicked()
 {
 	shh::Message m;
 	m.setTo(stringToPublic(ui->shhTo->currentText()));
-	m.setPayload(dataFromText(ui->shhData->toPlainText()));
+	m.setPayload(parseData(ui->shhData->toPlainText().toStdString()));
 	Public f = stringToPublic(ui->shhFrom->currentText());
 	Secret from;
 	if (m_server->ids().count(f))
@@ -2243,18 +2191,3 @@ void Main::refreshWhispers()
 		ui->whispers->addItem(item);
 	}
 }
-
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_MainWin.cpp"
-
-#include\
-"moc_MiningView.cpp"
-
-#include\
-"moc_DownloadView.cpp"
-
-#endif

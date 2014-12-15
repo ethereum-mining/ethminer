@@ -27,10 +27,6 @@
 #include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
-#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
@@ -42,6 +38,7 @@
 #endif
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -338,9 +335,11 @@ int main(int argc, char** argv)
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -428,7 +427,8 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::CorsHttpServer(jsonrpc), web3, vector<KeyPair>({us}));
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
 			}
@@ -620,7 +620,7 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state);
+					Executive e(state, 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();

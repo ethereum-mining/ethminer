@@ -227,11 +227,3 @@ void QWebThreeConnector::onProcessData(QString const& _json, QString const& _add
 	OnRequest(_json.toStdString(), (void*)&_addInfo);
 }
 
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_QEthereum.cpp"
-
-#endif

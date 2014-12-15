@@ -21,6 +21,9 @@
  * @date 2014
  */
 
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include "WebThreeStubServer.h"
 #include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
@@ -31,9 +34,6 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#include <libsolidity/CompilerStack.h>
-#include <libsolidity/Scanner.h>
-#include <libsolidity/SourceReferenceFormatter.h>
 #include <libserpent/funcs.h>
 
 using namespace std;
@@ -75,6 +75,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 static Json::Value toJson(dev::eth::LogEntry const& _e)
 {
 	Json::Value res;
+	
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
@@ -207,7 +208,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn),
 	m_web3(_web3)
 {
