@@ -69,7 +69,7 @@ struct WorldState
 class Main : public QMainWindow
 {
 	Q_OBJECT
-	
+
 public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
@@ -79,7 +79,7 @@ public:
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
-	
+
 public slots:
 	void load(QString _file);
 	void note(QString _entry);
@@ -146,7 +146,7 @@ private slots:
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
 	void on_refresh_triggered();
-    void on_usePrivate_triggered();
+	void on_usePrivate_triggered();
 	void on_enableOptimizer_triggered();
 	void on_turboMining_triggered();
 	void on_go_triggered();
@@ -259,4 +259,6 @@ private:
 	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
+
+	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 };
