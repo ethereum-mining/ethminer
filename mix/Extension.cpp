@@ -21,24 +21,57 @@
 #include <QDebug>
 #include <libevm/VM.h>
 #include "Extension.h"
-#include "ApplicationCtx.h"
+#include "AppContext.h"
 using namespace dev;
 using namespace dev::mix;
 
-void Extension::addContentOn(QObject* _tabView)
+Extension::Extension()
+{
+	init();
+}
+
+Extension::Extension(ExtensionDisplayBehavior _displayBehavior)
+{
+	init();
+	m_displayBehavior = _displayBehavior;
+}
+
+void Extension::init()
+{
+	m_ctx = AppContext::getInstance();
+	m_appEngine = m_ctx->appEngine();
+}
+
+void Extension::addTabOn(QObject* _view)
 {
 	if (contentUrl() == "")
 		return;
 
 	QVariant returnValue;
 	QQmlComponent* component = new QQmlComponent(
-				ApplicationCtx::getInstance()->appEngine(),
-				QUrl(this->contentUrl()), _tabView);
+				AppContext::getInstance()->appEngine(),
+				QUrl(contentUrl()), _view);
 
-	QMetaObject::invokeMethod(_tabView, "addTab",
-							  Q_RETURN_ARG(QVariant, returnValue),
-							  Q_ARG(QVariant, this->title()),
-							  Q_ARG(QVariant, QVariant::fromValue(component)));
+	QMetaObject::invokeMethod(_view, "addTab",
+							Q_RETURN_ARG(QVariant, returnValue),
+							Q_ARG(QVariant, this->title()),
+							Q_ARG(QVariant, QVariant::fromValue(component)));
 
 	m_view = qvariant_cast<QObject*>(returnValue);
 }
+
+void Extension::addContentOn(QObject* _view)
+{
+	Q_UNUSED(_view);
+	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
+	{
+		QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QObject* dialogWinComponent = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("modalDialogContent", Qt::FindChildrenRecursively);
+		QMetaObject::invokeMethod(dialogWin, "close");
+		dialogWinComponent->setProperty("source", contentUrl());
+		dialogWin->setProperty("title", title());
+		QMetaObject::invokeMethod(dialogWin, "open");
+	}
+	//TODO add more view type.
+}
+
