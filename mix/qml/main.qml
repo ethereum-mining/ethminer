@@ -30,29 +30,13 @@ ApplicationWindow {
 	MainContent {
 	}
 
-	Dialog {
-		x: mainApplication.x + (mainApplication.width - width) / 2
-		y: mainApplication.y + (mainApplication.height - height) / 2
+	ModalDialog {
 		objectName: "dialog"
 		id: dialog
-		height: 400
-		width: 700
-		modality: Qt.WindowModal
-		contentItem: Rectangle {
-			objectName: "dialogContent"
-		}
 	}
 
-	Dialog {
-		x: mainApplication.x + (mainApplication.width - width) / 2
-		y: mainApplication.y + (mainApplication.height - height) / 2
-		objectName: "messageDialog"
+	AlertMessageDialog {
+		objectName: "alertMessageDialog"
 		id: messageDialog
-		height: 150
-		width: 200
-		modality: Qt.WindowModal
-		contentItem: Rectangle {
-			objectName: "messageContent"
-		}
 	}
 }
