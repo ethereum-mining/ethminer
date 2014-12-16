@@ -2,7 +2,7 @@
 #
 # Find the json-rpc-cpp includes and library
 # 
-# if you nee to add a custom library search path, do it via via CMAKE_FIND_ROOT_PATH 
+# if you nee to add a custom library search path, do it via via CMAKE_PREFIX_PATH 
 # 
 # This module defines
 #  JSON_RCP_CPP_INCLUDE_DIRS, where to find header, etc.
