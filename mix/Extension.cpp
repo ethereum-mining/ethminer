@@ -65,11 +65,10 @@ void Extension::addContentOn(QObject* _view)
 	Q_UNUSED(_view);
 	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
 	{
-		QQmlComponent component(AppContext::getInstance()->appEngine(), QUrl(contentUrl()));
-		QObject* dialog = component.create();
 		QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QObject* dialogWinComponent = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("modalDialogContent", Qt::FindChildrenRecursively);
 		QMetaObject::invokeMethod(dialogWin, "close");
-		dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
+		dialogWinComponent->setProperty("source", contentUrl());
 		dialogWin->setProperty("title", title());
 		QMetaObject::invokeMethod(dialogWin, "open");
 	}

@@ -21,7 +21,6 @@ Rectangle {
 			font.italic: true
 			id: headerInfoLabel
 		}
-
 	}
 
 	Keys.onPressed: {
@@ -138,7 +137,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -149,7 +147,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id:debugStackTxt
 				readOnly: true;
@@ -166,7 +163,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -177,7 +173,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id: debugMemoryTxt
 				readOnly: true;
@@ -194,7 +189,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -205,7 +199,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id:debugStorageTxt
 				readOnly: true;
@@ -222,7 +215,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
