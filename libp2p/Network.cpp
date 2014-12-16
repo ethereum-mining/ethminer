@@ -38,6 +38,12 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+template <class T>
+Socket<T>::Socket(SocketEventFace* _seface): m_eventDelegate(_seface), m_socket(m_eventDelegate->ioService()) {}
+
+template <class T>
+Socket<T>::Socket(SocketEventFace* _seface, endpointType _endpoint): m_eventDelegate(_seface), m_socket(m_eventDelegate->ioService(), _endpoint) {}
+
 std::vector<bi::address> Network::getInterfaceAddresses()
 {
 	std::vector<bi::address> addresses;
@@ -111,7 +117,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 	return std::move(addresses);
 }
 
-int Network::listen4(bi::tcp::acceptor& _acceptor, unsigned short _listenPort)
+int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort)
 {
 	int retport = -1;
 	for (unsigned i = 0; i < 2; ++i)
