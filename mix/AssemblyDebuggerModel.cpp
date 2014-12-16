@@ -18,30 +18,36 @@
  */
 
 #include <QApplication>
-#include "libethereum/Executive.h"
-#include "libethereum/Transaction.h"
-#include "libethereum/ExtVM.h"
-#include "libevm/VM.h"
-#include "libdevcore/Common.h"
+#include <libdevcore/Common.h>
+#include <libevm/VM.h>
+#include <libethereum/Executive.h>
+#include <libethereum/Transaction.h>
+#include <libethereum/ExtVM.h>
 #include "AppContext.h"
 #include "TransactionBuilder.h"
 #include "AssemblyDebuggerModel.h"
 #include "ConstantCompilationModel.h"
 #include "DebuggingStateWrapper.h"
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-AssemblyDebuggerModel::AssemblyDebuggerModel()
+AssemblyDebuggerModel::AssemblyDebuggerModel():
+	m_userAccount(KeyPair::create()),
+	m_baseState(Address(), m_overlayDB, BaseState::Empty)
 {
+	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
 }
 
 DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::bytesConstRef _rawTransaction)
 {
+	// Reset the state back to our clean premine.
+	m_executiveState = m_baseState;
+
 	QList<DebuggingState> states;
-	Transaction tr(_rawTransaction);
-	m_currentExecution->create(tr.sender(), tr.value(), tr.gasPrice(), tr.gas(), &tr.data(), tr.sender());
+	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -67,7 +73,9 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
+
 	m_currentExecution->go(onOp);
+	cdebug << states.size();
 	m_currentExecution->finalize(onOp);
 
 	DebuggingContent d;
@@ -79,11 +87,12 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u256 _value,
-																			   dev::u256 _gasPrice,
-																			   dev::u256 _gas,
-																			   QString _code,
-																			   KeyPair _key)
+DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(
+	dev::u256 _value,
+	dev::u256 _gasPrice,
+	dev::u256 _gas,
+	QString _code
+)
 {
 	ConstantCompilationModel compiler;
 	CompilerResult res = compiler.compile(_code);
@@ -96,8 +105,8 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::u2
 	}
 
 	TransactionBuilder trBuild;
-	Transaction tr = trBuild.getCreationTransaction(_value, _gasPrice, _gas, res.bytes,
-													m_executiveState.transactionsFrom(dev::toAddress(_key.secret())), _key.secret());
+	Transaction tr = trBuild.getCreationTransaction(_value, _gasPrice, min(_gas, m_baseState.gasLimitRemaining()), res.bytes,
+													m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	return getContractInitiationDebugStates(bytesRef);

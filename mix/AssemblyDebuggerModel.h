@@ -21,9 +21,10 @@
 
 #include <QObject>
 #include <QList>
-#include "libethereum/State.h"
-#include "libethereum/Executive.h"
-#include "libdevcore/Common.h"
+#include <libdevcore/Common.h>
+#include <libdevcrypto/Common.h>
+#include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
 
 namespace dev
@@ -31,17 +32,23 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief Long-life object for managing all executions.
+ */
 class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractInitiationDebugStates(dev::u256, dev::u256, dev::u256, QString, KeyPair);
-	DebuggingContent getContractInitiationDebugStates(dev::bytesConstRef);
+	DebuggingContent getContractInitiationDebugStates(u256, u256, u256, QString);
+	DebuggingContent getContractInitiationDebugStates(bytesConstRef);
 	bool compile(QString);
 
 private:
-	std::unique_ptr<dev::eth::Executive> m_currentExecution;
-	dev::eth::State m_executiveState;
+	KeyPair m_userAccount;
+	OverlayDB m_overlayDB;
+	eth::State m_baseState;
+	eth::State m_executiveState;
+	std::unique_ptr<eth::Executive> m_currentExecution;
 };
 
 }

@@ -69,11 +69,10 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 				return;
 			}
 
-			KeyPair ad = KeyPair::create();
 			u256 gasPrice = 10000000000000;
 			u256 gas = 1000000;
 			u256 amount = 100;
-			DebuggingContent debuggingContent = m_modelDebugger->getContractInitiationDebugStates(amount, gasPrice, gas, m_doc->toPlainText(), ad);
+			DebuggingContent debuggingContent = m_modelDebugger->getContractInitiationDebugStates(amount, gasPrice, gas, m_doc->toPlainText());
 
 			//we need to wrap states in a QObject before sending to QML.
 			QList<QObject*> wStates;
