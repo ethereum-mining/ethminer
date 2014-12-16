@@ -30,7 +30,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -45,12 +44,13 @@ public:
 	CodeEditorExtensionManager() {}
 	~CodeEditorExtensionManager();
 	void initExtensions();
+	void initExtension(std::shared_ptr<Extension>);
 	void setEditor(QQuickItem*);
 	void setTabView(QQuickItem*);
 
 private:
 	QQuickItem* m_editor;
-	QVector<std::shared_ptr<ConstantCompilationCtrl>> m_features;
+	QVector<std::shared_ptr<Extension>> m_features;
 	QQuickItem* m_tabView;
 	QTextDocument* m_doc;
 	void loadEditor(QQuickItem*);
