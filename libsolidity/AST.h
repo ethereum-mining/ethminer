@@ -509,6 +509,42 @@ private:
 	ASTPointer<Statement> m_body;
 };
 
+/**
+ * For loop statement
+ */
+class ForStatement: public BreakableStatement
+{
+public:
+	ForStatement(Location const& _location,
+				 ASTPointer<Statement> const& _initExpression,
+				 ASTPointer<Expression> const& _conditionExpression,
+				 ASTPointer<ExpressionStatement> const& _loopExpression,
+				 ASTPointer<Statement> const& _body):
+		BreakableStatement(_location),
+		m_initExpression(_initExpression),
+		m_condExpression(_conditionExpression),
+		m_loopExpression(_loopExpression),
+		m_body(_body) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	virtual void checkTypeRequirements() override;
+
+	Statement const* getInitializationExpression() const { return m_initExpression.get(); }
+	Expression const* getCondition() const { return m_condExpression.get(); }
+	ExpressionStatement const* getLoopExpression() const { return m_loopExpression.get(); }
+	Statement const& getBody() const { return *m_body; }
+
+private:
+	/// For statement's initialization expresion. for(XXX; ; ). Can be empty
+	ASTPointer<Statement> m_initExpression;
+	/// For statement's condition expresion. for(; XXX ; ). Can be empty
+	ASTPointer<Expression> m_condExpression;
+	/// For statement's loop expresion. for(;;XXX). Can be empty
+	ASTPointer<ExpressionStatement> m_loopExpression;
+	/// The body of the loop
+	ASTPointer<Statement> m_body;
+};
+
 class Continue: public Statement
 {
 public:
