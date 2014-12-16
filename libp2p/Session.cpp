@@ -522,7 +522,7 @@ void Session::start()
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
-					<< m_server->m_public.port()
+					<< m_server->m_tcpPublic.port()
 					<< m_server->id();
 	sealAndSend(s);
 	ping();
