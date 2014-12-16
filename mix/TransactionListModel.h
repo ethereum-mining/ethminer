@@ -1,18 +1,18 @@
 /*
-	This file is part of cpp-ethereum.
+    This file is part of cpp-ethereum.
 
-	cpp-ethereum is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-	cpp-ethereum is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file TransactionListView.h
  * @author Arkadiy Paronyan arkadiy@ethdev.com
@@ -28,6 +28,7 @@
 #include <QHash>
 #include <QByteArray>
 #include <libdevcore/Common.h>
+#include <libethcore/CommonEth.h>
 
 class QTextDocument;
 
@@ -40,7 +41,7 @@ namespace mix
 struct TransactionSettings
 {
 	TransactionSettings():
-		value(0), gas(10000), gasPrice(10) {}
+		value(0), gas(10000), gasPrice(10 * dev::eth::szabo) {}
 
 	TransactionSettings(QString const& _title, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
 		title(_title), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
@@ -124,7 +125,7 @@ class TransactionListModel: public QAbstractListModel
 	Q_OBJECT
 	Q_PROPERTY(int count READ getCount() NOTIFY countChanged())
 
-enum Roles
+	enum Roles
 	{
 		TitleRole = Qt::DisplayRole,
 		IdRole = Qt::UserRole + 1
@@ -147,12 +148,14 @@ public:
 	Q_INVOKABLE QList<QString> getFunctions();
 	/// @returns function parameters along with parameter values if set. @see TransactionParameterItem
 	Q_INVOKABLE QVariantList getParameters(int _id, QString const& _functionId);
+	/// Launch transaction execution UI handler
 	Q_INVOKABLE void runTransaction(int _index);
 
 signals:
-	void transactionAdded();
+	/// Transaction count has changed
 	void countChanged();
-	void transactionRan(dev::mix::TransactionSettings);
+	/// Transaction has be launched
+	void transactionStarted(dev::mix::TransactionSettings);
 
 private:
 	std::vector<TransactionSettings> m_transactions;
