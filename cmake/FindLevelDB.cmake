@@ -25,6 +25,19 @@ find_library(
 set(LEVELDB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIR})
 set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
 
+# debug library on windows
+# same naming convention as in qt (appending debug library with d)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	find_library(
+		LEVELDB_LIBRARY_DEBUG
+		NAMES leveldbd
+		DOC "leveldb debug library"
+	)
+	
+	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARIES} ${LEVELDB_LIBRARY_DEBUG})
+
+endif()
+
 # handle the QUIETLY and REQUIRED arguments and set LEVELDB_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
