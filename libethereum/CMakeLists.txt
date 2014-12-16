@@ -25,7 +25,7 @@ else()
 endif()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARY_RELEASE})
+target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
