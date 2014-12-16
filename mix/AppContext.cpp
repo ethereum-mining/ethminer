@@ -74,14 +74,13 @@ void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
 {
-	QQmlComponent component(m_applicationEngine.get(), QUrl("qrc:/qml/BasicMessage.qml"));
-	QObject* dialog = component.create();
-	dialog->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
-	QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("messageDialog", Qt::FindChildrenRecursively);
+	QObject* dialogWin = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
+	QObject* dialogWinComponent = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
 	QMetaObject::invokeMethod(dialogWin, "close");
-	dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
+	dialogWinComponent->setProperty("source", QString("qrc:/qml/BasicMessage.qml"));
 	dialogWin->setProperty("title", _title);
 	dialogWin->setProperty("width", "250");
 	dialogWin->setProperty("height", "100");
+	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
 }
