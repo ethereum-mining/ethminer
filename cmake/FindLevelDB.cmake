@@ -27,6 +27,7 @@ set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
 
 # debug library on windows
 # same naming convention as in qt (appending debug library with d)
+# boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	find_library(
 		LEVELDB_LIBRARY_DEBUG
@@ -34,7 +35,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		DOC "leveldb debug library"
 	)
 	
-	set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARIES} ${LEVELDB_LIBRARY_DEBUG})
+	set(LEVELDB_LIBRARIES optimized ${LEVELDB_LIBRARIES} debug ${LEVELDB_LIBRARY_DEBUG})
 
 endif()
 
