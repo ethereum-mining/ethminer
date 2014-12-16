@@ -2,7 +2,7 @@
 #
 # Find the jsoncpp includes and library
 # 
-# if you nee to add a custom library search path, do it via via CMAKE_FIND_ROOT_PATH 
+# if you nee to add a custom library search path, do it via via CMAKE_PREFIX_PATH 
 # 
 # This module defines
 #  JSONCPP_INCLUDE_DIRS, where to find header, etc.
@@ -39,7 +39,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 endif()
 
-# handle the QUIETLY and REQUIRED arguments and set GMP_FOUND to TRUE
+# handle the QUIETLY and REQUIRED arguments and set JSONCPP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(jsoncpp DEFAULT_MSG
