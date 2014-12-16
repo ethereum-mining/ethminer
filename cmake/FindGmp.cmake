@@ -14,13 +14,13 @@ find_path(
 	GMP_INCLUDE_DIR 
 	NAMES gmp.h
 	DOC "gmp include dir"
-	)
+)
 
 find_library(
 	GMP_LIBRARY
 	NAMES gmp
 	DOC "gmp library"
-	)
+)
 
 set(GMP_INCLUDE_DIRS ${GMP_INCLUDE_DIR})
 set(GMP_LIBRARIES ${GMP_LIBRARY})
