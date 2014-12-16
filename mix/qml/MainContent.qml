@@ -5,6 +5,14 @@ import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 
 Rectangle {
+	objectName: "mainContent"
+	signal keyPressed(variant event)
+	focus: true
+	Keys.enabled: true
+	Keys.onPressed:
+	{
+		root.keyPressed(event.key);
+	}
 	anchors.fill: parent
 	height: parent.height
 	width: parent.width;
@@ -26,11 +34,11 @@ Rectangle {
 				anchors.centerIn: parent
 				tabChangesFocus: false
 				Keys.onPressed: {
-					if (event.key === Qt.Key_Tab) {
-						codeEditor.insert(codeEditor.cursorPosition, "\t");
-						event.accepted = true;
+						if (event.key === Qt.Key_Tab) {
+							codeEditor.insert(codeEditor.cursorPosition, "\t");
+							event.accepted = true;
+						}
 					}
-				}
 			}
 		}
 		Rectangle {
@@ -46,7 +54,7 @@ Rectangle {
 				style: TabStyle {}
 			}
 		}
-		CodeEditorExtensionManager{
+		CodeEditorExtensionManager {
 			tabView: contextualTabs
 			editor: codeEditor
 		}

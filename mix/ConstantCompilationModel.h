@@ -22,11 +22,11 @@
 
 #pragma once
 
+#include <libevm/VM.h>
 #include <QObject>
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -34,6 +34,7 @@ struct CompilerResult
 {
 	QString hexCode;
 	QString comment;
+	dev::bytes bytes;
 	bool success;
 };
 
@@ -43,7 +44,7 @@ class ConstantCompilationModel
 public:
 	ConstantCompilationModel() {}
 	~ConstantCompilationModel() {}
-	CompilerResult compile(QString code);
+	CompilerResult compile(QString _code);
 };
 
 }

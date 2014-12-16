@@ -14,32 +14,29 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MixApplication.cpp
+/** @file KeyEventManager.h
  * @author Yann yann@ethdev.com
  * @date 2014
+ * use as an event handler for all classes which need keyboard interactions
  */
 
-#include <QDebug>
-#include "MixApplication.h"
-using namespace dev::mix;
+#pragma once
 
-MixApplication::MixApplication(int _argc, char* _argv[]): QApplication(_argc, _argv)
-{
-}
+#include <QObject>
 
-bool MixApplication::notify(QObject* _receiver, QEvent* _event)
+class KeyEventManager: public QObject
 {
-	try
-	{
-		return MixApplication::notify(_receiver, _event);
-	}
-	catch (std::exception& _ex)
-	{
-		qDebug() << "std::exception was caught " << _ex.what();
-	}
-	catch (...)
-	{
-		qDebug() << "uncaught exception ";
-	}
-	return false;
-}
+	Q_OBJECT
+
+public:
+	KeyEventManager() {}
+	void registerEvent(const QObject* _receiver, const char* _slot);
+	void unRegisterEvent(QObject* _receiver);
+
+signals:
+	void onKeyPressed(int);
+
+public slots:
+	void keyPressed(QVariant _event);
+};
+
