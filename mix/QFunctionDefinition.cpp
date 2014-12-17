@@ -27,15 +27,15 @@ using namespace dev::mix;
 
 void QFunctionDefinition::initQParameters()
 {
-	std::vector<std::shared_ptr<VariableDeclaration>> parameters = ((FunctionDefinition*)m_dec.get())->getParameterList().getParameters();
+	std::vector<std::shared_ptr<VariableDeclaration>> parameters = ((FunctionDefinition*)m_dec)->getParameterList().getParameters();
 	for (unsigned i = 0; i < parameters.size(); i++)
 	{
-		m_parameters.append(new QVariableDeclaration(parameters.at(i)));
+		m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
 	}
 
-	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = ((FunctionDefinition*)m_dec.get())->getReturnParameters();
+	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = ((FunctionDefinition*)m_dec)->getReturnParameters();
 	for (unsigned i = 0; i < returnParameters.size(); i++)
 	{
-		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i)));
+		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));
 	}
 }

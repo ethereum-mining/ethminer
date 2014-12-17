@@ -28,6 +28,7 @@
 #pragma once
 
 #include <QQmlApplicationEngine>
+#include "libsolidity/CompilerStack.h"
 #include "libwebthree/WebThree.h"
 #include "KeyEventManager.h"
 
@@ -47,8 +48,9 @@ public:
 	static void setApplicationContext(QQmlApplicationEngine* _engine);
 	QQmlApplicationEngine* appEngine();
 	dev::eth::Client* getEthereumClient();
-	void initKeyEventManager();
+	void initKeyEventManager(QObject* _obj);
 	KeyEventManager* getKeyEventManager();
+	dev::solidity::CompilerStack* compiler();
 	void displayMessageDialog(QString _title, QString _message);
 
 private:
@@ -56,9 +58,11 @@ private:
 	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<KeyEventManager> m_keyEventManager;
+	std::unique_ptr<solidity::CompilerStack> m_compiler;
 
 public slots:
 	void quitApplication() { delete Instance; }
+	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
 };
 
 }

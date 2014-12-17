@@ -31,11 +31,13 @@ namespace eth
 extern u256 const c_stepGas;			///< Once per operation, except for SSTORE, SLOAD, BALANCE, SHA3, CREATE, CALL.
 extern u256 const c_balanceGas;			///< Once per BALANCE operation.
 extern u256 const c_sha3Gas;			///< Once per SHA3 operation.
+extern u256 const c_sha3WordGas;
 extern u256 const c_sloadGas;			///< Once per SLOAD operation.
 extern u256 const c_sstoreSetGas;		///< Once per SSTORE operation if the zeroness changes from zero.
 extern u256 const c_sstoreResetGas;		///< Once per SSTORE operation if the zeroness doesn't change.
 extern u256 const c_sstoreRefundGas;	///< Refunded gas, once per SSTORE operation if the zeroness changes to zero.
 extern u256 const c_createGas;			///< Once per CREATE operation & contract-creation transaction.
+extern u256 const c_createDataGas;
 extern u256 const c_callGas;			///< Once per CALL operation & message call transaction.
 extern u256 const c_expGas;				///< Once per EXP instuction.
 extern u256 const c_expByteGas;			///< Times ceil(log256(exponent)) for the EXP instruction.

@@ -14,12 +14,13 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ConstantCompilationModel.h
+/** @file ConstantCompilationModel.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
  */
 
+#include <QApplication>
 #include <QObject>
 #include <libevm/VM.h>
 #include <libsolidity/Scanner.h>
@@ -50,7 +51,7 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 	catch (dev::Exception const& _exception)
 	{
 		ostringstream error;
-		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler.getScanner());
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", compiler);
 		res.success = false;
 		res.comment = QString::fromStdString(error.str());
 		res.hexCode = "";
@@ -58,7 +59,7 @@ CompilerResult ConstantCompilationModel::compile(QString _code)
 	catch (...)
 	{
 		res.success = false;
-		res.comment = "Uncaught exception.";
+		res.comment = QApplication::tr("Uncaught exception.");
 		res.hexCode = "";
 	}
 	return res;

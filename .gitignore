@@ -29,7 +29,9 @@ build_xc
 *.user.*
 *~
 
+# build system
 build.*/
+extdep/install
 
 *.pyc
 

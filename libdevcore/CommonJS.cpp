@@ -112,13 +112,8 @@ std::string fromRaw(h256 _n, unsigned* _inc)
 	return "";
 }
 
-Address fromString(std::string _sn)
+Address fromString(std::string const& _sn)
 {
-	if (_sn.size() > 32)
-		_sn.resize(32);
-	h256 n;
-	memcpy(n.data(), _sn.data(), _sn.size());
-	memset(n.data() + _sn.size(), 0, 32 - _sn.size());
 	if (_sn.size() == 40)
 		return Address(fromHex(_sn));
 	else

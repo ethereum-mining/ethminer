@@ -25,7 +25,6 @@
 #include "ConstantCompilationModel.h"
 #include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
-#include "TransactionBuilder.h"
 #include "AppContext.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
@@ -37,6 +36,7 @@ enum DebuggingStatusResult
 
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
 Q_DECLARE_METATYPE(DebuggingStatusResult)
+Q_DECLARE_METATYPE(dev::mix::DebuggingContent)
 
 namespace dev
 {
@@ -58,21 +58,18 @@ private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	std::unique_ptr<ConstantCompilationModel> m_compilation;
 	QTextDocument* m_doc;
-	TransactionBuilder m_trBuilder;
-	KeyPair m_senderAddress;
-	DebuggingContent deployContract();
-	void callContract(dev::mix::TransactionSettings contractAddress);
-	void finalizeExecution(DebuggingContent content);
-
-	DebuggingContent m_previousDebugResult;
+	void deployContract(QString _source);
+	void callContract(dev::mix::TransactionSettings _contractAddress);
+	void finalizeExecution(DebuggingContent _content);
+	DebuggingContent m_previousDebugResult; //used for now to keep the contract address in case of transaction call.
 
 public slots:
 	void keyPressed(int);
-	void updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
+	void updateGUI(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
 	void runTransaction(dev::mix::TransactionSettings _tr);
 
 signals:
-	void dataAvailable(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
+	void dataAvailable(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
 
 };
 

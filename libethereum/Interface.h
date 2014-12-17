@@ -26,7 +26,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libevm/FeeStructure.h>
-#include "MessageFilter.h"
+#include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
 #include "BlockDetails.h"
@@ -84,11 +84,6 @@ public:
 	virtual bytes codeAt(Address _a, int _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, int _block) const = 0;
 
-//	// [MESSAGE API]
-//
-//	virtual PastMessages messages(unsigned _watchId) const = 0;
-//	virtual PastMessages messages(MessageFilter const& _filter) const = 0;
-	
 	// [LOGS API]
 	
 	virtual LogEntries logs(unsigned _watchId) const = 0;

@@ -33,6 +33,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include <libqethereum/QEthereum.h>
 #include <libwebthree/WebThree.h>
 
@@ -43,7 +44,6 @@ class Main;
 namespace dev { namespace eth {
 class Client;
 class State;
-class MessageFilter;
 }}
 
 class QQuickView;
@@ -256,7 +256,7 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	QWebThreeConnector* m_qwebConnector;
+	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 
