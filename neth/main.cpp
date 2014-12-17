@@ -26,16 +26,12 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
-#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/abstractwebthreestubserver.h>
-#include <libdevcore/CommonJS.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
@@ -476,9 +472,11 @@ int main(int argc, char** argv)
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::HttpServer(jsonrpc), web3, vector<KeyPair>({us}));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -552,7 +550,8 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::HttpServer(jsonrpc), web3, vector<KeyPair>({us}));
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}

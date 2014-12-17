@@ -21,7 +21,6 @@
 
 #include "CommonEth.h"
 #include <random>
-#include <secp256k1/secp256k1.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
 using namespace std;
@@ -33,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 46;
+const unsigned c_protocolVersion = 49;
 const unsigned c_databaseVersion = 5;
 
 static const vector<pair<u256, string>> g_units =

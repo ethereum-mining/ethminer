@@ -39,5 +39,3 @@ void KeyEventManager::keyPressed(QVariant _event)
 {
 	emit onKeyPressed(_event.toInt());
 }
-
-

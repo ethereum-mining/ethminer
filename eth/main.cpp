@@ -27,10 +27,6 @@
 #include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
-#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
@@ -42,6 +38,7 @@
 #endif
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -338,9 +335,11 @@ int main(int argc, char** argv)
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(new jsonrpc::CorsHttpServer(jsonrpc), web3, {us}));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -428,7 +427,8 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = make_shared<WebThreeStubServer>(new jsonrpc::CorsHttpServer(jsonrpc), web3, vector<KeyPair>({us}));
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
 			}
@@ -441,9 +441,8 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl;
-				const char* addchr = toHex(us.address().asArray()).c_str();
-				cout << addchr << endl;
+				cout << "Current address:" << endl
+					 << toHex(us.address().asArray()) << endl;
 			}
 			else if (cmd == "secret")
 			{
@@ -620,7 +619,7 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state);
+					Executive e(state, 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();
@@ -630,10 +629,10 @@ int main(int argc, char** argv)
 
 						OnOpFunc oof;
 						if (format == "pretty")
-							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
+							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
-								dev::eth::VM* vm = (VM*)vvm;
-								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								dev::eth::VM* vm = vvm;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								f << endl << "    STACK" << endl;
 								for (auto i: vm->stack())
 									f << (h256)i << endl;
@@ -644,17 +643,17 @@ int main(int argc, char** argv)
 								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
 							};
 						else if (format == "standard")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
-								dev::eth::VM* vm = (VM*)vvm;
-								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								dev::eth::VM* vm = vvm;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
 						else if (format == "standard+")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
 								dev::eth::VM* vm = (VM*)vvm;
-								dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
 									for (auto const& i: ext->state().storage(ext->myAddress))
 										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;

@@ -36,8 +36,7 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "PastMessage.h"
-#include "MessageFilter.h"
+#include "LogFilter.h"
 #include "Miner.h"
 #include "Interface.h"
 
@@ -79,8 +78,6 @@ static const int GenesisBlock = INT_MIN;
 
 struct InstalledFilter
 {
-//	InstalledFilter(MessageFilter const& _f): filter(_f) {}
-//	MessageFilter filter;
 	InstalledFilter(LogFilter const& _f): filter(_f) {}
 
 	LogFilter filter;

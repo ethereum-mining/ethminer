@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file OurWebThreeStubServer.cpp
+/** @file OurWebThreeStubServer.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -29,7 +29,7 @@ class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 	Q_OBJECT
 
 public:
-	OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 
 	virtual std::string shh_newIdentity() override;
 

@@ -20,6 +20,7 @@
  * Solidity AST to EVM bytecode compiler for expressions.
  */
 
+#include <functional>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
 #include <libsolidity/ASTVisitor.h>
@@ -31,40 +32,42 @@ class AssemblyItem; // forward
 }
 namespace solidity {
 
-class CompilerContext; // forward
-class Type; // forward
-class IntegerType; // forward
+// forward declarations
+class CompilerContext;
+class Type;
+class IntegerType;
+class StaticStringType;
 
 /**
  * Compiler for expressions, i.e. converts an AST tree whose root is an Expression into a stream
  * of EVM instructions. It needs a compiler context that is the same for the whole compilation
  * unit.
  */
-class ExpressionCompiler: private ASTVisitor
+class ExpressionCompiler: private ASTConstVisitor
 {
 public:
 	/// Compile the given @a _expression into the @a _context.
-	static void compileExpression(CompilerContext& _context, Expression& _expression);
+	static void compileExpression(CompilerContext& _context, Expression const& _expression, bool _optimize = false);
 
 	/// Appends code to remove dirty higher order bits in case of an implicit promotion to a wider type.
 	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack, Type const& _targetType);
 
 private:
-	ExpressionCompiler(CompilerContext& _compilerContext):
-		m_context(_compilerContext), m_currentLValue(m_context) {}
+	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
+		m_optimize(_optimize), m_context(_compilerContext), m_currentLValue(m_context) {}
 
-	virtual bool visit(Assignment& _assignment) override;
-	virtual void endVisit(UnaryOperation& _unaryOperation) override;
-	virtual bool visit(BinaryOperation& _binaryOperation) override;
-	virtual bool visit(FunctionCall& _functionCall) override;
-	virtual void endVisit(MemberAccess& _memberAccess) override;
-	virtual bool visit(IndexAccess& _indexAccess) override;
-	virtual void endVisit(Identifier& _identifier) override;
-	virtual void endVisit(Literal& _literal) override;
+	virtual bool visit(Assignment const& _assignment) override;
+	virtual void endVisit(UnaryOperation const& _unaryOperation) override;
+	virtual bool visit(BinaryOperation const& _binaryOperation) override;
+	virtual bool visit(FunctionCall const& _functionCall) override;
+	virtual void endVisit(MemberAccess const& _memberAccess) override;
+	virtual bool visit(IndexAccess const& _indexAccess) override;
+	virtual void endVisit(Identifier const& _identifier) override;
+	virtual void endVisit(Literal const& _literal) override;
 
 	///@{
 	///@name Append code for various operator types
-	void appendAndOrOperatorCode(BinaryOperation& _binaryOperation);
+	void appendAndOrOperatorCode(BinaryOperation const& _binaryOperation);
 	void appendCompareOperatorCode(Token::Value _operator, Type const& _type);
 	void appendOrdinaryBinaryOperatorCode(Token::Value _operator, Type const& _type);
 
@@ -74,12 +77,31 @@ private:
 	/// @}
 
 	/// Appends an implicit or explicit type conversion. For now this comprises only erasing
-	/// higher-order bits (@see appendHighBitCleanup) when widening integer types.
+	/// higher-order bits (@see appendHighBitCleanup) when widening integer.
 	/// If @a _cleanupNeeded, high order bits cleanup is also done if no type conversion would be
 	/// necessary.
 	void appendTypeConversion(Type const& _typeOnStack, Type const& _targetType, bool _cleanupNeeded = false);
 	//// Appends code that cleans higher-order bits for integer types.
 	void appendHighBitsCleanup(IntegerType const& _typeOnStack);
+
+	/// Additional options used in appendExternalFunctionCall.
+	struct FunctionCallOptions
+	{
+		FunctionCallOptions() {}
+		/// Invoked to copy the address to the stack
+		std::function<void()> obtainAddress;
+		/// Invoked to copy the ethe value to the stack (if not specified, value is 0).
+		std::function<void()> obtainValue;
+		/// If true, do not prepend function index to call data
+		bool bare = false;
+		/// If false, use calling convention that all arguments and return values are packed as
+		/// 32 byte values with padding.
+		bool packDensely = true;
+	};
+
+	/// Appends code to call a function of the given type with the given arguments.
+	void appendExternalFunctionCall(FunctionType const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
+									FunctionCallOptions const& _options = FunctionCallOptions());
 
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.
@@ -92,8 +114,7 @@ private:
 		enum LValueType { NONE, STACK, MEMORY, STORAGE };
 
 		explicit LValue(CompilerContext& _compilerContext): m_context(&_compilerContext) { reset(); }
-		LValue(CompilerContext& _compilerContext, LValueType _type, unsigned _baseStackOffset = 0):
-			m_context(&_compilerContext), m_type(_type), m_baseStackOffset(_baseStackOffset) {}
+		LValue(CompilerContext& _compilerContext, LValueType _type, Type const& _dataType, unsigned _baseStackOffset = 0);
 
 		/// Set type according to the declaration and retrieve the reference.
 		/// @a _expression is the current expression
@@ -128,14 +149,13 @@ private:
 		/// If m_type is STACK, this is base stack offset (@see
 		/// CompilerContext::getBaseStackOffsetOfVariable) of a local variable.
 		unsigned m_baseStackOffset;
+		/// Size of the value of this lvalue on the stack.
+		unsigned m_stackSize;
 	};
 
+	bool m_optimize;
 	CompilerContext& m_context;
 	LValue m_currentLValue;
-	/// If a "virtual" function (i.e. a bulit-in function without jump tag) is encountered, the
-	/// actual function is stored here. @todo prevent assignment or store it with assignment
-	enum class SpecialFunction { NONE, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160 };
-	SpecialFunction m_currentSpecialFunction;
 };
 
 

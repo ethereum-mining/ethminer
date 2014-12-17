@@ -117,7 +117,7 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
 	m_web3->connect(Host::pocHost());
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(&m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 	
@@ -611,15 +611,3 @@ void Main::on_mine_triggered()
 	else
 		ethereum()->stopMining();
 }
-
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_MainWin.cpp"
-
-#include\
-"moc_MiningView.cpp"
-
-#endif

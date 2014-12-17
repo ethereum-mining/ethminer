@@ -72,7 +72,7 @@ ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller): m_TestObject(_o
 	if (!isFiller)
 	{
 		importState(_o["post"].get_obj(), m_statePost);
-		m_environment.sub.logs = importLog(_o["logs"].get_obj());
+		m_environment.sub.logs = importLog(_o["logs"].get_array());
 	}
 }
 
@@ -109,9 +109,6 @@ void ImportTest::importState(json_spirit::mObject& _o, State& _state)
 
 		Address address = Address(i.first);
 
-		for (auto const& j: o["storage"].get_obj())
-			_state.setStorage(address, toInt(j.first), toInt(j.second));
-
 		bytes code = importCode(o);
 
 		if (code.size())
@@ -121,6 +118,9 @@ void ImportTest::importState(json_spirit::mObject& _o, State& _state)
 		}
 		else
 			_state.m_cache[address] = Account(toInt(o["balance"]), Account::NormalCreation);
+
+		for (auto const& j: o["storage"].get_obj())
+			_state.setStorage(address, toInt(j.first), toInt(j.second));
 
 		for(int i=0; i<toInt(o["nonce"]); ++i)
 			_state.noteSending(address);
@@ -259,16 +259,17 @@ bytes importCode(json_spirit::mObject& _o)
 	return code;
 }
 
-LogEntries importLog(json_spirit::mObject& _o)
+LogEntries importLog(json_spirit::mArray& _a)
 {
 	LogEntries logEntries;
-	for (auto const& l: _o)
+	for (auto const& l: _a)
 	{
-		json_spirit::mObject o = l.second.get_obj();
+		json_spirit::mObject o = l.get_obj();
 		// cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
 		assert(o.count("address") > 0);
 		assert(o.count("topics") > 0);
 		assert(o.count("data") > 0);
+		assert(o.count("bloom") > 0);
 		LogEntry log;
 		log.address = Address(o["address"].get_str());
 		for (auto const& t: o["topics"].get_array())
@@ -279,9 +280,9 @@ LogEntries importLog(json_spirit::mObject& _o)
 	return logEntries;
 }
 
-json_spirit::mObject exportLog(eth::LogEntries _logs)
+json_spirit::mArray exportLog(eth::LogEntries _logs)
 {
-	json_spirit::mObject ret;
+	json_spirit::mArray ret;
 	if (_logs.size() == 0) return ret;
 	for (LogEntry const& l: _logs)
 	{
@@ -292,7 +293,8 @@ json_spirit::mObject exportLog(eth::LogEntries _logs)
 			topics.push_back(toString(t));
 		o["topics"] = topics;
 		o["data"] = "0x" + toHex(l.data);
-		ret[toString(l.bloom())] = o;
+		o["bloom"] = toString(l.bloom());
+		ret.push_back(o);
 	}
 	return ret;
 }
@@ -326,6 +328,12 @@ void checkStorage(map<u256, u256> _expectedStore, map<u256, u256> _resultStore, 
 			auto& resultStoreValue = resultStoreIt->second;
 			BOOST_CHECK_MESSAGE(expectedStoreValue == resultStoreValue, _expectedAddr << ": store[" << expectedStoreKey << "] = " << resultStoreValue << ", expected " << expectedStoreValue);
 		}
+	}
+	BOOST_CHECK_EQUAL(_resultStore.size(), _expectedStore.size());
+	for (auto&& resultStorePair : _resultStore)
+	{
+		if (!_expectedStore.count(resultStorePair.first))
+			BOOST_ERROR(_expectedAddr << ": unexpected store key " << resultStorePair.first);
 	}
 }
 

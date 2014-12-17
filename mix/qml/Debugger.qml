@@ -1,13 +1,14 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.2
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
+import QtQuick.Controls.Styles 1.1
+import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import "js/Debugger.js" as Debugger
 
 Rectangle {
 	anchors.fill: parent;
 	color: "lightgrey"
+	Component.onCompleted: Debugger.init();
 	Rectangle {
 		color: "transparent"
 		id: headerInfo
@@ -79,7 +80,6 @@ Rectangle {
 			width: 200
 			anchors.horizontalCenter: parent.horizontalCenter
 			id: statesList
-			Component.onCompleted: Debugger.init();
 			model: humanReadableExecutionCode
 			delegate: renderDelegate
 			highlight: highlightBar
@@ -170,7 +170,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -181,7 +180,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id:debugStackTxt
 				readOnly: true;
@@ -198,7 +196,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -209,7 +206,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id: debugMemoryTxt
 				readOnly: true;
@@ -226,7 +222,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
@@ -237,7 +232,6 @@ Rectangle {
 				width: parent.width
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				height: parent.height - 15
 				id:debugStorageTxt
 				readOnly: true;
@@ -254,7 +248,6 @@ Rectangle {
 				horizontalAlignment: "AlignHCenter"
 				font.family: "Verdana"
 				font.pointSize: 8
-				font.letterSpacing: 2
 				width: parent.width
 				height: 15
 				anchors.top : parent.top

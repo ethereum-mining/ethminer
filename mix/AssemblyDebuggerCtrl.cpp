@@ -26,7 +26,6 @@
 #include "libethereum/Transaction.h"
 #include "AssemblyDebuggerModel.h"
 #include "AssemblyDebuggerCtrl.h"
-#include "TransactionBuilder.h"
 #include "KeyEventManager.h"
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
@@ -43,16 +42,13 @@ AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(Exten
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
-
 	qRegisterMetaType<AssemblyDebuggerData>();
 	qRegisterMetaType<DebuggingStatusResult>();
-	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QObject*>, AssemblyDebuggerData)),
-			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
+	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)),
+			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
 
 	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
 	m_compilation  = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel);
-	m_senderAddress = KeyPair::create(); //this address will be used as the sender address.
-	m_modelDebugger.get()->addBalance(m_senderAddress, 10000000000000*1000000 + 10000000);
 	m_doc = _doc;
 }
 
@@ -63,7 +59,7 @@ QString AssemblyDebuggerCtrl::contentUrl() const
 
 QString AssemblyDebuggerCtrl::title() const
 {
-	return "debugger";
+	return QApplication::tr("debugger");
 }
 
 void AssemblyDebuggerCtrl::start() const
@@ -76,15 +72,11 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 {
 	if (_key == Qt::Key_F5)
 	{
-		m_previousDebugResult = deployContract();
+		QtConcurrent::run([this]()
+		{
+			deployContract(m_doc->toPlainText());
+		});
 	}
-	/*else if(_key == Qt::Key_F4)
-		callContract(m_previousDebugResult.contractAddress);
-	else if(_key == Qt::Key_F3)
-	{
-		//Reset state;
-		m_modelDebugger.get()->resetState();
-	}*/
 }
 
 void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr)
@@ -122,62 +114,59 @@ void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr)
 
 	DebuggingContent debuggingContent = m_modelDebugger->getContractCallDebugStates(m_previousDebugResult.contractAddress,
 																					c.encodedData(),
-																					m_senderAddress,
 																					_tr);
+
 	debuggingContent.returnParameters = c.decode(f->returnParameters(), debuggingContent.returnValue);
 	finalizeExecution(debuggingContent);
 }
 
-DebuggingContent AssemblyDebuggerCtrl::deployContract()
+void AssemblyDebuggerCtrl::deployContract(QString _source)
 {
-	CompilerResult compilerRes = m_compilation.get()->compile(m_doc->toPlainText());
+	CompilerResult compilerRes = m_compilation.get()->compile(_source);
 	if (!compilerRes.success)
 	{
-		AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
-		DebuggingContent res;
-		res.contentAvailable = false;
-		return res;
+		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
+		return;
 	}
 
-	DebuggingContent debuggingContent = m_modelDebugger->getContractInitiationDebugStates(compilerRes.bytes, m_senderAddress);
-	finalizeExecution(debuggingContent);
-	return debuggingContent;
+	m_previousDebugResult = m_modelDebugger->getContractInitiationDebugStates(compilerRes.bytes);
+	finalizeExecution(m_previousDebugResult);
 }
 
-void AssemblyDebuggerCtrl::finalizeExecution(DebuggingContent debuggingContent)
+void AssemblyDebuggerCtrl::finalizeExecution(DebuggingContent _debuggingContent)
 {
 	//we need to wrap states in a QObject before sending to QML.
 	QList<QObject*> wStates;
-	for(int i = 0; i < debuggingContent.machineStates.size(); i++)
+	for(int i = 0; i < _debuggingContent.machineStates.size(); i++)
 	{
-		DebuggingStateWrapper* s = new DebuggingStateWrapper(debuggingContent.executionCode, debuggingContent.executionData.toBytes(), this);
-		s->setState(debuggingContent.machineStates.at(i));
+		DebuggingStateWrapper* s = new DebuggingStateWrapper(_debuggingContent.executionCode, _debuggingContent.executionData.toBytes(), this);
+		s->setState(_debuggingContent.machineStates.at(i));
 		wStates.append(s);
 	}
-	std::tuple<QList<QObject*>, QQMLMap*> code = DebuggingStateWrapper::getHumanReadableCode(debuggingContent.executionCode, this);
-	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(wStates));
-	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(code)));
-	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(code)));
-	AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("contractCallReturnParameters",
-																				  QVariant::fromValue(new QVariableDefinitionList(debuggingContent.returnParameters)));
-	this->addContentOn(this);
+	AssemblyDebuggerData code = DebuggingStateWrapper::getHumanReadableCode(_debuggingContent.executionCode, this);
+	emit dataAvailable(true, DebuggingStatusResult::Ok, _debuggingContent.returnParameters, wStates, code);
 }
 
-void AssemblyDebuggerCtrl::updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates, AssemblyDebuggerData _code)
+void AssemblyDebuggerCtrl::updateGUI(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParam, QList<QObject*> _wStates, AssemblyDebuggerData _code)
 {
-	Q_UNUSED(reason);
-	if (success)
+	Q_UNUSED(_reason);
+	if (_success)
 	{
 		m_appEngine->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
 		m_appEngine->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
 		m_appEngine->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
+		m_appEngine->rootContext()->setContextProperty("contractCallReturnParameters",
+																					  QVariant::fromValue(new QVariableDefinitionList(_returnParam)));
 		this->addContentOn(this);
 	}
 	else
-		m_ctx->displayMessageDialog("debugger","compilation failed");
+		m_ctx->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("compilation failed"));
 }
 
 void AssemblyDebuggerCtrl::runTransaction(TransactionSettings _tr)
 {
-	callContract(_tr);
+	QtConcurrent::run([this, _tr]()
+	{
+		callContract(_tr);
+	});
 }
