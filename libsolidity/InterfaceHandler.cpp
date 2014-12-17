@@ -15,7 +15,7 @@ InterfaceHandler::InterfaceHandler()
 	m_lastTag = DocTagType::NONE;
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefinition& _contractDef,
+std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefinition const& _contractDef,
 																DocumentationType _type)
 {
 	switch(_type)
@@ -32,7 +32,7 @@ std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefiniti
 	return nullptr;
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinition& _contractDef)
+std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinition const& _contractDef)
 {
 	Json::Value methods(Json::arrayValue);
 
@@ -63,7 +63,7 @@ std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinitio
 	return std::unique_ptr<std::string>(new std::string(m_writer.write(methods)));
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefinition& _contractDef)
+std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefinition const& _contractDef)
 {
 	Json::Value doc;
 	Json::Value methods(Json::objectValue);
@@ -88,7 +88,7 @@ std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefi
 	return std::unique_ptr<std::string>(new std::string(m_writer.write(doc)));
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefinition& _contractDef)
+std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefinition const& _contractDef)
 {
 	// LTODO: Somewhere in this function warnings for mismatch of param names
 	// should be thrown
@@ -198,8 +198,7 @@ std::string::const_iterator InterfaceHandler::appendDocTagParam(std::string::con
 																std::string::const_iterator _end)
 {
 	// Should never be called with an empty vector
-	if (asserts(!m_params.empty()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Internal: Tried to append to empty parameter"));
+	solAssert(!m_params.empty(), "Internal: Tried to append to empty parameter");
 
 	auto pair = m_params.back();
 	pair.second += " ";
