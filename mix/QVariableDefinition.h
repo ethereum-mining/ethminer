@@ -49,7 +49,6 @@ private:
 class QVariableDefinitionList: public QAbstractListModel
 {
 	Q_OBJECT
-	//Q_PROPERTY(QList<QVariableDefinition*> def READ def)
 
 public:
 	QVariableDefinitionList(QList<QVariableDefinition*> _def): m_def(_def) {}
@@ -57,9 +56,7 @@ public:
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 	QHash<int, QByteArray> roleNames() const override;
 	QVariableDefinition* val(int idx);
-	QList<QVariableDefinition*> def() {
-		return m_def;
-	}
+	QList<QVariableDefinition*> def() { return m_def; }
 
 private:
 	QList<QVariableDefinition*> m_def;

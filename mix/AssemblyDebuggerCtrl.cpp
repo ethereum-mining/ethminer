@@ -155,7 +155,7 @@ void AssemblyDebuggerCtrl::updateGUI(bool _success, DebuggingStatusResult _reaso
 		m_appEngine->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
 		m_appEngine->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
 		m_appEngine->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
-		AppContext::getInstance()->appEngine()->rootContext()->setContextProperty("contractCallReturnParameters",
+		m_appEngine->rootContext()->setContextProperty("contractCallReturnParameters",
 																					  QVariant::fromValue(new QVariableDefinitionList(_returnParam)));
 		this->addContentOn(this);
 	}

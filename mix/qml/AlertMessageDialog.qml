@@ -22,6 +22,9 @@ Window
 	}
 	function close()
 	{
-		visible = false
+		visible = false;
+		alertMessageDialogContent.source = "";
+		alertMessageDialogContent.sourceComponent = undefined;
+		alertMessageDialog.destroy();
 	}
 }
