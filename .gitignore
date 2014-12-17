@@ -18,11 +18,14 @@ ipch
 *.sdf
 *.opensdf
 *.suo
+*.vcxproj
+*.vcxproj.filters
+*.sln
 
 # VIM stuff
 *.swp
 
-#Xcode stuff
+# Xcode stuff
 build_xc
 
 *.user
