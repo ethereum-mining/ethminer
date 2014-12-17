@@ -43,6 +43,53 @@ set (JSON_RPC_CPP_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_SERVER
 set (JSON_RPC_CPP_SERVER_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_SERVER_LIBRARY})
 set (JSON_RPC_CPP_CLIENT_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP_CLIENT_LIBRARY})
 
+# debug library on windows
+# same naming convention as in qt (appending debug library with d)
+# boost is using the same "hack" as us with "optimized" and "debug"
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	find_library(
+		JSON_RPC_CPP_COMMON_LIBRARY_DEBUG
+		NAMES jsonrpccpp-commond
+		DOC "json-rpc-cpp common debug library"
+	)
+	
+	find_library(
+		JSON_RPC_CPP_SERVER_LIBRARY_DEBUG
+		NAMES jsonrpccpp-serverd
+		DOC "json-rpc-cpp server debug library"
+	)
+
+	find_library(
+		JSON_RPC_CPP_CLIENT_LIBRARY_DEBUG
+		NAMES jsonrpccpp-clientd
+		DOC "json-rpc-cpp client debug library"
+	)
+
+	set (JSON_RPC_CPP_LIBRARIES
+		optimized ${JSON_RPC_CPP_COMMON_LIBRARY}
+		optimized ${JSON_RPC_CPP_SERVER_LIBRARY}
+		optimized ${JSON_RPC_CPP_CLIENT_LIBRARY}
+		debug ${JSON_RPC_CPP_COMMON_LIBRARY_DEBUG}
+		debug ${JSON_RPC_CPP_SERVER_LIBRARY_DEBUG}
+		debug ${JSON_RPC_CPP_CLIENT_LIBRARY_DEBUG}
+	)
+	
+	set (JSON_RPC_CPP_SERVER_LIBRARIES
+		optimized ${JSON_RPC_CPP_COMMON_LIBRARY}
+		optimized ${JSON_RPC_CPP_SERVER_LIBRARY}
+		debug ${JSON_RPC_CPP_COMMON_LIBRARY_DEBUG}
+		debug ${JSON_RPC_CPP_SERVER_LIBRARY_DEBUG}
+	)
+
+	set (JSON_RPC_CPP_CLIENT_LIBRARIES
+		optimized ${JSON_RPC_CPP_COMMON_LIBRARY}
+		optimized ${JSON_RPC_CPP_CLIENT_LIBRARY}
+		debug ${JSON_RPC_CPP_COMMON_LIBRARY_DEBUG}
+		debug ${JSON_RPC_CPP_CLIENT_LIBRARY_DEBUG}
+	)
+
+endif()
+
 # handle the QUIETLY and REQUIRED arguments and set JSON_RPC_CPP_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view
 include(FindPackageHandleStandardArgs)
