@@ -58,16 +58,10 @@
     <ClCompile Include="..\libethereum\BlockQueue.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethereum\Manifest.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
     <ClCompile Include="..\libethereum\Utility.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
     <ClCompile Include="..\libethereum\Miner.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libethereum\MessageFilter.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
     <ClCompile Include="..\libethereum\AccountDiff.cpp">
@@ -136,9 +130,6 @@
     <ClCompile Include="..\libethereum\EthereumHost.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
-    <ClCompile Include="..\libethereum\PastMessage.cpp">
-      <Filter>libethereum</Filter>
-    </ClCompile>
     <ClCompile Include="..\libethereum\EthereumPeer.cpp">
       <Filter>libethereum</Filter>
     </ClCompile>
@@ -203,6 +194,12 @@
     </ClCompile>
     <ClCompile Include="..\libp2p\Network.cpp">
       <Filter>libp2p</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\TransactionReceipt.cpp">
+      <Filter>libethereum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libethereum\LogFilter.cpp">
+      <Filter>libethereum</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -272,16 +269,10 @@
     <ClInclude Include="..\libethereum\BlockQueue.h">
       <Filter>libethereum</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethereum\Manifest.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
     <ClInclude Include="..\libethereum\Utility.h">
       <Filter>libethereum</Filter>
     </ClInclude>
     <ClInclude Include="..\libethereum\Miner.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
-    <ClInclude Include="..\libethereum\MessageFilter.h">
       <Filter>libethereum</Filter>
     </ClInclude>
     <ClInclude Include="..\libethereum\AccountDiff.h">
@@ -368,9 +359,6 @@
     <ClInclude Include="..\libethereum\EthereumHost.h">
       <Filter>libethereum</Filter>
     </ClInclude>
-    <ClInclude Include="..\libethereum\PastMessage.h">
-      <Filter>libethereum</Filter>
-    </ClInclude>
     <ClInclude Include="..\libethereum\All.h">
       <Filter>libethereum</Filter>
     </ClInclude>
@@ -448,6 +436,12 @@
     </ClInclude>
     <ClInclude Include="..\libp2p\Network.h">
       <Filter>libp2p</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\TransactionReceipt.h">
+      <Filter>libethereum</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libethereum\LogFilter.h">
+      <Filter>libethereum</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
