@@ -108,7 +108,20 @@ macro(eth_install_executable EXECUTABLE)
 			$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
 		)
 
-		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
+		install( FILES ${DLLS} 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install( DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install( TARGETS ${EXECUTABLE} RUNTIME 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
 
 	else()
 		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
