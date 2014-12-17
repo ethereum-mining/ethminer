@@ -66,8 +66,6 @@ function endOfDebug()
 
 function displayReturnValue()
 {
-	console.log("JSON.stringify(contractCallRe");
-	console.log(JSON.stringify(contractCallReturnParameters));
 	headerReturnList.model = contractCallReturnParameters;
 	headerReturnList.update();
 }

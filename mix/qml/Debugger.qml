@@ -8,6 +8,7 @@ import "js/Debugger.js" as Debugger
 Rectangle {
 	anchors.fill: parent;
 	color: "lightgrey"
+	Component.onCompleted: Debugger.init();
 	Rectangle {
 		color: "transparent"
 		id: headerInfo
@@ -79,7 +80,6 @@ Rectangle {
 			width: 200
 			anchors.horizontalCenter: parent.horizontalCenter
 			id: statesList
-			Component.onCompleted: Debugger.init();
 			model: humanReadableExecutionCode
 			delegate: renderDelegate
 			highlight: highlightBar
