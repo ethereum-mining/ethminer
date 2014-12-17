@@ -21,10 +21,10 @@
 
 #include <QObject>
 #include <QList>
-#include "libethereum/State.h"
-#include "libethereum/Transaction.h"
-#include "libethereum/Executive.h"
-#include "libdevcore/Common.h"
+#include <libdevcore/Common.h>
+#include <libdevcrypto/Common.h>
+#include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
 #include "TransactionListModel.h"
 
@@ -33,19 +33,25 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief Long-life object for managing all executions.
+ */
 class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractInitiationDebugStates(bytes code, KeyPair _sender);
-	DebuggingContent getContractCallDebugStates(Address _contract, bytes _data, KeyPair _sender, dev::mix::TransactionSettings _tr);
-	void addBalance(KeyPair address, u256 amount);
+	DebuggingContent getContractCallDebugStates(Address _contract, bytes _data, dev::mix::TransactionSettings _tr);
+	DebuggingContent getContractInitiationDebugStates(bytes _code);
+	bool compile(QString);
 	void resetState();
 
 private:
-	DebuggingContent executeTransaction();
-	std::unique_ptr<dev::eth::Executive> m_currentExecution;
-	dev::eth::State m_executiveState;
+	KeyPair m_userAccount;
+	OverlayDB m_overlayDB;
+	eth::State m_baseState;
+	eth::State m_executiveState;
+	std::unique_ptr<eth::Executive> m_currentExecution;
+	DebuggingContent executeTransaction(dev::bytesConstRef _rawTransaction);
 };
 
 }

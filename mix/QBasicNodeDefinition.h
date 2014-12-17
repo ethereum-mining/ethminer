@@ -38,11 +38,11 @@ public:
 	QBasicNodeDefinition(): QObject() {}
 	~QBasicNodeDefinition() {
 	}
-	QBasicNodeDefinition(std::shared_ptr<dev::solidity::Declaration> _d): QObject(), m_dec(_d) {}
-	QString name() const { return QString::fromStdString(m_dec.get()->getName()); }
+	QBasicNodeDefinition(dev::solidity::Declaration* _d): QObject(), m_dec(_d) {}
+	QString name() const { return QString::fromStdString(m_dec->getName()); }
 
 protected:
-	std::shared_ptr<dev::solidity::Declaration>  m_dec;
+	dev::solidity::Declaration*  m_dec;
 };
 
 }

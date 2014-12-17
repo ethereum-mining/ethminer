@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Feature.cpp
+/** @file Extension.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -65,11 +65,10 @@ void Extension::addContentOn(QObject* _view)
 	Q_UNUSED(_view);
 	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
 	{
-		QQmlComponent component(AppContext::getInstance()->appEngine(), QUrl(contentUrl()));
-		QObject* dialog = component.create();
 		QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QObject* dialogWinComponent = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("modalDialogContent", Qt::FindChildrenRecursively);
 		QMetaObject::invokeMethod(dialogWin, "close");
-		dialogWin->setProperty("contentItem", QVariant::fromValue(dialog));
+		dialogWinComponent->setProperty("source", contentUrl());
 		dialogWin->setProperty("title", title());
 		QMetaObject::invokeMethod(dialogWin, "open");
 	}

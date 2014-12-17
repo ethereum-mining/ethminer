@@ -103,8 +103,9 @@ class DebuggingStateWrapper: public QObject
 	Q_OBJECT
 	Q_PROPERTY(int step READ step)
 	Q_PROPERTY(int curPC READ curPC)
-	Q_PROPERTY(int gasCost READ gasCost)
-	Q_PROPERTY(int gas READ gas)
+	Q_PROPERTY(QString gasCost READ gasCost)
+	Q_PROPERTY(QString gas READ gas)
+	Q_PROPERTY(QString gasLeft READ gasLeft)
 	Q_PROPERTY(QString debugStack READ debugStack)
 	Q_PROPERTY(QString debugStorage READ debugStorage)
 	Q_PROPERTY(QString debugMemory READ debugMemory)
@@ -117,8 +118,9 @@ public:
 	DebuggingStateWrapper(bytes _code, bytes _data, QObject* _parent): QObject(_parent), m_code(_code), m_data(_data) {}
 	int step() { return  (int)m_state.steps; }
 	int curPC() { return (int)m_state.curPC; }
-	int gasCost() { return (int)m_state.gasCost; }
-	int gas() { return (int)m_state.gas; }
+	QString gasLeft();
+	QString gasCost();
+	QString gas();
 	QString debugStack();
 	QString debugStorage();
 	QString debugMemory();

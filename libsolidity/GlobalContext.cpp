@@ -33,7 +33,7 @@ namespace solidity
 {
 
 GlobalContext::GlobalContext():
-	m_magicVariables{make_shared<MagicVariableDeclaration>("block", make_shared<MagicType>(MagicType::Kind::BLOCK)),
+m_magicVariables(vector<shared_ptr<MagicVariableDeclaration const>>{make_shared<MagicVariableDeclaration>("block", make_shared<MagicType>(MagicType::Kind::BLOCK)),
 					 make_shared<MagicVariableDeclaration>("msg", make_shared<MagicType>(MagicType::Kind::MSG)),
 					 make_shared<MagicVariableDeclaration>("tx", make_shared<MagicType>(MagicType::Kind::TX)),
 					 make_shared<MagicVariableDeclaration>("suicide",
@@ -59,7 +59,7 @@ GlobalContext::GlobalContext():
 					 make_shared<MagicVariableDeclaration>("ripemd160",
 							make_shared<FunctionType>(TypePointers({std::make_shared<IntegerType>(256, IntegerType::Modifier::HASH)}),
 													  TypePointers({std::make_shared<IntegerType>(160, IntegerType::Modifier::HASH)}),
-													  FunctionType::Location::RIPEMD160))}
+													  FunctionType::Location::RIPEMD160))})
 {
 }
 
@@ -68,17 +68,16 @@ void GlobalContext::setCurrentContract(ContractDefinition const& _contract)
 	m_currentContract = &_contract;
 }
 
-vector<Declaration*> GlobalContext::getDeclarations() const
+vector<Declaration const*> GlobalContext::getDeclarations() const
 {
-	vector<Declaration*> declarations;
+	vector<Declaration const*> declarations;
 	declarations.reserve(m_magicVariables.size() + 1);
-	for (ASTPointer<Declaration> const& variable: m_magicVariables)
+	for (ASTPointer<Declaration const> const& variable: m_magicVariables)
 		declarations.push_back(variable.get());
-	declarations.push_back(getCurrentThis());
 	return declarations;
 }
 
-MagicVariableDeclaration*GlobalContext::getCurrentThis() const
+MagicVariableDeclaration const* GlobalContext::getCurrentThis() const
 {
 	if (!m_thisPointer[m_currentContract])
 		m_thisPointer[m_currentContract] = make_shared<MagicVariableDeclaration>(

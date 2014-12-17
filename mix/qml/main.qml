@@ -1,7 +1,7 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
-import QtQuick.Dialogs 1.2
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import CodeEditorExtensionManager 1.0
@@ -32,25 +32,13 @@ ApplicationWindow {
 	MainContent {
 	}
 
-	Dialog {
+	ModalDialog {
 		objectName: "dialog"
 		id: dialog
-		height: 400
-		width: 700
-		modality: Qt.WindowModal
-		contentItem: Rectangle {
-			objectName: "dialogContent"
-		}
 	}
 
-	Dialog {
-		objectName: "messageDialog"
+	AlertMessageDialog {
+		objectName: "alertMessageDialog"
 		id: messageDialog
-		height: 150
-		width: 200
-		modality: Qt.WindowModal
-		contentItem: Rectangle {
-			objectName: "messageContent"
-		}
 	}
 }

@@ -67,7 +67,7 @@ private:
 	void noteNewMessage(h256 _h, Message const& _m);
 
 	mutable dev::Mutex x_unseen;
-	std::map<unsigned, h256> m_unseen;	///< Rated according to what they want.
+	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.
 
 	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
 };
