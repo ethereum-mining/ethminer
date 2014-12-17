@@ -20,9 +20,8 @@
  * Used to translate c++ type (u256, bytes, ...) into friendly value (to be used by QML).
  */
 
+#include <QApplication>
 #include <QDebug>
-#include <QString>
-#include <QTextStream>
 #include "libevmcore/Instruction.h"
 #include "libdevcore/CommonJS.h"
 #include "libdevcrypto/Common.h"
@@ -66,6 +65,27 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 	return std::make_tuple(codeStr, new QQMLMap(codeMapping, _objUsedAsParent));
 }
 
+QString DebuggingStateWrapper::gasLeft()
+{
+	std::ostringstream ss;
+	ss << std::dec << (m_state.gas - m_state.gasCost);
+	return QString::fromStdString(ss.str());
+}
+
+QString DebuggingStateWrapper::gasCost()
+{
+	std::ostringstream ss;
+	ss << std::dec << m_state.gasCost;
+	return QString::fromStdString(ss.str());
+}
+
+QString DebuggingStateWrapper::gas()
+{
+	std::ostringstream ss;
+	ss << std::dec << m_state.gas;
+	return QString::fromStdString(ss.str());
+}
+
 QString DebuggingStateWrapper::debugStack()
 {
 	QString stack;
@@ -99,7 +119,6 @@ QStringList DebuggingStateWrapper::levels()
 	QStringList levelsStr;
 	for (unsigned i = 0; i <= m_state.levels.size(); ++i)
 	{
-		DebuggingState const& s = i ? *m_state.levels[m_state.levels.size() - i] : m_state;
 		std::ostringstream out;
 		out << m_state.cur.abridged();
 		if (i)
@@ -112,14 +131,14 @@ QStringList DebuggingStateWrapper::levels()
 QString DebuggingStateWrapper::headerInfo()
 {
 	std::ostringstream ss;
-	ss << std::dec << " STEP: " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " words  |  COST: " << std::dec << m_state.gasCost <<  "  |  GAS: " << std::dec << m_state.gas;
+	ss << std::dec << " " << QApplication::tr("STEP").toStdString() << " : " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " " << QApplication::tr("words").toStdString() << " | " << QApplication::tr("COST").toStdString() << " : " << std::dec << m_state.gasCost <<  "  | " << QApplication::tr("GAS").toStdString() << " : " << std::dec << m_state.gas;
 	return QString::fromStdString(ss.str());
 }
 
 QString DebuggingStateWrapper::endOfDebug()
 {
 	if (m_state.gasCost > m_state.gas)
-		return "OUT-OF-GAS";
+		return QApplication::tr("OUT-OF-GAS");
 	else if (m_state.inst == Instruction::RETURN && m_state.stack.size() >= 2)
 	{
 		unsigned from = (unsigned)m_state.stack.back();
@@ -128,12 +147,12 @@ QString DebuggingStateWrapper::endOfDebug()
 		bytes out(size, 0);
 		for (; o < size && from + o < m_state.memory.size(); ++o)
 			out[o] = m_state.memory[from + o];
-		return "RETURN " + QString::fromStdString(dev::memDump(out, 16, false));
+		return QApplication::tr("RETURN") + " " + QString::fromStdString(dev::memDump(out, 16, false));
 	}
 	else if (m_state.inst == Instruction::STOP)
-		return "STOP";
+		return QApplication::tr("STOP");
 	else if (m_state.inst == Instruction::SUICIDE && m_state.stack.size() >= 1)
-		return "SUICIDE 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
+		return QApplication::tr("SUICIDE") + " 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
 	else
-		return "EXCEPTION";
+		return QApplication::tr("EXCEPTION");
 }

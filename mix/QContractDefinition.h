@@ -37,7 +37,7 @@ class QContractDefinition: public QBasicNodeDefinition
 	Q_PROPERTY(QList<QFunctionDefinition*> functions READ functions)
 
 public:
-	QContractDefinition(std::shared_ptr<dev::solidity::ContractDefinition> _contract);
+	QContractDefinition(dev::solidity::ContractDefinition* _contract);
 	QList<QFunctionDefinition*> functions() const { return m_functions; }
 	static std::shared_ptr<QContractDefinition> Contract(QString _code);
 

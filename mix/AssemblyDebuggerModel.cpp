@@ -17,36 +17,39 @@
  * used as a model to debug contract assembly code.
  */
 
-#include "libethereum/Executive.h"
-#include "libethereum/Transaction.h"
-#include "libethereum/ExtVM.h"
-#include "libevm/VM.h"
-#include "libdevcore/Common.h"
+#include <QApplication>
+#include <libdevcore/Common.h>
+#include <libevm/VM.h>
+#include <libethereum/Executive.h>
+#include <libethereum/Transaction.h>
+#include <libethereum/ExtVM.h>
 #include "AppContext.h"
-#include "TransactionBuilder.h"
 #include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
 #include "ConstantCompilationModel.h"
 #include "DebuggingStateWrapper.h"
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-AssemblyDebuggerModel::AssemblyDebuggerModel()
+AssemblyDebuggerModel::AssemblyDebuggerModel():
+	m_userAccount(KeyPair::create()),
+	m_baseState(Address(), m_overlayDB, BaseState::Empty)
 {
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
+	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
+	m_executiveState = m_baseState;
+	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
 }
 
-void AssemblyDebuggerModel::addBalance(KeyPair address, u256 amount)
+DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef _rawTransaction)
 {
-	//m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
-	m_executiveState.addBalance(dev::toAddress(address.secret()), amount);
-	//m_currentExecution.reset();
-}
 
-DebuggingContent AssemblyDebuggerModel::executeTransaction()
-{
 	QList<DebuggingState> machineStates;
+	// Reset the state back to our clean premine.
+	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
+	QList<DebuggingState> states;
+	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -86,43 +89,33 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction()
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(bytes _code, KeyPair _sender)
+DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(bytes _code)
 {
-	TransactionBuilder trBuilder;
-	dev::eth::Transaction _tr = trBuilder.getDefaultCreationTransaction(_code, _sender,
-																		m_executiveState.transactionsFrom(dev::toAddress(_sender.secret())));
+	u256 gasPrice = 10000000000000;
+	u256 gas = 1000000;
+	u256 amount = 100;
+	dev::eth::Transaction _tr(amount, gasPrice, min(gas, m_baseState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
-	m_currentExecution.get()->forceSetup(bytesRef);
-	DebuggingContent d = executeTransaction();
-
+	DebuggingContent d = executeTransaction(bytesRef);
 	h256 th = sha3(rlpList(_tr.sender(), _tr.nonce()));
 	d.contractAddress = right160(th);
-	m_currentExecution.reset();
 	return d;
 }
 
 DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Address _contract, bytes _data,
-																   KeyPair _sender, dev::mix::TransactionSettings _tr)
+																   dev::mix::TransactionSettings _tr)
 {
 
-	TransactionBuilder trBuilder;
-	dev::eth::Transaction tr = trBuilder.getBasicTransaction(_tr.value,_tr.gasPrice,_tr.gas, _contract, _data,
-												   m_executiveState.transactionsFrom(dev::toAddress(_sender.secret())), _sender.secret());
-
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState));
+	dev::eth::Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_baseState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
-	m_currentExecution.get()->forceSetup(bytesRef);
-	DebuggingContent d = executeTransaction();
-
+	DebuggingContent d = executeTransaction(bytesRef);
 	d.contractAddress = tr.receiveAddress();
-	m_currentExecution.reset();
 	return d;
 }
 
 void AssemblyDebuggerModel::resetState()
 {
-	m_executiveState = State();
+	m_executiveState = m_baseState;
 }
-

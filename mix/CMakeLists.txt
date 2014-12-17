@@ -1,94 +1,48 @@
+cmake_policy(SET CMP0015 NEW)
+# let cmake autolink dependencies on windows
+cmake_policy(SET CMP0020 NEW)
+# this policy was introduced in cmake 3.0
+# remove if, once 3.0 will be used on unix
+if (${CMAKE_MAJOR_VERSION} GREATER 2)
+	cmake_policy(SET CMP0043 OLD)
+endif()
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
-
-if (APPLE)
-	# Add homebrew path for qt5
-	set(CMAKE_PREFIX_PATH /usr/local/opt/qt5)
-	include_directories(/usr/local/opt/qt5/include /usr/local/include)
-elseif ("${TARGET_PLATFORM}" STREQUAL "w64")
-	set(SRC_LIST ${SRC_LIST} ../windows/qt_plugin_import.cpp)
-	include_directories(/usr/x86_64-w64-mingw32/include /usr/x86_64-w64-mingw32/include/QtCore /usr/x86_64-w64-mingw32/include/QtGui /usr/x86_64-w64-mingw32/include/QtQuick /usr/x86_64-w64-mingw32/include/QtQml /usr/x86_64-w64-mingw32/include/QtNetwork /usr/x86_64-w64-mingw32/include/QtWidgets /usr/x86_64-w64-mingw32/include/QtWebKit /usr/x86_64-w64-mingw32/include/QtWebKitWidgets)
-elseif (UNIX)
-	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ";$ENV{QTDIR}/lib/cmake")
-endif ()
-
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5Quick REQUIRED)
-find_package(Qt5Qml REQUIRED)
-find_package(Qt5Network REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5WebKit REQUIRED)
-find_package(Qt5WebKitWidgets REQUIRED)
-
-#qt5_wrap_ui(ui_Main.h Main.ui)
-
 qt5_add_resources(UI_RESOURCES qml.qrc)
 
-# Set name of binary and add_executable()
 file(GLOB HEADERS "*.h")
-if (APPLE)
-	set(EXECUTEABLE mix)
-	set(BIN_INSTALL_DIR ".")
-	set(DOC_INSTALL_DIR ".")
 
-	set(PROJECT_VERSION "${ETH_VERSION}")
-	set(MACOSX_BUNDLE_INFO_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}")
-	set(MACOSX_BUNDLE_COPYRIGHT "${PROJECT_COPYRIGHT_YEAR} ${PROJECT_VENDOR}")
-	set(MACOSX_BUNDLE_GUI_IDENTIFIER "${PROJECT_DOMAIN_SECOND}.${PROJECT_DOMAIN_FIRST}")
-	set(MACOSX_BUNDLE_BUNDLE_NAME ${EXECUTEABLE})
-	set(MACOSX_BUNDLE_ICON_FILE mix)
-	include(BundleUtilities)
+set(EXECUTABLE mix)
 
-		add_executable(${EXECUTEABLE} MACOSX_BUNDLE ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
-	set_target_properties(${EXECUTEABLE} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/EthereumMacOSXBundleInfo.plist.in")
-	SET_SOURCE_FILES_PROPERTIES(${EXECUTEABLE} PROPERTIES MACOSX_PACKAGE_LOCATION MacOS)
-	SET_SOURCE_FILES_PROPERTIES(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+# eth_add_executable is defined in cmake/EthExecutableHelper.cmake
+eth_add_executable(${EXECUTABLE} 
+	ICON mix
+	UI_RESOURCES ${UI_RESOURCES}
+)
 
-else ()
-	set(EXECUTEABLE mix)
-		add_executable(${EXECUTEABLE} ${SRC_LIST} ${HEADERS} ${UI_RESOURCES})
-endif ()
+target_link_libraries(${EXECUTABLE} Qt5::Core)
+target_link_libraries(${EXECUTABLE} Qt5::Gui)
+target_link_libraries(${EXECUTABLE} webthree)
+target_link_libraries(${EXECUTABLE} qethereum)
+target_link_libraries(${EXECUTABLE} ethereum)
+target_link_libraries(${EXECUTABLE} evm)
+target_link_libraries(${EXECUTABLE} ethcore)
+target_link_libraries(${EXECUTABLE} devcrypto)
+target_link_libraries(${EXECUTABLE} secp256k1)
+target_link_libraries(${EXECUTABLE} serpent)
+target_link_libraries(${EXECUTABLE} lll)
+target_link_libraries(${EXECUTABLE} solidity)
+target_link_libraries(${EXECUTABLE} evmcore)
+target_link_libraries(${EXECUTABLE} devcore)
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
+target_link_libraries(${EXECUTABLE} jsqrc)
 
-qt5_use_modules(${EXECUTEABLE} Core)# Gui Widgets Network WebKit WebKitWidgets)
-target_link_libraries(${EXECUTEABLE} webthree qethereum ethereum evm ethcore devcrypto secp256k1 gmp ${CRYPTOPP_LS} serpent lll solidity evmcore devcore web3jsonrpc jsqrc)
+# eth_install_executable is defined in cmake/EthExecutableHelper.cmake
+eth_install_executable(${EXECUTABLE}
+	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
+)
 
-if (APPLE)
-	# First have qt5 install plugins and frameworks
-	add_custom_command(TARGET ${EXECUTEABLE} POST_BUILD
-		COMMAND /usr/local/opt/qt5/bin/macdeployqt ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTEABLE}.app
-		WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-
-	# This tool and next will inspect linked libraries in order to determine which dependencies are required
-	if (${CMAKE_CFG_INTDIR} STREQUAL ".")
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTEABLE}.app")
-	else ()
-		set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTEABLE}.app")
-	endif ()
-	install(CODE "
-		include(BundleUtilities)
-		set(BU_CHMOD_BUNDLE_ITEMS 1)
-		fixup_bundle(\"${APP_BUNDLE_PATH}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
-		" COMPONENT RUNTIME )
-	# Cleanup duplicate libs from macdeployqt
-	install(CODE "
-		file(GLOB LINGER_RM \"${APP_BUNDLE_PATH}/Contents/Frameworks/*.dylib\")
-		if (LINGER_RM)
-			file(REMOVE \${LINGER_RM})
-		endif ()
-	")
-elseif (UNIX)
-else ()
-	target_link_libraries(${EXECUTEABLE} boost_system)
-	target_link_libraries(${EXECUTEABLE} boost_filesystem)
-	find_package(Threads REQUIRED)
-	target_link_libraries(${EXECUTEABLE} ${CMAKE_THREAD_LIBS_INIT})
-	install( TARGETS ${EXECUTEABLE} RUNTIME DESTINATION bin )
-endif ()
-
-qt5_use_modules(${EXECUTEABLE} Core Gui)

@@ -27,13 +27,13 @@
 namespace dev {
 namespace solidity {
 
-class Compiler: private ASTVisitor
+class Compiler: private ASTConstVisitor
 {
 public:
-	Compiler(): m_returnTag(m_context.newTag()) {}
+	explicit Compiler(bool _optimize = false): m_optimize(_optimize), m_returnTag(m_context.newTag()) {}
 
-	void compileContract(ContractDefinition& _contract, std::vector<MagicVariableDeclaration const*> const& _magicGlobals);
-	bytes getAssembledBytecode(bool _optimize = false) { return m_context.getAssembledBytecode(_optimize); }
+	void compileContract(ContractDefinition const& _contract, std::vector<MagicVariableDeclaration const*> const& _magicGlobals);
+	bytes getAssembledBytecode() { return m_context.getAssembledBytecode(m_optimize); }
 	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
 
 private:
@@ -48,16 +48,18 @@ private:
 
 	void registerStateVariables(ContractDefinition const& _contract);
 
-	virtual bool visit(FunctionDefinition& _function) override;
-	virtual bool visit(IfStatement& _ifStatement) override;
-	virtual bool visit(WhileStatement& _whileStatement) override;
-	virtual bool visit(Continue& _continue) override;
-	virtual bool visit(Break& _break) override;
-	virtual bool visit(Return& _return) override;
-	virtual bool visit(VariableDefinition& _variableDefinition) override;
-	virtual bool visit(ExpressionStatement& _expressionStatement) override;
+	virtual bool visit(FunctionDefinition const& _function) override;
+	virtual bool visit(IfStatement const& _ifStatement) override;
+	virtual bool visit(WhileStatement const& _whileStatement) override;
+	virtual bool visit(Continue const& _continue) override;
+	virtual bool visit(Break const& _break) override;
+	virtual bool visit(Return const& _return) override;
+	virtual bool visit(VariableDefinition const& _variableDefinition) override;
+	virtual bool visit(ExpressionStatement const& _expressionStatement) override;
 
+	void compileExpression(Expression const& _expression);
 
+	bool const m_optimize;
 	CompilerContext m_context;
 	std::vector<eth::AssemblyItem> m_breakTags; ///< tag to jump to for a "break" statement
 	std::vector<eth::AssemblyItem> m_continueTags; ///< tag to jump to for a "continue" statement

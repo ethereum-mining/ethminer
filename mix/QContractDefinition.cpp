@@ -21,35 +21,37 @@
 
 #include <QObject>
 #include "QContractDefinition.h"
+#include "libsolidity/AST.h"
 #include "libsolidity/Scanner.h"
 #include "libsolidity/Parser.h"
 #include "libsolidity/Scanner.h"
 #include "libsolidity/NameAndTypeResolver.h"
+#include "AppContext.h"
 #include "QContractDefinition.h"
 using namespace dev::solidity;
 using namespace dev::mix;
 
 std::shared_ptr<QContractDefinition> QContractDefinition::Contract(QString _source)
 {
-	Parser parser;
-	std::shared_ptr<ContractDefinition> contract = parser.parse(std::make_shared<Scanner>(CharStream(_source.toStdString())));
-	NameAndTypeResolver resolver({});
-	resolver.resolveNamesAndTypes(*contract);
-	return std::make_shared<QContractDefinition>(contract);
+	CompilerStack* comp = AppContext::getInstance()->compiler();
+	comp->addSource("contract", _source.toStdString());
+	comp->parse();
+	SourceUnit const& unit = comp->getAST("contract");
+	ContractDefinition* def = (ContractDefinition*)unit.getNodes().at(0).get();
+	return std::make_shared<QContractDefinition>(def);
 }
 
-QContractDefinition::QContractDefinition(std::shared_ptr<ContractDefinition> _contract): QBasicNodeDefinition(_contract)
+QContractDefinition::QContractDefinition(ContractDefinition* _contract): QBasicNodeDefinition(_contract)
 {
 	initQFunctions();
 }
 
 void QContractDefinition::initQFunctions()
 {
-	std::vector<FunctionDefinition const*> functions = ((ContractDefinition*)m_dec.get())->getInterfaceFunctions();
+	std::vector<FunctionDefinition const*> functions = ((ContractDefinition*)m_dec)->getInterfaceFunctions();
 	for (unsigned i = 0; i < functions.size(); i++)
 	{
 		FunctionDefinition* func = (FunctionDefinition*)functions.at(i);
-		std::shared_ptr<FunctionDefinition> sharedFunc(func);
-		m_functions.append(new QFunctionDefinition(sharedFunc, i));
+		m_functions.append(new QFunctionDefinition(func, i));
 	}
 }

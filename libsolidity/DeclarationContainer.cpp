@@ -28,15 +28,15 @@ namespace dev
 namespace solidity
 {
 
-bool DeclarationContainer::registerDeclaration(Declaration& _declaration)
+bool DeclarationContainer::registerDeclaration(Declaration const& _declaration, bool _update)
 {
-	if (m_declarations.find(_declaration.getName()) != m_declarations.end())
+	if (!_update && m_declarations.find(_declaration.getName()) != m_declarations.end())
 		return false;
 	m_declarations[_declaration.getName()] = &_declaration;
 	return true;
 }
 
-Declaration* DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
+Declaration const* DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
 {
 	auto result = m_declarations.find(_name);
 	if (result != m_declarations.end())
