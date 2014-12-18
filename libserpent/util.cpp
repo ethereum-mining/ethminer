@@ -2,7 +2,6 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <string>
 #include "util.h"
 #include "bignum.h"
 #include <fstream>
@@ -28,6 +27,11 @@ Node astnode(std::string val, std::vector<Node> args, Metadata met) {
 }
 
 //AST node constructors for a specific number of children
+Node astnode(std::string val, Metadata met) {
+    std::vector<Node> args;
+    return astnode(val, args, met);
+}
+
 Node astnode(std::string val, Node a, Metadata met) {
     std::vector<Node> args;
     args.push_back(a);
@@ -48,6 +52,16 @@ Node astnode(std::string val, Node a, Node b, Node c, Metadata met) {
     args.push_back(c);
     return astnode(val, args, met);
 }
+
+Node astnode(std::string val, Node a, Node b, Node c, Node d, Metadata met) {
+    std::vector<Node> args;
+    args.push_back(a);
+    args.push_back(b);
+    args.push_back(c);
+    args.push_back(d);
+    return astnode(val, args, met);
+}
+
 
 // Print token list
 std::string printTokens(std::vector<Node> tokens) {
@@ -146,6 +160,15 @@ std::string indentLines(std::string inp) {
     return joinLines(lines);
 }
 
+// Binary to hexadecimal
+std::string binToNumeric(std::string inp) {
+    std::string o = "0";
+	for (unsigned i = 0; i < inp.length(); i++) {
+        o = decimalAdd(decimalMul(o,"256"), unsignedToDecimal((unsigned char)inp[i]));
+    }
+    return o;
+}
+
 // Converts string to simple numeric format
 std::string strToNumeric(std::string inp) {
     std::string o = "0";
@@ -154,7 +177,7 @@ std::string strToNumeric(std::string inp) {
     }
     else if ((inp[0] == '"' && inp[inp.length()-1] == '"')
             || (inp[0] == '\'' && inp[inp.length()-1] == '\'')) {
-		for (unsigned i = 1; i < inp.length() - 1; i++) {
+        for (unsigned i = 1; i < inp.length() - 1; i++) {
             o = decimalAdd(decimalMul(o,"256"), unsignedToDecimal((unsigned char)inp[i]));
         }
     }
@@ -179,6 +202,14 @@ std::string strToNumeric(std::string inp) {
 bool isNumberLike(Node node) {
     if (node.type == ASTNODE) return false;
     return strToNumeric(node.val) != "";
+}
+
+// Is the number decimal?
+bool isDecimal(std::string inp) {
+    for (unsigned i = 0; i < inp.length(); i++) {
+        if (inp[i] < '0' || inp[i] > '9') return false;
+    }
+    return true;
 }
 
 //Normalizes number representations
@@ -246,6 +277,14 @@ void err(std::string errtext, Metadata met) {
     throw(err);
 }
 
+//Report warning
+void warn(std::string errtext, Metadata met) {
+    std::string err = "Warning (file \"" + met.file + "\", line " +
+        unsignedToDecimal(met.ln + 1) + ", char " + unsignedToDecimal(met.ch) +
+        "): " + errtext;
+    std::cerr << err << "\n";
+}
+
 //Bin to hex
 std::string binToHex(std::string inp) {
     std::string o = "";
@@ -280,7 +319,15 @@ std::string upperCase(std::string inp) {
 
 //Three-int vector
 std::vector<int> triple(int a, int b, int c) {
-    std::vector<int> o;
-    o.push_back(a); o.push_back(b); o.push_back(c);
-    return o;
+    std::vector<int> v;
+    v.push_back(a);
+    v.push_back(b);
+    v.push_back(c);
+    return v;
+}
+
+//Extend node vector
+std::vector<Node> extend(std::vector<Node> a, std::vector<Node> b) {
+    for (unsigned i = 0; i < b.size(); i++) a.push_back(b[i]);
+    return a;
 }
