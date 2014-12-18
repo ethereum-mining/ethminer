@@ -43,7 +43,10 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		m_receiveAddress = rlp[field = 3].toHash<Address>();
 		m_value = rlp[field = 4].toInt<u256>();
 		m_data = rlp[field = 5].toBytes();
-		m_vrs = SignatureStruct{ rlp[field = 7].toInt<u256>(), rlp[field = 8].toInt<u256>(), byte(rlp[field = 6].toInt<byte>() - 27) };
+		h256 r = rlp[field = 7].toInt<u256>();
+		h256 s = rlp[field = 8].toInt<u256>();
+		byte v = rlp[field = 6].toInt<byte>() - 27;
+		m_vrs = SignatureStruct{ r, s, v };
 		if (_checkSender)
 			m_sender = sender();
 	}
