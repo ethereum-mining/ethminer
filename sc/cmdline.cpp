@@ -10,6 +10,19 @@ int main(int argv, char** argc) {
         std::cerr << "Must provide a command and arguments! Try parse, rewrite, compile, assemble\n";
         return 0;
     }
+	if (argv == 2 && (std::string(argc[1]) == "--help" || std::string(argc[1]) == "-h" )) {
+        std::cout << argc[1] << "\n";
+        
+        std::cout << "serpent command input\n";
+        std::cout << "where input -s for from stdin, a file, or interpreted as serpent code if does not exist as file.";
+        std::cout << "where command: \n";
+        std::cout << " parse:          Just parses and returns s-expression code.\n";
+        std::cout << " rewrite:        Parse, use rewrite rules print s-expressions of result.\n";
+        std::cout << " compile:        Return resulting compiled EVM code in hex.\n";
+        std::cout << " assemble:       Return result from step before compilation.\n";
+        return 0;
+    }
+        
     std::string flag = "";
     std::string command = argc[1];
     std::string input;
