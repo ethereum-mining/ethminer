@@ -165,6 +165,8 @@ if (WIN32)
 	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 	set(CPACK_PACKAGE_VERSION "0.7")
 	set(CPACK_GENERATOR "NSIS")
+	# seems to be not working
+	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
 
 	# our stuff
 	set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
@@ -178,6 +180,8 @@ if (WIN32)
 	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
 	set(CPACK_NSIS_CONTACT "ethereum.org")
 	set(CPACK_NSIS_MODIFY_PATH ON)
+	set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
+	set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
 
 	include(CPack)
 endif (WIN32)
