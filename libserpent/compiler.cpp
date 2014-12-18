@@ -6,6 +6,7 @@
 #include "bignum.h"
 #include "opcodes.h"
 
+// Auxiliary data that is gathered while compiling
 struct programAux {
     std::map<std::string, std::string> vars;
     int nextVarMem;
@@ -13,15 +14,19 @@ struct programAux {
     bool calldataUsed;
     int step;
     int labelLength;
-    int functionCount;
 };
 
+// Auxiliary data that gets passed down vertically
+// but not back up
 struct programVerticalAux {
     int height;
+    std::string innerScopeName;
     std::map<std::string, int> dupvars;
     std::map<std::string, int> funvars;
+    std::vector<mss> scopes;
 };
 
+// Compilation result
 struct programData {
     programAux aux;
     Node code;
@@ -34,7 +39,6 @@ programAux Aux() {
     o.calldataUsed = false;
     o.step = 0;
     o.nextVarMem = 32;
-    o.functionCount = 0;
     return o;
 }
 
@@ -43,6 +47,7 @@ programVerticalAux verticalAux() {
     o.height = 0;
     o.dupvars = std::map<std::string, int>();
     o.funvars = std::map<std::string, int>();
+    o.scopes = std::vector<mss>();
     return o;
 }
 
@@ -72,29 +77,58 @@ Node popwrap(Node node) {
     return multiToken(nodelist, 2, node.metadata);
 }
 
+// Grabs variables
+mss getVariables(Node node, mss cur=mss()) {
+    Metadata m = node.metadata;
+    // Tokens don't contain any variables
+    if (node.type == TOKEN)
+        return cur;
+    // Don't descend into call fragments
+    else if (node.val == "lll")
+        return getVariables(node.args[1], cur);
+    // At global scope get/set/ref also declare    
+    else if (node.val == "get" || node.val == "set" || node.val == "ref") {
+        if (node.args[0].type != TOKEN)
+            err("Variable name must be simple token,"
+                " not complex expression! " + printSimple(node.args[0]), m);
+        if (!cur.count(node.args[0].val)) {
+            cur[node.args[0].val] = utd(cur.size() * 32 + 32);
+            //std::cerr << node.args[0].val << " " << cur[node.args[0].val] << "\n";
+        }
+    }
+    // Recursively process children
+    for (unsigned i = 0; i < node.args.size(); i++) {
+        cur = getVariables(node.args[i], cur);
+    }
+    return cur;
+}
+
 // Turns LLL tree into tree of code fragments
 programData opcodeify(Node node,
                       programAux aux=Aux(),
                       programVerticalAux vaux=verticalAux()) {
     std::string symb = "_"+mkUniqueToken();
     Metadata m = node.metadata;
+    // Get variables
+    if (!aux.vars.size()) {
+        aux.vars = getVariables(node);
+        aux.nextVarMem = aux.vars.size() * 32 + 32;
+    }
     // Numbers
     if (node.type == TOKEN) {
         return pd(aux, nodeToNumeric(node), 1);
     }
-    else if (node.val == "ref" || node.val == "get" ||
-             node.val == "set" || node.val == "declare") {
+    else if (node.val == "ref" || node.val == "get" || node.val == "set") {
         std::string varname = node.args[0].val;
-        if (!aux.vars.count(varname)) {
-            aux.vars[varname] = unsignedToDecimal(aux.nextVarMem);
-            aux.nextVarMem += 32;
-        }
-        if (varname == "'msg.data") aux.calldataUsed = true;
+        // Determine reference to variable
+        Node varNode = tkn(aux.vars[varname], m);
+        //std::cerr << varname << " " << printSimple(varNode) << "\n";
         // Set variable
         if (node.val == "set") {
             programData sub = opcodeify(node.args[1], aux, vaux);
             if (!sub.outs)
                 err("Value to set variable must have nonzero arity!", m);
+            // What if we are setting a stack variable?
             if (vaux.dupvars.count(node.args[0].val)) {
                 int h = vaux.height - vaux.dupvars[node.args[0].val];
                 if (h > 16) err("Too deep for stack variable (max 16)", m);
@@ -105,149 +139,65 @@ programData opcodeify(Node node,
                 };
                 return pd(sub.aux, multiToken(nodelist, 3, m), 0);                   
             }
-            Node nodelist[] = {
-                sub.code,
-                token(sub.aux.vars[varname], m),
-                token("MSTORE", m),
-            };
-            return pd(sub.aux, multiToken(nodelist, 3, m), 0);                   
+            // Setting a memory variable
+            else {
+                Node nodelist[] = {
+                    sub.code,
+                    varNode,
+                    token("MSTORE", m),
+                };
+                return pd(sub.aux, multiToken(nodelist, 3, m), 0);                   
+            }
         }
         // Get variable
         else if (node.val == "get") {
-             if (vaux.dupvars.count(node.args[0].val)) {
+            // Getting a stack variable
+            if (vaux.dupvars.count(node.args[0].val)) {
                  int h = vaux.height - vaux.dupvars[node.args[0].val];
                 if (h > 16) err("Too deep for stack variable (max 16)", m);
                 return pd(aux, token("DUP"+unsignedToDecimal(h)), 1);                   
             }
-            Node nodelist[] = 
-                 { token(aux.vars[varname], m), token("MLOAD", m) };
-            return pd(aux, multiToken(nodelist, 2, m), 1);
+            // Getting a memory variable
+            else {
+                Node nodelist[] = 
+                     { varNode, token("MLOAD", m) };
+                return pd(aux, multiToken(nodelist, 2, m), 1);
+            }
         }
         // Refer variable
         else if (node.val == "ref") {
             if (vaux.dupvars.count(node.args[0].val))
                 err("Cannot ref stack variable!", m);
-            return pd(aux, token(aux.vars[varname], m), 1);
-        }
-        // Declare variable
-        else {
-			return pd(aux, multiToken(nullptr, 0, m), 0);
+            return pd(aux, varNode, 1);
         }
     }
-    // Define functions (TODO: eventually move to rewriter.cpp, keep
-    // compiler pure LLL)
-    if (node.val == "def") {
-        std::vector<std::string> varNames;
-        std::vector<int> varSizes;
-        bool useLt32 = false;
-        int totalSz = 0;
-        if (node.args.size() != 2)
-            err("Malformed def!", m);
-        // Collect the list of variable names and variable byte counts
-        for (unsigned i = 0; i < node.args[0].args.size(); i++) {
-            if (node.args[0].args[i].val == "kv") {
-                if (node.args[0].args[i].args.size() != 2)
-                    err("Malformed def!", m);
-                varNames.push_back(node.args[0].args[i].args[0].val);
-                varSizes.push_back(
-                    decimalToUnsigned(node.args[0].args[i].args[1].val));
-                if (varSizes.back() > 32)
-                    err("Max argument width: 32 bytes", m);
-                useLt32 = true;
+    // Comments do nothing
+    else if (node.val == "comment") {
+        Node nodelist[] = { };
+        return pd(aux, multiToken(nodelist, 0, m), 0);
+    }
+    // Custom operation sequence
+    // eg. (ops bytez id msize swap1 msize add 0 swap1 mstore) == alloc
+    if (node.val == "ops") {
+        std::vector<Node>  subs2;
+        int depth = 0;
+        for (unsigned i = 0; i < node.args.size(); i++) {
+            std::string op = upperCase(node.args[i].val);
+            if (node.args[i].type == ASTNODE || opinputs(op) == -1) {
+                programVerticalAux vaux2 = vaux;
+                vaux2.height = vaux.height - i - 1 + node.args.size();
+                programData sub = opcodeify(node.args[i], aux, vaux2);
+                aux = sub.aux;
+                depth += sub.outs;
+                subs2.push_back(sub.code);
             }
             else {
-                varNames.push_back(node.args[0].args[i].val);
-                varSizes.push_back(32);
+                subs2.push_back(token(op, m));
+                depth += opoutputs(op) - opinputs(op);
             }
-            aux.vars[varNames.back()] = unsignedToDecimal(aux.nextVarMem + 32 * i);
-            totalSz += varSizes.back();
         }
-        int functionCount = aux.functionCount;
-        int nextVarMem = aux.nextVarMem;
-        aux.nextVarMem += 32 * varNames.size();
-        aux.functionCount += 1;
-        programData inner;
-        // If we're only using 32-byte variables, then great, just copy
-        // over the calldata!
-        if (!useLt32) {
-            programData sub = opcodeify(node.args[1], aux, vaux);
-            Node nodelist[] = {
-                token(unsignedToDecimal(totalSz), m),
-                token("1", m),
-                token(unsignedToDecimal(nextVarMem), m),
-                token("CALLDATACOPY", m),
-                sub.code
-            };
-            inner = pd(sub.aux, multiToken(nodelist, 5, m), 0);
-        }
-        else {
-            std::vector<Node> innerList;
-            int cum = 1;
-            for (unsigned i = 0; i < varNames.size();) {
-                // If we get a series of 32-byte values, we calldatacopy them
-                if (varSizes[i] == 32) {
-                    unsigned until = i+1;
-                    while (until < varNames.size() && varSizes[until] == 32)
-                        until += 1;
-                    innerList.push_back(token(unsignedToDecimal((until - i) * 32), m));
-                    innerList.push_back(token(unsignedToDecimal(cum), m));
-                    innerList.push_back(token(unsignedToDecimal(nextVarMem + i * 32), m));
-                    innerList.push_back(token("CALLDATACOPY", m));
-                    cum += (until - i) * 32;
-                    i = until;
-                }
-                // Otherwise, we do a clever trick to extract the value
-                else {
-                    innerList.push_back(token(unsignedToDecimal(32 - varSizes[i]), m));
-                    innerList.push_back(token("256", m));
-                    innerList.push_back(token("EXP", m));
-                    innerList.push_back(token(unsignedToDecimal(cum), m));
-                    innerList.push_back(token("CALLDATALOAD", m));
-                    innerList.push_back(token("DIV", m));
-                    innerList.push_back(token(unsignedToDecimal(nextVarMem + i * 32), m));
-                    innerList.push_back(token("MSTORE", m));
-                    cum += varSizes[i];
-                    i += 1;
-                }
-            }
-            // If caller == origin, then it's from a tx, so unpack, otherwise
-            // plain copy
-            programData sub = opcodeify(node.args[1], aux, vaux);
-            Node ilnode = astnode("", innerList, m);
-            Node nodelist[] = {
-                token(unsignedToDecimal(32 * varNames.size()), m),
-                token("1", m),
-                token(unsignedToDecimal(nextVarMem), m),
-                token("CALLDATACOPY", m),
-                token("CALLER", m),
-                token("ORIGIN", m),
-                token("EQ", m),
-                token("ISZERO", m),
-                token("$maincode"+symb, m),
-                token("JUMPI", m),
-                ilnode,
-                token("~maincode"+symb, m),
-                token("JUMPDEST", m),
-                sub.code
-            };
-            inner = pd(sub.aux, multiToken(nodelist, 14, m), 0);
-        }
-        // Check if the function call byte is the same
-        Node nodelist2[] = {
-            token("0", m),
-            token("CALLDATALOAD", m),
-            token("0", m),
-            token("BYTE", m),
-            token(unsignedToDecimal(functionCount), m),
-            token("EQ", m),
-            token("ISZERO", m),
-            token("$endcode"+symb, m),
-            token("JUMPI", m),
-            inner.code,
-            token("~endcode"+symb, m),
-            token("JUMPDEST", m),
-        };
-        return pd(inner.aux, multiToken(nodelist2, 12, m), 0);
+        if (depth < 0 || depth > 1) err("Stack depth mismatch", m);
+        return pd(aux, astnode("_", subs2, m), 0);
     }
     // Code blocks
     if (node.val == "lll" && node.args.size() == 2) {
@@ -372,49 +322,14 @@ programData opcodeify(Node node,
         };
         return pd(aux, multiToken(nodelist, 8, m), 1);
     }
-    // Array literals
-    else if (node.val == "array_lit") {
-        aux.allocUsed = true;
-        std::vector<Node> nodes;
-        if (!node.args.size()) {
-            nodes.push_back(token("MSIZE", m));
-            return pd(aux, astnode("_", nodes, m));
-        }
-        nodes.push_back(token("MSIZE", m));
-        nodes.push_back(token("0", m));
-        nodes.push_back(token("MSIZE", m));
-        nodes.push_back(token(unsignedToDecimal(node.args.size() * 32 - 1), m));
-        nodes.push_back(token("ADD", m));
-        nodes.push_back(token("MSTORE8", m));
-        for (unsigned i = 0; i < node.args.size(); i++) {
-            Metadata m2 = node.args[i].metadata;
-            nodes.push_back(token("DUP1", m2));
-            programVerticalAux vaux2 = vaux;
-            vaux2.height += 2;
-            programData sub = opcodeify(node.args[i], aux, vaux2);
-            if (!sub.outs)
-                err("Array_lit item " + unsignedToDecimal(i) + " has zero arity", m2);
-            aux = sub.aux;
-            nodes.push_back(sub.code);
-            nodes.push_back(token("SWAP1", m2));
-            if (i > 0) {
-                nodes.push_back(token(unsignedToDecimal(i * 32), m2));
-                nodes.push_back(token("ADD", m2));
-            }
-            nodes.push_back(token("MSTORE", m2));
-        }
-        return pd(aux, astnode("_", nodes, m), 1);
-    }
     // All other functions/operators
     else {
         std::vector<Node>  subs2;
         int depth = opinputs(upperCase(node.val));
-        if (node.val != "debug") {
-            if (depth == -1)
-                err("Not a function or opcode: "+node.val, m);
-            if ((int)node.args.size() != depth)
-                err("Invalid arity for "+node.val, m);
-        }
+        if (depth == -1)
+            err("Not a function or opcode: "+node.val, m);
+        if ((int)node.args.size() != depth)
+            err("Invalid arity for "+node.val, m);
         for (int i = node.args.size() - 1; i >= 0; i--) {
             programVerticalAux vaux2 = vaux;
             vaux2.height = vaux.height - i - 1 + node.args.size();
@@ -424,13 +339,8 @@ programData opcodeify(Node node,
                 err("Input "+unsignedToDecimal(i)+" has arity 0", sub.code.metadata);
             subs2.push_back(sub.code);
         }
-        if (node.val == "debug") {
-            subs2.push_back(token("DUP"+unsignedToDecimal(node.args.size()), m));
-            for (int i = 0; i <= (int)node.args.size(); i++)
-                subs2.push_back(token("POP", m));
-        }
-        else subs2.push_back(token(upperCase(node.val), m));
-        int outdepth = node.val == "debug" ? 0 : opoutputs(upperCase(node.val));
+        subs2.push_back(token(upperCase(node.val), m));
+        int outdepth = opoutputs(upperCase(node.val));
         return pd(aux, astnode("_", subs2, m), outdepth);
     }
 }
@@ -448,15 +358,6 @@ Node finalize(programData c) {
             token("MSTORE8", m)
         };
         bottom.push_back(multiToken(nodelist, 3, m));
-    }
-    // If msg.data is being used as an array, then we need to copy it
-    if (c.aux.calldataUsed) {
-        Node nodelist[] = {
-            token("MSIZE", m), token("CALLDATASIZE", m), token("0", m),
-            token("MSIZE", m), token("CALLDATACOPY", m),
-            token(c.aux.vars["'msg.data"], m), token("MSTORE", m)
-        };
-        bottom.push_back(multiToken(nodelist, 7, m));
     }
     // The actual code
     bottom.push_back(c.code);
