@@ -173,7 +173,7 @@ programData opcodeify(Node node,
     }
     // Comments do nothing
     else if (node.val == "comment") {
-        Node nodelist[] = { };
+        Node* nodelist = nullptr;
         return pd(aux, multiToken(nodelist, 0, m), 0);
     }
     // Custom operation sequence
