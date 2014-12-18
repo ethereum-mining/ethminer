@@ -52,12 +52,9 @@ class BlockChain;
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
+struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-struct PrecompiledAddress
-{
-	std::function<bigint(bytesConstRef)> gas;
-	std::function<bytes(bytesConstRef)> exec;
-};
+enum class BaseState { Empty, Genesis };
 
 /**
  * @brief Model of the current state of the ledger.
@@ -72,7 +69,7 @@ class State
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB());
+	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::Genesis);
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -189,6 +186,9 @@ public:
 	/// Set the value of a storage position of an account.
 	void setStorage(Address _contract, u256 _location, u256 _value) { m_cache[_contract].setStorage(_location, _value); }
 
+	/// Create a new contract.
+	Address newContract(u256 _balance, bytes const& _code);
+
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
 	/// @returns std::map<u256, u256> if no account exists at that address.
@@ -250,8 +250,11 @@ public:
 	/// the block since all state changes are ultimately reversed.
 	void cleanup(bool _fullCommit);
 
-	/// Info on precompiled contract accounts baked into the protocol.
-	static std::map<unsigned, PrecompiledAddress> const& precompiled() { return c_precompiled; }
+	/// Commit all changes waiting in the address cache to the DB.
+	void commit();
+
+	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
+	void resetCurrent();
 
 private:
 	/// Undo the changes to the state for committing to mine.
@@ -266,25 +269,19 @@ private:
 	/// Retrieve all information about a given address into a cache.
 	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
-	/// Commit all changes waiting in the address cache to the DB.
-	void commit();
-
 	/// Execute the given block, assuming it corresponds to m_currentBlock. If _bc is passed, it will be used to check the uncles.
 	/// Throws on failure.
 	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
 
-	/// Sets m_currentBlock to a clean state, (i.e. no change from m_previousBlock).
-	void resetCurrent();
-
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);
-
-	void refreshManifest(RLPStream* _txs = nullptr);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
 
+	/// Debugging only. Good for checking the Trie is in shape.
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
+	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
@@ -310,8 +307,6 @@ private:
 	u256 m_blockReward;
 
 	static std::string c_defaultPath;
-
-	static const std::map<unsigned, PrecompiledAddress> c_precompiled;
 
 	friend std::ostream& operator<<(std::ostream& _out, State const& _s);
 };

@@ -73,6 +73,15 @@ void CompilerStack::parse()
 				resolver.resolveNamesAndTypes(*contract);
 				m_contracts[contract->getName()].contract = contract;
 			}
+	for (Source const* source: m_sourceOrder)
+		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
+			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
+			{
+				m_globalContext->setCurrentContract(*contract);
+				resolver.updateDeclaration(*m_globalContext->getCurrentThis());
+				resolver.checkTypeRequirements(*contract);
+				m_contracts[contract->getName()].contract = contract;
+			}
 	m_parseSuccessful = true;
 }
 
@@ -96,16 +105,20 @@ void CompilerStack::compile(bool _optimize)
 {
 	if (!m_parseSuccessful)
 		parse();
+
+	map<ContractDefinition const*, bytes const*> contractBytecode;
 	for (Source const* source: m_sourceOrder)
 		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 			{
 				m_globalContext->setCurrentContract(*contract);
 				shared_ptr<Compiler> compiler = make_shared<Compiler>(_optimize);
-				compiler->compileContract(*contract, m_globalContext->getMagicVariables());
+				compiler->compileContract(*contract, m_globalContext->getMagicVariables(),
+										  contractBytecode);
 				Contract& compiledContract = m_contracts[contract->getName()];
 				compiledContract.bytecode = compiler->getAssembledBytecode();
 				compiledContract.compiler = move(compiler);
+				contractBytecode[compiledContract.contract] = &compiledContract.bytecode;
 			}
 }
 
@@ -221,9 +234,13 @@ CompilerStack::Contract const& CompilerStack::getContract(string const& _contrac
 {
 	if (m_contracts.empty())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("No compiled contracts found."));
+	string contractName = _contractName;
 	if (_contractName.empty())
-		return m_contracts.begin()->second;
-	auto it = m_contracts.find(_contractName);
+		// try to find the "last contract"
+		for (ASTPointer<ASTNode> const& node: m_sourceOrder.back()->ast->getNodes())
+			if (auto contract = dynamic_cast<ContractDefinition const*>(node.get()))
+				contractName = contract->getName();
+	auto it = m_contracts.find(contractName);
 	if (it == m_contracts.end())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Contract " + _contractName + " not found."));
 	return it->second;

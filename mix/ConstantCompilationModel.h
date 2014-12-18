@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ApplicationCtx.h
+/** @file ConstantCompilationModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -22,11 +22,11 @@
 
 #pragma once
 
+#include <libevm/VM.h>
 #include <QObject>
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -34,6 +34,7 @@ struct CompilerResult
 {
 	QString hexCode;
 	QString comment;
+	dev::bytes bytes;
 	bool success;
 };
 
@@ -43,7 +44,7 @@ class ConstantCompilationModel
 public:
 	ConstantCompilationModel() {}
 	~ConstantCompilationModel() {}
-	CompilerResult compile(QString code);
+	CompilerResult compile(QString _code);
 };
 
 }

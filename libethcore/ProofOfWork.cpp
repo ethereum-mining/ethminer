@@ -19,8 +19,6 @@
  * @date 2014
  */
 
-#if !ETH_LANGUAGES
-
 #include <boost/detail/endian.hpp>
 #include <chrono>
 #include <array>
@@ -107,4 +105,3 @@ h256 DaggerEvaluator::eval(h256 const& _root, h256 const& _nonce)
 
 }
 }
-#endif

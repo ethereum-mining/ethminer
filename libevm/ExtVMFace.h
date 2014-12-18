@@ -36,8 +36,6 @@ namespace dev
 namespace eth
 {
 
-using LogBloom = h512;
-
 struct LogEntry
 {
 	LogEntry() {}

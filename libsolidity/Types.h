@@ -39,6 +39,7 @@ namespace solidity
 // @todo realMxN, dynamic strings, text, arrays
 
 class Type; // forward
+class FunctionType; // forward
 using TypePointer = std::shared_ptr<Type const>;
 using TypePointers = std::vector<TypePointer>;
 
@@ -249,10 +250,16 @@ public:
 
 	virtual MemberList const& getMembers() const override;
 
+	/// Returns the function type of the constructor. Note that the location part of the function type
+	/// is not used, as this type cannot be the type of a variable or expression.
+	std::shared_ptr<FunctionType const> const& getConstructorType() const;
+
 	unsigned getFunctionIndex(std::string const& _functionName) const;
 
 private:
 	ContractDefinition const& m_contract;
+	/// Type of the constructor, @see getConstructorType. Lazily initialized.
+	mutable std::shared_ptr<FunctionType const> m_constructorType;
 	/// List of member types, will be lazy-initialized because of recursive references.
 	mutable std::unique_ptr<MemberList> m_members;
 };
@@ -296,8 +303,9 @@ class FunctionType: public Type
 public:
 	/// The meaning of the value(s) on the stack referencing the function:
 	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
+	/// BARE: contract address (non-abi contract call)
 	/// OTHERS: special virtual function, nothing on the stack
-	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160 };
+	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160, BARE };
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
@@ -338,8 +346,8 @@ public:
 	virtual std::string toString() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 
-	TypePointer getKeyType() const { return m_keyType; }
-	TypePointer getValueType() const { return m_valueType; }
+	TypePointer const& getKeyType() const { return m_keyType; }
+	TypePointer const& getValueType() const { return m_valueType; }
 
 private:
 	TypePointer m_keyType;
