@@ -27,6 +27,7 @@ endif ()
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero 
 	UI_RESOURCES alethzero.icns Main.ui
+	WIN_RESOURCES alethzero.rc
 )
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
