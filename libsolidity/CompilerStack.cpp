@@ -36,13 +36,12 @@ namespace dev
 namespace solidity
 {
 
-void CompilerStack::addSource(string const& _name, string const& _content)
+bool CompilerStack::addSource(string const& _name, string const& _content)
 {
-	if (m_sources.count(_name))
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Source by given name already exists."));
-
+	bool existed = m_sources.count(_name);
 	reset(true);
 	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
+	return existed;
 }
 
 void CompilerStack::setSource(string const& _sourceCode)
@@ -181,6 +180,11 @@ SourceUnit const& CompilerStack::getAST(string const& _sourceName) const
 	return *getSource(_sourceName).ast;
 }
 
+ContractDefinition const& CompilerStack::getContractDefinition(string const& _contractName) const
+{
+	return *getContract(_contractName).contract;
+}
+
 bytes CompilerStack::staticCompile(std::string const& _sourceCode, bool _optimize)
 {
 	CompilerStack stack;
@@ -234,9 +238,13 @@ CompilerStack::Contract const& CompilerStack::getContract(string const& _contrac
 {
 	if (m_contracts.empty())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("No compiled contracts found."));
+	string contractName = _contractName;
 	if (_contractName.empty())
-		return m_contracts.begin()->second;
-	auto it = m_contracts.find(_contractName);
+		// try to find the "last contract"
+		for (ASTPointer<ASTNode> const& node: m_sourceOrder.back()->ast->getNodes())
+			if (auto contract = dynamic_cast<ContractDefinition const*>(node.get()))
+				contractName = contract->getName();
+	auto it = m_contracts.find(contractName);
 	if (it == m_contracts.end())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Contract " + _contractName + " not found."));
 	return it->second;
