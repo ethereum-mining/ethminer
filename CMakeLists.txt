@@ -156,4 +156,32 @@ add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testet
 
 #unset(TARGET_PLATFORM CACHE)
 
+if (WIN32)
+	# packaging stuff
+	include(InstallRequiredSystemLibraries)
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ethereum")
+	set(CPACK_PACKAGE_VENDOR "ethereum.org")
+	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+	set(CPACK_PACKAGE_VERSION "0.7")
+	set(CPACK_GENERATOR "NSIS")
+	# seems to be not working
+	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
 
+	# our stuff
+	set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
+	set(CPACK_COMPONENT_THIRD_GROUP "Applications")
+	set(CPACK_COMPONENT_MIX_GROUP "Applications")
+	set(CPACK_COMPONENTS_ALL alethzero third mix)
+
+	# nsis specific stuff
+	set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ethereum")
+	set(CPACK_NSIS_HELP_LINK "https://github.com/ethereum/cpp-ethereum")
+	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
+	set(CPACK_NSIS_CONTACT "ethereum.org")
+	set(CPACK_NSIS_MODIFY_PATH ON)
+	set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
+	set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
+
+	include(CPack)
+endif (WIN32)

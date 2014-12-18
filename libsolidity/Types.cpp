@@ -22,6 +22,7 @@
 
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
+#include <libsolidity/Utils.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
@@ -34,8 +35,7 @@ namespace solidity
 
 shared_ptr<Type const> Type::fromElementaryTypeName(Token::Value _typeToken)
 {
-	if (asserts(Token::isElementaryTypeName(_typeToken)))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(Token::isElementaryTypeName(_typeToken), "");
 
 	if (Token::INT <= _typeToken && _typeToken <= Token::HASH256)
 	{
@@ -120,8 +120,8 @@ IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 {
 	if (isAddress())
 		m_bits = 160;
-	if (asserts(m_bits > 0 && m_bits <= 256 && m_bits % 8 == 0))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid bit number for integer type: " + dev::toString(_bits)));
+	solAssert(m_bits > 0 && m_bits <= 256 && m_bits % 8 == 0,
+			  "Invalid bit number for integer type: " + dev::toString(_bits));
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
@@ -215,9 +215,8 @@ shared_ptr<StaticStringType> StaticStringType::smallestTypeForLiteral(string con
 
 StaticStringType::StaticStringType(int _bytes): m_bytes(_bytes)
 {
-	if (asserts(m_bytes >= 0 && m_bytes <= 32))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid byte number for static string type: " +
-																		 dev::toString(m_bytes)));
+	solAssert(m_bytes >= 0 && m_bytes <= 32,
+			  "Invalid byte number for static string type: " + dev::toString(m_bytes));
 }
 
 bool StaticStringType::isImplicitlyConvertibleTo(Type const& _convertTo) const
@@ -308,6 +307,19 @@ MemberList const& ContractType::getMembers() const
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
+}
+
+shared_ptr<FunctionType const> const& ContractType::getConstructorType() const
+{
+	if (!m_constructorType)
+	{
+		FunctionDefinition const* constructor = m_contract.getConstructor();
+		if (constructor)
+			m_constructorType = make_shared<FunctionType const>(*constructor);
+		else
+			m_constructorType = make_shared<FunctionType const>(TypePointers(), TypePointers());
+	}
+	return m_constructorType;
 }
 
 unsigned ContractType::getFunctionIndex(string const& _functionName) const
