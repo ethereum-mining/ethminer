@@ -32,7 +32,7 @@ namespace mix
 class QVariableDeclaration: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QString type READ type)
+	Q_PROPERTY(QString type READ type CONSTANT)
 
 public:
 	QVariableDeclaration(dev::solidity::VariableDeclaration* _v): QBasicNodeDefinition(_v){}

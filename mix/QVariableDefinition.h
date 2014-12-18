@@ -32,18 +32,18 @@ namespace mix
 class QVariableDefinition: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString value READ value)
-	Q_PROPERTY(QVariableDeclaration* declaration READ declaration)
+	Q_PROPERTY(QString value READ value CONSTANT)
+	Q_PROPERTY(QVariableDeclaration* declaration READ declaration CONSTANT)
 
 public:
-	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(_def->parent()), m_value(_value), m_dec(_def) {}
+	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(), m_value(_value), m_dec(_def) {}
 
 	QVariableDeclaration* declaration() const { return m_dec; }
 	QString value() const { return m_value; }
 
 private:
-	QVariableDeclaration* m_dec;
 	QString m_value;
+	QVariableDeclaration* m_dec;
 };
 
 class QVariableDefinitionList: public QAbstractListModel

@@ -49,14 +49,16 @@ bytes padded(bytes _b, unsigned _l)
 
 bytes unpadded(bytes _b)
 {
-	auto p = asString(_b).find_last_not_of((char)0);
+	auto p = asString(_b).find_first_not_of("0");
 	_b.resize(p == std::string::npos ? 0 : (p + 1));
 	return _b;
 }
 
 std::string unpadded(std::string _b)
 {
-	auto p = _b.find_last_not_of((char)0);
+	auto p = _b.find_first_not_of('0');
+	if (p == std::string::npos)
+		return "0";
 	_b = _b.substr(p, _b.length() - 1);
 	return _b;
 }
@@ -67,9 +69,9 @@ std::string prettyU256(u256 _n)
 	std::string raw;
 	std::ostringstream s;
 	if (!(_n >> 64))
-		s << " " << (uint64_t)_n << " (0x" << (uint64_t)_n << ")";
+		s << " " << (uint64_t)_n << " (0x" << std::hex << (uint64_t)_n << ")";
 	else if (!~(_n >> 64))
-		s << " " << (int64_t)_n << " (0x" << (int64_t)_n << ")";
+		s << " " << (int64_t)_n << " (0x" << std::hex << (int64_t)_n << ")";
 	else if ((_n >> 160) == 0)
 	{
 		Address a = right160(_n);

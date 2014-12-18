@@ -92,8 +92,7 @@ QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, Trans
 	QList<TransactionParameterItem*> params;
 	try
 	{
-		QString code = _document->toPlainText().replace("\n", ""); //TODO: is this required?
-		std::shared_ptr<QContractDefinition> contract = QContractDefinition::Contract(code);
+		std::shared_ptr<QContractDefinition> contract = QContractDefinition::Contract(_document->toPlainText());
 		auto functions = contract->functions();
 		for(auto qf : functions)
 		{
@@ -133,7 +132,7 @@ QList<QString> TransactionListModel::getFunctions()
 	QList<QString> functionNames;
 	try
 	{
-		QString code = m_document->toPlainText().replace("\n", ""); //TODO: is this required?
+		QString code = m_document->toPlainText();
 		std::shared_ptr<QContractDefinition> contract(QContractDefinition::Contract(code));
 		auto functions = contract->functions();
 		for(auto qf : functions)

@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include <QDebug>
 #include <QMap>
 #include <QStringList>
 #include <libdevcore/CommonJS.h>
@@ -37,6 +38,10 @@ ContractCallDataEncoder::ContractCallDataEncoder()
 
 bytes ContractCallDataEncoder::encodedData()
 {
+	std::ostringstream si;
+	si << std::hex << toJS(m_encodedData);
+	qDebug() << "encoded data";
+	qDebug() << si;
 	return m_encodedData;
 }
 
@@ -53,6 +58,9 @@ void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, bool _value)
 
 void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, QString _value)
 {
+	qDebug() << _dec->type();
+	qDebug() << _value;
+	qDebug() << "(())";
 	int padding = this->padding(_dec->type());
 	bytes data = padded(jsToBytes(_value.toStdString()), padding);
 	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
@@ -61,24 +69,36 @@ void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, QString _value)
 void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, u256 _value)
 {
 	int padding = this->padding(_dec->type());
+
+	qDebug() << _dec->type();
 	std::ostringstream s;
-	s << _value;
+	s << std::hex << "0x" << _value;
+	qDebug() << QString::fromStdString(s.str());
 	bytes data = padded(jsToBytes(s.str()), padding);
+
+	std::ostringstream si;
+	si << std::hex << toJS(data);
+	qDebug() << si;
+
 	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
+	encodedData();
 }
 
 QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;
 	std::string returnValue = toJS(_value);
+	qDebug() << QString::fromStdString(returnValue);
 	returnValue = returnValue.substr(2, returnValue.length() - 1);
+
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
 		int padding = this->padding(dec->type());
 		std::string rawParam = returnValue.substr(0, padding * 2);
+		qDebug() << QString::fromStdString(rawParam);
 		r.append(new QVariableDefinition(dec, convertToReadable(unpadded(rawParam), dec)));
-		returnValue = returnValue.substr(padding, returnValue.length() - 1);
+		returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
 	}
 	return r;
 }
@@ -86,7 +106,7 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _ret
 int ContractCallDataEncoder::padding(QString type)
 {
 	// TODO : to be improved (load types automatically from solidity library).
-	if (type.indexOf("uint") != 1)
+	if (type.indexOf("uint") != -1)
 	{
 		return integerPadding(type.remove("uint").toInt());
 	}
@@ -139,6 +159,12 @@ QString ContractCallDataEncoder::convertToBool(std::string _v)
 
 QString ContractCallDataEncoder::convertToInt(std::string _v)
 {
-	return QString::fromStdString(_v);
+	qDebug() << "QString::fromStdString(_v);";
+	qDebug() << QString::fromStdString(_v);
+	//TO DO to be improve to manage all int, uint size (128, 256, ...)
+	int x = std::stol(_v, nullptr, 16);
+	std::stringstream ss;
+	ss << std::dec << x;
+	return QString::fromStdString(ss.str());
 }
 

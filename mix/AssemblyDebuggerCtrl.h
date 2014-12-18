@@ -14,7 +14,7 @@
 /** @file AssemblyDebuggerCtrl.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
+ * Display debugging steps in assembly code.s
  */
 
 #pragma once
@@ -55,24 +55,23 @@ public:
 	QString contentUrl() const override;
 
 private:
+	void deployContract(QString _source);
+	void callContract(TransactionSettings _tr, Address _contract);
+	void finalizeExecution(DebuggingContent _content);
+
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	std::unique_ptr<ConstantCompilationModel> m_compilation;
+	DebuggingContent m_previousDebugResult; //TODO: to be replaced by more consistent struct. Used for now to keep the contract address in case of future transaction call.
 	QTextDocument* m_doc;
-	void deployContract(QString _source);
-	void callContract(dev::mix::TransactionSettings _contractAddress);
-	void finalizeExecution(DebuggingContent _content);
-	DebuggingContent m_previousDebugResult; //used for now to keep the contract address in case of transaction call.
 
 public slots:
 	void keyPressed(int);
 	void updateGUI(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-	void runTransaction(dev::mix::TransactionSettings _tr);
+	void runTransaction(TransactionSettings _tr);
 
 signals:
 	void dataAvailable(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-
 };
 
 }
-
 }
