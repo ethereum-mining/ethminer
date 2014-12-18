@@ -267,6 +267,36 @@ void WhileStatement::accept(ASTConstVisitor& _visitor) const
 	_visitor.endVisit(*this);
 }
 
+void ForStatement::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		if (m_initExpression)
+			m_initExpression->accept(_visitor);
+		if (m_condExpression)
+			m_condExpression->accept(_visitor);
+		if (m_loopExpression)
+			m_loopExpression->accept(_visitor);
+		m_body->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ForStatement::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		if (m_initExpression)
+			m_initExpression->accept(_visitor);
+		if (m_condExpression)
+			m_condExpression->accept(_visitor);
+		if (m_loopExpression)
+			m_loopExpression->accept(_visitor);
+		m_body->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
 void Continue::accept(ASTVisitor& _visitor)
 {
 	_visitor.visit(*this);
@@ -414,6 +444,26 @@ void FunctionCall::accept(ASTConstVisitor& _visitor) const
 	if (_visitor.visit(*this))
 	{
 		m_expression->accept(_visitor);
+		listAccept(m_arguments, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void NewExpression::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		m_contractName->accept(_visitor);
+		listAccept(m_arguments, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void NewExpression::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		m_contractName->accept(_visitor);
 		listAccept(m_arguments, _visitor);
 	}
 	_visitor.endVisit(*this);

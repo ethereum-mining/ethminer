@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CodeEditorExtensionMan.h
+/** @file CodeEditorExtensionManager.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -30,7 +30,6 @@
 
 namespace dev
 {
-
 namespace mix
 {
 
@@ -45,12 +44,13 @@ public:
 	CodeEditorExtensionManager() {}
 	~CodeEditorExtensionManager();
 	void initExtensions();
+	void initExtension(std::shared_ptr<Extension>);
 	void setEditor(QQuickItem*);
 	void setTabView(QQuickItem*);
 
 private:
 	QQuickItem* m_editor;
-	QVector<std::shared_ptr<ConstantCompilationCtrl>> m_features;
+	QVector<std::shared_ptr<Extension>> m_features;
 	QQuickItem* m_tabView;
 	QTextDocument* m_doc;
 	void loadEditor(QQuickItem*);
