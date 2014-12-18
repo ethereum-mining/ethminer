@@ -73,6 +73,15 @@ void CompilerStack::parse()
 				resolver.resolveNamesAndTypes(*contract);
 				m_contracts[contract->getName()].contract = contract;
 			}
+	for (Source const* source: m_sourceOrder)
+		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
+			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
+			{
+				m_globalContext->setCurrentContract(*contract);
+				resolver.updateDeclaration(*m_globalContext->getCurrentThis());
+				resolver.checkTypeRequirements(*contract);
+				m_contracts[contract->getName()].contract = contract;
+			}
 	m_parseSuccessful = true;
 }
 
@@ -96,16 +105,20 @@ void CompilerStack::compile(bool _optimize)
 {
 	if (!m_parseSuccessful)
 		parse();
+
+	map<ContractDefinition const*, bytes const*> contractBytecode;
 	for (Source const* source: m_sourceOrder)
 		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 			{
 				m_globalContext->setCurrentContract(*contract);
 				shared_ptr<Compiler> compiler = make_shared<Compiler>(_optimize);
-				compiler->compileContract(*contract, m_globalContext->getMagicVariables());
+				compiler->compileContract(*contract, m_globalContext->getMagicVariables(),
+										  contractBytecode);
 				Contract& compiledContract = m_contracts[contract->getName()];
 				compiledContract.bytecode = compiler->getAssembledBytecode();
 				compiledContract.compiler = move(compiler);
+				contractBytecode[compiledContract.contract] = &compiledContract.bytecode;
 			}
 }
 

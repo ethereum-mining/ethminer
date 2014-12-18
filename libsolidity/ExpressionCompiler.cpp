@@ -30,8 +30,10 @@
 
 using namespace std;
 
-namespace dev {
-namespace solidity {
+namespace dev
+{
+namespace solidity
+{
 
 void ExpressionCompiler::compileExpression(CompilerContext& _context, Expression const& _expression, bool _optimize)
 {
@@ -51,8 +53,7 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 	_assignment.getRightHandSide().accept(*this);
 	appendTypeConversion(*_assignment.getRightHandSide().getType(), *_assignment.getType());
 	_assignment.getLeftHandSide().accept(*this);
-	if (asserts(m_currentLValue.isValid()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("LValue not retrieved."));
+	solAssert(m_currentLValue.isValid(), "LValue not retrieved.");
 
 	Token::Value op = _assignment.getAssignmentOperator();
 	if (op != Token::ASSIGN) // compound assignment
@@ -84,8 +85,7 @@ void ExpressionCompiler::endVisit(UnaryOperation const& _unaryOperation)
 		break;
 	case Token::DELETE: // delete
 		// @todo semantics change for complex types
-		if (asserts(m_currentLValue.isValid()))
-			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("LValue not retrieved."));
+		solAssert(m_currentLValue.isValid(), "LValue not retrieved.");
 
 		m_context << u256(0);
 		if (m_currentLValue.storesReferenceOnStack())
@@ -95,8 +95,7 @@ void ExpressionCompiler::endVisit(UnaryOperation const& _unaryOperation)
 		break;
 	case Token::INC: // ++ (pre- or postfix)
 	case Token::DEC: // -- (pre- or postfix)
-		if (asserts(m_currentLValue.isValid()))
-			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("LValue not retrieved."));
+		solAssert(m_currentLValue.isValid(), "LValue not retrieved.");
 		m_currentLValue.retrieveValue(_unaryOperation);
 		if (!_unaryOperation.isPrefixOperation())
 		{
@@ -179,8 +178,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	if (_functionCall.isTypeConversion())
 	{
 		//@todo struct construction
-		if (asserts(_functionCall.getArguments().size() == 1))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(_functionCall.getArguments().size() == 1, "");
 		Expression const& firstArgument = *_functionCall.getArguments().front();
 		firstArgument.accept(*this);
 		if (firstArgument.getType()->getCategory() == Type::Category::CONTRACT &&
@@ -195,8 +193,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	{
 		FunctionType const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType());
 		vector<ASTPointer<Expression const>> arguments = _functionCall.getArguments();
-		if (asserts(arguments.size() == function.getParameterTypes().size()))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(arguments.size() == function.getParameterTypes().size(), "");
 
 		switch (function.getLocation())
 		{
@@ -276,6 +273,42 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid function type."));
 		}
 	}
+	return false;
+}
+
+bool ExpressionCompiler::visit(NewExpression const& _newExpression)
+{
+	ContractType const* type = dynamic_cast<ContractType const*>(_newExpression.getType().get());
+	solAssert(type, "");
+	TypePointers const& types = type->getConstructorType()->getParameterTypes();
+	vector<ASTPointer<Expression const>> arguments = _newExpression.getArguments();
+	solAssert(arguments.size() == types.size(), "");
+
+	// copy the contracts code into memory
+	bytes const& bytecode = m_context.getCompiledContract(*_newExpression.getContract());
+	m_context << u256(bytecode.size());
+	//@todo could be done by actually appending the Assembly, but then we probably need to compile
+	// multiple times. Will revisit once external fuctions are inlined.
+	m_context.appendData(bytecode);
+	//@todo copy to memory position 0, shift as soon as we use memory
+	m_context << u256(0) << eth::Instruction::CODECOPY;
+
+	unsigned dataOffset = bytecode.size();
+	for (unsigned i = 0; i < arguments.size(); ++i)
+	{
+		arguments[i]->accept(*this);
+		appendTypeConversion(*arguments[i]->getType(), *types[i]);
+		unsigned const numBytes = types[i]->getCalldataEncodedSize();
+		if (numBytes > 32)
+			BOOST_THROW_EXCEPTION(CompilerError()
+								  << errinfo_sourceLocation(arguments[i]->getLocation())
+								  << errinfo_comment("Type " + types[i]->toString() + " not yet supported."));
+		bool const leftAligned = types[i]->getCategory() == Type::Category::STRING;
+		CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, leftAligned);
+		dataOffset += numBytes;
+	}
+	// size, offset, endowment
+	m_context << u256(dataOffset) << u256(0) << u256(0) << eth::Instruction::CREATE;
 	return false;
 }
 
@@ -401,8 +434,7 @@ void ExpressionCompiler::endVisit(Literal const& _literal)
 void ExpressionCompiler::appendAndOrOperatorCode(BinaryOperation const& _binaryOperation)
 {
 	Token::Value const op = _binaryOperation.getOperator();
-	if (asserts(op == Token::OR || op == Token::AND))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(op == Token::OR || op == Token::AND, "");
 
 	_binaryOperation.getLeftExpression().accept(*this);
 	m_context << eth::Instruction::DUP1;
@@ -554,8 +586,7 @@ void ExpressionCompiler::appendExternalFunctionCall(FunctionType const& _functio
 													vector<ASTPointer<Expression const>> const& _arguments,
 													FunctionCallOptions const& _options)
 {
-	if (asserts(_arguments.size() == _functionType.getParameterTypes().size()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(_arguments.size() == _functionType.getParameterTypes().size(), "");
 
 	unsigned dataOffset = _options.bare ? 0 : 1; // reserve one byte for the function index
 	for (unsigned i = 0; i < _arguments.size(); ++i)
