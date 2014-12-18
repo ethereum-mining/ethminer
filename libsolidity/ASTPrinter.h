@@ -57,6 +57,7 @@ public:
 	bool visit(IfStatement const& _node) override;
 	bool visit(BreakableStatement const& _node) override;
 	bool visit(WhileStatement const& _node) override;
+	bool visit(ForStatement const& _node) override;
 	bool visit(Continue const& _node) override;
 	bool visit(Break const& _node) override;
 	bool visit(Return const& _node) override;
@@ -67,6 +68,7 @@ public:
 	bool visit(UnaryOperation const& _node) override;
 	bool visit(BinaryOperation const& _node) override;
 	bool visit(FunctionCall const& _node) override;
+	bool visit(NewExpression const& _node) override;
 	bool visit(MemberAccess const& _node) override;
 	bool visit(IndexAccess const& _node) override;
 	bool visit(PrimaryExpression const& _node) override;
@@ -89,6 +91,7 @@ public:
 	void endVisit(IfStatement const&) override;
 	void endVisit(BreakableStatement const&) override;
 	void endVisit(WhileStatement const&) override;
+	void endVisit(ForStatement const&) override;
 	void endVisit(Continue const&) override;
 	void endVisit(Break const&) override;
 	void endVisit(Return const&) override;
@@ -99,6 +102,7 @@ public:
 	void endVisit(UnaryOperation const&) override;
 	void endVisit(BinaryOperation const&) override;
 	void endVisit(FunctionCall const&) override;
+	void endVisit(NewExpression const&) override;
 	void endVisit(MemberAccess const&) override;
 	void endVisit(IndexAccess const&) override;
 	void endVisit(PrimaryExpression const&) override;

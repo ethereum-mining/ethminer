@@ -52,6 +52,7 @@
 
 #include <algorithm>
 #include <tuple>
+#include <libsolidity/Utils.h>
 #include <libsolidity/Scanner.h>
 
 using namespace std;
@@ -79,7 +80,7 @@ bool isLineTerminator(char c)
 }
 bool isWhiteSpace(char c)
 {
-	return c == ' ' || c == '\n' || c == '\t';
+	return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 bool isIdentifierStart(char c)
 {
@@ -208,6 +209,15 @@ bool Scanner::skipWhitespace()
 	return getSourcePos() != startPosition;
 }
 
+bool Scanner::skipWhitespaceExceptLF()
+{
+	int const startPosition = getSourcePos();
+	while (isWhiteSpace(m_char) && !isLineTerminator(m_char))
+		advance();
+	// Return whether or not we skipped any characters.
+	return getSourcePos() != startPosition;
+}
+
 Token::Value Scanner::skipSingleLineComment()
 {
 	// The line terminator at the end of the line is not considered
@@ -218,10 +228,11 @@ Token::Value Scanner::skipSingleLineComment()
 	return Token::WHITESPACE;
 }
 
-Token::Value Scanner::scanDocumentationComment()
+Token::Value Scanner::scanSingleLineDocComment()
 {
 	LiteralScope literal(this, LITERAL_TYPE_COMMENT);
-	advance(); //consume the last '/'
+	advance(); //consume the last '/' at ///
+	skipWhitespaceExceptLF();
 	while (!isSourcePastEndOfInput())
 	{
 		if (isLineTerminator(m_char))
@@ -249,8 +260,6 @@ Token::Value Scanner::scanDocumentationComment()
 
 Token::Value Scanner::skipMultiLineComment()
 {
-	if (asserts(m_char == '*'))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
 	advance();
 	while (!isSourcePastEndOfInput())
 	{
@@ -268,6 +277,97 @@ Token::Value Scanner::skipMultiLineComment()
 	}
 	// Unterminated multi-line comment.
 	return Token::ILLEGAL;
+}
+
+Token::Value Scanner::scanMultiLineDocComment()
+{
+	LiteralScope literal(this, LITERAL_TYPE_COMMENT);
+	bool endFound = false;
+	bool charsAdded = false;
+
+	advance(); //consume the last '*' at /**
+	skipWhitespaceExceptLF();
+	while (!isSourcePastEndOfInput())
+	{
+		//handle newlines in multline comments
+		if (isLineTerminator(m_char))
+		{
+			skipWhitespace();
+			if (!m_source.isPastEndOfInput(1) && m_source.get(0) == '*' && m_source.get(1) != '/')
+			{ // skip first '*' in subsequent lines
+				if (charsAdded)
+					addCommentLiteralChar('\n');
+				m_char = m_source.advanceAndGet(2);
+			}
+			else if (!m_source.isPastEndOfInput(1) && m_source.get(0) == '*' && m_source.get(1) == '/')
+			{ // if after newline the comment ends, don't insert the newline
+				m_char = m_source.advanceAndGet(2);
+				endFound = true;
+				break;
+			}
+			else if (charsAdded)
+				addCommentLiteralChar('\n');
+		}
+
+		if (!m_source.isPastEndOfInput(1) && m_source.get(0) == '*' && m_source.get(1) == '/')
+		{
+			m_char = m_source.advanceAndGet(2);
+			endFound = true;
+			break;
+		}
+		addCommentLiteralChar(m_char);
+		charsAdded = true;
+		advance();
+	}
+	literal.complete();
+	if (!endFound)
+		return Token::ILLEGAL;
+	else
+		return Token::COMMENT_LITERAL;
+}
+
+Token::Value Scanner::scanSlash()
+{
+	int firstSlashPosition = getSourcePos();
+	advance();
+	if (m_char == '/')
+	{
+		if (!advance()) /* double slash comment directly before EOS */
+			return  Token::WHITESPACE;
+		else if (m_char == '/')
+		{
+			// doxygen style /// comment
+			Token::Value comment;
+			m_nextSkippedComment.location.start = firstSlashPosition;
+			comment = scanSingleLineDocComment();
+			m_nextSkippedComment.location.end = getSourcePos();
+			m_nextSkippedComment.token = comment;
+			return Token::WHITESPACE;
+		}
+		else
+			return skipSingleLineComment();
+	}
+	else if (m_char == '*')
+	{
+		// doxygen style /** natspec comment
+		if (!advance()) /* slash star comment before EOS */
+			return Token::WHITESPACE;
+		else if (m_char == '*')
+		{
+			Token::Value comment;
+			m_nextSkippedComment.location.start = firstSlashPosition;
+			comment = scanMultiLineDocComment();
+			m_nextSkippedComment.location.end = getSourcePos();
+			m_nextSkippedComment.token = comment;
+			return Token::WHITESPACE;
+		}
+		else
+			return skipMultiLineComment();
+	}
+	else if (m_char == '=')
+		return selectToken(Token::ASSIGN_DIV);
+	else
+		return Token::DIV;
 }
 
 void Scanner::scanToken()
@@ -372,29 +472,7 @@ void Scanner::scanToken()
 			break;
 		case '/':
 			// /  // /* /=
-			advance();
-			if (m_char == '/')
-			{
-				if (!advance()) /* double slash comment directly before EOS */
-					token = Token::WHITESPACE;
-				else if (m_char == '/')
-				{
-					Token::Value comment;
-					m_nextSkippedComment.location.start = getSourcePos();
-					comment = scanDocumentationComment();
-					m_nextSkippedComment.location.end = getSourcePos();
-					m_nextSkippedComment.token = comment;
-					token = Token::WHITESPACE;
-				}
-				else
-					token = skipSingleLineComment();
-			}
-			else if (m_char == '*')
-				token = skipMultiLineComment();
-			else if (m_char == '=')
-				token = selectToken(Token::ASSIGN_DIV);
-			else
-				token = Token::DIV;
+			token = scanSlash();
 			break;
 		case '&':
 			// & && &=
@@ -597,8 +675,7 @@ Token::Value Scanner::scanNumber(char _charSeen)
 	// scan exponent, if any
 	if (m_char == 'e' || m_char == 'E')
 	{
-		if (asserts(kind != HEX)) // 'e'/'E' must be scanned as part of the hex number
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(kind != HEX, "'e'/'E' must be scanned as part of the hex number");
 		if (kind != DECIMAL)
 			return Token::ILLEGAL;
 		// scan exponent
@@ -639,8 +716,7 @@ static Token::Value keywordOrIdentifierToken(string const& _input)
 
 Token::Value Scanner::scanIdentifierOrKeyword()
 {
-	if (asserts(isIdentifierStart(m_char)))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(isIdentifierStart(m_char), "");
 	LiteralScope literal(this, LITERAL_TYPE_STRING);
 	addLiteralCharAndAdvance();
 	// Scan the rest of the identifier characters.
@@ -662,8 +738,7 @@ char CharStream::advanceAndGet(size_t _chars)
 
 char CharStream::rollback(size_t _amount)
 {
-	if (asserts(m_pos >= _amount))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(m_pos >= _amount, "");
 	m_pos -= _amount;
 	return get();
 }
