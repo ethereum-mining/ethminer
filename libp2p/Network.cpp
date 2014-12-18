@@ -38,12 +38,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-template <class T>
-Socket<T>::Socket(SocketEventFace* _seface): m_eventDelegate(_seface), m_socket(m_eventDelegate->ioService()) {}
-
-template <class T>
-Socket<T>::Socket(SocketEventFace* _seface, endpointType _endpoint): m_eventDelegate(_seface), m_socket(m_eventDelegate->ioService(), _endpoint) {}
-
 std::vector<bi::address> Network::getInterfaceAddresses()
 {
 	std::vector<bi::address> addresses;
