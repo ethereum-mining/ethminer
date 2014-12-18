@@ -5,6 +5,7 @@
 #include "util.h"
 #include "bignum.h"
 #include <fstream>
+#include <string>
 #include <cerrno>
 
 //Token or value node constructor
