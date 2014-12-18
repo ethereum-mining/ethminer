@@ -32,7 +32,7 @@ namespace mix
 class QBasicNodeDefinition: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString name READ name)
+	Q_PROPERTY(QString name READ name CONSTANT)
 
 public:
 	QBasicNodeDefinition(): QObject() {}

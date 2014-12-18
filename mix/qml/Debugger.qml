@@ -34,10 +34,12 @@ Rectangle {
 			Rectangle {
 				color: "transparent"
 				width: parent.width
+				anchors.horizontalCenter: parent.horizontalCenter
 				height: 30
 				ListView {
 					orientation: ListView.Horizontal
 					anchors.centerIn: parent;
+					width: parent.width
 					id: headerReturnList
 					delegate: renderDelegateReturnValues
 				}
@@ -45,10 +47,10 @@ Rectangle {
 					id: renderDelegateReturnValues
 					Item {
 						id: wrapperItem
-						width: parent.width
+						width: 80
 						Text {
 							anchors.centerIn: parent
-							text: variable.declaration.name + " : " + variable.value
+							text: variable.declaration.name + " = " + variable.value
 							font.pointSize: 9
 						}
 					}

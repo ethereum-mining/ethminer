@@ -6,7 +6,6 @@
 var currentSelectedState = null;
 function init()
 {
-	console.log("init");
 	currentSelectedState = 0;
 	select(currentSelectedState);
 	displayReturnValue();
@@ -29,7 +28,6 @@ function moveSelection(incr)
 
 function select(stateIndex)
 {
-	console.log(stateIndex);
 	var state = debugStates[stateIndex];
 	var codeStr = bytesCodeMapping.getValue(state.curPC);
 	highlightSelection(codeStr);
@@ -41,7 +39,6 @@ function select(stateIndex)
 
 function highlightSelection(index)
 {
-	console.log(index);
 	statesList.currentIndex = index;
 }
 

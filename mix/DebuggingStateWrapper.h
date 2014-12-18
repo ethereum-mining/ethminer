@@ -66,11 +66,11 @@ struct DebuggingContent
 class HumanReadableCode: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString line READ line)
-	Q_PROPERTY(int processIndex READ processIndex)
+	Q_PROPERTY(QString line READ line CONSTANT)
+	Q_PROPERTY(int processIndex READ processIndex CONSTANT)
 
 public:
-	HumanReadableCode(QString _line, int _processIndex, QObject* _parent): QObject(_parent), m_line(_line), m_processIndex(_processIndex) {}
+	HumanReadableCode(QString _line, int _processIndex): QObject(), m_line(_line), m_processIndex(_processIndex) {}
 	QString line() { return m_line; }
 	int processIndex() { return m_processIndex; }
 
@@ -88,7 +88,7 @@ class QQMLMap: public QObject
 	Q_OBJECT
 
 public:
-	QQMLMap(QMap<int, int> _map, QObject* _parent): QObject(_parent), m_map(_map) { }
+	QQMLMap(QMap<int, int> _map): QObject(), m_map(_map) { }
 	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key); }
 
 private:
@@ -101,21 +101,21 @@ private:
 class DebuggingStateWrapper: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(int step READ step)
-	Q_PROPERTY(int curPC READ curPC)
-	Q_PROPERTY(QString gasCost READ gasCost)
-	Q_PROPERTY(QString gas READ gas)
-	Q_PROPERTY(QString gasLeft READ gasLeft)
-	Q_PROPERTY(QString debugStack READ debugStack)
-	Q_PROPERTY(QString debugStorage READ debugStorage)
-	Q_PROPERTY(QString debugMemory READ debugMemory)
-	Q_PROPERTY(QString debugCallData READ debugCallData)
-	Q_PROPERTY(QString headerInfo READ headerInfo)
-	Q_PROPERTY(QString endOfDebug READ endOfDebug)
-	Q_PROPERTY(QStringList levels READ levels)
+	Q_PROPERTY(int step READ step CONSTANT)
+	Q_PROPERTY(int curPC READ curPC CONSTANT)
+	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
+	Q_PROPERTY(QString gas READ gas CONSTANT)
+	Q_PROPERTY(QString gasLeft READ gasLeft CONSTANT)
+	Q_PROPERTY(QString debugStack READ debugStack CONSTANT)
+	Q_PROPERTY(QString debugStorage READ debugStorage CONSTANT)
+	Q_PROPERTY(QString debugMemory READ debugMemory CONSTANT)
+	Q_PROPERTY(QString debugCallData READ debugCallData CONSTANT)
+	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
+	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
+	Q_PROPERTY(QStringList levels READ levels CONSTANT)
 
 public:
-	DebuggingStateWrapper(bytes _code, bytes _data, QObject* _parent): QObject(_parent), m_code(_code), m_data(_data) {}
+	DebuggingStateWrapper(bytes _code, bytes _data): QObject(), m_code(_code), m_data(_data) {}
 	int step() { return  (int)m_state.steps; }
 	int curPC() { return (int)m_state.curPC; }
 	QString gasLeft();
@@ -130,7 +130,7 @@ public:
 	QStringList levels();
 	DebuggingState state() { return m_state; }
 	void setState(DebuggingState _state) { m_state = _state;  }
-	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code, QObject* _objUsedAsParent);
+	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code);
 
 private:
 	DebuggingState m_state;
@@ -139,5 +139,4 @@ private:
 };
 
 }
-
 }
