@@ -70,7 +70,6 @@ KeyEventManager* AppContext::getKeyEventManager()
 
 CompilerStack* AppContext::compiler()
 {
-	m_compiler.reset(new CompilerStack());
 	return m_compiler.get();
 }
 
