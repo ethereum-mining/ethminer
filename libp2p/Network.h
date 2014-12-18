@@ -25,6 +25,7 @@
 #include <memory>
 #include <vector>
 #include <deque>
+#include <array>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
 #include "Common.h"
@@ -44,98 +45,6 @@ struct NetworkPreferences
 	std::string publicIP;
 	bool upnp = true;
 	bool localNetworking = false;
-};
-
-struct Packet
-{
-	bytes payload() const { return s.out(); }
-	
-	bool required = false;
-	RLPStream s;
-};
-	
-class SocketFace
-{
-	virtual void send(Packet const& _msg) = 0;
-};
-class SocketEventFace;
-	
-/**
- * @brief Generic Socket Interface
- * Owners of sockets must outlive the socket.
- * Boost ASIO uses lowercase template for udp/tcp, which is adopted here.
- */
-template <class T>
-class Socket: SocketFace, public std::enable_shared_from_this<Socket<T>>
-{
-public:
-	using socketType = typename T::socket;
-	using endpointType = typename T::endpoint;
-	Socket(SocketEventFace* _seface);
-	Socket(SocketEventFace* _seface, endpointType _endpoint);
-
-protected:
-	void send(Packet const& _msg)
-	{
-		if (!m_started)
-			return;
-		
-		Guard l(x_sendQ);
-		sendQ.push_back(_msg.payload());
-		if (sendQ.size() == 1 && !m_stopped)
-			doWrite();
-	}
-	
-	void doWrite()
-	{
-		const bytes& bytes = sendQ[0];
-		auto self(Socket<T>::shared_from_this());
-//		boost::asio::async_write(m_socket, boost::asio::buffer(bytes), [this, self](boost::system::error_code _ec, std::size_t /*length*/)
-//		{
-//			if (_ec)
-//				return stopWithError(_ec);
-//			else
-//			{
-//				Guard l(x_sendQ);
-//				sendQ.pop_front();
-//				if (sendQ.empty())
-//					return;
-//			}
-//			doWrite();
-//		});
-	}
-	
-	void stopWithError(boost::system::error_code _ec);
-	
-	std::atomic<bool> m_stopped;		///< Set when connection is stopping or stopped. Handshake cannot occur unless m_stopped is true.
-	std::atomic<bool> m_started;		///< Atomically ensure connection is started once. Start cannot occur unless m_started is false. Managed by start() and shutdown(bool).
-	
-	SocketEventFace* m_eventDelegate = nullptr;
-	
-	Mutex x_sendQ;
-	std::deque<bytes> sendQ;
-	bytes recvBuffer;
-	size_t recvdBytes = 0;
-	socketType m_socket;
-	
-	Mutex x_socketError;				///< Mutex for error which can occur from host or IO thread.
-	boost::system::error_code socketError;	///< Set when shut down due to error.
-};
-
-class SocketEventFace
-{
-public:
-	virtual ba::io_service& ioService() = 0;
-	virtual void onStopped(SocketFace*) = 0;
-	virtual void onReceive(SocketFace*, Packet&) = 0;
-};
-
-struct UDPSocket: public Socket<bi::udp>
-{
-	UDPSocket(ba::io_service& _io, unsigned _port): Socket<bi::udp>(nullptr, bi::udp::endpoint(bi::udp::v4(), _port)) {}
-	~UDPSocket() { boost::system::error_code ec; m_socket.shutdown(bi::udp::socket::shutdown_both, ec); m_socket.close(); }
-	
-//	bi::udp::socket m_socket;
 };
 
 /**
