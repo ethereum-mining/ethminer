@@ -1,18 +1,18 @@
 /*
-	This file is part of cpp-ethereum.
+    This file is part of cpp-ethereum.
 
-	cpp-ethereum is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-	cpp-ethereum is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file TransactionListModel.cpp
  * @author Arkadiy Paronyan arkadiy@ethdev.com
@@ -35,11 +35,13 @@ namespace dev
 namespace mix
 {
 
+/// @todo Move this to QML
 u256 fromQString(QString const& _s)
 {
 	return dev::jsToU256(_s.toStdString());
 }
 
+/// @todo Move this to QML
 QString toQString(u256 _value)
 {
 	std::ostringstream s;
@@ -72,10 +74,10 @@ int TransactionListModel::rowCount(QModelIndex const& _parent) const
 
 QVariant TransactionListModel::data(QModelIndex const& _index, int _role) const
 {
-	if(_index.row() < 0 || _index.row() >= (int)m_transactions.size())
+	if (_index.row() < 0 || _index.row() >= (int)m_transactions.size())
 		return QVariant();
 	auto const& transaction =  m_transactions.at(_index.row());
-	switch(_role)
+	switch (_role)
 	{
 	case TitleRole:
 		return QVariant(transaction.title);
@@ -86,7 +88,7 @@ QVariant TransactionListModel::data(QModelIndex const& _index, int _role) const
 	}
 }
 
-//TODO: get parameters from code model
+///@todo: get parameters from code model
 QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, TransactionSettings const& _transaction, QString const& _functionId)
 {
 	QList<TransactionParameterItem*> params;
@@ -94,14 +96,14 @@ QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, Trans
 	{
 		std::shared_ptr<QContractDefinition> contract = QContractDefinition::Contract(_document->toPlainText());
 		auto functions = contract->functions();
-		for(auto qf : functions)
+		for (auto qf : functions)
 		{
 			QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
 			if (f.name() != _functionId)
 				continue;
 
 			auto parameters = f.parameters();
-			for(auto qp : parameters)
+			for (auto qp : parameters)
 			{
 				QVariableDeclaration const& p = (QVariableDeclaration const&) *qp;
 				QString paramValue;
@@ -126,7 +128,7 @@ QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, Trans
 	return params;
 }
 
-//TODO: get fnctions from code model
+///@todo: get fnctions from code model
 QList<QString> TransactionListModel::getFunctions()
 {
 	QList<QString> functionNames;
@@ -135,9 +137,9 @@ QList<QString> TransactionListModel::getFunctions()
 		QString code = m_document->toPlainText();
 		std::shared_ptr<QContractDefinition> contract(QContractDefinition::Contract(code));
 		auto functions = contract->functions();
-		for(auto qf : functions)
+		for (auto qf : functions)
 		{
-			QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
+			QFunctionDefinition const& f = (QFunctionDefinition const&) * qf;
 			functionNames.append(f.name());
 		}
 	}
@@ -149,17 +151,17 @@ QList<QString> TransactionListModel::getFunctions()
 
 QVariantList TransactionListModel::getParameters(int _index, QString const& _functionId)
 {
-	TransactionSettings const& transaction = (_index >=0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
+	TransactionSettings const& transaction = (_index >= 0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
 	auto plist = buildParameters(m_document, transaction, _functionId);
 	QVariantList vl;
-	for(QObject* p : plist)
+	for (QObject* p : plist)
 		vl.append(QVariant::fromValue(p));
 	return vl;
 }
 
 QObject* TransactionListModel::getItem(int _index)
 {
-	TransactionSettings const& transaction = (_index >=0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
+	TransactionSettings const& transaction = (_index >= 0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
 	TransactionListItem* item = new TransactionListItem(_index, transaction, nullptr);
 	QQmlEngine::setObjectOwnership(item, QQmlEngine::JavaScriptOwnership);
 	return item;
@@ -168,6 +170,7 @@ QObject* TransactionListModel::getItem(int _index)
 void TransactionListModel::edit(QObject* _data)
 {
 	//these properties come from TransactionDialog QML object
+	///@todo change the model to a qml component
 	int index = _data->property("transactionIndex").toInt();
 	QString title = _data->property("transactionTitle").toString();
 	QString gas = _data->property("gas").toString();
@@ -177,7 +180,7 @@ void TransactionListModel::edit(QObject* _data)
 	QAbstractListModel* paramsModel = qvariant_cast<QAbstractListModel*>(_data->property("transactionParams"));
 	TransactionSettings transaction(title, functionId, fromQString(value), fromQString(gas), fromQString(gasPrice));
 	int paramCount = paramsModel->rowCount(QModelIndex());
-	for(int p = 0; p < paramCount; ++p)
+	for (int p = 0; p < paramCount; ++p)
 	{
 		QString paramName = paramsModel->data(paramsModel->index(p, 0), Qt::DisplayRole).toString();
 		QString paramValue = paramsModel->data(paramsModel->index(p, 0), Qt::DisplayRole + 2).toString();
@@ -196,7 +199,6 @@ void TransactionListModel::edit(QObject* _data)
 
 	beginInsertRows(QModelIndex(), index, index);
 	m_transactions.push_back(transaction);
-	emit transactionAdded();
 	emit countChanged();
 	endInsertRows();
 }
@@ -209,7 +211,7 @@ int TransactionListModel::getCount() const
 void TransactionListModel::runTransaction(int _index)
 {
 	TransactionSettings tr = m_transactions.at(_index);
-	emit transactionRan(tr);
+	emit transactionStarted(tr);
 }
 
 }
