@@ -18,7 +18,7 @@ macro(eth_add_executable EXECUTABLE)
 	set (extra_macro_args ${ARGN})
 	set (options)
 	set (one_value_args ICON)
-	set (multi_value_args UI_RESOURCES)
+	set (multi_value_args UI_RESOURCES WIN_RESOURCES)
 	cmake_parse_arguments (ETH_ADD_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
 
 	if (APPLE)
@@ -38,7 +38,7 @@ macro(eth_add_executable EXECUTABLE)
 		set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE}.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 	else ()
-		add_executable(${EXECUTABLE} ${ETH_ADD_EXECUTABLE_UI_RESOURCES} ${SRC_LIST} ${HEADERS})
+		add_executable(${EXECUTABLE} ${ETH_ADD_EXECUTABLE_UI_RESOURCES}  ${ETH_ADD_EXECUTABLE_WIN_RESOURCES} ${SRC_LIST} ${HEADERS})
 	endif()
 
 endmacro()
