@@ -82,7 +82,7 @@ if (GMP_FOUND)
 endif()
 
 # curl is only requried for tests
-# TODO specify min curl version, on windows we are currenly using 7.29
+# TODO specify min curl version, on windows we are currently using 7.29
 find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")

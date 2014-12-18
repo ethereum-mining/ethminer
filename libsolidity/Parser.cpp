@@ -304,6 +304,8 @@ ASTPointer<Statement> Parser::parseStatement()
 		return parseIfStatement();
 	case Token::WHILE:
 		return parseWhileStatement();
+	case Token::FOR:
+		return parseForStatement();
 	case Token::LBRACE:
 		return parseBlock();
 		// starting from here, all statements must be terminated by a semicolon
@@ -328,18 +330,7 @@ ASTPointer<Statement> Parser::parseStatement()
 	}
 	break;
 	default:
-		// distinguish between variable definition (and potentially assignment) and expression statement
-		// (which include assignments to other expressions and pre-declared variables)
-		// We have a variable definition if we get a keyword that specifies a type name, or
-		// in the case of a user-defined type, we have two identifiers following each other.
-		if (m_scanner->getCurrentToken() == Token::MAPPING ||
-				m_scanner->getCurrentToken() == Token::VAR ||
-				((Token::isElementaryTypeName(m_scanner->getCurrentToken()) ||
-				m_scanner->getCurrentToken() == Token::IDENTIFIER) &&
-				m_scanner->peekNextToken() == Token::IDENTIFIER))
-			statement = parseVariableDefinition();
-		else // "ordinary" expression statement
-			statement = parseExpressionStatement();
+		statement = parseVarDefOrExprStmt();
 	}
 	expectToken(Token::SEMICOLON);
 	return statement;
@@ -375,6 +366,44 @@ ASTPointer<WhileStatement> Parser::parseWhileStatement()
 	ASTPointer<Statement> body = parseStatement();
 	nodeFactory.setEndPositionFromNode(body);
 	return nodeFactory.createNode<WhileStatement>(condition, body);
+}
+
+ASTPointer<ForStatement> Parser::parseForStatement()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<Statement> initExpression;
+	ASTPointer<Expression> conditionExpression;
+	ASTPointer<ExpressionStatement> loopExpression;
+	expectToken(Token::FOR);
+	expectToken(Token::LPAREN);
+
+	// LTODO: Maybe here have some predicate like peekExpression() instead of checking for semicolon and RPAREN?
+	if (m_scanner->getCurrentToken() != Token::SEMICOLON)
+		initExpression = parseVarDefOrExprStmt();
+	expectToken(Token::SEMICOLON);
+
+	if (m_scanner->getCurrentToken() != Token::SEMICOLON)
+		conditionExpression = parseExpression();
+	expectToken(Token::SEMICOLON);
+
+	if (m_scanner->getCurrentToken() != Token::RPAREN)
+		loopExpression = parseExpressionStatement();
+	expectToken(Token::RPAREN);
+
+	ASTPointer<Statement> body = parseStatement();
+	nodeFactory.setEndPositionFromNode(body);
+	return nodeFactory.createNode<ForStatement>(initExpression,
+												conditionExpression,
+												loopExpression,
+												body);
+}
+
+ASTPointer<Statement> Parser::parseVarDefOrExprStmt()
+{
+	if (peekVariableDefinition())
+		return parseVariableDefinition();
+	else
+		return parseExpressionStatement();
 }
 
 ASTPointer<VariableDefinition> Parser::parseVariableDefinition()
@@ -437,7 +466,17 @@ ASTPointer<Expression> Parser::parseUnaryExpression()
 {
 	ASTNodeFactory nodeFactory(*this);
 	Token::Value token = m_scanner->getCurrentToken();
-	if (Token::isUnaryOp(token) || Token::isCountOp(token))
+	if (token == Token::NEW)
+	{
+		expectToken(Token::NEW);
+		ASTPointer<Identifier> contractName = ASTNodeFactory(*this).createNode<Identifier>(expectIdentifierToken());
+		expectToken(Token::LPAREN);
+		vector<ASTPointer<Expression>> arguments(parseFunctionCallArguments());
+		expectToken(Token::RPAREN);
+		nodeFactory.markEndPosition();
+		return nodeFactory.createNode<NewExpression>(contractName, arguments);
+	}
+	else if (Token::isUnaryOp(token) || Token::isCountOp(token))
 	{
 		// prefix expression
 		m_scanner->next();
@@ -554,6 +593,20 @@ vector<ASTPointer<Expression>> Parser::parseFunctionCallArguments()
 		}
 	}
 	return arguments;
+}
+
+
+bool Parser::peekVariableDefinition()
+{
+	// distinguish between variable definition (and potentially assignment) and expression statement
+	// (which include assignments to other expressions and pre-declared variables)
+	// We have a variable definition if we get a keyword that specifies a type name, or
+	// in the case of a user-defined type, we have two identifiers following each other.
+	return (m_scanner->getCurrentToken() == Token::MAPPING ||
+			m_scanner->getCurrentToken() == Token::VAR ||
+			((Token::isElementaryTypeName(m_scanner->getCurrentToken()) ||
+			  m_scanner->getCurrentToken() == Token::IDENTIFIER) &&
+			 m_scanner->peekNextToken() == Token::IDENTIFIER));
 }
 
 void Parser::expectToken(Token::Value _value)

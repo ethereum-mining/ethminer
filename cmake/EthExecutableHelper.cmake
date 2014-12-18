@@ -61,12 +61,13 @@ macro(eth_install_executable EXECUTABLE)
 	
 	if (ETH_INSTALL_EXECUTABLE_QMLDIR)
 		set(eth_qml_dir "-qmldir=${ETH_INSTALL_EXECUTABLE_QMLDIR}")
+		message(STATUS "${EXECUTABLE} qmldir: ${eth_qml_dir}")
 	endif()
 
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${MACDEPLOYQT_APP} ${eth_qml_dir} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app
+			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app ${eth_qml_dir}
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
@@ -107,7 +108,20 @@ macro(eth_install_executable EXECUTABLE)
 			$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
 		)
 
-		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
+		install( FILES ${DLLS} 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install( DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install( TARGETS ${EXECUTABLE} RUNTIME 
+			DESTINATION bin
+			COMPONENT ${EXECUTABLE}
+		)
 
 	else()
 		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)

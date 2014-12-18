@@ -27,8 +27,10 @@
 
 using namespace std;
 
-namespace dev {
-namespace solidity {
+namespace dev
+{
+namespace solidity
+{
 
 void CompilerContext::addMagicGlobal(MagicVariableDeclaration const& _declaration)
 {
@@ -62,6 +64,13 @@ void CompilerContext::addFunction(FunctionDefinition const& _function)
 	m_functionEntryLabels.insert(std::make_pair(&_function, m_asm.newTag()));
 }
 
+bytes const& CompilerContext::getCompiledContract(const ContractDefinition& _contract) const
+{
+	auto ret = m_compiledContracts.find(&_contract);
+	solAssert(ret != m_compiledContracts.end(), "Compiled contract not found.");
+	return *ret->second;
+}
+
 bool CompilerContext::isLocalVariable(Declaration const* _declaration) const
 {
 	return m_localVariables.count(_declaration) > 0;
@@ -70,16 +79,14 @@ bool CompilerContext::isLocalVariable(Declaration const* _declaration) const
 eth::AssemblyItem CompilerContext::getFunctionEntryLabel(FunctionDefinition const& _function) const
 {
 	auto res = m_functionEntryLabels.find(&_function);
-	if (asserts(res != m_functionEntryLabels.end()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Function entry label not found."));
+	solAssert(res != m_functionEntryLabels.end(), "Function entry label not found.");
 	return res->second.tag();
 }
 
 unsigned CompilerContext::getBaseStackOffsetOfVariable(Declaration const& _declaration) const
 {
 	auto res = m_localVariables.find(&_declaration);
-	if (asserts(res != m_localVariables.end()))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Variable not found on stack."));
+	solAssert(res != m_localVariables.end(), "Variable not found on stack.");
 	return m_localVariablesSize - res->second - 1;
 }
 
@@ -91,12 +98,9 @@ unsigned CompilerContext::baseToCurrentStackOffset(unsigned _baseOffset) const
 u256 CompilerContext::getStorageLocationOfVariable(const Declaration& _declaration) const
 {
 	auto it = m_stateVariables.find(&_declaration);
-	if (it == m_stateVariables.end())
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Variable not found in storage."));
+	solAssert(it != m_stateVariables.end(), "Variable not found in storage.");
 	return it->second;
 }
-
-
 
 }
 }
