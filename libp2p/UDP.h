@@ -68,11 +68,13 @@ public:
 	UDPSocket(ba::io_service& _io, Handler& _host, unsigned _port): m_host(_host), m_socket(_io, bi::udp::endpoint(bi::udp::v4(), _port)) {};
 	virtual ~UDPSocket() { disconnect(); }
 
+	/// Socket will begin listening for and delivering packets
 	void connect()
 	{
 		bool no = false;
 		if (!m_started.compare_exchange_strong(no, true))
 			return;
+		
 		m_closed = false;
 		doRead();
 	}
