@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Client.h
+/** @file WebThree.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -32,13 +32,13 @@
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
 
-#include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 #include <libethereum/Client.h>
 
 namespace dev
 {
 
-class InterfaceNotSupported: public Exception { public: InterfaceNotSupported(std::string _f): m_f(_f) {} virtual std::string description() const { return "Interface " + m_f + " not supported."; } private: std::string m_f; };
+class InterfaceNotSupported: public Exception { public: InterfaceNotSupported(std::string _f): m_f(_f) {} virtual const char* what() const noexcept { return ("Interface " + m_f + " not supported.").c_str(); } private: std::string m_f; };
 
 enum WorkState
 {
@@ -73,9 +73,9 @@ public:
 
 	// The mainline interfaces:
 
-	eth::Client* ethereum() const { if (!m_ethereum) throw InterfaceNotSupported("eth"); return m_ethereum.get(); }
-	shh::WhisperHost* whisper() const { if (!m_whisper) throw InterfaceNotSupported("shh"); return m_whisper.get(); }
-	bzz::Interface* swarm() const { throw InterfaceNotSupported("bzz"); }
+	eth::Client* ethereum() const { if (!m_ethereum) BOOST_THROW_EXCEPTION(InterfaceNotSupported("eth")); return m_ethereum.get(); }
+	std::shared_ptr<shh::WhisperHost> whisper() const { auto w = m_whisper.lock(); if (!w) BOOST_THROW_EXCEPTION(InterfaceNotSupported("shh")); return w; }
+	bzz::Interface* swarm() const { BOOST_THROW_EXCEPTION(InterfaceNotSupported("bzz")); }
 
 	// Misc stuff:
 
@@ -92,35 +92,40 @@ public:
 	/// Connect to a particular peer.
 	void connect(std::string const& _seedHost, unsigned short _port = 30303);
 
-	/// Is the network subsystem up?
-	bool haveNetwork() { return peerCount(); }
-
 	/// Save peers
-	dev::bytes savePeers();
+	dev::bytes saveNodes();
 
 	/// Restore peers
-	void restorePeers(bytesConstRef _saved);
+	void restoreNodes(bytesConstRef _saved);
 
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n);
 
 	bool haveNetwork() const { return m_net.isStarted(); }
 
-	void setNetworkPreferences(p2p::NetworkPreferences const& _n) { auto had = haveNetwork(); if (had) stopNetwork(); m_net.setNetworkPreferences(_n); if (had) startNetwork(); }
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n);
+
+	p2p::NodeId id() const { return m_net.id(); }
+
+	/// Gets the nodes.
+	p2p::Nodes nodes() const { return m_net.nodes(); }
 
 	/// Start the network subsystem.
 	void startNetwork() { m_net.start(); }
 
 	/// Stop the network subsystem.
 	void stopNetwork() { m_net.stop(); }
+	
+	/// Is network working? there may not be any peers yet.
+	bool isNetworkStarted() { return m_net.isStarted(); }
 
 private:
 	std::string m_clientVersion;					///< Our end-application client's name/version.
 
-	std::unique_ptr<eth::Client> m_ethereum;		///< Main interface for Ethereum ("eth") protocol.
-	std::unique_ptr<shh::WhisperHost> m_whisper;	///< Main interface for Whisper ("shh") protocol.
-
 	p2p::Host m_net;								///< Should run in background and send us events when blocks found and allow us to send blocks as required.
+
+	std::unique_ptr<eth::Client> m_ethereum;		///< Main interface for Ethereum ("eth") protocol.
+	std::weak_ptr<shh::WhisperHost> m_whisper;		///< Main interface for Whisper ("shh") protocol.
 };
 
 
@@ -183,9 +188,9 @@ public:
 
 	// The mainline interfaces.
 
-	eth::Interface* ethereum() const { if (!m_ethereum) throw InterfaceNotSupported("eth"); return m_ethereum; }
-	shh::Interface* whisper() const { if (!m_whisper) throw InterfaceNotSupported("shh"); return m_whisper; }
-	bzz::Interface* swarm() const { throw InterfaceNotSupported("bzz"); }
+	eth::Interface* ethereum() const { if (!m_ethereum) BOOST_THROW_EXCEPTION(InterfaceNotSupported("eth")); return m_ethereum; }
+	shh::Interface* whisper() const { if (!m_whisper) BOOST_THROW_EXCEPTION(InterfaceNotSupported("shh")); return m_whisper; }
+	bzz::Interface* swarm() const { BOOST_THROW_EXCEPTION(InterfaceNotSupported("bzz")); }
 
 	// Peer network stuff - forward through RPCSlave, probably with P2PNetworkSlave/Master classes like Whisper & Ethereum.
 

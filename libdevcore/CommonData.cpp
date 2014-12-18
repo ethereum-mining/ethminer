@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.cpp
+/** @file CommonData.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -23,19 +23,27 @@
 
 #include <random>
 #include "Exceptions.h"
+#include "Log.h"
+
 using namespace std;
 using namespace dev;
 
 std::string dev::escaped(std::string const& _s, bool _all)
 {
+	static const map<char, char> prettyEscapes{{'\r', 'r'}, {'\n', 'n'}, {'\t', 't'}, {'\v', 'v'}};
 	std::string ret;
-	ret.reserve(_s.size());
+	ret.reserve(_s.size() + 2);
 	ret.push_back('"');
 	for (auto i: _s)
 		if (i == '"' && !_all)
 			ret += "\\\"";
 		else if (i == '\\' && !_all)
 			ret += "\\\\";
+		else if (prettyEscapes.count(i))
+		{
+			ret += '\\';
+			ret += prettyEscapes.find(i)->second;
+		}
 		else if (i < ' ' || _all)
 		{
 			ret += "\\x";
@@ -67,7 +75,7 @@ int dev::fromHex(char _i)
 		return _i - 'a' + 10;
 	if (_i >= 'A' && _i <= 'F')
 		return _i - 'A' + 10;
-	throw BadHexCharacter();
+	BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
 }
 
 bytes dev::fromHex(std::string const& _s)
@@ -81,13 +89,25 @@ bytes dev::fromHex(std::string const& _s)
 		{
 			ret.push_back(fromHex(_s[s++]));
 		}
-		catch (...){ ret.push_back(0); }
+		catch (...)
+		{ 
+			ret.push_back(0);
+			// msvc does not support it
+#ifndef BOOST_NO_EXCEPTIONS
+			cwarn << boost::current_exception_diagnostic_information(); 
+#endif
+		}
 	for (unsigned i = s; i < _s.size(); i += 2)
 		try
 		{
 			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
 		}
-		catch (...){ ret.push_back(0); }
+		catch (...){
+			ret.push_back(0);
+#ifndef BOOST_NO_EXCEPTIONS
+			cwarn << boost::current_exception_diagnostic_information();
+#endif
+		}
 	return ret;
 }
 

@@ -28,10 +28,10 @@
 #include <exception>
 #include <iostream>
 #include <iomanip>
-#include <libdevcore/vector_ref.h>
-#include <libdevcore/Common.h>
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/FixedHash.h>
+#include "vector_ref.h"
+#include "Common.h"
+#include "Exceptions.h"
+#include "FixedHash.h"
 
 namespace dev
 {
@@ -100,11 +100,11 @@ public:
 
 	/// @returns the number of items in the list, or zero if it isn't a list.
 	unsigned itemCount() const { return isList() ? items() : 0; }
-	unsigned itemCountStrict() const { if (!isList()) throw BadCast(); return items(); }
+	unsigned itemCountStrict() const { if (!isList()) BOOST_THROW_EXCEPTION(BadCast()); return items(); }
 
 	/// @returns the number of bytes in the data, or zero if it isn't data.
 	unsigned size() const { return isData() ? length() : 0; }
-	unsigned sizeStrict() const { if (!isData()) throw BadCast(); return length(); }
+	unsigned sizeStrict() const { if (!isData()) BOOST_THROW_EXCEPTION(BadCast()); return length(); }
 
 	/// Equality operators; does best-effort conversion and checks for equality.
 	bool operator==(char const* _s) const { return isData() && toString() == _s; }
@@ -158,8 +158,13 @@ public:
 
 	/// Best-effort conversion operators.
 	explicit operator std::string() const { return toString(); }
+	explicit operator bytes() const { return toBytes(); }
 	explicit operator RLPs() const { return toList(); }
-	explicit operator byte() const { return toInt<byte>(); }
+	explicit operator uint8_t() const { return toInt<uint8_t>(); }
+	explicit operator uint16_t() const { return toInt<uint16_t>(); }
+	explicit operator uint32_t() const { return toInt<uint32_t>(); }
+	explicit operator uint64_t() const { return toInt<uint64_t>(); }
+	explicit operator u160() const { return toInt<u160>(); }
 	explicit operator u256() const { return toInt<u256>(); }
 	explicit operator bigint() const { return toInt<bigint>(); }
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
@@ -175,7 +180,7 @@ public:
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isData()) return std::string(); return payload().cropped(0, length()).toString(); }
 	/// Converts to string. @throws BadCast if not a string.
-	std::string toStringStrict() const { if (!isData()) throw BadCast(); return payload().cropped(0, length()).toString(); }
+	std::string toStringStrict() const { if (!isData()) BOOST_THROW_EXCEPTION(BadCast()); return payload().cropped(0, length()).toString(); }
 
 	template <class T>
 	std::vector<T> toVector() const
@@ -222,7 +227,7 @@ public:
 	std::array<T, N> toArray() const
 	{
 		if (itemCount() != N || !isList())
-			throw BadCast();
+			BOOST_THROW_EXCEPTION(BadCast());
 		std::array<T, N> ret;
 		for (unsigned i = 0; i < N; ++i)
 		{
@@ -246,7 +251,7 @@ public:
 	{
 		if ((!isInt() && !(_flags & AllowNonCanon)) || isList() || isNull())
 			if (_flags & ThrowOnFail)
-				throw BadCast();
+				BOOST_THROW_EXCEPTION(BadCast());
 			else
 				return 0;
 		else {}
@@ -254,7 +259,7 @@ public:
 		auto p = payload();
 		if (p.size() > intTraits<_T>::maxSize && (_flags & FailIfTooBig))
 			if (_flags & ThrowOnFail)
-				throw BadCast();
+				BOOST_THROW_EXCEPTION(BadCast());
 			else
 				return 0;
 		else {}
@@ -266,7 +271,7 @@ public:
 	{
 		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)))
 			if (_flags & ThrowOnFail)
-				throw BadCast();
+				BOOST_THROW_EXCEPTION(BadCast());
 			else
 				return _N();
 		else{}
@@ -288,6 +293,9 @@ public:
 	unsigned actualSize() const;
 
 private:
+	/// Disable construction from rvalue
+	explicit RLP(bytes const&&) {}
+
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
@@ -334,7 +342,7 @@ public:
 	RLPStream& append(char const* _s) { return append(std::string(_s)); }
 	template <unsigned N> RLPStream& append(FixedHash<N> _s, bool _compact = false, bool _allOrNothing = false) { return _allOrNothing && !_s ? append(bytesConstRef()) : append(_s.ref(), _compact); }
 
-	/// Appends an arbitrary RLP fragment - this *must* be a single item.
+	/// Appends an arbitrary RLP fragment - this *must* be a single item unless @a _itemCount is given.
 	RLPStream& append(RLP const& _rlp, unsigned _itemCount = 1) { return appendRaw(_rlp.data(), _itemCount); }
 
 	/// Appends a sequence of data to the stream as a list.
@@ -361,10 +369,10 @@ public:
 	void clear() { m_out.clear(); m_listStack.clear(); }
 
 	/// Read the byte stream.
-	bytes const& out() const { assert(m_listStack.empty()); return m_out; }
+	bytes const& out() const { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return m_out; }
 
 	/// Swap the contents of the output stream out for some other byte array.
-	void swapOut(bytes& _dest) { assert(m_listStack.empty()); swap(m_out, _dest); }
+	void swapOut(bytes& _dest) { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); swap(m_out, _dest); }
 
 private:
 	void noteAppended(unsigned _itemCount = 1);

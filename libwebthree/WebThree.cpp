@@ -28,7 +28,7 @@
 #include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/EthereumHost.h>
-#include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -45,12 +45,34 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 	if (_interfaces.count("eth"))
 		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean));
 
-//	if (_interfaces.count("shh"))
-//		m_whisper = new eth::Whisper(m_net.get());
+	if (_interfaces.count("shh"))
+		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
 }
 
 WebThreeDirect::~WebThreeDirect()
 {
+	// Utterly horrible right now - WebThree owns everything (good), but:
+	// m_net (Host) owns the eth::EthereumHost via a shared_ptr.
+	// The eth::EthereumHost depends on eth::Client (it maintains a reference to the BlockChain field of Client).
+	// eth::Client (owned by us via a unique_ptr) uses eth::EthereumHost (via a weak_ptr).
+	// Really need to work out a clean way of organising ownership and guaranteeing startup/shutdown is perfect.
+
+	// Have to call stop here to get the Host to kill its io_service otherwise we end up with left-over reads,
+	// still referencing Sessions getting deleted *after* m_ethereum is reset, causing bad things to happen, since
+	// the guarantee is that m_ethereum is only reset *after* all sessions have ended (sessions are allowed to
+	// use bits of data owned by m_ethereum).
+	m_net.stop();
+	m_ethereum.reset();
+}
+
+void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
+{
+	auto had = haveNetwork();
+	if (had)
+		stopNetwork();
+	m_net.setNetworkPreferences(_n);
+	if (had)
+		startNetwork();
 }
 
 std::vector<PeerInfo> WebThreeDirect::peers()
@@ -68,14 +90,14 @@ void WebThreeDirect::setIdealPeerCount(size_t _n)
 	return m_net.setIdealPeerCount(_n);
 }
 
-bytes WebThreeDirect::savePeers()
+bytes WebThreeDirect::saveNodes()
 {
-	return m_net.savePeers();
+	return m_net.saveNodes();
 }
 
-void WebThreeDirect::restorePeers(bytesConstRef _saved)
+void WebThreeDirect::restoreNodes(bytesConstRef _saved)
 {
-	return m_net.restorePeers(_saved);
+	return m_net.restoreNodes(_saved);
 }
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)

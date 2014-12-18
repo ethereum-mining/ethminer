@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TrieDB.cpp
+/** @file OverlayDB.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -23,11 +23,8 @@
 #include "OverlayDB.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
 
 namespace dev
-{
-namespace eth
 {
 
 OverlayDB::~OverlayDB()
@@ -99,5 +96,4 @@ void OverlayDB::kill(h256 _h)
 #endif
 }
 
-}
 }

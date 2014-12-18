@@ -23,8 +23,6 @@
 
 namespace dev
 {
-namespace eth
-{
 
 /*
  * Hex-prefix Notation. First nibble has flags: oddness = 2^0 & termination = 2^1
@@ -126,5 +124,4 @@ byte uniqueInUse(RLP const& _orig, byte except)
 	return used;
 }
 
-}
 }

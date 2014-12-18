@@ -22,12 +22,14 @@
 
 #include <fstream>
 #include <sstream>
-#include "JsonSpiritHeaders.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <boost/test/unit_test.hpp>
 #include <algorithm>
+#include "JsonSpiritHeaders.h"
+#include "TestHelper.h"
 
 using namespace std;
 using namespace dev;
@@ -60,7 +62,10 @@ namespace dev
 
 		static void getRLPTestCases(js::mValue& v)
 		{
-			string s = asString(contents("../../../tests/rlptest.json"));
+			string testPath = getTestPath();
+			testPath += "/BasicTests";
+
+			string s = asString(contents(testPath + "/rlptest.json"));
 			BOOST_REQUIRE_MESSAGE( s.length() > 0, 
 				"Contents of 'rlptest.json' is empty. Have you cloned the 'tests' repo branch develop?"); 
 			js::read_string(s, v);
@@ -78,7 +83,7 @@ namespace dev
 			if ( v.type() == js::str_type ) 
 			{ 
 				const std::string& expectedText = v.get_str();
-				if ( expectedText.front() == '#' ) 
+				if ( !expectedText.empty() && expectedText.front() == '#' ) 
 				{ 
 					// Deal with bigint instead of a raw string 
 					std::string bigIntStr = expectedText.substr(1,expectedText.length()-1); 
@@ -132,6 +137,7 @@ namespace dev
 	}
 } 
 
+BOOST_AUTO_TEST_SUITE(BasicTests)
 
 BOOST_AUTO_TEST_CASE(rlp_encoding_test)
 {
@@ -190,4 +196,5 @@ BOOST_AUTO_TEST_CASE(rlp_decoding_test)
 	}
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 

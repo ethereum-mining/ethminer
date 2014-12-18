@@ -26,8 +26,6 @@
 
 namespace dev
 {
-namespace eth
-{
 
 inline byte nibble(bytesConstRef _data, unsigned _i)
 {
@@ -49,10 +47,29 @@ struct NibbleSlice
 	NibbleSlice(bytesConstRef _d = bytesConstRef(), unsigned _o = 0): data(_d), offset(_o) {}
 	byte operator[](unsigned _index) const { return nibble(data, offset + _index); }
 	unsigned size() const { return data.size() * 2 - offset; }
+	bool empty() const { return !size(); }
 	NibbleSlice mid(unsigned _index) const { return NibbleSlice(data, offset + _index); }
+	void clear() { data.reset(); offset = 0; }
 
 	bool contains(NibbleSlice _k) const { return shared(_k) == _k.size(); }
 	unsigned shared(NibbleSlice _k) const { return sharedNibbles(data, offset, offset + size(), _k.data, _k.offset, _k.offset + _k.size()); }
+	/**
+	 * @brief Determine if we, a full key, are situated prior to a particular key-prefix.
+	 * @param _k The prefix.
+	 * @return true if we are strictly prior to the prefix.
+	 */
+	bool isEarlierThan(NibbleSlice _k) const
+	{
+		unsigned i;
+		for (i = 0; i < _k.size() && i < size(); ++i)
+			if (operator[](i) < _k[i])		// Byte is lower - we're earlier..
+				return true;
+			else if (operator[](i) > _k[i])	// Byte is higher - we're not earlier.
+				return false;
+		if (i >= _k.size())					// Ran past the end of the prefix - we're == for the entire prefix - we're not earlier.
+			return false;
+		return true;						// Ran out before the prefix had finished - we're earlier.
+	}
 	bool operator==(NibbleSlice _k) const { return _k.size() == size() && shared(_k) == _k.size(); }
 	bool operator!=(NibbleSlice _s) const { return !operator==(_s); }
 };
@@ -101,5 +118,4 @@ inline std::string hexPrefixEncode(NibbleSlice _s1, NibbleSlice _s2, bool _leaf)
 	return hexPrefixEncode(_s1.data, _s1.offset, _s2.data, _s2.offset, _leaf);
 }
 
-}
 }

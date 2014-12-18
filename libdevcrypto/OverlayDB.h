@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MemoryDB.h
+/** @file OverlayDB.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -33,8 +33,6 @@
 namespace ldb = leveldb;
 
 namespace dev
-{
-namespace eth
 {
 
 class OverlayDB: public MemoryDB
@@ -62,5 +60,4 @@ private:
 	ldb::WriteOptions m_writeOptions;
 };
 
-}
 }

@@ -21,8 +21,13 @@
 
 #pragma once
 
+#include <set>
+#include <functional>
 #include <libdevcore/Common.h>
-#include <libevmface/Instruction.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/SHA3.h>
+#include <libevmcore/Instruction.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 
@@ -31,69 +36,117 @@ namespace dev
 namespace eth
 {
 
-struct Post
+struct LogEntry
 {
-	Address from;
-	Address to;
-	u256 value;
+	LogEntry() {}
+	LogEntry(RLP const& _r) { address = (Address)_r[0]; topics = _r[1].toVector<h256>(); data = _r[2].toBytes(); }
+	LogEntry(Address const& _address, h256s const& _ts, bytes&& _d): address(_address), topics(_ts), data(std::move(_d)) {}
+
+	void streamRLP(RLPStream& _s) const { _s.appendList(3) << address << topics << data; }
+
+	LogBloom bloom() const
+	{
+		LogBloom ret;
+		ret.shiftBloom<3, 32>(sha3(address.ref()));
+		for (auto t: topics)
+			ret.shiftBloom<3, 32>(sha3(t.ref()));
+		return ret;
+	}
+
+	Address address;
+	h256s topics;
 	bytes data;
-	u256 gas;
 };
 
-using PostList = std::list<Post>;
+using LogEntries = std::vector<LogEntry>;
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, void/*VM*/*, void/*ExtVM*/ const*)>;
+inline LogBloom bloom(LogEntries const& _logs)
+{
+	LogBloom ret;
+	for (auto const& l: _logs)
+		ret |= l.bloom();
+	return ret;
+}
+
+struct SubState
+{
+	std::set<Address> suicides;	///< Any accounts that have suicided.
+	LogEntries logs;			///< Any logs.
+	u256 refunds;				///< Refund counter of SSTORE nonzero->zero.
+
+	SubState& operator+=(SubState const& _s)
+	{
+		suicides += _s.suicides;
+		refunds += _s.refunds;
+		logs += _s.logs;
+		return *this;
+	}
+
+	void clear()
+	{
+		suicides.clear();
+		logs.clear();
+		refunds = 0;
+	}
+};
+
+class ExtVMFace;
+class VM;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
 /**
- * @brief A null implementation of the class for specifying VM externalities.
+ * @brief Interface and null implementation of the class for specifying VM externalities.
  */
 class ExtVMFace
 {
 public:
 	/// Null constructor.
-	ExtVMFace() {}
+	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
 
-	/// Get the code at the given location in code ROM.
-	byte getCode(u256 _n) const { return _n < code.size() ? code[(unsigned)_n] : 0; }
+	virtual ~ExtVMFace() = default;
+
+	ExtVMFace(ExtVMFace const&) = delete;
+	void operator=(ExtVMFace) = delete;
 
 	/// Read storage location.
-	u256 store(u256) { return 0; }
+	virtual u256 store(u256) { return 0; }
 
 	/// Write a value in storage.
-	void setStore(u256, u256) {}
+	virtual void setStore(u256, u256) {}
 
 	/// Read address's balance.
-	u256 balance(Address) { return 0; }
+	virtual u256 balance(Address) { return 0; }
 
 	/// Read address's code.
-	bytes const& codeAt(Address) { return NullBytes; }
+	virtual bytes const& codeAt(Address) { return NullBytes; }
 
 	/// Subtract amount from account's balance.
-	void subBalance(u256) {}
+	virtual void subBalance(u256) {}
 
 	/// Determine account's TX count.
-	u256 txCount(Address) { return 0; }
+	virtual u256 txCount(Address) { return 0; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	void suicide(Address) { suicides.insert(myAddress); }
+	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	h160 create(u256, u256*, bytesConstRef, bytesConstRef) { return h160(); }
+	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	bool call(Address, u256, bytesConstRef, u256*, bytesRef, OnOpFunc const&, Address, Address) { return false; }
-
-	/// Post a new message call.
-	void post(Address _to, u256 _value, bytesConstRef _data, u256 _gas) { posts.push_back(Post({myAddress, _to, _value, _data.toBytes(), _gas})); }
+	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
-	void revert() {}
+	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
 
-	/// Execute any posts that may exist, including those that are incurred as a result of earlier posts.
-	void doPosts() {}
+	/// Revert any changes made (by any of the other calls).
+	virtual void revert() {}
+
+	/// Get the code at the given location in code ROM.
+	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }
 
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).
@@ -101,11 +154,11 @@ public:
 	u256 value;					///< Value (in Wei) that was passed to this address.
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
-	bytesConstRef code;			///< Current code that is executing.
+	bytes code;					///< Current code that is executing.
 	BlockInfo previousBlock;	///< The previous block's information.
 	BlockInfo currentBlock;		///< The current block's information.
-	std::set<Address> suicides;	///< Any accounts that have suicided.
-	std::list<Post> posts;		///< Any posts that have been made.
+	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
+	unsigned depth = 0;			///< Depth of the present call.
 };
 
 }

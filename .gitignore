@@ -18,15 +18,23 @@ ipch
 *.sdf
 *.opensdf
 *.suo
+*.vcxproj
+*.vcxproj.filters
+*.sln
 
-#Xcode stuff
+# VIM stuff
+*.swp
+
+# Xcode stuff
 build_xc
 
 *.user
 *.user.*
 *~
 
+# build system
 build.*/
+extdep/install
 
 *.pyc
 

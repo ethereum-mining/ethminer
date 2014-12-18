@@ -43,7 +43,7 @@ std::string dev::getDataDir()
 	#ifndef _MSC_VER // todo?
 		cwarn << "getDataDir(): SHGetSpecialFolderPathA() failed.";
 	#endif
-		throw std::runtime_error("getDataDir() - SHGetSpecialFolderPathA() failed.");
+		BOOST_THROW_EXCEPTION(std::runtime_error("getDataDir() - SHGetSpecialFolderPathA() failed."));
 	}
 #else
 	boost::filesystem::path dataDirPath;

@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file hexPrefix.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  * Main test functions.
@@ -22,20 +22,27 @@
 
 #include <fstream>
 #include "JsonSpiritHeaders.h"
-#include <libdevcrypto/TrieCommon.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcrypto/TrieCommon.h>
 #include <boost/test/unit_test.hpp>
+#include "TestHelper.h"
 
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
 namespace js = json_spirit;
+
+BOOST_AUTO_TEST_SUITE(BasicTests)
 
 BOOST_AUTO_TEST_CASE(hexPrefix_test)
 {
+
+	string testPath = test::getTestPath();
+	testPath += "/BasicTests";
+
 	cnote << "Testing Hex-Prefix-Encode...";
 	js::mValue v;
-	string s = asString(contents("../../../tests/hexencodetest.json"));
+	string s = asString(contents(testPath + "/hexencodetest.json"));
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content from 'hexencodetest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())
@@ -51,3 +58,4 @@ BOOST_AUTO_TEST_CASE(hexPrefix_test)
 	}
 }
 
+BOOST_AUTO_TEST_SUITE_END()

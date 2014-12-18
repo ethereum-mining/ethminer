@@ -24,6 +24,8 @@
 #pragma once
 
 #include <string>
+#include <set>
+#include <vector>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
@@ -42,7 +44,10 @@ class RLPStream;
 namespace p2p
 {
 
-bool isPrivateAddress(bi::address _addressToCheck);
+using NodeId = h512;
+
+bool isPrivateAddress(bi::address const& _addressToCheck);
+bool isLocalHostAddress(bi::address const& _addressToCheck);
 
 class UPnP;
 class Capability;
@@ -52,7 +57,7 @@ class Session;
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 4; };
+struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 10; };
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
 struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
 struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
@@ -80,22 +85,50 @@ enum DisconnectReason
 	TooManyPeers,
 	DuplicatePeer,
 	IncompatibleProtocol,
-	InvalidIdentity,
+	NullIdentity,
 	ClientQuit,
-	UserReason = 0x10
+	UnexpectedIdentity,
+	LocalIdentity,
+	PingTimeout,
+	UserReason = 0x10,
+	NoDisconnect = 0xffff
 };
+
+inline bool isPermanentProblem(DisconnectReason _r)
+{
+	switch (_r)
+	{
+	case DuplicatePeer:
+	case IncompatibleProtocol:
+	case NullIdentity:
+	case UnexpectedIdentity:
+	case LocalIdentity:
+		return true;
+	default:
+		return false;
+	}
+}
 
 /// @returns the string form of the given disconnection reason.
 std::string reasonOf(DisconnectReason _r);
 
+typedef std::pair<std::string, u256> CapDesc;
+typedef std::set<CapDesc> CapDescSet;
+typedef std::vector<CapDesc> CapDescs;
+
 struct PeerInfo
 {
+	NodeId id;
 	std::string clientVersion;
 	std::string host;
 	unsigned short port;
 	std::chrono::steady_clock::duration lastPing;
-	std::set<std::string> caps;
+	std::set<CapDesc> caps;
+	unsigned socket;
+	std::map<std::string, std::string> notes;
 };
+
+using PeerInfos = std::vector<PeerInfo>;
 
 }
 }

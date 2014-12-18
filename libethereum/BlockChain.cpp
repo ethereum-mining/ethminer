@@ -26,7 +26,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
-#include <libethcore/Dagger.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include "State.h"
 #include "Defaults.h"
@@ -43,16 +43,18 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
-			BlockDetails d(RLP(it->value().ToString()));
+			string rlpString = it->value().ToString();
+			RLP r(rlpString);
+			BlockDetails d(r);
 			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
 		}
 	delete it;
 	return _out;
 }
 
-std::map<Address, AddressState> const& dev::eth::genesisState()
+std::map<Address, Account> const& dev::eth::genesisState()
 {
-	static std::map<Address, AddressState> s_ret;
+	static std::map<Address, Account> s_ret;
 	if (s_ret.empty())
 		// Initialise.
 		for (auto i: vector<string>({
@@ -65,7 +67,7 @@ std::map<Address, AddressState> const& dev::eth::genesisState()
 			"6c386a4b26f73c802f34673f7248bb118f97424a",
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
-			s_ret[Address(fromHex(i))] = AddressState(0, u256(1) << 200, h256(), EmptySHA3);
+			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
 	return s_ret;
 }
 
@@ -89,7 +91,6 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 bytes BlockChain::createGenesisBlock()
 {
 	RLPStream block(3);
-	auto sha3EmptyList = sha3(RLPEmptyList);
 
 	h256 stateRoot;
 	{
@@ -100,8 +101,8 @@ bytes BlockChain::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(13) << h256() << sha3EmptyList << h160();
-	block.append(stateRoot, false, true) << bytes() << c_genesisDifficulty << 0 << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
+	block.appendList(14)
+		<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -137,14 +138,14 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	ldb::DB::Open(o, _path + "/blocks", &m_db);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
 	if (!m_db)
-		throw DatabaseAlreadyOpen();
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 	if (!m_extrasDB)
-		throw DatabaseAlreadyOpen();
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 
 	if (!details(m_genesisHash))
 	{
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {}, h256());
+		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
 	}
@@ -167,8 +168,6 @@ void BlockChain::close()
 	delete m_db;
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
-	m_blooms.clear();
-	m_traces.clear();
 	m_cache.clear();
 }
 
@@ -211,12 +210,12 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged();
+			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged() << boost::current_exception_diagnostic_information();
 			_bq.import(&block, *this);
 		}
 		catch (Exception const& _e)
 		{
-			cwarn << "Unexpected exception!" << _e.description();
+			cwarn << "Unexpected exception!" << diagnostic_information(_e);
 			_bq.import(&block, *this);
 		}
 		catch (...)
@@ -234,6 +233,7 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) 
 	}
 	catch (...)
 	{
+		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
 		return h256s();
 	}
 }
@@ -253,7 +253,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #if ETH_CATCH
 	catch (Exception const& _e)
 	{
-		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
 		throw;
 	}
 #endif
@@ -263,7 +264,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	if (isKnown(newHash))
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
-		throw AlreadyHaveBlock();
+		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
 	}
 
 	// Work out its number as the parent's number + 1
@@ -271,19 +272,24 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << newHash << ": Unknown parent " << bi.parentHash;
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
-		throw UnknownParent();
+		BOOST_THROW_EXCEPTION(UnknownParent());
 	}
 
 	auto pd = details(bi.parentHash);
 	if (!pd)
-		cwarn << "Odd: details is returning false despite block known:" << RLP(pd.rlp());
+	{
+		auto pdata = pd.rlp();
+		cwarn << "Odd: details is returning false despite block known:" << RLP(pdata);
+		auto parentBlock = block(bi.parentHash);
+		cwarn << "Block:" << RLP(parentBlock);
+	}
 
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
 	{
 		clog(BlockChainNote) << newHash << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
 		// Block has a timestamp in the future. This is no good.
-		throw FutureTime();
+		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 
 	clog(BlockChainNote) << "Attempting import of " << newHash.abridged() << "...";
@@ -297,13 +303,12 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
-		auto b = s.bloom();
-		BlockBlooms bb;
-		BlockTraces bt;
+		BlockLogBlooms blb;
+		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
-			bt.traces.push_back(s.changesFromPending(i));
-			bb.blooms.push_back(s.changesFromPending(i).bloom());
+			blb.blooms.push_back(s.receipt(i).bloom());
+			br.receipts.push_back(s.receipt(i));
 		}
 		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
@@ -314,22 +319,22 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// All ok - insert into DB
 		{
 			WriteGuard l(x_details);
-			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}, b);
+			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
-			WriteGuard l(x_blooms);
-			m_blooms[newHash] = bb;
+			WriteGuard l(x_logBlooms);
+			m_logBlooms[newHash] = blb;
 		}
 		{
-			WriteGuard l(x_traces);
-			m_traces[newHash] = bt;
+			WriteGuard l(x_receipts);
+			m_receipts[newHash] = br;
 		}
 
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 1), (ldb::Slice)dev::ref(m_blooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 2), (ldb::Slice)dev::ref(m_traces[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 
 #if ETH_PARANOIA
@@ -339,7 +344,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #if ETH_CATCH
 	catch (Exception const& _e)
 	{
-		clog(BlockChainNote) << "   Malformed block (" << _e.description() << ").";
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
 		throw;
 	}
 #endif
@@ -418,7 +424,10 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 
 void BlockChain::checkConsistency()
 {
-	m_details.clear();
+	{
+		WriteGuard l(x_details);
+		m_details.clear();
+	}
 	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -426,11 +435,17 @@ void BlockChain::checkConsistency()
 			h256 h((byte const*)it->key().data(), h256::ConstructFromPointer);
 			auto dh = details(h);
 			auto p = dh.parent;
-			if (p != h256())
+			if (p != h256() && p != m_genesisHash)	// TODO: for some reason the genesis details with the children get squished. not sure why.
 			{
 				auto dp = details(p);
-				assert(contains(dp.children, h));
-				assert(dp.number == dh.number - 1);
+				if (asserts(contains(dp.children, h)))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
+				if (assertsEqual(dp.number, dh.number - 1))
+				{
+					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
+				}
 			}
 		}
 	delete it;
@@ -444,7 +459,8 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
 		ret.insert(p);		// TODO: check: should this be details(p).parent?
-		for (auto i: RLP(block(p))[2])
+		auto b = block(p);
+		for (auto i: RLP(b)[2])
 			ret.insert(sha3(i.data()));
 	}
 	return ret;
@@ -479,12 +495,15 @@ bytes BlockChain::block(h256 _hash) const
 	string d;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
+	if (!d.size())
+	{
+		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		return bytes();
+	}
+
 	WriteGuard l(x_cache);
 	m_cache[_hash].resize(d.size());
 	memcpy(m_cache[_hash].data(), d.data(), d.size());
-
-	if (!d.size())
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
 
 	return m_cache[_hash];
 }

@@ -20,20 +20,26 @@
  * Ethereum client.
  */
 #include <functional>
+#include <libethereum/AccountDiff.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/CommonIO.h>
 #include <libp2p/All.h>
 #include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>
+#include <libethereum/All.h>
+#include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
+#include <libwhisper/WhisperHost.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 
+#if 0
 int main()
 {
 	DownloadMan man;
@@ -41,18 +47,19 @@ int main()
 	DownloadSub s1(man);
 	DownloadSub s2(man);
 	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}));
-	cnote << s0.nextFetch(2);
-	cnote << s1.nextFetch(2);
-	cnote << s2.nextFetch(2);
-	s0.noteBlock(u256(0));
+	assert((s0.nextFetch(2) == h256Set{(u256)7, (u256)8}));
+	assert((s1.nextFetch(2) == h256Set{(u256)5, (u256)6}));
+	assert((s2.nextFetch(2) == h256Set{(u256)3, (u256)4}));
+	s0.noteBlock(u256(8));
 	s0.doneFetch();
-	cnote << s0.nextFetch(2);
-	s1.noteBlock(u256(2));
-	s1.noteBlock(u256(3));
+	assert((s0.nextFetch(2) == h256Set{(u256)2, (u256)7}));
+	s1.noteBlock(u256(6));
+	s1.noteBlock(u256(5));
 	s1.doneFetch();
-	cnote << s1.nextFetch(2);
-	s0.doneFetch();
-	cnote << s0.nextFetch(2);
+	assert((s1.nextFetch(2) == h256Set{(u256)0, (u256)1}));
+	s0.doneFetch();				// TODO: check exact semantics of doneFetch & nextFetch. Not sure if they're right -> doneFetch calls resetFetch which kills all the info of past fetches.
+	cdebug << s0.nextFetch(2);
+	assert((s0.nextFetch(2) == h256Set{(u256)3, (u256)4}));
 
 /*	RangeMask<unsigned> m(0, 100);
 	cnote << m;
@@ -68,48 +75,25 @@ int main()
 		cnote << i;*/
 	return 0;
 }
-
-/*
-int main(int argc, char** argv)
+#else
+int main()
 {
-	g_logVerbosity = 20;
-
-	short listenPort = 30303;
-	string remoteHost;
-	short remotePort = 30303;
-
-	for (int i = 1; i < argc; ++i)
-	{
-		string arg = argv[i];
-		if (arg == "-l" && i + 1 < argc)
-			listenPort = (short)atoi(argv[++i]);
-		else if (arg == "-r" && i + 1 < argc)
-			remoteHost = argv[++i];
-		else if (arg == "-p" && i + 1 < argc)
-			remotePort = (short)atoi(argv[++i]);
-		else
-			remoteHost = argv[i];
-	}
-
-	Host ph("Test", NetworkPreferences(listenPort, "", false, true));
-	ph.registerCapability(new WhisperHost());
-	auto wh = ph.cap<WhisperHost>();
-
-	ph.start();
-
-	if (!remoteHost.empty())
-		ph.connect(remoteHost, remotePort);
-
-	/// Only interested in the packet if the lowest bit is 1
-	auto w = wh->installWatch(MessageFilter(std::vector<std::pair<bytes, bytes> >({{fromHex("0000000000000000000000000000000000000000000000000000000000000001"), fromHex("0000000000000000000000000000000000000000000000000000000000000001")}})));
-
-
-	for (int i = 0; ; ++i)
-	{
-		wh->sendRaw(h256(u256(i * i)).asBytes(), h256(u256(i)).asBytes(), 1000);
-		for (auto i: wh->checkWatch(w))
-			cnote << "New message:" << (u256)h256(wh->message(i).payload);
-	}
-	return 0;
+	KeyPair u = KeyPair::create();
+	KeyPair cb = KeyPair::create();
+	OverlayDB db;
+	State s(cb.address(), db, BaseState::Empty);
+	cnote << s.rootHash();
+	s.addBalance(u.address(), 1 * ether);
+	Address c = s.newContract(1000 * ether, compileLLL("(suicide (caller))"));
+	s.commit();
+	State before = s;
+	cnote << "State before transaction: " << before;
+	Transaction t(0, 10000, 10000, c, bytes(), 0, u.secret());
+	cnote << "Transaction: " << t;
+	cnote << s.balance(c);
+	s.execute(t.rlp());
+	cnote << "State after transaction: " << s;
+	cnote << before.diff(s);
 }
-*/
+#endif
+

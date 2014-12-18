@@ -28,33 +28,36 @@
 
 #include <mutex>
 #include <libdevcore/Log.h>
+#include <libdevcore/Exceptions.h>
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 #include <libdevcore/Guards.h>
 #include "BlockDetails.h"
-#include "AddressState.h"
+#include "Account.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
 namespace dev
 {
+
+class OverlayDB;
+
 namespace eth
 {
 
 static const h256s NullH256s;
 
 class State;
-class OverlayDB;
 
-class AlreadyHaveBlock: public std::exception {};
-class UnknownParent: public std::exception {};
-class FutureTime: public std::exception {};
+struct AlreadyHaveBlock: virtual Exception {};
+struct UnknownParent: virtual Exception {};
+struct FutureTime: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
-std::map<Address, AddressState> const& genesisState();
+std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 
@@ -91,16 +94,20 @@ public:
 	bool isKnown(h256 _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
+	BlockInfo info(h256 _hash) const { return BlockInfo(block(_hash)); }
+	BlockInfo info() const { return BlockInfo(block()); }
+
+	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
 	BlockDetails details() const { return details(currentHash()); }
 
-	/// Get the transactions' bloom filters of a block (or the most recent mined if none given). Thread-safe.
-	BlockBlooms blooms(h256 _hash) const { return queryExtras<BlockBlooms, 1>(_hash, m_blooms, x_blooms, NullBlockBlooms); }
-	BlockBlooms blooms() const { return blooms(currentHash()); }
+	/// Get the transactions' log blooms of a block (or the most recent mined if none given). Thread-safe.
+	BlockLogBlooms logBlooms(h256 _hash) const { return queryExtras<BlockLogBlooms, 3>(_hash, m_logBlooms, x_logBlooms, NullBlockLogBlooms); }
+	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
 
-	/// Get the transactions' trace manifests of a block (or the most recent mined if none given). Thread-safe.
-	BlockTraces traces(h256 _hash) const { return queryExtras<BlockTraces, 2>(_hash, m_traces, x_traces, NullBlockTraces); }
-	BlockTraces traces() const { return traces(currentHash()); }
+	/// Get the transactions' receipts of a block (or the most recent mined if none given). Thread-safe.
+	BlockReceipts receipts(h256 _hash) const { return queryExtras<BlockReceipts, 4>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
+	BlockReceipts receipts() const { return receipts(currentHash()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 _hash) const;
@@ -178,10 +185,10 @@ private:
 	/// The caches of the disk DB and their locks.
 	mutable boost::shared_mutex x_details;
 	mutable BlockDetailsHash m_details;
-	mutable boost::shared_mutex x_blooms;
-	mutable BlockBloomsHash m_blooms;
-	mutable boost::shared_mutex x_traces;
-	mutable BlockTracesHash m_traces;
+	mutable boost::shared_mutex x_logBlooms;
+	mutable BlockLogBloomsHash m_logBlooms;
+	mutable boost::shared_mutex x_receipts;
+	mutable BlockReceiptsHash m_receipts;
 	mutable boost::shared_mutex x_cache;
 	mutable std::map<h256, bytes> m_cache;
 

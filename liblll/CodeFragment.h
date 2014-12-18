@@ -22,8 +22,8 @@
 #pragma once
 
 #include <libdevcore/Common.h>
-#include <libevmface/Instruction.h>
-#include "Assembly.h"
+#include <libevmcore/Instruction.h>
+#include <libevmcore/Assembly.h>
 #include "Exceptions.h"
 
 namespace boost { namespace spirit { class utree; } }
@@ -50,7 +50,7 @@ public:
 private:
 	void finalise(CompilerState const& _cs);
 
-	template <class T> void error() const { throw T(); }
+	template <class T> void error() const { BOOST_THROW_EXCEPTION(T() ); }
 	void constructOperation(sp::utree const& _t, CompilerState& _s);
 
 	bool m_finalised = false;

@@ -28,7 +28,7 @@
 
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
-#include "Manifest.h"
+#include "TransactionReceipt.h"
 namespace ldb = leveldb;
 
 namespace dev
@@ -39,7 +39,7 @@ namespace eth
 struct BlockDetails
 {
 	BlockDetails(): number(0), totalDifficulty(0) {}
-	BlockDetails(unsigned _n, u256 _tD, h256 _p, h256s _c, h256 _bloom): number(_n), totalDifficulty(_tD), parent(_p), children(_c), bloom(_bloom) {}
+	BlockDetails(unsigned _n, u256 _tD, h256 _p, h256s _c): number(_n), totalDifficulty(_tD), parent(_p), children(_c) {}
 	BlockDetails(RLP const& _r);
 	bytes rlp() const;
 
@@ -50,35 +50,33 @@ struct BlockDetails
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
-	h256 bloom;
 };
 
-struct BlockBlooms
+struct BlockLogBlooms
 {
-	BlockBlooms() {}
-	BlockBlooms(RLP const& _r) { blooms = _r.toVector<h256>(); }
+	BlockLogBlooms() {}
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<h512>(); }
 	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
 
-	h256s blooms;
+	h512s blooms;
 };
 
-struct BlockTraces
+struct BlockReceipts
 {
-	BlockTraces() {}
-	BlockTraces(RLP const& _r) { for (auto const& i: _r) traces.emplace_back(i.data()); }
-	bytes rlp() const { RLPStream s(traces.size()); for (auto const& i: traces) i.streamOut(s); return s.out(); }
+	BlockReceipts() {}
+	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); }
+	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); return s.out(); }
 
-	Manifests traces;
+	TransactionReceipts receipts;
 };
-
 
 typedef std::map<h256, BlockDetails> BlockDetailsHash;
-typedef std::map<h256, BlockBlooms> BlockBloomsHash;
-typedef std::map<h256, BlockTraces> BlockTracesHash;
+typedef std::map<h256, BlockLogBlooms> BlockLogBloomsHash;
+typedef std::map<h256, BlockReceipts> BlockReceiptsHash;
 
 static const BlockDetails NullBlockDetails;
-static const BlockBlooms NullBlockBlooms;
-static const BlockTraces NullBlockTraces;
+static const BlockLogBlooms NullBlockLogBlooms;
+static const BlockReceipts NullBlockReceipts;
 
 }
 }

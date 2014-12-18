@@ -21,8 +21,67 @@
 
 #include "Common.h"
 
+#include <libdevcrypto/SHA3.h>
+#include "Message.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
+
+Topic BuildTopic::toTopic() const
+{
+	Topic ret;
+	ret.reserve(m_parts.size());
+	for (auto const& h: m_parts)
+		ret.push_back(TopicPart(h));
+	return ret;
+}
+
+BuildTopic& BuildTopic::shiftBytes(bytes const& _b)
+{
+	m_parts.push_back(dev::sha3(_b));
+	return *this;
+}
+
+h256 TopicFilter::sha3() const
+{
+	RLPStream s;
+	streamRLP(s);
+	return dev::sha3(s.out());
+}
+
+bool TopicFilter::matches(Envelope const& _e) const
+{
+	for (TopicMask const& t: m_topicMasks)
+	{
+		for (unsigned i = 0; i < t.size(); ++i)
+		{
+			for (auto et: _e.topics())
+				if (((t[i].first ^ et) & t[i].second) == 0)
+					goto NEXT_TOPICPART;
+			// failed to match topicmask against any topics: move on to next mask
+			goto NEXT_TOPICMASK;
+			NEXT_TOPICPART:;
+		}
+		// all topicmasks matched.
+		return true;
+		NEXT_TOPICMASK:;
+	}
+	return false;
+}
+
+TopicMask BuildTopicMask::toTopicMask() const
+{
+	TopicMask ret;
+	ret.reserve(m_parts.size());
+	for (auto const& h: m_parts)
+		ret.push_back(make_pair(TopicPart(h), ~TopicPart()));
+	return ret;
+}
+
+/*
+web3.shh.watch({}).arrived(function(m) { env.note("New message:\n"+JSON.stringify(m)); })
+k = web3.shh.newIdentity()
+web3.shh.post({from: k, topic: web3.fromAscii("test"), payload: web3.fromAscii("Hello world!")})
+*/
 

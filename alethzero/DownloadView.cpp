@@ -45,13 +45,13 @@ void DownloadView::paintEvent(QPaintEvent*)
 	double ratio = (double)rect().width() / rect().height();
 	if (ratio < 1)
 		ratio = 1 / ratio;
-	double n = min(rect().width(), rect().height()) / ceil(sqrt(m_man->chain().size() / ratio));
+	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chain().size() / ratio)));
 
 //	QSizeF area(rect().width() / floor(rect().width() / n), rect().height() / floor(rect().height() / n));
 	QSizeF area(n, n);
 	QPointF pos(0, 0);
 
-	auto const& bg = m_man->blocksGot();
+	auto bg = m_man->blocksGot();
 
 	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
 	{
@@ -63,7 +63,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 			unsigned h = 0;
 			m_man->foreachSub([&](DownloadSub const& sub)
 			{
-				if (sub.asked().contains(i))
+				if (sub.askedContains(i))
 					s = h;
 				h++;
 			});

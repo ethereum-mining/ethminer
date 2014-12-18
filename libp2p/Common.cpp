@@ -27,8 +27,7 @@ using namespace dev::p2p;
 // Helper function to determine if an address falls within one of the reserved ranges
 // For V4:
 // Class A "10.*", Class B "172.[16->31].*", Class C "192.168.*"
-// Not implemented yet for V6
-bool p2p::isPrivateAddress(bi::address _addressToCheck)
+bool p2p::isPrivateAddress(bi::address const& _addressToCheck)
 {
 	if (_addressToCheck.is_v4())
 	{
@@ -41,7 +40,31 @@ bool p2p::isPrivateAddress(bi::address _addressToCheck)
 		if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
 			return true;
 	}
+	else if (_addressToCheck.is_v6())
+	{
+		bi::address_v6 v6Address = _addressToCheck.to_v6();
+		bi::address_v6::bytes_type bytesToCheck = v6Address.to_bytes();
+		if (bytesToCheck[0] == 0xfd && bytesToCheck[1] == 0)
+			return true;
+		if (!bytesToCheck[0] && !bytesToCheck[1] && !bytesToCheck[2] && !bytesToCheck[3] && !bytesToCheck[4] && !bytesToCheck[5] && !bytesToCheck[6] && !bytesToCheck[7]
+				 && !bytesToCheck[8] && !bytesToCheck[9] && !bytesToCheck[10] && !bytesToCheck[11] && !bytesToCheck[12] && !bytesToCheck[13] && !bytesToCheck[14] && (bytesToCheck[15] == 0 || bytesToCheck[15] == 1))
+			return true;
+	}
 	return false;
+}
+
+// Helper function to determine if an address is localhost
+bool p2p::isLocalHostAddress(bi::address const& _addressToCheck)
+{
+	// @todo: ivp6 link-local adresses (macos), ex: fe80::1%lo0
+	static const set<bi::address> c_rejectAddresses = {
+		{bi::address_v4::from_string("127.0.0.1")},
+		{bi::address_v4::from_string("0.0.0.0")},
+		{bi::address_v6::from_string("::1")},
+		{bi::address_v6::from_string("::")}
+	};
+	
+	return find(c_rejectAddresses.begin(), c_rejectAddresses.end(), _addressToCheck) != c_rejectAddresses.end();
 }
 
 std::string p2p::reasonOf(DisconnectReason _r)
@@ -55,7 +78,12 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	case TooManyPeers: return "Peer had too many connections.";
 	case DuplicatePeer: return "Peer was already connected.";
 	case IncompatibleProtocol: return "Peer protocol versions are incompatible.";
+	case NullIdentity: return "Null identity given.";
 	case ClientQuit: return "Peer is exiting.";
+	case UnexpectedIdentity: return "Unexpected identity given.";
+	case LocalIdentity: return "Connected to ourselves.";
+	case UserReason: return "Subprotocol reason.";
+	case NoDisconnect: return "(No disconnect has happened.)";
 	default: return "Unknown reason.";
 	}
 }

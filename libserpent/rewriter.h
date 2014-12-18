@@ -10,4 +10,7 @@
 // Applies rewrite rules
 Node rewrite(Node inp);
 
+// Applies rewrite rules adding without wrapper
+Node rewriteChunk(Node inp);
+
 #endif
