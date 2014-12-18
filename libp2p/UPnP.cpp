@@ -31,6 +31,7 @@
 #endif
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 using namespace std;
 using namespace dev;
@@ -87,7 +88,7 @@ UPnP::UPnP()
 #endif
 	{
 		cnote << "UPnP device not found.";
-		throw NoUPnPDevice();
+		BOOST_THROW_EXCEPTION(NoUPnPDevice());
 	}
 }
 
@@ -122,16 +123,18 @@ int UPnP::addRedirect(char const* _addr, int _port)
 
 	// Try direct mapping first (port external, port internal).
 	char port_str[16];
+	char ext_port_str[16];
 	sprintf(port_str, "%d", _port);
 	if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
 		return _port;
 
 	// Failed - now try (random external, port internal) and cycle up to 10 times.
+	srand(time(NULL));
 	for (unsigned i = 0; i < 10; ++i)
 	{
-		_port = rand() % 65535 - 1024 + 1024;
-		sprintf(port_str, "%d", _port);
-		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, NULL, port_str, _addr, "ethereum", "TCP", NULL, NULL))
+		_port = rand() % (65535 - 1024) + 1024;
+		sprintf(ext_port_str, "%d", _port);
+		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, ext_port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
 			return _port;
 	}
 

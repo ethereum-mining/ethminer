@@ -1,49 +1,33 @@
 cmake_policy(SET CMP0015 NEW)
+set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(..)
-link_directories(../libethcore)
-link_directories(../libwebthree)
 
 set(EXECUTABLE eth)
 
-add_executable(${EXECUTABLE} ${SRC_LIST})
+file(GLOB HEADERS "*.h")
+
+add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+
+add_dependencies(${EXECUTABLE} BuildInfo.h)
+
+target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
+
+if (READLINE_FOUND)
+	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+endif()
+
+if (JSONRPC)
+	target_link_libraries(${EXECUTABLE} web3jsonrpc)
+endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} gmp)
-if(MINIUPNPC_LS)
-	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LS})
-endif()
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
-target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})
-if(JSONRPC_LS)
-target_link_libraries(${EXECUTABLE} ${JSONRPC_LS})
-endif()
-if(READLINE_LS)
-target_link_libraries(${EXECUTABLE} ${READLINE_LS})
-endif()
-
-if ("${TARGET_PLATFORM}" STREQUAL "w64")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
-	target_link_libraries(${EXECUTABLE} boost_system-mt-s)
-	target_link_libraries(${EXECUTABLE} boost_filesystem-mt-s)
-	target_link_libraries(${EXECUTABLE} boost_thread_win32-mt-s)
-	target_link_libraries(${EXECUTABLE} gcc)
-	target_link_libraries(${EXECUTABLE} gdi32)
-	target_link_libraries(${EXECUTABLE} ws2_32)
-	target_link_libraries(${EXECUTABLE} mswsock)
-	target_link_libraries(${EXECUTABLE} shlwapi)
-	target_link_libraries(${EXECUTABLE} iphlpapi)
-	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-elseif (UNIX)
-else ()
-	target_link_libraries(${EXECUTABLE} boost_system)
-	target_link_libraries(${EXECUTABLE} boost_filesystem)
-	find_package(Threads REQUIRED)
-	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
-endif ()
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )
 

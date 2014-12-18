@@ -38,9 +38,11 @@ void Worker::startWorking()
 	m_work.reset(new thread([&]()
 	{
 		setThreadName(m_name.c_str());
+		startedWorking();
 		while (!m_stop)
 		{
-			this_thread::sleep_for(chrono::milliseconds(30));
+			if (m_idleWaitMs)
+				this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
 			doWork();
 		}
 		cdebug << "Finishing up worker thread";

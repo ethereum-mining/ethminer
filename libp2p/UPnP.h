@@ -25,6 +25,7 @@
 #include <set>
 #include <string>
 #include <memory>
+#include <thread>
 
 struct UPNPUrls;
 struct IGDdatas;
@@ -46,6 +47,7 @@ public:
 
 	bool isValid() const { return m_ok; }
 
+private:
 	std::set<int> m_reg;
 	bool m_ok;
 	std::shared_ptr<struct UPNPUrls> m_urls;

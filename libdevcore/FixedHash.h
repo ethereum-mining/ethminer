@@ -59,7 +59,7 @@ public:
 	FixedHash() { m_data.fill(0); }
 
 	/// Construct from another hash, filling with zeroes or cropping as necessary.
-	template <unsigned M> FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
+	template <unsigned M> explicit FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) { m_data.fill(0); unsigned c = std::min(M, N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i]; }
 
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
@@ -83,6 +83,7 @@ public:
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
+	bool operator>=(FixedHash const& _c) const { return m_data >= _c.m_data; }
 
 	// The obvious binary operators.
 	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
@@ -158,6 +159,49 @@ public:
 		return ret;
 	}
 
+	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
+	{
+		return (*this |= _h.template nbloom<P, N>());
+	}
+
+	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
+	{
+		return contains(_h.template nbloom<P, N>());
+	}
+
+	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	{
+		static const unsigned c_bloomBits = M * 8;
+		unsigned mask = c_bloomBits - 1;
+		unsigned bloomBytes = (dev::toLog2(c_bloomBits) + 7) / 8;
+		FixedHash<M> ret;
+		byte const* p = data();
+		for (unsigned i = 0; i < P; ++i)
+		{
+			unsigned index = 0;
+			for (unsigned j = 0; j < bloomBytes; ++j, ++p)
+				index = (index << 8) | *p;
+			index &= mask;
+			ret[M - 1 - index / 8] |= (1 << (index % 8));
+		}
+		return ret;
+	}
+
+	/// Returns the index of the first bit set to one, or size() * 8 if no bits are set.
+	inline unsigned firstBitSet() const
+	{
+		unsigned ret = 0;
+		for (auto d: m_data)
+			if (d)
+				for (;; ++ret, d <<= 1)
+					if (d & 0x80)
+						return ret;
+					else {}
+			else
+				ret += 8;
+		return ret;
+	}
+
 private:
 	std::array<byte, N> m_data;		///< The binary data.
 };
@@ -193,9 +237,12 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 }
 
 // Common types of FixedHash.
+using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
+using h128 = FixedHash<16>;
+using h512s = std::vector<h512>;
 using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;

@@ -21,6 +21,9 @@
 
 #pragma once
 
+#ifdef Q_MOC_RUN
+#define BOOST_MPL_IF_HPP_INCLUDED
+#endif
 
 #include <map>
 #include <QtNetwork/QNetworkAccessManager>
@@ -30,6 +33,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
+#include <libethereum/Executive.h>
 #include <libqethereum/QEthereum.h>
 #include <libwebthree/WebThree.h>
 
@@ -40,10 +44,10 @@ class Main;
 namespace dev { namespace eth {
 class Client;
 class State;
-class MessageFilter;
 }}
 
 class QQuickView;
+class OurWebThreeStubServer;
 
 struct WorldState
 {
@@ -65,22 +69,23 @@ struct WorldState
 class Main : public QMainWindow
 {
 	Q_OBJECT
-	
+
 public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
 	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	dev::shh::WhisperHost* whisper() const { return m_webThree->whisper(); }
+	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	QList<dev::KeyPair> const& owned() const { return m_myKeys; }
-	
+	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
+
 public slots:
 	void load(QString _file);
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
+	QString contents(QString _file);
 
 	void onKeysChanged();
 
@@ -141,9 +146,17 @@ private slots:
 	void on_debugDumpState_triggered(int _add = 1);
 	void on_debugDumpStatePre_triggered();
 	void on_refresh_triggered();
-    void on_usePrivate_triggered();
+	void on_usePrivate_triggered();
 	void on_enableOptimizer_triggered();
 	void on_turboMining_triggered();
+	void on_go_triggered();
+	void on_importKeyFile_triggered();
+	void on_post_clicked();
+	void on_newIdentity_triggered();
+
+	void refreshWhisper();
+	void refreshBlockChain();
+	void addNewId(QString _ids);
 
 signals:
 	void poll();
@@ -176,8 +189,11 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	unsigned installWatch(dev::eth::MessageFilter const& _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
 	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+	void uninstallWatch(unsigned _w);
+
+	void keysChanged();
 
 	void onNewPending();
 	void onNewBlock();
@@ -194,12 +210,12 @@ private:
 
 	void refreshNetwork();
 	void refreshMining();
+	void refreshWhispers();
 
 	void refreshAll();
 	void refreshPending();
 	void refreshAccounts();
 	void refreshDestination();
-	void refreshBlockChain();
 	void refreshBlockCount();
 	void refreshBalances();
 
@@ -215,8 +231,8 @@ private:
 	QByteArray m_peers;
 	QStringList m_servers;
 	QList<dev::KeyPair> m_myKeys;
+	QList<dev::KeyPair> m_myIdentities;
 	QString m_privateChain;
-	bool m_keysChanged = false;
 	dev::bytes m_data;
 	dev::Address m_nameReg;
 
@@ -240,5 +256,9 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	QEthereum* m_ethereum = nullptr;
+	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
+	std::unique_ptr<OurWebThreeStubServer> m_server;
+	QWebThree* m_qweb = nullptr;
+
+	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 };

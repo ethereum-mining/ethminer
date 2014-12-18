@@ -55,6 +55,18 @@ std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
 template <class S, class T> struct StreamOut { static S& bypass(S& _out, T const& _t) { _out << _t; return _out; } };
 template <class S> struct StreamOut<S, uint8_t> { static S& bypass(S& _out, uint8_t const& _t) { _out << (int)_t; return _out; } };
 
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::vector<T> const& _e);
+template <class T, unsigned Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::pair<T, U> const& _e);
+template <class T> inline std::ostream& operator<<(std::ostream& _out, std::list<T> const& _e);
+template <class T1, class T2, class T3> inline std::ostream& operator<<(std::ostream& _out, std::tuple<T1, T2, T3> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::map<T, U> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::unordered_map<T, U> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::set<T, U> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::unordered_set<T, U> const& _e);
+template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e);
+template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p);
+
 template <class S, class T>
 inline S& streamout(S& _out, std::vector<T> const& _e)
 {

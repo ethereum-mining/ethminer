@@ -30,6 +30,7 @@
 #include <memory>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/Exceptions.h>
 #include <libdevcrypto/SHA3.h>
 #include "MemoryDB.h"
 #include "OverlayDB.h"
@@ -38,14 +39,13 @@ namespace ldb = leveldb;
 
 namespace dev
 {
-namespace eth
-{
 
-struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 6; };
+struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 17; };
 #define tdebug clog(TrieDBChannel)
 
-class InvalidTrie: public std::exception {};
+struct InvalidTrie: virtual dev::Exception {};
 extern const h256 c_shaNull;
+extern const h256 EmptyTrie;
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
@@ -75,22 +75,22 @@ public:
 	void init();
 	void setRoot(h256 _root)
 	{
-		m_root = _root == h256() ? c_shaNull : _root;
+		m_root = _root;
 		if (m_root == c_shaNull && !m_db->exists(m_root))
 			init();
 
 		/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
 		if (!node(m_root).size())
-			throw RootNotFound();
+			BOOST_THROW_EXCEPTION(RootNotFound());
 	}
-	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == h256() ? true : m_db->lookup(_root, _enforceRefs).size(); }
+	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == c_shaNull ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	bool isNull() const { return !node(m_root).size(); }
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 root() const { assert(node(m_root).size()); h256 ret = (m_root == c_shaNull ? h256() : m_root); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return ret; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { assert(node(m_root).size()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -109,7 +109,7 @@ public:
 		else if (_r.isList())
 			descendList(_r, _keyMask, _wasExt, _out, _indent);
 		else
-			throw InvalidTrie();
+			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
 	void descendList(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
@@ -130,7 +130,7 @@ public:
 					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
 		}
 		else
-			throw InvalidTrie();
+			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
 	std::set<h256> leftOvers(std::ostream* _out = nullptr) const
@@ -153,6 +153,7 @@ public:
 		}
 		catch (...)
 		{
+			cwarn << boost::current_exception_diagnostic_information();
 			return false;
 		}
 	}
@@ -169,6 +170,7 @@ public:
 
 		iterator() {}
 		iterator(GenericTrieDB const* _db);
+		iterator(GenericTrieDB const* _db, bytesConstRef _key);
 
 		iterator& operator++() { next(); return *this; }
 
@@ -182,13 +184,17 @@ public:
 
 	private:
 		void next();
+		void next(NibbleSlice _key);
 
 		struct Node
 		{
 			std::string rlp;
 			std::string key;		// as hexPrefixEncoding.
-			byte child;				// 255 -> entering
+			byte child;				// 255 -> entering, 16 -> actually at the node, 17 -> exiting, 0-15 -> actual children.
 
+			// 255 -> 16 -> 0 -> 1 -> ... -> 15 -> 17
+
+			void setChild(unsigned _i) { child = _i; }
 			void setFirstChild() { child = 16; }
 			void incrementChild() { child = child == 16 ? 0 : child == 15 ? 17 : (child + 1); }
 
@@ -202,6 +208,8 @@ public:
 
 	iterator begin() const { return this; }
 	iterator end() const { return iterator(); }
+
+	iterator lower_bound(bytesConstRef _key) const { return iterator(this, _key); }
 
 private:
 	RLPStream& streamNode(RLPStream& _s, bytes const& _b);
@@ -296,6 +304,7 @@ public:
 
 		iterator() {}
 		iterator(TrieDB const* _db): Super(_db) {}
+		iterator(TrieDB const* _db, bytesConstRef _k): Super(_db, _k) {}
 
 		value_type operator*() const { return at(); }
 		value_type operator->() const { return at(); }
@@ -305,6 +314,7 @@ public:
 
 	iterator begin() const { return this; }
 	iterator end() const { return iterator(); }
+	iterator lower_bound(KeyType _k) const { return iterator(this, bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 };
 
 template <class KeyType, class DB>
@@ -316,12 +326,9 @@ std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
 }
 
 }
-}
 
 // Template implementations...
 namespace dev
-{
-namespace eth
 {
 
 template <class DB> GenericTrieDB<DB>::iterator::iterator(GenericTrieDB const* _db)
@@ -329,6 +336,13 @@ template <class DB> GenericTrieDB<DB>::iterator::iterator(GenericTrieDB const* _
 	m_that = _db;
 	m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
 	next();
+}
+
+template <class DB> GenericTrieDB<DB>::iterator::iterator(GenericTrieDB const* _db, bytesConstRef _fullKey)
+{
+	m_that = _db;
+	m_trail.push_back({_db->node(_db->m_root), std::string(1, '\0'), 255});	// one null byte is the HPE for the empty key.
+	next(_fullKey);
 }
 
 template <class DB> typename GenericTrieDB<DB>::iterator::value_type GenericTrieDB<DB>::iterator::at() const
@@ -339,10 +353,145 @@ template <class DB> typename GenericTrieDB<DB>::iterator::value_type GenericTrie
 	assert(!(b.key[0] & 0x10));	// should be an integer number of bytes (i.e. not an odd number of nibbles).
 
 	RLP rlp(b.rlp);
-	if (rlp.itemCount() == 2)
-		return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[1].payload());
-	else
-		return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[16].payload());
+	return std::make_pair(bytesConstRef(b.key).cropped(1), rlp[rlp.itemCount() == 2 ? 1 : 16].payload());
+}
+
+template <class DB> void GenericTrieDB<DB>::iterator::next(NibbleSlice _key)
+{
+	NibbleSlice k = _key;
+	while (true)
+	{
+		if (m_trail.empty())
+		{
+			m_that = nullptr;
+			return;
+		}
+
+		Node const& b = m_trail.back();
+		RLP rlp(b.rlp);
+
+		if (m_trail.back().child == 255)
+		{
+			// Entering. Look for first...
+			if (rlp.isEmpty())
+			{
+				// Kill our search as soon as we hit an empty node.
+				k.clear();
+				m_trail.pop_back();
+				continue;
+			}
+			if (!rlp.isList() || (rlp.itemCount() != 2 && rlp.itemCount() != 17))
+			{
+#if ETH_PARANOIA
+				cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+				cwarn << b.rlp.size() << toHex(b.rlp);
+				cwarn << rlp;
+				auto c = rlp.itemCount();
+				cwarn << c;
+				BOOST_THROW_EXCEPTION(InvalidTrie());
+#else
+				m_that = nullptr;
+				return;
+#endif
+			}
+			if (rlp.itemCount() == 2)
+			{
+				// Just turn it into a valid Branch
+				auto keyOfRLP = keyOf(rlp);
+
+				// TODO: do something different depending on how keyOfRLP compares to k.mid(0, std::min(k.size(), keyOfRLP.size()));
+				// if == all is good - continue descent.
+				// if > discard key and continue descent.
+				// if < discard key and skip node.
+
+				if (!k.contains(keyOfRLP))
+				{
+					if (!k.isEarlierThan(keyOfRLP))
+					{
+						k.clear();
+						m_trail.pop_back();
+						continue;
+					}
+					k.clear();
+				}
+
+				k = k.mid(std::min(k.size(), keyOfRLP.size()));
+				m_trail.back().key = hexPrefixEncode(keyOf(m_trail.back().key), keyOfRLP, false);
+				if (isLeaf(rlp))
+				{
+					// leaf - exit now.
+					if (k.empty())
+					{
+						m_trail.back().child = 0;
+						return;
+					}
+					// Still data in key we're supposed to be looking for when we're at a leaf. Go for next one.
+					k.clear();
+					m_trail.pop_back();
+					continue;
+				}
+
+				// enter child.
+				m_trail.back().rlp = m_that->deref(rlp[1]);
+				// no need to set .child as 255 - it's already done.
+				continue;
+			}
+			else
+			{
+				// Already a branch - look for first valid.
+				if (k.size())
+				{
+					m_trail.back().setChild(k[0]);
+					k = k.mid(1);
+				}
+				else
+					m_trail.back().setChild(16);
+				// run through to...
+			}
+		}
+		else
+		{
+			// Continuing/exiting. Look for next...
+			if (!(rlp.isList() && rlp.itemCount() == 17))
+			{
+				k.clear();
+				m_trail.pop_back();
+				continue;
+			}
+			// else run through to...
+			m_trail.back().incrementChild();
+		}
+
+		// ...here. should only get here if we're a list.
+		assert(rlp.isList() && rlp.itemCount() == 17);
+		for (;; m_trail.back().incrementChild())
+			if (m_trail.back().child == 17)
+			{
+				// finished here.
+				k.clear();
+				m_trail.pop_back();
+				break;
+			}
+			else if (!rlp[m_trail.back().child].isEmpty())
+			{
+				if (m_trail.back().child == 16)
+					return;	// have a value at this node - exit now.
+				else
+				{
+					// lead-on to another node - enter child.
+					// fixed so that Node passed into push_back is constructed *before* m_trail is potentially resized (which invalidates back and rlp)
+					Node const& back = m_trail.back();
+					m_trail.push_back(Node{
+						m_that->deref(rlp[back.child]),
+						 hexPrefixEncode(keyOf(back.key), NibbleSlice(bytesConstRef(&back.child, 1), 1), false),
+						 255
+						});
+					break;
+				}
+			}
+		else
+			k.clear();
+	}
 }
 
 template <class DB> void GenericTrieDB<DB>::iterator::next()
@@ -374,7 +523,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next()
 				cwarn << rlp;
 				auto c = rlp.itemCount();
 				cwarn << c;
-				throw InvalidTrie();
+				BOOST_THROW_EXCEPTION(InvalidTrie());
 #else
 				m_that = nullptr;
 				return;
@@ -471,7 +620,7 @@ template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesCons
 	assert(rv.size());
 	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
 
-	// mergeAt won't attempt to delete the node is it's less than 32 bytes
+	// mergeAt won't attempt to delete the node if it's less than 32 bytes
 	// However, we know it's the root node and thus always hashed.
 	// So, if it's less than 32 (and thus should have been deleted but wasn't) then we delete it here.
 	if (rv.size() < 32)
@@ -553,11 +702,17 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		auto sh = _k.shared(k);
 //		std::cout << _k << " sh " << k << " = " << sh << std::endl;
 		if (sh)
+		{
 			// shared stuff - cleve at disagreement.
-			return mergeAt(RLP(cleve(_orig, sh)), _k, _v, true);
+			auto cleved = cleve(_orig, sh);
+			return mergeAt(RLP(cleved), _k, _v, true);
+		}
 		else
+		{
 			// nothing shared - branch
-			return mergeAt(RLP(branch(_orig)), _k, _v, true);
+			auto branched = branch(_orig);
+			return mergeAt(RLP(branched), _k, _v, true);
+		}
 	}
 	else
 	{
@@ -686,7 +841,10 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 			byte used = uniqueInUse(_orig, 16);
 			if (used != 255)
 				if (isTwoItemNode(_orig[used]))
-					return graft(RLP(merge(_orig, used)));
+				{
+					auto merged = merge(_orig, used);
+					return graft(RLP(merged));
+				}
 				else
 					return merge(_orig, used);
 			else
@@ -722,7 +880,10 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 			// yes; merge
 			if (isTwoItemNode(rlp[used]))
-				return graft(RLP(merge(rlp, used)));
+			{
+				auto merged = merge(rlp, used);
+				return graft(RLP(merged));
+			}
 			else
 				return merge(rlp, used);
 		}
@@ -909,5 +1070,3 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 }
 
 }
-}
-

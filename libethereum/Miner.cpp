@@ -21,6 +21,8 @@
  */
 
 #include "Miner.h"
+
+#include <libdevcore/CommonIO.h>
 #include "State.h"
 using namespace std;
 using namespace dev;
@@ -30,6 +32,12 @@ Miner::Miner(MinerHost* _host, unsigned _id):
 	Worker("miner-" + toString(_id)),
 	m_host(_host)
 {
+}
+
+void Miner::setup(MinerHost* _host, unsigned _id)
+{
+	m_host = _host;
+	setName("miner-" + toString(_id));
 }
 
 void Miner::doWork()

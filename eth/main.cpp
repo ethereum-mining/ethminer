@@ -24,13 +24,11 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#if ETH_JSONRPC
-#include <jsonrpc/connectors/httpserver.h>
-#endif
 #include <libdevcrypto/FileSystem.h>
-#include <libevmface/Instruction.h>
+#include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
@@ -39,7 +37,8 @@
 #include <readline/history.h>
 #endif
 #if ETH_JSONRPC
-#include "EthStubServer.h"
+#include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -164,6 +163,13 @@ string pretty(h160 _a, dev::eth::State _st)
 		ns = " " + s;
 	}
 	return ns;
+}
+
+bool g_exit = false;
+
+void sighandler(int)
+{
+	g_exit = true;
 }
 
 int main(int argc, char** argv)
@@ -300,7 +306,13 @@ int main(int argc, char** argv)
 	cout << credits();
 
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
-	dev::WebThreeDirect web3("Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, false, mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>{}, netPrefs);
+	dev::WebThreeDirect web3(
+		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM),
+		dbPath,
+		false,
+		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		netPrefs
+		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
 
@@ -309,6 +321,9 @@ int main(int argc, char** argv)
 		c->setForceMining(forceMining);
 		c->setAddress(coinbase);
 	}
+
+	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp");
+	web3.restoreNodes(&nodesState);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
@@ -319,20 +334,26 @@ int main(int argc, char** argv)
 		web3.connect(remoteHost, remotePort);
 
 #if ETH_JSONRPC
-	auto_ptr<EthStubServer> jsonrpcServer;
+	shared_ptr<WebThreeStubServer> jsonrpcServer;
+	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
-		jsonrpcServer->setKeys({us});
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
 #endif
+
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
 
 	if (interactive)
 	{
 		string logbuf;
 		string l;
-		while (true)
+		while (!g_exit)
 		{
 			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
 			cout << logbuf << "Press Enter" << flush;
@@ -406,8 +427,9 @@ int main(int argc, char** argv)
 			{
 				if (jsonrpc < 0)
 					jsonrpc = 8080;
-				jsonrpcServer = auto_ptr<EthStubServer>(new EthStubServer(new jsonrpc::HttpServer(jsonrpc), web3));
-				jsonrpcServer->setKeys({us});
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
@@ -419,9 +441,8 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl;
-				const char* addchr = toHex(us.address().asArray()).c_str();
-				cout << addchr << endl;
+				cout << "Current address:" << endl
+					 << toHex(us.address().asArray()) << endl;
 			}
 			else if (cmd == "secret")
 			{
@@ -470,14 +491,12 @@ int main(int argc, char** argv)
 					cnote << ssbd.str();
 					int ssize = sechex.length();
 					int size = hexAddr.length();
-					u256 minGas = (u256)Client::txGas(data.size(), 0);
+					u256 minGas = (u256)Client::txGas(data, 0);
 					if (size < 40)
 					{
 						if (size > 0)
 							cwarn << "Invalid address length:" << size;
 					}
-					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else if (ssize < 40)
@@ -537,9 +556,9 @@ int main(int argc, char** argv)
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
-						u256 minGas = (u256)Client::txGas(0, 0);
+						u256 minGas = (u256)Client::txGas(bytes(), 0);
 						Address dest = h160(fromHex(hexAddr));
-						c->transact(us.secret(), amount, dest, bytes(), minGas, info.minGasPrice);
+						c->transact(us.secret(), amount, dest, bytes(), minGas);
 					}
 				} 
 				else
@@ -576,11 +595,9 @@ int main(int argc, char** argv)
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
-					u256 minGas = (u256)Client::txGas(init.size(), 0);
+					u256 minGas = (u256)Client::txGas(init, 0);
 					if (endowment < 0)
 						cwarn << "Invalid endowment";
-					else if (gasPrice < info.minGasPrice)
-						cwarn << "Minimum gas price is" << info.minGasPrice;
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
@@ -602,46 +619,54 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state);
+					Executive e(state, 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();
-					e.setup(&r);
+					try
+					{
+						e.setup(&r);
 
-					OnOpFunc oof;
-					if (format == "pretty")
-						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << endl << "    STACK" << endl;
-							for (auto i: vm->stack())
-								f << (h256)i << endl;
-							f << "    MEMORY" << endl << dev::memDump(vm->memory());
-							f << "    STORAGE" << endl;
-							for (auto const& i: ext->state().storage(ext->myAddress))
-								f << showbase << hex << i.first << ": " << i.second << endl;
-							f << dec << ext->level << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
-						};
-					else if (format == "standard")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					else if (format == "standard+")
-						oof = [&](uint64_t, Instruction instr, bigint, bigint, void* vvm, void const* vextVM)
-						{
-							dev::eth::VM* vm = (VM*)vvm;
-							dev::eth::ExtVM const* ext = (ExtVM const*)vextVM;
-							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+						OnOpFunc oof;
+						if (format == "pretty")
+							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							{
+								dev::eth::VM* vm = vvm;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+								f << endl << "    STACK" << endl;
+								for (auto i: vm->stack())
+									f << (h256)i << endl;
+								f << "    MEMORY" << endl << dev::memDump(vm->memory());
+								f << "    STORAGE" << endl;
 								for (auto const& i: ext->state().storage(ext->myAddress))
-									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
-						};
-					e.go(oof);
-					e.finalize(oof);
+									f << showbase << hex << i.first << ": " << i.second << endl;
+								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+							};
+						else if (format == "standard")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							{
+								dev::eth::VM* vm = vvm;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						else if (format == "standard+")
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							{
+								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+									for (auto const& i: ext->state().storage(ext->myAddress))
+										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+							};
+						e.go(oof);
+						e.finalize(oof);
+					}
+					catch(Exception const& _e)
+					{
+						// TODO: a bit more information here. this is probably quite worrying as the transaction is already in the blockchain.
+						cwarn << diagnostic_information(_e);
+					}
 				}
 			}
 			else if (c && cmd == "inspect")
@@ -671,7 +696,7 @@ int main(int argc, char** argv)
 
 						cnote << "Saved" << rechex << "to" << outFile;
 					}
-					catch (dev::eth::InvalidTrie)
+					catch (dev::InvalidTrie)
 					{
 						cwarn << "Corrupted trie.";
 					}
@@ -751,7 +776,7 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
-		while (true)
+		while (!g_exit)
 		{
 			if ( c->isMining() &&c->blockChain().details().number - n == mining)
 				c->stopMining();
@@ -759,9 +784,10 @@ int main(int argc, char** argv)
 		}
 	}
 	else
-		while (true)
+		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
+	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp", web3.saveNodes());
 	return 0;
 }
 

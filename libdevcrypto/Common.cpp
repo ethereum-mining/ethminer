@@ -14,60 +14,93 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonEth.cpp
+/** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
-#include "Common.h"
 #include <random>
-#include <secp256k1/secp256k1.h>
+#include <chrono>
+#include <mutex>
 #include "SHA3.h"
+#include "FileSystem.h"
+#include "CryptoPP.h"
+#include "Common.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace dev::crypto;
 
-//#define ETH_ADDRESS_DEBUG 1
+static Secp256k1 s_secp256k1;
 
-Address dev::toAddress(Secret _private)
+bool dev::SignatureStruct::isValid()
 {
-	secp256k1_start();
+	if (this->v > 1 ||
+			this->r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
+			this->s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
+		return false;
+	return true;
+}
 
-	byte pubkey[65];
-	int pubkeylen = 65;
-	int ok = secp256k1_ecdsa_seckey_verify(_private.data());
-	if (!ok)
-		return Address();
-	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, _private.data(), 0);
-	assert(pubkeylen == 65);
-	if (!ok)
-		return Address();
-	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
-	if (!ok)
-		return Address();
-	auto ret = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
-#if ETH_ADDRESS_DEBUG
-	cout << "---- ADDRESS -------------------------------" << endl;
-	cout << "SEC: " << _private << endl;
-	cout << "PUB: " << toHex(bytesConstRef(&(pubkey[1]), 64)) << endl;
-	cout << "ADR: " << ret << endl;
-#endif
-	return ret;
+Public dev::toPublic(Secret const& _secret)
+{
+	Public p;
+	s_secp256k1.toPublic(_secret, p);
+	return std::move(p);
+}
+
+Address dev::toAddress(Public const& _public)
+{
+	return s_secp256k1.toAddress(_public);
+}
+
+Address dev::toAddress(Secret const& _secret)
+{
+	Public p;
+	s_secp256k1.toPublic(_secret, p);
+	return s_secp256k1.toAddress(p);
+}
+
+void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	bytes io = _plain.toBytes();
+	s_secp256k1.encrypt(_k, io);
+	o_cipher = std::move(io);
+}
+
+bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	bytes io = _cipher.toBytes();
+	s_secp256k1.decrypt(_k, io);
+	if (io.empty())
+		return false;
+	o_plaintext = std::move(io);
+	return true;
+}
+
+Public dev::recover(Signature const& _sig, h256 const& _message)
+{
+	return s_secp256k1.recover(_sig, _message.ref());
+}
+
+Signature dev::sign(Secret const& _k, h256 const& _hash)
+{
+	return s_secp256k1.sign(_k, _hash);
+}
+
+bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
+{
+	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
 }
 
 KeyPair KeyPair::create()
 {
-	secp256k1_start();
-	static std::mt19937_64 s_eng(time(0));
-	std::uniform_int_distribution<uint16_t> d(0, 255);
+	static mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
-		h256 sec;
-		for (unsigned i = 0; i < 32; ++i)
-			sec[i] = (byte)d(s_eng);
-
-		KeyPair ret(sec);
+		KeyPair ret(FixedHash<32>::random(s_eng));
 		if (ret.address())
 			return ret;
 	}
@@ -77,28 +110,64 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
-	int ok = secp256k1_ecdsa_seckey_verify(m_secret.data());
-	if (!ok)
-		return;
+	if (s_secp256k1.verifySecret(m_secret, m_public))
+		m_address = s_secp256k1.toAddress(m_public);
+}
 
-	byte pubkey[65];
-	int pubkeylen = 65;
-	ok = secp256k1_ecdsa_pubkey_create(pubkey, &pubkeylen, m_secret.data(), 0);
-	if (!ok || pubkeylen != 65)
-		return;
+KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)
+{
+	return KeyPair(sha3(aesDecrypt(_seed, _password)));
+}
 
-	ok = secp256k1_ecdsa_pubkey_verify(pubkey, 65);
-	if (!ok)
-		return;
+h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
+{
+	// H(H(r||k)^h)
+	h256 s;
+	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
+	s ^= _hash;
+	sha3(s.ref(), s.ref());
+	
+	if (!s || !_hash || !_priv)
+		BOOST_THROW_EXCEPTION(InvalidState());
+	return std::move(s);
+}
 
-	m_secret = m_secret;
-	memcpy(m_public.data(), &(pubkey[1]), 64);
-	m_address = right160(dev::eth::sha3(bytesConstRef(&(pubkey[1]), 64)));
+h256 Nonce::get(bool _commit)
+{
+	// todo: atomic efface bit, periodic save, kdf, rr, rng
+	// todo: encrypt
+	static h256 s_seed;
+	static string s_seedFile(getDataDir() + "/seed");
+	static mutex s_x;
+	lock_guard<mutex> l(s_x);
+	if (!s_seed)
+	{
+		static Nonce s_nonce;
+		bytes b = contents(s_seedFile);
+		if (b.size() == 32)
+			memcpy(s_seed.data(), b.data(), 32);
+		else
+		{
+			// todo: replace w/entropy from user and system
+			std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+			std::uniform_int_distribution<uint16_t> d(0, 255);
+			for (unsigned i = 0; i < 32; ++i)
+				s_seed[i] = (byte)d(s_eng);
+		}
+		if (!s_seed)
+			BOOST_THROW_EXCEPTION(InvalidState());
+		
+		// prevent seed reuse if process terminates abnormally
+		writeFile(s_seedFile, bytes());
+	}
+	h256 prev(s_seed);
+	sha3(prev.ref(), s_seed.ref());
+	if (_commit)
+		writeFile(s_seedFile, s_seed.asBytes());
+	return std::move(s_seed);
+}
 
-#if ETH_ADDRESS_DEBUG
-	cout << "---- ADDRESS -------------------------------" << endl;
-	cout << "SEC: " << m_secret << endl;
-	cout << "PUB: " << m_public << endl;
-	cout << "ADR: " << m_address << endl;
-#endif
+Nonce::~Nonce()
+{
+	Nonce::get(true);
 }

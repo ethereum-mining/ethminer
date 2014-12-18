@@ -32,6 +32,12 @@ namespace eth
 
 extern u256 c_genesisDifficulty;
 
+enum IncludeNonce
+{
+	WithoutNonce = 0,
+	WithNonce = 1
+};
+
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
  * from some given RLP block serialisation with the static fromHeader(), through the method
@@ -47,8 +53,8 @@ extern u256 c_genesisDifficulty;
  * corresponding RLP block created with createGenesisBlock().
  *
  * The difficulty and gas-limit derivations may be calculated with the calculateDifficulty()
- * and calculateGasLimit() and the object serialised to RLP with fillStream. To determine the
- * header hash without the nonce (for mining), the method headerHashWithoutNonce() is provided.
+ * and calculateGasLimit() and the object serialised to RLP with streamRLP. To determine the
+ * header hash without the nonce (for mining), the method headerHash(WithoutNonce) is provided.
  *
  * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
@@ -62,9 +68,10 @@ public:
 	Address coinbaseAddress;
 	h256 stateRoot;
 	h256 transactionsRoot;
+	h256 receiptsRoot;
+	LogBloom logBloom;
 	u256 difficulty;
 	u256 number;
-	u256 minGasPrice;
 	u256 gasLimit;
 	u256 gasUsed;
 	u256 timestamp;
@@ -73,7 +80,7 @@ public:
 
 	BlockInfo();
 	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
-	explicit BlockInfo(bytesConstRef _block);
+	explicit BlockInfo(bytesConstRef _block, bool _checkNonce = true);
 
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
@@ -89,9 +96,10 @@ public:
 				coinbaseAddress == _cmp.coinbaseAddress &&
 				stateRoot == _cmp.stateRoot &&
 				transactionsRoot == _cmp.transactionsRoot &&
+				receiptsRoot == _cmp.receiptsRoot &&
+				logBloom == _cmp.logBloom &&
 				difficulty == _cmp.difficulty &&
 				number == _cmp.number &&
-				minGasPrice == _cmp.minGasPrice &&
 				gasLimit == _cmp.gasLimit &&
 				gasUsed == _cmp.gasUsed &&
 				timestamp == _cmp.timestamp &&
@@ -99,6 +107,8 @@ public:
 				nonce == _cmp.nonce;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
+
+	void setEmpty();
 
 	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
 	void populate(bytesConstRef _block, bool _checkNonce = true);
@@ -110,15 +120,16 @@ public:
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 calculateGasLimit(BlockInfo const& _parent) const;
 
-	/// No-nonce sha3 of the header only.
-	h256 headerHashWithoutNonce() const;
-	void fillStream(RLPStream& _s, bool _nonce) const;
+	/// sha3 of the header only.
+	h256 headerHash(IncludeNonce _n) const;
+	void streamRLP(RLPStream& _s, IncludeNonce _n) const;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
-			_bi.difficulty << " " << _bi.number << " " << _bi.minGasPrice << " " << _bi.gasLimit << " " << _bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
+			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
+			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.nonce;
 	return _out;
 }
 
