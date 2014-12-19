@@ -129,7 +129,7 @@ Rectangle {
 				font.letterSpacing: 2
 				width: parent.width
 				height: 15
-				text: "callstack"
+				text: qsTr("callstack")
 			}
 
 			ListView {
@@ -175,7 +175,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug stack"
+				text: qsTr("debug stack")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -183,7 +183,7 @@ Rectangle {
 				font.family: "Verdana"
 				font.pointSize: 8
 				height: parent.height - 15
-				id:debugStackTxt
+				id: debugStackTxt
 				readOnly: true;
 			}
 		}
@@ -201,7 +201,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug memory"
+				text: qsTr("debug memory")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -227,7 +227,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug storage"
+				text: qsTr("debug storage")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -235,7 +235,7 @@ Rectangle {
 				font.family: "Verdana"
 				font.pointSize: 8
 				height: parent.height - 15
-				id:debugStorageTxt
+				id: debugStorageTxt
 				readOnly: true;
 			}
 		}
@@ -253,7 +253,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug calldata"
+				text: qsTr("debug calldata")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom

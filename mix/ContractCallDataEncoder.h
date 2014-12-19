@@ -36,7 +36,7 @@ namespace mix
 class ContractCallDataEncoder
 {
 public:
-	ContractCallDataEncoder();
+	ContractCallDataEncoder() {}
 	/// encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, QString _value);
 	/// encode variable in order to be sent as parameter.
@@ -51,7 +51,6 @@ public:
 	bytes encodedData();
 
 private:
-	QMap<QString, int> typePadding;
 	int padding(QString _type);
 	bytes m_encodedData;
 	static QString convertToReadable(std::string _v, QVariableDeclaration* _dec);
