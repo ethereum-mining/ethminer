@@ -20,6 +20,7 @@
  * Solidity AST to EVM bytecode compiler for expressions.
  */
 
+#include <functional>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
 #include <libsolidity/ASTVisitor.h>
@@ -35,6 +36,7 @@ namespace solidity {
 class CompilerContext;
 class Type;
 class IntegerType;
+class StaticStringType;
 
 /**
  * Compiler for expressions, i.e. converts an AST tree whose root is an Expression into a stream
@@ -45,19 +47,20 @@ class ExpressionCompiler: private ASTConstVisitor
 {
 public:
 	/// Compile the given @a _expression into the @a _context.
-	static void compileExpression(CompilerContext& _context, Expression const& _expression);
+	static void compileExpression(CompilerContext& _context, Expression const& _expression, bool _optimize = false);
 
 	/// Appends code to remove dirty higher order bits in case of an implicit promotion to a wider type.
 	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack, Type const& _targetType);
 
 private:
-	ExpressionCompiler(CompilerContext& _compilerContext):
-		m_context(_compilerContext), m_currentLValue(m_context) {}
+	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
+		m_optimize(_optimize), m_context(_compilerContext), m_currentLValue(m_context) {}
 
 	virtual bool visit(Assignment const& _assignment) override;
 	virtual void endVisit(UnaryOperation const& _unaryOperation) override;
 	virtual bool visit(BinaryOperation const& _binaryOperation) override;
 	virtual bool visit(FunctionCall const& _functionCall) override;
+	virtual bool visit(NewExpression const& _newExpression) override;
 	virtual void endVisit(MemberAccess const& _memberAccess) override;
 	virtual bool visit(IndexAccess const& _indexAccess) override;
 	virtual void endVisit(Identifier const& _identifier) override;
@@ -75,12 +78,31 @@ private:
 	/// @}
 
 	/// Appends an implicit or explicit type conversion. For now this comprises only erasing
-	/// higher-order bits (@see appendHighBitCleanup) when widening integer types.
+	/// higher-order bits (@see appendHighBitCleanup) when widening integer.
 	/// If @a _cleanupNeeded, high order bits cleanup is also done if no type conversion would be
 	/// necessary.
 	void appendTypeConversion(Type const& _typeOnStack, Type const& _targetType, bool _cleanupNeeded = false);
 	//// Appends code that cleans higher-order bits for integer types.
 	void appendHighBitsCleanup(IntegerType const& _typeOnStack);
+
+	/// Additional options used in appendExternalFunctionCall.
+	struct FunctionCallOptions
+	{
+		FunctionCallOptions() {}
+		/// Invoked to copy the address to the stack
+		std::function<void()> obtainAddress;
+		/// Invoked to copy the ethe value to the stack (if not specified, value is 0).
+		std::function<void()> obtainValue;
+		/// If true, do not prepend function index to call data
+		bool bare = false;
+		/// If false, use calling convention that all arguments and return values are packed as
+		/// 32 byte values with padding.
+		bool packDensely = true;
+	};
+
+	/// Appends code to call a function of the given type with the given arguments.
+	void appendExternalFunctionCall(FunctionType const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
+									FunctionCallOptions const& _options = FunctionCallOptions());
 
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.
@@ -132,6 +154,7 @@ private:
 		unsigned m_stackSize;
 	};
 
+	bool m_optimize;
 	CompilerContext& m_context;
 	LValue m_currentLValue;
 };

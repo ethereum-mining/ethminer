@@ -21,7 +21,6 @@
 
 #include "CommonEth.h"
 #include <random>
-#include <secp256k1/secp256k1.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
 using namespace std;

@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file OurWebThreeStubServer.h
+/** @file OurWebThreeStubServer.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -24,7 +24,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector* _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
 	WebThreeStubServer(_conn, _web3, _accounts)
 {}
 

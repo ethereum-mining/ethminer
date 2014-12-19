@@ -36,9 +36,10 @@ namespace dev
 namespace solidity
 {
 
-// @todo realMxN, string<N>
+// @todo realMxN, dynamic strings, text, arrays
 
 class Type; // forward
+class FunctionType; // forward
 using TypePointer = std::shared_ptr<Type const>;
 using TypePointers = std::vector<TypePointer>;
 
@@ -179,6 +180,35 @@ private:
 };
 
 /**
+ * String type with fixed length, up to 32 bytes.
+ */
+class StaticStringType: public Type
+{
+public:
+	virtual Category getCategory() const override { return Category::STRING; }
+
+	/// @returns the smallest string type for the given literal or an empty pointer
+	/// if no type fits.
+	static std::shared_ptr<StaticStringType> smallestTypeForLiteral(std::string const& _literal);
+
+	StaticStringType(int _bytes);
+
+	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual bool operator==(Type const& _other) const override;
+
+	virtual unsigned getCalldataEncodedSize() const override { return m_bytes; }
+	virtual bool isValueType() const override { return true; }
+
+	virtual std::string toString() const override { return "string" + dev::toString(m_bytes); }
+	virtual u256 literalValue(Literal const& _literal) const override;
+
+	int getNumBytes() const { return m_bytes; }
+
+private:
+	int m_bytes;
+};
+
+/**
  * The boolean type.
  */
 class BoolType: public Type
@@ -220,10 +250,16 @@ public:
 
 	virtual MemberList const& getMembers() const override;
 
+	/// Returns the function type of the constructor. Note that the location part of the function type
+	/// is not used, as this type cannot be the type of a variable or expression.
+	std::shared_ptr<FunctionType const> const& getConstructorType() const;
+
 	unsigned getFunctionIndex(std::string const& _functionName) const;
 
 private:
 	ContractDefinition const& m_contract;
+	/// Type of the constructor, @see getConstructorType. Lazily initialized.
+	mutable std::shared_ptr<FunctionType const> m_constructorType;
 	/// List of member types, will be lazy-initialized because of recursive references.
 	mutable std::unique_ptr<MemberList> m_members;
 };
@@ -267,8 +303,9 @@ class FunctionType: public Type
 public:
 	/// The meaning of the value(s) on the stack referencing the function:
 	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
+	/// BARE: contract address (non-abi contract call)
 	/// OTHERS: special virtual function, nothing on the stack
-	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160 };
+	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160, BARE };
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
@@ -309,8 +346,8 @@ public:
 	virtual std::string toString() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 
-	TypePointer getKeyType() const { return m_keyType; }
-	TypePointer getValueType() const { return m_valueType; }
+	TypePointer const& getKeyType() const { return m_keyType; }
+	TypePointer const& getValueType() const { return m_valueType; }
 
 private:
 	TypePointer m_keyType;
