@@ -77,9 +77,9 @@ class HumanReadableCode: public QObject
 
 public:
 	HumanReadableCode(QString _line, int _processIndex): QObject(), m_line(_line), m_processIndex(_processIndex) {}
-	/// get the assembly code line.
+	/// Get the assembly code line.
 	QString line() { return m_line; }
-	/// get corresponding index.
+	/// Get corresponding index.
 	int processIndex() { return m_processIndex; }
 
 private:
@@ -97,7 +97,7 @@ class QQMLMap: public QObject
 
 public:
 	QQMLMap(QMap<int, int> _map): QObject(), m_map(_map) { }
-	/// get the value associated with _key store in n_map.
+	/// Get the value associated with _key store in n_map.
 	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key); }
 
 private:
@@ -125,35 +125,35 @@ class DebuggingStateWrapper: public QObject
 
 public:
 	DebuggingStateWrapper(bytes _code, bytes _data): QObject(), m_code(_code), m_data(_data) {}
-	/// get the step of this machine states.
+	/// Get the step of this machine states.
 	int step() { return  (int)m_state.steps; }
-	/// get the proccessed code.
+	/// Get the proccessed code index.
 	int curPC() { return (int)m_state.curPC; }
-	/// get gas left.
+	/// Get gas left.
 	QString gasLeft();
-	/// get gas cost.
+	/// Get gas cost.
 	QString gasCost();
-	/// get gas used.
+	/// Get gas used.
 	QString gas();
-	/// get stack.
+	/// Get stack.
 	QString debugStack();
-	/// get storage.
+	/// Get storage.
 	QString debugStorage();
-	/// get memory.
+	/// Get memory.
 	QString debugMemory();
-	/// get call data.
+	/// Get call data.
 	QString debugCallData();
-	/// get info to be displayed in the header.
+	/// Get info to be displayed in the header.
 	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
-	/// get all previous steps.
+	/// Get all previous steps.
 	QStringList levels();
-	/// get the current processed machine state.
+	/// Get the current processed machine state.
 	DebuggingState state() { return m_state; }
-	/// set the current processed machine state.
+	/// Set the current processed machine state.
 	void setState(DebuggingState _state) { m_state = _state;  }
-	/// convert all machine state in human readable code.
+	/// Convert all machine state in human readable code.
 	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code);
 
 private:

@@ -17,7 +17,7 @@
 /** @file KeyEventManager.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * use as an event handler for all classes which need keyboard interactions
+ * Used as an event handler for all classes which need keyboard interactions
  */
 
 #pragma once
@@ -30,17 +30,17 @@ class KeyEventManager: public QObject
 
 public:
 	KeyEventManager() {}
-	/// allows _receiver to handle key pressed event.
+	/// Allows _receiver to handle key pressed event.
 	void registerEvent(const QObject* _receiver, const char* _slot);
-	/// unregister _receiver.
+	/// Unregister _receiver.
 	void unRegisterEvent(QObject* _receiver);
 
 signals:
-	/// emited when a key is pressed.
+	/// Emited when a key is pressed.
 	void onKeyPressed(int _event);
 
 public slots:
-	/// called when a key is pressed.
+	/// Called when a key is pressed.
 	void keyPressed(QVariant _event);
 };
 

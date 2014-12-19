@@ -38,9 +38,9 @@ class QVariableDefinition: public QObject
 public:
 	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(), m_value(_value), m_dec(_def) {}
 
-	/// return the associated declaration of this variable definition.
+	/// Return the associated declaration of this variable definition.
 	QVariableDeclaration* declaration() const { return m_dec; }
-	/// return the variable value.
+	/// Return the variable value.
 	QString value() const { return m_value; }
 
 private:
@@ -57,9 +57,9 @@ public:
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 	QHash<int, QByteArray> roleNames() const override;
-	/// return the variable definition at index _idx.
+	/// Return the variable definition at index _idx.
 	QVariableDefinition* val(int _idx);
-	/// return the list of variables.
+	/// Return the list of variables.
 	QList<QVariableDefinition*> def() { return m_def; }
 
 private:

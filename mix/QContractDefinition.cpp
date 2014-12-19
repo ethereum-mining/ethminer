@@ -35,12 +35,11 @@ std::shared_ptr<QContractDefinition> QContractDefinition::Contract(QString _sour
 	CompilerStack* comp = AppContext::getInstance()->compiler();
 	comp->addSource("contract", _source.toStdString());
 	comp->parse();
-	SourceUnit const& unit = comp->getAST("contract");
-	ContractDefinition* def = (ContractDefinition*)unit.getNodes().at(0).get();
+	ContractDefinition const* def = &comp->getContractDefinition(comp->getContractNames().front());
 	return std::make_shared<QContractDefinition>(def);
 }
 
-QContractDefinition::QContractDefinition(ContractDefinition* _contract): QBasicNodeDefinition(_contract)
+QContractDefinition::QContractDefinition(ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
 {
 	initQFunctions();
 }
