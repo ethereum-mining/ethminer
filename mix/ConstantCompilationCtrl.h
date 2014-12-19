@@ -28,12 +28,15 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief Extension which display assembly code of the contract being edited.
+ */
 class ConstantCompilationCtrl: public Extension
 {
 	Q_OBJECT
 
 public:
-	ConstantCompilationCtrl(QTextDocument*);
+	ConstantCompilationCtrl(QTextDocument* _doc);
 	~ConstantCompilationCtrl() {}
 	void start() const override;
 	QString title() const override;
@@ -42,13 +45,13 @@ public:
 private:
 	QTextDocument* m_editor;
 	std::unique_ptr<ConstantCompilationModel> m_compilationModel;
-	void writeOutPut(CompilerResult const&);
+	void writeOutPut(CompilerResult const& _res);
 	void resetOutPut();
 
 public slots:
+	/// compile text editor content.
 	void compile();
 };
 
 }
-
 }

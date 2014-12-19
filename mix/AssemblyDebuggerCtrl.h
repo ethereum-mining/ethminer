@@ -14,13 +14,13 @@
 /** @file AssemblyDebuggerCtrl.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Display debugging steps in assembly code.s
+ * Extension which display debugging steps in assembly code.
  */
 
 #pragma once
 
 #include <QKeySequence>
-#include "QTextDocument"
+#include <QTextDocument>
 #include "Extension.h"
 #include "ConstantCompilationModel.h"
 #include "TransactionListModel.h"
@@ -43,12 +43,15 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief Extension which display transaction creation or transaction call debugging. handle: F5 to deploy contract, F6 to reset state.
+ */
 class AssemblyDebuggerCtrl: public Extension
 {
 	Q_OBJECT
 
 public:
-	AssemblyDebuggerCtrl(QTextDocument*);
+	AssemblyDebuggerCtrl(QTextDocument* _doc);
 	~AssemblyDebuggerCtrl() {}
 	void start() const override;
 	QString title() const override;
@@ -61,16 +64,20 @@ private:
 
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
 	std::unique_ptr<ConstantCompilationModel> m_compilation;
-	DebuggingContent m_previousDebugResult; //TODO: to be replaced by more consistent struct. Used for now to keep the contract address in case of future transaction call.
+	DebuggingContent m_previousDebugResult; //TODO: to be replaced in a more consistent struct. Used for now to keep the contract address in case of future transaction call.
 	QTextDocument* m_doc;
 
 public slots:
+	/// handle key pressed. F5 deploy contract - F6 reset state.
 	void keyPressed(int);
-	void updateGUI(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-	void runTransaction(TransactionSettings _tr);
+	/// update UI with machine states result. Display a modal dialog.
+	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	/// run the given transaction.
+	void runTransaction(TransactionSettings const& _tr);
 
 signals:
-	void dataAvailable(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
+	/// emited when machine states are available.
+	void dataAvailable(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 };
 
 }

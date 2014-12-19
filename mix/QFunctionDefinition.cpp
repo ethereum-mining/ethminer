@@ -19,9 +19,9 @@
  * @date 2014
  */
 
+#include <libsolidity/AST.h>
 #include "QVariableDeclaration.h"
 #include "QFunctionDefinition.h"
-#include "libsolidity/AST.h"
 using namespace dev::solidity;
 using namespace dev::mix;
 

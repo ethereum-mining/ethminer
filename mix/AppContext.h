@@ -28,8 +28,8 @@
 #pragma once
 
 #include <QQmlApplicationEngine>
-#include "libsolidity/CompilerStack.h"
-#include "libwebthree/WebThree.h"
+#include <libsolidity/CompilerStack.h>
+#include <libwebthree/WebThree.h>
 #include "KeyEventManager.h"
 
 namespace dev
@@ -37,6 +37,9 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief Provides access to application scope variable.
+ */
 class AppContext: public QObject
 {
 	Q_OBJECT
@@ -44,13 +47,19 @@ class AppContext: public QObject
 public:
 	AppContext(QQmlApplicationEngine* _engine);
 	~AppContext() {}
+	/// get the current QQmlApplicationEngine instance.
 	static AppContext* getInstance() { return Instance; }
+	/// renew QQMLApplicationEngine with a new instance.
 	static void setApplicationContext(QQmlApplicationEngine* _engine);
+	/// get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
-	dev::eth::Client* getEthereumClient();
+	/// initialize KeyEventManager (used to handle key pressed event).
 	void initKeyEventManager(QObject* _obj);
+	/// get the current KeyEventManager instance.
 	KeyEventManager* getKeyEventManager();
+	/// get the current Compiler instance (used to parse and compile contract code).
 	dev::solidity::CompilerStack* compiler();
+	/// display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
 
 private:
@@ -61,10 +70,11 @@ private:
 	std::unique_ptr<solidity::CompilerStack> m_compiler;
 
 public slots:
+	/// delete the current instance when application quit.
 	void quitApplication() { delete Instance; }
+	/// initialize components after the loading of the main QML view.
 	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
 };
 
 }
-
 }

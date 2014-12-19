@@ -30,13 +30,17 @@ class KeyEventManager: public QObject
 
 public:
 	KeyEventManager() {}
+	/// allows _receiver to handle key pressed event.
 	void registerEvent(const QObject* _receiver, const char* _slot);
+	/// unregister _receiver.
 	void unRegisterEvent(QObject* _receiver);
 
 signals:
-	void onKeyPressed(int);
+	/// emited when a key is pressed.
+	void onKeyPressed(int _event);
 
 public slots:
+	/// called when a key is pressed.
 	void keyPressed(QVariant _event);
 };
 

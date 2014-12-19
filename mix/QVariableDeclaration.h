@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include "libsolidity/AST.h"
+#include <libsolidity/AST.h>
 #include "QBasicNodeDefinition.h"
 
 #pragma once
@@ -36,6 +36,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 
 public:
 	QVariableDeclaration(dev::solidity::VariableDeclaration* _v): QBasicNodeDefinition(_v){}
+	/// get the type of this variable.
 	QString type() const { return QString::fromStdString(((solidity::VariableDeclaration*)m_dec)->getType()->toString());  }
 };
 
