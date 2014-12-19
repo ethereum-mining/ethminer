@@ -37,6 +37,8 @@ namespace p2p
 
 struct UDPDatagram
 {
+	UDPDatagram() = default;
+	UDPDatagram(bi::udp::endpoint _ep, bytes _data): to(_ep), data(std::move(_data)) {}
 	bi::udp::endpoint to;
 	bytes data;
 };
@@ -167,7 +169,7 @@ protected:
 	std::atomic<bool> m_closed;		///< Set when connection is stopping or stopped. Handshake cannot occur unless m_closed is true.
 	std::atomic<bool> m_started;		///< Atomically ensure connection is started once. Start cannot occur unless m_started is false. Managed by start and disconnectWithError.
 	
-	Handler& m_host;					///< Interface which owns this socket.
+	UDPSocketEvents& m_host;					///< Interface which owns this socket.
 	
 	Mutex x_sendQ;
 	std::deque<UDPDatagram> sendQ;
