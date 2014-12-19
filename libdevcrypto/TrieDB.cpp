@@ -24,9 +24,5 @@
 using namespace std;
 using namespace dev;
 
-#if !ETH_LANGUAGES
-
 h256 const dev::c_shaNull = sha3(rlp(""));
 h256 const dev::EmptyTrie = c_shaNull;
-
-#endif

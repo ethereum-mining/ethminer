@@ -22,6 +22,7 @@
 
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
+#include <libsolidity/Utils.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
@@ -34,8 +35,7 @@ namespace solidity
 
 shared_ptr<Type const> Type::fromElementaryTypeName(Token::Value _typeToken)
 {
-	if (asserts(Token::isElementaryTypeName(_typeToken)))
-		BOOST_THROW_EXCEPTION(InternalCompilerError());
+	solAssert(Token::isElementaryTypeName(_typeToken), "");
 
 	if (Token::INT <= _typeToken && _typeToken <= Token::HASH256)
 	{
@@ -53,6 +53,8 @@ shared_ptr<Type const> Type::fromElementaryTypeName(Token::Value _typeToken)
 		return make_shared<IntegerType const>(0, IntegerType::Modifier::ADDRESS);
 	else if (_typeToken == Token::BOOL)
 		return make_shared<BoolType const>();
+	else if (Token::STRING0 <= _typeToken && _typeToken <= Token::STRING32)
+		return make_shared<StaticStringType const>(int(_typeToken) - int(Token::STRING0));
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
 																		 std::string(Token::toString(_typeToken)) + " to type."));
@@ -91,7 +93,8 @@ shared_ptr<Type const> Type::forLiteral(Literal const& _literal)
 	case Token::NUMBER:
 		return IntegerType::smallestTypeForLiteral(_literal.getValue());
 	case Token::STRING_LITERAL:
-		return shared_ptr<Type const>(); // @todo add string literals
+		//@todo put larger strings into dynamic strings
+		return StaticStringType::smallestTypeForLiteral(_literal.getValue());
 	default:
 		return shared_ptr<Type const>();
 	}
@@ -117,8 +120,8 @@ IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 {
 	if (isAddress())
 		m_bits = 160;
-	if (asserts(m_bits > 0 && m_bits <= 256 && m_bits % 8 == 0))
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid bit number for integer type: " + dev::toString(_bits)));
+	solAssert(m_bits > 0 && m_bits <= 256 && m_bits % 8 == 0,
+			  "Invalid bit number for integer type: " + dev::toString(_bits));
 }
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
@@ -190,9 +193,55 @@ u256 IntegerType::literalValue(Literal const& _literal) const
 }
 
 const MemberList IntegerType::AddressMemberList =
-		MemberList({{"balance", make_shared<IntegerType const>(256)},
-					{"send", make_shared<FunctionType const>(TypePointers({make_shared<IntegerType const>(256)}),
-															 TypePointers(), FunctionType::Location::SEND)}});
+	MemberList({{"balance",
+					make_shared<IntegerType const>(256)},
+				{"callstring32",
+					make_shared<FunctionType const>(TypePointers({make_shared<StaticStringType const>(32)}),
+													TypePointers(), FunctionType::Location::BARE)},
+				{"callstring32string32",
+					make_shared<FunctionType const>(TypePointers({make_shared<StaticStringType const>(32),
+																  make_shared<StaticStringType const>(32)}),
+													TypePointers(), FunctionType::Location::BARE)},
+				{"send",
+					make_shared<FunctionType const>(TypePointers({make_shared<IntegerType const>(256)}),
+													TypePointers(), FunctionType::Location::SEND)}});
+
+shared_ptr<StaticStringType> StaticStringType::smallestTypeForLiteral(string const& _literal)
+{
+	if (_literal.length() <= 32)
+		return make_shared<StaticStringType>(_literal.length());
+	return shared_ptr<StaticStringType>();
+}
+
+StaticStringType::StaticStringType(int _bytes): m_bytes(_bytes)
+{
+	solAssert(m_bytes >= 0 && m_bytes <= 32,
+			  "Invalid byte number for static string type: " + dev::toString(m_bytes));
+}
+
+bool StaticStringType::isImplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	if (_convertTo.getCategory() != getCategory())
+		return false;
+	StaticStringType const& convertTo = dynamic_cast<StaticStringType const&>(_convertTo);
+	return convertTo.m_bytes >= m_bytes;
+}
+
+bool StaticStringType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	StaticStringType const& other = dynamic_cast<StaticStringType const&>(_other);
+	return other.m_bytes == m_bytes;
+}
+
+u256 StaticStringType::literalValue(const Literal& _literal) const
+{
+	u256 value = 0;
+	for (char c: _literal.getValue())
+		value = (value << 8) | byte(c);
+	return value << ((32 - _literal.getValue().length()) * 8);
+}
 
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
@@ -258,6 +307,19 @@ MemberList const& ContractType::getMembers() const
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
+}
+
+shared_ptr<FunctionType const> const& ContractType::getConstructorType() const
+{
+	if (!m_constructorType)
+	{
+		FunctionDefinition const* constructor = m_contract.getConstructor();
+		if (constructor)
+			m_constructorType = make_shared<FunctionType const>(*constructor);
+		else
+			m_constructorType = make_shared<FunctionType const>(TypePointers(), TypePointers());
+	}
+	return m_constructorType;
 }
 
 unsigned ContractType::getFunctionIndex(string const& _functionName) const
@@ -383,6 +445,8 @@ unsigned FunctionType::getSizeOnStack() const
 		return 1;
 	case Location::EXTERNAL:
 		return 2;
+	case Location::BARE:
+		return 1;
 	default:
 		return 0;
 	}

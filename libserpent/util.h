@@ -28,30 +28,36 @@ const int TOKEN = 0,
 // Stores metadata about each token
 class Metadata {
     public:
-        Metadata(std::string File="main", int Ln=0, int Ch=0) {
+        Metadata(std::string File="main", int Ln=-1, int Ch=-1) {
             file = File;
             ln = Ln;
             ch = Ch;
+            fixed = false;
         }
         std::string file;
         int ln;
         int ch;
+        bool fixed;
 };
 
 std::string mkUniqueToken();
 
 // type can be TOKEN or ASTNODE
-struct Node {
-    int type;
-    std::string val;
-    std::vector<Node> args;
-    Metadata metadata;
+class Node {
+    public:
+        int type;
+        std::string val;
+        std::vector<Node> args;
+        Metadata metadata;
 };
 Node token(std::string val, Metadata met=Metadata());
 Node astnode(std::string val, std::vector<Node> args, Metadata met=Metadata());
+Node astnode(std::string val, Metadata met=Metadata());
 Node astnode(std::string val, Node a, Metadata met=Metadata());
 Node astnode(std::string val, Node a, Node b, Metadata met=Metadata());
 Node astnode(std::string val, Node a, Node b, Node c, Metadata met=Metadata());
+Node astnode(std::string val, Node a, Node b,
+             Node c, Node d, Metadata met=Metadata());
 
 // Number of tokens in a tree
 int treeSize(Node prog);
@@ -73,6 +79,9 @@ std::string joinLines(std::vector<std::string> lines);
 
 // Indent all lines by 4 spaces
 std::string indentLines(std::string inp);
+
+// Converts binary to simple numeric format
+std::string binToNumeric(std::string inp);
 
 // Converts string to simple numeric format
 std::string strToNumeric(std::string inp);
@@ -98,6 +107,9 @@ bool exists(std::string fileName);
 //Report error
 void err(std::string errtext, Metadata met);
 
+//Report warning
+void warn(std::string errtext, Metadata met);
+
 //Bin to hex
 std::string binToHex(std::string inp);
 
@@ -109,5 +121,17 @@ std::string upperCase(std::string inp);
 
 //Three-int vector
 std::vector<int> triple(int a, int b, int c);
+
+//Extend node vector
+std::vector<Node> extend(std::vector<Node> a, std::vector<Node> b);
+
+// Is the number decimal?
+bool isDecimal(std::string inp);
+
+#define asn astnode
+#define tkn token
+#define msi std::map<std::string, int>
+#define msn std::map<std::string, Node>
+#define mss std::map<std::string, std::string>
 
 #endif

@@ -34,6 +34,7 @@
 #include "Defaults.h"
 #include "ExtVM.h"
 #include "Executive.h"
+#include "CachedAddressState.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -41,59 +42,6 @@ using namespace dev::eth;
 #define ctrace clog(StateTrace)
 
 static const u256 c_blockReward = 1500 * finney;
-
-void ecrecoverCode(bytesConstRef _in, bytesRef _out)
-{
-	struct inType
-	{
-		h256 hash;
-		h256 v;
-		h256 r;
-		h256 s;
-	} in;
-
-	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
-
-	memset(_out.data(), 0, _out.size());
-	if ((u256)in.v > 28)
-		return;
-	SignatureStruct sig{in.r, in.s, (byte)((int)(u256)in.v - 27)};
-	if (!sig.isValid())
-		return;
-
-	h256 ret;
-	byte pubkey[65];
-	int pubkeylen = 65;
-	secp256k1_start();
-	if (secp256k1_ecdsa_recover_compact(in.hash.data(), 32, in.r.data(), pubkey, &pubkeylen, 0, (int)(u256)in.v - 27))
-		ret = dev::sha3(bytesConstRef(&(pubkey[1]), 64));
-
-	memset(ret.data(), 0, 12);
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void sha256Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	sha256(_in, bytesRef(ret.data(), 32));
-	memcpy(_out.data(), &ret, min(_out.size(), sizeof(ret)));
-}
-
-void ripemd160Code(bytesConstRef _in, bytesRef _out)
-{
-	h256 ret;
-	ripemd160(_in, bytesRef(ret.data(), 32));
-	memset(_out.data(), 0, std::min<int>(12, _out.size()));
-	if (_out.size() > 12)
-		memcpy(_out.data() + 12, &ret, min(_out.size() - 12, sizeof(ret)));
-}
-
-const std::map<unsigned, PrecompiledAddress> State::c_precompiled =
-{
-	{ 1, { [](bytesConstRef) -> bigint { return (bigint)500; }, ecrecoverCode }},
-	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
-	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
-};
 
 OverlayDB State::openDB(std::string _path, bool _killExisting)
 {
@@ -115,7 +63,7 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 	return OverlayDB(db);
 }
 
-State::State(Address _coinbaseAddress, OverlayDB const& _db):
+State::State(Address _coinbaseAddress, OverlayDB const& _db, BaseState _bs):
 	m_db(_db),
 	m_state(&m_db),
 	m_ourAddress(_coinbaseAddress),
@@ -126,12 +74,19 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db):
 
 	paranoia("beginning of normal construction.", true);
 
-	dev::eth::commit(genesisState(), m_db, m_state);
-	m_db.commit();
+	if (_bs == BaseState::Genesis)
+	{
+		dev::eth::commit(genesisState(), m_db, m_state);
+		m_db.commit();
 
-	paranoia("after DB commit of normal construction.", true);
+		paranoia("after DB commit of normal construction.", true);
+		m_previousBlock = BlockChain::genesis();
+	}
+	else
+	{
+		m_previousBlock.setEmpty();
+	}
 
-	m_previousBlock = BlockChain::genesis();
 	resetCurrent();
 
 	assert(m_state.root() == m_previousBlock.stateRoot);
@@ -225,89 +180,6 @@ Address State::nextActiveAddress(Address _a) const
 		return Address();
 	return (*it).first;
 }
-
-// TODO: repot
-struct CachedAddressState
-{
-	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): rS(_rlp), r(rS), s(_s), o(_o) {}
-
-	bool exists() const
-	{
-		return (r && (!s || s->isAlive())) || (s && s->isAlive());
-	}
-
-	u256 balance() const
-	{
-		return r ? s ? s->balance() : r[1].toInt<u256>() : 0;
-	}
-
-	u256 nonce() const
-	{
-		return r ? s ? s->nonce() : r[0].toInt<u256>() : 0;
-	}
-
-	bytes code() const
-	{
-		if (s && s->codeCacheValid())
-			return s->code();
-		h256 h = r ? s ? s->codeHash() : r[3].toHash<h256>() : EmptySHA3;
-		return h == EmptySHA3 ? bytes() : asBytes(o->lookup(h));
-	}
-
-	std::map<u256, u256> storage() const
-	{
-		std::map<u256, u256> ret;
-		if (r)
-		{
-			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(o), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-			for (auto const& j: memdb)
-				ret[j.first] = RLP(j.second).toInt<u256>();
-		}
-		if (s)
-			for (auto const& j: s->storageOverlay())
-				if ((!ret.count(j.first) && j.second) || (ret.count(j.first) && ret.at(j.first) != j.second))
-					ret[j.first] = j.second;
-		return ret;
-	}
-
-	AccountDiff diff(CachedAddressState const& _c)
-	{
-		AccountDiff ret;
-		ret.exist = Diff<bool>(exists(), _c.exists());
-		ret.balance = Diff<u256>(balance(), _c.balance());
-		ret.nonce = Diff<u256>(nonce(), _c.nonce());
-		ret.code = Diff<bytes>(code(), _c.code());
-		auto st = storage();
-		auto cst = _c.storage();
-		auto it = st.begin();
-		auto cit = cst.begin();
-		while (it != st.end() || cit != cst.end())
-		{
-			if (it != st.end() && cit != cst.end() && it->first == cit->first && (it->second || cit->second) && (it->second != cit->second))
-				ret.storage[it->first] = Diff<u256>(it->second, cit->second);
-			else if (it != st.end() && (cit == cst.end() || it->first < cit->first) && it->second)
-				ret.storage[it->first] = Diff<u256>(it->second, 0);
-			else if (cit != cst.end() && (it == st.end() || it->first > cit->first) && cit->second)
-				ret.storage[cit->first] = Diff<u256>(0, cit->second);
-			if (it == st.end())
-				++cit;
-			else if (cit == cst.end())
-				++it;
-			else if (it->first < cit->first)
-				++it;
-			else if (it->first > cit->first)
-				++cit;
-			else
-				++it, ++cit;
-		}
-		return ret;
-	}
-
-	std::string rS;
-	RLP r;
-	Account const* s;
-	OverlayDB const* o;
-};
 
 StateDiff State::diff(State const& _c) const
 {
@@ -992,6 +864,23 @@ void State::subBalance(Address _id, bigint _amount)
 		it->second.addBalance(-_amount);
 }
 
+Address State::newContract(u256 _balance, bytes const& _code)
+{
+	auto h = sha3(_code);
+	m_db.insert(h, &_code);
+	while (true)
+	{
+		Address ret = Address::random();
+		ensureCached(ret, false, false);
+		auto it = m_cache.find(ret);
+		if (it == m_cache.end())
+		{
+			m_cache[ret] = Account(0, _balance, EmptyTrie, h);
+			return ret;
+		}
+	}
+}
+
 u256 State::transactionsFrom(Address _id) const
 {
 	ensureCached(_id, false, false);
@@ -1119,7 +1008,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this);
+	Executive e(*this, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1128,8 +1017,11 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
 #endif
-
+#if ETH_VMTRACE
 	e.go(e.simpleTrace());
+#else
+	e.go();
+#endif
 	e.finalize();
 
 #if ETH_PARANOIA
@@ -1172,119 +1064,6 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 	m_transactionSet.insert(e.t().sha3());
 	return e.gasUsed();
-}
-
-bool State::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256* _gas, bytesRef _out, Address _originAddress, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_originAddress)
-		_originAddress = _senderAddress;
-
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	addBalance(_receiveAddress, _value);
-
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? c_precompiled.find((unsigned)(u160)_codeAddress) : c_precompiled.end();
-	if (it != c_precompiled.end())
-	{
-		bigint g = it->second.gas(_data);
-		if (*_gas < g)
-		{
-			*_gas = 0;
-			return false;
-		}
-
-		*_gas -= (u256)g;
-		it->second.exec(_data, _out);
-	}
-	else if (addressHasCode(_codeAddress))
-	{
-		auto vm = VMFactory::create(*_gas);
-		ExtVM evm(*this, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &code(_codeAddress), _level);
-		try
-		{
-			auto out = vm->go(evm, _onOp);
-			memcpy(_out.data(), out.data(), std::min(out.size(), _out.size()));
-			if (o_sub)
-				*o_sub += evm.sub;
-			*_gas = vm->gas();
-			// Write state out only in the case of a non-excepted transaction.
-			return true;
-		}
-		catch (VMException const& _e)
-		{
-			clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-			evm.revert();
-			*_gas = 0;
-			return false;
-		}
-		catch (Exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << diagnostic_information(_e) << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-		catch (std::exception const& _e)
-		{
-			cwarn << "Unexpected exception in VM: " << _e.what() << ". This is exceptionally bad.";
-			// TODO: use fallback known-safe VM.
-			// AUDIT: THIS SHOULD NEVER HAPPEN! PROVE IT!
-			throw;
-		}
-	}
-	return true;
-}
-
-h160 State::create(Address _sender, u256 _endowment, u256 _gasPrice, u256* _gas, bytesConstRef _code, Address _origin, SubState* o_sub, OnOpFunc const& _onOp, unsigned _level)
-{
-	if (!_origin)
-		_origin = _sender;
-
-	Address newAddress = right160(sha3(rlpList(_sender, transactionsFrom(_sender) - 1)));
-
-	// Set up new account...
-	m_cache[newAddress] = Account(balance(newAddress) + _endowment, Account::ContractConception);
-
-	// Execute init code.
-	auto vm = VMFactory::create(*_gas);
-	ExtVM evm(*this, newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _code, _level);
-	bytesConstRef out;
-
-	try
-	{
-		out = vm->go(evm, _onOp);
-		if (o_sub)
-			*o_sub += evm.sub;
-		*_gas = vm->gas();
-
-		if (out.size() * c_createDataGas <= *_gas)
-			*_gas -= out.size() * c_createDataGas;
-		else
-			out.reset();
-
-		// Set code.
-		if (!evm.sub.suicides.count(newAddress))
-			m_cache[newAddress].setCode(out);
-	}
-	catch (VMException const& _e)
-	{
-		clog(StateChat) << "Safe VM Exception: " << diagnostic_information(_e);
-		evm.revert();
-		*_gas = 0;
-	}
-	catch (Exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
-		throw;
-	}
-	catch (std::exception const& _e)
-	{
-		// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
-		cwarn << "Unexpected std::exception in VM. This is probably unrecoverable. " << _e.what();
-		throw;
-	}
-
-	return newAddress;
 }
 
 State State::fromPending(unsigned _i) const

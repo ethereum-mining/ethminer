@@ -44,6 +44,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libsolidity/Utils.h>
 #include <libsolidity/Exceptions.h>
 
 namespace dev
@@ -106,9 +107,9 @@ namespace solidity
 	T(COMMA, ",", 1)                                                   \
 	T(OR, "||", 4)                                                     \
 	T(AND, "&&", 5)                                                    \
-	T(BIT_OR, "|", 6)                                                  \
-	T(BIT_XOR, "^", 7)                                                 \
-	T(BIT_AND, "&", 8)                                                 \
+	T(BIT_OR, "|", 8)                                                  \
+	T(BIT_XOR, "^", 9)                                                 \
+	T(BIT_AND, "&", 10)                                                \
 	T(SHL, "<<", 11)                                                   \
 	T(SAR, ">>", 11)                                                   \
 	T(SHR, ">>>", 11)                                                  \
@@ -121,13 +122,13 @@ namespace solidity
 	/* Compare operators sorted by precedence. */                      \
 	/* IsCompareOp() relies on this block of enum values */            \
 	/* being contiguous and sorted in the same order! */               \
-	T(EQ, "==", 9)                                                     \
-	T(NE, "!=", 9)                                                     \
-	T(LT, "<", 10)                                                     \
-	T(GT, ">", 10)                                                     \
-	T(LTE, "<=", 10)                                                   \
-	T(GTE, ">=", 10)                                                   \
-	K(IN, "in", 10)                                                    \
+	T(EQ, "==", 6)                                                     \
+	T(NE, "!=", 6)                                                     \
+	T(LT, "<", 7)                                                      \
+	T(GT, ">", 7)                                                      \
+	T(LTE, "<=", 7)                                                    \
+	T(GTE, ">=", 7)                                                    \
+	K(IN, "in", 7)                                                     \
 	\
 	/* Unary operators. */                                             \
 	/* IsUnaryOp() relies on this block of enum values */              \
@@ -269,6 +270,39 @@ namespace solidity
 	K(ADDRESS, "address", 0)                                           \
 	K(BOOL, "bool", 0)                                                 \
 	K(STRING_TYPE, "string", 0)                                        \
+	K(STRING0, "string0", 0)                                           \
+	K(STRING1, "string1", 0)                                           \
+	K(STRING2, "string2", 0)                                           \
+	K(STRING3, "string3", 0)                                           \
+	K(STRING4, "string4", 0)                                           \
+	K(STRING5, "string5", 0)                                           \
+	K(STRING6, "string6", 0)                                           \
+	K(STRING7, "string7", 0)                                           \
+	K(STRING8, "string8", 0)                                           \
+	K(STRING9, "string9", 0)                                           \
+	K(STRING10, "string10", 0)                                         \
+	K(STRING11, "string11", 0)                                         \
+	K(STRING12, "string12", 0)                                         \
+	K(STRING13, "string13", 0)                                         \
+	K(STRING14, "string14", 0)                                         \
+	K(STRING15, "string15", 0)                                         \
+	K(STRING16, "string16", 0)                                         \
+	K(STRING17, "string17", 0)                                         \
+	K(STRING18, "string18", 0)                                         \
+	K(STRING19, "string19", 0)                                         \
+	K(STRING20, "string20", 0)                                         \
+	K(STRING21, "string21", 0)                                         \
+	K(STRING22, "string22", 0)                                         \
+	K(STRING23, "string23", 0)                                         \
+	K(STRING24, "string24", 0)                                         \
+	K(STRING25, "string25", 0)                                         \
+	K(STRING26, "string26", 0)                                         \
+	K(STRING27, "string27", 0)                                         \
+	K(STRING28, "string28", 0)                                         \
+	K(STRING29, "string29", 0)                                         \
+	K(STRING30, "string30", 0)                                         \
+	K(STRING31, "string31", 0)                                         \
+	K(STRING32, "string32", 0)                                         \
 	K(TEXT, "text", 0)                                                 \
 	K(REAL, "real", 0)                                                 \
 	K(UREAL, "ureal", 0)                                               \
@@ -296,6 +330,9 @@ class Token
 {
 public:
 	// All token values.
+	// attention! msvc issue:
+	// http://stackoverflow.com/questions/9567868/compile-errors-after-adding-v8-to-my-project-c2143-c2059
+	// @todo: avoid TOKEN_LIST macro
 #define T(name, string, precedence) name,
 	enum Value
 	{
@@ -308,8 +345,7 @@ public:
 	// (e.g. "LT" for the token LT).
 	static char const* getName(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_name[tok];
 	}
 
@@ -317,13 +353,14 @@ public:
 	static bool isElementaryTypeName(Value tok) { return INT <= tok && tok < TYPES_END; }
 	static bool isAssignmentOp(Value tok) { return ASSIGN <= tok && tok <= ASSIGN_MOD; }
 	static bool isBinaryOp(Value op) { return COMMA <= op && op <= MOD; }
+	static bool isCommutativeOp(Value op) { return op == BIT_OR || op == BIT_XOR || op == BIT_AND ||
+				op == ADD || op == MUL || op == EQ || op == NE; }
 	static bool isArithmeticOp(Value op) { return ADD <= op && op <= MOD; }
 	static bool isCompareOp(Value op) { return EQ <= op && op <= IN; }
 
 	static Value AssignmentToBinaryOp(Value op)
 	{
-		if (asserts(isAssignmentOp(op) && op != ASSIGN))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(isAssignmentOp(op) && op != ASSIGN, "");
 		return Token::Value(op + (BIT_OR - ASSIGN_BIT_OR));
 	}
 
@@ -337,8 +374,7 @@ public:
 	// have a (unique) string (e.g. an IDENTIFIER).
 	static char const* toString(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_string[tok];
 	}
 
@@ -346,8 +382,7 @@ public:
 	// operators; returns 0 otherwise.
 	static int precedence(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_precedence[tok];
 	}
 
