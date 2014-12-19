@@ -75,7 +75,7 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
 		int padding = this->padding(dec->type());
 		std::string rawParam = returnValue.substr(0, padding * 2);
-		r.append(new QVariableDefinition(dec, convertToReadable(unpadded(rawParam), dec)));
+		r.append(new QVariableDefinition(dec, convertToReadable(unpadLeft(rawParam), dec)));
 		returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
 	}
 	return r;
