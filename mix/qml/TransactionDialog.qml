@@ -1,15 +1,24 @@
-import QtQuick 2.3
+import QtQuick 2.2
 import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 
-Dialog {
+Window {
 	modality: Qt.WindowModal
-	standardButtons: StandardButton.Ok | StandardButton.Cancel
 
 	width:640
 	height:480
+
+	visible: false
+
+	function open()
+	{
+		visible = true;
+	}
+	function close()
+	{
+		visible = false;
+	}
 
 	property alias focus : titleField.focus
 	property alias transactionTitle : titleField.text
@@ -20,6 +29,8 @@ Dialog {
 	property alias transactionValue : valueField.text;
 	property alias functionId : functionComboBox.currentText;
 	property var model;
+
+	signal accepted;
 
 	function reset(index, m) {
 		model = m;
@@ -54,6 +65,7 @@ Dialog {
 	}
 
 	GridLayout {
+		id: dialogContent
 		columns: 2
 		anchors.fill: parent
 		anchors.margins: 10
@@ -138,6 +150,26 @@ Dialog {
 			}
 		}
 	}
+
+	RowLayout
+	{
+		anchors.bottom: parent.bottom
+		anchors.right: parent.right;
+
+		Button {
+			text: qsTr("Ok");
+			onClicked: {
+				close();
+				accepted();
+			}
+		}
+		Button {
+			text: qsTr("Cancel");
+			onClicked: close();
+		}
+	}
+
+
 	ListModel {
 		id: paramsModel
 	}
@@ -166,7 +198,7 @@ Dialog {
 						paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
-				sourceComponent: (styleData.selected /*&& styleData.role === "value"*/) ? editor : null
+				sourceComponent: (styleData.selected) ? editor : null
 				Component {
 					id: editor
 					TextInput {
