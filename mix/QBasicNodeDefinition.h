@@ -37,12 +37,12 @@ class QBasicNodeDefinition: public QObject
 public:
 	QBasicNodeDefinition(): QObject() {}
 	~QBasicNodeDefinition() {}
-	QBasicNodeDefinition(dev::solidity::Declaration* _d): QObject(), m_dec(_d) {}
-	/// get the name of the node.
+	QBasicNodeDefinition(dev::solidity::Declaration const* _d): QObject(), m_dec(_d) {}
+	/// Get the name of the node.
 	QString name() const { return QString::fromStdString(m_dec->getName()); }
 
 protected:
-	dev::solidity::Declaration*  m_dec;
+	dev::solidity::Declaration const*  m_dec;
 };
 
 }

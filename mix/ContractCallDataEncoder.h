@@ -31,23 +31,23 @@ namespace mix
 {
 
 /**
- * @brief encode/decode data to be sent to a transaction or to be displayed in a view.
+ * @brief Encode/Decode data to be sent to a transaction or to be displayed in a view.
  */
 class ContractCallDataEncoder
 {
 public:
 	ContractCallDataEncoder() {}
-	/// encode variable in order to be sent as parameter.
+	/// Encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, QString _value);
-	/// encode variable in order to be sent as parameter.
+	/// Encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, u256 _value);
-	/// encode variable in order to be sent as parameter.
+	/// Encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, bool _value);
-	/// encode index of the function to call.
+	/// Encode index of the function to call.
 	void encode(int _functionIndex);
-	/// decode variable in order to be sent to QML view.
-	QList<QVariableDefinition*> decode(QList<QObject*> _dec, bytes _value);
-	/// get all encoded data encoded by encode function.
+	/// Decode variable in order to be sent to QML view.
+	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> _dec, bytes _value);
+	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
 
 private:

@@ -36,7 +36,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 
 public:
 	QVariableDeclaration(dev::solidity::VariableDeclaration* _v): QBasicNodeDefinition(_v){}
-	/// get the type of this variable.
+	/// Get the type of this variable.
 	QString type() const { return QString::fromStdString(((solidity::VariableDeclaration*)m_dec)->getType()->toString());  }
 };
 

@@ -65,7 +65,7 @@ void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, u256 _value)
 	encodedData();
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _returnParameters, bytes _value)
+QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;
 	std::string returnValue = toJS(_value);
