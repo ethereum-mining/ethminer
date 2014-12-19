@@ -65,16 +65,16 @@ public:
 	static_assert(datagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
 	
 	/// Construct open socket to endpoint.
-	UDPSocket(ba::io_service& _io, Handler& _host, unsigned _port): m_host(_host), m_socket(_io, bi::udp::endpoint(bi::udp::v4(), _port)) {};
+	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, unsigned _port): m_host(_host), m_socket(_io, bi::udp::endpoint(bi::udp::v4(), _port)) { m_started.store(false); m_closed.store(true); };
 	virtual ~UDPSocket() { disconnect(); }
 
 	/// Socket will begin listening for and delivering packets
 	void connect()
 	{
-		bool no = false;
-		if (!m_started.compare_exchange_strong(no, true))
+		bool expect = false;
+		if (!m_started.compare_exchange_strong(expect, true))
 			return;
-		
+
 		m_closed = false;
 		doRead();
 	}
@@ -86,7 +86,7 @@ public:
 		
 		Guard l(x_sendQ);
 		sendQ.push_back(_datagram);
-		if (sendQ.size() == 1 && !m_closed)
+		if (sendQ.size() == 1 && !m_closed.load())
 			doWrite();
 	}
 
