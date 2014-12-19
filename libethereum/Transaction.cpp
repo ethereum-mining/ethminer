@@ -43,9 +43,9 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		m_receiveAddress = rlp[field = 3].toHash<Address>();
 		m_value = rlp[field = 4].toInt<u256>();
 		m_data = rlp[field = 5].toBytes();
+		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();
 		h256 s = rlp[field = 8].toInt<u256>();
-		byte v = rlp[field = 6].toInt<byte>() - 27;
 		m_vrs = SignatureStruct{ r, s, v };
 		if (_checkSender)
 			m_sender = sender();
@@ -74,7 +74,7 @@ Address Transaction::sender() const
 {
 	if (!m_sender)
 	{
-		auto p = recover(*(Signature const*)&m_vrs, sha3(WithoutSignature));
+		auto p = recover(m_vrs, sha3(WithoutSignature));
 		if (!p)
 			BOOST_THROW_EXCEPTION(InvalidSignature());
 		m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
