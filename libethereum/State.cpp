@@ -1017,7 +1017,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
 #endif
-#if ETH_TRACE
+#if ETH_VMTRACE
 	e.go(e.simpleTrace());
 #else
 	e.go();
