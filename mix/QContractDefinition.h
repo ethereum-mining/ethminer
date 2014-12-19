@@ -22,7 +22,7 @@
 #pragma once
 
 #include <QObject>
-#include "libsolidity/AST.h"
+#include <libsolidity/AST.h>
 #include "QFunctionDefinition.h"
 #include "QBasicNodeDefinition.h"
 
@@ -38,7 +38,9 @@ class QContractDefinition: public QBasicNodeDefinition
 
 public:
 	QContractDefinition(dev::solidity::ContractDefinition* _contract);
+	/// get all the functions of the contract.
 	QList<QFunctionDefinition*> functions() const { return m_functions; }
+	/// get the description (functions, parameters, return parameters, ...) of the contract describes by _code.
 	static std::shared_ptr<QContractDefinition> Contract(QString _code);
 
 private:

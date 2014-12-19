@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AssemblyDebuggerModel.h
+/** @file AssemblyDebuggerModel.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * used as a model to debug contract assembly code.
@@ -42,13 +42,10 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
 }
 
-DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef _rawTransaction)
+DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
 {
-
 	QList<DebuggingState> machineStates;
-	// Reset the state back to our clean premine.
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
-	QList<DebuggingState> states;
+	m_currentExecution.reset(new Executive(m_executiveState, 0));
 	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
@@ -89,12 +86,12 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef _rawTra
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(bytes _code)
+DebuggingContent AssemblyDebuggerModel::deployContract(bytes const& _code)
 {
 	u256 gasPrice = 10000000000000;
 	u256 gas = 1000000;
 	u256 amount = 100;
-	dev::eth::Transaction _tr(amount, gasPrice, min(gas, m_baseState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	Transaction _tr(amount, gasPrice, min(gas, m_baseState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	DebuggingContent d = executeTransaction(bytesRef);
@@ -103,11 +100,9 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(bytes _
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Address _contract, bytes _data,
-																   dev::mix::TransactionSettings _tr)
+DebuggingContent AssemblyDebuggerModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-
-	dev::eth::Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_baseState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_baseState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	DebuggingContent d = executeTransaction(bytesRef);
@@ -117,5 +112,6 @@ DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Address _cont
 
 void AssemblyDebuggerModel::resetState()
 {
+	// Reset the state back to our clean premine.
 	m_executiveState = m_baseState;
 }

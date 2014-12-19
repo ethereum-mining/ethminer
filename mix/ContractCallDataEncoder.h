@@ -30,27 +30,35 @@ namespace dev
 namespace mix
 {
 
+/**
+ * @brief encode/decode data to be sent to a transaction or to be displayed in a view.
+ */
 class ContractCallDataEncoder
 {
 public:
 	ContractCallDataEncoder();
+	/// encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, QString _value);
+	/// encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, u256 _value);
-	QList<QVariableDefinition*> decode(QList<QObject*> _dec, bytes _value);
+	/// encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration* _dec, bool _value);
+	/// encode index of the function to call.
 	void encode(int _functionIndex);
+	/// decode variable in order to be sent to QML view.
+	QList<QVariableDefinition*> decode(QList<QObject*> _dec, bytes _value);
+	/// get all encoded data encoded by encode function.
 	bytes encodedData();
 
 private:
 	QMap<QString, int> typePadding;
 	int padding(QString _type);
+	bytes m_encodedData;
 	static QString convertToReadable(std::string _v, QVariableDeclaration* _dec);
 	static QString convertToBool(std::string _v);
 	static QString convertToInt(std::string _v);
 	static int integerPadding(int _bitValue);
 	static QString formatBool(bool _value);
-	bytes m_encodedData;
-
 };
 
 }

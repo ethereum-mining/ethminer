@@ -26,7 +26,7 @@
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlApplicationEngine>
-#include "libdevcrypto/FileSystem.h"
+#include <libdevcrypto/FileSystem.h>
 #include "KeyEventManager.h"
 #include "AppContext.h"
 using namespace dev;
@@ -41,17 +41,12 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_applicationEngine = std::unique_ptr<QQmlApplicationEngine>(_engine);
 	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
 	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
-	m_compiler = std::unique_ptr<CompilerStack>(new CompilerStack());
+	m_compiler = std::unique_ptr<CompilerStack>(new CompilerStack()); //TODO : to move in a codel model structure.
 }
 
 QQmlApplicationEngine* AppContext::appEngine()
 {
 	return m_applicationEngine.get();
-}
-
-dev::eth::Client* AppContext::getEthereumClient()
-{
-	return m_webThree->ethereum();
 }
 
 void AppContext::initKeyEventManager(QObject* _res)
@@ -81,6 +76,7 @@ void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
 {
+	// TODO : move it in a UI dedicated layer.
 	QObject* dialogWin = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
 	QObject* dialogWinComponent = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
 	dialogWinComponent->setProperty("source", QString("qrc:/qml/BasicMessage.qml"));

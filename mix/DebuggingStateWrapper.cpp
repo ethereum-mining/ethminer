@@ -23,11 +23,11 @@
 #include <QApplication>
 #include <QDebug>
 #include <QPointer>
-#include "libevmcore/Instruction.h"
-#include "libdevcore/CommonJS.h"
-#include "libdevcrypto/Common.h"
-#include "libevmcore/Instruction.h"
-#include "libdevcore/Common.h"
+#include <libevmcore/Instruction.h>
+#include <libdevcore/CommonJS.h>
+#include <libdevcrypto/Common.h>
+#include <libevmcore/Instruction.h>
+#include <libdevcore/Common.h>
 #include "DebuggingStateWrapper.h"
 using namespace dev;
 using namespace dev::eth;

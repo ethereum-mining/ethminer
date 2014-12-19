@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AssemblyDebuggerCtrl.h
+/** @file AssemblyDebuggerCtrl.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * display opcode debugging.
@@ -23,7 +23,7 @@
 #include <QQmlContext>
 #include <QModelIndex>
 #include <libdevcore/CommonJS.h>
-#include "libethereum/Transaction.h"
+#include <libethereum/Transaction.h>
 #include "AssemblyDebuggerModel.h"
 #include "AssemblyDebuggerCtrl.h"
 #include "KeyEventManager.h"
@@ -44,6 +44,7 @@ AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(Exten
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
 	qRegisterMetaType<AssemblyDebuggerData>("AssemblyDebuggerData");
 	qRegisterMetaType<DebuggingStatusResult>("DebuggingStatusResult");
+
 	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)),
 			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
 
@@ -77,9 +78,14 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 			deployContract(m_doc->toPlainText());
 		});
 	}
+	else if (_key == Qt::Key_F6)
+	{
+		m_modelDebugger.get()->resetState();
+		AppContext::getInstance()->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
+	}
 }
 
-void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr, Address _contract)
+void AssemblyDebuggerCtrl::callContract(TransactionSettings _tr, Address _contract)
 {
 	CompilerResult compilerRes = m_compilation.get()->compile(m_doc->toPlainText());
 	if (!compilerRes.success)
@@ -99,7 +105,7 @@ void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr, Addre
 	}
 	if (!f)
 	{
-		AppContext::getInstance()->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("contract code changed. Please redeploy contract"));
+		AppContext::getInstance()->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("function not found. Please redeploy this contract."));
 		return;
 	}
 	c.encode(f->index());
@@ -108,7 +114,7 @@ void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr, Addre
 		QVariableDeclaration* var = (QVariableDeclaration*)f->parameters().at(k);
 		c.encode(var, _tr.parameterValues[var->name()]);
 	}
-	DebuggingContent debuggingContent = m_modelDebugger->getContractCallDebugStates(_contract, c.encodedData(), _tr);
+	DebuggingContent debuggingContent = m_modelDebugger->callContract(_contract, c.encodedData(), _tr);
 	debuggingContent.returnParameters = c.decode(f->returnParameters(), debuggingContent.returnValue);
 	finalizeExecution(debuggingContent);
 }
@@ -121,7 +127,7 @@ void AssemblyDebuggerCtrl::deployContract(QString _source)
 		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
 		return;
 	}
-	m_previousDebugResult = m_modelDebugger->getContractInitiationDebugStates(compilerRes.bytes);
+	m_previousDebugResult = m_modelDebugger->deployContract(compilerRes.bytes);
 	finalizeExecution(m_previousDebugResult);
 }
 
@@ -139,7 +145,7 @@ void AssemblyDebuggerCtrl::finalizeExecution(DebuggingContent _debuggingContent)
 	emit dataAvailable(true, DebuggingStatusResult::Ok, _debuggingContent.returnParameters, wStates, code);
 }
 
-void AssemblyDebuggerCtrl::updateGUI(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParam, QList<QObject*> _wStates, AssemblyDebuggerData _code)
+void AssemblyDebuggerCtrl::updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParam, QList<QObject*> const& _wStates, AssemblyDebuggerData const& _code)
 {
 	Q_UNUSED(_reason);
 	if (_success)
@@ -154,7 +160,7 @@ void AssemblyDebuggerCtrl::updateGUI(bool _success, DebuggingStatusResult _reaso
 		m_ctx->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("compilation failed"));
 }
 
-void AssemblyDebuggerCtrl::runTransaction(TransactionSettings _tr)
+void AssemblyDebuggerCtrl::runTransaction(TransactionSettings const& _tr)
 {
 	QtConcurrent::run([this, _tr]()
 	{

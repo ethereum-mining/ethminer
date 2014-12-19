@@ -40,9 +40,11 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractCallDebugStates(Address _contract, bytes _data, dev::mix::TransactionSettings _tr);
-	DebuggingContent getContractInitiationDebugStates(bytes _code);
-	bool compile(QString);
+	/// call function in a already deployed contract.
+	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
+	/// deploy the contract described by _code.
+	DebuggingContent deployContract(bytes const& _code);
+	/// reset state to the base state.
 	void resetState();
 
 private:
@@ -51,9 +53,8 @@ private:
 	eth::State m_baseState;
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
-	DebuggingContent executeTransaction(dev::bytesConstRef _rawTransaction);
+	DebuggingContent executeTransaction(dev::bytesConstRef const& _rawTransaction);
 };
 
 }
-
 }

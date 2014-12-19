@@ -38,8 +38,11 @@ class QFunctionDefinition: public QBasicNodeDefinition
 
 public:
 	QFunctionDefinition(dev::solidity::FunctionDefinition* _f, int _index): QBasicNodeDefinition(_f), m_index(_index) { initQParameters(); }
+	/// get all input parameters of this function.
 	QList<QObject*> parameters() const { return m_parameters; }
+	/// get all return parameters of this function.
 	QList<QObject*> returnParameters() const { return m_returnParameters; }
+	/// get the index of this function on the contract ABI.
 	int index() const { return m_index; }
 
 private:
