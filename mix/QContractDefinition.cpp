@@ -39,17 +39,9 @@ std::shared_ptr<QContractDefinition> QContractDefinition::Contract(QString _sour
 	return std::make_shared<QContractDefinition>(def);
 }
 
-QContractDefinition::QContractDefinition(ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
-{
-	initQFunctions();
-}
-
 void QContractDefinition::initQFunctions()
 {
-	std::vector<FunctionDefinition const*> functions = ((ContractDefinition*)m_dec)->getInterfaceFunctions();
+	std::vector<FunctionDefinition const*> functions = m_contract->getInterfaceFunctions();
 	for (unsigned i = 0; i < functions.size(); i++)
-	{
-		FunctionDefinition* func = (FunctionDefinition*)functions.at(i);
-		m_functions.append(new QFunctionDefinition(func, i));
-	}
+		m_functions.append(new QFunctionDefinition(functions.at(i), i));
 }

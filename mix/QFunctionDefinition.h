@@ -38,7 +38,7 @@ class QFunctionDefinition: public QBasicNodeDefinition
 	Q_PROPERTY(int index READ index)
 
 public:
-	QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index) { initQParameters(); }
+	QFunctionDefinition(solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index), m_functions(_f) { initQParameters(); }
 	/// Get all input parameters of this function.
 	QList<QVariableDeclaration*> parameters() const { return m_parameters; }
 	/// Get all return parameters of this function.
@@ -47,9 +47,10 @@ public:
 	int index() const { return m_index; }
 
 private:
+	int m_index;
+	solidity::FunctionDefinition const* m_functions;
 	QList<QVariableDeclaration*> m_parameters;
 	QList<QVariableDeclaration*> m_returnParameters;
-	int m_index;
 	void initQParameters();
 };
 

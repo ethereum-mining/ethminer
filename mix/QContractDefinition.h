@@ -37,13 +37,14 @@ class QContractDefinition: public QBasicNodeDefinition
 	Q_PROPERTY(QList<QFunctionDefinition*> functions READ functions)
 
 public:
-	QContractDefinition(dev::solidity::ContractDefinition const* _contract);
+	QContractDefinition(solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract), m_contract(_contract) { initQFunctions(); }
 	/// Get all the functions of the contract.
 	QList<QFunctionDefinition*> functions() const { return m_functions; }
 	/// Get the description (functions, parameters, return parameters, ...) of the contract describes by _code.
 	static std::shared_ptr<QContractDefinition> Contract(QString _code);
 
 private:
+	solidity::ContractDefinition const* m_contract;
 	QList<QFunctionDefinition*> m_functions;
 	void initQFunctions();
 };
