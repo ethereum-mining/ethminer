@@ -154,7 +154,7 @@ public:
 signals:
 	/// Transaction count has changed
 	void countChanged();
-	/// Transaction has be launched
+	/// Transaction has been launched
 	void transactionStarted(dev::mix::TransactionSettings);
 
 private:
