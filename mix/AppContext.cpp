@@ -76,9 +76,9 @@ void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
 {
-	// TODO : move it in a UI dedicated layer.
-	QObject* dialogWin = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
-	QObject* dialogWinComponent = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
+	// TODO : move to a UI dedicated layer.
+	QObject* dialogWin = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
+	QObject* dialogWinComponent = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
 	dialogWinComponent->setProperty("source", QString("qrc:/qml/BasicMessage.qml"));
 	dialogWin->setProperty("title", _title);
 	dialogWin->setProperty("width", "250");

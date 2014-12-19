@@ -32,10 +32,6 @@ using namespace dev;
 using namespace dev::solidity;
 using namespace dev::mix;
 
-ContractCallDataEncoder::ContractCallDataEncoder()
-{
-}
-
 bytes ContractCallDataEncoder::encodedData()
 {
 	return m_encodedData;
@@ -89,23 +85,15 @@ int ContractCallDataEncoder::padding(QString type)
 {
 	// TODO : to be improved (load types automatically from solidity library).
 	if (type.indexOf("uint") != -1)
-	{
 		return integerPadding(type.remove("uint").toInt());
-	}
 	else if (type.indexOf("int") != -1)
-	{
-		//int
 		return integerPadding(type.remove("int").toInt());
-	}
 	else if (type.indexOf("bool") != -1)
-	{
 		return 1;
-	}
 	else if ((type.indexOf("address") != -1))
-	{
 		return 20;
-	}
-	return 0;
+	else
+		return 0;
 }
 
 int ContractCallDataEncoder::integerPadding(int bitValue)
@@ -121,17 +109,11 @@ QString ContractCallDataEncoder::formatBool(bool _value)
 QString ContractCallDataEncoder::convertToReadable(std::string _v, QVariableDeclaration* _dec)
 {
 	if (_dec->type().indexOf("int") != -1)
-	{
 		return convertToInt(_v);
-	}
 	else if (_dec->type().indexOf("bool") != -1)
-	{
 		return convertToBool(_v);
-	}
 	else
-	{
 		return QString::fromStdString(_v);
-	}
 }
 
 QString ContractCallDataEncoder::convertToBool(std::string _v)
@@ -141,8 +123,6 @@ QString ContractCallDataEncoder::convertToBool(std::string _v)
 
 QString ContractCallDataEncoder::convertToInt(std::string _v)
 {
-	qDebug() << "QString::fromStdString(_v);";
-	qDebug() << QString::fromStdString(_v);
 	//TO DO to be improve to manage all int, uint size (128, 256, ...) in ethereum QML types task #612.
 	int x = std::stol(_v, nullptr, 16);
 	std::stringstream ss;

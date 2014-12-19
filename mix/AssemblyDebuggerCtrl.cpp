@@ -80,14 +80,14 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 	}
 	else if (_key == Qt::Key_F6)
 	{
-		m_modelDebugger.get()->resetState();
+		m_modelDebugger->resetState();
 		AppContext::getInstance()->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
 	}
 }
 
 void AssemblyDebuggerCtrl::callContract(TransactionSettings _tr, Address _contract)
 {
-	CompilerResult compilerRes = m_compilation.get()->compile(m_doc->toPlainText());
+	CompilerResult compilerRes = m_compilation->compile(m_doc->toPlainText());
 	if (!compilerRes.success)
 	{
 		AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
@@ -96,9 +96,9 @@ void AssemblyDebuggerCtrl::callContract(TransactionSettings _tr, Address _contra
 	ContractCallDataEncoder c;
 	std::shared_ptr<QContractDefinition> contractDef = QContractDefinition::Contract(m_doc->toPlainText());
 	QFunctionDefinition* f = nullptr;
-	for (int k = 0; k < contractDef.get()->functions().size(); k++)
+	for (int k = 0; k < contractDef->functions().size(); k++)
 	{
-		if (contractDef.get()->functions().at(k)->name() == _tr.functionId)
+		if (contractDef->functions().at(k)->name() == _tr.functionId)
 		{
 			f = (QFunctionDefinition*)contractDef->functions().at(k);
 		}
@@ -121,7 +121,7 @@ void AssemblyDebuggerCtrl::callContract(TransactionSettings _tr, Address _contra
 
 void AssemblyDebuggerCtrl::deployContract(QString _source)
 {
-	CompilerResult compilerRes = m_compilation.get()->compile(_source);
+	CompilerResult compilerRes = m_compilation->compile(_source);
 	if (!compilerRes.success)
 	{
 		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);

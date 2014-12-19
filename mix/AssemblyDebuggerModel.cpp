@@ -72,12 +72,12 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
-	m_currentExecution.get()->go(onOp);
-	m_currentExecution.get()->finalize(onOp);
+	m_currentExecution->go(onOp);
+	m_currentExecution->finalize(onOp);
 	m_executiveState.completeMine();
 
 	DebuggingContent d;
-	d.returnValue = m_currentExecution.get()->out().toVector();
+	d.returnValue = m_currentExecution->out().toVector();
 	d.machineStates = machineStates;
 	d.executionCode = code;
 	d.executionData = data;
