@@ -478,7 +478,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			break;
 		case Instruction::SIGNEXTEND:
 			if (m_stack.back() < 31)
-		{
+			{
 				unsigned const testBit(m_stack.back() * 8 + 7);
 				u256& number = m_stack[m_stack.size() - 2];
 				u256 mask = ((u256(1) << testBit) - 1);

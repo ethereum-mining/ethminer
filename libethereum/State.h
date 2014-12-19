@@ -32,7 +32,6 @@
 #include <libethcore/ProofOfWork.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
-#include <libevm/VMFace.h>
 #include "TransactionQueue.h"
 #include "Account.h"
 #include "Transaction.h"
