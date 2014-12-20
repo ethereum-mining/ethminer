@@ -33,11 +33,19 @@ AccountChange AccountDiff::changeType() const
 	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
 }
 
-char const* AccountDiff::lead() const
+char const* dev::lead(AccountChange _c) const
 {
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
+	switch (_c)
+	{
+	case AccountChange::None: return "   ";
+	case AccountChange::Creation: return "+++";
+	case AccountChange::Deletion: return "XXX";
+	case AccountChange::Intrinsic: return " * ";
+	case AccountChange::CodeStorage: return "* *";
+	case AccountChange::All: return "***";
+	}
+	assert(false);
+	return "";
 }
 
 namespace dev {
