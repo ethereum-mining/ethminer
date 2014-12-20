@@ -85,7 +85,7 @@ std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s)
 	dev::eth::AccountDiff d;
 	_out << d;
 	for (auto const& i: _s.accounts)
-		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
+		_out << lead(i.second.changeType()) << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }
 
