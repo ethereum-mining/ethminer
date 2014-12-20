@@ -33,7 +33,7 @@ AccountChange AccountDiff::changeType() const
 	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
 }
 
-char const* dev::lead(AccountChange _c) const
+char const* dev::eth::lead(AccountChange _c)
 {
 	switch (_c)
 	{
