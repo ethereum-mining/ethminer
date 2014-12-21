@@ -33,16 +33,16 @@ class QVariableDefinition: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString value READ value)
-	Q_PROPERTY(QVariableDeclaration* declaration READ declaration)
+	Q_PROPERTY(QVariableDeclaration const* declaration READ declaration)
 
 public:
-	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(_def->parent()), m_value(_value), m_dec(_def) {}
+	QVariableDefinition(QVariableDeclaration const* _dec, QString _value): QObject(_dec->parent()), m_dec(_dec), m_value(_value) {}
 
-	QVariableDeclaration* declaration() const { return m_dec; }
+	QVariableDeclaration const* declaration() const { return m_dec; }
 	QString value() const { return m_value; }
 
 private:
-	QVariableDeclaration* m_dec;
+	QVariableDeclaration const* m_dec;
 	QString m_value;
 };
 

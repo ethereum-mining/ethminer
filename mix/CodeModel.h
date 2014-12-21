@@ -22,12 +22,19 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QThread>
 #include <libdevcore/Common.h>
 
 namespace dev
 {
+
+namespace solidity
+{
+	class CompilerStack;
+}
+
 namespace mix
 {
 
@@ -54,14 +61,24 @@ class CompilationResult : public QObject
 	Q_PROPERTY(QContractDefinition const* contract READ contract)
 
 public:
-	QContractDefinition const* contract() { return m_contract; }
+	/// Successfull compilation result constructor
+	CompilationResult(solidity::CompilerStack const& _compiler, QObject* parent);
+	/// Failed compilation result constructor
+	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* parent);
+	QContractDefinition const* contract() { return m_contract.get(); }
+
+	bool successfull() const { return m_successfull; }
+	QContractDefinition const* contract() const { return m_contract.get(); }
+	QString compilerMessage() const { return m_compilerMessage; }
+	dev::bytes const& bytes() const { return m_bytes; }
+	QString assemblyCode() const { return m_assemblyCode; }
 
 private:
 	bool m_successfull;
-	QContractDefinition* m_contract;
-	QString m_hexCode;
+	std::shared_ptr<QContractDefinition const> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
+	QString m_assemblyCode;
 	///@todo syntax highlighting, etc
 };
 
@@ -79,18 +96,15 @@ public:
 	CodeModel(QObject* _parent);
 	~CodeModel();
 
-	CompilationResult* getLastCompilationResult();
+	std::shared_ptr<CompilationResult> lastCompilationResult() { return m_result; }
 
 signals:
 	void statusChanged(Status _from, Status _to);
-	void compilationComplete(std::shared_ptr<CompilationResult> _compilationResult);
+	void compilationComplete();
 	void scheduleCompilationJob(int _jobId, QString const& _content);
 
 public slots:
 	void registerCodeChange(QString const& _code);
-
-private slots:
-	void onCompilationComplete(std::shared_ptr<CompilationResult> _compilationResult);
 
 private:
 	void runCompilationJob(int _jobId, QString const& _content);
@@ -100,7 +114,6 @@ private:
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
-
 	friend class BackgroundWorker;
 };
 

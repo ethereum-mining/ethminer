@@ -46,19 +46,19 @@ void ContractCallDataEncoder::encode(int _functionIndex)
 	m_encodedData.insert(m_encodedData.end(), i.begin(), i.end());
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, bool _value)
+void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, bool _value)
 {
 	return encode(_dec, QString(formatBool(_value)));
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, QString _value)
+void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, QString _value)
 {
 	int padding = this->padding(_dec->type());
 	bytes data = padded(jsToBytes(_value.toStdString()), padding);
 	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, u256 _value)
+void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, u256 _value)
 {
 	int padding = this->padding(_dec->type());
 	std::ostringstream s;

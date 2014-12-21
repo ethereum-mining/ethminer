@@ -24,6 +24,11 @@
 
 #include <QObject>
 
+namespace dev
+{
+namespace mix
+{
+
 class KeyEventManager: public QObject
 {
 	Q_OBJECT
@@ -40,3 +45,5 @@ public slots:
 	void keyPressed(QVariant _event);
 };
 
+}
+}

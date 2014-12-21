@@ -34,16 +34,14 @@ namespace mix
 class QContractDefinition: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QList<QFunctionDefinition*> functions READ functions)
+	Q_PROPERTY(QList<QFunctionDefinition const*> functions READ functions)
 
 public:
-	QContractDefinition(dev::solidity::ContractDefinition* _contract);
-	QList<QFunctionDefinition*> functions() const { return m_functions; }
-	static std::shared_ptr<QContractDefinition> Contract(QString _code);
+	QContractDefinition(dev::solidity::ContractDefinition const* _contract);
+	QList<QFunctionDefinition const*> functions() const { return m_functions; }
 
 private:
-	QList<QFunctionDefinition*> m_functions;
-	void initQFunctions();
+	QList<QFunctionDefinition const*> m_functions;
 };
 
 }

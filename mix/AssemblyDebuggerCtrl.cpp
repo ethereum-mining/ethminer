@@ -19,12 +19,11 @@
 
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
-#include <QVariableDefinition.h>
 #include <QQmlContext>
+#include <QQmlApplicationEngine>
 #include <QModelIndex>
 #include <libdevcore/CommonJS.h>
-#include "libethereum/Transaction.h"
-#include "AssemblyDebuggerModel.h"
+#include <libethereum/Transaction.h>
 #include "AssemblyDebuggerCtrl.h"
 #include "KeyEventManager.h"
 #include "AppContext.h"
@@ -33,10 +32,14 @@
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
 #include "ContractCallDataEncoder.h"
+#include "KeyEventManager.h"
+#include "CodeModel.h"
+#include "AssemblyDebuggerModel.h"
+
 using namespace dev::eth;
 using namespace dev::mix;
 
-AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::ModalDialog)
+AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::ModalDialog)
 {
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -48,8 +51,6 @@ AssemblyDebuggerCtrl::AssemblyDebuggerCtrl(QTextDocument* _doc): Extension(Exten
 			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
 
 	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
-	m_compilation  = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel);
-	m_doc = _doc;
 }
 
 QString AssemblyDebuggerCtrl::contentUrl() const
@@ -74,41 +75,41 @@ void AssemblyDebuggerCtrl::keyPressed(int _key)
 	{
 		QtConcurrent::run([this]()
 		{
-			deployContract(m_doc->toPlainText());
+			deployContract();
 		});
 	}
 }
 
 void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr)
 {
-	CompilerResult compilerRes = m_compilation.get()->compile(m_doc->toPlainText());
-	if (!compilerRes.success)
+	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	if (!compilerRes->successfull())
 	{
-		AppContext::getInstance()->displayMessageDialog("debugger","compilation failed");
+		m_ctx->displayMessageDialog("debugger","compilation failed");
 		return;
 	}
 
 	ContractCallDataEncoder c;
-	std::shared_ptr<QContractDefinition> contractDef = QContractDefinition::Contract(m_doc->toPlainText());
+	QContractDefinition const* contractDef = compilerRes->contract();
 
-	QFunctionDefinition* f = nullptr;
-	for (int k = 0; k < contractDef.get()->functions().size(); k++)
+	QFunctionDefinition const* f = nullptr;
+	for (int k = 0; k < contractDef->functions().size(); k++)
 	{
-		if (contractDef.get()->functions().at(k)->name() == _tr.functionId)
+		if (contractDef->functions().at(k)->name() == _tr.functionId)
 		{
-			f = (QFunctionDefinition*)contractDef->functions().at(k);
+			f = contractDef->functions().at(k);
 		}
 	}
 	if (!f)
 	{
-		AppContext::getInstance()->displayMessageDialog("debugger","contract code changed. redeploy contract");
+		m_ctx->displayMessageDialog("debugger","contract code changed. redeploy contract");
 		return;
 	}
 
 	c.encode(f->index());
 	for (int k = 0; k < f->parameters().size(); k++)
 	{
-		QVariableDeclaration* var = (QVariableDeclaration*)f->parameters().at(k);
+		QVariableDeclaration const* var = static_cast<QVariableDeclaration const*>(f->parameters().at(k));
 		c.encode(var, _tr.parameterValues[var->name()]);
 	}
 
@@ -120,16 +121,16 @@ void AssemblyDebuggerCtrl::callContract(dev::mix::TransactionSettings _tr)
 	finalizeExecution(debuggingContent);
 }
 
-void AssemblyDebuggerCtrl::deployContract(QString _source)
+void AssemblyDebuggerCtrl::deployContract()
 {
-	CompilerResult compilerRes = m_compilation.get()->compile(_source);
-	if (!compilerRes.success)
+	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	if (!compilerRes->successfull())
 	{
 		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
 		return;
 	}
 
-	m_previousDebugResult = m_modelDebugger->getContractInitiationDebugStates(compilerRes.bytes);
+	m_previousDebugResult = m_modelDebugger->getContractInitiationDebugStates(compilerRes->bytes());
 	finalizeExecution(m_previousDebugResult);
 }
 

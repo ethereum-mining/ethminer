@@ -20,22 +20,11 @@
  * Ethereum IDE client.
  */
 
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QQuickItem>
-#include "CodeEditorExtensionManager.h"
-#include "AppContext.h"
 #include "MixApplication.h"
 using namespace dev::mix;
 
 int main(int _argc, char *_argv[])
 {
-	QApplication app(_argc, _argv);
-	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
-	QQmlApplicationEngine* engine = new QQmlApplicationEngine();
-	AppContext::setApplicationContext(engine);
-	QObject::connect(&app, SIGNAL(lastWindowClosed()), AppContext::getInstance(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	QObject::connect(engine, SIGNAL(objectCreated(QObject*, QUrl)), AppContext::getInstance(), SLOT(resourceLoaded(QObject*, QUrl)));
-	engine->load(QUrl("qrc:/qml/main.qml"));
+	MixApplication app(_argc, _argv);
 	return app.exec();
 }

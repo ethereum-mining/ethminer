@@ -19,8 +19,6 @@
 
 #pragma once
 
-#include <QTextDocument>
-#include "ConstantCompilationModel.h"
 #include "Extension.h"
 
 namespace dev
@@ -33,20 +31,17 @@ class ConstantCompilationCtrl: public Extension
 	Q_OBJECT
 
 public:
-	ConstantCompilationCtrl(QTextDocument*);
+	ConstantCompilationCtrl(AppContext* _appContext);
 	~ConstantCompilationCtrl() {}
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
 
 private:
-	QTextDocument* m_editor;
-	std::unique_ptr<ConstantCompilationModel> m_compilationModel;
-	void writeOutPut(CompilerResult const&);
 	void resetOutPut();
 
 public slots:
-	void compile();
+	void update();
 };
 
 }

@@ -27,42 +27,51 @@
 
 #pragma once
 
-#include <QQmlApplicationEngine>
-#include "libsolidity/CompilerStack.h"
-#include "libwebthree/WebThree.h"
-#include "KeyEventManager.h"
+#include <memory>
+#include <QUrl>
+#include <QObject>
+
+class QQmlApplicationEngine;
 
 namespace dev
 {
+
+class WebThreeDirect;
+
+namespace eth
+{
+	class Client;
+}
+
 namespace mix
 {
 
-class AppContext: public QObject
+class CodeModel;
+class KeyEventManager;
+
+class AppContext : public QObject
 {
 	Q_OBJECT
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	~AppContext() {}
-	static AppContext* getInstance() { return Instance; }
-	static void setApplicationContext(QQmlApplicationEngine* _engine);
+	~AppContext();
 	QQmlApplicationEngine* appEngine();
 	dev::eth::Client* getEthereumClient();
 	void initKeyEventManager(QObject* _obj);
 	KeyEventManager* getKeyEventManager();
-	dev::solidity::CompilerStack* compiler();
+	CodeModel* codeModel() { return m_codeModel.get(); }
 	void displayMessageDialog(QString _title, QString _message);
 
 private:
-	static AppContext* Instance;
-	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
+	QQmlApplicationEngine* m_applicationEngine; //owned by app
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<KeyEventManager> m_keyEventManager;
-	std::unique_ptr<solidity::CompilerStack> m_compiler;
+	std::unique_ptr<CodeModel> m_codeModel;
 
 public slots:
-	void quitApplication() { delete Instance; }
-	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
+	void quitApplication() {}
+	void resourceLoaded(QObject* _obj, QUrl _url);
 };
 
 }

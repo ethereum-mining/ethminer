@@ -25,6 +25,11 @@
 #include <QKeySequence>
 #include "KeyEventManager.h"
 
+namespace dev
+{
+namespace mix
+{
+
 void KeyEventManager::registerEvent(const QObject* _receiver, const char* _slot)
 {
 	QObject::connect(this, SIGNAL(onKeyPressed(int)), _receiver, _slot);
@@ -38,4 +43,7 @@ void KeyEventManager::unRegisterEvent(QObject* _receiver)
 void KeyEventManager::keyPressed(QVariant _event)
 {
 	emit onKeyPressed(_event.toInt());
+}
+
+}
 }

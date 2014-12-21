@@ -20,26 +20,22 @@
  */
 
 #include <QDebug>
+#include <QQmlApplicationEngine>
+#include "CodeEditorExtensionManager.h"
 #include "MixApplication.h"
+#include "AppContext.h"
+
 using namespace dev::mix;
 
-MixApplication::MixApplication(int _argc, char* _argv[]): QApplication(_argc, _argv)
+MixApplication::MixApplication(int _argc, char* _argv[]):
+	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
+	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+	m_engine->load(QUrl("qrc:/qml/main.qml"));
+	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
+	QObject::connect(engine(), SIGNAL(objectCreated(QObject*, QUrl)), context(), SLOT(resourceLoaded(QObject*, QUrl)));
 }
 
-bool MixApplication::notify(QObject* _receiver, QEvent* _event)
+MixApplication::~MixApplication()
 {
-	try
-	{
-		return MixApplication::notify(_receiver, _event);
-	}
-	catch (std::exception& _ex)
-	{
-		qDebug() << "std::exception was caught " << _ex.what();
-	}
-	catch (...)
-	{
-		qDebug() << "uncaught exception ";
-	}
-	return false;
 }

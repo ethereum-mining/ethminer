@@ -35,8 +35,10 @@ class QVariableDeclaration: public QBasicNodeDefinition
 	Q_PROPERTY(QString type READ type)
 
 public:
-	QVariableDeclaration(dev::solidity::VariableDeclaration* _v): QBasicNodeDefinition(_v){}
-	QString type() const { return QString::fromStdString(((solidity::VariableDeclaration*)m_dec)->getType()->toString());  }
+	QVariableDeclaration(dev::solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
+	QString type() const { return m_type; }
+private:
+	QString m_type;
 };
 
 }
