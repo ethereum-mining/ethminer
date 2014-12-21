@@ -33,6 +33,8 @@ namespace dev
 namespace mix
 {
 
+class AppContext;
+
 class CodeEditorExtensionManager: public QObject
 {
 	Q_OBJECT
@@ -42,7 +44,7 @@ class CodeEditorExtensionManager: public QObject
 	Q_PROPERTY(QQuickItem* rightTabView MEMBER m_rightTabView WRITE setRightTabView)
 
 public:
-	CodeEditorExtensionManager() {}
+	CodeEditorExtensionManager();
 	~CodeEditorExtensionManager();
 	void initExtensions();
 	void initExtension(std::shared_ptr<Extension>);
@@ -56,6 +58,7 @@ private:
 	QQuickItem* m_tabView;
 	QQuickItem* m_rightTabView;
 	QTextDocument* m_doc;
+	AppContext* m_appContext;
 	void loadEditor(QQuickItem*);
 };
 

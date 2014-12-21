@@ -20,12 +20,9 @@
 #pragma once
 
 #include <QKeySequence>
-#include "QTextDocument"
 #include "Extension.h"
-#include "ConstantCompilationModel.h"
 #include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
-#include "AppContext.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 enum DebuggingStatusResult
@@ -38,6 +35,8 @@ Q_DECLARE_METATYPE(AssemblyDebuggerData)
 Q_DECLARE_METATYPE(DebuggingStatusResult)
 Q_DECLARE_METATYPE(dev::mix::DebuggingContent)
 
+class AppContext;
+
 namespace dev
 {
 namespace mix
@@ -48,7 +47,7 @@ class AssemblyDebuggerCtrl: public Extension
 	Q_OBJECT
 
 public:
-	AssemblyDebuggerCtrl(QTextDocument*);
+	AssemblyDebuggerCtrl(AppContext* _context);
 	~AssemblyDebuggerCtrl() {}
 	void start() const override;
 	QString title() const override;
@@ -56,9 +55,7 @@ public:
 
 private:
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
-	std::unique_ptr<ConstantCompilationModel> m_compilation;
-	QTextDocument* m_doc;
-	void deployContract(QString _source);
+	void deployContract();
 	void callContract(dev::mix::TransactionSettings _contractAddress);
 	void finalizeExecution(DebuggingContent _content);
 	DebuggingContent m_previousDebugResult; //used for now to keep the contract address in case of transaction call.
@@ -70,7 +67,6 @@ public slots:
 
 signals:
 	void dataAvailable(bool _success, DebuggingStatusResult _reason, QList<QVariableDefinition*> _returnParams = QList<QVariableDefinition*>(), QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-
 };
 
 }

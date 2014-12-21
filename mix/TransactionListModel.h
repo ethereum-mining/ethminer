@@ -30,12 +30,12 @@
 #include <libdevcore/Common.h>
 #include <libethcore/CommonEth.h>
 
-class QTextDocument;
-
 namespace dev
 {
 namespace mix
 {
+
+class AppContext;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -132,7 +132,7 @@ class TransactionListModel: public QAbstractListModel
 	};
 
 public:
-	TransactionListModel(QObject* _parent, QTextDocument* _document);
+	TransactionListModel(QObject* _parent, AppContext* _appContext);
 	~TransactionListModel() {}
 
 	QHash<int, QByteArray> roleNames() const override;
@@ -159,7 +159,7 @@ signals:
 
 private:
 	std::vector<TransactionSettings> m_transactions;
-	QTextDocument* m_document;
+	AppContext* m_appContext;
 };
 
 }

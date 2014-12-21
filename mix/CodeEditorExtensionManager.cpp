@@ -30,8 +30,16 @@
 #include "AssemblyDebuggerCtrl.h"
 #include "TransactionListView.h"
 #include "AppContext.h"
+#include "MixApplication.h"
+#include "CodeModel.h"
 #include "CodeEditorExtensionManager.h"
+
 using namespace dev::mix;
+
+CodeEditorExtensionManager::CodeEditorExtensionManager():
+	m_appContext(static_cast<MixApplication*>(QApplication::instance())->context())
+{
+}
 
 CodeEditorExtensionManager::~CodeEditorExtensionManager()
 {
@@ -42,38 +50,26 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
 	if (!_editor)
 		return;
-	try
+
+	QVariant doc = _editor->property("textDocument");
+	if (doc.canConvert<QQuickTextDocument*>())
 	{
-		QVariant doc = _editor->property("textDocument");
-		if (doc.canConvert<QQuickTextDocument*>())
+		QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
+		if (qqdoc)
 		{
-			QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
-			if (qqdoc)
-			{
-				m_doc = qqdoc->textDocument();
-				auto args = QApplication::arguments();
-				if (args.length() > 1)
-				{
-					QString path = args[1];
-					QFile file(path);
-					if (file.exists() && file.open(QFile::ReadOnly))
-						m_doc->setPlainText(file.readAll());
-				}
-			}
+			m_doc = qqdoc->textDocument();
 		}
-	}
-	catch (...)
-	{
-		qDebug() << "unable to load editor: ";
 	}
 }
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
-	std::shared_ptr<AssemblyDebuggerCtrl> debug = std::make_shared<AssemblyDebuggerCtrl>(m_doc);
-	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_doc);
+	initExtension(std::make_shared<ConstantCompilationCtrl>(m_appContext));
+	std::shared_ptr<AssemblyDebuggerCtrl> debug = std::make_shared<AssemblyDebuggerCtrl>(m_appContext);
+	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_appContext);
 	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerCtrl::runTransaction);
+	QObject::connect(m_doc, &QTextDocument::contentsChanged, [=]() { m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText()); });
+
 	initExtension(debug);
 	initExtension(tr);
 }
@@ -103,6 +99,15 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 {
 	this->loadEditor(_editor);
 	this->initExtensions();
+
+	auto args = QApplication::arguments();
+	if (args.length() > 1)
+	{
+		QString path = args[1];
+		QFile file(path);
+		if (file.exists() && file.open(QFile::ReadOnly))
+			m_doc->setPlainText(file.readAll());
+	}
 }
 
 void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)

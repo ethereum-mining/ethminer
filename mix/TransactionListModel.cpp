@@ -24,11 +24,13 @@
 #include <QQmlEngine>
 #include <QTextDocument>
 #include <QAbstractListModel>
+#include "libdevcore/CommonJS.h"
 #include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
 #include "QVariableDeclaration.h"
-#include "libdevcore/CommonJS.h"
+#include "AppContext.h"
+#include "CodeModel.h"
 
 namespace dev
 {
@@ -54,8 +56,8 @@ TransactionListItem::TransactionListItem(int _index, TransactionSettings const& 
 	m_gas(toQString(_t.gas)), m_gasPrice(toQString(_t.gasPrice))
 {}
 
-TransactionListModel::TransactionListModel(QObject* _parent, QTextDocument* _document):
-	QAbstractListModel(_parent), m_document(_document)
+TransactionListModel::TransactionListModel(QObject* _parent, AppContext* _appContext):
+	QAbstractListModel(_parent), m_appContext(_appContext)
 {}
 
 QHash<int, QByteArray> TransactionListModel::roleNames() const
@@ -89,43 +91,34 @@ QVariant TransactionListModel::data(QModelIndex const& _index, int _role) const
 }
 
 ///@todo: get parameters from code model
-QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, TransactionSettings const& _transaction, QString const& _functionId)
+QList<TransactionParameterItem*> buildParameters(CodeModel* _codeModel, TransactionSettings const& _transaction, QString const& _functionId)
 {
 	QList<TransactionParameterItem*> params;
-	try
+	QContractDefinition const* contract = _codeModel->lastCompilationResult()->contract();
+	auto functions = contract->functions();
+	for (auto qf : functions)
 	{
-		QString code = _document->toPlainText().replace("\n", ""); //TODO: is this required?
-		std::shared_ptr<QContractDefinition> contract = QContractDefinition::Contract(code);
-		auto functions = contract->functions();
-		for (auto qf : functions)
+		QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
+		if (f.name() != _functionId)
+			continue;
+
+		auto parameters = f.parameters();
+		for (auto qp : parameters)
 		{
-			QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
-			if (f.name() != _functionId)
-				continue;
-
-			auto parameters = f.parameters();
-			for (auto qp : parameters)
+			QVariableDeclaration const& p = (QVariableDeclaration const&) *qp;
+			QString paramValue;
+			if (f.name() == _transaction.functionId)
 			{
-				QVariableDeclaration const& p = (QVariableDeclaration const&) *qp;
-				QString paramValue;
-				if (f.name() == _transaction.functionId)
-				{
-					auto paramValueIter = _transaction.parameterValues.find(p.name());
-					if (paramValueIter != _transaction.parameterValues.cend())
-						paramValue = toQString(paramValueIter->second);
-				}
-
-				TransactionParameterItem* item = new TransactionParameterItem(p.name(), p.type(), paramValue);
-				QQmlEngine::setObjectOwnership(item, QQmlEngine::JavaScriptOwnership);
-				params.append(item);
+				auto paramValueIter = _transaction.parameterValues.find(p.name());
+				if (paramValueIter != _transaction.parameterValues.cend())
+					paramValue = toQString(paramValueIter->second);
 			}
+
+			TransactionParameterItem* item = new TransactionParameterItem(p.name(), p.type(), paramValue);
+			QQmlEngine::setObjectOwnership(item, QQmlEngine::JavaScriptOwnership);
+			params.append(item);
 		}
 	}
-	catch (boost::exception const&)
-	{
-		//TODO:
-	}
-
 	return params;
 }
 
@@ -133,19 +126,12 @@ QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, Trans
 QList<QString> TransactionListModel::getFunctions()
 {
 	QList<QString> functionNames;
-	try
+	QContractDefinition const* contract = m_appContext->codeModel()->lastCompilationResult()->contract();
+	auto functions = contract->functions();
+	for (auto qf : functions)
 	{
-		QString code = m_document->toPlainText().replace("\n", ""); //TODO: is this required?
-		std::shared_ptr<QContractDefinition> contract(QContractDefinition::Contract(code));
-		auto functions = contract->functions();
-		for (auto qf : functions)
-		{
-			QFunctionDefinition const& f = (QFunctionDefinition const&) * qf;
-			functionNames.append(f.name());
-		}
-	}
-	catch (boost::exception const&)
-	{
+		QFunctionDefinition const& f = (QFunctionDefinition const&) * qf;
+		functionNames.append(f.name());
 	}
 	return functionNames;
 }
@@ -153,7 +139,7 @@ QList<QString> TransactionListModel::getFunctions()
 QVariantList TransactionListModel::getParameters(int _index, QString const& _functionId)
 {
 	TransactionSettings const& transaction = (_index >= 0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
-	auto plist = buildParameters(m_document, transaction, _functionId);
+	auto plist = buildParameters(m_appContext->codeModel(), transaction, _functionId);
 	QVariantList vl;
 	for (QObject* p : plist)
 		vl.append(QVariant::fromValue(p));

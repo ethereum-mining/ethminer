@@ -21,12 +21,15 @@
 
 #include <QApplication>
 #include <QQmlComponent>
-#include "AppContext.h"
+
+class QQmlApplicationEngine;
 
 namespace dev
 {
 namespace mix
 {
+
+class AppContext;
 
 enum ExtensionDisplayBehavior
 {
@@ -41,8 +44,8 @@ class Extension: public QObject
 	Q_OBJECT
 
 public:
-	Extension();
-	Extension(ExtensionDisplayBehavior _displayBehavior);
+	Extension(AppContext* _context);
+	Extension(AppContext* _context, ExtensionDisplayBehavior _displayBehavior);
 	virtual QString contentUrl() const { return ""; }
 	virtual QString title() const { return ""; }
 	virtual void start() const {}
@@ -58,7 +61,7 @@ protected:
 	QQmlApplicationEngine* m_appEngine;
 
 private:
-	void init();
+	void init(AppContext* _context);
 };
 
 }

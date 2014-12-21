@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <memory>
 #include <QTextDocument>
 #include "TransactionListView.h"
 #include "Extension.h"
@@ -37,7 +38,7 @@ class TransactionListView: public Extension
 	Q_OBJECT
 
 public:
-	TransactionListView(QTextDocument*);
+	TransactionListView(AppContext* _context);
 	~TransactionListView();
 	void start() const override;
 	QString title() const override;
@@ -46,7 +47,6 @@ public:
 	TransactionListModel* model() const { return m_model.get(); }
 
 private:
-	QTextDocument* m_editor;
 	std::unique_ptr<TransactionListModel> m_model;
 };
 

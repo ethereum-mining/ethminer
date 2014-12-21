@@ -20,6 +20,13 @@
  * Ethereum IDE client.
  */
 
+#include <sstream>
+#include <QDebug>
+#include <QApplication>
+#include <libsolidity/CompilerStack.h>
+#include <libsolidity/SourceReferenceFormatter.h>
+#include <libevmcore/Instruction.h>
+#include "QContractDefinition.h"
 #include "CodeModel.h"
 
 namespace dev
@@ -32,12 +39,27 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 	m_model->runCompilationJob(_jobId, _content);
 }
 
+CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler, QObject *_parent):
+	QObject(_parent), m_successfull(true),
+	m_contract(new QContractDefinition(&_compiler.getContractDefinition(std::string()))),
+	m_bytes(_compiler.getBytecode()),
+	m_assemblyCode(QString::fromStdString((dev::eth::disassemble(m_bytes))))
+{}
 
-CodeModel::CodeModel(QObject* _parent) : QObject(_parent), m_backgroundWorker(this)
+CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* _parent):
+	QObject(_parent), m_successfull(false),
+	m_contract(_prev.m_contract),
+	m_compilerMessage(_compilerMessage),
+	m_bytes(_prev.m_bytes),
+	m_assemblyCode(_prev.m_assemblyCode)
+{}
+
+CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
+	m_backgroundWorker(this), m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 
-	connect(this, &CodeModel::compilationComplete, this, &CodeModel::onCompilationComplete, Qt::QueuedConnection);
+	//connect(this, &CodeModel::compilationComplete, this, &CodeModel::onCompilationComplete, Qt::QueuedConnection);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
 	m_backgroundThread.start();
 }
@@ -62,20 +84,31 @@ void CodeModel::registerCodeChange(const QString &_code)
 	emit scheduleCompilationJob(m_backgroundJobId, _code);
 }
 
-void CodeModel::onCompilationComplete(std::shared_ptr<CompilationResult> _compilationResult)
-{
-	m_result.swap(_compilationResult);
-}
 
-
-void CodeModel::runCompilationJob(int _jobId, QString const& _content)
+void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 {
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
 
-
+	solidity::CompilerStack cs;
+	try
+	{
+		cs.setSource(_code.toStdString());
+		cs.compile(false);
+		std::shared_ptr<CompilationResult> result(new CompilationResult(cs, nullptr));
+		m_result.swap(result);
+		qDebug() << QString(QApplication::tr("compilation succeeded"));
+	}
+	catch (dev::Exception const& _exception)
+	{
+		std::ostringstream error;
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
+		std::shared_ptr<CompilationResult> result(new CompilationResult(*m_result, QString::fromStdString(error.str()), nullptr));
+		m_result.swap(result);
+		qDebug() << QString(QApplication::tr("compilation failed") + " " + m_result->compilerMessage());
+	}
+	emit compilationComplete();
 }
-
 
 }
 }

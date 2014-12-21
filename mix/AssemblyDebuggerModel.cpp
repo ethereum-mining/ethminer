@@ -23,15 +23,19 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/ExtVM.h>
+#include "AssemblyDebuggerModel.h"
 #include "AppContext.h"
 #include "TransactionListModel.h"
-#include "AssemblyDebuggerModel.h"
-#include "ConstantCompilationModel.h"
 #include "DebuggingStateWrapper.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::mix;
+
+namespace dev
+{
+namespace mix
+{
 
 AssemblyDebuggerModel::AssemblyDebuggerModel():
 	m_userAccount(KeyPair::create()),
@@ -44,11 +48,9 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 
 DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef _rawTransaction)
 {
-
 	QList<DebuggingState> machineStates;
 	// Reset the state back to our clean premine.
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
-	QList<DebuggingState> states;
 	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
@@ -118,4 +120,7 @@ DebuggingContent AssemblyDebuggerModel::getContractCallDebugStates(Address _cont
 void AssemblyDebuggerModel::resetState()
 {
 	m_executiveState = m_baseState;
+}
+
+}
 }
