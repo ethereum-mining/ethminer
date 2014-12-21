@@ -714,6 +714,25 @@ var web3 = {
         return "0x" + hex;
     },
 
+    toEth: function(str) {
+        var val = parseInt(str, 16);
+        var unit = 0;
+        var units = [ 'wei', 'Kwei', 'Mwei', 'Gwei', 'szabo', 'finney', 'ether', 'grand', 'Mether', 'Gether', 'Tether', 'Pether', 'Eether', 'Zether', 'Yether', 'Nether', 'Dether', 'Vether', 'Uether' ];
+        while (val > 3000 && unit < units.length - 1)
+        {
+            val /= 1000;
+            unit++;
+        }
+        var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
+        while (true) {
+            var o = s;
+            s = s.replace(/(\d)(\d\d\d[\.\,])/, function($0, $1, $2) { return $1 + ',' + $2; });
+            if (o == s)
+                break;
+        }
+        return s + ' ' + units[unit];
+    },
+
     eth: {
         prototype: Object(), // jshint ignore:line
         watch: function (params) {
