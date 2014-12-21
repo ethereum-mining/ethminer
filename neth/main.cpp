@@ -1023,7 +1023,7 @@ void print_in_middle(WINDOW *win, int starty, int startx, int width, string str,
 
 	length = str.length();
 	temp = (width - length) / 2;
-	x = startx + (int)temp;
+	x = x + (int)temp;
 	wattron(win, color);
 	mvwprintw(win, y, x, "%s", str.c_str());
 	wattroff(win, color);
