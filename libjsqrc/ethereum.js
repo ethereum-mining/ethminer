@@ -526,6 +526,12 @@ function flattenPromise (obj) {
     return Promise.resolve(obj);
 }
 
+var web3Methods = function () {
+    return [
+    { name: 'sha3', call: 'web3_sha3' }
+    ];
+};
+
 var ethMethods = function () {
     var blockCall = function (args) {
         return typeof args[0] === "string" ? "eth_blockByHash" : "eth_blockByNumber";
@@ -778,6 +784,7 @@ var web3 = {
     }
 };
 
+setupMethods(web3, web3Methods());
 setupMethods(web3.eth, ethMethods());
 setupProperties(web3.eth, ethProperties());
 setupMethods(web3.db, dbMethods());
