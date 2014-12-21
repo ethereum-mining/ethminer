@@ -112,6 +112,13 @@ include(EthExecutableHelper)
 
 createBuildInfo()
 
+if (EVMJIT)
+	# Workaround for Ubuntu broken LLVM package
+	link_directories(/usr/lib/llvm-3.5/lib)
+	
+	add_subdirectory(evmjit)
+endif()
+
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
@@ -154,10 +161,6 @@ if (NOT HEADLESS)
 	add_subdirectory(third)
 	add_subdirectory(mix)
 	
-endif()
-
-if (EVMJIT)
-	add_subdirectory(evmjit)
 endif()
 
 enable_testing()
