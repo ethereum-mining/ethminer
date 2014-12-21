@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AssemblyDebuggerCtrl.h
+/** @file AssemblyDebuggerControl.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Extension which display debugging steps in assembly code.
@@ -46,13 +46,13 @@ namespace mix
 /**
  * @brief Extension which display transaction creation or transaction call debugging. handle: F5 to deploy contract, F6 to reset state.
  */
-class AssemblyDebuggerCtrl: public Extension
+class AssemblyDebuggerControl: public Extension
 {
 	Q_OBJECT
 
 public:
-	AssemblyDebuggerCtrl(QTextDocument* _doc);
-	~AssemblyDebuggerCtrl() {}
+	AssemblyDebuggerControl(QTextDocument* _doc);
+	~AssemblyDebuggerControl() {}
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
@@ -68,15 +68,15 @@ private:
 	QTextDocument* m_doc;
 
 public slots:
-	/// handle key pressed. F5 deploy contract - F6 reset state.
+	/// Handle key pressed. F5 deploy contract - F6 reset state.
 	void keyPressed(int);
-	/// update UI with machine states result. Display a modal dialog.
+	/// Update UI with machine states result. Display a modal dialog.
 	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
-	/// run the given transaction.
+	/// Run the given transaction.
 	void runTransaction(TransactionSettings const& _tr);
 
 signals:
-	/// emited when machine states are available.
+	/// Emited when machine states are available.
 	void dataAvailable(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 };
 

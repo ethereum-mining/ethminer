@@ -25,7 +25,7 @@
 #include <QQuickItem>
 #include <QTextDocument>
 #include <QVector>
-#include "ConstantCompilationCtrl.h"
+#include "ConstantCompilationControl.h"
 
 namespace dev
 {
@@ -46,15 +46,15 @@ class CodeEditorExtensionManager: public QObject
 public:
 	CodeEditorExtensionManager() {}
 	~CodeEditorExtensionManager();
-	/// initialize all extensions.
+	/// Initialize all extensions.
 	void initExtensions();
-	/// initialize extension.
+	/// Initialize extension.
 	void initExtension(std::shared_ptr<Extension>);
-	/// set current text editor.
+	/// Set current text editor.
 	void setEditor(QQuickItem*);
-	/// set current tab view
+	/// Set current tab view
 	void setTabView(QQuickItem*);
-	/// set current right tab view.
+	/// Set current right tab view.
 	void setRightTabView(QQuickItem*);
 
 private:

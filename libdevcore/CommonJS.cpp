@@ -42,25 +42,22 @@ bytes padded(bytes _b, unsigned _l)
 {
 	while (_b.size() < _l)
 		_b.insert(_b.begin(), 0);
-	while (_b.size() < _l)
-		_b.push_back(0);
 	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
 }
 
 bytes unpadded(bytes _b)
 {
-	auto p = asString(_b).find_first_not_of("0");
+	auto p = asString(_b).find_last_not_of((char)0);
 	_b.resize(p == std::string::npos ? 0 : (p + 1));
 	return _b;
 }
 
-std::string unpadded(std::string _b)
+std::string unpadLeft(std::string _b)
 {
 	auto p = _b.find_first_not_of('0');
 	if (p == std::string::npos)
 		return "0";
-	_b = _b.substr(p, _b.length() - 1);
-	return _b;
+	return _b.substr(p, _b.length() - 1);
 }
 
 std::string prettyU256(u256 _n)

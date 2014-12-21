@@ -113,7 +113,7 @@ inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); ret
 /// Convenience function for toBigEndian.
 /// @returns a byte array just big enough to represent @a _val.
 template <class _T>
-inline bytes toCompactBigEndian(_T _val, unsigned _min = 1)
+inline bytes toCompactBigEndian(_T _val, unsigned _min = 0)
 {
 	int i = 0;
 	for (_T v = _val; v; ++i, v >>= 8) {}

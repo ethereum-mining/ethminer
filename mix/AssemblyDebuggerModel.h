@@ -14,7 +14,7 @@
 /** @file AssemblyDebuggerModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * serves as a model to debug contract assembly code.
+ * Used as a model to debug contract assembly code.
  */
 
 #pragma once
@@ -40,11 +40,11 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	/// call function in a already deployed contract.
+	/// Call function in a already deployed contract.
 	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
-	/// deploy the contract described by _code.
+	/// Deploy the contract described by _code.
 	DebuggingContent deployContract(bytes const& _code);
-	/// reset state to the base state.
+	/// Reset state to the base state.
 	void resetState();
 
 private:
