@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include "libsolidity/AST.h"
+#include <libsolidity/AST.h>
 #include "QBasicNodeDefinition.h"
 
 #pragma once
@@ -32,10 +32,10 @@ namespace mix
 class QVariableDeclaration: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QString type READ type)
+	Q_PROPERTY(QString type READ type CONSTANT)
 
 public:
-	QVariableDeclaration(dev::solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
+	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
 	QString type() const { return m_type; }
 private:
 	QString m_type;

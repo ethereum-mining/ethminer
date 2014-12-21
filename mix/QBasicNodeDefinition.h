@@ -22,7 +22,7 @@
 #pragma once
 
 #include <QObject>
-#include "libsolidity/AST.h"
+#include <libsolidity/AST.h>
 
 namespace dev
 {
@@ -32,16 +32,16 @@ namespace mix
 class QBasicNodeDefinition: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString name READ name)
+	Q_PROPERTY(QString name READ name CONSTANT)
 
 public:
 	QBasicNodeDefinition(): QObject() {}
-	~QBasicNodeDefinition() {
-	}
-	QBasicNodeDefinition(dev::solidity::Declaration const* _d): QObject(), m_name(QString::fromStdString(_d->getName())) {}
+	~QBasicNodeDefinition() {}
+	QBasicNodeDefinition(solidity::Declaration const* _d): QObject(), m_name(QString::fromStdString(_d->getName())) {}
+	/// Get the name of the node.
 	QString name() const { return m_name; }
 
-protected:
+private:
 	QString m_name;
 };
 

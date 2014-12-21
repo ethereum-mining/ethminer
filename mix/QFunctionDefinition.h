@@ -23,6 +23,7 @@
 
 #include <QObject>
 #include <libsolidity/AST.h>
+#include <QVariableDeclaration.h>
 #include "QBasicNodeDefinition.h"
 
 namespace dev
@@ -33,19 +34,23 @@ namespace mix
 class QFunctionDefinition: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QList<QObject*> parameters READ parameters)
+	Q_PROPERTY(QList<QVariableDeclaration*> parameters READ parameters)
 	Q_PROPERTY(int index READ index)
 
 public:
-	QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index);
-	QList<QObject*> parameters() const { return m_parameters; }
-	QList<QObject*> returnParameters() const { return m_returnParameters; }
+	QFunctionDefinition(solidity::FunctionDefinition const* _f, int _index);
+	/// Get all input parameters of this function.
+	QList<QVariableDeclaration*> parameters() const { return m_parameters; }
+	/// Get all return parameters of this function.
+	QList<QVariableDeclaration*> returnParameters() const { return m_returnParameters; }
+	/// Get the index of this function on the contract ABI.
 	int index() const { return m_index; }
 
 private:
-	QList<QObject*> m_parameters;
-	QList<QObject*> m_returnParameters;
 	int m_index;
+	QList<QVariableDeclaration*> m_parameters;
+	QList<QVariableDeclaration*> m_returnParameters;
+	void initQParameters();
 };
 
 }

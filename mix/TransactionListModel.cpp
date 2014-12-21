@@ -96,25 +96,23 @@ QList<TransactionParameterItem*> buildParameters(CodeModel* _codeModel, Transact
 	QList<TransactionParameterItem*> params;
 	QContractDefinition const* contract = _codeModel->lastCompilationResult()->contract();
 	auto functions = contract->functions();
-	for (auto qf : functions)
+	for (auto f : functions)
 	{
-		QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
-		if (f.name() != _functionId)
+		if (f->name() != _functionId)
 			continue;
 
-		auto parameters = f.parameters();
-		for (auto qp : parameters)
+		auto parameters = f->parameters();
+		for (auto p : parameters)
 		{
-			QVariableDeclaration const& p = (QVariableDeclaration const&) *qp;
 			QString paramValue;
-			if (f.name() == _transaction.functionId)
+			if (f->name() == _transaction.functionId)
 			{
-				auto paramValueIter = _transaction.parameterValues.find(p.name());
+				auto paramValueIter = _transaction.parameterValues.find(p->name());
 				if (paramValueIter != _transaction.parameterValues.cend())
 					paramValue = toQString(paramValueIter->second);
 			}
 
-			TransactionParameterItem* item = new TransactionParameterItem(p.name(), p.type(), paramValue);
+			TransactionParameterItem* item = new TransactionParameterItem(p->name(), p->type(), paramValue);
 			QQmlEngine::setObjectOwnership(item, QQmlEngine::JavaScriptOwnership);
 			params.append(item);
 		}
@@ -128,10 +126,9 @@ QList<QString> TransactionListModel::getFunctions()
 	QList<QString> functionNames;
 	QContractDefinition const* contract = m_appContext->codeModel()->lastCompilationResult()->contract();
 	auto functions = contract->functions();
-	for (auto qf : functions)
+	for (auto f : functions)
 	{
-		QFunctionDefinition const& f = (QFunctionDefinition const&) * qf;
-		functionNames.append(f.name());
+		functionNames.append(f->name());
 	}
 	return functionNames;
 }

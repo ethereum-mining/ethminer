@@ -26,8 +26,8 @@
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlApplicationEngine>
-#include "libdevcrypto/FileSystem.h"
-#include "libwebthree/WebThree.h"
+#include <libdevcrypto/FileSystem.h>
+#include <libwebthree/WebThree.h>
 #include "KeyEventManager.h"
 #include "AppContext.h"
 #include "CodeModel.h"
@@ -54,11 +54,6 @@ QQmlApplicationEngine* AppContext::appEngine()
 	return m_applicationEngine;
 }
 
-dev::eth::Client* AppContext::getEthereumClient()
-{
-	return m_webThree->ethereum();
-}
-
 void AppContext::initKeyEventManager(QObject* _res)
 {
 	QObject* mainContent = _res->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
@@ -75,6 +70,7 @@ KeyEventManager* AppContext::getKeyEventManager()
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
 {
+	// TODO : move to a UI dedicated layer.
 	QObject* dialogWin = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
 	QObject* dialogWinComponent = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
 	dialogWinComponent->setProperty("source", QString("qrc:/qml/BasicMessage.qml"));

@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ConstantCompilationCtrl.cpp
+/** @file ConstantCompilationControl.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -27,33 +27,33 @@
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
+#include "ConstantCompilationControl.h"
 #include "QContractDefinition.h"
 #include "AppContext.h"
 #include "CodeModel.h"
-#include "ConstantCompilationCtrl.h"
 
 using namespace dev::mix;
 
-ConstantCompilationCtrl::ConstantCompilationCtrl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::Tab)
+ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::Tab)
 {
-	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationCtrl::update);
+	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
 }
 
-QString ConstantCompilationCtrl::contentUrl() const
+QString ConstantCompilationControl::contentUrl() const
 {
 	return QStringLiteral("qrc:/qml/BasicContent.qml");
 }
 
-QString ConstantCompilationCtrl::title() const
+QString ConstantCompilationControl::title() const
 {
 	return QApplication::tr("compiler");
 }
 
-void ConstantCompilationCtrl::start() const
+void ConstantCompilationControl::start() const
 {
 }
 
-void ConstantCompilationCtrl::update()
+void ConstantCompilationControl::update()
 {
 	auto result = m_ctx->codeModel()->lastCompilationResult();
 
@@ -73,7 +73,7 @@ void ConstantCompilationCtrl::update()
 	}
 }
 
-void ConstantCompilationCtrl::resetOutPut()
+void ConstantCompilationControl::resetOutPut()
 {
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
