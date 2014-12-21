@@ -22,17 +22,18 @@
 #include "QVariableDefinition.h"
 
 using namespace dev::mix;
-int QVariableDefinitionList::rowCount(const QModelIndex& parent) const
+int QVariableDefinitionList::rowCount(const QModelIndex& _parent) const
 {
+	Q_UNUSED(_parent);
 	return m_def.size();
 }
 
-QVariant QVariableDefinitionList::data(const QModelIndex& index, int role) const
+QVariant QVariableDefinitionList::data(const QModelIndex& _index, int _role) const
 {
-	if (role != Qt::DisplayRole)
+	if (_role != Qt::DisplayRole)
 		return QVariant();
 
-	int i = index.row();
+	int i = _index.row();
 	if (i < 0 || i >= m_def.size())
 		return QVariant(QVariant::Invalid);
 
@@ -46,10 +47,9 @@ QHash<int, QByteArray> QVariableDefinitionList::roleNames() const
 	return roles;
 }
 
-QVariableDefinition* QVariableDefinitionList::val(int idx)
+QVariableDefinition* QVariableDefinitionList::val(int _idx)
 {
-	if (idx < 0 || idx >= m_def.size())
+	if (_idx < 0 || _idx >= m_def.size())
 		return nullptr;
-
-	return m_def.at(idx);
+	return m_def.at(_idx);
 }

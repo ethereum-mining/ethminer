@@ -32,18 +32,21 @@ namespace mix
 class QVariableDefinition: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString value READ value)
-	Q_PROPERTY(QVariableDeclaration const* declaration READ declaration)
+
+	Q_PROPERTY(QString value READ value CONSTANT)
+	Q_PROPERTY(QVariableDeclaration* declaration READ declaration CONSTANT)
 
 public:
-	QVariableDefinition(QVariableDeclaration const* _dec, QString _value): QObject(_dec->parent()), m_dec(_dec), m_value(_value) {}
+	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(), m_value(_value), m_dec(_def) {}
 
-	QVariableDeclaration const* declaration() const { return m_dec; }
+	/// Return the associated declaration of this variable definition.
+	QVariableDeclaration* declaration() const { return m_dec; }
+	/// Return the variable value.
 	QString value() const { return m_value; }
 
 private:
-	QVariableDeclaration const* m_dec;
 	QString m_value;
+	QVariableDeclaration* m_dec;
 };
 
 class QVariableDefinitionList: public QAbstractListModel
@@ -55,7 +58,9 @@ public:
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 	QHash<int, QByteArray> roleNames() const override;
-	QVariableDefinition* val(int idx);
+	/// Return the variable definition at index _idx.
+	QVariableDefinition* val(int _idx);
+	/// Return the list of variables.
 	QList<QVariableDefinition*> def() { return m_def; }
 
 private:

@@ -46,12 +46,19 @@ class Extension: public QObject
 public:
 	Extension(AppContext* _context);
 	Extension(AppContext* _context, ExtensionDisplayBehavior _displayBehavior);
+	/// Return the QML url of the view to display.
 	virtual QString contentUrl() const { return ""; }
+	/// Return the title of this extension.
 	virtual QString title() const { return ""; }
+	/// Initialize extension.
 	virtual void start() const {}
-	void addContentOn(QObject* _tabView);
+	/// Add the view define in contentUrl() in the _view QObject.
+	void addContentOn(QObject* _view);
+	/// Add the view define in contentUrl() in the _view QObject (_view has to be a tab).
 	void addTabOn(QObject* _view);
+	/// Modify the display behavior of this extension.
 	void setDisplayBehavior(ExtensionDisplayBehavior _displayBehavior) { m_displayBehavior = _displayBehavior; }
+	/// Get the display behavior of thi extension.
 	ExtensionDisplayBehavior getDisplayBehavior() { return m_displayBehavior; }
 
 protected:
@@ -65,5 +72,4 @@ private:
 };
 
 }
-
 }

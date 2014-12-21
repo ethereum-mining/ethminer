@@ -58,8 +58,6 @@ CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
 	m_backgroundWorker(this), m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
-
-	//connect(this, &CodeModel::compilationComplete, this, &CodeModel::onCompilationComplete, Qt::QueuedConnection);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
 	m_backgroundThread.start();
 }

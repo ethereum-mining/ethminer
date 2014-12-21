@@ -34,10 +34,12 @@ Rectangle {
 			Rectangle {
 				color: "transparent"
 				width: parent.width
+				anchors.horizontalCenter: parent.horizontalCenter
 				height: 30
 				ListView {
 					orientation: ListView.Horizontal
 					anchors.centerIn: parent;
+					width: parent.width
 					id: headerReturnList
 					delegate: renderDelegateReturnValues
 				}
@@ -45,10 +47,10 @@ Rectangle {
 					id: renderDelegateReturnValues
 					Item {
 						id: wrapperItem
-						width: parent.width
+						width: 80
 						Text {
 							anchors.centerIn: parent
-							text: variable.declaration.name + " : " + variable.value
+							text: variable.declaration.name + " = " + variable.value
 							font.pointSize: 9
 						}
 					}
@@ -127,7 +129,7 @@ Rectangle {
 				font.letterSpacing: 2
 				width: parent.width
 				height: 15
-				text: "callstack"
+				text: qsTr("callstack")
 			}
 
 			ListView {
@@ -173,7 +175,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug stack"
+				text: qsTr("debug stack")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -181,7 +183,7 @@ Rectangle {
 				font.family: "Verdana"
 				font.pointSize: 8
 				height: parent.height - 15
-				id:debugStackTxt
+				id: debugStackTxt
 				readOnly: true;
 			}
 		}
@@ -199,7 +201,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug memory"
+				text: qsTr("debug memory")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -225,7 +227,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug storage"
+				text: qsTr("debug storage")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom
@@ -233,7 +235,7 @@ Rectangle {
 				font.family: "Verdana"
 				font.pointSize: 8
 				height: parent.height - 15
-				id:debugStorageTxt
+				id: debugStorageTxt
 				readOnly: true;
 			}
 		}
@@ -251,7 +253,7 @@ Rectangle {
 				width: parent.width
 				height: 15
 				anchors.top : parent.top
-				text: "debug calldata"
+				text: qsTr("debug calldata")
 			}
 			TextArea {
 				anchors.bottom: parent.bottom

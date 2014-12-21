@@ -22,19 +22,23 @@
 
 #pragma once
 
-#include "memory"
+#include <memory>
 #include <QQuickItem>
 #include <QTextDocument>
 #include <QVector>
-#include "ConstantCompilationCtrl.h"
+#include "ConstantCompilationControl.h"
 
 namespace dev
 {
 namespace mix
 {
 
+
 class AppContext;
 
+/**
+ * @brief Init and provides connection between extensions.
+ */
 class CodeEditorExtensionManager: public QObject
 {
 	Q_OBJECT
@@ -46,10 +50,15 @@ class CodeEditorExtensionManager: public QObject
 public:
 	CodeEditorExtensionManager();
 	~CodeEditorExtensionManager();
+	/// Initialize all extensions.
 	void initExtensions();
+	/// Initialize extension.
 	void initExtension(std::shared_ptr<Extension>);
+	/// Set current text editor.
 	void setEditor(QQuickItem*);
+	/// Set current tab view
 	void setTabView(QQuickItem*);
+	/// Set current right tab view.
 	void setRightTabView(QQuickItem*);
 
 private:
@@ -59,9 +68,8 @@ private:
 	QQuickItem* m_rightTabView;
 	QTextDocument* m_doc;
 	AppContext* m_appContext;
-	void loadEditor(QQuickItem*);
+	void loadEditor(QQuickItem* _editor);
 };
 
 }
-
 }

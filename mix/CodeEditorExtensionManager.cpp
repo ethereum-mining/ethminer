@@ -26,8 +26,8 @@
 #include <QQmlComponent>
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
-#include "ConstantCompilationCtrl.h"
-#include "AssemblyDebuggerCtrl.h"
+#include "ConstantCompilationControl.h"
+#include "AssemblyDebuggerControl.h"
 #include "TransactionListView.h"
 #include "AppContext.h"
 #include "MixApplication.h"
@@ -64,10 +64,10 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationCtrl>(m_appContext));
-	std::shared_ptr<AssemblyDebuggerCtrl> debug = std::make_shared<AssemblyDebuggerCtrl>(m_appContext);
+	initExtension(std::make_shared<ConstantCompilationControl>(m_appContext));
+	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_appContext);
-	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerCtrl::runTransaction);
+	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerControl::runTransaction);
 	QObject::connect(m_doc, &QTextDocument::contentsChanged, [=]() { m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText()); });
 
 	initExtension(debug);

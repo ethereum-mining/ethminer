@@ -22,7 +22,7 @@
 #pragma once
 
 #include <QObject>
-#include "libsolidity/AST.h"
+#include <libsolidity/AST.h>
 #include "QFunctionDefinition.h"
 #include "QBasicNodeDefinition.h"
 
@@ -34,14 +34,15 @@ namespace mix
 class QContractDefinition: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QList<QFunctionDefinition const*> functions READ functions)
+	Q_PROPERTY(QList<QFunctionDefinition*> functions READ functions)
 
 public:
-	QContractDefinition(dev::solidity::ContractDefinition const* _contract);
-	QList<QFunctionDefinition const*> functions() const { return m_functions; }
+	QContractDefinition(solidity::ContractDefinition const* _contract);
+	/// Get all the functions of the contract.
+	QList<QFunctionDefinition*> functions() const { return m_functions; }
 
 private:
-	QList<QFunctionDefinition const*> m_functions;
+	QList<QFunctionDefinition*> m_functions;
 };
 
 }

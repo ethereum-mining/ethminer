@@ -14,7 +14,7 @@
 /** @file AssemblyDebuggerModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * serves as a model to debug contract assembly code.
+ * Used as a model to debug contract assembly code.
  */
 
 #pragma once
@@ -40,9 +40,11 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractCallDebugStates(Address _contract, bytes _data, dev::mix::TransactionSettings _tr);
-	DebuggingContent getContractInitiationDebugStates(bytes _code);
-	bool compile(QString);
+	/// Call function in a already deployed contract.
+	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
+	/// Deploy the contract described by _code.
+	DebuggingContent deployContract(bytes const& _code);
+	/// Reset state to the base state.
 	void resetState();
 
 private:
@@ -51,9 +53,8 @@ private:
 	eth::State m_baseState;
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
-	DebuggingContent executeTransaction(dev::bytesConstRef _rawTransaction);
+	DebuggingContent executeTransaction(dev::bytesConstRef const& _rawTransaction);
 };
 
 }
-
 }

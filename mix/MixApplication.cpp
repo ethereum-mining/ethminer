@@ -31,9 +31,9 @@ MixApplication::MixApplication(int _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
-	m_engine->load(QUrl("qrc:/qml/main.qml"));
 	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
 	QObject::connect(engine(), SIGNAL(objectCreated(QObject*, QUrl)), context(), SLOT(resourceLoaded(QObject*, QUrl)));
+	m_engine->load(QUrl("qrc:/qml/main.qml"));
 }
 
 MixApplication::~MixApplication()
