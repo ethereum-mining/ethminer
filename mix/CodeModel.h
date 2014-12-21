@@ -41,6 +41,7 @@ namespace mix
 class CodeModel;
 class QContractDefinition;
 
+//utility class to perform tasks in background thread
 class BackgroundWorker: public QObject
 {
 	Q_OBJECT
@@ -54,7 +55,7 @@ private:
 	CodeModel* m_model;
 };
 
-
+///Compilation result model. Contains all the compiled contract data required by UI
 class CompilationResult : public QObject
 {
 	Q_OBJECT
@@ -65,12 +66,20 @@ public:
 	CompilationResult(solidity::CompilerStack const& _compiler, QObject* parent);
 	/// Failed compilation result constructor
 	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* parent);
-	QContractDefinition const* contract() { return m_contract.get(); }
 
-	bool successfull() const { return m_successfull; }
+	/// @returns contract definition
 	QContractDefinition const* contract() const { return m_contract.get(); }
+
+	/// Indicates if the compilation was successfull
+	bool successfull() const { return m_successfull; }
+
+	/// @returns compiler error message in case of unsuccessfull compilation
 	QString compilerMessage() const { return m_compilerMessage; }
+
+	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }
+
+	/// @returns contract bytecode in human-readable form
 	QString assemblyCode() const { return m_assemblyCode; }
 
 private:
@@ -82,12 +91,13 @@ private:
 	///@todo syntax highlighting, etc
 };
 
+/// Background code compiler
 class CodeModel : public QObject
 {
 	enum Status
 	{
-		Idle,
-		Compiling,
+		Idle,		///< No compiation in progress
+		Compiling,  ///< Compilation currently in progress
 	};
 
 	Q_OBJECT
@@ -96,14 +106,19 @@ public:
 	CodeModel(QObject* _parent);
 	~CodeModel();
 
+	/// @returns latest compilation result
 	std::shared_ptr<CompilationResult> lastCompilationResult() { return m_result; }
 
 signals:
+	/// Emited on compilation status change
 	void statusChanged(Status _from, Status _to);
+	/// Emitted on compilation complete
 	void compilationComplete();
+	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId, QString const& _content);
 
 public slots:
+	/// Update code model on source code change
 	void registerCodeChange(QString const& _code);
 
 private:
