@@ -46,12 +46,19 @@ inline std::string toJS(dev::bytes const& _n)
 	return "0x" + dev::toHex(_n);
 }
 
+/// Convert string to byte array.
 bytes jsToBytes(std::string const& _s);
+/// Add '0' on the head of _b until _l.
 bytes padded(bytes _b, unsigned _l);
+/// Removing all trailing '0'.
 bytes unpadded(bytes _s);
-std::string unpadded(std::string _s);
+/// Remove all '0' on the head of _s.
+std::string unpadLeft(std::string _s);
+/// Convert u256 to readable string.
 std::string prettyU256(u256 _n);
+/// Convert h256 to readable string.
 std::string fromRaw(h256 _n, unsigned* _inc = nullptr);
+/// Convert string to Address (h160).
 Address fromString(std::string const& _a);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)

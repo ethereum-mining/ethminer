@@ -65,7 +65,7 @@ void ContractCallDataEncoder::encode(QVariableDeclaration* _dec, u256 _value)
 	encodedData();
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _returnParameters, bytes _value)
+QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;
 	std::string returnValue = toJS(_value);
@@ -75,7 +75,7 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QObject*> _ret
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
 		int padding = this->padding(dec->type());
 		std::string rawParam = returnValue.substr(0, padding * 2);
-		r.append(new QVariableDefinition(dec, convertToReadable(unpadded(rawParam), dec)));
+		r.append(new QVariableDefinition(dec, convertToReadable(unpadLeft(rawParam), dec)));
 		returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
 	}
 	return r;
