@@ -415,6 +415,7 @@ int main(int argc, char** argv)
 	if (!(mainwin = initscr()))
 	{
 		cerr << "Error initialising ncurses.";
+		delete [] str;
 		return -1;
 	}
 
