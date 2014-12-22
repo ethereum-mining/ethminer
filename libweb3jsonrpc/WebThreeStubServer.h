@@ -64,6 +64,7 @@ class WebThreeStubServer: public AbstractWebThreeStubServer
 public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
+	virtual std::string web3_sha3(std::string const& _param1);
 	virtual Json::Value eth_accounts();
 	virtual std::string eth_balanceAt(std::string const& _address);
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
