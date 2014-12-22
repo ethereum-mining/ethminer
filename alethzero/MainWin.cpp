@@ -1112,7 +1112,7 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 		s << "<hr/>";
 
 		dev::eth::AccountDiff const& ad = i.second;
-		s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
+		s << "<code style=\"white-space: pre; font-weight: bold\">" << lead(ad.changeType()) << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
 		if (!ad.exist.to())
 			continue;
 
@@ -1133,7 +1133,7 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}
 
-		for (pair<u256, dev::eth::Diff<u256>> const& i: ad.storage)
+		for (pair<u256, dev::Diff<u256>> const& i: ad.storage)
 		{
 			s << "<br/><code style=\"white-space: pre\">";
 			if (!i.second.from())
