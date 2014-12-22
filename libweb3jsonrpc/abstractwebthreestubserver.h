@@ -12,6 +12,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
     public:
         AbstractWebThreeStubServer(jsonrpc::AbstractServerConnector &conn) : jsonrpc::AbstractServer<AbstractWebThreeStubServer>(conn)
         {
+            this->bindAndAddMethod(new jsonrpc::Procedure("web3_sha3", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::web3_sha3I);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_coinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_coinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_setCoinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_setCoinbaseI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_listeningI);
@@ -61,9 +62,12 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("shh_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::shh_changedI);
         }
 
+        inline virtual void web3_sha3I(const Json::Value &request, Json::Value &response)
+        {
+            response = this->web3_sha3(request[0u].asString());
+        }
         inline virtual void eth_coinbaseI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_coinbase();
         }
         inline virtual void eth_setCoinbaseI(const Json::Value &request, Json::Value &response)
@@ -72,7 +76,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_listeningI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_listening();
         }
         inline virtual void eth_setListeningI(const Json::Value &request, Json::Value &response)
@@ -81,7 +84,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_miningI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_mining();
         }
         inline virtual void eth_setMiningI(const Json::Value &request, Json::Value &response)
@@ -90,22 +92,18 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_gasPriceI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_gasPrice();
         }
         inline virtual void eth_accountsI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_accounts();
         }
         inline virtual void eth_peerCountI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_peerCount();
         }
         inline virtual void eth_defaultBlockI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_defaultBlock();
         }
         inline virtual void eth_setDefaultBlockI(const Json::Value &request, Json::Value &response)
@@ -114,7 +112,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_numberI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_number();
         }
         inline virtual void eth_balanceAtI(const Json::Value &request, Json::Value &response)
@@ -171,7 +168,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_compilersI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->eth_compilers();
         }
         inline virtual void eth_lllI(const Json::Value &request, Json::Value &response)
@@ -232,7 +228,6 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void shh_newIdentityI(const Json::Value &request, Json::Value &response)
         {
-            (void)request;
             response = this->shh_newIdentity();
         }
         inline virtual void shh_haveIdentityI(const Json::Value &request, Json::Value &response)
@@ -259,6 +254,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->shh_changed(request[0u].asInt());
         }
+        virtual std::string web3_sha3(const std::string& param1) = 0;
         virtual std::string eth_coinbase() = 0;
         virtual bool eth_setCoinbase(const std::string& param1) = 0;
         virtual bool eth_listening() = 0;

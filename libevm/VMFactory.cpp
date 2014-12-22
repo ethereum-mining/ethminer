@@ -18,6 +18,10 @@
 #include "VMFactory.h"
 #include "VM.h"
 
+#if ETH_EVMJIT
+#include <evmjit/libevmjit-cpp/JitVM.h>
+#endif
+
 namespace dev
 {
 namespace eth
@@ -34,8 +38,12 @@ void VMFactory::setKind(VMKind _kind)
 
 std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
 {
-	asserts(g_kind == VMKind::Interpreter && "Only interpreter supported for now");
+#if ETH_EVMJIT
+	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? (VMFace*)new JitVM(_gas) : new VM(_gas));
+#else
+	asserts(g_kind == VMKind::Interpreter && "JIT disabled in build configuration");
 	return std::unique_ptr<VMFace>(new VM(_gas));
+#endif
 }
 
 }
