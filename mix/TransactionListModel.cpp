@@ -24,7 +24,7 @@
 #include <QQmlEngine>
 #include <QTextDocument>
 #include <QAbstractListModel>
-#include "libdevcore/CommonJS.h"
+#include <libdevcore/CommonJS.h>
 #include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
@@ -58,7 +58,9 @@ TransactionListItem::TransactionListItem(int _index, TransactionSettings const& 
 
 TransactionListModel::TransactionListModel(QObject* _parent, AppContext* _appContext):
 	QAbstractListModel(_parent), m_appContext(_appContext)
-{}
+{
+	qRegisterMetaType<TransactionListItem*>("TransactionListItem*");
+}
 
 QHash<int, QByteArray> TransactionListModel::roleNames() const
 {
@@ -143,7 +145,7 @@ QVariantList TransactionListModel::getParameters(int _index, QString const& _fun
 	return vl;
 }
 
-QObject* TransactionListModel::getItem(int _index)
+TransactionListItem* TransactionListModel::getItem(int _index)
 {
 	TransactionSettings const& transaction = (_index >= 0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
 	TransactionListItem* item = new TransactionListItem(_index, transaction, nullptr);
@@ -198,5 +200,7 @@ void TransactionListModel::runTransaction(int _index)
 	emit transactionStarted(tr);
 }
 
+
 }
 }
+
