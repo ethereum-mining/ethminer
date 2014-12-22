@@ -26,6 +26,9 @@
 #include <deque>
 #include <array>
 #include <libdevcore/Guards.h>
+#include <libdevcrypto/Common.h>
+#include <libdevcrypto/SHA3.h>
+#include <libdevcore/RLP.h>
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -40,12 +43,30 @@ struct UDPDatagram
 	UDPDatagram() = default;
 	UDPDatagram(bi::udp::endpoint _ep, bytes _data): to(_ep), data(std::move(_data)) {}
 	bi::udp::endpoint to;
+
 	bytes data;
+};
+	
+struct RLPDatagram: UDPDatagram
+{
+	void seal(Secret const& _k)
+	{
+		RLPStream packet;
+		streamRLP(packet);
+		bytes b(packet.out());
+		Signature sig = dev::sign(_k, dev::sha3(b));
+		data.resize(data.size() + Signature::size);
+		sig.ref().copyTo(&data);
+		memcpy(data.data()+sizeof(Signature),b.data(),b.size());
+	}
+	
+protected:
+	virtual void streamRLP(RLPStream& _s) const {};
 };
 
 struct UDPSocketFace
 {
-	virtual void send(UDPDatagram const& _msg) = 0;
+	virtual bool send(UDPDatagram const& _msg) = 0;
 	virtual void disconnect() = 0;
 };
 
@@ -80,19 +101,25 @@ public:
 		m_socket.open(bi::udp::v4());
 		m_socket.bind(m_endpoint);
 
+		// clear write queue so reconnect doesn't send stale messages
+		Guard l(x_sendQ);
+		sendQ.clear();
+		
 		m_closed = false;
 		doRead();
 	}
 
-	void send(UDPDatagram const& _datagram)
+	bool send(UDPDatagram const& _datagram)
 	{
 		if (m_closed)
-			return;
+			return false;
 		
 		Guard l(x_sendQ);
 		sendQ.push_back(_datagram);
-		if (sendQ.size() == 1 && !m_closed.load())
+		if (sendQ.size() == 1)
 			doWrite();
+		
+		return true;
 	}
 	
 	bool isOpen() { return !m_closed; }
@@ -137,7 +164,7 @@ protected:
 	void disconnectWithError(boost::system::error_code _ec)
 	{
 		// If !started and already stopped, shutdown has already occured. (EOF or Operation canceled)
-		if (!m_started && m_closed && !m_socket.is_open())
+		if (!m_started && m_closed && !m_socket.is_open() /* todo: veirfy this logic*/)
 			return;
 
 		assert(_ec);
