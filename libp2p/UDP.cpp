@@ -18,3 +18,18 @@
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
+
+#include "UDP.h"
+using namespace dev;
+using namespace dev::p2p;
+
+void RLPDatagram::seal(Secret const& _k)
+{
+	RLPStream packet;
+	streamRLP(packet);
+	bytes b(packet.out());
+	Signature sig = dev::sign(_k, dev::sha3(b));
+	data.resize(data.size() + Signature::size);
+	sig.ref().copyTo(&data);
+	memcpy(data.data()+sizeof(Signature),b.data(),b.size());
+}
