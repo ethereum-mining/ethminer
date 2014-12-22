@@ -43,23 +43,12 @@ struct UDPDatagram
 	UDPDatagram() = default;
 	UDPDatagram(bi::udp::endpoint _ep, bytes _data): to(_ep), data(std::move(_data)) {}
 	bi::udp::endpoint to;
-
 	bytes data;
 };
-	
+
 struct RLPDatagram: UDPDatagram
 {
-	void seal(Secret const& _k)
-	{
-		RLPStream packet;
-		streamRLP(packet);
-		bytes b(packet.out());
-		Signature sig = dev::sign(_k, dev::sha3(b));
-		data.resize(data.size() + Signature::size);
-		sig.ref().copyTo(&data);
-		memcpy(data.data()+sizeof(Signature),b.data(),b.size());
-	}
-	
+	virtual void seal(Secret const& _k);
 protected:
 	virtual void streamRLP(RLPStream& _s) const {};
 };
@@ -92,127 +81,146 @@ public:
 	virtual ~UDPSocket() { disconnect(); }
 
 	/// Socket will begin listening for and delivering packets
-	void connect()
-	{
-		bool expect = false;
-		if (!m_started.compare_exchange_strong(expect, true))
-			return;
-		
-		m_socket.open(bi::udp::v4());
-		m_socket.bind(m_endpoint);
+	void connect();
 
-		// clear write queue so reconnect doesn't send stale messages
-		Guard l(x_sendQ);
-		sendQ.clear();
-		
-		m_closed = false;
-		doRead();
-	}
-
-	bool send(UDPDatagram const& _datagram)
-	{
-		if (m_closed)
-			return false;
-		
-		Guard l(x_sendQ);
-		sendQ.push_back(_datagram);
-		if (sendQ.size() == 1)
-			doWrite();
-		
-		return true;
-	}
+	/// Send datagram.
+	bool send(UDPDatagram const& _datagram);
 	
+	/// Returns if socket is open.
 	bool isOpen() { return !m_closed; }
 
+	/// Disconnect socket.
 	void disconnect() { disconnectWithError(boost::asio::error::connection_reset); }
 	
 protected:
-	void doRead()
-	{
-		auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-		m_socket.async_receive_from(boost::asio::buffer(recvData), recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
-		{
-			if (_ec)
-				return disconnectWithError(_ec);
-
-			assert(_len);
-			m_host.onReceived(this, recvEndpoint, bytesConstRef(recvData.data(), _len));
-			if (!m_closed)
-				doRead();
-		});
-	}
 	
-	void doWrite()
-	{
-		const UDPDatagram& datagram = sendQ[0];
-		auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-		m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.to, [this, self](boost::system::error_code _ec, std::size_t)
-		{
-			if (_ec)
-				return disconnectWithError(_ec);
-			else
-			{
-				Guard l(x_sendQ);
-				sendQ.pop_front();
-				if (sendQ.empty())
-					return;
-			}
-			doWrite();
-		});
-	}
+	void doRead();
 	
-	void disconnectWithError(boost::system::error_code _ec)
-	{
-		// If !started and already stopped, shutdown has already occured. (EOF or Operation canceled)
-		if (!m_started && m_closed && !m_socket.is_open() /* todo: veirfy this logic*/)
-			return;
-
-		assert(_ec);
-		{
-			// disconnect-operation following prior non-zero errors are ignored
-			Guard l(x_socketError);
-			if (socketError != boost::system::error_code())
-				return;
-			socketError = _ec;
-		}
-		// TODO: (if non-zero error) schedule high-priority writes
-
-		// prevent concurrent disconnect
-		bool expected = true;
-		if (!m_started.compare_exchange_strong(expected, false))
-			return;
-		
-		// set m_closed to true to prevent undeliverable egress messages
-		bool wasClosed = m_closed;
-		m_closed = true;
-		
-		// close sockets
-		boost::system::error_code ec;
-		m_socket.shutdown(bi::udp::socket::shutdown_both, ec);
-		m_socket.close();
-
-		// socket never started if it never left stopped-state (pre-handshake)
-		if (wasClosed)
-			return;
-
-		m_host.onDisconnected(this);
-	}
-
-	std::atomic<bool> m_closed;		///< Set when connection is stopping or stopped. Handshake cannot occur unless m_closed is true.
-	std::atomic<bool> m_started;		///< Atomically ensure connection is started once. Start cannot occur unless m_started is false. Managed by start and disconnectWithError.
+	void doWrite();
 	
-	UDPSocketEvents& m_host;					///< Interface which owns this socket.
-	bi::udp::endpoint m_endpoint;			///< Endpoint which we listen to.
+	void disconnectWithError(boost::system::error_code _ec);
+
+	std::atomic<bool> m_started;					///< Atomically ensure connection is started once. Start cannot occur unless m_started is false. Managed by start and disconnectWithError.
+	std::atomic<bool> m_closed;					///< Connection availability.
+	
+	UDPSocketEvents& m_host;						///< Interface which owns this socket.
+	bi::udp::endpoint m_endpoint;					///< Endpoint which we listen to.
 	
 	Mutex x_sendQ;
-	std::deque<UDPDatagram> sendQ;
-	std::array<byte, maxDatagramSize> recvData;		///< Buffer for ingress datagrams.
-	bi::udp::endpoint recvEndpoint;			///< Endpoint data was received from.
-	bi::udp::socket m_socket;
+	std::deque<UDPDatagram> sendQ;				///< Queue for egress data.
+	std::array<byte, maxDatagramSize> recvData;	///< Buffer for ingress data.
+	bi::udp::endpoint recvEndpoint;				///< Endpoint data was received from.
+	bi::udp::socket m_socket;						///< Boost asio udp socket.
 	
-	Mutex x_socketError;				///< Mutex for error which can occur from host or IO thread.
-	boost::system::error_code socketError;	///< Set when shut down due to error.
+	Mutex x_socketError;							///< Mutex for error which can be set from host or IO thread.
+	boost::system::error_code socketError;			///< Set when shut down due to error.
 };
+
+template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler,MaxDatagramSize>::connect()
+{
+	bool expect = false;
+	if (!m_started.compare_exchange_strong(expect, true))
+		return;
+	
+	m_socket.open(bi::udp::v4());
+	m_socket.bind(m_endpoint);
+	
+	// clear write queue so reconnect doesn't send stale messages
+	Guard l(x_sendQ);
+	sendQ.clear();
+	
+	m_closed = false;
+	doRead();
+}
+	
+template <typename Handler, unsigned MaxDatagramSize>
+bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
+{
+	if (m_closed)
+		return false;
+	
+	Guard l(x_sendQ);
+	sendQ.push_back(_datagram);
+	if (sendQ.size() == 1)
+		doWrite();
+	
+	return true;
+}
+
+template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler,MaxDatagramSize>::doRead()
+{
+	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
+	m_socket.async_receive_from(boost::asio::buffer(recvData), recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
+	{
+		if (_ec)
+			return disconnectWithError(_ec);
+
+		assert(_len);
+		m_host.onReceived(this, recvEndpoint, bytesConstRef(recvData.data(), _len));
+		if (!m_closed)
+			doRead();
+	});
+}
+	
+template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler,MaxDatagramSize>::doWrite()
+{
+	const UDPDatagram& datagram = sendQ[0];
+	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
+	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.to, [this, self](boost::system::error_code _ec, std::size_t)
+	{
+		if (_ec)
+			return disconnectWithError(_ec);
+		else
+		{
+			Guard l(x_sendQ);
+			sendQ.pop_front();
+			if (sendQ.empty())
+				return;
+		}
+		doWrite();
+	});
+}
+
+template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler,MaxDatagramSize>::disconnectWithError(boost::system::error_code _ec)
+{
+	// If !started and already stopped, shutdown has already occured. (EOF or Operation canceled)
+	if (!m_started && m_closed && !m_socket.is_open() /* todo: veirfy this logic*/)
+		return;
+
+	assert(_ec);
+	{
+		// disconnect-operation following prior non-zero errors are ignored
+		Guard l(x_socketError);
+		if (socketError != boost::system::error_code())
+			return;
+		socketError = _ec;
+	}
+	// TODO: (if non-zero error) schedule high-priority writes
+
+	// prevent concurrent disconnect
+	bool expected = true;
+	if (!m_started.compare_exchange_strong(expected, false))
+		return;
+	
+	// set m_closed to true to prevent undeliverable egress messages
+	bool wasClosed = m_closed;
+	m_closed = true;
+	
+	// close sockets
+	boost::system::error_code ec;
+	m_socket.shutdown(bi::udp::socket::shutdown_both, ec);
+	m_socket.close();
+
+	// socket never started if it never left stopped-state (pre-handshake)
+	if (wasClosed)
+		return;
+
+	m_host.onDisconnected(this);
+}
 	
 }
 }
