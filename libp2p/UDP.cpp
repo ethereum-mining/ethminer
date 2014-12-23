@@ -30,7 +30,7 @@ h256 RLPXDatagram::sign(Secret const& _k)
 	bytes b(packet.out());
 	h256 h(dev::sha3(b));
 	Signature sig = dev::sign(_k, h);
-	data.resize(data.size() + Signature::size);
+	data.resize(b.size() + Signature::size);
 	sig.ref().copyTo(&data);
 	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
 	return std::move(h);

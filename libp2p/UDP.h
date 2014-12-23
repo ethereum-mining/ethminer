@@ -63,9 +63,11 @@ struct RLPXDatagram: public UDPDatagram
 	static uint64_t fromNow(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
 	
 	RLPXDatagram(bi::udp::endpoint _ep): UDPDatagram(_ep) {}
-	
 	virtual h256 sign(Secret const& _from);
-	virtual void streamRLP(RLPStream&) const = 0;
+
+protected:
+	virtual void streamRLP(RLPStream&) const =0;
+	virtual void interpretRLP(bytesConstRef _bytes) =0;
 	Signature signature;
 };
 
