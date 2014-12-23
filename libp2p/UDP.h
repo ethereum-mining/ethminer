@@ -40,13 +40,13 @@ namespace p2p
 
 /**
  * UDP Datagram
- * @todo make data private
+ * @todo make data protected/functional
  */
 class UDPDatagram
 {
 public:
-	UDPDatagram(bi::udp::endpoint _ep): locus(_ep) {}
-	UDPDatagram(bi::udp::endpoint _ep, bytes _data): data(_data), locus(_ep) {}
+	UDPDatagram(bi::udp::endpoint const& _ep): locus(_ep) {}
+	UDPDatagram(bi::udp::endpoint const& _ep, bytes _data): data(_data), locus(_ep) {}
 	bi::udp::endpoint const& endpoint() const { return locus; }
 	
 	bytes data;
@@ -56,20 +56,41 @@ protected:
 
 /**
  * @brief RLPX Datagram which can be signed.
+ * @todo compact templates
+ * @todo make data private/functional (see UDPDatagram)
+ * @todo valid=true/false (based on signature)
  */
+template <class T>
 struct RLPXDatagram: public UDPDatagram
 {
-	static uint64_t fromNow(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
-	static uint64_t fromNow(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
-	
-	RLPXDatagram(bi::udp::endpoint _ep): UDPDatagram(_ep) {}
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
+	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
+
+	RLPXDatagram(bi::udp::endpoint const& _ep): UDPDatagram(_ep) {}
 	virtual h256 sign(Secret const& _from);
 
-protected:
 	virtual void streamRLP(RLPStream&) const =0;
 	virtual void interpretRLP(bytesConstRef _bytes) =0;
+
+protected:
 	Signature signature;
 };
+	
+template <class T>
+h256 RLPXDatagram<T>::sign(Secret const& _k)
+{
+	RLPStream packet;
+	streamRLP(packet);
+	bytes b(packet.out());
+	h256 h(dev::sha3(b));
+	Signature sig = dev::sign(_k, h);
+	data.resize(b.size() + Signature::size);
+	sig.ref().copyTo(&data);
+	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
+	return std::move(h);
+}
+
 
 /**
  * @brief Interface which UDPSocket will implement.

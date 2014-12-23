@@ -31,118 +31,6 @@ namespace p2p
 {
 
 /**
- * Ping packet: Check if node is alive.
- * PingNode is cached and regenerated after expiration - t, where t is timeout.
- *
- * RLP Encoded Items: 3
- * Minimum Encoded Size: 18 bytes
- * Maximum Encoded Size:  bytes // todo after u128 addresses
- *
- * signature: Signature of message.
- * ipAddress: Our IP address.
- * port: Our port.
- * expiration: Triggers regeneration of packet. May also provide control over synchronization.
- *
- * Ping is used to implement evict. When a new node is seen for
- * a given bucket which is full, the least-responsive node is pinged.
- * If the pinged node doesn't respond then it is removed and the new
- * node is inserted.
- *
- * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
- *
- */
-struct PingNode: public RLPXDatagram
-{
-	friend class NodeTable;
-	using RLPXDatagram::RLPXDatagram;
-	PingNode(bi::udp::endpoint _to, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_to), ipAddress(_src), port(_srcPort), expiration(fromNow(_expiration)) {}
-	
-	std::string ipAddress;	// rlp encoded bytes min: 16
-	uint16_t port;			// rlp encoded bytes min: 1 max: 3
-	uint64_t expiration;		// rlp encoded bytes min: 1 max: 9
-	
-protected:
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = (std::string)r[0]; port = (uint16_t)r[1]; expiration = (uint64_t)r[2]; }
-};
-
-/**
- * Pong packet: response to ping
- *
- * RLP Encoded Items: 1
- * Minimum Encoded Size: 33 bytes
- * Maximum Encoded Size: 33 bytes
- *
- * @todo value of replyTo
- */
-struct Pong: RLPXDatagram
-{
-	friend class NodeTable;
-	using RLPXDatagram::RLPXDatagram;
-	
-	h256 replyTo;
-	
-	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); replyTo = (h256)r[0]; }
-};
-
-/**
- * FindNode Packet: Request k-nodes, closest to the target.
- * FindNode is cached and regenerated after expiration - t, where t is timeout.
- * FindNode implicitly results in finding neighbors of a given node.
- *
- * RLP Encoded Items: 2
- * Minimum Encoded Size: 21 bytes
- * Maximum Encoded Size: 30 bytes
- *
- * target: Address of node. The responding node will send back nodes closest to the target.
- * expiration: Triggers regeneration of packet. May also provide control over synchronization.
- *
- */
-struct FindNode: RLPXDatagram
-{
-	friend class NodeTable;
-	using RLPXDatagram::RLPXDatagram;
-	FindNode(bi::udp::endpoint _to, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_to), target(_target), expiration(fromNow(_expiration)) {}
-	
-	h160 target;
-	uint64_t expiration;
-
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = (h160)r[0]; expiration = (uint64_t)r[1]; }
-};
-
-/**
- * Node Packet: Multiple node packets are sent in response to FindNode.
- *
- * RLP Encoded Items: 2 (first item is list)
- * Minimum Encoded Size: 10 bytes
- *
- */
-struct Neighbors: RLPXDatagram
-{
-	friend class NodeTable;
-	using RLPXDatagram::RLPXDatagram;
-	
-	struct Node
-	{
-		Node() = default;
-		Node(bytesConstRef _bytes) { interpretRLP(_bytes); }
-		std::string ipAddress;
-		uint16_t port;
-		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
-		void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = (uint16_t)r[1]; node = (h512)r[2]; }
-	};
-	
-	std::list<Node> nodes;
-	h256 nonce;
-
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << nonce; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n.toBytesConstRef())); nonce = (h256)r[1]; }
-};
-
-/**
  * NodeTable using S/Kademlia system for node discovery and preference.
  * untouched buckets are refreshed if they have not been touched within an hour
  *
@@ -158,20 +46,20 @@ struct Neighbors: RLPXDatagram
  * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
  *
  * [Networking]
- * @todo use eth/stun/ice/whatever for public-discovery
+ * @todo use eth/upnp/natpmp/stun/ice/etc for public-discovery
+ * @todo firewall
  *
  * [Protocol]
+ * @todo ping newly added nodes for eviction
  * @todo optimize knowledge at opposite edges; eg, s_bitsPerStep lookups. (Can be done via pointers to NodeBucket)
  * @todo ^ s_bitsPerStep = 5; // Denoted by b in [Kademlia]. Bits by which address space is divided.
  * @todo optimize (use tree for state and/or custom compare for cache)
  * @todo reputation (aka universal siblings lists)
  * @todo dht (aka siblings)
- *
- * [Maintenance]
- * @todo pretty logs
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
+	friend struct Neighbors;
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
 	using EvictionTimeout = std::pair<std::pair<Address,TimePoint>,Address>;
@@ -304,6 +192,126 @@ protected:
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
+};
+	
+/**
+ * Ping packet: Check if node is alive.
+ * PingNode is cached and regenerated after expiration - t, where t is timeout.
+ *
+ * RLP Encoded Items: 3
+ * Minimum Encoded Size: 18 bytes
+ * Maximum Encoded Size:  bytes // todo after u128 addresses
+ *
+ * signature: Signature of message.
+ * ipAddress: Our IP address.
+ * port: Our port.
+ * expiration: Triggers regeneration of packet. May also provide control over synchronization.
+ *
+ * Ping is used to implement evict. When a new node is seen for
+ * a given bucket which is full, the least-responsive node is pinged.
+ * If the pinged node doesn't respond then it is removed and the new
+ * node is inserted.
+ *
+ * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
+ *
+ */
+struct PingNode: RLPXDatagram<PingNode>
+{
+	using RLPXDatagram::RLPXDatagram;
+	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
+	
+	std::string ipAddress;	// rlp encoded bytes min: 16
+	uint16_t port;			// rlp encoded bytes min: 1 max: 3
+	uint64_t expiration;		// rlp encoded bytes min: 1 max: 9
+
+	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = (std::string)r[0]; port = (uint16_t)r[1]; expiration = (uint64_t)r[2]; }
+};
+
+/**
+ * Pong packet: response to ping
+ *
+ * RLP Encoded Items: 1
+ * Minimum Encoded Size: 33 bytes
+ * Maximum Encoded Size: 33 bytes
+ *
+ * @todo value of replyTo
+ * @todo create from PingNode (reqs RLPXDatagram verify flag)
+ */
+struct Pong: RLPXDatagram<Pong>
+{
+	using RLPXDatagram::RLPXDatagram;
+
+	h256 replyTo; // hash of rlp of PingNode
+	
+	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); replyTo = (h256)r[0]; }
+};
+
+/**
+ * FindNode Packet: Request k-nodes, closest to the target.
+ * FindNode is cached and regenerated after expiration - t, where t is timeout.
+ * FindNode implicitly results in finding neighbors of a given node.
+ *
+ * RLP Encoded Items: 2
+ * Minimum Encoded Size: 21 bytes
+ * Maximum Encoded Size: 30 bytes
+ *
+ * target: Address of node. The responding node will send back nodes closest to the target.
+ * expiration: Triggers regeneration of packet. May also provide control over synchronization.
+ *
+ */
+struct FindNode: RLPXDatagram<FindNode>
+{
+	using RLPXDatagram::RLPXDatagram;
+	FindNode(bi::udp::endpoint _ep, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
+	
+	h160 target;
+	uint64_t expiration;
+
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = (h160)r[0]; expiration = (uint64_t)r[1]; }
+};
+
+/**
+ * Node Packet: Multiple node packets are sent in response to FindNode.
+ *
+ * RLP Encoded Items: 2 (first item is list)
+ * Minimum Encoded Size: 10 bytes
+ *
+ * @todo nonce
+ */
+struct Neighbors: RLPXDatagram<Neighbors>
+{
+	struct Node
+	{
+		Node() = default;
+		Node(bytesConstRef _bytes) { interpretRLP(_bytes); }
+		std::string ipAddress;
+		uint16_t port;
+		NodeId node;
+		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
+		void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = (uint16_t)r[1]; node = (h512)r[2]; }
+	};
+	
+	using RLPXDatagram::RLPXDatagram;
+	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest): RLPXDatagram(_to), nonce(h256())
+	{
+		for (auto& n: _nearest)
+		{
+			Node node;
+			node.ipAddress = n->endpoint.udp.address().to_string();
+			node.port = n->endpoint.udp.port();
+			node.node = n->publicKey();
+			nodes.push_back(node);
+		}
+	}
+	
+	std::list<Node> nodes;
+	h256 nonce;
+
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << nonce; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n.toBytesConstRef())); nonce = (h256)r[1]; }
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
