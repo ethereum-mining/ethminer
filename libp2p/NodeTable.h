@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <boost/integer/static_log2.hpp>
 #include <libdevcrypto/Common.h>
 #include <libp2p/UDP.h>
 
@@ -42,51 +43,58 @@ namespace p2p
  * a given bucket which is full, the least-responsive node is pinged.
  * If the pinged node doesn't respond then it is removed and the new
  * node is inserted.
+ *
+ * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
+ *
  */
-struct PingNode: RLPDatagram
+struct PingNode: RLPXDatagram
 {
-	bytes ipAddress;
+	using RLPXDatagram::RLPXDatagram;
+	PingNode(bi::udp::endpoint _to, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_to), ipAddress(_src), port(_srcPort), expiration(fromNow(_expiration)) {}
+	
+	std::string ipAddress;
 	uint16_t port;
 	uint64_t expiration;
 
-	Signature signature;
-	
 	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
 };
 
-struct Pong: RLPDatagram
+struct Pong: RLPXDatagram
 {
-	// todo: weak-signed pong
-	Address from;
-	uint64_t replyTo;	/// expiration from PingNode
+	using RLPXDatagram::RLPXDatagram;
 	
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << from << replyTo; }
+	h256 replyTo;	/// TBD
+	
+	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
 };
 
 /**
- * FindNeighbors Packet: Request k-nodes, closest to the target.
- * FindNeighbors is cached and regenerated after expiration - t, where t is timeout.
+ * FindNode Packet: Request k-nodes, closest to the target.
+ * FindNode is cached and regenerated after expiration - t, where t is timeout.
+ * FindNode implicitly results in finding neighbors of a given node.
  *
- * signature: Signature of message.
  * target: Address of NodeId. The responding node will send back nodes closest to the target.
  * expiration: Triggers regeneration of packet. May also provide control over synchronization.
  *
  */
-struct FindNeighbors: RLPDatagram
+struct FindNode: RLPXDatagram
 {
+	using RLPXDatagram::RLPXDatagram;
+	FindNode(bi::udp::endpoint _to, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_to), target(_target), expiration(fromNow(_expiration)) {}
+	
 	h160 target;
 	uint64_t expiration;
-	
-	Signature signature;
-	
+
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
 };
 
 /**
- * Node Packet: Multiple node packets are sent in response to FindNeighbors.
+ * Node Packet: Multiple node packets are sent in response to FindNode.
  */
-struct Neighbors: RLPDatagram
+struct Neighbors: RLPXDatagram
 {
+	using RLPXDatagram::RLPXDatagram;
+	
 	struct Node
 	{
 		bytes ipAddress;
@@ -110,31 +118,32 @@ struct Neighbors: RLPDatagram
  * Thread-safety is ensured by modifying NodeEntry details via 
  * shared_ptr replacement instead of mutating values.
  *
- * @todo don't try to evict node if node isRequired. (support for makeRequired)
- * @todo optimize (use tree for state (or set w/custom compare for cache))
+ * [Interface]
  * @todo constructor support for m_node, m_secret
- * @todo use s_bitsPerStep for find and refresh/ping
- * @todo exclude bucket from refresh if we have node as peer
+ * @todo don't try to evict node if node isRequired. (support for makeRequired)
+ * @todo exclude bucket from refresh if we have node as peer (support for makeRequired)
  * @todo restore nodes
+ * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
+ * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
+ *
+ * [Networking]
+ * @todo use eth/stun/ice/whatever for public-discovery
+ *
+ * [Protocol]
+ * @todo optimize knowledge at opposite edges; eg, s_bitsPerStep lookups. (Can be done via pointers to NodeBucket)
+ * @todo ^ s_bitsPerStep = 5; // Denoted by b in [Kademlia]. Bits by which address space is divided.
+ * @todo optimize (use tree for state and/or custom compare for cache)
+ * @todo reputation (aka universal siblings lists)
+ * @todo dht (aka siblings)
+ *
+ * [Maintenance]
+ * @todo pretty logs
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
-	using nodeSocket = UDPSocket<NodeTable, 1024>;
+	using nodeSocket = UDPSocket<NodeTable, 1280>;
 	using timePoint = std::chrono::steady_clock::time_point;
-	
-	static unsigned const s_bucketSize = 16;			// Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
-//	const unsigned s_bitsPerStep = 5;					// @todo Denoted by b in [Kademlia]. Bits by which address space will be divided for find responses.
-	static unsigned const s_alpha = 3;				// Denoted by \alpha in [Kademlia]. Number of concurrent FindNeighbors requests.
-	const unsigned s_findTimout = 300;				// How long to wait between find queries.
-//	const unsigned s_siblings = 5;					// @todo Denoted by s in [S/Kademlia]. User-defined by sub-protocols.
-	const unsigned s_bucketRefresh = 3600;				// Refresh interval prevents bucket from becoming stale. [Kademlia]
-	static unsigned const s_bits = 8 * Address::size;	// Denoted by n.
-	static unsigned const s_bins = s_bits - 1;			//
-	const unsigned s_evictionCheckInterval = 75;		// Interval by which eviction timeouts are checked.
-	const unsigned s_pingTimeout = 500;
-	
-public:
-	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	using EvictionTimeout = std::pair<std::pair<Address,timePoint>,Address>;
 
 	struct NodeDefaultEndpoint
 	{
@@ -142,16 +151,29 @@ public:
 		bi::udp::endpoint udp;
 	};
 	
-	struct NodeEntry
+	struct Node
 	{
-		NodeEntry(Address _id, Public _pubk, bi::udp::endpoint _udp): id(_id), pubk(_pubk), endpoint(NodeDefaultEndpoint(_udp)), distance(0) {}
-		NodeEntry(NodeEntry _src, Address _id, Public _pubk, bi::udp::endpoint _udp): id(_id), pubk(_pubk), endpoint(NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_id)) {}
-		NodeEntry(NodeEntry _src, Address _id, Public _pubk, NodeDefaultEndpoint _gw): id(_id), pubk(_pubk), endpoint(_gw), distance(dist(_src.id,_id)) {}
+		Node(Address _id, Public _pubk, NodeDefaultEndpoint _udp): id(_id), pubk(_pubk), endpoint(_udp) {}
+		Node(Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)) {}
+		
+		virtual Address const& address() const { return id; }
+		virtual Public const& publicKey() const { return pubk; }
+		
 		Address id;
 		Public pubk;
-		NodeDefaultEndpoint endpoint;		///< How we've previously connected to this node. (must match node's reported endpoint)
-		const unsigned distance;
-		timePoint activePing;
+		NodeDefaultEndpoint endpoint;
+	};
+	
+	/**
+	 * NodeEntry
+	 * @todo Type of id will become template parameter.
+	 */
+	struct NodeEntry: public Node
+	{
+		NodeEntry(Node _src, Address _id, Public _pubk, NodeDefaultEndpoint _gw): Node(_id, _pubk, _gw), distance(dist(_src.id,_id)) {}
+		NodeEntry(Node _src, Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_id)) {}
+
+		const unsigned distance;	///< Node's distance from _src (see constructor).
 	};
 	
 	struct NodeBucket
@@ -161,9 +183,30 @@ public:
 		std::list<std::weak_ptr<NodeEntry>> nodes;
 	};
 	
-	using EvictionTimeout = std::pair<std::pair<Address,timePoint>,Address>;
+public:
+	
+	/// Constants for Kademlia, mostly derived from address space.
+	
+	static constexpr unsigned s_addressByteSize = sizeof(NodeEntry::id);		///< Size of address type in bytes.
+	static constexpr unsigned s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
+	static constexpr unsigned s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
+	static constexpr unsigned s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
+	
+	/// Chosen constants
+	
+	static constexpr unsigned s_bucketSize = 16;		///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
+	static constexpr unsigned s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
+	static constexpr uint16_t s_defaultPort = 30300;	///< Default port to listen on.
+	
+	/// Intervals
+	
+	static constexpr unsigned s_evictionCheckInterval = 75;							///< Interval at which eviction timeouts are checked.
+	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);		///< How long to wait for requests (evict, find iterations).
+	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);			///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	
+	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
-	NodeTable(ba::io_service& _io);
+	NodeTable(ba::io_service& _io, uint16_t _port = s_defaultPort);
 	~NodeTable();
 	
 	void join();
@@ -173,14 +216,13 @@ public:
 	NodeEntry operator[](Address _id);
 	
 protected:
-	void requestNeighbors(NodeEntry const& _node, Address _target) const;
-	
-	/// Sends requests to other nodes requesting nodes "near" to us in order to populate node table such that connected nodes form centrality.
+	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to .
 	void doFindNode(Address _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
+	/// Returns nodes nearest to target.
 	std::vector<std::shared_ptr<NodeEntry>> findNearest(Address _target);
 	
-	void ping(bi::address _address, unsigned _port) const;
+	void ping(bi::udp::endpoint _to) const;
 	
 	void ping(NodeEntry* _n) const;
 	
@@ -194,16 +236,27 @@ protected:
 	
 	NodeBucket const& bucket(NodeEntry* _n) const;
 	
+	/// Network Events
+	
 	void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet);
 	
 	void onDisconnected(UDPSocketFace*) {};
 	
+	/// Tasks
+	
 	void doCheckEvictions(boost::system::error_code const& _ec);
 	
 	void doRefreshBuckets(boost::system::error_code const& _ec);
-	
+
+#ifndef BOOST_AUTO_TEST_SUITE
 private:
-	NodeEntry m_node;										///< This node.
+#else
+protected:
+#endif
+	/// Sends s_alpha concurrent FindNeighbor requests to nodes closest to target until
+	void requestNeighbors(NodeEntry const& _node, Address _target) const;
+
+	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.
 
 	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
@@ -215,12 +268,15 @@ private:
 	Mutex x_evictions;
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
 	
-	std::shared_ptr<nodeSocket> m_socket;							///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+	std::shared_ptr<nodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
 	nodeSocket* m_socketPtr;									///< Set to m_socket.get().
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
+	
+struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
+struct NodeTableNote: public LogChannel { static const char* name() { return "*P*"; } static const int verbosity = 1; };
 
 }
 }

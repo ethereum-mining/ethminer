@@ -23,13 +23,15 @@
 using namespace dev;
 using namespace dev::p2p;
 
-void RLPDatagram::seal(Secret const& _k)
+h256 RLPXDatagram::sign(Secret const& _k)
 {
 	RLPStream packet;
 	streamRLP(packet);
 	bytes b(packet.out());
-	Signature sig = dev::sign(_k, dev::sha3(b));
+	h256 h(dev::sha3(b));
+	Signature sig = dev::sign(_k, h);
 	data.resize(data.size() + Signature::size);
 	sig.ref().copyTo(&data);
-	memcpy(data.data()+sizeof(Signature),b.data(),b.size());
+	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
+	return std::move(h);
 }

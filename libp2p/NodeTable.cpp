@@ -24,18 +24,19 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-NodeTable::NodeTable(ba::io_service& _io):
-		m_node(NodeEntry(Address(), Public(), bi::udp::endpoint())),
-		m_socket(new nodeSocket(_io, *this, 30300)),
-		m_socketPtr(m_socket.get()),
-		m_io(_io),
-		m_bucketRefreshTimer(m_io),
-		m_evictionCheckTimer(m_io)
-	{
-		for (unsigned i = 0; i < s_bins; i++)
-			m_state[i].distance = i, m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
-		doRefreshBuckets(boost::system::error_code());
-	}
+NodeTable::NodeTable(ba::io_service& _io, uint16_t _port):
+	m_node(Node(Address(), Public(), bi::udp::endpoint())),
+	m_socket(new nodeSocket(_io, *this, _port)),
+	m_socketPtr(m_socket.get()),
+	m_io(_io),
+	m_bucketRefreshTimer(m_io),
+	m_evictionCheckTimer(m_io)
+{
+	for (unsigned i = 0; i < s_bins; i++)
+		m_state[i].distance = i, m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
+	doRefreshBuckets(boost::system::error_code());
+	m_socketPtr->connect();
+}
 	
 NodeTable::~NodeTable()
 {
@@ -44,7 +45,7 @@ NodeTable::~NodeTable()
 	m_socketPtr->disconnect();
 }
 	
-	void NodeTable::join()
+void NodeTable::join()
 {
 	doFindNode(m_node.id);
 }
@@ -66,17 +67,14 @@ NodeTable::NodeEntry NodeTable::operator[](Address _id)
 
 void NodeTable::requestNeighbors(NodeEntry const& _node, Address _target) const
 {
-	FindNeighbors p;
-	p.target = _target;
-	
-	p.to = _node.endpoint.udp;
-	p.seal(m_secret);
+	FindNode p(_node.endpoint.udp, _target);
+	p.sign(m_secret);
 	m_socketPtr->send(p);
 }
 
 void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried)
 {
-	if (!m_socketPtr->isOpen() || _round == 7)
+	if (!m_socketPtr->isOpen() || _round == s_maxSteps)
 		return;
 
 	auto nearest = findNearest(_node);
@@ -84,20 +82,27 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 	for (unsigned i = 0; i < nearest.size() && tried.size() < s_alpha; i++)
 		if (!_tried->count(nearest[i]))
 		{
-			tried.push_back(nearest[i]);
-			requestNeighbors(*nearest[i], _node);
+			auto r = nearest[i];
+			tried.push_back(r);
+			FindNode p(r->endpoint.udp, _node);
+			p.sign(m_secret);
+			m_socketPtr->send(p);
 		}
-		else
-			continue;
 	
-	while (auto n = tried.front())
+	if (tried.empty())
 	{
-		_tried->insert(n);
+		clog(NodeTableWarn) << "Terminating doFindNode after " << _round << " rounds.";
+		return;
+	}
+		
+	while (!tried.empty())
+	{
+		_tried->insert(tried.front());
 		tried.pop_front();
 	}
 	
 	auto self(shared_from_this());
-	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(s_findTimout));
+	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(c_reqTimeout.count()));
 	m_evictionCheckTimer.async_wait([this, self, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
 		if (_ec)
@@ -108,15 +113,16 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 
 std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Address _target)
 {
-	// send s_alpha FindNeighbors packets to nodes we know, closest to target
+	// send s_alpha FindNode packets to nodes we know, closest to target
 	unsigned head = dist(m_node.id, _target);
-	unsigned tail = (head - 1) % (s_bits - 1);
+	unsigned tail = (head - 1) % s_bins;
 	
 	// todo: optimize with tree
 	std::map<unsigned, std::list<std::shared_ptr<NodeEntry>>> found;
 	unsigned count = 0;
 	
 	// if d is 0, then we roll look forward, if last, we reverse, else, spread from d
+#pragma warning TODO: This should probably be s_bins instead of s_bits.
 	if (head != 0 && tail != s_bits)
 		while (head != tail && count < s_bucketSize)
 		{
@@ -140,7 +146,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 							break;
 					}
 			head++;
-			tail = (tail - 1) % (s_bits - 1);
+			tail = (tail - 1) % s_bins;
 		}
 	else if (head == 0)
 		while (head < s_bucketSize && count < s_bucketSize)
@@ -156,7 +162,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				}
 			head--;
 		}
-	else if (tail == s_bits - 1)
+	else if (tail == s_bins)
 		while (tail > 0 && count < s_bucketSize)
 		{
 			Guard l(x_state);
@@ -178,21 +184,17 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 	return std::move(ret);
 }
 
-void NodeTable::ping(bi::address _address, unsigned _port) const
+void NodeTable::ping(bi::udp::endpoint _to) const
 {
-	PingNode p;
-	string ip = m_node.endpoint.udp.address().to_string();
-	p.ipAddress = asBytes(ip);
-	p.port = m_node.endpoint.udp.port();
-//		p.expiration;
-	p.seal(m_secret);
+	PingNode p(_to, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
+	p.sign(m_secret);
 	m_socketPtr->send(p);
 }
 
 void NodeTable::ping(NodeEntry* _n) const
 {
-	if (_n && _n->endpoint.udp.address().is_v4())
-		ping(_n->endpoint.udp.address(), _n->endpoint.udp.port());
+	if (_n)
+		ping(_n->endpoint.udp);
 }
 
 void NodeTable::evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new)
@@ -279,6 +281,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 {
 	RLP rlp(_packet);
 	
+	clog(NodeTableNote) << "Received message from " << _from.address().to_string() << ":" << _from.port();
 	
 	// whenever a pong is received, first check if it's in m_evictions, if so, remove it
 	Guard l(x_evictions);
@@ -289,8 +292,8 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 	if (_ec || !m_socketPtr->isOpen())
 		return;
 
-	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(s_evictionCheckInterval));
 	auto self(shared_from_this());
+	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(s_evictionCheckInterval));
 	m_evictionCheckTimer.async_wait([this, self](boost::system::error_code const& _ec)
 	{
 		if (_ec)
@@ -301,7 +304,7 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 		{
 			Guard l(x_evictions);
 			for (auto& e: m_evictions)
-				if (chrono::steady_clock::now() - e.first.second > chrono::milliseconds(s_pingTimeout))
+				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
 				{
 					Guard l(x_nodes);
 					drop.push_back(m_nodes[e.second]);
@@ -319,7 +322,7 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 
 void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 {
-	cout << "refreshing buckets" << endl;
+	clog(NodeTableNote) << "refreshing buckets";
 	if (_ec)
 		return;
 	
@@ -329,7 +332,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 	{
 		Guard l(x_state);
 		for (auto& d: m_state)
-			if (chrono::steady_clock::now() - d.modified > chrono::seconds(s_bucketRefresh))
+			if (chrono::steady_clock::now() - d.modified > c_bucketRefresh)
 				while (!d.nodes.empty())
 				{
 					auto n = d.nodes.front();
@@ -343,7 +346,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 				}
 	}
 
-	unsigned nextRefresh = connected ? (refreshed ? 200 : s_bucketRefresh*1000) : 10000;
+	unsigned nextRefresh = connected ? (refreshed ? 200 : c_bucketRefresh.count()*1000) : 10000;
 	auto runcb = [this](boost::system::error_code const& error) -> void { doRefreshBuckets(error); };
 	m_bucketRefreshTimer.expires_from_now(boost::posix_time::milliseconds(nextRefresh));
 	m_bucketRefreshTimer.async_wait(runcb);

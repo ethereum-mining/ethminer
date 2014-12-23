@@ -38,27 +38,49 @@ namespace dev
 namespace p2p
 {
 
-struct UDPDatagram
+/**
+ * UDP Datagram
+ * @todo make data private
+ */
+class UDPDatagram
 {
-	UDPDatagram() = default;
-	UDPDatagram(bi::udp::endpoint _ep, bytes _data): to(_ep), data(std::move(_data)) {}
-	bi::udp::endpoint to;
+public:
+	UDPDatagram(bi::udp::endpoint _ep): locus(_ep) {}
+	UDPDatagram(bi::udp::endpoint _ep, bytes _data): data(_data), locus(_ep) {}
+	bi::udp::endpoint const& endpoint() const { return locus; }
+	
 	bytes data;
-};
-
-struct RLPDatagram: UDPDatagram
-{
-	virtual void seal(Secret const& _k);
 protected:
-	virtual void streamRLP(RLPStream& _s) const {};
+	bi::udp::endpoint locus;
 };
 
+/**
+ * @brief RLPX Datagram which can be signed.
+ */
+struct RLPXDatagram: public UDPDatagram
+{
+	static uint64_t fromNow(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
+	static uint64_t fromNow(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
+	
+	RLPXDatagram(bi::udp::endpoint _ep): UDPDatagram(_ep) {}
+	
+	virtual h256 sign(Secret const& _from);
+	virtual void streamRLP(RLPStream&) const = 0;
+	Signature signature;
+};
+
+/**
+ * @brief Interface which UDPSocket will implement.
+ */
 struct UDPSocketFace
 {
 	virtual bool send(UDPDatagram const& _msg) = 0;
 	virtual void disconnect() = 0;
 };
 
+/**
+ * @brief Interface which a UDPSocket's owner must implement.
+ */
 struct UDPSocketEvents
 {
 	virtual void onDisconnected(UDPSocketFace*) {};
@@ -68,6 +90,9 @@ struct UDPSocketEvents
 /**
  * @brief UDP Interface
  * Handler must implement UDPSocketEvents.
+ *
+ * @todo multiple endpoints (we cannot advertise 0.0.0.0)
+ * @todo decouple deque from UDPDatagram and add ref() to datagram for fire&forget
  */
 template <typename Handler, unsigned MaxDatagramSize>
 class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Handler, MaxDatagramSize>>
@@ -76,7 +101,6 @@ public:
 	static constexpr unsigned maxDatagramSize = MaxDatagramSize;
 	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
 	
-	/// Construct open socket to endpoint.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, unsigned _port): m_host(_host), m_endpoint(bi::udp::v4(), _port), m_socket(_io) { m_started.store(false); m_closed.store(true); };
 	virtual ~UDPSocket() { disconnect(); }
 
@@ -142,6 +166,7 @@ bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
 	
 	Guard l(x_sendQ);
 	sendQ.push_back(_datagram);
+	clog(NoteChannel) << "qued datagram";
 	if (sendQ.size() == 1)
 		doWrite();
 	
@@ -169,7 +194,7 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 {
 	const UDPDatagram& datagram = sendQ[0];
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.to, [this, self](boost::system::error_code _ec, std::size_t)
+	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)
 	{
 		if (_ec)
 			return disconnectWithError(_ec);
@@ -180,6 +205,7 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 			if (sendQ.empty())
 				return;
 		}
+		clog(NoteChannel) << "sent datagram";
 		doWrite();
 	});
 }
