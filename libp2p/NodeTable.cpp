@@ -280,12 +280,51 @@ NodeTable::NodeBucket const& NodeTable::bucket(NodeEntry* _n) const
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
 {
-	RLP rlp(_packet);
+	if (_packet.size() < 69)
+	{
+		clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
+		return;
+	}
 	
-	clog(NodeTableNote) << "Received X from " << _from.address().to_string() << ":" << _from.port();
+	/// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
+	RLP rlp(bytesConstRef(_packet.cropped(65, _packet.size() - 65)));
+	unsigned itemCount = rlp.itemCount();
 	
-	// whenever a pong is received, first check if it's in m_evictions, if so, remove it
-	Guard l(x_evictions);
+//	bytesConstRef sig(_packet.cropped(0, 65));		// verify signature (deferred)
+	
+	switch (itemCount) {
+		case 1:
+		{
+			clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
+			// whenever a pong is received, first check if it's in m_evictions, if so, remove it
+			Guard l(x_evictions);
+			break;
+		}
+			
+		case 2:
+			if (rlp[0].isList())
+			{
+				clog(NodeTableMessageSummary) << "Received Neighbors from " << _from.address().to_string() << ":" << _from.port();
+			}
+			else
+			{
+				clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
+			}
+			break;
+			
+		case 3:
+		{
+			clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
+			// todo: if we know the node, send a pong. otherwise ignore him.
+			// let's send a pong!
+			
+			break;
+		}
+			
+		default:
+			clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
+			return;
+	}
 }
 	
 void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)

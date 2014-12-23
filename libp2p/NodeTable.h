@@ -34,6 +34,10 @@ namespace p2p
  * Ping packet: Check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.
  *
+ * RLP Encoded Items: 3
+ * Minimum Encoded Size: 18 bytes
+ * Maximum Encoded Size:  bytes // todo after u128 addresses
+ *
  * signature: Signature of message.
  * ipAddress: Our IP address.
  * port: Our port.
@@ -47,25 +51,39 @@ namespace p2p
  * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
  *
  */
-struct PingNode: RLPXDatagram
+struct PingNode: public RLPXDatagram
 {
+	friend class NodeTable;
 	using RLPXDatagram::RLPXDatagram;
 	PingNode(bi::udp::endpoint _to, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_to), ipAddress(_src), port(_srcPort), expiration(fromNow(_expiration)) {}
 	
-	std::string ipAddress;
-	uint16_t port;
-	uint64_t expiration;
-
+	std::string ipAddress;	// rlp encoded bytes min: 16
+	uint16_t port;			// rlp encoded bytes min: 1 max: 3
+	uint64_t expiration;		// rlp encoded bytes min: 1 max: 9
+	
+protected:
 	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = (std::string)r[0]; port = (uint16_t)r[1]; expiration = (uint64_t)r[2]; }
 };
 
+/**
+ * Pong packet: response to ping
+ *
+ * RLP Encoded Items: 1
+ * Minimum Encoded Size: 33 bytes
+ * Maximum Encoded Size: 33 bytes
+ *
+ * @todo value of replyTo
+ */
 struct Pong: RLPXDatagram
 {
+	friend class NodeTable;
 	using RLPXDatagram::RLPXDatagram;
 	
-	h256 replyTo;	/// TBD
+	h256 replyTo;
 	
 	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); replyTo = (h256)r[0]; }
 };
 
 /**
@@ -73,12 +91,17 @@ struct Pong: RLPXDatagram
  * FindNode is cached and regenerated after expiration - t, where t is timeout.
  * FindNode implicitly results in finding neighbors of a given node.
  *
- * target: Address of NodeId. The responding node will send back nodes closest to the target.
+ * RLP Encoded Items: 2
+ * Minimum Encoded Size: 21 bytes
+ * Maximum Encoded Size: 30 bytes
+ *
+ * target: Address of node. The responding node will send back nodes closest to the target.
  * expiration: Triggers regeneration of packet. May also provide control over synchronization.
  *
  */
 struct FindNode: RLPXDatagram
 {
+	friend class NodeTable;
 	using RLPXDatagram::RLPXDatagram;
 	FindNode(bi::udp::endpoint _to, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_to), target(_target), expiration(fromNow(_expiration)) {}
 	
@@ -86,29 +109,37 @@ struct FindNode: RLPXDatagram
 	uint64_t expiration;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = (h160)r[0]; expiration = (uint64_t)r[1]; }
 };
 
 /**
  * Node Packet: Multiple node packets are sent in response to FindNode.
+ *
+ * RLP Encoded Items: 2 (first item is list)
+ * Minimum Encoded Size: 10 bytes
+ *
  */
 struct Neighbors: RLPXDatagram
 {
+	friend class NodeTable;
 	using RLPXDatagram::RLPXDatagram;
 	
 	struct Node
 	{
-		bytes ipAddress;
+		Node() = default;
+		Node(bytesConstRef _bytes) { interpretRLP(_bytes); }
+		std::string ipAddress;
 		uint16_t port;
 		NodeId node;
 		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
+		void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = (uint16_t)r[1]; node = (h512)r[2]; }
 	};
 	
-	std::set<Node> nodes;
+	std::list<Node> nodes;
 	h256 nonce;
-	
-	Signature signature;
-	
+
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << nonce; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n.toBytesConstRef())); nonce = (h256)r[1]; }
 };
 
 /**
@@ -274,9 +305,17 @@ protected:
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
-	
+
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
 struct NodeTableNote: public LogChannel { static const char* name() { return "*P*"; } static const int verbosity = 1; };
+struct NodeTableMessageSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 2; };
+struct NodeTableConnect: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
+struct NodeTableMessageDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 5; };
+struct NodeTableTriviaSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 10; };
+struct NodeTableTriviaDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 11; };
+struct NodeTableAllDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 13; };
+struct NodeTableEgress: public LogChannel { static const char* name() { return ">>P"; } static const int verbosity = 14; };
+struct NodeTableIngress: public LogChannel { static const char* name() { return "<<P"; } static const int verbosity = 15; };
 
 }
 }
