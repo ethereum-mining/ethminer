@@ -143,7 +143,7 @@ public:
 	/// @todo Change that to transaction item
 	Q_INVOKABLE void edit(QObject* _data);
 	/// @returns transaction item for a give index
-	Q_INVOKABLE QObject* getItem(int _index);
+	Q_INVOKABLE TransactionListItem* getItem(int _index);
 	/// @returns a list of functions for current contract
 	Q_INVOKABLE QList<QString> getFunctions();
 	/// @returns function parameters along with parameter values if set. @see TransactionParameterItem
@@ -154,7 +154,7 @@ public:
 signals:
 	/// Transaction count has changed
 	void countChanged();
-	/// Transaction has be launched
+	/// Transaction has been launched
 	void transactionStarted(dev::mix::TransactionSettings);
 
 private:
