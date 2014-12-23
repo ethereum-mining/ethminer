@@ -24,11 +24,12 @@
 #include <QQmlEngine>
 #include <QTextDocument>
 #include <QAbstractListModel>
+#include <libdevcore/CommonJS.h>
 #include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
 #include "QVariableDeclaration.h"
-#include "libdevcore/CommonJS.h"
+
 
 namespace dev
 {
@@ -56,7 +57,9 @@ TransactionListItem::TransactionListItem(int _index, TransactionSettings const& 
 
 TransactionListModel::TransactionListModel(QObject* _parent, QTextDocument* _document):
 	QAbstractListModel(_parent), m_document(_document)
-{}
+{
+	qRegisterMetaType<TransactionListItem*>("TransactionListItem*");
+}
 
 QHash<int, QByteArray> TransactionListModel::roleNames() const
 {
@@ -96,25 +99,24 @@ QList<TransactionParameterItem*> buildParameters(QTextDocument* _document, Trans
 	{
 		std::shared_ptr<QContractDefinition> contract = QContractDefinition::Contract(_document->toPlainText());
 		auto functions = contract->functions();
-		for (auto qf : functions)
+		for (auto f : functions)
 		{
-			QFunctionDefinition const& f = (QFunctionDefinition const&) *qf;
-			if (f.name() != _functionId)
+			if (f->name() != _functionId)
 				continue;
 
-			auto parameters = f.parameters();
-			for (auto qp : parameters)
+			auto parameters = f->parameters();
+			//build a list of parameters for a function. If the function is selected as current, add parameter values as well
+			for (auto p : parameters)
 			{
-				QVariableDeclaration const& p = (QVariableDeclaration const&) *qp;
 				QString paramValue;
-				if (f.name() == _transaction.functionId)
+				if (f->name() == _transaction.functionId)
 				{
-					auto paramValueIter = _transaction.parameterValues.find(p.name());
+					auto paramValueIter = _transaction.parameterValues.find(p->name());
 					if (paramValueIter != _transaction.parameterValues.cend())
 						paramValue = toQString(paramValueIter->second);
 				}
 
-				TransactionParameterItem* item = new TransactionParameterItem(p.name(), p.type(), paramValue);
+				TransactionParameterItem* item = new TransactionParameterItem(p->name(), p->type(), paramValue);
 				QQmlEngine::setObjectOwnership(item, QQmlEngine::JavaScriptOwnership);
 				params.append(item);
 			}
@@ -137,10 +139,9 @@ QList<QString> TransactionListModel::getFunctions()
 		QString code = m_document->toPlainText();
 		std::shared_ptr<QContractDefinition> contract(QContractDefinition::Contract(code));
 		auto functions = contract->functions();
-		for (auto qf : functions)
+		for (auto f : functions)
 		{
-			QFunctionDefinition const& f = (QFunctionDefinition const&) * qf;
-			functionNames.append(f.name());
+			functionNames.append(f->name());
 		}
 	}
 	catch (boost::exception const&)
@@ -159,7 +160,7 @@ QVariantList TransactionListModel::getParameters(int _index, QString const& _fun
 	return vl;
 }
 
-QObject* TransactionListModel::getItem(int _index)
+TransactionListItem* TransactionListModel::getItem(int _index)
 {
 	TransactionSettings const& transaction = (_index >= 0 && _index < (int)m_transactions.size()) ? m_transactions[_index] : TransactionSettings();
 	TransactionListItem* item = new TransactionListItem(_index, transaction, nullptr);
@@ -214,5 +215,7 @@ void TransactionListModel::runTransaction(int _index)
 	emit transactionStarted(tr);
 }
 
+
 }
 }
+
