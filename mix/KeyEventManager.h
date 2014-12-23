@@ -23,6 +23,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariant>
 
 class KeyEventManager: public QObject
 {

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <QStringList>
+#include <QMap>
 #include <libdevcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>

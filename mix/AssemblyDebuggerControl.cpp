@@ -17,6 +17,10 @@
  * display opcode debugging.
  */
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QVariableDefinition.h>
@@ -86,7 +90,7 @@ void AssemblyDebuggerControl::keyPressed(int _key)
 	}
 }
 
-void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _contract)
+void AssemblyDebuggerControl::callContract(TransactionSettings _tr, dev::Address _contract)
 {
 	CompilerResult compilerRes = m_compilation->compile(m_doc->toPlainText());
 	if (!compilerRes.success)
