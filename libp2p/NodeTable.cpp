@@ -287,43 +287,66 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	}
 	
 	/// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
-	RLP rlp(bytesConstRef(_packet.cropped(65, _packet.size() - 65)));
+	bytesConstRef rlpBytes(_packet.cropped(65, _packet.size() - 65));
+	RLP rlp(rlpBytes);
 	unsigned itemCount = rlp.itemCount();
 	
 //	bytesConstRef sig(_packet.cropped(0, 65));		// verify signature (deferred)
 	
-	switch (itemCount) {
-		case 1:
-		{
-			clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
-			// whenever a pong is received, first check if it's in m_evictions, if so, remove it
-			Guard l(x_evictions);
-			break;
-		}
-			
-		case 2:
-			if (rlp[0].isList())
+	try {
+		switch (itemCount) {
+			case 1:
 			{
-				clog(NodeTableMessageSummary) << "Received Neighbors from " << _from.address().to_string() << ":" << _from.port();
+				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
+				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
+				
+				// whenever a pong is received, first check if it's in m_evictions, if so, remove it
+				// otherwise check if we're expecting a pong. if we weren't, blacklist IP for 300 seconds
+				
+				break;
 			}
-			else
+				
+			case 2:
+				if (rlp[0].isList())
+				{
+					clog(NodeTableMessageSummary) << "Received Neighbors from " << _from.address().to_string() << ":" << _from.port();
+					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
+					for (auto n: in.nodes)
+						noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
+				}
+				else
+				{
+					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
+					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
+					
+					std::vector<std::shared_ptr<NodeTable::NodeEntry>> nearest = findNearest(in.target);
+					Neighbors out(_from, nearest);
+					out.sign(m_secret);
+					m_socketPtr->send(out);
+				}
+				break;
+				
+			case 3:
 			{
-				clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
+				clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
+				// todo: if we know the node, reply, otherwise ignore.
+				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
+				
+				Pong p(_from);
+				p.replyTo = sha3(rlpBytes);
+				p.sign(m_secret);
+				m_socketPtr->send(p);
+				break;
 			}
-			break;
-			
-		case 3:
-		{
-			clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
-			// todo: if we know the node, send a pong. otherwise ignore him.
-			// let's send a pong!
-			
-			break;
+				
+			default:
+				clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
+				return;
 		}
-			
-		default:
-			clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
-			return;
+	}
+	catch (...)
+	{
+		
 	}
 }
 	
