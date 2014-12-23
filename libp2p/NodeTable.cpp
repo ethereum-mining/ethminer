@@ -24,9 +24,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-NodeTable::NodeTable(ba::io_service& _io, uint16_t _port):
-	m_node(Node(Address(), Public(), bi::udp::endpoint())),
-	m_socket(new nodeSocket(_io, *this, _port)),
+NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _listenPort):
+	m_node(Node(_alias.address(), _alias.pub(), bi::udp::endpoint())),
+	m_secret(_alias.sec()),
+	m_socket(new NodeSocket(_io, *this, _listenPort)),
 	m_socketPtr(m_socket.get()),
 	m_io(_io),
 	m_bucketRefreshTimer(m_io),
@@ -281,7 +282,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 {
 	RLP rlp(_packet);
 	
-	clog(NodeTableNote) << "Received message from " << _from.address().to_string() << ":" << _from.port();
+	clog(NodeTableNote) << "Received X from " << _from.address().to_string() << ":" << _from.port();
 	
 	// whenever a pong is received, first check if it's in m_evictions, if so, remove it
 	Guard l(x_evictions);
@@ -322,10 +323,10 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 
 void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 {
-	clog(NodeTableNote) << "refreshing buckets";
 	if (_ec)
 		return;
-	
+
+	clog(NodeTableNote) << "refreshing buckets";
 	bool connected = m_socketPtr->isOpen();
 	bool refreshed = false;
 	if (connected)
