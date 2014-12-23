@@ -141,9 +141,9 @@ struct Neighbors: RLPXDatagram
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
-	using nodeSocket = UDPSocket<NodeTable, 1280>;
-	using timePoint = std::chrono::steady_clock::time_point;
-	using EvictionTimeout = std::pair<std::pair<Address,timePoint>,Address>;
+	using NodeSocket = UDPSocket<NodeTable, 1280>;
+	using TimePoint = std::chrono::steady_clock::time_point;
+	using EvictionTimeout = std::pair<std::pair<Address,TimePoint>,Address>;
 
 	struct NodeDefaultEndpoint
 	{
@@ -179,7 +179,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	struct NodeBucket
 	{
 		unsigned distance;
-		timePoint modified;
+		TimePoint modified;
 		std::list<std::weak_ptr<NodeEntry>> nodes;
 	};
 	
@@ -206,7 +206,7 @@ public:
 	
 	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
-	NodeTable(ba::io_service& _io, uint16_t _port = s_defaultPort);
+	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _port = s_defaultPort);
 	~NodeTable();
 	
 	void join();
@@ -268,8 +268,8 @@ protected:
 	Mutex x_evictions;
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
 	
-	std::shared_ptr<nodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
-	nodeSocket* m_socketPtr;									///< Set to m_socket.get().
+	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+	NodeSocket* m_socketPtr;									///< Set to m_socket.get().
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.

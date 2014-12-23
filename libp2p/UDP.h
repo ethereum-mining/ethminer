@@ -166,7 +166,6 @@ bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
 	
 	Guard l(x_sendQ);
 	sendQ.push_back(_datagram);
-	clog(NoteChannel) << "qued datagram";
 	if (sendQ.size() == 1)
 		doWrite();
 	
