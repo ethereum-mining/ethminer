@@ -96,14 +96,14 @@ QVariant TransactionListModel::data(QModelIndex const& _index, int _role) const
 QList<TransactionParameterItem*> buildParameters(CodeModel* _codeModel, TransactionSettings const& _transaction, QString const& _functionId)
 {
 	QList<TransactionParameterItem*> params;
-	QContractDefinition const* contract = _codeModel->lastCompilationResult()->contract();
-	auto functions = contract->functions();
+	QContractDefinition const* contract = _codeModel->code()->contract();
+	auto functions = contract->functionsList();
 	for (auto f : functions)
 	{
 		if (f->name() != _functionId)
 			continue;
 
-		auto parameters = f->parameters();
+		auto parameters = f->parametersList();
 		for (auto p : parameters)
 		{
 			QString paramValue;
@@ -126,8 +126,8 @@ QList<TransactionParameterItem*> buildParameters(CodeModel* _codeModel, Transact
 QList<QString> TransactionListModel::getFunctions()
 {
 	QList<QString> functionNames;
-	QContractDefinition const* contract = m_appContext->codeModel()->lastCompilationResult()->contract();
-	auto functions = contract->functions();
+	QContractDefinition const* contract = m_appContext->codeModel()->code()->contract();
+	auto functions = contract->functionsList();
 	for (auto f : functions)
 	{
 		functionNames.append(f->name());
@@ -200,6 +200,19 @@ void TransactionListModel::runTransaction(int _index)
 	emit transactionStarted(tr);
 }
 
+QVariantMap TransactionListModel::save()
+{
+
+}
+
+/// Load transactions from a map
+void TransactionListModel::load(QVariantMap const& _data)
+{
+	std::vector<TransactionSettings> transactions;
+
+
+	m_transactions.swap(transactions);
+}
 
 }
 }

@@ -32,9 +32,7 @@ Window {
 
 	signal accepted;
 
-	function reset(index, m) {
-		model = m;
-		var item = model.getItem(index);
+	function reset(index, item) {
 		transactionIndex = index;
 		transactionTitle = item.title;
 		gas = item.gas;
@@ -43,10 +41,10 @@ Window {
 		var functionId = item.functionId;
 		functionsModel.clear();
 		var functionIndex = -1;
-		var functions = model.getFunctions();
+		var functions = codeModel.code.contract.functions;
 		for (var f = 0; f < functions.length; f++) {
-			functionsModel.append({ text: functions[f] });
-			if (functions[f] === item.functionId)
+			functionsModel.append({ text: functions[f].name });
+			if (functions[f].name === item.functionId)
 				functionIndex = f;
 		}
 		functionComboBox.currentIndex = functionIndex;
@@ -57,9 +55,13 @@ Window {
 			return;
 		paramsModel.clear();
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var parameters = model.getParameters(transactionIndex, functionsModel.get(functionComboBox.currentIndex).text);
+			console.log(codeModel.code.contract.functions[functionComboBox.currentIndex]);
+			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
+			var parameters = func.parameters;
+			console.log(parameters);
+			console.log(parameters.length);
 			for (var p = 0; p < parameters.length; p++) {
-				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value });
+				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value !== undefined ? parameters[p].value : "" });
 			}
 		}
 	}
@@ -195,7 +197,9 @@ Window {
 				Connections {
 					target: loaderEditor.item
 					onTextChanged: {
-						paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
+						console.log(styleData.row + " : " + styleData.role + " = " + loaderEditor.item.text );
+						if (styleData.role === "value" && styleData.row < paramsModel.count)
+							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
 				sourceComponent: (styleData.selected) ? editor : null

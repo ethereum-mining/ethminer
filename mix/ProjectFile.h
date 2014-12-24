@@ -14,42 +14,44 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TransactionListView.cpp
+/** @file ProjectFile.h
  * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2014
  * Ethereum IDE client.
  */
 
-#include <QQuickItem>
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QQmlContext>
-#include <QDebug>
-#include "TransactionListView.h"
+#pragma once
+
+#include <QString>
 #include "TransactionListModel.h"
-using namespace dev::mix;
 
-TransactionListView::TransactionListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)
+namespace dev
 {
-	m_model.reset(new TransactionListModel(this, _context));
-	//m_appEngine->rootContext()->setContextProperty("transactionListModel", m_model.get());
+
+namespace mix
+{
+
+/// Background code compiler
+class ProjectFile : public QObject
+{
+	Q_OBJECT
+
+public:
+	ProjectFile();
+	
+	void loadProject();
+
+signals:
+	void projectLoaded();
+	
+public slots:
+	void saveProject();
+	
+private:
+	QString defaultProjectPath() const;
+	TransactionListModel* transactionModel();
+};
+
 }
 
-TransactionListView::~TransactionListView()
-{
-	//implementation is in cpp file so that all types deleted are complete
-}
-
-QString TransactionListView::contentUrl() const
-{
-	return QStringLiteral("qrc:/qml/TransactionList.qml");
-}
-
-QString TransactionListView::title() const
-{
-	return QApplication::tr("Transactions");
-}
-
-void TransactionListView::start() const
-{
 }
