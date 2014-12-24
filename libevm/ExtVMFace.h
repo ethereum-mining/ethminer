@@ -93,6 +93,8 @@ struct SubState
 class ExtVMFace;
 class VM;
 
+using LastHashes = std::array<h256, 256>;
+
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
 /**
@@ -105,7 +107,7 @@ public:
 	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, unsigned _depth);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
 
 	virtual ~ExtVMFace() = default;
 
@@ -145,6 +147,9 @@ public:
 	/// Revert any changes made (by any of the other calls).
 	virtual void revert() {}
 
+	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
+	h256 prevhash(u256 _number) { return _number < currentBlock.number && _number > (std::max<u256>(257, currentBlock.number) - 257) ? lastHashes[(unsigned)(currentBlock.number - 1 - _number)] : h256(); }	// TODO: CHECK!!!
+
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }
 
@@ -155,7 +160,8 @@ public:
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
 	bytes code;					///< Current code that is executing.
-	BlockInfo previousBlock;	///< The previous block's information.
+	LastHashes lastHashes;		///< Most recent 256 blocks' hashes.
+	BlockInfo previousBlock;	///< The previous block's information.	TODO: PoC-8: REMOVE
 	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
 	unsigned depth = 0;			///< Depth of the present call.

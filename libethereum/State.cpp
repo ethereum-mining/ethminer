@@ -114,7 +114,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_ourAddress = bi.coinbaseAddress;
 
 	sync(_bc, bi.parentHash, bip);
-	enact(&b);
+	enact(&b, _bc);
 }
 
 State::State(State const& _s):
@@ -319,7 +319,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				enact(&b);
+				enact(&b, _bc);
 				cleanup(true);
 			}
 		}
@@ -348,7 +348,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
 	m_previousBlock = biParent;
-	return enact(_block, &_bc);
+	return enact(_block, _bc);
 }
 
 map<Address, u256> State::addresses() const
@@ -412,11 +412,13 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
+h512s State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
 	h512s ret;
 	auto ts = _tq.transactions();
+
+	auto lh = getLastHashes(_bc);
 
 	for (int goodTxs = 1; goodTxs;)
 	{
@@ -429,7 +431,7 @@ h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				{
 					uncommitToMine();
 //					boost::timer t;
-					execute(i.second);
+					execute(lh, i.second);
 					ret.push_back(m_receipts.back().bloom());
 					_tq.noteGood(i);
 					++goodTxs;
@@ -467,7 +469,7 @@ h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
+u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
@@ -496,6 +498,8 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
 	receiptsTrie.init();
 
+	LastHashes lh = getLastHashes(_bc);
+
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
@@ -507,7 +511,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 
 //		cnote << m_state.root() << m_state;
 //		cnote << *this;
-		execute(tr.data());
+		execute(lh, tr.data());
 
 		RLPStream receiptrlp;
 		m_receipts.back().streamRLP(receiptrlp);
@@ -551,7 +555,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	// Check uncles & apply their rewards to state.
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
-	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
+	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 	for (auto const& i: RLP(_block)[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
@@ -560,13 +564,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))
 			BOOST_THROW_EXCEPTION(DuplicateUncleNonce());
-		if (_bc)
-		{
-			BlockInfo uncleParent(_bc->block(uncle.parentHash));
-			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
-				BOOST_THROW_EXCEPTION(UncleTooOld());
-			uncle.verifyParent(uncleParent);
-		}
+
+		BlockInfo uncleParent(_bc.block(uncle.parentHash));
+		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
+			BOOST_THROW_EXCEPTION(UncleTooOld());
+		uncle.verifyParent(uncleParent);
 
 		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
@@ -648,7 +650,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), &_bc, false);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(&block.out(), _bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -993,9 +995,17 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+LastHashes State::getLastHashes(BlockChain const& _bc) const
+{
+	LastHashes ret;
+	unsigned n = (unsigned)m_previousBlock.number;
+	for (unsigned i = 0; i < 256; ++i)
+		ret[i] = _bc.numberHash(n - i);
+	return ret;
+}
 
-u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
+// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, bool _commit)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -1008,7 +1018,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this, 0);
+	Executive e(*this, _lh, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();

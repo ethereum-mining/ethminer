@@ -343,7 +343,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-		u256 gasUsed = temp.execute(t.rlp(), &out, false);
+		u256 gasUsed = temp.execute(m_bc, t.rlp(), &out, false);
 		(void)gasUsed; // TODO: do something with gasused which it returns.
 	}
 	catch (...)
@@ -442,7 +442,7 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		h512s newPendingBlooms = m_postMine.sync(m_tq);
+		h512s newPendingBlooms = m_postMine.sync(m_bc, m_tq);
 		if (newPendingBlooms.size())
 		{
 			for (auto i: newPendingBlooms)
