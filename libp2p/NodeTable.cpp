@@ -35,8 +35,8 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _listenPort):
 {
 	for (unsigned i = 0; i < s_bins; i++)
 		m_state[i].distance = i, m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
-	doRefreshBuckets(boost::system::error_code());
 	m_socketPtr->connect();
+	doRefreshBuckets(boost::system::error_code());
 }
 	
 NodeTable::~NodeTable()
@@ -87,7 +87,15 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 {
 	if (!m_socketPtr->isOpen() || _round == s_maxSteps)
 		return;
-
+	
+	if (_round == s_maxSteps)
+	{
+		clog(NodeTableWarn) << "Terminating doFindNode after " << _round << " rounds.";
+		return;
+	}
+	else
+		_tried.reset(new std::set<std::shared_ptr<NodeEntry>>());
+	
 	auto nearest = findNearest(_node);
 	std::list<std::shared_ptr<NodeEntry>> tried;
 	for (unsigned i = 0; i < nearest.size() && tried.size() < s_alpha; i++)
@@ -137,7 +145,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 		while (head != tail && head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto& n: m_state[head].nodes)
+			for (auto n: m_state[head].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -147,7 +155,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				}
 			
 			if (count < s_bucketSize && tail)
-				for (auto& n: m_state[tail].nodes)
+				for (auto n: m_state[tail].nodes)
 					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
@@ -164,7 +172,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 		while (head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto& n: m_state[head].nodes)
+			for (auto n: m_state[head].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -178,7 +186,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 		while (tail > 0 && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto& n: m_state[tail].nodes)
+			for (auto n: m_state[tail].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -191,7 +199,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 	
 	std::vector<std::shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
-		for (auto& n: nodes.second)
+		for (auto n: nodes.second)
 			ret.push_back(n);
 	return std::move(ret);
 }
@@ -223,9 +231,14 @@ void NodeTable::evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<Nod
 	ping(_leastSeen.get());
 }
 
-void NodeTable::noteNode(Public _pubk, bi::udp::endpoint _endpoint)
+void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint)
 {
 	Address id = right160(sha3(_pubk));
+	
+	// Don't add ourself (would result in -1 bucket lookup)
+	if (id == m_node.address())
+		return;
+	
 	std::shared_ptr<NodeEntry> node;
 	{
 		Guard l(x_nodes);
@@ -325,6 +338,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case 2:
 				if (rlp[0].isList())
 				{
+					// todo: chunk neighbors packet
 					clog(NodeTableMessageSummary) << "Received Neighbors from " << _from.address().to_string() << ":" << _from.port();
 					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
 					for (auto n: in.nodes)
@@ -371,7 +385,7 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 		return;
 
 	auto self(shared_from_this());
-	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(s_evictionCheckInterval));
+	m_evictionCheckTimer.expires_from_now(c_evictionCheckInterval);
 	m_evictionCheckTimer.async_wait([this, self](boost::system::error_code const& _ec)
 	{
 		if (_ec)
@@ -380,17 +394,17 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 		bool evictionsRemain = false;
 		std::list<shared_ptr<NodeEntry>> drop;
 		{
-			Guard l(x_evictions);
+			Guard le(x_evictions);
+			Guard ln(x_nodes);
 			for (auto& e: m_evictions)
 				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
-				{
-					Guard l(x_nodes);
-					drop.push_back(m_nodes[e.second]);
-				}
+					if (auto n = m_nodes[e.second])
+						drop.push_back(n);
 			evictionsRemain = m_evictions.size() - drop.size() > 0;
 		}
 		
-		for (auto& n: drop)
+		drop.unique();
+		for (auto n: drop)
 			dropNode(n);
 		
 		if (evictionsRemain)

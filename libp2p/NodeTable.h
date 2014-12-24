@@ -120,9 +120,9 @@ public:
 	
 	/// Intervals
 	
-	static constexpr unsigned s_evictionCheckInterval = 75;							///< Interval at which eviction timeouts are checked.
-	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);		///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);			///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
+	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
+	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 	
 	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
@@ -151,7 +151,7 @@ protected:
 	
 	void evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new);
 	
-	void noteNode(Public _pubk, bi::udp::endpoint _endpoint);
+	void noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint);
 	
 	void noteNode(std::shared_ptr<NodeEntry> _n);
 	
@@ -234,11 +234,11 @@ struct PingNode: RLPXDatagram<PingNode>
 	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
 	
 	std::string ipAddress;	// rlp encoded bytes min: 16
-	uint16_t port;			// rlp encoded bytes min: 1 max: 3
-	uint64_t expiration;		// rlp encoded bytes min: 1 max: 9
+	unsigned port;			// rlp encoded bytes min: 1 max: 3
+	unsigned expiration;		// rlp encoded bytes min: 1 max: 9
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = (std::string)r[0]; port = (uint16_t)r[1]; expiration = (uint64_t)r[2]; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
 };
 
 /**
@@ -280,10 +280,10 @@ struct FindNode: RLPXDatagram<FindNode>
 	FindNode(bi::udp::endpoint _ep, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
 	
 	h160 target;
-	uint64_t expiration;
+	unsigned expiration;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = (h160)r[0]; expiration = (uint64_t)r[1]; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h160>(); expiration = r[1].toInt<unsigned>(); }
 };
 
 /**
@@ -299,12 +299,16 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	struct Node
 	{
 		Node() = default;
-		Node(bytesConstRef _bytes) { interpretRLP(_bytes); }
+		Node(RLP const& _r) { interpretRLP(_r); }
 		std::string ipAddress;
-		uint16_t port;
+		unsigned port;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
-		void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = (uint16_t)r[1]; node = (h512)r[2]; }
+		void streamRLP(RLPStream& _s) const {
+			_s.appendList(3); _s << ipAddress << port << node;
+		}
+		void interpretRLP(RLP const& _r) {
+			ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes());
+		}
 	};
 	
 	using RLPXDatagram::RLPXDatagram;
@@ -323,8 +327,10 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	std::list<Node> nodes;
 	h256 nonce;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << nonce; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n.toBytesConstRef())); nonce = (h256)r[1]; }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << 1; }
+	void interpretRLP(bytesConstRef _bytes) {
+		RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); nonce = (h256)r[1];
+	}
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
