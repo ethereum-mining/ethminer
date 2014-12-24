@@ -221,7 +221,6 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 			if (sendQ.empty())
 				return;
 		}
-		clog(NoteChannel) << "sent datagram";
 		doWrite();
 	});
 }
