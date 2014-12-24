@@ -90,7 +90,7 @@ void AssemblyDebuggerControl::keyPressed(int _key)
 
 void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _contract)
 {
-	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())
 		m_ctx->displayMessageDialog("debugger","compilation failed");
 	else
@@ -98,11 +98,11 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 		ContractCallDataEncoder c;
 		QContractDefinition const* contractDef = compilerRes->contract();
 		QFunctionDefinition* f = nullptr;
-		for (int k = 0; k < contractDef->functions().size(); k++)
+		for (int k = 0; k < contractDef->functionsList().size(); k++)
 		{
-			if (contractDef->functions().at(k)->name() == _tr.functionId)
+			if (contractDef->functionsList().at(k)->name() == _tr.functionId)
 			{
-				f = (QFunctionDefinition*)contractDef->functions().at(k);
+				f = contractDef->functionsList().at(k);
 				break;
 			}
 		}
@@ -111,9 +111,9 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 		else
 		{
 			c.encode(f->index());
-			for (int k = 0; k < f->parameters().size(); k++)
+			for (int k = 0; k < f->parametersList().size(); k++)
 			{
-				QVariableDeclaration* var = (QVariableDeclaration*)f->parameters().at(k);
+				QVariableDeclaration* var = (QVariableDeclaration*)f->parametersList().at(k);
 				c.encode(var, _tr.parameterValues[var->name()]);
 			}
 			DebuggingContent debuggingContent = m_modelDebugger->callContract(_contract, c.encodedData(), _tr);
@@ -125,7 +125,7 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 
 void AssemblyDebuggerControl::deployContract()
 {
-	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())
 		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
 	else

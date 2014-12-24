@@ -19,7 +19,14 @@ Rectangle {
 		height: parent.height
 		width: parent.width
 		id: transactionList
-		model: transactionListModel
+		model: ListModel {
+			id: transactionListModel
+
+			function runTransaction(index) {
+				console.log("runTransaction");
+			}
+		}
+
 		delegate: renderDelegate
 	}
 
@@ -30,8 +37,16 @@ Rectangle {
 		{
 			// Set next id here to work around Qt bug
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
-			// Second call to signal handle would just edit the item that was just created, no harm done
-			transactionDialog.reset(transactionListModel.count, transactionListModel);
+			// Second call to signal handler would just edit the item that was just created, no harm done
+			var item = {
+				title: "",
+				value: "",
+				functionId: "",
+				gas: "1000000000000",
+				gasPrice: "100000"
+			};
+
+			transactionDialog.reset(transactionListModel.count, item);
 			transactionDialog.open();
 			transactionDialog.focus = true;
 		}
@@ -40,7 +55,18 @@ Rectangle {
 	TransactionDialog {
 		id: transactionDialog
 		onAccepted: {
-			transactionListModel.edit(transactionDialog);
+			var item = {
+				title: transactionDialog.transactionTitle,
+				functionId: transactionDialog.functionId,
+				gas: transactionDialog.gas,
+				gasPrice: transactionDialog.gasPrice,
+				value: transactionDialog.transactionValue
+			}
+			console.log(item.title);
+			if (transactionDialog.transactionIndex < transactionListModel.count)
+				transactionListModel.set(transactionDialog.transactionIndex, item);
+			else
+				transactionListModel.append(item);
 		}
 	}
 
@@ -65,7 +91,7 @@ Rectangle {
 					text: qsTr("Edit");
 					Layout.fillHeight: true
 					onClicked: {
-						transactionDialog.reset(index, transactionListModel);
+						transactionDialog.reset(index, transactionListModel.get(index));
 						transactionDialog.open();
 						transactionDialog.focus = true;
 					}

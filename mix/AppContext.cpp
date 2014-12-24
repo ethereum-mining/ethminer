@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
+#include <QQmlContext>
 #include <QQmlApplicationEngine>
 #include <libdevcrypto/FileSystem.h>
 #include <libwebthree/WebThree.h>
@@ -43,6 +44,8 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
 	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+
 }
 
 AppContext::~AppContext()

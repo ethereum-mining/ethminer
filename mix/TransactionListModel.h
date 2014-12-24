@@ -24,9 +24,11 @@
 
 #include <QObject>
 #include <QVariant>
+#include <QVariantMap>
 #include <QAbstractListModel>
 #include <QHash>
 #include <QByteArray>
+#include <QVariantMap>
 #include <libdevcore/Common.h>
 #include <libethcore/CommonEth.h>
 
@@ -150,6 +152,10 @@ public:
 	Q_INVOKABLE QVariantList getParameters(int _id, QString const& _functionId);
 	/// Launch transaction execution UI handler
 	Q_INVOKABLE void runTransaction(int _index);
+	/// Save transaction to a map for serialization into file
+	QVariantMap save();
+	/// Load transactions from a map
+	void load(QVariantMap const& _data);
 
 signals:
 	/// Transaction count has changed

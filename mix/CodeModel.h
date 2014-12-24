@@ -59,7 +59,7 @@ private:
 class CompilationResult : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QContractDefinition const* contract READ contract)
+	Q_PROPERTY(QContractDefinition* contract READ contract)
 
 public:
 	/// Successfull compilation result constructor
@@ -68,7 +68,7 @@ public:
 	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* parent);
 
 	/// @returns contract definition
-	QContractDefinition const* contract() const { return m_contract.get(); }
+	QContractDefinition* contract() { return m_contract.get(); }
 
 	/// Indicates if the compilation was successfull
 	bool successfull() const { return m_successfull; }
@@ -84,7 +84,7 @@ public:
 
 private:
 	bool m_successfull;
-	std::shared_ptr<QContractDefinition const> m_contract;
+	std::shared_ptr<QContractDefinition> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
@@ -107,7 +107,11 @@ public:
 	~CodeModel();
 
 	/// @returns latest compilation result
-	std::shared_ptr<CompilationResult> lastCompilationResult() { return m_result; }
+	CompilationResult* code() { return m_result.get(); }
+	/// @returns latest compilation resul
+	CompilationResult const* code() const { return m_result.get(); }
+
+	Q_PROPERTY(CompilationResult* code READ code NOTIFY codeChanged)
 
 signals:
 	/// Emited on compilation status change
@@ -116,6 +120,13 @@ signals:
 	void compilationComplete();
 	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId, QString const& _content);
+	/// Emitted if there are any changes in the code model
+	void codeChanged();
+	/// Emitted on compilation complete. Internal
+	void compilationCompleteInternal(CompilationResult* _newResult);
+
+private slots:
+	void onCompilationComplete(CompilationResult*_newResult);
 
 public slots:
 	/// Update code model on source code change
@@ -125,7 +136,7 @@ private:
 	void runCompilationJob(int _jobId, QString const& _content);
 	void stop();
 
-	std::shared_ptr<CompilationResult> m_result;
+	std::unique_ptr<CompilationResult> m_result;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
