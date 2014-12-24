@@ -45,7 +45,7 @@ NodeTable::~NodeTable()
 	m_bucketRefreshTimer.cancel();
 	m_socketPtr->disconnect();
 }
-	
+
 void NodeTable::join()
 {
 	doFindNode(m_node.id);
@@ -58,6 +58,16 @@ std::list<Address> NodeTable::nodes() const
 	for (auto& i: m_nodes)
 		nodes.push_back(i.second->id);
 	return std::move(nodes);
+}
+
+list<NodeTable::NodeEntry> NodeTable::state() const
+{
+	list<NodeEntry> ret;
+	Guard l(x_state);
+	for (auto s: m_state)
+		for (auto n: s.nodes)
+			ret.push_back(*n.lock());
+	return move(ret);
 }
 
 NodeTable::NodeEntry NodeTable::operator[](Address _id)
@@ -115,17 +125,16 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Address _target)
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
+	static unsigned lastBin = s_bins - 1;
 	unsigned head = dist(m_node.id, _target);
-	unsigned tail = (head - 1) % s_bins;
+	unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
 	
-	// todo: optimize with tree
 	std::map<unsigned, std::list<std::shared_ptr<NodeEntry>>> found;
 	unsigned count = 0;
 	
 	// if d is 0, then we roll look forward, if last, we reverse, else, spread from d
-#pragma warning TODO: This should probably be s_bins instead of s_bits.
-	if (head != 0 && tail != s_bits)
-		while (head != tail && count < s_bucketSize)
+	if (head > 1 && tail != lastBin)
+		while (head != tail && head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
 			for (auto& n: m_state[head].nodes)
@@ -137,7 +146,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 						break;
 				}
 			
-			if (count < s_bucketSize && head)
+			if (count < s_bucketSize && tail)
 				for (auto& n: m_state[tail].nodes)
 					if (auto p = n.lock())
 					{
@@ -146,11 +155,13 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 						else
 							break;
 					}
+
 			head++;
-			tail = (tail - 1) % s_bins;
+			if (tail)
+				tail--;
 		}
-	else if (head == 0)
-		while (head < s_bucketSize && count < s_bucketSize)
+	else if (head < 2)
+		while (head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
 			for (auto& n: m_state[head].nodes)
@@ -161,9 +172,9 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 					else
 						break;
 				}
-			head--;
+			head++;
 		}
-	else if (tail == s_bins)
+	else
 		while (tail > 0 && count < s_bucketSize)
 		{
 			Guard l(x_state);
@@ -221,8 +232,8 @@ void NodeTable::noteNode(Public _pubk, bi::udp::endpoint _endpoint)
 		auto n = m_nodes.find(id);
 		if (n == m_nodes.end())
 		{
-			m_nodes[id] = std::shared_ptr<NodeEntry>(new NodeEntry(m_node, id, _pubk, _endpoint));
-			node = m_nodes[id];
+			node.reset(new NodeEntry(m_node, id, _pubk, _endpoint));
+			m_nodes[id] = node;
 		}
 		else
 			node = n->second;
@@ -235,12 +246,11 @@ void NodeTable::noteNode(std::shared_ptr<NodeEntry> _n)
 {
 	std::shared_ptr<NodeEntry> contested;
 	{
-		NodeBucket s = bucket(_n.get());
+		NodeBucket& s = bucket(_n.get());
 		Guard l(x_state);
 		s.nodes.remove_if([&_n](std::weak_ptr<NodeEntry> n)
 		{
-			auto p = n.lock();
-			if (!p || p == _n)
+			if (n.lock() == _n)
 				return true;
 			return false;
 		});
@@ -264,7 +274,7 @@ void NodeTable::noteNode(std::shared_ptr<NodeEntry> _n)
 
 void NodeTable::dropNode(std::shared_ptr<NodeEntry> _n)
 {
-	NodeBucket s = bucket(_n.get());
+	NodeBucket &s = bucket(_n.get());
 	{
 		Guard l(x_state);
 		s.nodes.remove_if([&_n](std::weak_ptr<NodeEntry> n) { return n.lock() == _n; });
@@ -273,9 +283,9 @@ void NodeTable::dropNode(std::shared_ptr<NodeEntry> _n)
 	m_nodes.erase(_n->id);
 }
 
-NodeTable::NodeBucket const& NodeTable::bucket(NodeEntry* _n) const
+NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
 {
-	return m_state[_n->distance];
+	return m_state[_n->distance - 1];
 }
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
@@ -286,12 +296,19 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 		return;
 	}
 	
-	/// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
+	// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
 	bytesConstRef rlpBytes(_packet.cropped(65, _packet.size() - 65));
 	RLP rlp(rlpBytes);
 	unsigned itemCount = rlp.itemCount();
 	
-//	bytesConstRef sig(_packet.cropped(0, 65));		// verify signature (deferred)
+	bytesConstRef sigBytes(_packet.cropped(0, 65));
+	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(rlpBytes)));
+	if (!nodeid)
+	{
+		clog(NodeTableMessageSummary) << "Invalid Message Signature from " << _from.address().to_string() << ":" << _from.port();
+		return;
+	}
+	noteNode(nodeid, _from);
 	
 	try {
 		switch (itemCount) {
@@ -300,8 +317,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
 				
-				// whenever a pong is received, first check if it's in m_evictions, if so, remove it
-				// otherwise check if we're expecting a pong. if we weren't, blacklist IP for 300 seconds
+				// whenever a pong is received, first check if it's in m_evictions
 				
 				break;
 			}
@@ -329,7 +345,6 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case 3:
 			{
 				clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
-				// todo: if we know the node, reply, otherwise ignore.
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
 				
 				Pong p(_from);

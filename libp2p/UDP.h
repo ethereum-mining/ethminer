@@ -58,39 +58,28 @@ protected:
  * @brief RLPX Datagram which can be signed.
  * @todo compact templates
  * @todo make data private/functional (see UDPDatagram)
- * @todo valid=true/false (based on signature)
  */
-template <class T>
-struct RLPXDatagram: public UDPDatagram
+//template <class T>
+struct RLPXDatagramFace: public UDPDatagram
 {
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+//	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
 	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
+	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
 
-	RLPXDatagram(bi::udp::endpoint const& _ep): UDPDatagram(_ep) {}
+	RLPXDatagramFace(bi::udp::endpoint const& _ep): UDPDatagram(_ep) {}
 	virtual h256 sign(Secret const& _from);
 
 	virtual void streamRLP(RLPStream&) const =0;
 	virtual void interpretRLP(bytesConstRef _bytes) =0;
-
-protected:
-	Signature signature;
 };
 	
 template <class T>
-h256 RLPXDatagram<T>::sign(Secret const& _k)
+struct RLPXDatagram: public RLPXDatagramFace
 {
-	RLPStream packet;
-	streamRLP(packet);
-	bytes b(packet.out());
-	h256 h(dev::sha3(b));
-	Signature sig = dev::sign(_k, h);
-	data.resize(b.size() + Signature::size);
-	sig.ref().copyTo(&data);
-	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
-	return std::move(h);
-}
-
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	using RLPXDatagramFace::RLPXDatagramFace;
+};
 
 /**
  * @brief Interface which UDPSocket will implement.
@@ -198,6 +187,9 @@ bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler,MaxDatagramSize>::doRead()
 {
+	if (m_closed)
+		return;
+	
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_receive_from(boost::asio::buffer(recvData), recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
 	{
@@ -206,14 +198,16 @@ void UDPSocket<Handler,MaxDatagramSize>::doRead()
 
 		assert(_len);
 		m_host.onReceived(this, recvEndpoint, bytesConstRef(recvData.data(), _len));
-		if (!m_closed)
-			doRead();
+		doRead();
 	});
 }
 	
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 {
+	if (m_closed)
+		return;
+	
 	const UDPDatagram& datagram = sendQ[0];
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)

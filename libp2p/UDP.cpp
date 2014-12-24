@@ -22,3 +22,24 @@
 #include "UDP.h"
 using namespace dev;
 using namespace dev::p2p;
+
+//template <class T>
+h256 RLPXDatagramFace::sign(Secret const& _k)
+{
+	RLPStream packet;
+	streamRLP(packet);
+	bytes b(packet.out());
+	h256 h(dev::sha3(b));
+	Signature sig = dev::sign(_k, h);
+	data.resize(b.size() + Signature::size);
+	sig.ref().copyTo(&data);
+	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
+	return std::move(h);
+};
+
+//template <class T>
+Public RLPXDatagramFace::authenticate(bytesConstRef _sig, bytesConstRef _rlp)
+{
+	Signature const& sig = *(Signature const*)_sig.data();
+	return std::move(dev::recover(sig, sha3(_rlp)));
+};

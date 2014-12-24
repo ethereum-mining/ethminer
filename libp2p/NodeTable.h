@@ -38,19 +38,20 @@ namespace p2p
  * shared_ptr replacement instead of mutating values.
  *
  * [Interface]
- * @todo constructor support for m_node, m_secret
- * @todo don't try to evict node if node isRequired. (support for makeRequired)
- * @todo exclude bucket from refresh if we have node as peer (support for makeRequired)
- * @todo restore nodes
+ * @todo restore nodes: affects refreshbuckets
+ * @todo TCP endpoints
+ * @todo makeRequired: don't try to evict node if node isRequired.
+ * @todo makeRequired: exclude bucket from refresh if we have node as peer.
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
  * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
  *
  * [Networking]
- * @todo use eth/upnp/natpmp/stun/ice/etc for public-discovery
+ * @todo TCP endpoints
+ * @todo eth/upnp/natpmp/stun/ice/etc for public-discovery
  * @todo firewall
  *
  * [Protocol]
- * @todo ping newly added nodes for eviction
+ * @todo post-eviction pong
  * @todo optimize knowledge at opposite edges; eg, s_bitsPerStep lookups. (Can be done via pointers to NodeBucket)
  * @todo ^ s_bitsPerStep = 5; // Denoted by b in [Kademlia]. Bits by which address space is divided.
  * @todo optimize (use tree for state and/or custom compare for cache)
@@ -130,9 +131,12 @@ public:
 	
 	void join();
 	
+	NodeEntry root() const { return NodeEntry(m_node, m_node.address(), m_node.publicKey(), m_node.endpoint.udp); }
 	std::list<Address> nodes() const;
+	std::list<NodeEntry> state() const;
 	
 	NodeEntry operator[](Address _id);
+	
 	
 protected:
 	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to .
@@ -153,9 +157,9 @@ protected:
 	
 	void dropNode(std::shared_ptr<NodeEntry> _n);
 	
-	NodeBucket const& bucket(NodeEntry* _n) const;
-	
-	/// Network Events
+	NodeBucket& bucket(NodeEntry const* _n);
+
+	/// General Network Events
 	
 	void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet);
 	
@@ -181,7 +185,7 @@ protected:
 	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
 	std::map<Address, std::shared_ptr<NodeEntry>> m_nodes;		///< Address -> Node table (most common lookup path)
 
-	Mutex x_state;
+	mutable Mutex x_state;
 	std::array<NodeBucket, s_bins> m_state;					///< State table of binned nodes.
 
 	Mutex x_evictions;
@@ -193,6 +197,15 @@ protected:
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
+	
+std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
+{
+	_out << _nodeTable.root().address() << "\t" << "0\t" << _nodeTable.root().endpoint.udp.address() << ":" << _nodeTable.root().endpoint.udp.port() << std::endl;
+	auto s = _nodeTable.state();
+	for (auto n: s)
+		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.udp.address() << ":" << n.endpoint.udp.port() << std::endl;
+	return _out;
+}
 	
 /**
  * Ping packet: Check if node is alive.
