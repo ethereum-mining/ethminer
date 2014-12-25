@@ -235,7 +235,7 @@ void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint
 {
 	Address id = right160(sha3(_pubk));
 	
-	// Don't add ourself (would result in -1 bucket lookup)
+	// Don't add ourself
 	if (id == m_node.address())
 		return;
 	
@@ -303,18 +303,27 @@ NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
 {
-	if (_packet.size() < 69)
+	// h256 + Signature + RLP
+	if (_packet.size() < 100)
 	{
-		clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableMessageSummary) << "Invalid Message size received from " << _from.address().to_string() << ":" << _from.port();
+		return;
+	}
+	
+	bytesConstRef signedBytes(_packet.cropped(h256::size, _packet.size() - h256::size));
+	h256 hashSigned(sha3(signedBytes));
+	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
+	{
+		clog(NodeTableMessageSummary) << "Invalid Message hash received from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
 	// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
-	bytesConstRef rlpBytes(_packet.cropped(65, _packet.size() - 65));
+	bytesConstRef rlpBytes(signedBytes.cropped(Signature::size, signedBytes.size() - Signature::size));
 	RLP rlp(rlpBytes);
 	unsigned itemCount = rlp.itemCount();
 	
-	bytesConstRef sigBytes(_packet.cropped(0, 65));
+	bytesConstRef sigBytes(_packet.cropped(h256::size, Signature::size));
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(rlpBytes)));
 	if (!nodeid)
 	{
@@ -339,8 +348,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				if (rlp[0].isList())
 				{
 					// todo: chunk neighbors packet
-					clog(NodeTableMessageSummary) << "Received Neighbors from " << _from.address().to_string() << ":" << _from.port();
 					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
+					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbors from " << _from.address().to_string() << ":" << _from.port();
 					for (auto n: in.nodes)
 						noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
 				}
