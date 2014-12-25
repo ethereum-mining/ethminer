@@ -25,7 +25,6 @@
 #include <libethereum/ExtVM.h>
 #include "AssemblyDebuggerModel.h"
 #include "AppContext.h"
-#include "TransactionListModel.h"
 #include "DebuggingStateWrapper.h"
 
 using namespace std;

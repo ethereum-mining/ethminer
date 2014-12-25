@@ -70,8 +70,14 @@ Rectangle {
 				functionId: transactionDialog.functionId,
 				gas: transactionDialog.gas,
 				gasPrice: transactionDialog.gasPrice,
-				value: transactionDialog.transactionValue
+				value: transactionDialog.transactionValue,
+				parameters: {}
 			}
+			for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
+				var parameter = transactionDialog.transactionParams.get(p);
+				item.parameters[parameter.name] = parameter.value;
+			}
+
 			console.log(item.title);
 			if (transactionDialog.transactionIndex < transactionListModel.count)
 				transactionListModel.set(transactionDialog.transactionIndex, item);

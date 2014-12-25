@@ -21,7 +21,6 @@
 
 #include <QKeySequence>
 #include "Extension.h"
-#include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;

@@ -26,18 +26,10 @@
 #include <QQmlContext>
 #include <QDebug>
 #include "TransactionListView.h"
-#include "TransactionListModel.h"
 using namespace dev::mix;
 
 TransactionListView::TransactionListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)
 {
-	m_model.reset(new TransactionListModel(this, _context));
-	//m_appEngine->rootContext()->setContextProperty("transactionListModel", m_model.get());
-}
-
-TransactionListView::~TransactionListView()
-{
-	//implementation is in cpp file so that all types deleted are complete
 }
 
 QString TransactionListView::contentUrl() const

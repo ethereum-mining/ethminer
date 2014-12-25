@@ -28,7 +28,7 @@ Window {
 	property alias gasPrice : gasPriceField.text;
 	property alias transactionValue : valueField.text;
 	property alias functionId : functionComboBox.currentText;
-	property var model;
+	property var itemParams;
 
 	signal accepted;
 
@@ -39,6 +39,7 @@ Window {
 		gasPrice = item.gasPrice;
 		transactionValue = item.value;
 		var functionId = item.functionId;
+		itemParams = item.parameters !== undefined ? item.parameters : {};
 		functionsModel.clear();
 		var functionIndex = -1;
 		var functions = codeModel.code.contract.functions;
@@ -58,7 +59,8 @@ Window {
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
 			for (var p = 0; p < parameters.length; p++) {
-				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value !== undefined ? parameters[p].value : "" });
+				var pname = parameters[p].name;
+				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname] : "" });
 			}
 		}
 	}

@@ -26,12 +26,35 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
-#include "TransactionListModel.h"
 
 namespace dev
 {
 namespace mix
 {
+
+/// Backend transaction config class
+struct TransactionSettings
+{
+	TransactionSettings():
+		value(0), gas(10000), gasPrice(10 * dev::eth::szabo) {}
+
+	TransactionSettings(QString const& _title, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		title(_title), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+
+	/// User specified transaction title
+	QString title;
+	/// Contract function name
+	QString functionId;
+	/// Transaction value
+	u256 value;
+	/// Gas
+	u256 gas;
+	/// Gas price
+	u256 gasPrice;
+	/// Mapping from contract function parameter name to value
+	std::map<QString, u256> parameterValues;
+};
+
 
 /**
  * @brief Long-life object for managing all executions.
