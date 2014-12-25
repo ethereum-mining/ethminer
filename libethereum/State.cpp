@@ -998,9 +998,12 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 LastHashes State::getLastHashes(BlockChain const& _bc) const
 {
 	LastHashes ret;
-	unsigned n = (unsigned)m_previousBlock.number;
-	for (unsigned i = 0; i < 256; ++i)
-		ret[i] = _bc.numberHash(n - i);
+	if (c_protocolVersion > 49)
+	{
+		unsigned n = (unsigned)m_previousBlock.number;
+		for (unsigned i = 0; i < 256; ++i)
+			ret[i] = _bc.numberHash(n - i);
+	}
 	return ret;
 }
 

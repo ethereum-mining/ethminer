@@ -353,6 +353,32 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	return out;
 }
 
+bytes Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+{
+	bytes out;
+	try
+	{
+		u256 n;
+		State temp;
+		KeyPair k = KeyPair::create();
+	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+		{
+			ReadGuard l(x_stateDB);
+			temp = m_postMine;
+			temp.addBalance(k.address(), _gas * _gasPrice + _value);
+			n = temp.transactionsFrom(k.address());
+		}
+		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, k.secret());
+		u256 gasUsed = temp.execute(m_bc, t.rlp(), &out, false);
+		(void)gasUsed; // TODO: do something with gasused which it returns.
+	}
+	catch (...)
+	{
+		// TODO: Some sort of notification of failure.
+	}
+	return out;
+}
+
 Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	startWorking();
