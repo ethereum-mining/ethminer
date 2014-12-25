@@ -5,23 +5,10 @@ import QtQuick.Window 2.0
 
 Window {
 	modality: Qt.WindowModal
-
 	width:640
 	height:480
-
 	visible: false
 
-	function open()
-	{
-		visible = true;
-	}
-	function close()
-	{
-		visible = false;
-	}
-
-	property alias focus : titleField.focus
-	property alias transactionTitle : titleField.text
 	property int transactionIndex
 	property alias transactionParams : paramsModel;
 	property alias gas : gasField.text;
@@ -32,9 +19,8 @@ Window {
 
 	signal accepted;
 
-	function reset(index, item) {
+	function open(index, item) {
 		transactionIndex = index;
-		transactionTitle = item.title;
 		gas = item.gas;
 		gasPrice = item.gasPrice;
 		transactionValue = item.value;
@@ -48,7 +34,14 @@ Window {
 			if (functions[f].name === item.functionId)
 				functionIndex = f;
 		}
+
+		if (functionIndex == -1 && functionsModel.count > 0)
+			functionIndex = 0; //@todo suggest unused funtion
+
 		functionComboBox.currentIndex = functionIndex;
+		loadParameters();
+		visible = true;
+		valueField.focus = true;
 	}
 
 	function loadParameters() {
@@ -65,6 +58,27 @@ Window {
 		}
 	}
 
+	function close()
+	{
+		visible = false;
+	}
+
+	function getItem()
+	{
+		var item = {
+			functionId: transactionDialog.functionId,
+			gas: transactionDialog.gas,
+			gasPrice: transactionDialog.gasPrice,
+			value: transactionDialog.transactionValue,
+			parameters: {}
+		}
+		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
+			var parameter = transactionDialog.transactionParams.get(p);
+			item.parameters[parameter.name] = parameter.value;
+		}
+		return item;
+	}
+
 	GridLayout {
 		id: dialogContent
 		columns: 2
@@ -74,18 +88,8 @@ Window {
 		columnSpacing: 10
 
 		Label {
-			text: qsTr("Title")
-		}
-		TextField {
-			id: titleField
-			focus: true
-			Layout.fillWidth: true
-		}
-
-		Label {
 			text: qsTr("Function")
 		}
-
 		ComboBox {
 			id: functionComboBox
 			Layout.fillWidth: true
@@ -99,6 +103,7 @@ Window {
 				loadParameters();
 			}
 		}
+
 		Label {
 			text: qsTr("Value")
 		}
