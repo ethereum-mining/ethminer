@@ -111,6 +111,7 @@ template <class T> struct ABISerialiser {};
 template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { return _t.asBytes(); } };
 template <> struct ABISerialiser<u256> { static bytes serialise(u256 const& _t) { return h256(_t).asBytes(); } };
 template <> struct ABISerialiser<u160> { static bytes serialise(u160 const& _t) { return h160(_t).asBytes(); } };
+template <> struct ABISerialiser<string32> { static bytes serialise(string32 const& _t) { return bytesConstRef((byte const*)_t.data(), 32).toBytes(); } };
 
 inline bytes abiInAux() { return {}; }
 template <class T, class ... U> bytes abiInAux(T const& _t, U const& ... _u)
