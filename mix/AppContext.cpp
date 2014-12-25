@@ -27,9 +27,11 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <QStandardPaths>
+#include <QFile>
+#include <QDir>
 #include <libdevcrypto/FileSystem.h>
 #include <libwebthree/WebThree.h>
-#include "KeyEventManager.h"
 #include "AppContext.h"
 #include "CodeModel.h"
 
@@ -38,37 +40,39 @@ using namespace dev::eth;
 using namespace dev::solidity;
 using namespace dev::mix;
 
+const QString c_projectFileName = "project.mix";
+
 AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
 	m_applicationEngine = _engine;
-	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
-	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
+	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
-
+	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
 }
 
 AppContext::~AppContext()
 {
 }
 
+void AppContext::loadProject()
+{
+	QString path = QStandardPaths::locate(QStandardPaths::DataLocation, c_projectFileName);
+	if (!path.isEmpty())
+	{
+		QFile file(path);
+		if(file.open(QIODevice::ReadOnly | QIODevice::Text))
+		{
+			QTextStream stream(&file);
+			QString json = stream.readAll();
+			emit projectLoaded(json);
+		}
+	}
+}
+
 QQmlApplicationEngine* AppContext::appEngine()
 {
 	return m_applicationEngine;
-}
-
-void AppContext::initKeyEventManager(QObject* _res)
-{
-	QObject* mainContent = _res->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
-	if (mainContent)
-		QObject::connect(mainContent, SIGNAL(keyPressed(QVariant)), m_keyEventManager.get(), SLOT(keyPressed(QVariant)));
-	else
-		qDebug() << "Unable to find QObject of mainContent.qml. KeyEvent will not be handled!";
-}
-
-KeyEventManager* AppContext::getKeyEventManager()
-{
-	return m_keyEventManager.get();
 }
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
@@ -84,8 +88,18 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	QMetaObject::invokeMethod(dialogWin, "open");
 }
 
-void AppContext::resourceLoaded(QObject *_obj, QUrl _url)
+void AppContext::saveProject(QString const& _json)
 {
-	Q_UNUSED(_url);
-	initKeyEventManager(_obj);
+	QDir dirPath(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
+	QString path = QDir(dirPath).filePath(c_projectFileName);
+	if (!path.isEmpty())
+	{
+		dirPath.mkpath(dirPath.path());
+		QFile file(path);
+		if(file.open(QIODevice::WriteOnly | QIODevice::Text))
+		{
+			QTextStream stream(&file);
+			stream << _json;
+		}
+	}
 }

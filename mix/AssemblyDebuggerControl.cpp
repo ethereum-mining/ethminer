@@ -26,16 +26,13 @@
 #include <libethereum/Transaction.h>
 #include "AssemblyDebuggerModel.h"
 #include "AssemblyDebuggerControl.h"
-#include "KeyEventManager.h"
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
 #include "ContractCallDataEncoder.h"
-#include "KeyEventManager.h"
 #include "CodeModel.h"
-#include "AssemblyDebuggerModel.h"
 
 using namespace dev::eth;
 using namespace dev::mix;
@@ -53,6 +50,8 @@ AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extensio
 	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)),
 			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
 
+	_context->appEngine()->rootContext()->setContextProperty("debugModel", this);
+
 	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
 }
 
@@ -68,24 +67,23 @@ QString AssemblyDebuggerControl::title() const
 
 void AssemblyDebuggerControl::start() const
 {
-	//start to listen on F5
-	m_ctx->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
 }
 
-void AssemblyDebuggerControl::keyPressed(int _key)
+void AssemblyDebuggerControl::debugDeployment()
 {
-	if (_key == Qt::Key_F5)
-	{
-		QtConcurrent::run([this]()
-		{
-			deployContract();
-		});
-	}
-	else if (_key == Qt::Key_F6)
-	{
-		m_modelDebugger->resetState();
-		m_ctx->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
-	}
+	deployContract();
+}
+
+void AssemblyDebuggerControl::debugTransaction(QObject* _transaction)
+{
+	auto mo = _transaction->metaObject();
+	auto p = mo->property(0);
+}
+
+void AssemblyDebuggerControl::resetState()
+{
+	m_modelDebugger->resetState();
+	m_ctx->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
 }
 
 void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _contract)

@@ -65,8 +65,9 @@ private:
 	DebuggingContent m_previousDebugResult; //TODO: to be replaced in a more consistent struct. Used for now to keep the contract address in case of future transaction call.
 
 public slots:
-	/// Handle key pressed. F5 deploy contract - F6 reset state.
-	void keyPressed(int);
+	void debugDeployment();
+	void debugTransaction(QObject* _transaction);
+	void resetState();
 	/// Update UI with machine states result. Display a modal dialog.
 	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 	/// Run the given transaction.
