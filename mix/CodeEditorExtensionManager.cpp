@@ -67,7 +67,6 @@ void CodeEditorExtensionManager::initExtensions()
 	initExtension(std::make_shared<ConstantCompilationControl>(m_appContext));
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_appContext);
-	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerControl::runTransaction);
 	QObject::connect(m_doc, &QTextDocument::contentsChanged, [=]() { m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText()); });
 
 	initExtension(debug);

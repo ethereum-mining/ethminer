@@ -17,6 +17,7 @@
  * display opcode debugging.
  */
 
+#include <utility>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
@@ -28,7 +29,6 @@
 #include "AssemblyDebuggerControl.h"
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
-#include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
 #include "ContractCallDataEncoder.h"
@@ -36,6 +36,20 @@
 
 using namespace dev::eth;
 using namespace dev::mix;
+
+/// @todo Move this to QML
+dev::u256 fromQString(QString const& _s)
+{
+	return dev::jsToU256(_s.toStdString());
+}
+
+/// @todo Move this to QML
+QString toQString(dev::u256 _value)
+{
+	std::ostringstream s;
+	s << _value;
+	return QString::fromStdString(s.str());
+}
 
 AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::ModalDialog)
 {
@@ -76,8 +90,16 @@ void AssemblyDebuggerControl::debugDeployment()
 
 void AssemblyDebuggerControl::debugTransaction(QObject* _transaction)
 {
-	auto mo = _transaction->metaObject();
-	auto p = mo->property(0);
+	QString functionId = _transaction->property("functionId").toString();
+	u256 value = fromQString(_transaction->property("value").toString());
+	u256 gas = fromQString(_transaction->property("gas").toString());
+	u256 gasPrice = fromQString(_transaction->property("gasPrice").toString());
+	QVariantMap params = _transaction->property("parameters").toMap();
+	TransactionSettings transaction("", functionId, value, gas, gasPrice);
+
+	for (auto p = params.cbegin(); p != params.cend(); ++p)
+		transaction.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
+	runTransaction(transaction);
 }
 
 void AssemblyDebuggerControl::resetState()
@@ -164,8 +186,5 @@ void AssemblyDebuggerControl::updateGUI(bool _success, DebuggingStatusResult con
 
 void AssemblyDebuggerControl::runTransaction(TransactionSettings const& _tr)
 {
-	QtConcurrent::run([this, _tr]()
-	{
-		callContract(_tr, m_previousDebugResult.contractAddress);
-	});
+	callContract(_tr, m_previousDebugResult.contractAddress);
 }

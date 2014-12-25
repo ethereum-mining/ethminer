@@ -29,8 +29,6 @@ namespace dev
 namespace mix
 {
 
-class TransactionListModel;
-
 /// Transactions list control
 /// @todo This should be moved into state as a sequence
 class TransactionListView: public Extension
@@ -39,15 +37,9 @@ class TransactionListView: public Extension
 
 public:
 	TransactionListView(AppContext* _context);
-	~TransactionListView();
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-	/// @returns the underlying model
-	TransactionListModel* model() const { return m_model.get(); }
-
-private:
-	std::unique_ptr<TransactionListModel> m_model;
 };
 
 }
