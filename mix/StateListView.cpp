@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TransactionListView.cpp
+/** @file StateListView.cpp
  * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -25,23 +25,23 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
-#include "TransactionListView.h"
+#include "StateListView.h"
 using namespace dev::mix;
 
-TransactionListView::TransactionListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)
+StateListView::StateListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)
 {
 }
 
-QString TransactionListView::contentUrl() const
+QString StateListView::contentUrl() const
 {
-	return QStringLiteral("qrc:/qml/TransactionList.qml");
+	return QStringLiteral("qrc:/qml/StateList.qml");
 }
 
-QString TransactionListView::title() const
+QString StateListView::title() const
 {
-	return QApplication::tr("Transactions");
+	return QApplication::tr("State");
 }
 
-void TransactionListView::start() const
+void StateListView::start() const
 {
 }

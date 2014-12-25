@@ -19,6 +19,10 @@
 
 #pragma once
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <QObject>
 #include <QList>
 #include <libdevcore/Common.h>
@@ -35,14 +39,9 @@ namespace mix
 /// Backend transaction config class
 struct TransactionSettings
 {
-	TransactionSettings():
-		value(0), gas(10000), gasPrice(10 * dev::eth::szabo) {}
+	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 
-	TransactionSettings(QString const& _title, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		title(_title), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
-
-	/// User specified transaction title
-	QString title;
 	/// Contract function name
 	QString functionId;
 	/// Transaction value

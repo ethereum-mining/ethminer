@@ -17,6 +17,10 @@
  * display opcode debugging.
  */
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <utility>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
@@ -88,18 +92,20 @@ void AssemblyDebuggerControl::debugDeployment()
 	deployContract();
 }
 
-void AssemblyDebuggerControl::debugTransaction(QObject* _transaction)
+void AssemblyDebuggerControl::debugState(QObject* _state)
 {
+	/*
 	QString functionId = _transaction->property("functionId").toString();
 	u256 value = fromQString(_transaction->property("value").toString());
 	u256 gas = fromQString(_transaction->property("gas").toString());
 	u256 gasPrice = fromQString(_transaction->property("gasPrice").toString());
 	QVariantMap params = _transaction->property("parameters").toMap();
-	TransactionSettings transaction("", functionId, value, gas, gasPrice);
+	TransactionSettings transaction(functionId, value, gas, gasPrice);
 
 	for (auto p = params.cbegin(); p != params.cend(); ++p)
 		transaction.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
 	runTransaction(transaction);
+	*/
 }
 
 void AssemblyDebuggerControl::resetState()
@@ -108,7 +114,7 @@ void AssemblyDebuggerControl::resetState()
 	m_ctx->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
 }
 
-void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _contract)
+void AssemblyDebuggerControl::callContract(TransactionSettings _tr, dev::Address _contract)
 {
 	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())

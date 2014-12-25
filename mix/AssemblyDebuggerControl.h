@@ -19,6 +19,10 @@
 
 #pragma once
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <QKeySequence>
 #include "Extension.h"
 #include "AssemblyDebuggerModel.h"
@@ -65,7 +69,7 @@ private:
 
 public slots:
 	void debugDeployment();
-	void debugTransaction(QObject* _transaction);
+	void debugState(QObject* _transaction);
 	void resetState();
 	/// Update UI with machine states result. Display a modal dialog.
 	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
