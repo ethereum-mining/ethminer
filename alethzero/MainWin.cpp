@@ -450,25 +450,23 @@ static Public stringToPublic(QString const& _a)
 		return Public();
 }
 
+static Address g_newNameReg;
+
 QString Main::pretty(dev::Address _a) const
 {
 	static std::map<Address, QString> s_memos;
 
 	if (!s_memos.count(_a))
 	{
-		static Address s_newNameReg;
+		if (!g_newNameReg)
+			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
 
-		if (!s_newNameReg)
-			s_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
-
-		if (s_newNameReg)
+		if (g_newNameReg)
 		{
-			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(s_newNameReg, abiIn(2, _a)))));
+			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn(2, _a)))));
+			s_memos[_a] = s;
 			if (s.size())
-			{
-				s_memos[_a] = s;
 				return s;
-			}
 		}
 	}
 	else
@@ -494,19 +492,47 @@ QString Main::render(dev::Address _a) const
 	return QString::fromStdString(_a.abridged());
 }
 
-Address Main::fromString(QString const& _a) const
+string32 fromString(std::string const& _s)
 {
-	if (_a == "(Create Contract)")
+	string32 ret;
+	for (unsigned i = 0; i < 32 && i <= _s.size(); ++i)
+		ret[i] = i < _s.size() ? _s[i] : 0;
+	return ret;
+}
+
+Address Main::fromString(QString const& _n) const
+{
+	if (_n == "(Create Contract)")
 		return Address();
 
-	string sn = _a.toStdString();
+	static std::map<QString, Address> s_memos;
+
+	if (!s_memos.count(_n))
+	{
+		if (!g_newNameReg)
+			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+
+		if (g_newNameReg)
+		{
+			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn(0, ::fromString(_n.toStdString()))));
+			s_memos[_n] = a;
+			if (a)
+				return a;
+		}
+	}
+	else
+		if (s_memos[_n])
+			return s_memos[_n];
+
+	string sn = _n.toStdString();
 	if (sn.size() > 32)
 		sn.resize(32);
 	h256 n;
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
-	if (_a.size())
+	if (_n.size())
 	{
+
 		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
 			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
@@ -514,8 +540,9 @@ Address Main::fromString(QString const& _a) const
 		if (h256 a = ethereum()->stateAt(m_nameReg, n))
 			return right160(a);
 	}
-	if (_a.size() == 40)
-		return Address(fromHex(_a.toStdString()));
+
+	if (_n.size() == 40)
+		return Address(fromHex(_n.toStdString()));
 	else
 		return Address();
 }
