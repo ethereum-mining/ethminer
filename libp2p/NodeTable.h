@@ -104,6 +104,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	};
 	
 public:
+	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _port = 30300);
+	~NodeTable();
 	
 	/// Constants for Kademlia, mostly derived from address space.
 	
@@ -116,7 +118,6 @@ public:
 	
 	static constexpr unsigned s_bucketSize = 16;		///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
 	static constexpr unsigned s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
-	static constexpr uint16_t s_defaultPort = 30300;	///< Default port to listen on.
 	
 	/// Intervals
 	
@@ -125,9 +126,6 @@ public:
 	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 	
 	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
-
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _port = s_defaultPort);
-	~NodeTable();
 	
 	void join();
 	
@@ -233,9 +231,9 @@ struct PingNode: RLPXDatagram<PingNode>
 	using RLPXDatagram::RLPXDatagram;
 	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
 	
-	std::string ipAddress;	// rlp encoded bytes min: 16
-	unsigned port;			// rlp encoded bytes min: 1 max: 3
-	unsigned expiration;		// rlp encoded bytes min: 1 max: 9
+	std::string ipAddress;
+	unsigned port;
+	unsigned expiration;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
@@ -248,6 +246,7 @@ struct PingNode: RLPXDatagram<PingNode>
  * Minimum Encoded Size: 33 bytes
  * Maximum Encoded Size: 33 bytes
  *
+ * @todo expiration
  * @todo value of replyTo
  * @todo create from PingNode (reqs RLPXDatagram verify flag)
  */
@@ -256,6 +255,7 @@ struct Pong: RLPXDatagram<Pong>
 	using RLPXDatagram::RLPXDatagram;
 
 	h256 replyTo; // hash of rlp of PingNode
+	unsigned expiration;
 	
 	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); replyTo = (h256)r[0]; }
@@ -292,7 +292,7 @@ struct FindNode: RLPXDatagram<FindNode>
  * RLP Encoded Items: 2 (first item is list)
  * Minimum Encoded Size: 10 bytes
  *
- * @todo nonce
+ * @todo nonce: Should be replaced with expiration.
  */
 struct Neighbors: RLPXDatagram<Neighbors>
 {
@@ -312,7 +312,7 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	};
 	
 	using RLPXDatagram::RLPXDatagram;
-	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest): RLPXDatagram(_to), nonce(h256())
+	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest): RLPXDatagram(_to)
 	{
 		for (auto& n: _nearest)
 		{
@@ -325,11 +325,11 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	}
 	
 	std::list<Node> nodes;
-	h256 nonce;
+	unsigned expiration = 1;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << 1; }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << expiration; }
 	void interpretRLP(bytesConstRef _bytes) {
-		RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); nonce = (h256)r[1];
+		RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); expiration = r[1].toInt<unsigned>();
 	}
 };
 

@@ -23,23 +23,32 @@
 using namespace dev;
 using namespace dev::p2p;
 
-//template <class T>
 h256 RLPXDatagramFace::sign(Secret const& _k)
 {
-	RLPStream packet;
-	streamRLP(packet);
-	bytes b(packet.out());
-	h256 h(dev::sha3(b));
-	Signature sig = dev::sign(_k, h);
-	data.resize(b.size() + Signature::size);
-	sig.ref().copyTo(&data);
-	memcpy(data.data() + sizeof(Signature), b.data(), b.size());
-	return std::move(h);
+	RLPStream rlpstream;
+	streamRLP(rlpstream);
+	bytes rlpBytes(rlpstream.out());
+	
+	bytesConstRef rlp(&rlpBytes);
+	h256 hash(dev::sha3(rlp));
+	Signature sig = dev::sign(_k, hash);
+	
+	data.resize(h256::size + Signature::size + rlp.size());
+	bytesConstRef packetHash(&data[0], h256::size);
+	bytesConstRef signedPayload(&data[h256::size], Signature::size + rlp.size());
+	bytesConstRef payloadSig(&data[h256::size], Signature::size);
+	bytesConstRef payload(&data[h256::size+Signature::size], rlp.size());
+	
+	sig.ref().copyTo(payloadSig);
+	rlp.copyTo(payload);
+	dev::sha3(signedPayload).ref().copyTo(packetHash);
+
+	return std::move(hash);
 };
 
-//template <class T>
 Public RLPXDatagramFace::authenticate(bytesConstRef _sig, bytesConstRef _rlp)
 {
 	Signature const& sig = *(Signature const*)_sig.data();
 	return std::move(dev::recover(sig, sha3(_rlp)));
 };
+
