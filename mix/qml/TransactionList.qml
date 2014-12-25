@@ -4,7 +4,6 @@ import QtQuick.Controls 1.2
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 
-
 Rectangle {
 	color: "transparent"
 	id: transactionListContainer
@@ -13,6 +12,16 @@ Rectangle {
 	anchors.left: parent.left
 	height: parent.height
 	width: parent.width
+
+	Connections {
+		target: appContext
+		onProjectLoaded: {
+			var items = JSON.parse(_json);
+			for(var i = 0; i < items.length; i++) {
+				transactionListModel.append(items[i]);
+			}
+		}
+	}
 
 	ListView {
 		anchors.top: parent.top
@@ -23,7 +32,8 @@ Rectangle {
 			id: transactionListModel
 
 			function runTransaction(index) {
-				console.log("runTransaction");
+				var item = transactionListModel.get(index);
+				debugModel.debugTransaction(item);
 			}
 		}
 
@@ -67,6 +77,12 @@ Rectangle {
 				transactionListModel.set(transactionDialog.transactionIndex, item);
 			else
 				transactionListModel.append(item);
+
+			var items = [];
+			for (var i = 0; i < transactionListModel.count; i++)
+				items.push(transactionListModel.get(i));
+			var json = JSON.stringify(items, function(key, value) { return key === "objectName" ? undefined : value; });
+			appContext.saveProject(json);
 		}
 	}
 
@@ -113,3 +129,4 @@ Rectangle {
 		}
 	}
 }
+

@@ -55,11 +55,8 @@ Window {
 			return;
 		paramsModel.clear();
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			console.log(codeModel.code.contract.functions[functionComboBox.currentIndex]);
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
-			console.log(parameters);
-			console.log(parameters.length);
 			for (var p = 0; p < parameters.length; p++) {
 				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value !== undefined ? parameters[p].value : "" });
 			}
@@ -197,7 +194,6 @@ Window {
 				Connections {
 					target: loaderEditor.item
 					onTextChanged: {
-						console.log(styleData.row + " : " + styleData.role + " = " + loaderEditor.item.text );
 						if (styleData.role === "value" && styleData.row < paramsModel.count)
 							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}

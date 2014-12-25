@@ -11,8 +11,7 @@
         <file>qml/TransactionList.qml</file>
         <file>qml/ModalDialog.qml</file>
         <file>qml/AlertMessageDialog.qml</file>
-        <file>qml/StateItem.qml</file>
+        <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
-        <file>qml/TransactionItem.qml</file>
     </qresource>
 </RCC>
