@@ -106,6 +106,8 @@ static QString contentsOfQResource(std::string const& res)
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+Address c_newConfig = Address("d5f9d8d94886e70b06e474c3fb14fd43e2f23970");
+Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -450,6 +452,29 @@ static Public stringToPublic(QString const& _a)
 
 QString Main::pretty(dev::Address _a) const
 {
+	static std::map<Address, QString> s_memos;
+
+	if (!s_memos.count(_a))
+	{
+		static Address s_newNameReg;
+
+		if (!s_newNameReg)
+			s_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+
+		if (s_newNameReg)
+		{
+			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(s_newNameReg, abiIn(2, _a)))));
+			if (s.size())
+			{
+				s_memos[_a] = s;
+				return s;
+			}
+		}
+	}
+	else
+		if (s_memos[_a].size())
+			return s_memos[_a];
+
 	h256 n;
 
 	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
