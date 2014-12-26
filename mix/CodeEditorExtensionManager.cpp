@@ -80,10 +80,10 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	{
 		try
 		{
-			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
-				_ext->addTabOn(m_tabView);
-			else if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightTab)
-				_ext->addTabOn(m_rightTabView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightView)
+				_ext->addContentOn(m_rightView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::HeaderView)
+				_ext->addContentOn(m_headerView);
 		}
 		catch (...)
 		{
@@ -110,12 +110,12 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 	}
 }
 
-void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 {
-	m_rightTabView = _tabView;
+	m_rightView = _rightView;
 }
 
-void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)
 {
-	m_tabView = _tabView;
+	m_headerView = _headerView;
 }
