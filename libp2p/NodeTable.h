@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <boost/integer/static_log2.hpp>
 #include <libdevcrypto/Common.h>
 #include <libp2p/UDP.h>
@@ -109,15 +110,15 @@ public:
 	
 	/// Constants for Kademlia, mostly derived from address space.
 	
-	static constexpr unsigned s_addressByteSize = sizeof(NodeEntry::id);		///< Size of address type in bytes.
-	static constexpr unsigned s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
-	static constexpr unsigned s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
-	static constexpr unsigned s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
+	static unsigned const s_addressByteSize = sizeof(NodeEntry::id);		///< Size of address type in bytes.
+	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
+	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
+	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
 	
 	/// Chosen constants
 	
-	static constexpr unsigned s_bucketSize = 16;		///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
-	static constexpr unsigned s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
+	static unsigned const s_bucketSize = 16;		///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
+	static unsigned const s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
 	
 	/// Intervals
 	
@@ -312,16 +313,26 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	};
 	
 	using RLPXDatagram::RLPXDatagram;
-	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest): RLPXDatagram(_to)
+	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram(_to)
 	{
-		for (auto& n: _nearest)
+		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
+		for (auto i = _offset; i < limit; i++)
 		{
 			Node node;
-			node.ipAddress = n->endpoint.udp.address().to_string();
-			node.port = n->endpoint.udp.port();
-			node.node = n->publicKey();
+			node.ipAddress = _nearest[i]->endpoint.udp.address().to_string();
+			node.port = _nearest[i]->endpoint.udp.port();
+			node.node = _nearest[i]->publicKey();
 			nodes.push_back(node);
 		}
+		
+//		for (auto& n: _nearest)
+//		{
+//			Node node;
+//			node.ipAddress = n->endpoint.udp.address().to_string(); // 16
+//			node.port = n->endpoint.udp.port(); // 3
+//			node.node = n->publicKey();// 67
+//			nodes.push_back(node);
+//		}
 	}
 	
 	std::list<Node> nodes;

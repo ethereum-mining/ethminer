@@ -110,7 +110,7 @@ template <typename Handler, unsigned MaxDatagramSize>
 class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Handler, MaxDatagramSize>>
 {
 public:
-	static constexpr unsigned maxDatagramSize = MaxDatagramSize;
+	enum { maxDatagramSize = MaxDatagramSize };
 	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
 	
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, unsigned _port): m_host(_host), m_endpoint(bi::udp::v4(), _port), m_socket(_io) { m_started.store(false); m_closed.store(true); };
