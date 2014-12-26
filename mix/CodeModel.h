@@ -62,6 +62,8 @@ class CompilationResult : public QObject
 	Q_PROPERTY(QContractDefinition* contract READ contract)
 
 public:
+	/// Empty compilation result constructor
+	CompilationResult(QObject* parent);
 	/// Successfull compilation result constructor
 	CompilationResult(solidity::CompilerStack const& _compiler, QObject* parent);
 	/// Failed compilation result constructor

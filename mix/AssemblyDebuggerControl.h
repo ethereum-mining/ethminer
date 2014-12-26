@@ -69,7 +69,7 @@ private:
 
 public slots:
 	void debugDeployment();
-	void debugState(QObject* _transaction);
+	void debugState(QVariantMap _state);
 	void resetState();
 	/// Update UI with machine states result. Display a modal dialog.
 	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
