@@ -197,7 +197,7 @@ protected:
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
 	
-std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
+inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 {
 	_out << _nodeTable.root().address() << "\t" << "0\t" << _nodeTable.root().endpoint.udp.address() << ":" << _nodeTable.root().endpoint.udp.port() << std::endl;
 	auto s = _nodeTable.state();
@@ -205,7 +205,7 @@ std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.udp.address() << ":" << n.endpoint.udp.port() << std::endl;
 	return _out;
 }
-	
+
 /**
  * Ping packet: Check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.

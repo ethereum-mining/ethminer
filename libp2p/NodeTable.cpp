@@ -247,12 +247,18 @@ void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint
 		{
 			node.reset(new NodeEntry(m_node, id, _pubk, _endpoint));
 			m_nodes[id] = node;
+//			clog(NodeTableMessageSummary) << "Adding node to cache: " << id;
 		}
 		else
+		{
 			node = n->second;
+//			clog(NodeTableMessageSummary) << "Found node in cache: " << id;
+		}
 	}
 	
-	noteNode(node);
+	// todo: why is this necessary?
+	if (!!node)
+		noteNode(node);
 }
 
 void NodeTable::noteNode(std::shared_ptr<NodeEntry> _n)
@@ -335,7 +341,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 		switch (itemCount) {
 			case 1:
 			{
-				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
+//				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
 				
 				// whenever a pong is received, first check if it's in m_evictions
@@ -347,13 +353,13 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				if (rlp[0].isList())
 				{
 					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
-					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbors from " << _from.address().to_string() << ":" << _from.port();
+//					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbors from " << _from.address().to_string() << ":" << _from.port();
 					for (auto n: in.nodes)
 						noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
 				}
 				else
 				{
-					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
+//					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
 					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 					
 					std::vector<std::shared_ptr<NodeTable::NodeEntry>> nearest = findNearest(in.target);
@@ -369,7 +375,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				
 			case 3:
 			{
-				clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
+//				clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
 				
 				Pong p(_from);
