@@ -34,7 +34,7 @@
 
 using namespace dev::mix;
 
-ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::Tab)
+ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
 {
 	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
 }
