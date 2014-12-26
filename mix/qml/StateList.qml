@@ -72,7 +72,7 @@ Rectangle {
 		}
 
 		function runState(index) {
-			var item = stateListModel.get(index);
+			var item = stateList[index];
 			debugModel.debugState(item);
 		}
 

@@ -92,20 +92,30 @@ void AssemblyDebuggerControl::debugDeployment()
 	deployContract();
 }
 
-void AssemblyDebuggerControl::debugState(QObject* _state)
+void AssemblyDebuggerControl::debugState(QVariantMap _state)
 {
-	/*
-	QString functionId = _transaction->property("functionId").toString();
-	u256 value = fromQString(_transaction->property("value").toString());
-	u256 gas = fromQString(_transaction->property("gas").toString());
-	u256 gasPrice = fromQString(_transaction->property("gasPrice").toString());
-	QVariantMap params = _transaction->property("parameters").toMap();
-	TransactionSettings transaction(functionId, value, gas, gasPrice);
+	u256 balance = fromQString(_state.value("balance").toString());
+	QVariantList transactions = _state.value("transactions").toList();
 
-	for (auto p = params.cbegin(); p != params.cend(); ++p)
-		transaction.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
-	runTransaction(transaction);
-	*/
+	resetState();
+	deployContract();
+
+	for (auto const& t : transactions)
+	{
+		QVariantMap transaction = t.toMap();
+
+		QString functionId = transaction.value("functionId").toString();
+		u256 value = fromQString(transaction.value("value").toString());
+		u256 gas = fromQString(transaction.value("gas").toString());
+		u256 gasPrice = fromQString(transaction.value("gasPrice").toString());
+		QVariantMap params = transaction.value("parameters").toMap();
+		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
+
+		for (auto p = params.cbegin(); p != params.cend(); ++p)
+			transactionSettings.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
+
+		runTransaction(transactionSettings);
+	}
 }
 
 void AssemblyDebuggerControl::resetState()

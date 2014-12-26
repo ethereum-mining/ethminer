@@ -42,6 +42,11 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 	m_model->runCompilationJob(_jobId, _content);
 }
 
+CompilationResult::CompilationResult(QObject *_parent):
+	QObject(_parent), m_successfull(false),
+	m_contract(new QContractDefinition())
+{}
+
 CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler, QObject *_parent):
 	QObject(_parent), m_successfull(true),
 	m_contract(new QContractDefinition(&_compiler.getContractDefinition(std::string()))),
@@ -58,7 +63,7 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 {}
 
 CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
-	m_backgroundWorker(this), m_backgroundJobId(0)
+	m_result(new CompilationResult(nullptr)), m_backgroundWorker(this), m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
