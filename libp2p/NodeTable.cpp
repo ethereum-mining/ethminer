@@ -306,7 +306,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	// h256 + Signature + RLP
 	if (_packet.size() < 100)
 	{
-		clog(NodeTableMessageSummary) << "Invalid Message size received from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableMessageSummary) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -314,11 +314,10 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	h256 hashSigned(sha3(signedBytes));
 	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
 	{
-		clog(NodeTableMessageSummary) << "Invalid Message hash received from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableMessageSummary) << "Invalid Message hash from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
-	
-	// 3 items is PingNode, 2 items w/no lists is FindNode, 2 items w/first item as list is Neighbors, 1 item is Pong
+
 	bytesConstRef rlpBytes(signedBytes.cropped(Signature::size, signedBytes.size() - Signature::size));
 	RLP rlp(rlpBytes);
 	unsigned itemCount = rlp.itemCount();
@@ -327,7 +326,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(rlpBytes)));
 	if (!nodeid)
 	{
-		clog(NodeTableMessageSummary) << "Invalid Message Signature from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableMessageSummary) << "Invalid Message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	noteNode(nodeid, _from);
@@ -347,7 +346,6 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case 2:
 				if (rlp[0].isList())
 				{
-					// todo: chunk neighbors packet
 					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
 					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbors from " << _from.address().to_string() << ":" << _from.port();
 					for (auto n: in.nodes)
@@ -359,9 +357,13 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 					
 					std::vector<std::shared_ptr<NodeTable::NodeEntry>> nearest = findNearest(in.target);
-					Neighbors out(_from, nearest);
-					out.sign(m_secret);
-					m_socketPtr->send(out);
+					static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
+					for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
+					{
+						Neighbors out(_from, nearest, offset, nlimit);
+						out.sign(m_secret);
+						m_socketPtr->send(out);
+					}
 				}
 				break;
 				
@@ -384,7 +386,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	}
 	catch (...)
 	{
-		
+		// likely culprit is invalid rlp encoding
 	}
 }
 	
