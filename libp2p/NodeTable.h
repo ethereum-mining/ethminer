@@ -38,11 +38,16 @@ namespace p2p
  * Thread-safety is ensured by modifying NodeEntry details via 
  * shared_ptr replacement instead of mutating values.
  *
- * [Interface]
+ * [Integration]
+ * @todo deadline-timer which maintains tcp/peer connections
  * @todo restore nodes: affects refreshbuckets
  * @todo TCP endpoints
  * @todo makeRequired: don't try to evict node if node isRequired.
  * @todo makeRequired: exclude bucket from refresh if we have node as peer.
+ *
+ * [Optimization]
+ * @todo Pong to include ip:port where ping was received
+ * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
  * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
  *
@@ -57,7 +62,6 @@ namespace p2p
  * @todo ^ s_bitsPerStep = 5; // Denoted by b in [Kademlia]. Bits by which address space is divided.
  * @todo optimize (use tree for state and/or custom compare for cache)
  * @todo reputation (aka universal siblings lists)
- * @todo dht (aka siblings)
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
@@ -110,7 +114,7 @@ public:
 	
 	/// Constants for Kademlia, mostly derived from address space.
 	
-	static unsigned const s_addressByteSize = sizeof(NodeEntry::id);		///< Size of address type in bytes.
+	static unsigned const s_addressByteSize = sizeof(Node::id);				///< Size of address type in bytes.
 	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
 	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
 	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
@@ -229,7 +233,7 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  */
 struct PingNode: RLPXDatagram<PingNode>
 {
-	using RLPXDatagram::RLPXDatagram;
+	using RLPXDatagram<PingNode>::RLPXDatagram;
 	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
 	
 	std::string ipAddress;
@@ -253,7 +257,7 @@ struct PingNode: RLPXDatagram<PingNode>
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	using RLPXDatagram::RLPXDatagram;
+	using RLPXDatagram<Pong>::RLPXDatagram;
 
 	h256 replyTo; // hash of rlp of PingNode
 	unsigned expiration;
@@ -277,7 +281,7 @@ struct Pong: RLPXDatagram<Pong>
  */
 struct FindNode: RLPXDatagram<FindNode>
 {
-	using RLPXDatagram::RLPXDatagram;
+	using RLPXDatagram<FindNode>::RLPXDatagram;
 	FindNode(bi::udp::endpoint _ep, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
 	
 	h160 target;
@@ -312,7 +316,7 @@ struct Neighbors: RLPXDatagram<Neighbors>
 		}
 	};
 	
-	using RLPXDatagram::RLPXDatagram;
+	using RLPXDatagram<Neighbors>::RLPXDatagram;
 	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram(_to)
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();

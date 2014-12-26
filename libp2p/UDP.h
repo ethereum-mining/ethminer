@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <deque>
