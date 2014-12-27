@@ -69,8 +69,10 @@ public:
 	/// Failed compilation result constructor
 	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* parent);
 
-	/// @returns contract definition
+	/// @returns contract definition for QML property
 	QContractDefinition* contract() { return m_contract.get(); }
+	/// @returns contract definition
+	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
 
 	/// Indicates if the compilation was successfull
 	bool successfull() const { return m_successfull; }
@@ -96,12 +98,6 @@ private:
 /// Background code compiler
 class CodeModel : public QObject
 {
-	enum Status
-	{
-		Idle,		///< No compiation in progress
-		Compiling,  ///< Compilation currently in progress
-	};
-
 	Q_OBJECT
 
 public:
@@ -114,10 +110,17 @@ public:
 	CompilationResult const* code() const { return m_result.get(); }
 
 	Q_PROPERTY(CompilationResult* code READ code NOTIFY codeChanged)
+	Q_PROPERTY(bool compiling READ isCompiling NOTIFY stateChanged)
+	Q_PROPERTY(bool hasContract READ hasContract NOTIFY codeChanged)
+
+	/// @returns compilation status
+	bool isCompiling() const { return m_compiling; }
+	/// @returns true if contract has at least one function
+	bool hasContract() const;
 
 signals:
-	/// Emited on compilation status change
-	void statusChanged(Status _from, Status _to);
+	/// Emited on compilation state change
+	void stateChanged();
 	/// Emitted on compilation complete
 	void compilationComplete();
 	/// Internal signal used to transfer compilation job to background thread
@@ -138,6 +141,7 @@ private:
 	void runCompilationJob(int _jobId, QString const& _content);
 	void stop();
 
+	bool m_compiling;
 	std::unique_ptr<CompilationResult> m_result;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;

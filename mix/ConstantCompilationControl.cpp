@@ -37,6 +37,7 @@ using namespace dev::mix;
 ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::Tab)
 {
 	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
+	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
 }
 
 QString ConstantCompilationControl::contentUrl() const
@@ -79,4 +80,14 @@ void ConstantCompilationControl::resetOutPut()
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
 	status->setProperty("text", "");
 	content->setProperty("text", "");
+}
+
+
+void ConstantCompilationControl::displayError(QString const& _error)
+{
+	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
+	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
+	status->setProperty("text", "failure");
+	status->setProperty("color", "red");
+	content->setProperty("text", _error);
 }

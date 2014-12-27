@@ -45,6 +45,7 @@ private:
 
 public slots:
 	void update();
+	void displayError(QString const& _error);
 };
 
 }
