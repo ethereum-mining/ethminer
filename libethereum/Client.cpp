@@ -365,9 +365,11 @@ bytes Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u2
 			temp = m_postMine;
 		}
 		Executive e(temp, LastHashes(), 0);
-		e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address());
-		e.go();
-		return e.out().toBytes();
+		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
+		{
+			e.go();
+			return e.out().toBytes();
+		}
 	}
 	catch (...)
 	{
