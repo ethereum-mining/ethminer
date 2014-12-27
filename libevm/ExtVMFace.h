@@ -93,7 +93,7 @@ struct SubState
 class ExtVMFace;
 class VM;
 
-using LastHashes = std::array<h256, 256>;
+using LastHashes = std::vector<h256>;
 
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
 
