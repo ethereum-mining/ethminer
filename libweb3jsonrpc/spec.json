@@ -1,4 +1,6 @@
 [
+            { "name": "web3_sha3", "params": [""], "order": [], "returns" : "" },
+
             { "name": "eth_coinbase", "params": [], "order": [], "returns" : "" },
             { "name": "eth_setCoinbase", "params": [""], "order": [], "returns" : true },
             { "name": "eth_listening", "params": [], "order": [], "returns" : false },
