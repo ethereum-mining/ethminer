@@ -63,7 +63,7 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 {}
 
 CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
-	m_result(new CompilationResult(nullptr)), m_backgroundWorker(this), m_backgroundJobId(0)
+	m_compiling(false), m_result(new CompilationResult(nullptr)), m_backgroundWorker(this), m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
@@ -94,9 +94,10 @@ void CodeModel::registerCodeChange(const QString &_code)
 {
 	// launch the background thread
 	m_backgroundJobId++;
+	m_compiling = true;
+	emit stateChanged();
 	emit scheduleCompilationJob(m_backgroundJobId, _code);
 }
-
 
 void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 {
@@ -124,10 +125,17 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 
 void CodeModel::onCompilationComplete(CompilationResult*_newResult)
 {
+	m_compiling = false;
 	m_result.reset(_newResult);
 	emit compilationComplete();
+	emit stateChanged();
 	if (m_result->successfull())
 		emit codeChanged();
+}
+
+bool CodeModel::hasContract() const
+{
+	return m_result->contract()->functionsList().size() > 0;
 }
 
 }

@@ -35,8 +35,7 @@ Rectangle {
 
 	Button {
 		anchors.bottom: parent.bottom
-		text: qsTr("Add")
-		onClicked: stateListModel.addState();
+		action: addStateAction
 	}
 
 	StateDialog {
@@ -61,7 +60,7 @@ Rectangle {
 		function addState() {
 			var item = {
 				title: "",
-				balance: "1000000000000",
+				balance: "100000000000000000000000000",
 				transactions: []
 			};
 			stateDialog.open(stateListModel.count, item);
@@ -120,6 +119,14 @@ Rectangle {
 				}
 			}
 		}
+	}
+
+	Action {
+		id: addStateAction
+		text: "&Add State"
+		shortcut: "Ctrl+N"
+		enabled: codeModel.hasContract && !debugModel.running;
+		onTriggered: stateListModel.addState();
 	}
 }
 

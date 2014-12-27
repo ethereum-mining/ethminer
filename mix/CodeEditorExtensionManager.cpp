@@ -64,11 +64,13 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationControl>(m_appContext));
+	std::shared_ptr<ConstantCompilationControl> output = std::make_shared<ConstantCompilationControl>(m_appContext);
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
 	QObject::connect(m_doc, &QTextDocument::contentsChanged, [=]() { m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText()); });
+	QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
 
+	initExtension(output);
 	initExtension(debug);
 	initExtension(stateList);
 }

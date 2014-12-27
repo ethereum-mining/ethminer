@@ -66,15 +66,13 @@ public:
 	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	/// Deploy the contract described by _code.
 	DebuggingContent deployContract(bytes const& _code);
-	/// Reset state to the base state.
-	void resetState();
+	/// Reset state to the empty state with given balance.
+	void resetState(u256 _balance);
 
 private:
 	KeyPair m_userAccount;
 	OverlayDB m_overlayDB;
-	eth::State m_baseState;
 	eth::State m_executiveState;
-	std::unique_ptr<eth::Executive> m_currentExecution;
 	DebuggingContent executeTransaction(dev::bytesConstRef const& _rawTransaction);
 };
 
