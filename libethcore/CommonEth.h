@@ -48,7 +48,7 @@ std::vector<std::pair<u256, std::string>> const& units();
 using LogBloom = h512;
 
 // The various denominations; here for ease of use where needed within code.
-static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
+/*static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
 static const u256 Vether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
 static const u256 Dether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
 static const u256 Nether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
@@ -59,13 +59,13 @@ static const u256 Pether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000
 static const u256 Tether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000;
 static const u256 Gether = (u256(1000000000) * 1000000000) * 1000000000;
 static const u256 Mether = (u256(1000000000) * 1000000000) * 1000000;
-static const u256 Kether = (u256(1000000000) * 1000000000) * 1000;
+static const u256 grand = (u256(1000000000) * 1000000000) * 1000;*/
 static const u256 ether = u256(1000000000) * 1000000000;
 static const u256 finney = u256(1000000000) * 1000000;
 static const u256 szabo = u256(1000000000) * 1000;
-static const u256 Gwei = u256(1000000000);
+/*static const u256 Gwei = u256(1000000000);
 static const u256 Mwei = u256(1000000);
-static const u256 Kwei = u256(1000);
+static const u256 Kwei = u256(1000);*/
 static const u256 wei = u256(1);
 
 }
