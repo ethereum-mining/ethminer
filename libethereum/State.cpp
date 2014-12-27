@@ -564,7 +564,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			BOOST_THROW_EXCEPTION(DuplicateUncleNonce());
 
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
-		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 6)
+		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 			BOOST_THROW_EXCEPTION(UncleTooOld());
 		uncle.verifyParent(uncleParent);
 
