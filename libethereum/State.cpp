@@ -508,26 +508,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		k << i;
 
 		transactionsTrie.insert(&k.out(), tr.data());
-
-//		cnote << m_state.root() << m_state;
-//		cnote << *this;
 		execute(lh, tr.data());
 
 		RLPStream receiptrlp;
 		m_receipts.back().streamRLP(receiptrlp);
 		receiptsTrie.insert(&k.out(), &receiptrlp.out());
-/*
-		if (tr[1].toHash<h256>() != m_state.root())
-		{
-			// Invalid state root
-			cnote << m_state.root() << "\n" << m_state;
-			cnote << *this;
-			cnote << "INVALID: " << tr[1].toHash<h256>();
-			BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
-		}
-		if (tr[2].toInt<u256>() != gasUsed())
-			BOOST_THROW_EXCEPTION(InvalidTransactionGasUsed());
-*/
 		++i;
 	}
 
@@ -539,7 +524,20 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
-		cwarn << "Bad receipts state root!";
+		cwarn << "Bad receipts state root.";
+		cwarn << "Block:" << toHex(_block);
+		cwarn << "Block RLP:" << RLP(_block);
+		cwarn << "Want: " << receiptsTrie.root() << ", got: " << m_currentBlock.receiptsRoot;
+		for (unsigned j = 0; j < i; ++j)
+		{
+			RLPStream k;
+			k << j;
+			auto b = asBytes(receiptsTrie.at(&k.out()));
+			cwarn << j << ": ";
+			cwarn << "RLP: " << RLP(b);
+			cwarn << "Hex: " << toHex(b);
+			cwarn << TransactionReceipt(&b);
+		}
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
