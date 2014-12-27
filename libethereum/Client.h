@@ -125,10 +125,10 @@ template <class ... T> bytes abiIn(byte _id, T const& ... _t)
 }
 
 template <class T> struct ABIDeserialiser {};
-template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { FixedHash<N> ret; io_t.cropped(0, N).copyTo(ret.ref()); return ret; } };
+template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { FixedHash<N> ret; io_t.cropped(0, N).populate(ret.ref()); return ret; } };
 template <> struct ABIDeserialiser<u256> { static u256 deserialise(bytesConstRef& io_t) { u256 ret = fromBigEndian<u256>(io_t.cropped(0, 32)); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<u160> { static u256 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(0, 20)); io_t = io_t.cropped(20); return ret; } };
-template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).copyTo(vector_ref<char>(ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
+template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(vector_ref<char>(ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
 
 template <class T> T abiOut(bytes const& _data)
 {
