@@ -135,7 +135,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
-	unsigned head = hammingDist(m_node.id, _target);
+	unsigned head = dist(m_node.id, _target);
 	unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
 	
 	std::map<unsigned, std::list<std::shared_ptr<NodeEntry>>> found;
@@ -150,7 +150,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[hammingDist(_target, p->id)].push_back(p);
+						found[dist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
@@ -160,7 +160,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
-							found[hammingDist(_target, p->id)].push_back(p);
+							found[dist(_target, p->id)].push_back(p);
 						else
 							break;
 					}
@@ -177,7 +177,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[hammingDist(_target, p->id)].push_back(p);
+						found[dist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
@@ -191,7 +191,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[hammingDist(_target, p->id)].push_back(p);
+						found[dist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
