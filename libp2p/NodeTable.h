@@ -95,8 +95,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	 */
 	struct NodeEntry: public Node
 	{
-		NodeEntry(Node _src, Address _id, Public _pubk, NodeDefaultEndpoint _gw): Node(_id, _pubk, _gw), distance(dist(_src.id,_id)) {}
-		NodeEntry(Node _src, Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_id)) {}
+		NodeEntry(Node _src, Address _id, Public _pubk, NodeDefaultEndpoint _gw): Node(_id, _pubk, _gw), distance(hammingDist(_src.id,_id)) {}
+		NodeEntry(Node _src, Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)), distance(hammingDist(_src.id,_id)) {}
 
 		const unsigned distance;	///< Node's distance from _src (see constructor).
 	};
@@ -130,7 +130,7 @@ public:
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
 	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 	
-	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	static unsigned hammingDist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
 	void join();
 	
@@ -142,7 +142,7 @@ public:
 	
 	
 protected:
-	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to .
+	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
 	void doFindNode(Address _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
 	/// Returns nodes nearest to target.
@@ -179,7 +179,7 @@ private:
 #else
 protected:
 #endif
-	/// Sends s_alpha concurrent FindNeighbor requests to nodes closest to target until
+	/// Sends FindNeighbor packet. See doFindNode.
 	void requestNeighbors(NodeEntry const& _node, Address _target) const;
 
 	Node m_node;												///< This node.
