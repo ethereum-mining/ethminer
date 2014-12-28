@@ -90,10 +90,11 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 	
 	if (_round == s_maxSteps)
 	{
-		clog(NodeTableWarn) << "Terminating doFindNode after " << _round << " rounds.";
+		clog(NodeTableNote) << "Terminating doFindNode after " << _round << " rounds.";
 		return;
 	}
-	else
+	else if(!_round && !_tried)
+		// initialized _tried on first round
 		_tried.reset(new std::set<std::shared_ptr<NodeEntry>>());
 	
 	auto nearest = findNearest(_node);
@@ -110,7 +111,7 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 	
 	if (tried.empty())
 	{
-		clog(NodeTableWarn) << "Terminating doFindNode after " << _round << " rounds.";
+		clog(NodeTableNote) << "Terminating doFindNode after " << _round << " rounds.";
 		return;
 	}
 		
@@ -134,7 +135,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
-	unsigned head = dist(m_node.id, _target);
+	unsigned head = hammingDist(m_node.id, _target);
 	unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
 	
 	std::map<unsigned, std::list<std::shared_ptr<NodeEntry>>> found;
@@ -149,7 +150,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[dist(_target, p->id)].push_back(p);
+						found[hammingDist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
@@ -159,7 +160,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
-							found[dist(_target, p->id)].push_back(p);
+							found[hammingDist(_target, p->id)].push_back(p);
 						else
 							break;
 					}
@@ -176,7 +177,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[dist(_target, p->id)].push_back(p);
+						found[hammingDist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
@@ -190,7 +191,7 @@ std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Addres
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[dist(_target, p->id)].push_back(p);
+						found[hammingDist(_target, p->id)].push_back(p);
 					else
 						break;
 				}
@@ -309,8 +310,8 @@ NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
 {
-	// h256 + Signature + RLP
-	if (_packet.size() < 100)
+	// h256 + Signature + RLP (smallest possible packet is empty neighbors packet which is 3 bytes)
+	if (_packet.size() < h256::size + Signature::size + 3)
 	{
 		clog(NodeTableMessageSummary) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
@@ -392,7 +393,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	}
 	catch (...)
 	{
-		// likely culprit is invalid rlp encoding
+		clog(NodeTableWarn) << "Exception processing message from " << _from.address().to_string() << ":" << _from.port();
 	}
 }
 	
