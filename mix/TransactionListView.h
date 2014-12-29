@@ -20,7 +20,6 @@
 #pragma once
 
 #include <QTextDocument>
-#include "TransactionListView.h"
 #include "Extension.h"
 
 namespace dev

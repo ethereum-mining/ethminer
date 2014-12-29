@@ -27,10 +27,18 @@
 
 #pragma once
 
+#include <memory>
 #include <QQmlApplicationEngine>
-#include <libsolidity/CompilerStack.h>
-#include <libwebthree/WebThree.h>
 #include "KeyEventManager.h"
+
+namespace dev
+{
+	class WebThreeDirect;
+	namespace solidity
+	{
+		class CompilerStack;
+	}
+}
 
 namespace dev
 {
@@ -46,7 +54,6 @@ class AppContext: public QObject
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	~AppContext() {}
 	/// Get the current QQmlApplicationEngine instance.
 	static AppContext* getInstance() { return Instance; }
 	/// Renew QQMLApplicationEngine with a new instance.
