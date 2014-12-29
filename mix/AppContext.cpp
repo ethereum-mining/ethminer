@@ -26,7 +26,9 @@
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlApplicationEngine>
+#include <libwebthree/WebThree.h>
 #include <libdevcrypto/FileSystem.h>
+#include <libsolidity/CompilerStack.h>
 #include "KeyEventManager.h"
 #include "AppContext.h"
 using namespace dev;
