@@ -198,7 +198,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			require(1);
 			runGas = c_balanceGas;
 			break;
-
 		case Instruction::LOG0:
 		case Instruction::LOG1:
 		case Instruction::LOG2:
@@ -240,6 +239,11 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			break;
 		}
 
+		case Instruction::PREVHASH:
+			if (c_protocolVersion > 49)
+				require(1);
+		break;
+
 		case Instruction::PC:
 		case Instruction::MSIZE:
 		case Instruction::GAS:
@@ -251,7 +255,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		case Instruction::CALLDATASIZE:
 		case Instruction::CODESIZE:
 		case Instruction::GASPRICE:
-		case Instruction::PREVHASH:
 		case Instruction::COINBASE:
 		case Instruction::TIMESTAMP:
 		case Instruction::NUMBER:
@@ -581,7 +584,10 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			m_stack.push_back(_ext.gasPrice);
 			break;
 		case Instruction::PREVHASH:
-			m_stack.push_back(_ext.previousBlock.hash);
+			if (c_protocolVersion > 49)
+				m_stack.back() = (u256)_ext.prevhash(m_stack.back());
+			else
+				m_stack.push_back(_ext.previousBlock.hash);
 			break;
 		case Instruction::COINBASE:
 			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
