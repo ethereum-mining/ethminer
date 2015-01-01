@@ -150,6 +150,13 @@ bool ASTPrinter::visit(WhileStatement const& _node)
 	return goDeeper();
 }
 
+bool ASTPrinter::visit(ForStatement const& _node)
+{
+	writeLine("ForStatement");
+	printSourcePart(_node);
+	return goDeeper();
+}
+
 bool ASTPrinter::visit(Continue const& _node)
 {
 	writeLine("Continue");
@@ -221,6 +228,14 @@ bool ASTPrinter::visit(BinaryOperation const& _node)
 bool ASTPrinter::visit(FunctionCall const& _node)
 {
 	writeLine("FunctionCall");
+	printType(_node);
+	printSourcePart(_node);
+	return goDeeper();
+}
+
+bool ASTPrinter::visit(NewExpression const& _node)
+{
+	writeLine("NewExpression");
 	printType(_node);
 	printSourcePart(_node);
 	return goDeeper();
@@ -352,6 +367,11 @@ void ASTPrinter::endVisit(WhileStatement const&)
 	m_indentation--;
 }
 
+void ASTPrinter::endVisit(ForStatement const&)
+{
+	m_indentation--;
+}
+
 void ASTPrinter::endVisit(Continue const&)
 {
 	m_indentation--;
@@ -398,6 +418,11 @@ void ASTPrinter::endVisit(BinaryOperation const&)
 }
 
 void ASTPrinter::endVisit(FunctionCall const&)
+{
+	m_indentation--;
+}
+
+void ASTPrinter::endVisit(NewExpression const&)
 {
 	m_indentation--;
 }

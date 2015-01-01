@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include <jsonrpc/connectors/httpserver.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 
 namespace jsonrpc
 {

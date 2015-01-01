@@ -110,7 +110,7 @@ private:
 	std::array<byte, 65536> m_data;			///< Data buffer for the write queue.
 	bytes m_incoming;						///< The incoming read queue of bytes.
 
-	PeerInfo m_info;						///< Dyanamic information about this peer.
+	PeerInfo m_info;						///< Dynamic information about this peer.
 
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
 	std::shared_ptr<Node> m_node;			///< The Node object. Might be null if we constructed using a bare address/port.
