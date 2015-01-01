@@ -27,64 +27,93 @@
 #include <libsolidity/Compiler.h>
 #include <libsolidity/ExpressionCompiler.h>
 #include <libsolidity/CompilerUtils.h>
+#include <libsolidity/CallGraph.h>
 
 using namespace std;
 
 namespace dev {
 namespace solidity {
 
-void Compiler::compileContract(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals)
+void Compiler::compileContract(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals,
+							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
 	m_context = CompilerContext(); // clear it just in case
-
-	for (MagicVariableDeclaration const* variable: _magicGlobals)
-		m_context.addMagicGlobal(*variable);
+	initializeContext(_contract, _magicGlobals, _contracts);
 
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
 		if (function->getName() != _contract.getName()) // don't add the constructor here
 			m_context.addFunction(*function);
-	registerStateVariables(_contract);
 
 	appendFunctionSelector(_contract);
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
 		if (function->getName() != _contract.getName()) // don't add the constructor here
 			function->accept(*this);
 
-	packIntoContractCreator(_contract);
-}
-
-void Compiler::packIntoContractCreator(ContractDefinition const& _contract)
-{
+	// Swap the runtime context with the creation-time context
 	CompilerContext runtimeContext;
 	swap(m_context, runtimeContext);
+	initializeContext(_contract, _magicGlobals, _contracts);
+	packIntoContractCreator(_contract, runtimeContext);
+}
 
+void Compiler::initializeContext(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals,
+								 map<ContractDefinition const*, bytes const*> const& _contracts)
+{
+	m_context.setCompiledContracts(_contracts);
+	for (MagicVariableDeclaration const* variable: _magicGlobals)
+		m_context.addMagicGlobal(*variable);
 	registerStateVariables(_contract);
+}
 
-	FunctionDefinition* constructor = nullptr;
-	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
-		if (function->getName() == _contract.getName())
-		{
-			constructor = function.get();
-			break;
-		}
+void Compiler::packIntoContractCreator(ContractDefinition const& _contract, CompilerContext const& _runtimeContext)
+{
+	set<FunctionDefinition const*> neededFunctions;
+	FunctionDefinition const* constructor = _contract.getConstructor();
 	if (constructor)
-	{
-		eth::AssemblyItem returnTag = m_context.pushNewTag();
-		m_context.addFunction(*constructor); // note that it cannot be called due to syntactic reasons
-		//@todo copy constructor arguments from calldata to memory prior to this
-		//@todo calling other functions inside the constructor should either trigger a parse error
-		//or we should copy them here (register them above and call "accept") - detecting which
-		// functions are referenced / called needs to be done in a recursive way.
-		appendCalldataUnpacker(*constructor, true);
-		m_context.appendJumpTo(m_context.getFunctionEntryLabel(*constructor));
-		constructor->accept(*this);
-		m_context << returnTag;
-	}
+		neededFunctions = getFunctionsNeededByConstructor(*constructor);
 
-	eth::AssemblyItem sub = m_context.addSubroutine(runtimeContext.getAssembly());
+	for (FunctionDefinition const* fun: neededFunctions)
+		m_context.addFunction(*fun);
+
+	if (constructor)
+		appendConstructorCall(*constructor);
+
+	eth::AssemblyItem sub = m_context.addSubroutine(_runtimeContext.getAssembly());
 	// stack contains sub size
 	m_context << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
 	m_context << u256(0) << eth::Instruction::RETURN;
+
+	// note that we have to explicitly include all used functions because of absolute jump
+	// labels
+	for (FunctionDefinition const* fun: neededFunctions)
+		fun->accept(*this);
+}
+
+void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
+{
+	eth::AssemblyItem returnTag = m_context.pushNewTag();
+	// copy constructor arguments from code to memory and then to stack, they are supplied after the actual program
+	unsigned argumentSize = 0;
+	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
+		argumentSize += var->getType()->getCalldataEncodedSize();
+	if (argumentSize > 0)
+	{
+		m_context << u256(argumentSize);
+		m_context.appendProgramSize();
+		m_context << u256(1); // copy it to byte one as expected for ABI calls
+		m_context << eth::Instruction::CODECOPY;
+		appendCalldataUnpacker(_constructor, true);
+	}
+	m_context.appendJumpTo(m_context.getFunctionEntryLabel(_constructor));
+	m_context << returnTag;
+}
+
+set<FunctionDefinition const*> Compiler::getFunctionsNeededByConstructor(FunctionDefinition const& _constructor)
+{
+	CallGraph callgraph;
+	callgraph.addFunction(_constructor);
+	callgraph.computeCallGraph();
+	return callgraph.getCalls();
 }
 
 void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
@@ -130,7 +159,6 @@ unsigned Compiler::appendCalldataUnpacker(FunctionDefinition const& _function, b
 {
 	// We do not check the calldata size, everything is zero-padded.
 	unsigned dataOffset = 1;
-
 	//@todo this can be done more efficiently, saving some CALLDATALOAD calls
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
 	{
@@ -265,6 +293,40 @@ bool Compiler::visit(WhileStatement const& _whileStatement)
 	m_context.appendConditionalJumpTo(loopEnd);
 
 	_whileStatement.getBody().accept(*this);
+
+	m_context.appendJumpTo(loopStart);
+	m_context << loopEnd;
+
+	m_continueTags.pop_back();
+	m_breakTags.pop_back();
+	return false;
+}
+
+bool Compiler::visit(ForStatement const& _forStatement)
+{
+	eth::AssemblyItem loopStart = m_context.newTag();
+	eth::AssemblyItem loopEnd = m_context.newTag();
+	m_continueTags.push_back(loopStart);
+	m_breakTags.push_back(loopEnd);
+
+	if (_forStatement.getInitializationExpression())
+		_forStatement.getInitializationExpression()->accept(*this);
+
+	m_context << loopStart;
+
+	// if there is no terminating condition in for, default is to always be true
+	if (_forStatement.getCondition())
+	{
+		compileExpression(*_forStatement.getCondition());
+		m_context << eth::Instruction::ISZERO;
+		m_context.appendConditionalJumpTo(loopEnd);
+	}
+
+	_forStatement.getBody().accept(*this);
+
+	// for's loop expression if existing
+	if (_forStatement.getLoopExpression())
+		_forStatement.getLoopExpression()->accept(*this);
 
 	m_context.appendJumpTo(loopStart);
 	m_context << loopEnd;

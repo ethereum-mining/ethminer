@@ -198,7 +198,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			require(1);
 			runGas = c_balanceGas;
 			break;
-
 		case Instruction::LOG0:
 		case Instruction::LOG1:
 		case Instruction::LOG2:
@@ -217,6 +216,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			require(7);
 			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+			if (_ext.depth == 1024)
+				BOOST_THROW_EXCEPTION(OutOfGas());
 			break;
 
 		case Instruction::CREATE:
@@ -226,6 +227,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			u256 inSize = m_stack[m_stack.size() - 3];
 			newTempSize = (bigint)inOff + inSize;
 			runGas = c_createGas;
+			if (_ext.depth == 1024)
+				BOOST_THROW_EXCEPTION(OutOfGas());
 			break;
 		}
 		case Instruction::EXP:
@@ -235,6 +238,11 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
 			break;
 		}
+
+		case Instruction::PREVHASH:
+			if (c_protocolVersion > 49)
+				require(1);
+		break;
 
 		case Instruction::PC:
 		case Instruction::MSIZE:
@@ -247,7 +255,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		case Instruction::CALLDATASIZE:
 		case Instruction::CODESIZE:
 		case Instruction::GASPRICE:
-		case Instruction::PREVHASH:
 		case Instruction::COINBASE:
 		case Instruction::TIMESTAMP:
 		case Instruction::NUMBER:
@@ -566,6 +573,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 				break;
 			default:
 				// this is unreachable, but if someone introduces a bug in the future, he may get here.
+				assert(false);
 				BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("CALLDATACOPY, CODECOPY or EXTCODECOPY instruction requested."));
 				break;
 			}
@@ -576,7 +584,10 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			m_stack.push_back(_ext.gasPrice);
 			break;
 		case Instruction::PREVHASH:
-			m_stack.push_back(_ext.previousBlock.hash);
+			if (c_protocolVersion > 49)
+				m_stack.back() = (u256)_ext.prevhash(m_stack.back());
+			else
+				m_stack.push_back(_ext.previousBlock.hash);
 			break;
 		case Instruction::COINBASE:
 			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
@@ -795,8 +806,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 
 			if (_ext.balance(_ext.myAddress) >= endowment)
 			{
-				if (_ext.depth == 1024)
-					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			}
@@ -825,8 +834,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 
 			if (_ext.balance(_ext.myAddress) >= value)
 			{
-				if (_ext.depth == 1024)
-					BOOST_THROW_EXCEPTION(OutOfGas());
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, {}, receiveAddress));
 			}

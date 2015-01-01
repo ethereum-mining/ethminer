@@ -18,8 +18,18 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
 /** @file abi.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
+ *   Gav Wood <g@ethdev.com>
  * @date 2014
  */
+
+// TODO: make these be actually accurate instead of falling back onto JS's doubles.
+var hexToDec = function (hex) {
+    return parseInt(hex, 16).toString();
+};
+
+var decToHex = function (dec) {
+    return parseInt(dec).toString(16);
+};
 
 var findIndex = function (array, callback) {
     var end = false;
@@ -36,8 +46,8 @@ var findMethodIndex = function (json, methodName) {
     });
 };
 
-var padLeft = function (number, n) {
-    return (new Array(n * 2 - number.toString().length + 1)).join("0") + number;
+var padLeft = function (string, chars) {
+    return Array(chars - string.length + 1).join("0") + string;
 };
 
 var setupInputTypes = function () {
@@ -49,7 +59,13 @@ var setupInputTypes = function () {
             }
 
             var padding = parseInt(type.slice(expected.length)) / 8;
-            return padLeft(value, padding);
+            if (typeof value === "number")
+                value = value.toString(16);
+            else if (value.indexOf('0x') === 0)
+                value = value.substr(2);
+            else
+                value = (+value).toString(16);
+            return padLeft(value, padding * 2);
         };
     };
 
@@ -59,17 +75,18 @@ var setupInputTypes = function () {
                 return false; 
             }
 
-            return padLeft(formatter ? value : formatter(value), padding);
+            return padLeft(formatter ? formatter(value) : value, padding * 2);
         };
     };
 
     var formatBool = function (value) {
-        return value ? '1' : '0';
+        return value ? '0x1' : '0x0';
     };
 
     return [
         prefixedType('uint'),
         prefixedType('int'),
+        prefixedType('hash'),
         namedType('address', 20),
         namedType('bool', 1, formatBool),
     ];
@@ -85,16 +102,13 @@ var toAbiInput = function (json, methodName, params) {
         return;
     }
 
-    // it needs to be checked in WebThreeStubServer 
-    // something wrong might be with this additional zero
-    bytes = bytes + index + 'x' + '0';
+    bytes = "0x" + padLeft(index.toString(16), 2);
     var method = json[index];
     
     for (var i = 0; i < method.inputs.length; i++) {
         var found = false;
         for (var j = 0; j < inputTypes.length && !found; j++) {
-            var val = parseInt(params[i]).toString(16);
-            found = inputTypes[j](method.inputs[i].type, val);
+            found = inputTypes[j](method.inputs[i].type, params[i]);
         }
         if (!found) {
             console.error('unsupported json type: ' + method.inputs[i].type);
@@ -119,12 +133,16 @@ var setupOutputTypes = function () {
 
     var namedType = function (name, padding) {
         return function (type) {
-            return name === type ? padding * 2: -1;
+            return name === type ? padding * 2 : -1;
         };
     };
 
     var formatInt = function (value) {
-        return parseInt(value, 16);
+        return value.length <= 8 ? +parseInt(value, 16) : hexToDec(value);
+    };
+
+    var formatHash = function (value) {
+        return "0x" + value;
     };
 
     var formatBool = function (value) {
@@ -134,6 +152,7 @@ var setupOutputTypes = function () {
     return [
     { padding: prefixedType('uint'), format: formatInt },
     { padding: prefixedType('int'), format: formatInt },
+    { padding: prefixedType('hash'), format: formatHash },
     { padding: namedType('address', 20) },
     { padding: namedType('bool', 1), format: formatBool }
     ];
@@ -164,7 +183,7 @@ var fromAbiOutput = function (json, methodName, output) {
         }
         var res = output.slice(0, padding);
         var formatter = outputTypes[j - 1].format;
-        result.push(formatter ? formatter(res): res);
+        result.push(formatter ? formatter(res) : ("0x" + res));
         output = output.slice(padding);
     }
 
@@ -484,6 +503,7 @@ module.exports = HttpRpcProvider;
  *   Jeffrey Wilcke <jeff@ethdev.com>
  *   Marek Kotewicz <marek@ethdev.com>
  *   Marian Oancea <marian@ethdev.com>
+ *   Gav Wood <g@ethdev.com>
  * @date 2014
  */
 
@@ -525,6 +545,12 @@ function flattenPromise (obj) {
 
     return Promise.resolve(obj);
 }
+
+var web3Methods = function () {
+    return [
+    { name: 'sha3', call: 'web3_sha3' }
+    ];
+};
 
 var ethMethods = function () {
     var blockCall = function (args) {
@@ -670,19 +696,20 @@ var setupProperties = function (obj, properties) {
     });
 };
 
+// TODO: import from a dependency, don't duplicate.
+var hexToDec = function (hex) {
+    return parseInt(hex, 16).toString();
+};
+
+var decToHex = function (dec) {
+    return parseInt(dec).toString(16);
+};
+
+
 var web3 = {
     _callbacks: {},
     _events: {},
     providers: {},
-    toHex: function(str) {
-        var hex = "";
-        for(var i = 0; i < str.length; i++) {
-            var n = str.charCodeAt(i).toString(16);
-            hex += n.length < 2 ? '0' + n : n;
-        }
-
-        return hex;
-    },
 
     toAscii: function(hex) {
         // Find termination
@@ -702,16 +729,39 @@ var web3 = {
         return str;
     },
 
-    toDecimal: function (val) {
-        return parseInt(val, 16);
-    },
-
     fromAscii: function(str, pad) {
         pad = pad === undefined ? 32 : pad;
         var hex = this.toHex(str);
         while(hex.length < pad*2)
             hex += "00";
         return "0x" + hex;
+    },
+
+    toDecimal: function (val) {
+        return hexToDec(val.substring(2));
+    },
+
+    fromDecimal: function (val) {
+        return "0x" + decToHex(val);
+    },
+
+    toEth: function(str) {
+        var val = typeof str === "string" ? str.indexOf('0x') == 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
+        var unit = 0;
+        var units = [ 'wei', 'Kwei', 'Mwei', 'Gwei', 'szabo', 'finney', 'ether', 'grand', 'Mether', 'Gether', 'Tether', 'Pether', 'Eether', 'Zether', 'Yether', 'Nether', 'Dether', 'Vether', 'Uether' ];
+        while (val > 3000 && unit < units.length - 1)
+        {
+            val /= 1000;
+            unit++;
+        }
+        var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
+        while (true) {
+            var o = s;
+            s = s.replace(/(\d)(\d\d\d[\.\,])/, function($0, $1, $2) { return $1 + ',' + $2; });
+            if (o == s)
+                break;
+        }
+        return s + ' ' + units[unit];
     },
 
     eth: {
@@ -759,6 +809,7 @@ var web3 = {
     }
 };
 
+setupMethods(web3, web3Methods());
 setupMethods(web3.eth, ethMethods());
 setupProperties(web3.eth, ethProperties());
 setupMethods(web3.db, dbMethods());

@@ -35,4 +35,7 @@ bool decimalGt(std::string a, std::string b, bool eqAllowed=false);
 
 unsigned decimalToUnsigned(std::string a);
 
+#define utd unsignedToDecimal
+#define dtu decimalToUnsigned
+
 #endif

@@ -35,12 +35,12 @@ template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 {
 	return "0x" + toHex(_h.ref());
 }
-	
+
 template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
 {
 	return "0x" + toHex(toCompactBigEndian(_n));
 }
-	
+
 inline std::string toJS(dev::bytes const& _n)
 {
 	return "0x" + dev::toHex(_n);
@@ -49,6 +49,9 @@ inline std::string toJS(dev::bytes const& _n)
 bytes jsToBytes(std::string const& _s);
 bytes padded(bytes _b, unsigned _l);
 bytes unpadded(bytes _s);
+std::string prettyU256(u256 _n);
+std::string fromRaw(h256 _n, unsigned* _inc = nullptr);
+Address fromString(std::string const& _a);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 {
