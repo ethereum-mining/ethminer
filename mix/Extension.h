@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Feature.h
+/** @file Extension.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -21,26 +21,43 @@
 
 #include <QApplication>
 #include <QQmlComponent>
+#include "AppContext.h"
 
 namespace dev
 {
-
 namespace mix
 {
+
+enum ExtensionDisplayBehavior
+{
+	Tab,
+	ModalDialog
+};
+
 
 class Extension: public QObject
 {
 	Q_OBJECT
 
 public:
-	Extension() {}
+	Extension();
+	Extension(ExtensionDisplayBehavior _displayBehavior);
 	virtual QString contentUrl() const { return ""; }
 	virtual QString title() const { return ""; }
 	virtual void start() const {}
-	void addContentOn(QObject* tabView);
+	void addContentOn(QObject* _tabView);
+	void addTabOn(QObject* _view);
+	void setDisplayBehavior(ExtensionDisplayBehavior _displayBehavior) { m_displayBehavior = _displayBehavior; }
+	ExtensionDisplayBehavior getDisplayBehavior() { return m_displayBehavior; }
 
 protected:
 	QObject* m_view;
+	ExtensionDisplayBehavior m_displayBehavior;
+	AppContext* m_ctx;
+	QQmlApplicationEngine* m_appEngine;
+
+private:
+	void init();
 };
 
 }

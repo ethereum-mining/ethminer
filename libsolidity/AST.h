@@ -27,6 +27,7 @@
 #include <vector>
 #include <memory>
 #include <boost/noncopyable.hpp>
+#include <libsolidity/Utils.h>
 #include <libsolidity/ASTForward.h>
 #include <libsolidity/BaseTypes.h>
 #include <libsolidity/Token.h>
@@ -174,12 +175,19 @@ public:
 	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() const { return m_stateVariables; }
 	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() const { return m_definedFunctions; }
 
+	/// Checks that the constructor does not have a "returns" statement and calls
+	/// checkTypeRequirements on all its functions.
+	void checkTypeRequirements();
+
 	/// @return A shared pointer of an ASTString.
 	/// Can contain a nullptr in which case indicates absence of documentation
 	ASTPointer<ASTString> const& getDocumentation() const { return m_documentation; }
 
 	/// Returns the functions that make up the calling interface in the intended order.
 	std::vector<FunctionDefinition const*> getInterfaceFunctions() const;
+
+	/// Returns the constructor or nullptr if no constructor was specified
+	FunctionDefinition const* getConstructor() const;
 
 private:
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
@@ -357,7 +365,7 @@ public:
 	explicit ElementaryTypeName(Location const& _location, Token::Value _type):
 		TypeName(_location), m_type(_type)
 	{
-		if (asserts(Token::isElementaryTypeName(_type))) BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(Token::isElementaryTypeName(_type), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -502,6 +510,42 @@ private:
 	ASTPointer<Statement> m_body;
 };
 
+/**
+ * For loop statement
+ */
+class ForStatement: public BreakableStatement
+{
+public:
+	ForStatement(Location const& _location,
+				 ASTPointer<Statement> const& _initExpression,
+				 ASTPointer<Expression> const& _conditionExpression,
+				 ASTPointer<ExpressionStatement> const& _loopExpression,
+				 ASTPointer<Statement> const& _body):
+		BreakableStatement(_location),
+		m_initExpression(_initExpression),
+		m_condExpression(_conditionExpression),
+		m_loopExpression(_loopExpression),
+		m_body(_body) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	virtual void checkTypeRequirements() override;
+
+	Statement const* getInitializationExpression() const { return m_initExpression.get(); }
+	Expression const* getCondition() const { return m_condExpression.get(); }
+	ExpressionStatement const* getLoopExpression() const { return m_loopExpression.get(); }
+	Statement const& getBody() const { return *m_body; }
+
+private:
+	/// For statement's initialization expresion. for(XXX; ; ). Can be empty
+	ASTPointer<Statement> m_initExpression;
+	/// For statement's condition expresion. for(; XXX ; ). Can be empty
+	ASTPointer<Expression> m_condExpression;
+	/// For statement's loop expresion. for(;;XXX). Can be empty
+	ASTPointer<ExpressionStatement> m_loopExpression;
+	/// The body of the loop
+	ASTPointer<Statement> m_body;
+};
+
 class Continue: public Statement
 {
 public:
@@ -532,8 +576,7 @@ public:
 	void setFunctionReturnParameters(ParameterList& _parameters) { m_returnParameters = &_parameters; }
 	ParameterList const& getFunctionReturnParameters() const
 	{
-		if (asserts(m_returnParameters))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(m_returnParameters, "");
 		return *m_returnParameters;
 	}
 	Expression const* getExpression() const { return m_expression.get(); }
@@ -639,7 +682,7 @@ public:
 		Expression(_location), m_leftHandSide(_leftHandSide),
 		m_assigmentOperator(_assignmentOperator), m_rightHandSide(_rightHandSide)
 	{
-		if (asserts(Token::isAssignmentOp(_assignmentOperator))) BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(Token::isAssignmentOp(_assignmentOperator), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -667,7 +710,7 @@ public:
 		Expression(_location), m_operator(_operator),
 		m_subExpression(_subExpression), m_isPrefix(_isPrefix)
 	{
-		if (asserts(Token::isUnaryOp(_operator))) BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(Token::isUnaryOp(_operator), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -694,7 +737,7 @@ public:
 					Token::Value _operator, ASTPointer<Expression> const& _right):
 		Expression(_location), m_left(_left), m_operator(_operator), m_right(_right)
 	{
-		if (asserts(Token::isBinaryOp(_operator) || Token::isCompareOp(_operator))) BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(Token::isBinaryOp(_operator) || Token::isCompareOp(_operator), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -738,6 +781,31 @@ public:
 private:
 	ASTPointer<Expression> m_expression;
 	std::vector<ASTPointer<Expression>> m_arguments;
+};
+
+/**
+ * Expression that creates a new contract, e.g. "new SomeContract(1, 2)".
+ */
+class NewExpression: public Expression
+{
+public:
+	NewExpression(Location const& _location, ASTPointer<Identifier> const& _contractName,
+				  std::vector<ASTPointer<Expression>> const& _arguments):
+		Expression(_location), m_contractName(_contractName), m_arguments(_arguments) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	virtual void checkTypeRequirements() override;
+
+	std::vector<ASTPointer<Expression const>> getArguments() const { return {m_arguments.begin(), m_arguments.end()}; }
+
+	/// Returns the referenced contract. Can only be called after type checking.
+	ContractDefinition const* getContract() const { solAssert(m_contract, ""); return m_contract; }
+
+private:
+	ASTPointer<Identifier> m_contractName;
+	std::vector<ASTPointer<Expression>> m_arguments;
+
+	ContractDefinition const* m_contract = nullptr;
 };
 
 /**
@@ -826,7 +894,7 @@ public:
 	ElementaryTypeNameExpression(Location const& _location, Token::Value _typeToken):
 		PrimaryExpression(_location), m_typeToken(_typeToken)
 	{
-		if (asserts(Token::isElementaryTypeName(_typeToken))) BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(Token::isElementaryTypeName(_typeToken), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;

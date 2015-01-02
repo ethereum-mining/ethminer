@@ -19,11 +19,10 @@
  * @date 2014
  */
 
-#if !ETH_LANGUAGES
-
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
+#include <libethcore/CommonEth.h>
 #include "ProofOfWork.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
@@ -40,6 +39,25 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 BlockInfo::BlockInfo(bytesConstRef _block, bool _checkNonce)
 {
 	populate(_block, _checkNonce);
+}
+
+void BlockInfo::setEmpty()
+{
+	parentHash = h256();
+	sha3Uncles = EmptyListSHA3;
+	coinbaseAddress = Address();
+	stateRoot = EmptyTrie;
+	transactionsRoot = EmptyTrie;
+	receiptsRoot = EmptyTrie;
+	logBloom = LogBloom();
+	difficulty = 0;
+	number = 0;
+	gasLimit = 0;
+	gasUsed = 0;
+	timestamp = 0;
+	extraData.clear();
+	nonce = h256();
+	hash = headerHash(WithNonce);
 }
 
 BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
@@ -173,7 +191,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return timestamp >= _parent.timestamp + 5 ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
+		return timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
@@ -197,5 +215,3 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 			BOOST_THROW_EXCEPTION(InvalidNumber());
 	}
 }
-
-#endif

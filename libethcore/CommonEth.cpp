@@ -21,7 +21,6 @@
 
 #include "CommonEth.h"
 #include <random>
-#include <secp256k1/secp256k1.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
 using namespace std;
@@ -49,7 +48,7 @@ static const vector<pair<u256, string>> g_units =
 	{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
 	{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
 	{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
-	{(u256(1000000000) * 1000000000) * 1000, "Kether"},
+	{(u256(1000000000) * 1000000000) * 1000, "grand"},
 	{u256(1000000000) * 1000000000, "ether"},
 	{u256(1000000000) * 1000000, "finney"},
 	{u256(1000000000) * 1000, "szabo"},
