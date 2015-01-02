@@ -132,7 +132,7 @@ public:
 	h256Set allUnclesFrom(h256 _parent) const;
 
 	/// @returns the genesis block header.
-	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); (s_genesis = new BlockInfo)->populate(&gb); } return *s_genesis; }
+	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); s_genesis.reset(new BlockInfo); s_genesis->populate(&gb); } return *s_genesis; }
 
 	/// @returns the genesis block as its RLP-encoded byte array.
 	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
@@ -211,7 +211,7 @@ private:
 
 	/// Static genesis info and its lock.
 	static boost::shared_mutex x_genesis;
-	static BlockInfo* s_genesis;
+	static std::unique_ptr<BlockInfo> s_genesis;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
