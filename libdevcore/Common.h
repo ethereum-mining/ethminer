@@ -74,6 +74,9 @@ using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
 using HexMap = std::map<bytes, std::string>;
 
+// Fixed-length string types.
+using string32 = std::array<char, 32>;
+
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
 static const bytes NullBytes;

@@ -50,7 +50,7 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 {
 	QList<DebuggingState> machineStates;
 	// Reset the state back to our clean premine.
-	eth::Executive  execution(m_executiveState, 0);
+	eth::Executive  execution(m_executiveState, LastHashes(), 0);
 	execution.setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
