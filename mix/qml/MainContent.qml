@@ -30,7 +30,11 @@ Rectangle {
                 width: parent.width
                 height: parent.height * 0.7
                 TextArea {
-                    id: codeEditor
+					id: codeEditor
+					textColor: "#EEE8D5"
+					style: TextAreaStyle {
+						backgroundColor: "#002B36"
+					}
                     height: parent.height
 					font.family: "Monospace"
 					font.pointSize: 12
