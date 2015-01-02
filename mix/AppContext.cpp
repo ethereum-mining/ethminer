@@ -37,7 +37,6 @@
 
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::solidity;
 using namespace dev::mix;
 
 const QString c_projectFileName = "project.mix";

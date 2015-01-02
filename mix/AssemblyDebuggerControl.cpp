@@ -17,13 +17,6 @@
  * display opcode debugging.
  */
 
-//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
-//@todo fix this is solidity headers
-#include <libsolidity/Token.h>
-#include <libsolidity/Types.h>
-#include <utility>
-#include <stdexcept>
-#include <boost/exception/diagnostic_information.hpp>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
