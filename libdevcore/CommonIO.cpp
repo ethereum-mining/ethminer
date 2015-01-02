@@ -65,6 +65,8 @@ bytes dev::contents(std::string const& _file)
 	// get length of file:
 	is.seekg (0, is.end);
 	streamoff length = is.tellg();
+	if (length == 0) // return early, MSVC does not like reading 0 bytes
+		return {};
 	is.seekg (0, is.beg);
 	bytes ret(length);
 	is.read((char*)ret.data(), length);

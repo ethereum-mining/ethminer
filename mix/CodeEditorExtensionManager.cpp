@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CodeEditorExtensionMan.cpp
+/** @file CodeEditorExtensionManager.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -27,7 +27,8 @@
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
 #include "ConstantCompilationCtrl.h"
-#include "ApplicationCtx.h"
+#include "AssemblyDebuggerCtrl.h"
+#include "AppContext.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
 
@@ -58,22 +59,27 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	//only one for now
-	std::shared_ptr<ConstantCompilationCtrl> constantCompilation = std::make_shared<ConstantCompilationCtrl>(m_doc);
-	if (constantCompilation.get()->contentUrl() != "")
+	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
+	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
+}
+
+void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
+{
+	if (!_ext->contentUrl().isEmpty())
 	{
 		try
 		{
-			constantCompilation.get()->addContentOn(m_tabView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
+				_ext->addTabOn(m_tabView);
 		}
 		catch (...)
 		{
-			qDebug() << "Exception when adding content into view.";
+			qDebug() << "Exception when adding tab into view.";
 			return;
 		}
 	}
-	constantCompilation.get()->start();
-	m_features.append(constantCompilation);
+	_ext->start();
+	m_features.append(_ext);
 }
 
 void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)

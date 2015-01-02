@@ -44,6 +44,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libsolidity/Utils.h>
 #include <libsolidity/Exceptions.h>
 
 namespace dev
@@ -106,9 +107,9 @@ namespace solidity
 	T(COMMA, ",", 1)                                                   \
 	T(OR, "||", 4)                                                     \
 	T(AND, "&&", 5)                                                    \
-	T(BIT_OR, "|", 6)                                                  \
-	T(BIT_XOR, "^", 7)                                                 \
-	T(BIT_AND, "&", 8)                                                 \
+	T(BIT_OR, "|", 8)                                                  \
+	T(BIT_XOR, "^", 9)                                                 \
+	T(BIT_AND, "&", 10)                                                \
 	T(SHL, "<<", 11)                                                   \
 	T(SAR, ">>", 11)                                                   \
 	T(SHR, ">>>", 11)                                                  \
@@ -121,13 +122,13 @@ namespace solidity
 	/* Compare operators sorted by precedence. */                      \
 	/* IsCompareOp() relies on this block of enum values */            \
 	/* being contiguous and sorted in the same order! */               \
-	T(EQ, "==", 9)                                                     \
-	T(NE, "!=", 9)                                                     \
-	T(LT, "<", 10)                                                     \
-	T(GT, ">", 10)                                                     \
-	T(LTE, "<=", 10)                                                   \
-	T(GTE, ">=", 10)                                                   \
-	K(IN, "in", 10)                                                    \
+	T(EQ, "==", 6)                                                     \
+	T(NE, "!=", 6)                                                     \
+	T(LT, "<", 7)                                                      \
+	T(GT, ">", 7)                                                      \
+	T(LTE, "<=", 7)                                                    \
+	T(GTE, ">=", 7)                                                    \
+	K(IN, "in", 7)                                                     \
 	\
 	/* Unary operators. */                                             \
 	/* IsUnaryOp() relies on this block of enum values */              \
@@ -141,7 +142,7 @@ namespace solidity
 	/* Keywords */                                                     \
 	K(BREAK, "break", 0)                                               \
 	K(CASE, "case", 0)                                                 \
-	K(CONST, "const", 0)                                               \
+	K(CONST, "constant", 0)                                            \
 	K(CONTINUE, "continue", 0)                                         \
 	K(CONTRACT, "contract", 0)                                         \
 	K(DEFAULT, "default", 0)                                           \
@@ -329,6 +330,9 @@ class Token
 {
 public:
 	// All token values.
+	// attention! msvc issue:
+	// http://stackoverflow.com/questions/9567868/compile-errors-after-adding-v8-to-my-project-c2143-c2059
+	// @todo: avoid TOKEN_LIST macro
 #define T(name, string, precedence) name,
 	enum Value
 	{
@@ -341,8 +345,7 @@ public:
 	// (e.g. "LT" for the token LT).
 	static char const* getName(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_name[tok];
 	}
 
@@ -357,8 +360,7 @@ public:
 
 	static Value AssignmentToBinaryOp(Value op)
 	{
-		if (asserts(isAssignmentOp(op) && op != ASSIGN))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(isAssignmentOp(op) && op != ASSIGN, "");
 		return Token::Value(op + (BIT_OR - ASSIGN_BIT_OR));
 	}
 
@@ -372,8 +374,7 @@ public:
 	// have a (unique) string (e.g. an IDENTIFIER).
 	static char const* toString(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_string[tok];
 	}
 
@@ -381,8 +382,7 @@ public:
 	// operators; returns 0 otherwise.
 	static int precedence(Value tok)
 	{
-		if (asserts(tok < NUM_TOKENS))
-			BOOST_THROW_EXCEPTION(InternalCompilerError());
+		solAssert(tok < NUM_TOKENS, "");
 		return m_precedence[tok];
 	}
 

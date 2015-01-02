@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Common.h
+/** @file CommonData.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
@@ -235,5 +235,8 @@ inline std::set<_T> operator+(std::set<_T> const& _a, std::set<_T> const& _b)
 	std::set<_T> ret(_a);
 	return ret += _b;
 }
+
+/// Make normal string from fixed-length string.
+std::string toString(string32 const& _s);
 
 }

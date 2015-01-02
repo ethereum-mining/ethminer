@@ -65,7 +65,7 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr)
+QString Main::fromRaw(dev::h256 _n, unsigned* _inc)
 {
 	if (_n)
 	{
@@ -106,6 +106,8 @@ static QString contentsOfQResource(std::string const& res)
 }
 
 Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+Address c_newConfig = Address("d5f9d8d94886e70b06e474c3fb14fd43e2f23970");
+Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -149,14 +151,13 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
-	
+
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
-	// w3stubserver, on dealloc, deletes m_qwebConnector
-	m_qwebConnector = new QWebThreeConnector(); // owned by WebThreeStubServer
-	m_server.reset(new OurWebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_qwebConnector.reset(new QWebThreeConnector());
+	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -174,17 +175,17 @@ Main::Main(QWidget *parent) :
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
-	
+
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 		m_qweb->poll();
 	});
-	
+
 	connect(ui->webView, &QWebView::titleChanged, [=]()
 	{
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
-	
+
 	readSettings();
 	installWatches();
 	startTimer(100);
@@ -449,8 +450,29 @@ static Public stringToPublic(QString const& _a)
 		return Public();
 }
 
+static Address g_newNameReg;
+
 QString Main::pretty(dev::Address _a) const
 {
+	static std::map<Address, QString> s_memos;
+
+	if (!s_memos.count(_a))
+	{
+		if (!g_newNameReg)
+			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+
+		if (g_newNameReg)
+		{
+			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn(2, _a)))));
+			s_memos[_a] = s;
+			if (s.size())
+				return s;
+		}
+	}
+	else
+		if (s_memos[_a].size())
+			return s_memos[_a];
+
 	h256 n;
 
 	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
@@ -470,19 +492,47 @@ QString Main::render(dev::Address _a) const
 	return QString::fromStdString(_a.abridged());
 }
 
-Address Main::fromString(QString const& _a) const
+string32 fromString(std::string const& _s)
 {
-	if (_a == "(Create Contract)")
+	string32 ret;
+	for (unsigned i = 0; i < 32 && i <= _s.size(); ++i)
+		ret[i] = i < _s.size() ? _s[i] : 0;
+	return ret;
+}
+
+Address Main::fromString(QString const& _n) const
+{
+	if (_n == "(Create Contract)")
 		return Address();
 
-	string sn = _a.toStdString();
+	static std::map<QString, Address> s_memos;
+
+	if (!s_memos.count(_n))
+	{
+		if (!g_newNameReg)
+			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+
+		if (g_newNameReg)
+		{
+			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn(0, ::fromString(_n.toStdString()))));
+			s_memos[_n] = a;
+			if (a)
+				return a;
+		}
+	}
+	else
+		if (s_memos[_n])
+			return s_memos[_n];
+
+	string sn = _n.toStdString();
 	if (sn.size() > 32)
 		sn.resize(32);
 	h256 n;
 	memcpy(n.data(), sn.data(), sn.size());
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
-	if (_a.size())
+	if (_n.size())
 	{
+
 		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
 			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
@@ -490,8 +540,9 @@ Address Main::fromString(QString const& _a) const
 		if (h256 a = ethereum()->stateAt(m_nameReg, n))
 			return right160(a);
 	}
-	if (_a.size() == 40)
-		return Address(fromHex(_a.toStdString()));
+
+	if (_n.size() == 40)
+		return Address(fromHex(_n.toStdString()));
 	else
 		return Address();
 }
@@ -1068,7 +1119,7 @@ void Main::timerEvent(QTimerEvent*)
 	// 7/18, Alex: aggregating timers, prelude to better threading?
 	// Runs much faster on slower dual-core processors
 	static int interval = 100;
-	
+
 	// refresh mining every 200ms
 	if (interval / 100 % 2 == 0)
 		refreshMining();
@@ -1094,7 +1145,7 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-	
+
 	if (m_qweb)
 		m_qweb->poll();
 
@@ -1113,7 +1164,7 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 		s << "<hr/>";
 
 		dev::eth::AccountDiff const& ad = i.second;
-		s << "<code style=\"white-space: pre; font-weight: bold\">" << ad.lead() << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
+		s << "<code style=\"white-space: pre; font-weight: bold\">" << lead(ad.changeType()) << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
 		if (!ad.exist.to())
 			continue;
 
@@ -1134,7 +1185,7 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}
 
-		for (pair<u256, dev::eth::Diff<u256>> const& i: ad.storage)
+		for (pair<u256, dev::Diff<u256>> const& i: ad.storage)
 		{
 			s << "<br/><code style=\"white-space: pre\">";
 			if (!i.second.from())
@@ -1351,7 +1402,7 @@ void Main::on_debugCurrent_triggered()
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
+			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
 			Transaction t = m_executiveState.pending()[txi];
 			m_executiveState = m_executiveState.fromPending(txi);
 			auto r = t.rlp();
@@ -1712,7 +1763,7 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-    string n = string("AlethZero/v") + dev::Version;
+	string n = string("AlethZero/v") + dev::Version;
 	if (ui->clientName->text().size())
 		n += "/" + ui->clientName->text().toStdString();
 	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
@@ -1804,7 +1855,7 @@ void Main::on_debug_clicked()
 			{
 				Secret s = i.secret();
 				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, 0));
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
@@ -2192,18 +2243,3 @@ void Main::refreshWhispers()
 		ui->whispers->addItem(item);
 	}
 }
-
-// extra bits needed to link on VS
-#ifdef _MSC_VER
-
-// include moc file, ofuscated to hide from automoc
-#include\
-"moc_MainWin.cpp"
-
-#include\
-"moc_MiningView.cpp"
-
-#include\
-"moc_DownloadView.cpp"
-
-#endif
