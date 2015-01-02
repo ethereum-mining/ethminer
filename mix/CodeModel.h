@@ -23,9 +23,12 @@
 #pragma once
 
 #include <memory>
+#include <atomic>
 #include <QObject>
 #include <QThread>
 #include <libdevcore/Common.h>
+
+class QTextDocument;
 
 namespace dev
 {
@@ -39,6 +42,8 @@ namespace mix
 {
 
 class CodeModel;
+class CodeHighlighter;
+class CodeHighlighterSettings;
 class QContractDefinition;
 
 //utility class to perform tasks in background thread
@@ -63,28 +68,26 @@ class CompilationResult : public QObject
 
 public:
 	/// Empty compilation result constructor
-	CompilationResult(QObject* parent);
+	CompilationResult();
 	/// Successfull compilation result constructor
-	CompilationResult(solidity::CompilerStack const& _compiler, QObject* parent);
+	CompilationResult(solidity::CompilerStack const& _compiler);
 	/// Failed compilation result constructor
-	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* parent);
+	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage);
 
 	/// @returns contract definition for QML property
 	QContractDefinition* contract() { return m_contract.get(); }
 	/// @returns contract definition
 	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
-
 	/// Indicates if the compilation was successfull
 	bool successfull() const { return m_successfull; }
-
 	/// @returns compiler error message in case of unsuccessfull compilation
 	QString compilerMessage() const { return m_compilerMessage; }
-
 	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }
-
 	/// @returns contract bytecode in human-readable form
 	QString assemblyCode() const { return m_assemblyCode; }
+	/// Get code highlighter
+	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
 private:
 	bool m_successfull;
@@ -92,7 +95,9 @@ private:
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
+	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 	///@todo syntax highlighting, etc
+	friend class CodeModel;
 };
 
 /// Background code compiler
@@ -117,6 +122,8 @@ public:
 	bool isCompiling() const { return m_compiling; }
 	/// @returns true if contract has at least one function
 	bool hasContract() const;
+	/// Apply text document formatting. @todo Move this to editor module
+	void updateFormatting(QTextDocument* _document);
 
 signals:
 	/// Emited on compilation state change
@@ -141,8 +148,9 @@ private:
 	void runCompilationJob(int _jobId, QString const& _content);
 	void stop();
 
-	bool m_compiling;
+	std::atomic<bool> m_compiling;
 	std::unique_ptr<CompilationResult> m_result;
+	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
