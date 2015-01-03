@@ -34,7 +34,6 @@ namespace dev
 namespace solidity
 {
 	class ASTNode;
-	class Scanner;
 	struct Location;
 }
 
@@ -81,9 +80,12 @@ public:
 
 public:
 	/// Collect highligting information
-	void processSource(solidity::Scanner* _scanner);
+	void processSource(std::string const& _source);
 	void processAST(solidity::ASTNode const& _ast);
 	void updateFormatting(QTextDocument* _document, CodeHighlighterSettings const& _settings);
+
+private:
+	void processComments(std::string const& _source);
 
 private:
 	Formats m_formats;

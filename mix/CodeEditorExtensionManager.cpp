@@ -114,6 +114,7 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::onCodeChange()
 {
+	m_appContext->codeModel()->updateFormatting(m_doc); //update old formatting
 	m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText());
 }
 

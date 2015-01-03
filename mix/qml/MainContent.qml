@@ -42,11 +42,11 @@ Rectangle {
                     anchors.centerIn: parent
                     tabChangesFocus: false
                     Keys.onPressed: {
-                            if (event.key === Qt.Key_Tab) {
-                                codeEditor.insert(codeEditor.cursorPosition, "\t");
-                                event.accepted = true;
-                            }
-                        }
+						if (event.key === Qt.Key_Tab) {
+							codeEditor.insert(codeEditor.cursorPosition, "\t");
+							event.accepted = true;
+						}
+					}
                 }
             }
             Rectangle {

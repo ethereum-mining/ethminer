@@ -70,22 +70,25 @@ CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, sol
 	token(_t), start(_location.start), length(_location.end - _location.start)
 {}
 
-void CodeHighlighter::processSource(solidity::Scanner* _scanner)
+void CodeHighlighter::processSource(std::string const& _source)
 {
-	solidity::Token::Value token = _scanner->getCurrentToken();
+	processComments(_source);
+	solidity::CharStream stream(_source);
+	solidity::Scanner scanner(stream);
+	solidity::Token::Value token = scanner.getCurrentToken();
 	while (token != Token::EOS)
 	{
 		if ((token >= Token::BREAK && token < Token::TYPES_END) ||
 				token == Token::IN || token == Token::DELETE || token == Token::NULL_LITERAL || token == Token::TRUE_LITERAL || token == Token::FALSE_LITERAL)
-			m_formats.push_back(FormatRange(CodeHighlighterSettings::Keyword, _scanner->getCurrentLocation()));
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::Keyword, scanner.getCurrentLocation()));
 		else if (token == Token::STRING_LITERAL)
-			m_formats.push_back(FormatRange(CodeHighlighterSettings::StringLiteral, _scanner->getCurrentLocation()));
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::StringLiteral, scanner.getCurrentLocation()));
 		else if (token == Token::COMMENT_LITERAL)
-			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, _scanner->getCurrentLocation()));
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, scanner.getCurrentLocation()));
 		else if (token == Token::NUMBER)
-			m_formats.push_back(FormatRange(CodeHighlighterSettings::NumLiteral, _scanner->getCurrentLocation()));
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::NumLiteral, scanner.getCurrentLocation()));
 
-		token = _scanner->next();
+		token = scanner.next();
 	}
 	std::sort(m_formats.begin(), m_formats.end());
 }
@@ -96,6 +99,37 @@ void CodeHighlighter::processAST(solidity::ASTNode const& _ast)
 	_ast.accept(visitor);
 
 	std::sort(m_formats.begin(), m_formats.end());
+}
+
+
+void CodeHighlighter::processComments(std::string const& _source)
+{
+	unsigned i = 0;
+	unsigned size = _source.size();
+	if (size == 0)
+		return;
+	while (i < size - 1)
+	{
+		if (_source[i] == '/' && _source[i + 1] == '/')
+		{
+			//add single line comment
+			int start = i;
+			i += 2;
+			while (_source[i] != '\n' && i < size)
+				++i;
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, start, i - start));
+		}
+		else if (_source[i] == '/' && _source[i + 1] == '*')
+		{
+			//add multiline comment
+			int start = i;
+			i += 2;
+			while ((_source[i] != '/' || _source[i - 1] != '*') && i < size)
+				++i;
+			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, start, i - start + 1));
+		}
+		++i;
+	}
 }
 
 void CodeHighlighter::updateFormatting(QTextDocument* _document, CodeHighlighterSettings const& _settings)
