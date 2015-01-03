@@ -24,7 +24,6 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
-#include <libsolidity/Scanner.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevmcore/Instruction.h>
@@ -47,7 +46,8 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 CompilationResult::CompilationResult():
 	QObject(nullptr), m_successfull(false),
 	m_contract(new QContractDefinition()),
-	m_codeHighlighter(new CodeHighlighter())
+	m_codeHighlighter(new CodeHighlighter()),
+	m_codeHash(qHash(QString()))
 {}
 
 CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
@@ -103,6 +103,9 @@ void CodeModel::stop()
 void CodeModel::registerCodeChange(const QString &_code)
 {
 	// launch the background thread
+	uint hash = qHash(_code);
+	if (m_result->m_codeHash == hash)
+		return;
 	m_backgroundJobId++;
 	m_compiling = true;
 	emit stateChanged();
@@ -121,9 +124,7 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	// run syntax highlighting first
 	// @todo combine this with compilation step
 	auto codeHighlighter = std::make_shared<CodeHighlighter>();
-	solidity::CharStream stream(source);
-	solidity::Scanner scanner(stream);
-	codeHighlighter->processSource(&scanner);
+	codeHighlighter->processSource(source);
 
 	// run compilation
 	try
@@ -139,9 +140,10 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
 		result.reset(new CompilationResult(*m_result, QString::fromStdString(error.str())));
-		qDebug() << QString(QApplication::tr("compilation failed:") + " " + m_result->compilerMessage());
+		qDebug() << QString(QApplication::tr("compilation failed:") + " " + result->compilerMessage());
 	}
 	result->m_codeHighlighter = codeHighlighter;
+	result->m_codeHash = qHash(_code);
 
 	emit compilationCompleteInternal(result.release());
 }

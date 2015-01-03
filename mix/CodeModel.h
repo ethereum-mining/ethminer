@@ -98,6 +98,7 @@ private:
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 	///@todo syntax highlighting, etc
 	friend class CodeModel;
+	uint m_codeHash;
 };
 
 /// Background code compiler
