@@ -39,7 +39,7 @@ namespace dev
 namespace p2p
 {
 
-struct Node;
+struct NodeInfo;
 
 /**
  * @brief The Session class
@@ -51,7 +51,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force = false);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n, bool _force = false);
 	Session(Host* _server, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual);
 	virtual ~Session();
 
@@ -113,7 +113,7 @@ private:
 	PeerInfo m_info;						///< Dynamic information about this peer.
 
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
-	std::shared_ptr<Node> m_node;			///< The Node object. Might be null if we constructed using a bare address/port.
+	std::shared_ptr<NodeInfo> m_node;			///< The NodeInfo object. Might be null if we constructed using a bare address/port.
 	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
 	bool m_force = false;					///< If true, ignore IDs being different. This could open you up to MitM attacks.
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.

@@ -44,7 +44,8 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_key(KeyPair::create())
+	m_key(KeyPair::create()),
+	m_nodeTable(new NodeTable(m_ioService, m_key))
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -143,11 +144,12 @@ void Host::doneWorking()
 
 unsigned Host::protocolVersion() const
 {
-	return 2;
+	return 3;
 }
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
+#warning integration: todo rework so this is an exception
 	if (!_s->m_node || !_s->m_node->id)
 	{
 		cwarn << "Attempting to register a peer without node information!";
@@ -180,7 +182,8 @@ void Host::seal(bytes& _b)
 	_b[7] = len & 0xff;
 }
 
-shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
+#warning integration: todo remove origin, ready, oldid. port to NodeTable. see Session.cpp#244,363
+shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
 	if (_a.port() < 30300 || _a.port() > 30305)
@@ -192,11 +195,11 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 		_a = bi::tcp::endpoint(_a.address(), 0);
 	}
 
-//	cnote << "Node:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
+//	cnote << "NodeInfo:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
 
 	// First check for another node with the same connection credentials, and put it in oldId if found.
 	if (!_oldId)
-		for (pair<h512, shared_ptr<Node>> const& n: m_nodes)
+		for (pair<h512, shared_ptr<NodeInfo>> const& n: m_nodes)
 			if (n.second->address == _a && n.second->id != _id)
 			{
 				_oldId = n.second->id;
@@ -217,7 +220,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 			i = m_nodesList.size();
 			m_nodesList.push_back(_id);
 		}
-		m_nodes[_id] = make_shared<Node>();
+		m_nodes[_id] = make_shared<NodeInfo>();
 		m_nodes[_id]->id = _id;
 		m_nodes[_id]->index = i;
 		m_nodes[_id]->idOrigin = _o;
@@ -246,6 +249,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 	return m_nodes[_id];
 }
 
+#warning integration: TBD caps in NodeTable/NodeEntry
 Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
 {
 	RecursiveGuard l(x_peers);
@@ -376,6 +380,7 @@ string Host::pocHost()
 	return "poc-" + strs[1] + ".ethdev.com";
 }
 
+#warning integration: todo remove all connect() w/ addNode makeRequired (this requires pubkey)
 void Host::connect(std::string const& _addr, unsigned short _port) noexcept
 {
 	if (!m_run)
@@ -428,13 +433,13 @@ void Host::connect(bi::tcp::endpoint const& _ep)
 	});
 }
 
-void Host::connect(std::shared_ptr<Node> const& _n)
+void Host::connect(std::shared_ptr<NodeInfo> const& _n)
 {
 	if (!m_run)
 		return;
 	
 	// prevent concurrently connecting to a node; todo: better abstraction
-	Node *nptr = _n.get();
+	NodeInfo *nptr = _n.get();
 	{
 		Guard l(x_pendingNodeConns);
 		if (m_pendingNodeConns.count(nptr))
@@ -488,7 +493,7 @@ bool Host::havePeer(NodeId _id) const
 	return !!m_peers.count(_id);
 }
 
-unsigned Node::fallbackSeconds() const
+unsigned NodeInfo::fallbackSeconds() const
 {
 	switch (lastDisconnect)
 	{
@@ -510,85 +515,83 @@ unsigned Node::fallbackSeconds() const
 	}
 }
 
-bool Node::shouldReconnect() const
-{
-	return chrono::system_clock::now() > lastAttempted + chrono::seconds(fallbackSeconds());
-}
+#warning integration: ---- grow/prunePeers
+#warning integration: todo grow/prune into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
+//void Host::growPeers()
+//{
+//	RecursiveGuard l(x_peers);
+//	int morePeers = (int)m_idealPeerCount - m_peers.size();
+//	if (morePeers > 0)
+//	{
+//		auto toTry = m_ready;
+//		if (!m_netPrefs.localNetworking)
+//			toTry -= m_private;
+//		set<NodeInfo> ns;
+//		for (auto i: toTry)
+//			if (m_nodes[m_nodesList[i]]->shouldReconnect())
+//				ns.insert(*m_nodes[m_nodesList[i]]);
+//
+//		if (ns.size())
+//			for (NodeInfo const& i: ns)
+//			{
+//				connect(m_nodes[i.id]);
+//				if (!--morePeers)
+//					return;
+//			}
+//		else
+//			for (auto const& i: m_peers)
+//				if (auto p = i.second.lock())
+//					p->ensureNodesRequested();
+//	}
+//}
+//
+//void Host::prunePeers()
+//{
+//	RecursiveGuard l(x_peers);
+//	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
+//	set<NodeId> dc;
+//	for (unsigned old = 15000; m_peers.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+//		if (m_peers.size() - dc.size() > m_idealPeerCount)
+//		{
+//			// look for worst peer to kick off
+//			// first work out how many are old enough to kick off.
+//			shared_ptr<Session> worst;
+//			unsigned agedPeers = 0;
+//			for (auto i: m_peers)
+//				if (!dc.count(i.first))
+//					if (auto p = i.second.lock())
+//						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+//						{
+//							++agedPeers;
+//							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
+//								worst = p;
+//						}
+//			if (!worst || agedPeers <= m_idealPeerCount)
+//				break;
+//			dc.insert(worst->id());
+//			worst->disconnect(TooManyPeers);
+//		}
+//
+//	// Remove dead peers from list.
+//	for (auto i = m_peers.begin(); i != m_peers.end();)
+//		if (i->second.lock().get())
+//			++i;
+//		else
+//			i = m_peers.erase(i);
+//}
 
-void Host::growPeers()
-{
-	RecursiveGuard l(x_peers);
-	int morePeers = (int)m_idealPeerCount - m_peers.size();
-	if (morePeers > 0)
-	{
-		auto toTry = m_ready;
-		if (!m_netPrefs.localNetworking)
-			toTry -= m_private;
-		set<Node> ns;
-		for (auto i: toTry)
-			if (m_nodes[m_nodesList[i]]->shouldReconnect())
-				ns.insert(*m_nodes[m_nodesList[i]]);
-
-		if (ns.size())
-			for (Node const& i: ns)
-			{
-				connect(m_nodes[i.id]);
-				if (!--morePeers)
-					return;
-			}
-		else
-			for (auto const& i: m_peers)
-				if (auto p = i.second.lock())
-					p->ensureNodesRequested();
-	}
-}
-
-void Host::prunePeers()
-{
-	RecursiveGuard l(x_peers);
-	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
-	set<NodeId> dc;
-	for (unsigned old = 15000; m_peers.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-		if (m_peers.size() - dc.size() > m_idealPeerCount)
-		{
-			// look for worst peer to kick off
-			// first work out how many are old enough to kick off.
-			shared_ptr<Session> worst;
-			unsigned agedPeers = 0;
-			for (auto i: m_peers)
-				if (!dc.count(i.first))
-					if (auto p = i.second.lock())
-						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
-						{
-							++agedPeers;
-							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
-								worst = p;
-						}
-			if (!worst || agedPeers <= m_idealPeerCount)
-				break;
-			dc.insert(worst->id());
-			worst->disconnect(TooManyPeers);
-		}
-
-	// Remove dead peers from list.
-	for (auto i = m_peers.begin(); i != m_peers.end();)
-		if (i->second.lock().get())
-			++i;
-		else
-			i = m_peers.erase(i);
-}
-
-PeerInfos Host::peers(bool _updatePing) const
+PeerInfos Host::peers() const
 {
 	if (!m_run)
 		return PeerInfos();
 
+#warning integration: ---- pingAll. It is called every 30secs via deadline timer.
 	RecursiveGuard l(x_peers);
-    if (_updatePing)
-	{
-		const_cast<Host*>(this)->pingAll();
-		this_thread::sleep_for(chrono::milliseconds(200));
-	}
+//    if (_updatePing)
+//	{
+//		const_cast<Host*>(this)->pingAll();
+//		this_thread::sleep_for(chrono::milliseconds(200));
+//	}
 	std::vector<PeerInfo> ret;
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
@@ -610,13 +613,14 @@ void Host::run(boost::system::error_code const&)
 		return;
 	}
 
-	m_lastTick += c_timerInterval;
-	if (m_lastTick >= c_timerInterval * 10)
-	{
-		growPeers();
-		prunePeers();
-		m_lastTick = 0;
-	}
+#warning integration: ----
+//	m_lastTick += c_timerInterval;
+//	if (m_lastTick >= c_timerInterval * 10)
+//	{
+//		growPeers();
+//		prunePeers();
+//		m_lastTick = 0;
+//	}
 	
 	if (m_hadNewNodes)
 	{
@@ -670,12 +674,19 @@ void Host::startedWorking()
 		
 		if (m_listenPort > 0)
 			runAcceptor();
+			
+#warning integration: ++++
+		if (!m_tcpPublic.address().is_unspecified())
+			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort, m_tcpPublic));
+		else
+			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort > 0 ? m_listenPort : 30303));
 	}
 	
-	// if m_public address is valid then add us to node list
-	// todo: abstract empty() and emplace logic
-	if (!m_tcpPublic.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-		noteNode(id(), m_tcpPublic, Origin::Perfect, false);
+#warning integration: ----
+//	// if m_public address is valid then add us to node list
+//	// todo: abstract empty() and emplace logic
+//	if (!m_tcpPublic.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
+//		noteNode(id(), m_tcpPublic, Origin::Perfect, false);
 	
 	clog(NetNote) << "Id:" << id().abridged();
 	
@@ -697,6 +708,7 @@ void Host::pingAll()
 	m_lastPing = chrono::steady_clock::now();
 }
 
+#warning integration: todo save/restoreNodes
 bytes Host::saveNodes() const
 {
 	RLPStream nodes;
@@ -705,7 +717,7 @@ bytes Host::saveNodes() const
 		RecursiveGuard l(x_peers);
 		for (auto const& i: m_nodes)
 		{
-			Node const& n = *(i.second);
+			NodeInfo const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
 			if (!n.dead && chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
 			{

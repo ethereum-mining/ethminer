@@ -24,12 +24,15 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _listenPort):
+NodeEntry::NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::dist(_src.id,_pubk)) {}
+NodeEntry::NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)), distance(NodeTable::dist(_src.id,_pubk)) {}
+
+NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udp, bi::tcp::endpoint _ep):
 	m_node(Node(_alias.pub(), bi::udp::endpoint())),
 	m_secret(_alias.sec()),
-	m_socket(new NodeSocket(_io, *this, _listenPort)),
-	m_socketPtr(m_socket.get()),
 	m_io(_io),
+	m_socket(new NodeSocket(m_io, *this, _udp)),
+	m_socketPtr(m_socket.get()),
 	m_bucketRefreshTimer(m_io),
 	m_evictionCheckTimer(m_io)
 {
@@ -64,7 +67,7 @@ std::list<NodeId> NodeTable::nodes() const
 	return std::move(nodes);
 }
 
-list<NodeTable::NodeEntry> NodeTable::state() const
+list<NodeEntry> NodeTable::state() const
 {
 	list<NodeEntry> ret;
 	Guard l(x_state);
@@ -74,7 +77,7 @@ list<NodeTable::NodeEntry> NodeTable::state() const
 	return move(ret);
 }
 
-NodeTable::NodeEntry NodeTable::operator[](NodeId _id)
+NodeEntry NodeTable::operator[](NodeId _id)
 {
 	Guard l(x_nodes);
 	return *m_nodes[_id];
@@ -135,7 +138,7 @@ void NodeTable::doFindNode(NodeId _node, unsigned _round, std::shared_ptr<std::s
 	});
 }
 
-std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(NodeId _target)
+std::vector<std::shared_ptr<NodeEntry>> NodeTable::findNearest(NodeId _target)
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
@@ -259,7 +262,7 @@ void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint
 		}
 	}
 	
-	// todo: why is this necessary?
+	// todo: sometimes node is nullptr here
 	if (!!node)
 		noteNode(node);
 }
@@ -365,7 +368,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 //					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
 					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 					
-					std::vector<std::shared_ptr<NodeTable::NodeEntry>> nearest = findNearest(in.target);
+					std::vector<std::shared_ptr<NodeEntry>> nearest = findNearest(in.target);
 					static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
 					for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 					{
