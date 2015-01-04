@@ -31,6 +31,8 @@ class QTextDocument;
 namespace dev
 {
 
+struct Exception;
+
 namespace solidity
 {
 	class ASTNode;
@@ -50,6 +52,7 @@ public:
 		Comment,
 		StringLiteral,
 		NumLiteral,
+		CompilationError,
 		Size, //this must be kept last
 	};
 
@@ -70,7 +73,7 @@ public:
 	{
 		FormatRange(CodeHighlighterSettings::Token _t, int _start, int _length): token(_t), start(_start), length(_length) {}
 		FormatRange(CodeHighlighterSettings::Token _t, solidity::Location const& _location);
-		bool operator<(FormatRange const& _other) { return start < _other.start || (start == _other.start && length < _other.length); }
+		bool operator<(FormatRange const& _other) const { return start < _other.start || (start == _other.start && length < _other.length); }
 
 		CodeHighlighterSettings::Token token;
 		int start;
@@ -82,6 +85,7 @@ public:
 	/// Collect highligting information
 	void processSource(std::string const& _source);
 	void processAST(solidity::ASTNode const& _ast);
+	void processError(dev::Exception const& _exception);
 	void updateFormatting(QTextDocument* _document, CodeHighlighterSettings const& _settings);
 
 private:
