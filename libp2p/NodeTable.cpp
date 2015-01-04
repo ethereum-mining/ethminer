@@ -25,7 +25,7 @@ using namespace dev;
 using namespace dev::p2p;
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _listenPort):
-	m_node(Node(_alias.address(), _alias.pub(), bi::udp::endpoint())),
+	m_node(Node(_alias.pub(), bi::udp::endpoint())),
 	m_secret(_alias.sec()),
 	m_socket(new NodeSocket(_io, *this, _listenPort)),
 	m_socketPtr(m_socket.get()),
@@ -34,7 +34,11 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _listenPort):
 	m_evictionCheckTimer(m_io)
 {
 	for (unsigned i = 0; i < s_bins; i++)
-		m_state[i].distance = i, m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
+	{
+		m_state[i].distance = i;
+		m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
+	}
+	
 	m_socketPtr->connect();
 	doRefreshBuckets(boost::system::error_code());
 }
@@ -51,9 +55,9 @@ void NodeTable::join()
 	doFindNode(m_node.id);
 }
 	
-std::list<Address> NodeTable::nodes() const
+std::list<NodeId> NodeTable::nodes() const
 {
-	std::list<Address> nodes;
+	std::list<NodeId> nodes;
 	Guard l(x_nodes);
 	for (auto& i: m_nodes)
 		nodes.push_back(i.second->id);
@@ -70,20 +74,20 @@ list<NodeTable::NodeEntry> NodeTable::state() const
 	return move(ret);
 }
 
-NodeTable::NodeEntry NodeTable::operator[](Address _id)
+NodeTable::NodeEntry NodeTable::operator[](NodeId _id)
 {
 	Guard l(x_nodes);
 	return *m_nodes[_id];
 }
 
-void NodeTable::requestNeighbors(NodeEntry const& _node, Address _target) const
+void NodeTable::requestNeighbors(NodeEntry const& _node, NodeId _target) const
 {
 	FindNode p(_node.endpoint.udp, _target);
 	p.sign(m_secret);
 	m_socketPtr->send(p);
 }
 
-void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried)
+void NodeTable::doFindNode(NodeId _node, unsigned _round, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried)
 {
 	if (!m_socketPtr->isOpen() || _round == s_maxSteps)
 		return;
@@ -131,7 +135,7 @@ void NodeTable::doFindNode(Address _node, unsigned _round, std::shared_ptr<std::
 	});
 }
 
-std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(Address _target)
+std::vector<std::shared_ptr<NodeTable::NodeEntry>> NodeTable::findNearest(NodeId _target)
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
@@ -234,26 +238,24 @@ void NodeTable::evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<Nod
 
 void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint)
 {
-	Address id = right160(sha3(_pubk));
-	
 	// Don't add ourself
-	if (id == m_node.address())
+	if (_pubk == m_node.address())
 		return;
 	
 	std::shared_ptr<NodeEntry> node;
 	{
 		Guard l(x_nodes);
-		auto n = m_nodes.find(id);
+		auto n = m_nodes.find(_pubk);
 		if (n == m_nodes.end())
 		{
-			node.reset(new NodeEntry(m_node, id, _pubk, _endpoint));
-			m_nodes[id] = node;
-//			clog(NodeTableMessageSummary) << "Adding node to cache: " << id;
+			node.reset(new NodeEntry(m_node, _pubk, _endpoint));
+			m_nodes[_pubk] = node;
+//			clog(NodeTableMessageSummary) << "Adding node to cache: " << _pubk;
 		}
 		else
 		{
 			node = n->second;
-//			clog(NodeTableMessageSummary) << "Found node in cache: " << id;
+//			clog(NodeTableMessageSummary) << "Found node in cache: " << _pubk;
 		}
 	}
 	

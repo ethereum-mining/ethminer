@@ -60,10 +60,8 @@ protected:
  * @todo compact templates
  * @todo make data private/functional (see UDPDatagram)
  */
-//template <class T>
 struct RLPXDatagramFace: public UDPDatagram
 {
-//	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
 	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
 	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
@@ -74,12 +72,12 @@ struct RLPXDatagramFace: public UDPDatagram
 	virtual void streamRLP(RLPStream&) const =0;
 	virtual void interpretRLP(bytesConstRef _bytes) =0;
 };
-	
+
 template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 	using RLPXDatagramFace::RLPXDatagramFace;
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 };
 
 /**
