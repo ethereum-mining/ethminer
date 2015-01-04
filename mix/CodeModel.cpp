@@ -140,6 +140,7 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
 		result.reset(new CompilationResult(*m_result, QString::fromStdString(error.str())));
+		codeHighlighter->processError(_exception);
 		qDebug() << QString(QApplication::tr("compilation failed:") + " " + result->compilerMessage());
 	}
 	result->m_codeHighlighter = codeHighlighter;

@@ -29,6 +29,7 @@
 #include "libsolidity/ASTVisitor.h"
 #include "libsolidity/AST.h"
 #include "libsolidity/Scanner.h"
+#include "libsolidity/Exceptions.h"
 
 namespace dev
 {
@@ -40,11 +41,12 @@ CodeHighlighterSettings::CodeHighlighterSettings()
 	bg = QColor(0x00, 0x2b, 0x36);
 	fg = QColor (0xee, 0xe8, 0xd5);
 	formats[Keyword].setForeground(QColor(0x93, 0xa1, 0xa1));
-	//formats[Type].setForeground(Qt::darkCyan);
 	formats[Comment].setForeground(QColor(0x85, 0x99, 0x00));
 	formats[StringLiteral].setForeground(QColor(0xdc, 0x32, 0x2f));
 	formats[NumLiteral].setForeground(fg);
 	formats[Import].setForeground(QColor(0x6c, 0x71, 0xc4));
+	formats[CompilationError].setUnderlineColor(Qt::red);
+	formats[CompilationError].setUnderlineStyle(QTextCharFormat::SingleUnderline);
 }
 
 namespace
@@ -101,6 +103,11 @@ void CodeHighlighter::processAST(solidity::ASTNode const& _ast)
 	std::sort(m_formats.begin(), m_formats.end());
 }
 
+void CodeHighlighter::processError(dev::Exception const& _exception)
+{
+	Location const* location = boost::get_error_info<errinfo_sourceLocation>(_exception);
+	m_formats.push_back(FormatRange(CodeHighlighterSettings::CompilationError, *location));
+}
 
 void CodeHighlighter::processComments(std::string const& _source)
 {
