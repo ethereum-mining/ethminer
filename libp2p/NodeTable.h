@@ -31,6 +31,41 @@ namespace dev
 namespace p2p
 {
 
+struct NodeDefaultEndpoint
+{
+	NodeDefaultEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
+	NodeDefaultEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
+	NodeDefaultEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
+	
+	bi::udp::endpoint udp;
+	bi::tcp::endpoint tcp;
+};
+
+struct Node
+{
+	Node(Public _pubk, NodeDefaultEndpoint _udp): id(_pubk), endpoint(_udp) {}
+	Node(Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)) {}
+	
+	virtual NodeId const& address() const { return id; }
+	virtual Public const& publicKey() const { return id; }
+	
+	NodeId id;
+	NodeDefaultEndpoint endpoint;
+};
+
+	
+/**
+ * NodeEntry
+ * @brief Entry in Node Table
+ */
+struct NodeEntry: public Node
+{
+	NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw); //: Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
+	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp); //: Node(_pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
+
+	const unsigned distance;	///< Node's distance from _src (see constructor).
+};
+	
 /**
  * NodeTable using S/Kademlia system for node discovery and preference.
  * untouched buckets are refreshed if they have not been touched within an hour
@@ -50,7 +85,7 @@ namespace p2p
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
  * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
- * @todo store root node in table?
+ * @todo store self (root) in table? (potential bug. alt is to add to list when self is closest to target)
  *
  * [Networking]
  * @todo TCP endpoints
@@ -70,46 +105,9 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
 	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
-
-	struct NodeDefaultEndpoint
-	{
-		NodeDefaultEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
-		bi::udp::endpoint udp;
-	};
-	
-	struct Node
-	{
-		Node(Public _pubk, NodeDefaultEndpoint _udp): id(_pubk), endpoint(_udp) {}
-		Node(Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)) {}
-		
-		virtual NodeId const& address() const { return id; }
-		virtual Public const& publicKey() const { return id; }
-		
-		NodeId id;
-		NodeDefaultEndpoint endpoint;
-	};
-	
-	/**
-	 * NodeEntry
-	 * @todo Type of id will become template parameter.
-	 */
-	struct NodeEntry: public Node
-	{
-		NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw): Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
-		NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
-
-		const unsigned distance;	///< Node's distance from _src (see constructor).
-	};
-	
-	struct NodeBucket
-	{
-		unsigned distance;
-		TimePoint modified;
-		std::list<std::weak_ptr<NodeEntry>> nodes;
-	};
 	
 public:
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _port = 30300);
+	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303, bi::tcp::endpoint _ep = bi::tcp::endpoint());
 	~NodeTable();
 	
 	/// Constants for Kademlia, mostly derived from address space.
@@ -121,7 +119,7 @@ public:
 	
 	/// Chosen constants
 	
-	static unsigned const s_bucketSize = 16;		///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
+	static unsigned const s_bucketSize = 16;			///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
 	static unsigned const s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
 	
 	/// Intervals
@@ -142,6 +140,13 @@ public:
 	
 	
 protected:
+	struct NodeBucket
+	{
+		unsigned distance;
+		TimePoint modified;
+		std::list<std::weak_ptr<NodeEntry>> nodes;
+	};
+	
 	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
 	void doFindNode(NodeId _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
@@ -193,10 +198,11 @@ protected:
 
 	Mutex x_evictions;
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
-	
+
+	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
 	NodeSocket* m_socketPtr;									///< Set to m_socket.get().
-	ba::io_service& m_io;										///< Used by bucket refresh timer.
+
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
@@ -317,7 +323,7 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	};
 	
 	using RLPXDatagram<Neighbors>::RLPXDatagram;
-	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbors>(_to)
+	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbors>(_to)
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)

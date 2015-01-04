@@ -57,8 +57,6 @@ protected:
 
 /**
  * @brief RLPX Datagram which can be signed.
- * @todo compact templates
- * @todo make data private/functional (see UDPDatagram)
  */
 struct RLPXDatagramFace: public UDPDatagram
 {

@@ -47,7 +47,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _ma
 	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n, bool _force):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_node(_n),
