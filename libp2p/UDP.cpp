@@ -37,7 +37,7 @@ h256 RLPXDatagramFace::sign(Secret const& _k)
 	bytesConstRef packetHash(&data[0], h256::size);
 	bytesConstRef signedPayload(&data[h256::size], Signature::size + rlp.size());
 	bytesConstRef payloadSig(&data[h256::size], Signature::size);
-	bytesConstRef payload(&data[h256::size+Signature::size], rlp.size());
+	bytesConstRef payload(&data[h256::size + Signature::size], rlp.size());
 	
 	sig.ref().copyTo(payloadSig);
 	rlp.copyTo(payload);

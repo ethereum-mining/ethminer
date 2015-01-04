@@ -50,6 +50,7 @@ namespace p2p
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
  * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
+ * @todo store root node in table?
  *
  * [Networking]
  * @todo TCP endpoints
@@ -68,7 +69,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	friend struct Neighbors;
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
-	using EvictionTimeout = std::pair<std::pair<Address,TimePoint>,Address>;
+	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 
 	struct NodeDefaultEndpoint
 	{
@@ -78,14 +79,13 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	
 	struct Node
 	{
-		Node(Address _id, Public _pubk, NodeDefaultEndpoint _udp): id(_id), pubk(_pubk), endpoint(_udp) {}
-		Node(Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)) {}
+		Node(Public _pubk, NodeDefaultEndpoint _udp): id(_pubk), endpoint(_udp) {}
+		Node(Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)) {}
 		
-		virtual Address const& address() const { return id; }
-		virtual Public const& publicKey() const { return pubk; }
+		virtual NodeId const& address() const { return id; }
+		virtual Public const& publicKey() const { return id; }
 		
-		Address id;
-		Public pubk;
+		NodeId id;
 		NodeDefaultEndpoint endpoint;
 	};
 	
@@ -95,8 +95,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	 */
 	struct NodeEntry: public Node
 	{
-		NodeEntry(Node _src, Address _id, Public _pubk, NodeDefaultEndpoint _gw): Node(_id, _pubk, _gw), distance(dist(_src.id,_id)) {}
-		NodeEntry(Node _src, Address _id, Public _pubk, bi::udp::endpoint _udp): Node(_id, _pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_id)) {}
+		NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw): Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
+		NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
 
 		const unsigned distance;	///< Node's distance from _src (see constructor).
 	};
@@ -114,7 +114,7 @@ public:
 	
 	/// Constants for Kademlia, mostly derived from address space.
 	
-	static unsigned const s_addressByteSize = sizeof(Node::id);				///< Size of address type in bytes.
+	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
 	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
 	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
 	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
@@ -130,23 +130,23 @@ public:
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
 	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 	
-	static unsigned dist(Address const& _a, Address const& _b) { u160 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
 	void join();
 	
-	NodeEntry root() const { return NodeEntry(m_node, m_node.address(), m_node.publicKey(), m_node.endpoint.udp); }
-	std::list<Address> nodes() const;
+	NodeEntry root() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
+	std::list<NodeId> nodes() const;
 	std::list<NodeEntry> state() const;
 	
-	NodeEntry operator[](Address _id);
+	NodeEntry operator[](NodeId _id);
 	
 	
 protected:
 	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
-	void doFindNode(Address _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
+	void doFindNode(NodeId _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
 	/// Returns nodes nearest to target.
-	std::vector<std::shared_ptr<NodeEntry>> findNearest(Address _target);
+	std::vector<std::shared_ptr<NodeEntry>> findNearest(NodeId _target);
 	
 	void ping(bi::udp::endpoint _to) const;
 	
@@ -180,13 +180,13 @@ private:
 protected:
 #endif
 	/// Sends FindNeighbor packet. See doFindNode.
-	void requestNeighbors(NodeEntry const& _node, Address _target) const;
+	void requestNeighbors(NodeEntry const& _node, NodeId _target) const;
 
 	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.
 
 	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
-	std::map<Address, std::shared_ptr<NodeEntry>> m_nodes;		///< Address -> Node table (most common lookup path)
+	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< NodeId -> Node table (most common lookup path)
 
 	mutable Mutex x_state;
 	std::array<NodeBucket, s_bins> m_state;					///< State table of binned nodes.
@@ -233,9 +233,9 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  */
 struct PingNode: RLPXDatagram<PingNode>
 {
-	using RLPXDatagram<PingNode>::RLPXDatagram;
-	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
-	
+	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep) {}
+	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
+
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
@@ -257,7 +257,7 @@ struct PingNode: RLPXDatagram<PingNode>
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	using RLPXDatagram<Pong>::RLPXDatagram;
+	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep) {}
 
 	h256 replyTo; // hash of rlp of PingNode
 	unsigned expiration;
@@ -275,20 +275,20 @@ struct Pong: RLPXDatagram<Pong>
  * Minimum Encoded Size: 21 bytes
  * Maximum Encoded Size: 30 bytes
  *
- * target: Address of node. The responding node will send back nodes closest to the target.
+ * target: NodeId of node. The responding node will send back nodes closest to the target.
  * expiration: Triggers regeneration of packet. May also provide control over synchronization.
  *
  */
 struct FindNode: RLPXDatagram<FindNode>
 {
 	using RLPXDatagram<FindNode>::RLPXDatagram;
-	FindNode(bi::udp::endpoint _ep, Address _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
+	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram<FindNode>(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
 	
-	h160 target;
+	h512 target;
 	unsigned expiration;
-
+	
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h160>(); expiration = r[1].toInt<unsigned>(); }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); expiration = r[1].toInt<unsigned>(); }
 };
 
 /**
@@ -317,7 +317,7 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	};
 	
 	using RLPXDatagram<Neighbors>::RLPXDatagram;
-	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram(_to)
+	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbors>(_to)
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
@@ -328,15 +328,6 @@ struct Neighbors: RLPXDatagram<Neighbors>
 			node.node = _nearest[i]->publicKey();
 			nodes.push_back(node);
 		}
-		
-//		for (auto& n: _nearest)
-//		{
-//			Node node;
-//			node.ipAddress = n->endpoint.udp.address().to_string(); // 16
-//			node.port = n->endpoint.udp.port(); // 3
-//			node.node = n->publicKey();// 67
-//			nodes.push_back(node);
-//		}
 	}
 	
 	std::list<Node> nodes;
