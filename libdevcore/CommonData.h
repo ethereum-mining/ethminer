@@ -236,4 +236,7 @@ inline std::set<_T> operator+(std::set<_T> const& _a, std::set<_T> const& _b)
 	return ret += _b;
 }
 
+/// Make normal string from fixed-length string.
+std::string toString(string32 const& _s);
+
 }

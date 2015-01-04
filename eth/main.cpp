@@ -89,6 +89,7 @@ void interactiveHelp()
 		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
+		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -606,6 +607,17 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
+			else if (c && cmd == "dumpreceipt")
+			{
+				unsigned block;
+				unsigned index;
+				iss >> block >> index;
+				dev::eth::TransactionReceipt r = c->blockChain().receipts(c->blockChain().numberHash(block)).receipts[index];
+				auto rb = r.rlp();
+				cout << "RLP: " << RLP(rb) << endl;
+				cout << "Hex: " << toHex(rb) << endl;
+				cout << r << endl;
+			}
 			else if (c && cmd == "dumptrace")
 			{
 				unsigned block;
@@ -619,7 +631,7 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state, 0);
+					Executive e(state, c->blockChain(), 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();

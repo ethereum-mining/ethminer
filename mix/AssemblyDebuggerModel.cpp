@@ -38,7 +38,7 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 	m_baseState(Address(), m_overlayDB, BaseState::Empty)
 {
 	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
+	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, LastHashes(), 0));
 }
 
 DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::bytesConstRef _rawTransaction)
