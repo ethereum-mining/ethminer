@@ -28,7 +28,7 @@ using namespace dev::eth;
 
 bool ExtVM::call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp, Address _myAddressOverride, Address _codeAddressOverride)
 {
-	Executive e(m_s, depth + 1);
+	Executive e(m_s, lastHashes, depth + 1);
 	if (!e.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, origin))
 	{
 		e.go(_onOp);
@@ -45,7 +45,7 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 	// Increment associated nonce for sender.
 	m_s.noteSending(myAddress);
 
-	Executive e(m_s, depth + 1);
+	Executive e(m_s, lastHashes, depth + 1);
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
 	{
 		e.go(_onOp);
