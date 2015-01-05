@@ -46,11 +46,19 @@ inline std::string toJS(dev::bytes const& _n)
 	return "0x" + dev::toHex(_n);
 }
 
+/// Convert string to byte array. Input parameters can be hex or dec. Returns empty array if invalid input e.g neither dec or hex.
 bytes jsToBytes(std::string const& _s);
+/// Add '0' on the head of _b until _l.
 bytes padded(bytes _b, unsigned _l);
+/// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
+/// Remove all '0' on the head of _s. Returns 0 if _s contains only '0'.
+std::string unpadLeft(std::string _s);
+/// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
 std::string prettyU256(u256 _n);
+/// Convert h256 into user-readable string (by directly using std::string constructor).
 std::string fromRaw(h256 _n, unsigned* _inc = nullptr);
+/// Convert string to Address (h160), returns empty address if (_a.size != 40).
 Address fromString(std::string const& _a);
 
 template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)

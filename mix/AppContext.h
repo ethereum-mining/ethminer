@@ -27,28 +27,48 @@
 
 #pragma once
 
+#include <memory>
 #include <QQmlApplicationEngine>
-#include "libwebthree/WebThree.h"
+#include <libsolidity/CompilerStack.h>
+#include <libwebthree/WebThree.h>
 #include "KeyEventManager.h"
+
+namespace dev
+{
+	class WebThreeDirect;
+	namespace solidity
+	{
+		class CompilerStack;
+	}
+}
 
 namespace dev
 {
 namespace mix
 {
 
+/**
+ * @brief Provides access to application scope variable.
+ */
 class AppContext: public QObject
 {
 	Q_OBJECT
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	~AppContext() {}
+	/// Get the current QQmlApplicationEngine instance.
 	static AppContext* getInstance() { return Instance; }
+	/// Renew QQMLApplicationEngine with a new instance.
 	static void setApplicationContext(QQmlApplicationEngine* _engine);
+	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
-	dev::eth::Client* getEthereumClient();
+	/// Initialize KeyEventManager (used to handle key pressed event).
 	void initKeyEventManager(QObject* _obj);
+	/// Get the current KeyEventManager instance.
 	KeyEventManager* getKeyEventManager();
+	/// Get the current Compiler instance (used to parse and compile contract code).
+	dev::solidity::CompilerStack* compiler();
+	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
 
 private:
@@ -56,12 +76,14 @@ private:
 	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<KeyEventManager> m_keyEventManager;
+	std::unique_ptr<solidity::CompilerStack> m_compiler;
 
 public slots:
+	/// Delete the current instance when application quit.
 	void quitApplication() { delete Instance; }
+	/// Initialize components after the loading of the main QML view.
 	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
 };
 
 }
-
 }

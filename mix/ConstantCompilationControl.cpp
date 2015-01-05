@@ -14,56 +14,58 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ConstantCompilationCtrl.cpp
+/** @file ConstantCompilationControl.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
  */
 
+#include <QQmlContext>
 #include <QQuickItem>
 #include <QtCore/QFileInfo>
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
-#include "ConstantCompilationCtrl.h"
+#include "ConstantCompilationControl.h"
 #include "ConstantCompilationModel.h"
+#include "QContractDefinition.h"
 using namespace dev::mix;
 
-ConstantCompilationCtrl::ConstantCompilationCtrl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
+ConstantCompilationControl::ConstantCompilationControl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
 {
 	m_editor = _doc;
 	m_compilationModel = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel());
 }
 
-QString ConstantCompilationCtrl::contentUrl() const
+QString ConstantCompilationControl::contentUrl() const
 {
 	return QStringLiteral("qrc:/qml/BasicContent.qml");
 }
 
-QString ConstantCompilationCtrl::title() const
+QString ConstantCompilationControl::title() const
 {
 	return QApplication::tr("compiler");
 }
 
-void ConstantCompilationCtrl::start() const
+void ConstantCompilationControl::start() const
 {
 	connect(m_editor, SIGNAL(contentsChange(int,int,int)), this, SLOT(compile()));
 }
 
-void ConstantCompilationCtrl::compile()
+void ConstantCompilationControl::compile()
 {
 	QString codeContent = m_editor->toPlainText().replace("\n", "");
 	if (codeContent.isEmpty())
-	{
 		resetOutPut();
-		return;
+	else
+	{
+		CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "        "));
+		writeOutPut(res);
 	}
-	CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "        "));
-	writeOutPut(res);
 }
 
-void ConstantCompilationCtrl::resetOutPut()
+void ConstantCompilationControl::resetOutPut()
 {
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
@@ -71,7 +73,7 @@ void ConstantCompilationCtrl::resetOutPut()
 	content->setProperty("text", "");
 }
 
-void ConstantCompilationCtrl::writeOutPut(CompilerResult const& _res)
+void ConstantCompilationControl::writeOutPut(CompilerResult const& _res)
 {
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
@@ -80,13 +82,11 @@ void ConstantCompilationCtrl::writeOutPut(CompilerResult const& _res)
 		status->setProperty("text", "succeeded");
 		status->setProperty("color", "green");
 		content->setProperty("text", _res.hexCode);
-		qDebug() << QString(QApplication::tr("compile succeeded") + " " + _res.hexCode);
 	}
 	else
 	{
 		status->setProperty("text", "failure");
 		status->setProperty("color", "red");
 		content->setProperty("text", _res.comment);
-		qDebug() << QString(QApplication::tr("compile failed") + " " + _res.comment);
 	}
 }

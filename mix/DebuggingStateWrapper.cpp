@@ -22,17 +22,18 @@
 
 #include <QApplication>
 #include <QDebug>
-#include "libevmcore/Instruction.h"
-#include "libdevcore/CommonJS.h"
-#include "libdevcrypto/Common.h"
-#include "libevmcore/Instruction.h"
-#include "libdevcore/Common.h"
+#include <QPointer>
+#include <libevmcore/Instruction.h>
+#include <libdevcore/CommonJS.h>
+#include <libdevcrypto/Common.h>
+#include <libevmcore/Instruction.h>
+#include <libdevcore/Common.h>
 #include "DebuggingStateWrapper.h"
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& _code, QObject* _objUsedAsParent)
+std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& _code)
 {
 	QList<QObject*> codeStr;
 	QMap<int, int> codeMapping;
@@ -52,7 +53,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
-			HumanReadableCode* humanCode = new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line, _objUsedAsParent);
+			QPointer<HumanReadableCode> humanCode(new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line));
 			codeStr.append(humanCode);
 		}
 		catch (...)
@@ -62,7 +63,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			break;	// probably hit data segment
 		}
 	}
-	return std::make_tuple(codeStr, new QQMLMap(codeMapping, _objUsedAsParent));
+	return std::make_tuple(codeStr, QPointer<QQMLMap>(new QQMLMap(codeMapping)));
 }
 
 QString DebuggingStateWrapper::gasLeft()
@@ -99,7 +100,7 @@ QString DebuggingStateWrapper::debugStorage()
 {
 	std::stringstream s;
 	for (auto const& i: m_state.storage)
-		s << "@" << prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second);
+		s << "@" << prettyU256(i.first) << " " << prettyU256(i.second);
 
 	return QString::fromStdString(s.str());
 }

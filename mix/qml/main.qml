@@ -9,8 +9,6 @@ import CodeEditorExtensionManager 1.0
 ApplicationWindow {
 	id: mainApplication
 	visible: true
-	x: Screen.width / 2 - width / 2
-	y: Screen.height / 2 - height / 2
 	width: 1200
 	height: 600
 	minimumWidth: 400
@@ -25,6 +23,10 @@ ApplicationWindow {
 				onTriggered: Qt.quit();
 			}
 		}
+	}
+	Component.onCompleted: {
+		setX(Screen.width / 2 - width / 2);
+		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
