@@ -272,15 +272,11 @@ std::string WebThreeStubServer::eth_balanceAt(string const& _address)
 
 Json::Value WebThreeStubServer::eth_blockByHash(std::string const& _hash)
 {
-	if (!client())
-		return "";
 	return toJson(client()->blockInfo(jsToFixed<32>(_hash)));
 }
 
 Json::Value WebThreeStubServer::eth_blockByNumber(int const& _number)
 {
-	if (!client())
-		return "";
 	return toJson(client()->blockInfo(client()->hashFromNumber(_number)));
 }
 
@@ -332,8 +328,6 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 std::string WebThreeStubServer::eth_call(Json::Value const& _json)
 {
 	std::string ret;
-	if (!client())
-		return ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
@@ -355,31 +349,29 @@ std::string WebThreeStubServer::eth_call(Json::Value const& _json)
 
 bool WebThreeStubServer::eth_changed(int const& _id)
 {
-	if (!client())
-		return false;
 	return client()->checkWatch(_id);
 }
 
 std::string WebThreeStubServer::eth_codeAt(string const& _address)
 {
 	int block = 0;
-	return client() ? jsFromBinary(client()->codeAt(jsToAddress(_address), block)) : "";
+	return jsFromBinary(client()->codeAt(jsToAddress(_address), block));
 }
 
 std::string WebThreeStubServer::eth_coinbase()
 {
-	return client() ? toJS(client()->address()) : "";
+	return toJS(client()->address());
 }
 
 double WebThreeStubServer::eth_countAt(string const& _address)
 {
 	int block = 0;
-	return client() ? (double)(uint64_t)client()->countAt(jsToAddress(_address), block) : 0;
+	return (double)(uint64_t)client()->countAt(jsToAddress(_address), block);
 }
 
 int WebThreeStubServer::eth_defaultBlock()
 {
-	return client() ? client()->getDefault() : 0;
+	return client()->getDefault();
 }
 
 std::string WebThreeStubServer::eth_gasPrice()
@@ -397,15 +389,11 @@ std::string WebThreeStubServer::db_get(std::string const& _name, std::string con
 
 Json::Value WebThreeStubServer::eth_filterLogs(int const& _id)
 {
-	if (!client())
-		return Json::Value(Json::arrayValue);
 	return toJson(client()->logs(_id));
 }
 
 Json::Value WebThreeStubServer::eth_logs(Json::Value const& _json)
 {
-	if (!client())
-		return Json::Value(Json::arrayValue);
 	return toJson(client()->logs(toLogFilter(_json)));
 }
 
@@ -429,15 +417,12 @@ bool WebThreeStubServer::eth_listening()
 
 bool WebThreeStubServer::eth_mining()
 {
-	return client() ? client()->isMining() : false;
+	return client()->isMining();
 }
 
 int WebThreeStubServer::eth_newFilter(Json::Value const& _json)
 {
 	unsigned ret = -1;
-	if (!client())
-		return ret;
-//	ret = client()->installWatch(toMessageFilter(_json));
 	ret = client()->installWatch(toLogFilter(_json));
 	return ret;
 }
@@ -445,8 +430,6 @@ int WebThreeStubServer::eth_newFilter(Json::Value const& _json)
 int WebThreeStubServer::eth_newFilterString(std::string const& _filter)
 {
 	unsigned ret = -1;
-	if (!client())
-		return ret;
 	if (_filter.compare("chain") == 0)
 		ret = client()->installWatch(dev::eth::ChainChangedFilter);
 	else if (_filter.compare("pending") == 0)
@@ -528,7 +511,7 @@ std::string WebThreeStubServer::eth_solidity(std::string const& _code)
 
 int WebThreeStubServer::eth_number()
 {
-	return client() ? client()->number() + 1 : 0;
+	return client()->number() + 1;
 }
 
 int WebThreeStubServer::eth_peerCount()
@@ -538,7 +521,6 @@ int WebThreeStubServer::eth_peerCount()
 
 bool WebThreeStubServer::shh_post(Json::Value const& _json)
 {
-//	cnote << this << m_ids;
 	shh::Message m = toMessage(_json);
 	Secret from;
 
@@ -571,16 +553,12 @@ bool WebThreeStubServer::db_putString(std::string const& _name, std::string cons
 
 bool WebThreeStubServer::eth_setCoinbase(std::string const& _address)
 {
-	if (!client())
-		return false;
 	client()->setAddress(jsToAddress(_address));
 	return true;
 }
 
 bool WebThreeStubServer::eth_setDefaultBlock(int const& _block)
 {
-	if (!client())
-		return false;
 	client()->setDefault(_block);
 	return true;
 }
@@ -596,9 +574,6 @@ bool WebThreeStubServer::eth_setListening(bool const& _listening)
 
 bool WebThreeStubServer::eth_setMining(bool const& _mining)
 {
-	if (!client())
-		return false;
-
 	if (_mining)
 		client()->startMining();
 	else
@@ -647,21 +622,17 @@ bool WebThreeStubServer::shh_uninstallFilter(int const& _id)
 std::string WebThreeStubServer::eth_stateAt(string const& _address, string const& _storage)
 {
 	int block = 0;
-	return client() ? toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block)) : "";
+	return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block));
 }
 
 Json::Value WebThreeStubServer::eth_storageAt(string const& _address)
 {
-	if (!client())
-		return Json::Value(Json::objectValue);
 	return toJson(client()->storageAt(jsToAddress(_address)));
 }
 
 std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 {
 	std::string ret;
-	if (!client())
-		return ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
@@ -689,36 +660,26 @@ std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 
 Json::Value WebThreeStubServer::eth_transactionByHash(std::string const& _hash, int const& _i)
 {
-	if (!client())
-		return "";
 	return toJson(client()->transaction(jsToFixed<32>(_hash), _i));
 }
 
 Json::Value WebThreeStubServer::eth_transactionByNumber(int const& _number, int const& _i)
 {
-	if (!client())
-		return "";
 	return toJson(client()->transaction(client()->hashFromNumber(_number), _i));
 }
 
 Json::Value WebThreeStubServer::eth_uncleByHash(std::string const& _hash, int const& _i)
 {
-	if (!client())
-		return "";
 	return toJson(client()->uncle(jsToFixed<32>(_hash), _i));
 }
 
 Json::Value WebThreeStubServer::eth_uncleByNumber(int const& _number, int const& _i)
 {
-	if (!client())
-		return "";
 	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
 bool WebThreeStubServer::eth_uninstallFilter(int const& _id)
 {
-	if (!client())
-		return false;
 	client()->uninstallWatch(_id);
 	return true;
 }
