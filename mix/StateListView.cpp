@@ -26,6 +26,7 @@
 #include <QQmlContext>
 #include <QDebug>
 #include "StateListView.h"
+
 using namespace dev::mix;
 
 StateListView::StateListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)

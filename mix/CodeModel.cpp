@@ -33,10 +33,7 @@
 #include "CodeHighlighter.h"
 #include "CodeModel.h"
 
-namespace dev
-{
-namespace mix
-{
+using namespace dev::mix;
 
 void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 {
@@ -45,13 +42,13 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 
 CompilationResult::CompilationResult():
 	QObject(nullptr), m_successfull(false),
+	m_codeHash(qHash(QString())),
 	m_contract(new QContractDefinition()),
-	m_codeHighlighter(new CodeHighlighter()),
-	m_codeHash(qHash(QString()))
+	m_codeHighlighter(new CodeHighlighter())
 {}
 
 CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
-	QObject(nullptr), m_successfull(true)
+	QObject(nullptr), m_successfull(true), m_codeHash(qHash(QString()))
 {
 	if (!_compiler.getContractNames().empty())
 	{
@@ -64,7 +61,7 @@ CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
 }
 
 CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage):
-	QObject(nullptr), m_successfull(false),
+	QObject(nullptr), m_successfull(false), m_codeHash(qHash(QString())),
 	m_contract(_prev.m_contract),
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
@@ -167,7 +164,4 @@ bool CodeModel::hasContract() const
 void CodeModel::updateFormatting(QTextDocument* _document)
 {
 	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
-}
-
-}
 }
