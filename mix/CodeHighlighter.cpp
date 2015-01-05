@@ -36,7 +36,7 @@ using namespace dev::mix;
 CodeHighlighterSettings::CodeHighlighterSettings()
 {
 	backgroundColor = QColor(0x00, 0x2b, 0x36);
-	foregroundColor = QColor (0xee, 0xe8, 0xd5);
+	foregroundColor = QColor(0xee, 0xe8, 0xd5);
 	formats[Keyword].setForeground(QColor(0x93, 0xa1, 0xa1));
 	formats[Comment].setForeground(QColor(0x85, 0x99, 0x00));
 	formats[StringLiteral].setForeground(QColor(0xdc, 0x32, 0x2f));
@@ -49,7 +49,7 @@ CodeHighlighterSettings::CodeHighlighterSettings()
 namespace
 {
 	using namespace dev::solidity;
-	class HighlightVisitor : public ASTConstVisitor
+	class HighlightVisitor: public ASTConstVisitor
 	{
 	public:
 		HighlightVisitor(CodeHighlighter::Formats* _formats) { m_formats = _formats; }

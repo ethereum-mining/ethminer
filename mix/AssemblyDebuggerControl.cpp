@@ -92,7 +92,7 @@ void AssemblyDebuggerControl::debugState(QVariantMap _state)
 
 	std::vector<TransactionSettings> transactionSequence;
 
-	for (auto const& t : transactions)
+	for (auto const& t: transactions)
 	{
 		QVariantMap transaction = t.toMap();
 
@@ -132,14 +132,14 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 			QFunctionDefinition* f;
 			ContractCallDataEncoder c;
 			//encode data for all transactions
-			for (auto const& t : _sequence)
+			for (auto const& t: _sequence)
 			{
 				f = nullptr;
-				for (int k = 0; k < contractDef->functionsList().size(); k++)
+				for (int tf = 0; tf < contractDef->functionsList().size(); tf++)
 				{
-					if (contractDef->functionsList().at(k)->name() == t.functionId)
+					if (contractDef->functionsList().at(tf)->name() == t.functionId)
 					{
-						f = contractDef->functionsList().at(k);
+						f = contractDef->functionsList().at(tf);
 						break;
 					}
 				}
@@ -147,9 +147,9 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 					throw std::runtime_error("function " + t.functionId.toStdString() + " not found");
 
 				c.encode(f->index());
-				for (int k = 0; k < f->parametersList().size(); k++)
+				for (int p = 0; p < f->parametersList().size(); p++)
 				{
-					QVariableDeclaration* var = (QVariableDeclaration*)f->parametersList().at(k);
+					QVariableDeclaration* var = (QVariableDeclaration*)f->parametersList().at(p);
 					u256 value = 0;
 					auto v = t.parameterValues.find(var->name());
 					if (v != t.parameterValues.cend())
@@ -171,7 +171,7 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 
 			//we need to wrap states in a QObject before sending to QML.
 			QList<QObject*> wStates;
-			for(int i = 0; i < debuggingContent.machineStates.size(); i++)
+			for (int i = 0; i < debuggingContent.machineStates.size(); i++)
 			{
 				QPointer<DebuggingStateWrapper> s(new DebuggingStateWrapper(debuggingContent.executionCode, debuggingContent.executionData.toBytes()));
 				s->setState(debuggingContent.machineStates.at(i));
@@ -182,7 +182,7 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 			emit dataAvailable(debuggingContent.returnParameters, wStates, code);
 			emit runComplete();
 		}
-		catch(boost::exception const& e)
+		catch(boost::exception const&)
 		{
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
