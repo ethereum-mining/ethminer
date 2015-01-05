@@ -26,12 +26,15 @@
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlApplicationEngine>
-#include "libdevcrypto/FileSystem.h"
+#include <libwebthree/WebThree.h>
+#include <libdevcrypto/FileSystem.h>
+#include <libsolidity/CompilerStack.h>
 #include "KeyEventManager.h"
 #include "AppContext.h"
 using namespace dev;
-using namespace dev::mix;
 using namespace dev::eth;
+using namespace dev::solidity;
+using namespace dev::mix;
 
 AppContext* AppContext::Instance = nullptr;
 
@@ -40,16 +43,12 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_applicationEngine = std::unique_ptr<QQmlApplicationEngine>(_engine);
 	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
 	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
+	m_compiler = std::unique_ptr<CompilerStack>(new CompilerStack()); //TODO : to move in a codel model structure.
 }
 
 QQmlApplicationEngine* AppContext::appEngine()
 {
 	return m_applicationEngine.get();
-}
-
-dev::eth::Client* AppContext::getEthereumClient()
-{
-	return m_webThree->ethereum();
 }
 
 void AppContext::initKeyEventManager(QObject* _res)
@@ -66,6 +65,11 @@ KeyEventManager* AppContext::getKeyEventManager()
 	return m_keyEventManager.get();
 }
 
+CompilerStack* AppContext::compiler()
+{
+	return m_compiler.get();
+}
+
 void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 {
 	if (Instance == nullptr)
@@ -74,9 +78,9 @@ void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
 {
-	QObject* dialogWin = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
-	QObject* dialogWinComponent = m_applicationEngine.get()->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(dialogWin, "close");
+	// TODO : move to a UI dedicated layer.
+	QObject* dialogWin = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialog", Qt::FindChildrenRecursively);
+	QObject* dialogWinComponent = m_applicationEngine->rootObjects().at(0)->findChild<QObject*>("alertMessageDialogContent", Qt::FindChildrenRecursively);
 	dialogWinComponent->setProperty("source", QString("qrc:/qml/BasicMessage.qml"));
 	dialogWin->setProperty("title", _title);
 	dialogWin->setProperty("width", "250");

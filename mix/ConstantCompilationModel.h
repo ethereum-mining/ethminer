@@ -22,14 +22,18 @@
 
 #pragma once
 
-#include <libevm/VM.h>
 #include <QObject>
+#include <libevm/VM.h>
+#include <libsolidity/AST.h>
 
 namespace dev
 {
 namespace mix
 {
 
+/**
+ * @brief Provides compiler result information.
+ */
 struct CompilerResult
 {
 	QString hexCode;
@@ -38,12 +42,16 @@ struct CompilerResult
 	bool success;
 };
 
+/**
+ * @brief Compile source code using the solidity library.
+ */
 class ConstantCompilationModel
 {
 
 public:
 	ConstantCompilationModel() {}
 	~ConstantCompilationModel() {}
+	/// Compile code.
 	CompilerResult compile(QString _code);
 };
 

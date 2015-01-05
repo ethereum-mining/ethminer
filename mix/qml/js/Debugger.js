@@ -8,6 +8,7 @@ function init()
 {
 	currentSelectedState = 0;
 	select(currentSelectedState);
+	displayReturnValue();
 }
 
 function moveSelection(incr)
@@ -30,7 +31,7 @@ function select(stateIndex)
 	var state = debugStates[stateIndex];
 	var codeStr = bytesCodeMapping.getValue(state.curPC);
 	highlightSelection(codeStr);
-	currentSelectedState = codeStr;
+	currentSelectedState = stateIndex;
 	completeCtxInformation(state);
 	levelList.model = state.levels;
 	levelList.update();
@@ -38,7 +39,6 @@ function select(stateIndex)
 
 function highlightSelection(index)
 {
-	console.log(index);
 	statesList.currentIndex = index;
 }
 
@@ -59,4 +59,10 @@ function endOfDebug()
 	debugStackTxt.text = "";
 	debugMemoryTxt.text = state.endOfDebug;
 	headerInfoLabel.text = "EXIT  |  GAS: " + state.gasLeft;
+}
+
+function displayReturnValue()
+{
+	headerReturnList.model = contractCallReturnParameters;
+	headerReturnList.update();
 }

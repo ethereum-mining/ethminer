@@ -1,16 +1,13 @@
 /*
 	This file is part of cpp-ethereum.
-
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
-
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -29,11 +26,18 @@
 #include "State.h"
 #include "ExtVM.h"
 #include "Precompiled.h"
+#include "BlockChain.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
 #define ETH_VMTRACE 1
+
+Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
+	m_s(_s),
+	m_lastHashes(_s.getLastHashes(_bc)),
+	m_depth(_level)
+{}
 
 u256 Executive::gasUsed() const
 {
@@ -123,7 +127,7 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	{
 		m_vm = VMFactory::create(_gas);
 		bytes const& c = m_s.code(_codeAddress);
-		m_ext = make_shared<ExtVM>(m_s, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
 	}
 	else
 		m_endGas = _gas;
@@ -143,7 +147,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	m_vm = VMFactory::create(_gas);
-	m_ext = make_shared<ExtVM>(m_s, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
 	return _init.empty();
 }
 
