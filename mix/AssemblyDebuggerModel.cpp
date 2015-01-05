@@ -39,7 +39,7 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 {
 	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
 	m_executiveState = m_baseState;
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
+	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, LastHashes(), 0));
 }
 
 DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
