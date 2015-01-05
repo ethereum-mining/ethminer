@@ -14,47 +14,40 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ConstantCompilationModel.h
+/** @file QContractDefinition.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
  */
 
 #pragma once
 
 #include <QObject>
-#include <libevm/VM.h>
 #include <libsolidity/AST.h>
+#include "QFunctionDefinition.h"
+#include "QBasicNodeDefinition.h"
 
 namespace dev
 {
 namespace mix
 {
 
-/**
- * @brief Provides compiler result information.
- */
-struct CompilerResult
+class QContractDefinition: public QBasicNodeDefinition
 {
-	QString hexCode;
-	QString comment;
-	dev::bytes bytes;
-	bool success;
-};
-
-/**
- * @brief Compile source code using the solidity library.
- */
-class ConstantCompilationModel
-{
+	Q_OBJECT
+	Q_PROPERTY(QList<QFunctionDefinition*> functions READ functions)
 
 public:
-	ConstantCompilationModel() {}
-	~ConstantCompilationModel() {}
-	/// Compile code.
-	CompilerResult compile(QString _code);
+	QContractDefinition(solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract), m_contract(_contract) { initQFunctions(); }
+	/// Get all the functions of the contract.
+	QList<QFunctionDefinition*> functions() const { return m_functions; }
+	/// Get the description (functions, parameters, return parameters, ...) of the contract describes by _code.
+	static std::shared_ptr<QContractDefinition> Contract(QString _code);
+
+private:
+	solidity::ContractDefinition const* m_contract;
+	QList<QFunctionDefinition*> m_functions;
+	void initQFunctions();
 };
 
 }
-
 }

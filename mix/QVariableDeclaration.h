@@ -1,43 +1,49 @@
 /*
 	This file is part of cpp-ethereum.
+
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
+
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
+
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TransactionBuilder.h
+/** @file QVariableDeclaration.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
  */
 
-#pragma once
+#include <libsolidity/AST.h>
+#include "QBasicNodeDefinition.h"
 
-#include <QString>
-#include "libdevcore/Common.h"
-#include "libethereum/Transaction.h"
+#pragma once
 
 namespace dev
 {
 namespace mix
 {
 
-class TransactionBuilder
+class QVariableDeclaration: public QBasicNodeDefinition
 {
+	Q_OBJECT
+	Q_PROPERTY(QString type READ type CONSTANT)
+
 public:
-	TransactionBuilder() {}
-	dev::eth::Transaction getBasicTransaction(dev::u256 _value, dev::u256 _gasPrice, dev::u256 _gas,
-											QString address, bytes _data, dev::u256 _nonce, Secret _secret) const;
-	dev::eth::Transaction getCreationTransaction(dev::u256 _value, dev::u256 _gasPrice, dev::u256 _gas,
-											dev::bytes _data, dev::u256 _nonce, Secret _secret) const;
+	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_variable(_v) {}
+	/// Get the type of this variable.
+	QString type() const { return QString::fromStdString(m_variable->getType()->toString());  }
+
+private:
+	solidity::VariableDeclaration const* m_variable;
 };
 
 }
-
 }
+
+Q_DECLARE_METATYPE(dev::mix::QVariableDeclaration*)

@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AssemblyDebuggerCtrl.h
+/** @file ConstantCompilationControl.h
  * @author Yann yann@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -19,52 +19,39 @@
 
 #pragma once
 
-#include <QKeySequence>
-#include "QTextDocument"
-#include "Extension.h"
+#include <QTextDocument>
 #include "ConstantCompilationModel.h"
-#include "AssemblyDebuggerModel.h"
-#include "AppContext.h"
-
-using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
-enum DebuggingStatusResult
-{
-	Ok,
-	Compilationfailed
-};
-
-Q_DECLARE_METATYPE(AssemblyDebuggerData)
-Q_DECLARE_METATYPE(DebuggingStatusResult)
+#include "Extension.h"
 
 namespace dev
 {
 namespace mix
 {
 
-class AssemblyDebuggerCtrl: public Extension
+/**
+ * @brief Extension which display assembly code of the contract being edited.
+ */
+class ConstantCompilationControl: public Extension
 {
 	Q_OBJECT
 
 public:
-	AssemblyDebuggerCtrl(QTextDocument*);
-	~AssemblyDebuggerCtrl() {}
+	ConstantCompilationControl(QTextDocument* _doc);
+	~ConstantCompilationControl() {}
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
 
 private:
-	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
-	QTextDocument* m_doc;
+	QTextDocument* m_editor;
+	std::unique_ptr<ConstantCompilationModel> m_compilationModel;
+	void writeOutPut(CompilerResult const& _res);
+	void resetOutPut();
 
 public slots:
-	void keyPressed(int);
-	void updateGUI(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-
-signals:
-	void dataAvailable(bool success, DebuggingStatusResult reason, QList<QObject*> _wStates = QList<QObject*>(), AssemblyDebuggerData _code = AssemblyDebuggerData());
-
+	/// Compile text editor content.
+	void compile();
 };
 
 }
-
 }
