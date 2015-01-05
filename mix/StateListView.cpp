@@ -40,7 +40,7 @@ QString StateListView::contentUrl() const
 
 QString StateListView::title() const
 {
-	return QApplication::tr("State");
+	return QApplication::tr("States");
 }
 
 void StateListView::start() const
