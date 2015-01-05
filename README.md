@@ -1,5 +1,9 @@
 ## Ethereum C++ Client.
 
+[![Build
+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) master [![Build
+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) develop
+
 By Gav Wood, 2014.
 
 [![Build

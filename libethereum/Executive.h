@@ -31,6 +31,7 @@ namespace eth
 {
 
 class State;
+class BlockChain;
 class ExtVM;
 struct Manifest;
 
@@ -49,7 +50,9 @@ class Executive
 {
 public:
 	/// Basic constructor.
-	Executive(State& _s, unsigned _level): m_s(_s), m_depth(_level) {}
+	Executive(State& _s, LastHashes const& _lh, unsigned _level): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
+	/// Basic constructor.
+	Executive(State& _s, BlockChain const& _bc, unsigned _level);
 	/// Basic destructor.
 	~Executive() = default;
 
@@ -99,6 +102,7 @@ public:
 
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
+	LastHashes m_lastHashes;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
 	std::unique_ptr<VMFace> m_vm;		///< The VM object or null if no VM is required.
 	bytes m_precompiledOut;				///< Used for the output when there is no VM for a contract (i.e. precompiled).

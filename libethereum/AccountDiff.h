@@ -22,6 +22,7 @@
 #pragma once
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Diff.h>
 #include <libethcore/CommonEth.h>
 
 namespace dev
@@ -29,47 +30,55 @@ namespace dev
 namespace eth
 {
 
-enum class ExistDiff { Same, New, Dead };
-template <class T>
-class Diff
+/// Type of change that an account can have from state to state.
+enum class AccountChange
 {
-public:
-	Diff() {}
-	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
-
-	T const& from() const { return m_from; }
-	T const& to() const { return m_to; }
-
-	explicit operator bool() const { return m_from != m_to; }
-
-private:
-	T m_from;
-	T m_to;
+	None,			///< Nothing changed at all.
+	Creation,		///< Account came into existance.
+	Deletion,		///< Account was deleted.
+	Intrinsic,		///< Account was already in existance and some internal aspect of the account altered such as balance, nonce or storage.
+	CodeStorage,	///< Account was already in existance and the code of the account changed.
+	All				///< Account was already in existance and all aspects of the account changed.
 };
 
-enum class AccountChange { None, Creation, Deletion, Intrinsic, CodeStorage, All };
+/// @returns a three-character code that expresses the type of change.
+char const* lead(AccountChange _c);
 
+/**
+ * @brief Stores the difference between two accounts (typically the same account at two times).
+ *
+ * In order to determine what about an account has altered, this struct can be used to specify
+ * alterations. Use changed() and changeType() to determine what, if anything, is different.
+ *
+ * Five members are accessible: to determine the nature of the changes.
+ */
 struct AccountDiff
 {
+	/// @returns true if the account has changed at all.
 	inline bool changed() const { return storage.size() || code || nonce || balance || exist; }
-	char const* lead() const;
+	/// @returns a three-character code that expresses the change.
 	AccountChange changeType() const;
 
-	Diff<bool> exist;
-	Diff<u256> balance;
-	Diff<u256> nonce;
-	std::map<u256, Diff<u256>> storage;
-	Diff<bytes> code;
+	Diff<bool> exist;						///< The account's existance; was it created/deleted or not?
+	Diff<u256> balance;						///< The account's balance; did it alter?
+	Diff<u256> nonce;						///< The account's nonce; did it alter?
+	std::map<u256, Diff<u256>> storage;		///< The account's storage addresses; each has its own Diff.
+	Diff<bytes> code;						///< The account's code; in general this should only have changed if exist also changed.
 };
 
+/**
+ * @brief Stores the difference between two states; this is just their encumbent accounts.
+ */
 struct StateDiff
 {
-	std::map<Address, AccountDiff> accounts;
+	std::map<Address, AccountDiff> accounts;	///< The state's account changes; each has its own AccountDiff.
 };
 
 }
 
+/// Simple stream output for the StateDiff.
 std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s);
+/// Simple stream output for the AccountDiff.
 std::ostream& operator<<(std::ostream& _out, dev::eth::AccountDiff const& _s);
 
 }

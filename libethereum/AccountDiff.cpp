@@ -33,11 +33,19 @@ AccountChange AccountDiff::changeType() const
 	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
 }
 
-char const* AccountDiff::lead() const
+char const* dev::eth::lead(AccountChange _c)
 {
-	bool bn = (balance || nonce);
-	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? "XXX" : "+++" : (bn && sc) ? "***" : bn ? " * " : sc ? "* *" : "   ";
+	switch (_c)
+	{
+	case AccountChange::None: return "   ";
+	case AccountChange::Creation: return "+++";
+	case AccountChange::Deletion: return "XXX";
+	case AccountChange::Intrinsic: return " * ";
+	case AccountChange::CodeStorage: return "* *";
+	case AccountChange::All: return "***";
+	}
+	assert(false);
+	return "";
 }
 
 namespace dev {
@@ -77,7 +85,7 @@ std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s)
 	dev::eth::AccountDiff d;
 	_out << d;
 	for (auto const& i: _s.accounts)
-		_out << i.second.lead() << "  " << i.first << ": " << i.second << endl;
+		_out << lead(i.second.changeType()) << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }
 
