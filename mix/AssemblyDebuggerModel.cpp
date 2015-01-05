@@ -45,7 +45,7 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
 {
 	QList<DebuggingState> machineStates;
-	m_currentExecution.reset(new Executive(m_executiveState, 0));
+	m_currentExecution.reset(new Executive(m_executiveState, LastHashes(), 0));
 	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;

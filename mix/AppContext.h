@@ -29,6 +29,8 @@
 
 #include <memory>
 #include <QQmlApplicationEngine>
+#include <libsolidity/CompilerStack.h>
+#include <libwebthree/WebThree.h>
 #include "KeyEventManager.h"
 
 namespace dev
