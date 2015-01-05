@@ -272,15 +272,15 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	
 	// if user supplied address is a public address then we use it
 	// if user supplied address is private, and localnetworking is enabled, we use it
-	bi::address reqpublicaddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
-	bi::tcp::endpoint reqpublic(reqpublicaddr, m_listenPort);
-	bool isprivate = isPrivateAddress(reqpublicaddr);
-	bool ispublic = !isprivate && !isLocalHostAddress(reqpublicaddr);
-	if (!reqpublicaddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
+	bi::address reqPublicAddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
+	bi::tcp::endpoint reqPublic(reqPublicAddr, m_listenPort);
+	bool isprivate = isPrivateAddress(reqPublicAddr);
+	bool ispublic = !isprivate && !isLocalHostAddress(reqPublicAddr);
+	if (!reqPublicAddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
 	{
-		if (!m_peerAddresses.count(reqpublicaddr))
-			m_peerAddresses.insert(reqpublicaddr);
-		m_tcpPublic = reqpublic;
+		if (!m_peerAddresses.count(reqPublicAddr))
+			m_peerAddresses.insert(reqPublicAddr);
+		m_tcpPublic = reqPublic;
 		return;
 	}
 	
@@ -307,7 +307,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	}
 
 	// or if no address provided, use private ipv4 address if local networking is enabled
-	if (reqpublicaddr.is_unspecified())
+	if (reqPublicAddr.is_unspecified())
 		if (m_netPrefs.localNetworking)
 			for (auto addr: m_peerAddresses)
 				if (addr.is_v4() && isPrivateAddress(addr))
