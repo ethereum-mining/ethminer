@@ -266,8 +266,7 @@ std::string WebThreeStubServer::shh_addToGroup(std::string const& _group, std::s
 
 std::string WebThreeStubServer::eth_balanceAt(string const& _address)
 {
-	int block = 0;
-	return toJS(client()->balanceAt(jsToAddress(_address), block));
+	return toJS(client()->balanceAt(jsToAddress(_address), client()->getDefault()));
 }
 
 Json::Value WebThreeStubServer::eth_blockByHash(std::string const& _hash)
@@ -354,8 +353,7 @@ bool WebThreeStubServer::eth_changed(int const& _id)
 
 std::string WebThreeStubServer::eth_codeAt(string const& _address)
 {
-	int block = 0;
-	return jsFromBinary(client()->codeAt(jsToAddress(_address), block));
+	return jsFromBinary(client()->codeAt(jsToAddress(_address), client()->getDefault()));
 }
 
 std::string WebThreeStubServer::eth_coinbase()
@@ -365,8 +363,7 @@ std::string WebThreeStubServer::eth_coinbase()
 
 double WebThreeStubServer::eth_countAt(string const& _address)
 {
-	int block = 0;
-	return (double)(uint64_t)client()->countAt(jsToAddress(_address), block);
+	return (double)(uint64_t)client()->countAt(jsToAddress(_address), client()->getDefault());
 }
 
 int WebThreeStubServer::eth_defaultBlock()
@@ -621,8 +618,7 @@ bool WebThreeStubServer::shh_uninstallFilter(int const& _id)
 
 std::string WebThreeStubServer::eth_stateAt(string const& _address, string const& _storage)
 {
-	int block = 0;
-	return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), block));
+	return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), client()->getDefault()));
 }
 
 Json::Value WebThreeStubServer::eth_storageAt(string const& _address)
