@@ -71,7 +71,7 @@ std::map<Address, Account> const& dev::eth::genesisState()
 	return s_ret;
 }
 
-BlockInfo* BlockChain::s_genesis = nullptr;
+std::unique_ptr<BlockInfo> BlockChain::s_genesis;
 boost::shared_mutex BlockChain::x_genesis;
 
 ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
