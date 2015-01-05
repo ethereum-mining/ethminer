@@ -61,7 +61,7 @@ private:
 };
 
 ///Compilation result model. Contains all the compiled contract data required by UI
-class CompilationResult : public QObject
+class CompilationResult: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QContractDefinition* contract READ contract)
@@ -79,7 +79,7 @@ public:
 	/// @returns contract definition
 	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
 	/// Indicates if the compilation was successfull
-	bool successfull() const { return m_successfull; }
+	bool successfull() const { return m_successful; }
 	/// @returns compiler error message in case of unsuccessfull compilation
 	QString compilerMessage() const { return m_compilerMessage; }
 	/// @returns contract bytecode
@@ -90,7 +90,7 @@ public:
 	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
 private:
-	bool m_successfull;
+	bool m_successful;
 	uint m_codeHash;
 	std::shared_ptr<QContractDefinition> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
@@ -102,7 +102,7 @@ private:
 };
 
 /// Background code compiler
-class CodeModel : public QObject
+class CodeModel: public QObject
 {
 	Q_OBJECT
 
@@ -139,7 +139,7 @@ signals:
 	void compilationCompleteInternal(CompilationResult* _newResult);
 
 private slots:
-	void onCompilationComplete(CompilationResult*_newResult);
+	void onCompilationComplete(CompilationResult* _newResult);
 
 public slots:
 	/// Update code model on source code change
