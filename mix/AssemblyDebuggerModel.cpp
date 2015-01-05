@@ -11,7 +11,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AssemblyDebuggerModel.h
+/** @file AssemblyDebuggerModel.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
  * used as a model to debug contract assembly code.
@@ -24,7 +24,7 @@
 #include <libethereum/Transaction.h>
 #include <libethereum/ExtVM.h>
 #include "AppContext.h"
-#include "TransactionBuilder.h"
+#include "TransactionListModel.h"
 #include "AssemblyDebuggerModel.h"
 #include "ConstantCompilationModel.h"
 #include "DebuggingStateWrapper.h"
@@ -38,15 +38,14 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 	m_baseState(Address(), m_overlayDB, BaseState::Empty)
 {
 	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
+	m_executiveState = m_baseState;
 	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, LastHashes(), 0));
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::bytesConstRef _rawTransaction)
+DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
 {
-	// Reset the state back to our clean premine.
-	m_executiveState = m_baseState;
-
-	QList<DebuggingState> states;
+	QList<DebuggingState> machineStates;
+	m_currentExecution.reset(new Executive(m_executiveState, LastHashes(), 0));
 	m_currentExecution->setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
@@ -65,21 +64,21 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 		}
 
 		if (levels.size() < ext.depth)
-			levels.push_back(&states.back());
+			levels.push_back(&machineStates.back());
 		else
 			levels.resize(ext.depth);
 
-		states.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+		machineStates.append(DebuggingState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
-
 	m_currentExecution->go(onOp);
-	cdebug << states.size();
 	m_currentExecution->finalize(onOp);
+	m_executiveState.completeMine();
 
 	DebuggingContent d;
-	d.states = states;
+	d.returnValue = m_currentExecution->out().toVector();
+	d.machineStates = machineStates;
 	d.executionCode = code;
 	d.executionData = data;
 	d.contentAvailable = true;
@@ -87,34 +86,32 @@ DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(dev::by
 	return d;
 }
 
-DebuggingContent AssemblyDebuggerModel::getContractInitiationDebugStates(
-	dev::u256 _value,
-	dev::u256 _gasPrice,
-	dev::u256 _gas,
-	QString _code
-)
+DebuggingContent AssemblyDebuggerModel::deployContract(bytes const& _code)
 {
-	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(_code);
-	if (!res.success)
-	{
-		DebuggingContent r;
-		r.contentAvailable = false;
-		r.message = QApplication::tr("compilation failed");
-		return r;
-	}
-
-	TransactionBuilder trBuild;
-	Transaction tr = trBuild.getCreationTransaction(_value, _gasPrice, min(_gas, m_baseState.gasLimitRemaining()), res.bytes,
-													m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
-	bytes b = tr.rlp();
+	u256 gasPrice = 10000000000000;
+	u256 gas = 1000000;
+	u256 amount = 100;
+	Transaction _tr(amount, gasPrice, min(gas, m_baseState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
-	return getContractInitiationDebugStates(bytesRef);
+	DebuggingContent d = executeTransaction(bytesRef);
+	h256 th = sha3(rlpList(_tr.sender(), _tr.nonce()));
+	d.contractAddress = right160(th);
+	return d;
 }
 
-bool AssemblyDebuggerModel::compile(QString _code)
+DebuggingContent AssemblyDebuggerModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	ConstantCompilationModel compiler;
-	CompilerResult res = compiler.compile(_code);
-	return res.success;
+	Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_baseState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	bytes b = tr.rlp();
+	dev::bytesConstRef bytesRef = &b;
+	DebuggingContent d = executeTransaction(bytesRef);
+	d.contractAddress = tr.receiveAddress();
+	return d;
+}
+
+void AssemblyDebuggerModel::resetState()
+{
+	// Reset the state back to our clean premine.
+	m_executiveState = m_baseState;
 }

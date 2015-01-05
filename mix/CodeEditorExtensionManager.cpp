@@ -26,8 +26,9 @@
 #include <QQmlComponent>
 #include <QQuickTextDocument>
 #include <libevm/VM.h>
-#include "ConstantCompilationCtrl.h"
-#include "AssemblyDebuggerCtrl.h"
+#include "ConstantCompilationControl.h"
+#include "AssemblyDebuggerControl.h"
+#include "TransactionListView.h"
 #include "AppContext.h"
 #include "CodeEditorExtensionManager.h"
 using namespace dev::mix;
@@ -48,7 +49,17 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 		{
 			QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
 			if (qqdoc)
+			{
 				m_doc = qqdoc->textDocument();
+				auto args = QApplication::arguments();
+				if (args.length() > 1)
+				{
+					QString path = args[1];
+					QFile file(path);
+					if (file.exists() && file.open(QFile::ReadOnly))
+						m_doc->setPlainText(file.readAll());
+				}
+			}
 		}
 	}
 	catch (...)
@@ -59,8 +70,12 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
-	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
+	initExtension(std::make_shared<ConstantCompilationControl>(m_doc));
+	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_doc);
+	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_doc);
+	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerControl::runTransaction);
+	initExtension(debug);
+	initExtension(tr);
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
@@ -71,6 +86,8 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 		{
 			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
 				_ext->addTabOn(m_tabView);
+			else if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightTab)
+				_ext->addTabOn(m_rightTabView);
 		}
 		catch (...)
 		{
@@ -86,6 +103,11 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 {
 	this->loadEditor(_editor);
 	this->initExtensions();
+}
+
+void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
+{
+	m_rightTabView = _tabView;
 }
 
 void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
