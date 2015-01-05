@@ -14,7 +14,7 @@
 /** @file AssemblyDebuggerModel.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * serves as a model to debug contract assembly code.
+ * Used as a model to debug contract assembly code.
  */
 
 #pragma once
@@ -26,6 +26,7 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
+#include "TransactionListModel.h"
 
 namespace dev
 {
@@ -39,9 +40,12 @@ class AssemblyDebuggerModel
 {
 public:
 	AssemblyDebuggerModel();
-	DebuggingContent getContractInitiationDebugStates(u256, u256, u256, QString);
-	DebuggingContent getContractInitiationDebugStates(bytesConstRef);
-	bool compile(QString);
+	/// Call function in a already deployed contract.
+	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
+	/// Deploy the contract described by _code.
+	DebuggingContent deployContract(bytes const& _code);
+	/// Reset state to the base state.
+	void resetState();
 
 private:
 	KeyPair m_userAccount;
@@ -49,8 +53,8 @@ private:
 	eth::State m_baseState;
 	eth::State m_executiveState;
 	std::unique_ptr<eth::Executive> m_currentExecution;
+	DebuggingContent executeTransaction(dev::bytesConstRef const& _rawTransaction);
 };
 
 }
-
 }

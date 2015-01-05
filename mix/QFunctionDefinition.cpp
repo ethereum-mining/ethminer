@@ -14,34 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file KeyEventManager.h
+/** @file QFunctionDefinition.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Used as an event handler for all classes which need keyboard interactions
  */
 
-#pragma once
+#include <libsolidity/AST.h>
+#include "QVariableDeclaration.h"
+#include "QFunctionDefinition.h"
+using namespace dev::solidity;
+using namespace dev::mix;
 
-#include <QObject>
-#include <QVariant>
-
-class KeyEventManager: public QObject
+void QFunctionDefinition::initQParameters()
 {
-	Q_OBJECT
+	std::vector<std::shared_ptr<VariableDeclaration>> parameters = m_functions->getParameterList().getParameters();
+	for (unsigned i = 0; i < parameters.size(); i++)
+		m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
 
-public:
-	KeyEventManager() {}
-	/// Allows _receiver to handle key pressed event.
-	void registerEvent(const QObject* _receiver, const char* _slot);
-	/// Unregister _receiver.
-	void unRegisterEvent(QObject* _receiver);
-
-signals:
-	/// Emited when a key is pressed.
-	void onKeyPressed(int _event);
-
-public slots:
-	/// Called when a key is pressed.
-	void keyPressed(QVariant _event);
-};
-
+	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = m_functions->getReturnParameters();
+	for (unsigned i = 0; i < returnParameters.size(); i++)
+		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));
+}
