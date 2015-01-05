@@ -196,8 +196,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			require(7);
 			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
 			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
-			if (_ext.depth == 1024)
-				BOOST_THROW_EXCEPTION(OutOfGas());
 			break;
 
 		case Instruction::CREATE:
@@ -207,8 +205,6 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			u256 inSize = m_stack[m_stack.size() - 3];
 			newTempSize = (bigint)inOff + inSize;
 			runGas = c_createGas;
-			if (_ext.depth == 1024)
-				BOOST_THROW_EXCEPTION(OutOfGas());
 			break;
 		}
 		case Instruction::EXP:
@@ -219,9 +215,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			break;
 		}
 
-		case Instruction::PREVHASH:
-			if (c_protocolVersion > 49)
-				require(1);
+		case Instruction::BLOCKHASH:
+			require(1);
 		break;
 
 		case Instruction::PC:
@@ -563,11 +558,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
 			break;
-		case Instruction::PREVHASH:
-			if (c_protocolVersion > 49)
-				m_stack.back() = (u256)_ext.prevhash(m_stack.back());
-			else
-				m_stack.push_back(_ext.previousBlock.hash);
+		case Instruction::BLOCKHASH:
+			m_stack.back() = (u256)_ext.prevhash(m_stack.back());
 			break;
 		case Instruction::COINBASE:
 			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
@@ -784,7 +776,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			unsigned initSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (_ext.balance(_ext.myAddress) >= endowment)
+			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
 			{
 				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
@@ -812,7 +804,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			unsigned outSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (_ext.balance(_ext.myAddress) >= value)
+			if (_ext.balance(_ext.myAddress) >= value && _ext.depth < 1024)
 			{
 				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, {}, receiveAddress));

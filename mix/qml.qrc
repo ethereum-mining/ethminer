@@ -7,6 +7,8 @@
         <file>qml/Debugger.qml</file>
         <file>qml/js/Debugger.js</file>
         <file>qml/BasicMessage.qml</file>
+        <file>qml/TransactionDialog.qml</file>
+        <file>qml/TransactionList.qml</file>
         <file>qml/ModalDialog.qml</file>
         <file>qml/AlertMessageDialog.qml</file>
     </qresource>

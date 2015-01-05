@@ -140,13 +140,13 @@ protected:
 	bi::udp::endpoint m_endpoint;					///< Endpoint which we listen to.
 	
 	Mutex x_sendQ;
-	std::deque<UDPDatagram> sendQ;				///< Queue for egress data.
-	std::array<byte, maxDatagramSize> recvData;	///< Buffer for ingress data.
-	bi::udp::endpoint recvEndpoint;				///< Endpoint data was received from.
+	std::deque<UDPDatagram> m_sendQ;				///< Queue for egress data.
+	std::array<byte, maxDatagramSize> m_recvData;	///< Buffer for ingress data.
+	bi::udp::endpoint m_recvEndpoint;				///< Endpoint data was received from.
 	bi::udp::socket m_socket;						///< Boost asio udp socket.
 	
 	Mutex x_socketError;							///< Mutex for error which can be set from host or IO thread.
-	boost::system::error_code socketError;			///< Set when shut down due to error.
+	boost::system::error_code m_socketError;		///< Set when shut down due to error.
 };
 
 template <typename Handler, unsigned MaxDatagramSize>
@@ -161,7 +161,7 @@ void UDPSocket<Handler,MaxDatagramSize>::connect()
 	
 	// clear write queue so reconnect doesn't send stale messages
 	Guard l(x_sendQ);
-	sendQ.clear();
+	m_sendQ.clear();
 	
 	m_closed = false;
 	doRead();
@@ -174,8 +174,8 @@ bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
 		return false;
 	
 	Guard l(x_sendQ);
-	sendQ.push_back(_datagram);
-	if (sendQ.size() == 1)
+	m_sendQ.push_back(_datagram);
+	if (m_sendQ.size() == 1)
 		doWrite();
 	
 	return true;
@@ -188,13 +188,13 @@ void UDPSocket<Handler,MaxDatagramSize>::doRead()
 		return;
 	
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-	m_socket.async_receive_from(boost::asio::buffer(recvData), recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
+	m_socket.async_receive_from(boost::asio::buffer(m_recvData), m_recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
 	{
 		if (_ec)
 			return disconnectWithError(_ec);
 
 		assert(_len);
-		m_host.onReceived(this, recvEndpoint, bytesConstRef(recvData.data(), _len));
+		m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
 		doRead();
 	});
 }
@@ -205,7 +205,7 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 	if (m_closed)
 		return;
 	
-	const UDPDatagram& datagram = sendQ[0];
+	const UDPDatagram& datagram = m_sendQ[0];
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)
 	{
@@ -214,8 +214,8 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 		else
 		{
 			Guard l(x_sendQ);
-			sendQ.pop_front();
-			if (sendQ.empty())
+			m_sendQ.pop_front();
+			if (m_sendQ.empty())
 				return;
 		}
 		doWrite();
@@ -233,9 +233,9 @@ void UDPSocket<Handler,MaxDatagramSize>::disconnectWithError(boost::system::erro
 	{
 		// disconnect-operation following prior non-zero errors are ignored
 		Guard l(x_socketError);
-		if (socketError != boost::system::error_code())
+		if (m_socketError != boost::system::error_code())
 			return;
-		socketError = _ec;
+		m_socketError = _ec;
 	}
 	// TODO: (if non-zero error) schedule high-priority writes
 

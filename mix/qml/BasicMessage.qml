@@ -16,6 +16,7 @@ Rectangle {
 		objectName: "messageContent"
 		id: messageTxt
 		text: ""
+		wrapMode: "Wrap"
 	}
 }
 

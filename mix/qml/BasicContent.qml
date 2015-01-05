@@ -7,13 +7,13 @@ Rectangle {
 	height: parent.height
 	color: "lightgray"
 	Text {
-		font.pointSize: 7
+		font.pointSize: 9
 		anchors.left: parent.left
 		anchors.top: parent.top
 		anchors.topMargin: 3
 		anchors.leftMargin: 3
 		height: 9
-		font.family: "Sego UI light"
+		font.family: "Monospace"
 		objectName: "status"
 		id: status
 	}
@@ -23,8 +23,8 @@ Rectangle {
 		anchors.leftMargin: 10
 		anchors.top: status.bottom
 		anchors.topMargin: 3
-		font.pointSize: 7
-		font.family: "Sego UI light"
+		font.pointSize: 9
+		font.family: "Monospace"
 		height: parent.height * 0.8
 		width:  parent.width - 20
 		wrapMode: Text.Wrap

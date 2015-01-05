@@ -24,13 +24,16 @@
 #include <QObject>
 #include <libevm/VM.h>
 #include <libsolidity/Scanner.h>
+#include <libsolidity/Parser.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#include <libsolidity/NameAndTypeResolver.h>
 #include "ConstantCompilationModel.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
+using namespace dev::solidity;
 
 CompilerResult ConstantCompilationModel::compile(QString _code)
 {
