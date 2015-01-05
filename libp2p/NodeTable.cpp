@@ -58,13 +58,13 @@ void NodeTable::join()
 	doFindNode(m_node.id);
 }
 	
-std::list<NodeId> NodeTable::nodes() const
+list<NodeId> NodeTable::nodes() const
 {
-	std::list<NodeId> nodes;
+	list<NodeId> nodes;
 	Guard l(x_nodes);
 	for (auto& i: m_nodes)
 		nodes.push_back(i.second->id);
-	return std::move(nodes);
+	return move(nodes);
 }
 
 list<NodeEntry> NodeTable::state() const
@@ -90,7 +90,7 @@ void NodeTable::requestNeighbors(NodeEntry const& _node, NodeId _target) const
 	m_socketPtr->send(p);
 }
 
-void NodeTable::doFindNode(NodeId _node, unsigned _round, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried)
+void NodeTable::doFindNode(NodeId _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
 {
 	if (!m_socketPtr->isOpen() || _round == s_maxSteps)
 		return;
@@ -102,10 +102,10 @@ void NodeTable::doFindNode(NodeId _node, unsigned _round, std::shared_ptr<std::s
 	}
 	else if(!_round && !_tried)
 		// initialized _tried on first round
-		_tried.reset(new std::set<std::shared_ptr<NodeEntry>>());
+		_tried.reset(new set<shared_ptr<NodeEntry>>());
 	
 	auto nearest = findNearest(_node);
-	std::list<std::shared_ptr<NodeEntry>> tried;
+	list<shared_ptr<NodeEntry>> tried;
 	for (unsigned i = 0; i < nearest.size() && tried.size() < s_alpha; i++)
 		if (!_tried->count(nearest[i]))
 		{
@@ -138,14 +138,14 @@ void NodeTable::doFindNode(NodeId _node, unsigned _round, std::shared_ptr<std::s
 	});
 }
 
-std::vector<std::shared_ptr<NodeEntry>> NodeTable::findNearest(NodeId _target)
+vector<shared_ptr<NodeEntry>> NodeTable::findNearest(NodeId _target)
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
 	unsigned head = dist(m_node.id, _target);
 	unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
 	
-	std::map<unsigned, std::list<std::shared_ptr<NodeEntry>>> found;
+	map<unsigned, list<shared_ptr<NodeEntry>>> found;
 	unsigned count = 0;
 	
 	// if d is 0, then we roll look forward, if last, we reverse, else, spread from d
@@ -205,11 +205,11 @@ std::vector<std::shared_ptr<NodeEntry>> NodeTable::findNearest(NodeId _target)
 			tail--;
 		}
 	
-	std::vector<std::shared_ptr<NodeEntry>> ret;
+	vector<shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
 		for (auto n: nodes.second)
 			ret.push_back(n);
-	return std::move(ret);
+	return move(ret);
 }
 
 void NodeTable::ping(bi::udp::endpoint _to) const
@@ -225,7 +225,7 @@ void NodeTable::ping(NodeEntry* _n) const
 		ping(_n->endpoint.udp);
 }
 
-void NodeTable::evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new)
+void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _new)
 {
 	if (!m_socketPtr->isOpen())
 		return;
@@ -245,7 +245,7 @@ void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint
 	if (_pubk == m_node.address())
 		return;
 	
-	std::shared_ptr<NodeEntry> node;
+	shared_ptr<NodeEntry> node;
 	{
 		Guard l(x_nodes);
 		auto n = m_nodes.find(_pubk);
@@ -267,13 +267,13 @@ void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint
 		noteNode(node);
 }
 
-void NodeTable::noteNode(std::shared_ptr<NodeEntry> _n)
+void NodeTable::noteNode(shared_ptr<NodeEntry> _n)
 {
-	std::shared_ptr<NodeEntry> contested;
+	shared_ptr<NodeEntry> contested;
 	{
 		NodeBucket& s = bucket(_n.get());
 		Guard l(x_state);
-		s.nodes.remove_if([&_n](std::weak_ptr<NodeEntry> n)
+		s.nodes.remove_if([&_n](weak_ptr<NodeEntry> n)
 		{
 			if (n.lock() == _n)
 				return true;
@@ -297,12 +297,12 @@ void NodeTable::noteNode(std::shared_ptr<NodeEntry> _n)
 		evict(contested, _n);
 }
 
-void NodeTable::dropNode(std::shared_ptr<NodeEntry> _n)
+void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 {
 	NodeBucket &s = bucket(_n.get());
 	{
 		Guard l(x_state);
-		s.nodes.remove_if([&_n](std::weak_ptr<NodeEntry> n) { return n.lock() == _n; });
+		s.nodes.remove_if([&_n](weak_ptr<NodeEntry> n) { return n.lock() == _n; });
 	}
 	Guard l(x_nodes);
 	m_nodes.erase(_n->id);
@@ -368,7 +368,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 //					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
 					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 					
-					std::vector<std::shared_ptr<NodeEntry>> nearest = findNearest(in.target);
+					vector<shared_ptr<NodeEntry>> nearest = findNearest(in.target);
 					static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
 					for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 					{
@@ -415,7 +415,7 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 			return;
 		
 		bool evictionsRemain = false;
-		std::list<shared_ptr<NodeEntry>> drop;
+		list<shared_ptr<NodeEntry>> drop;
 		{
 			Guard le(x_evictions);
 			Guard ln(x_nodes);
