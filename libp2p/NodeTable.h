@@ -49,7 +49,7 @@ namespace p2p
  * @todo Pong to include ip:port where ping was received
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
- * @todo std::shared_ptr<FindNeighbors> m_cachedFindSelfPacket;
+ * @todo std::shared_ptr<FindNeighbours> m_cachedFindSelfPacket;
  * @todo store root node in table?
  *
  * [Networking]
@@ -66,7 +66,7 @@ namespace p2p
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
-	friend struct Neighbors;
+	friend struct Neighbours;
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
 	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
@@ -180,7 +180,7 @@ private:
 protected:
 #endif
 	/// Sends FindNeighbor packet. See doFindNode.
-	void requestNeighbors(NodeEntry const& _node, NodeId _target) const;
+	void requestNeighbours(NodeEntry const& _node, NodeId _target) const;
 
 	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.
@@ -269,7 +269,7 @@ struct Pong: RLPXDatagram<Pong>
 /**
  * FindNode Packet: Request k-nodes, closest to the target.
  * FindNode is cached and regenerated after expiration - t, where t is timeout.
- * FindNode implicitly results in finding neighbors of a given node.
+ * FindNode implicitly results in finding neighbours of a given node.
  *
  * RLP Encoded Items: 2
  * Minimum Encoded Size: 21 bytes
@@ -299,7 +299,7 @@ struct FindNode: RLPXDatagram<FindNode>
  *
  * @todo nonce: Should be replaced with expiration.
  */
-struct Neighbors: RLPXDatagram<Neighbors>
+struct Neighbours: RLPXDatagram<Neighbours>
 {
 	struct Node
 	{
@@ -308,16 +308,12 @@ struct Neighbors: RLPXDatagram<Neighbors>
 		std::string ipAddress;
 		unsigned port;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const {
-			_s.appendList(3); _s << ipAddress << port << node;
-		}
-		void interpretRLP(RLP const& _r) {
-			ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes());
-		}
+		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
+		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
 	};
 	
-	using RLPXDatagram<Neighbors>::RLPXDatagram;
-	Neighbors(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbors>(_to)
+	using RLPXDatagram<Neighbours>::RLPXDatagram;
+	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to)
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
@@ -334,9 +330,7 @@ struct Neighbors: RLPXDatagram<Neighbors>
 	unsigned expiration = 1;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << expiration; }
-	void interpretRLP(bytesConstRef _bytes) {
-		RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); expiration = r[1].toInt<unsigned>();
-	}
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); expiration = r[1].toInt<unsigned>(); }
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
