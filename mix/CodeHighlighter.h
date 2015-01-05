@@ -42,6 +42,7 @@ namespace solidity
 namespace mix
 {
 
+/// Code highligting settings
 class CodeHighlighterSettings
 {
 public:
@@ -60,15 +61,16 @@ public:
 	///Format for each token
 	QTextCharFormat formats[Size];
 	///Background color
-	QColor bg;
+	QColor backgroundColor;
 	///Foreground color
-	QColor fg;
+	QColor foregroundColor;
 };
 
-
+/// Code highlighting engine class
 class CodeHighlighter
 {
 public:
+	/// Formatting range
 	struct FormatRange
 	{
 		FormatRange(CodeHighlighterSettings::Token _t, int _start, int _length): token(_t), start(_start), length(_length) {}
@@ -82,13 +84,20 @@ public:
 	typedef std::vector<FormatRange> Formats; // Sorted by start position
 
 public:
-	/// Collect highligting information
+	/// Collect highligting information by lexing the source
 	void processSource(std::string const& _source);
+	/// Collect additional highligting information from AST
 	void processAST(solidity::ASTNode const& _ast);
+	/// Collect highlighting information from compilation exception
 	void processError(dev::Exception const& _exception);
+
+	/// Apply formatting for a text document
+	/// @todo Remove this once editor is reworked
 	void updateFormatting(QTextDocument* _document, CodeHighlighterSettings const& _settings);
 
 private:
+	/// Collect highligting information by paring for comments
+	/// @todo Support this in solidity?
 	void processComments(std::string const& _source);
 
 private:

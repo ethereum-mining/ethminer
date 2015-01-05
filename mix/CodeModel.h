@@ -91,14 +91,14 @@ public:
 
 private:
 	bool m_successfull;
+	uint m_codeHash;
 	std::shared_ptr<QContractDefinition> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
-	///@todo syntax highlighting, etc
+
 	friend class CodeModel;
-	uint m_codeHash;
 };
 
 /// Background code compiler
