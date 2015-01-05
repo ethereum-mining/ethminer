@@ -219,9 +219,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			break;
 		}
 
-		case Instruction::PREVHASH:
-			if (c_protocolVersion > 49)
-				require(1);
+		case Instruction::BLOCKHASH:
+			require(1);
 		break;
 
 		case Instruction::PC:
@@ -563,11 +562,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
 			break;
-		case Instruction::PREVHASH:
-			if (c_protocolVersion > 49)
-				m_stack.back() = (u256)_ext.prevhash(m_stack.back());
-			else
-				m_stack.push_back(_ext.previousBlock.hash);
+		case Instruction::BLOCKHASH:
+			m_stack.back() = (u256)_ext.prevhash(m_stack.back());
 			break;
 		case Instruction::COINBASE:
 			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
