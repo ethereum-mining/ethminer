@@ -25,13 +25,21 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
-#include <libevm/VM.h>
 #include "ConstantCompilationControl.h"
 #include "AssemblyDebuggerControl.h"
-#include "TransactionListView.h"
+#include "StateListView.h"
 #include "AppContext.h"
+#include "MixApplication.h"
+#include "CodeModel.h"
+#include "CodeHighlighter.h"
 #include "CodeEditorExtensionManager.h"
+
 using namespace dev::mix;
+
+CodeEditorExtensionManager::CodeEditorExtensionManager():
+	m_appContext(static_cast<MixApplication*>(QApplication::instance())->context())
+{
+}
 
 CodeEditorExtensionManager::~CodeEditorExtensionManager()
 {
@@ -42,40 +50,30 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
 	if (!_editor)
 		return;
-	try
+
+	QVariant doc = _editor->property("textDocument");
+	if (doc.canConvert<QQuickTextDocument*>())
 	{
-		QVariant doc = _editor->property("textDocument");
-		if (doc.canConvert<QQuickTextDocument*>())
+		QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
+		if (qqdoc)
 		{
-			QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
-			if (qqdoc)
-			{
-				m_doc = qqdoc->textDocument();
-				auto args = QApplication::arguments();
-				if (args.length() > 1)
-				{
-					QString path = args[1];
-					QFile file(path);
-					if (file.exists() && file.open(QFile::ReadOnly))
-						m_doc->setPlainText(file.readAll());
-				}
-			}
+			m_doc = qqdoc->textDocument();
 		}
-	}
-	catch (...)
-	{
-		qDebug() << "unable to load editor: ";
 	}
 }
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationControl>(m_doc));
-	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_doc);
-	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_doc);
-	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerControl::runTransaction);
+	std::shared_ptr<ConstantCompilationControl> output = std::make_shared<ConstantCompilationControl>(m_appContext);
+	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
+	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
+	QObject::connect(m_doc, &QTextDocument::contentsChange, this, &CodeEditorExtensionManager::onCodeChange);
+	QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
+	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
+
+	initExtension(output);
 	initExtension(debug);
-	initExtension(tr);
+	initExtension(stateList);
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
@@ -103,6 +101,26 @@ void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
 {
 	this->loadEditor(_editor);
 	this->initExtensions();
+
+	auto args = QApplication::arguments();
+	if (args.length() > 1)
+	{
+		QString path = args[1];
+		QFile file(path);
+		if (file.exists() && file.open(QFile::ReadOnly))
+			m_doc->setPlainText(file.readAll());
+	}
+}
+
+void CodeEditorExtensionManager::onCodeChange()
+{
+	m_appContext->codeModel()->updateFormatting(m_doc); //update old formatting
+	m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText());
+}
+
+void CodeEditorExtensionManager::applyCodeHighlight()
+{
+	m_appContext->codeModel()->updateFormatting(m_doc);
 }
 
 void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)

@@ -26,12 +26,30 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
-#include "TransactionListModel.h"
 
 namespace dev
 {
 namespace mix
 {
+
+/// Backend transaction config class
+struct TransactionSettings
+{
+	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+
+	/// Contract function name
+	QString functionId;
+	/// Transaction value
+	u256 value;
+	/// Gas
+	u256 gas;
+	/// Gas price
+	u256 gasPrice;
+	/// Mapping from contract function parameter name to value
+	std::map<QString, u256> parameterValues;
+};
+
 
 /**
  * @brief Long-life object for managing all executions.
@@ -44,15 +62,13 @@ public:
 	DebuggingContent callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	/// Deploy the contract described by _code.
 	DebuggingContent deployContract(bytes const& _code);
-	/// Reset state to the base state.
-	void resetState();
+	/// Reset state to the empty state with given balance.
+	void resetState(u256 _balance);
 
 private:
 	KeyPair m_userAccount;
 	OverlayDB m_overlayDB;
-	eth::State m_baseState;
 	eth::State m_executiveState;
-	std::unique_ptr<eth::Executive> m_currentExecution;
 	DebuggingContent executeTransaction(dev::bytesConstRef const& _rawTransaction);
 };
 
