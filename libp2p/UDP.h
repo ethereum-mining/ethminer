@@ -76,7 +76,7 @@ struct RLPXDatagramFace: public UDPDatagram
 template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
-	using RLPXDatagramFace::RLPXDatagramFace;
+	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
 	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 };
 
