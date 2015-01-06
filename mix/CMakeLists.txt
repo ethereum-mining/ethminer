@@ -9,6 +9,8 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+find_package (Qt5WebEngine REQUIRED)
+
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
@@ -26,6 +28,7 @@ eth_add_executable(${EXECUTABLE}
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Gui)
+target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qethereum)
 target_link_libraries(${EXECUTABLE} ethereum)
@@ -45,4 +48,8 @@ target_link_libraries(${EXECUTABLE} jsqrc)
 eth_install_executable(${EXECUTABLE}
 	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
 )
+
+#add qml resources to proect tree in Qt creator
+file(GLOB_RECURSE QMLFILES "qml/*.*")
+add_custom_target(dummy SOURCES ${QMLFILES})
 

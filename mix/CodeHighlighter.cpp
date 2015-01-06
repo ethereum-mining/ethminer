@@ -137,6 +137,7 @@ void CodeHighlighter::processComments(std::string const& _source)
 
 void CodeHighlighter::updateFormatting(QTextDocument* _document, CodeHighlighterSettings const& _settings)
 {
+	return;
 	QTextBlock block = _document->firstBlock();
 	QList<QTextLayout::FormatRange> ranges;
 

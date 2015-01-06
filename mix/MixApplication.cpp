@@ -21,6 +21,7 @@
 
 #include <QDebug>
 #include <QQmlApplicationEngine>
+#include <QtWebEngine/QtWebEngine>
 #include "CodeEditorExtensionManager.h"
 #include "MixApplication.h"
 #include "AppContext.h"
@@ -34,6 +35,7 @@ MixApplication::MixApplication(int _argc, char* _argv[]):
 {
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
+	QtWebEngine::initialize();
 	m_engine->load(QUrl("qrc:/qml/main.qml"));
 	m_appContext->loadProject();
 }

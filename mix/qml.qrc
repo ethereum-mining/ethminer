@@ -12,5 +12,16 @@
         <file>qml/AlertMessageDialog.qml</file>
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
+        <file>qml/html/active-line.js</file>
+        <file>qml/html/codeeditor.html</file>
+        <file>qml/html/codemirror.css</file>
+        <file>qml/html/codemirror.js</file>
+        <file>qml/html/codetheme.css</file>
+        <file>qml/html/javascript.js</file>
+        <file>qml/html/matchbrackets.js</file>
+        <file>qml/CodeEditor.qml</file>
+        <file>qml/html/codeeditor.js</file>
+        <file>qml/html/fullscreen.css</file>
+        <file>qml/html/fullscreen.js</file>
     </qresource>
 </RCC>
