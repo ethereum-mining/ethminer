@@ -25,13 +25,13 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-void QFunctionDefinition::initQParameters()
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index)
 {
-	std::vector<std::shared_ptr<VariableDeclaration>> parameters = m_functions->getParameterList().getParameters();
+	std::vector<std::shared_ptr<VariableDeclaration>> parameters = _f->getParameterList().getParameters();
 	for (unsigned i = 0; i < parameters.size(); i++)
 		m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
 
-	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = m_functions->getReturnParameters();
+	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = _f->getReturnParameters();
 	for (unsigned i = 0; i < returnParameters.size(); i++)
 		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));
 }

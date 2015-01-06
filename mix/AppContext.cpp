@@ -25,55 +25,53 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
+#include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <libwebthree/WebThree.h>
+#include <QStandardPaths>
+#include <QFile>
+#include <QDir>
 #include <libdevcrypto/FileSystem.h>
-#include <libsolidity/CompilerStack.h>
-#include "KeyEventManager.h"
+#include <libwebthree/WebThree.h>
 #include "AppContext.h"
+#include "CodeModel.h"
+
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::solidity;
 using namespace dev::mix;
 
-AppContext* AppContext::Instance = nullptr;
+const QString c_projectFileName = "project.mix";
 
 AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
-	m_applicationEngine = std::unique_ptr<QQmlApplicationEngine>(_engine);
-	m_keyEventManager = std::unique_ptr<KeyEventManager>(new KeyEventManager());
-	m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
-	m_compiler = std::unique_ptr<CompilerStack>(new CompilerStack()); //TODO : to move in a codel model structure.
+	m_applicationEngine = _engine;
+	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
+	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+}
+
+AppContext::~AppContext()
+{
+}
+
+void AppContext::loadProject()
+{
+	QString path = QStandardPaths::locate(QStandardPaths::DataLocation, c_projectFileName);
+	if (!path.isEmpty())
+	{
+		QFile file(path);
+		if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+		{
+			QTextStream stream(&file);
+			QString json = stream.readAll();
+			emit projectLoaded(json);
+		}
+	}
 }
 
 QQmlApplicationEngine* AppContext::appEngine()
 {
-	return m_applicationEngine.get();
-}
-
-void AppContext::initKeyEventManager(QObject* _res)
-{
-	QObject* mainContent = _res->findChild<QObject*>("mainContent", Qt::FindChildrenRecursively);
-	if (mainContent)
-		QObject::connect(mainContent, SIGNAL(keyPressed(QVariant)), m_keyEventManager.get(), SLOT(keyPressed(QVariant)));
-	else
-		qDebug() << "Unable to find QObject of mainContent.qml. KeyEvent will not be handled!";
-}
-
-KeyEventManager* AppContext::getKeyEventManager()
-{
-	return m_keyEventManager.get();
-}
-
-CompilerStack* AppContext::compiler()
-{
-	return m_compiler.get();
-}
-
-void AppContext::setApplicationContext(QQmlApplicationEngine* _engine)
-{
-	if (Instance == nullptr)
-		Instance = new AppContext(_engine);
+	return m_applicationEngine;
 }
 
 void AppContext::displayMessageDialog(QString _title, QString _message)
@@ -87,4 +85,20 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
+}
+
+void AppContext::saveProject(QString const& _json)
+{
+	QDir dirPath(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
+	QString path = QDir(dirPath).filePath(c_projectFileName);
+	if (!path.isEmpty())
+	{
+		dirPath.mkpath(dirPath.path());
+		QFile file(path);
+		if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+		{
+			QTextStream stream(&file);
+			stream << _json;
+		}
+	}
 }
