@@ -107,8 +107,8 @@ private:
 	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.
-	std::array<byte, 65536> m_data;			///< Data buffer for the write queue.
-	bytes m_incoming;						///< The incoming read queue of bytes.
+	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
+	bytes m_incoming;						///< Read buffer for ingress bytes.
 
 	PeerInfo m_info;						///< Dynamic information about this peer.
 

@@ -43,7 +43,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_netPrefs(_n),
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
-	m_acceptorV4(m_ioService),
+	m_tcp4Acceptor(m_ioService),
 	m_key(KeyPair::create())
 {
 	for (auto address: m_ifAddresses)
@@ -95,9 +95,9 @@ void Host::doneWorking()
 	m_ioService.reset();
 	
 	// shutdown acceptor
-	m_acceptorV4.cancel();
-	if (m_acceptorV4.is_open())
-		m_acceptorV4.close();
+	m_tcp4Acceptor.cancel();
+	if (m_tcp4Acceptor.is_open())
+		m_tcp4Acceptor.close();
 	
 	// There maybe an incoming connection which started but hasn't finished.
 	// Wait for acceptor to end itself instead of assuming it's complete.
@@ -272,15 +272,15 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	
 	// if user supplied address is a public address then we use it
 	// if user supplied address is private, and localnetworking is enabled, we use it
-	bi::address reqpublicaddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
-	bi::tcp::endpoint reqpublic(reqpublicaddr, m_listenPort);
-	bool isprivate = isPrivateAddress(reqpublicaddr);
-	bool ispublic = !isprivate && !isLocalHostAddress(reqpublicaddr);
-	if (!reqpublicaddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
+	bi::address reqPublicAddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
+	bi::tcp::endpoint reqPublic(reqPublicAddr, m_listenPort);
+	bool isprivate = isPrivateAddress(reqPublicAddr);
+	bool ispublic = !isprivate && !isLocalHostAddress(reqPublicAddr);
+	if (!reqPublicAddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
 	{
-		if (!m_peerAddresses.count(reqpublicaddr))
-			m_peerAddresses.insert(reqpublicaddr);
-		m_public = reqpublic;
+		if (!m_peerAddresses.count(reqPublicAddr))
+			m_peerAddresses.insert(reqPublicAddr);
+		m_tcpPublic = reqPublic;
 		return;
 	}
 	
@@ -288,7 +288,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	for (auto addr: m_peerAddresses)
 		if (addr.is_v4() && !isPrivateAddress(addr))
 		{
-			m_public = bi::tcp::endpoint(*m_peerAddresses.begin(), m_listenPort);
+			m_tcpPublic = bi::tcp::endpoint(*m_peerAddresses.begin(), m_listenPort);
 			return;
 		}
 	
@@ -301,23 +301,23 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		{
 			if (!m_peerAddresses.count(upnpep.address()))
 				m_peerAddresses.insert(upnpep.address());
-			m_public = upnpep;
+			m_tcpPublic = upnpep;
 			return;
 		}
 	}
 
 	// or if no address provided, use private ipv4 address if local networking is enabled
-	if (reqpublicaddr.is_unspecified())
+	if (reqPublicAddr.is_unspecified())
 		if (m_netPrefs.localNetworking)
 			for (auto addr: m_peerAddresses)
 				if (addr.is_v4() && isPrivateAddress(addr))
 				{
-					m_public = bi::tcp::endpoint(addr, m_listenPort);
+					m_tcpPublic = bi::tcp::endpoint(addr, m_listenPort);
 					return;
 				}
 	
 	// otherwise address is unspecified
-	m_public = bi::tcp::endpoint(bi::address(), m_listenPort);
+	m_tcpPublic = bi::tcp::endpoint(bi::address(), m_listenPort);
 }
 
 void Host::runAcceptor()
@@ -326,10 +326,10 @@ void Host::runAcceptor()
 	
 	if (m_run && !m_accepting)
 	{
-		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_public << ")";
+		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_tcpPublic << ")";
 		m_accepting = true;
 		m_socket.reset(new bi::tcp::socket(m_ioService));
-		m_acceptorV4.async_accept(*m_socket, [=](boost::system::error_code ec)
+		m_tcp4Acceptor.async_accept(*m_socket, [=](boost::system::error_code ec)
 		{
 			bool success = false;
 			if (!ec)
@@ -656,7 +656,7 @@ void Host::startedWorking()
 	}
 	
 	// try to open acceptor (todo: ipv6)
-	m_listenPort = Network::listen4(m_acceptorV4, m_netPrefs.listenPort);
+	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
 	
 	// start capability threads
 	for (auto const& h: m_capabilities)
@@ -674,8 +674,8 @@ void Host::startedWorking()
 	
 	// if m_public address is valid then add us to node list
 	// todo: abstract empty() and emplace logic
-	if (!m_public.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-		noteNode(id(), m_public, Origin::Perfect, false);
+	if (!m_tcpPublic.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
+		noteNode(id(), m_tcpPublic, Origin::Perfect, false);
 	
 	clog(NetNote) << "Id:" << id().abridged();
 	
@@ -739,7 +739,7 @@ void Host::restoreNodes(bytesConstRef _b)
 		{
 			auto oldId = id();
 			m_key = KeyPair(r[1].toHash<Secret>());
-			noteNode(id(), m_public, Origin::Perfect, false, oldId);
+			noteNode(id(), m_tcpPublic, Origin::Perfect, false, oldId);
 
 			for (auto i: r[2])
 			{
