@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <memory>
 #include <QQuickItem>
 #include <QTextDocument>
 #include <QVector>
@@ -31,6 +32,9 @@ namespace dev
 {
 namespace mix
 {
+
+
+class AppContext;
 
 /**
  * @brief Init and provides connection between extensions.
@@ -44,7 +48,7 @@ class CodeEditorExtensionManager: public QObject
 	Q_PROPERTY(QQuickItem* rightTabView MEMBER m_rightTabView WRITE setRightTabView)
 
 public:
-	CodeEditorExtensionManager() {}
+	CodeEditorExtensionManager();
 	~CodeEditorExtensionManager();
 	/// Initialize all extensions.
 	void initExtensions();
@@ -57,12 +61,17 @@ public:
 	/// Set current right tab view.
 	void setRightTabView(QQuickItem*);
 
+private slots:
+	void onCodeChange();
+	void applyCodeHighlight();
+
 private:
 	QQuickItem* m_editor;
 	QVector<std::shared_ptr<Extension>> m_features;
 	QQuickItem* m_tabView;
 	QQuickItem* m_rightTabView;
 	QTextDocument* m_doc;
+	AppContext* m_appContext;
 	void loadEditor(QQuickItem* _editor);
 };
 
