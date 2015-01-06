@@ -74,7 +74,7 @@ struct RLPXDatagramFace: public UDPDatagram
 template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
-	using RLPXDatagramFace::RLPXDatagramFace;
+	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
 	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
 };
 
@@ -126,7 +126,6 @@ public:
 	void disconnect() { disconnectWithError(boost::asio::error::connection_reset); }
 	
 protected:
-	
 	void doRead();
 	
 	void doWrite();
@@ -150,7 +149,7 @@ protected:
 };
 
 template <typename Handler, unsigned MaxDatagramSize>
-void UDPSocket<Handler,MaxDatagramSize>::connect()
+void UDPSocket<Handler, MaxDatagramSize>::connect()
 {
 	bool expect = false;
 	if (!m_started.compare_exchange_strong(expect, true))
@@ -168,7 +167,7 @@ void UDPSocket<Handler,MaxDatagramSize>::connect()
 }
 	
 template <typename Handler, unsigned MaxDatagramSize>
-bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
+bool UDPSocket<Handler, MaxDatagramSize>::send(UDPDatagram const& _datagram)
 {
 	if (m_closed)
 		return false;
@@ -182,7 +181,7 @@ bool UDPSocket<Handler,MaxDatagramSize>::send(UDPDatagram const& _datagram)
 }
 
 template <typename Handler, unsigned MaxDatagramSize>
-void UDPSocket<Handler,MaxDatagramSize>::doRead()
+void UDPSocket<Handler, MaxDatagramSize>::doRead()
 {
 	if (m_closed)
 		return;
@@ -200,7 +199,7 @@ void UDPSocket<Handler,MaxDatagramSize>::doRead()
 }
 	
 template <typename Handler, unsigned MaxDatagramSize>
-void UDPSocket<Handler,MaxDatagramSize>::doWrite()
+void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 {
 	if (m_closed)
 		return;
@@ -223,7 +222,7 @@ void UDPSocket<Handler,MaxDatagramSize>::doWrite()
 }
 
 template <typename Handler, unsigned MaxDatagramSize>
-void UDPSocket<Handler,MaxDatagramSize>::disconnectWithError(boost::system::error_code _ec)
+void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::error_code _ec)
 {
 	// If !started and already stopped, shutdown has already occured. (EOF or Operation canceled)
 	if (!m_started && m_closed && !m_socket.is_open() /* todo: veirfy this logic*/)

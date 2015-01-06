@@ -83,7 +83,7 @@ NodeEntry NodeTable::operator[](NodeId _id)
 	return *m_nodes[_id];
 }
 
-void NodeTable::requestNeighbors(NodeEntry const& _node, NodeId _target) const
+void NodeTable::requestNeighbours(NodeEntry const& _node, NodeId _target) const
 {
 	FindNode p(_node.endpoint.udp, _target);
 	p.sign(m_secret);
@@ -315,7 +315,7 @@ NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
 {
-	// h256 + Signature + RLP (smallest possible packet is empty neighbors packet which is 3 bytes)
+	// h256 + Signature + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
 	if (_packet.size() < h256::size + Signature::size + 3)
 	{
 		clog(NodeTableMessageSummary) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
@@ -344,7 +344,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	noteNode(nodeid, _from);
 	
 	try {
-		switch (itemCount) {
+		switch (itemCount)
+		{
 			case 1:
 			{
 //				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
@@ -358,8 +359,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case 2:
 				if (rlp[0].isList())
 				{
-					Neighbors in = Neighbors::fromBytesConstRef(_from, rlpBytes);
-//					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbors from " << _from.address().to_string() << ":" << _from.port();
+					Neighbours in = Neighbours::fromBytesConstRef(_from, rlpBytes);
+//					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbours from " << _from.address().to_string() << ":" << _from.port();
 					for (auto n: in.nodes)
 						noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
 				}
@@ -372,7 +373,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 					static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
 					for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 					{
-						Neighbors out(_from, nearest, offset, nlimit);
+						Neighbours out(_from, nearest, offset, nlimit);
 						out.sign(m_secret);
 						m_socketPtr->send(out);
 					}
