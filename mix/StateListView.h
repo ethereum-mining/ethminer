@@ -11,7 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TransactionListView.h
+/** @file StateListView.h
  * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2014
  * Ethereum IDE client.
@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <memory>
 #include <QTextDocument>
 #include "Extension.h"
 
@@ -27,26 +28,16 @@ namespace dev
 namespace mix
 {
 
-class TransactionListModel;
-
-/// Transactions list control
-/// @todo This should be moved into state as a sequence
-class TransactionListView: public Extension
+/// State list control
+class StateListView: public Extension
 {
 	Q_OBJECT
 
 public:
-	TransactionListView(QTextDocument*);
-	~TransactionListView();
+	StateListView(AppContext* _context);
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-	/// @returns the underlying model
-	TransactionListModel* model() const { return m_model.get(); }
-
-private:
-	QTextDocument* m_editor;
-	std::unique_ptr<TransactionListModel> m_model;
 };
 
 }

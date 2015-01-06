@@ -32,7 +32,11 @@ public:
 	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 
 	virtual std::string shh_newIdentity() override;
+	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
 
 signals:
 	void onNewId(QString _s);
+
+private:
+	dev::WebThreeDirect* m_web3;
 };
