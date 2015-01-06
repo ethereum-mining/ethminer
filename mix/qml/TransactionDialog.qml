@@ -5,51 +5,43 @@ import QtQuick.Window 2.0
 
 Window {
 	modality: Qt.WindowModal
-
 	width:640
 	height:480
-
 	visible: false
 
-	function open()
-	{
-		visible = true;
-	}
-	function close()
-	{
-		visible = false;
-	}
-
-	property alias focus : titleField.focus
-	property alias transactionTitle : titleField.text
 	property int transactionIndex
 	property alias transactionParams : paramsModel;
 	property alias gas : gasField.text;
 	property alias gasPrice : gasPriceField.text;
 	property alias transactionValue : valueField.text;
 	property alias functionId : functionComboBox.currentText;
-	property var model;
+	property var itemParams;
 
 	signal accepted;
 
-	function reset(index, m) {
-		model = m;
-		var item = model.getItem(index);
+	function open(index, item) {
 		transactionIndex = index;
-		transactionTitle = item.title;
 		gas = item.gas;
 		gasPrice = item.gasPrice;
 		transactionValue = item.value;
 		var functionId = item.functionId;
+		itemParams = item.parameters !== undefined ? item.parameters : {};
 		functionsModel.clear();
 		var functionIndex = -1;
-		var functions = model.getFunctions();
+		var functions = codeModel.code.contract.functions;
 		for (var f = 0; f < functions.length; f++) {
-			functionsModel.append({ text: functions[f] });
-			if (functions[f] === item.functionId)
+			functionsModel.append({ text: functions[f].name });
+			if (functions[f].name === item.functionId)
 				functionIndex = f;
 		}
+
+		if (functionIndex == -1 && functionsModel.count > 0)
+			functionIndex = 0; //@todo suggest unused funtion
+
 		functionComboBox.currentIndex = functionIndex;
+		loadParameters();
+		visible = true;
+		valueField.focus = true;
 	}
 
 	function loadParameters() {
@@ -57,11 +49,34 @@ Window {
 			return;
 		paramsModel.clear();
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var parameters = model.getParameters(transactionIndex, functionsModel.get(functionComboBox.currentIndex).text);
+			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
+			var parameters = func.parameters;
 			for (var p = 0; p < parameters.length; p++) {
-				paramsModel.append({ name: parameters[p].name, type: parameters[p].type, value: parameters[p].value });
+				var pname = parameters[p].name;
+				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname] : "" });
 			}
 		}
+	}
+
+	function close()
+	{
+		visible = false;
+	}
+
+	function getItem()
+	{
+		var item = {
+			functionId: transactionDialog.functionId,
+			gas: transactionDialog.gas,
+			gasPrice: transactionDialog.gasPrice,
+			value: transactionDialog.transactionValue,
+			parameters: {}
+		}
+		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
+			var parameter = transactionDialog.transactionParams.get(p);
+			item.parameters[parameter.name] = parameter.value;
+		}
+		return item;
 	}
 
 	GridLayout {
@@ -73,18 +88,8 @@ Window {
 		columnSpacing: 10
 
 		Label {
-			text: qsTr("Title")
-		}
-		TextField {
-			id: titleField
-			focus: true
-			Layout.fillWidth: true
-		}
-
-		Label {
 			text: qsTr("Function")
 		}
-
 		ComboBox {
 			id: functionComboBox
 			Layout.fillWidth: true
@@ -98,6 +103,7 @@ Window {
 				loadParameters();
 			}
 		}
+
 		Label {
 			text: qsTr("Value")
 		}
@@ -195,7 +201,8 @@ Window {
 				Connections {
 					target: loaderEditor.item
 					onTextChanged: {
-						paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
+						if (styleData.role === "value" && styleData.row < paramsModel.count)
+							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
 				sourceComponent: (styleData.selected) ? editor : null
