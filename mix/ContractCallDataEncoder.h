@@ -38,11 +38,11 @@ class ContractCallDataEncoder
 public:
 	ContractCallDataEncoder() {}
 	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration* _dec, QString _value);
+	void encode(QVariableDeclaration const* _dec, QString _value);
 	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration* _dec, u256 _value);
+	void encode(QVariableDeclaration const* _dec, u256 _value);
 	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration* _dec, bool _value);
+	void encode(QVariableDeclaration const* _dec, bool _value);
 	/// Encode index of the function to call.
 	void encode(int _functionIndex);
 	/// Decode variable in order to be sent to QML view.

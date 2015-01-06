@@ -31,18 +31,13 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-std::shared_ptr<QContractDefinition> QContractDefinition::Contract(QString _source)
+QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
 {
-	CompilerStack* comp = AppContext::getInstance()->compiler();
-	comp->addSource("contract", _source.toStdString());
-	comp->parse();
-	ContractDefinition const* def = &comp->getContractDefinition(comp->getContractNames().front());
-	return std::make_shared<QContractDefinition>(def);
+	std::vector<FunctionDefinition const*> functions = _contract->getInterfaceFunctions();
+	for (unsigned i = 0; i < functions.size(); i++)
+	{
+		FunctionDefinition const* func = functions.at(i);
+		m_functions.append(new QFunctionDefinition(func, i));
+	}
 }
 
-void QContractDefinition::initQFunctions()
-{
-	std::vector<FunctionDefinition const*> functions = m_contract->getInterfaceFunctions();
-	for (unsigned i = 0; i < functions.size(); i++)
-		m_functions.append(new QFunctionDefinition(functions.at(i), i));
-}

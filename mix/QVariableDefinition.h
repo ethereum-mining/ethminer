@@ -32,6 +32,7 @@ namespace mix
 class QVariableDefinition: public QObject
 {
 	Q_OBJECT
+
 	Q_PROPERTY(QString value READ value CONSTANT)
 	Q_PROPERTY(QVariableDeclaration* declaration READ declaration CONSTANT)
 
