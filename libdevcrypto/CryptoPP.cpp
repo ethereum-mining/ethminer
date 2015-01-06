@@ -108,7 +108,7 @@ Signature Secp256k1::sign(Secret const& _key, h256 const& _hash)
 	
 	Integer kInv = k.InverseMod(m_q);
 	Integer z(_hash.asBytes().data(), 32);
-	Integer s = (kInv * (Integer(_key.asBytes().data(), 32)*r + z)) % m_q;
+	Integer s = (kInv * (Integer(_key.asBytes().data(), 32) * r + z)) % m_q;
 	if (r == 0 || s == 0)
 		BOOST_THROW_EXCEPTION(InvalidState());
 	
@@ -144,7 +144,7 @@ Public Secp256k1::recover(Signature _signature, bytesConstRef _message)
 	Integer s(_signature.data()+32, 32);
 	// cryptopp encodes sign of y as 0x02/0x03 instead of 0/1 or 27/28
 	byte encodedpoint[33];
-	encodedpoint[0] = _signature[64]|2;
+	encodedpoint[0] = _signature[64] | 2;
 	memcpy(&encodedpoint[1], _signature.data(), 32);
 	
 	ECP::Element x;
