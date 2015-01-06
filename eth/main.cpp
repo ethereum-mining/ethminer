@@ -672,7 +672,7 @@ int main(int argc, char** argv)
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
 						e.go(oof);
-						e.finalize(oof);
+						e.finalize();
 					}
 					catch(Exception const& _e)
 					{

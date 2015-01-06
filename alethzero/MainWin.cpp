@@ -1475,7 +1475,7 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 		};
 		m_currentExecution->go(onOp);
-		m_currentExecution->finalize(onOp);
+		m_currentExecution->finalize();
 		initDebugger();
 		updateDebugger();
 	}
