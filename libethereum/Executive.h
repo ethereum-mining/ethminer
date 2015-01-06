@@ -64,7 +64,7 @@ public:
 	bool setup(bytesConstRef _transaction);
 	/// Finalise a transaction previously set up with setup().
 	/// @warning Only valid after setup(), and possibly go().
-	void finalize(OnOpFunc const& _onOp = OnOpFunc());
+	void finalize();
 	/// @returns the transaction from setup().
 	/// @warning Only valid after setup().
 	Transaction const& t() const { return m_t; }

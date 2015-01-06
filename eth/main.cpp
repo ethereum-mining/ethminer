@@ -145,6 +145,8 @@ string credits(bool _interactive = false)
 void version()
 {
 	cout << "eth version " << dev::Version << endl;
+	cout << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cout << "Client database version: " << dev::eth::c_databaseVersion << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -672,7 +674,7 @@ int main(int argc, char** argv)
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
 						e.go(oof);
-						e.finalize(oof);
+						e.finalize();
 					}
 					catch(Exception const& _e)
 					{

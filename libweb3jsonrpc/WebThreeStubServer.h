@@ -42,6 +42,7 @@ namespace dev
 {
 class WebThreeDirect;
 class KeyPair;
+class TransactionSkeleton;
 namespace eth
 {
 class Interface;
@@ -119,12 +120,15 @@ public:
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
+protected:
+	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
+
 private:
 	dev::eth::Interface* client() const;
 	std::shared_ptr<dev::shh::Interface> face() const;
 	dev::WebThreeDirect& m_web3;
 	std::map<dev::Address, dev::KeyPair> m_accounts;
-	
+
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
 	ldb::DB* m_db;

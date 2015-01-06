@@ -44,7 +44,7 @@ Mapping mapping[] = {
     Mapping("GASPRICE", 0x3a, 0, 1),
     Mapping("EXTCODESIZE", 0x3b, 1, 1),
     Mapping("EXTCODECOPY", 0x3c, 4, 0),
-    Mapping("PREVHASH", 0x40, 0, 1),
+	Mapping("BLOCKHASH", 0x40, 1, 1),
     Mapping("COINBASE", 0x41, 0, 1),
     Mapping("TIMESTAMP", 0x42, 0, 1),
     Mapping("NUMBER", 0x43, 0, 1),
