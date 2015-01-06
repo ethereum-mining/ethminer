@@ -73,7 +73,7 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 	};
 
 	execution.go(onOp);
-	execution.finalize(onOp);
+	execution.finalize();
 	m_executiveState.completeMine();
 
 	DebuggingContent d;

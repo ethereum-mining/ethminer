@@ -201,6 +201,10 @@ public:
 	/// @returns bytes() if no account exists at that address.
 	bytes const& code(Address _contract) const;
 
+	/// Get the code hash of an account.
+	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
+	h256 codeHash(Address _contract) const;
+
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
 

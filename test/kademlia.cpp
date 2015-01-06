@@ -14,17 +14,8 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
- * @author Yann yann@ethdev.com
+/** @file kademlia.cpp
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
- * Ethereum IDE client.
  */
 
-#include "MixApplication.h"
-using namespace dev::mix;
-
-int main(int _argc, char* _argv[])
-{
-	MixApplication app(_argc, _argv);
-	return app.exec();
-}

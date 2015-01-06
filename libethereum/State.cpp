@@ -958,6 +958,13 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+h256 State::codeHash(Address _contract) const
+{
+	if (!addressHasCode(_contract))
+		return EmptySHA3;
+	return m_cache[_contract].codeHash();
+}
+
 bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
 	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
