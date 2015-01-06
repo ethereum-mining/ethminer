@@ -644,14 +644,22 @@ std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	cwarn << "Silently signing transaction from address" << t.from.abridged() << ": User validation hook goes here.";
-	if (t.to)
-		// TODO: from qethereum, insert validification hook here.
-		client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
-	else
-		ret = toJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
-	client()->flushTransactions();
+	if (authenticate(t))
+	{
+		if (t.to)
+			// TODO: from qethereum, insert validification hook here.
+			client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
+		else
+			ret = toJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
+		client()->flushTransactions();
+	}
 	return ret;
+}
+
+bool WebThreeStubServer::authenticate(TransactionSkeleton const& _t) const
+{
+	cwarn << "Silently signing transaction from address" << _t.from.abridged() << ": User validation hook goes here.";
+	return true;
 }
 
 Json::Value WebThreeStubServer::eth_transactionByHash(std::string const& _hash, int const& _i)
