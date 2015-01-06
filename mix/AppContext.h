@@ -28,11 +28,10 @@
 #pragma once
 
 #include <memory>
-#include <QQmlApplicationEngine>
-#include <libsolidity/CompilerStack.h>
-#include <libwebthree/WebThree.h>
-#include "KeyEventManager.h"
+#include <QUrl>
+#include <QObject>
 
+class QQmlApplicationEngine;
 namespace dev
 {
 	class WebThreeDirect;
@@ -47,42 +46,39 @@ namespace dev
 namespace mix
 {
 
+class CodeModel;
 /**
  * @brief Provides access to application scope variable.
  */
+
 class AppContext: public QObject
 {
 	Q_OBJECT
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	/// Get the current QQmlApplicationEngine instance.
-	static AppContext* getInstance() { return Instance; }
-	/// Renew QQMLApplicationEngine with a new instance.
-	static void setApplicationContext(QQmlApplicationEngine* _engine);
+	virtual ~AppContext();
 	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
-	/// Initialize KeyEventManager (used to handle key pressed event).
-	void initKeyEventManager(QObject* _obj);
-	/// Get the current KeyEventManager instance.
-	KeyEventManager* getKeyEventManager();
-	/// Get the current Compiler instance (used to parse and compile contract code).
-	dev::solidity::CompilerStack* compiler();
+	/// Get code model
+	CodeModel* codeModel() { return m_codeModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Load project settings
+	void loadProject();
+signals:
+	void projectLoaded(QString const& _json);
 
 private:
-	static AppContext* Instance;
-	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
+	QQmlApplicationEngine* m_applicationEngine; //owned by app
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
-	std::unique_ptr<KeyEventManager> m_keyEventManager;
-	std::unique_ptr<solidity::CompilerStack> m_compiler;
+	std::unique_ptr<CodeModel> m_codeModel;
 
 public slots:
 	/// Delete the current instance when application quit.
-	void quitApplication() { delete Instance; }
-	/// Initialize components after the loading of the main QML view.
-	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
+	void quitApplication() {}
+	/// Write json to a settings file
+	void saveProject(QString const& _json);
 };
 
 }

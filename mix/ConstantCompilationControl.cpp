@@ -28,14 +28,16 @@
 #include <QtCore/QtCore>
 #include <QDebug>
 #include "ConstantCompilationControl.h"
-#include "ConstantCompilationModel.h"
 #include "QContractDefinition.h"
+#include "AppContext.h"
+#include "CodeModel.h"
+
 using namespace dev::mix;
 
-ConstantCompilationControl::ConstantCompilationControl(QTextDocument* _doc): Extension(ExtensionDisplayBehavior::Tab)
+ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::Tab)
 {
-	m_editor = _doc;
-	m_compilationModel = std::unique_ptr<ConstantCompilationModel>(new ConstantCompilationModel());
+	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
+	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
 }
 
 QString ConstantCompilationControl::contentUrl() const
@@ -50,18 +52,25 @@ QString ConstantCompilationControl::title() const
 
 void ConstantCompilationControl::start() const
 {
-	connect(m_editor, SIGNAL(contentsChange(int,int,int)), this, SLOT(compile()));
 }
 
-void ConstantCompilationControl::compile()
+void ConstantCompilationControl::update()
 {
-	QString codeContent = m_editor->toPlainText().replace("\n", "");
-	if (codeContent.isEmpty())
-		resetOutPut();
+	auto result = m_ctx->codeModel()->code();
+
+	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
+	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
+	if (result->successfull())
+	{
+		status->setProperty("text", "succeeded");
+		status->setProperty("color", "green");
+		content->setProperty("text", result->assemblyCode());
+	}
 	else
 	{
-		CompilerResult res = m_compilationModel->compile(m_editor->toPlainText().replace("\t", "        "));
-		writeOutPut(res);
+		status->setProperty("text", "failure");
+		status->setProperty("color", "red");
+		content->setProperty("text", result->compilerMessage());
 	}
 }
 
@@ -73,20 +82,12 @@ void ConstantCompilationControl::resetOutPut()
 	content->setProperty("text", "");
 }
 
-void ConstantCompilationControl::writeOutPut(CompilerResult const& _res)
+
+void ConstantCompilationControl::displayError(QString const& _error)
 {
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
-	if (_res.success)
-	{
-		status->setProperty("text", "succeeded");
-		status->setProperty("color", "green");
-		content->setProperty("text", _res.hexCode);
-	}
-	else
-	{
-		status->setProperty("text", "failure");
-		status->setProperty("color", "red");
-		content->setProperty("text", _res.comment);
-	}
+	status->setProperty("text", "failure");
+	status->setProperty("color", "red");
+	content->setProperty("text", _error);
 }
