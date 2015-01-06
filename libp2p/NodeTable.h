@@ -46,6 +46,7 @@ namespace p2p
  * @todo makeRequired: exclude bucket from refresh if we have node as peer.
  *
  * [Optimization]
+ * @todo encapsulate doFindNode into NetworkAlgorithm (task)
  * @todo Pong to include ip:port where ping was received
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
@@ -281,7 +282,7 @@ struct Pong: RLPXDatagram<Pong>
  */
 struct FindNode: RLPXDatagram<FindNode>
 {
-	using RLPXDatagram<FindNode>::RLPXDatagram;
+	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
 	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram<FindNode>(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
 	
 	h512 target;
@@ -312,7 +313,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
 	};
 	
-	using RLPXDatagram<Neighbours>::RLPXDatagram;
+	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep) {}
 	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeTable::NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to)
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
