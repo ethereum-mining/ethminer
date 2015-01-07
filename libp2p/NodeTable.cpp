@@ -239,29 +239,27 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 	ping(_leastSeen.get());
 }
 
+shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
+{
+	shared_ptr<NodeEntry> ret;
+	Guard l(x_nodes);
+	if (auto n = m_nodes[_pubk])
+		ret = n;
+	else
+	{
+		ret.reset(new NodeEntry(m_node, _pubk, _udp));
+		m_nodes[_pubk] = ret;
+	}
+	return move(ret);
+}
+
 void NodeTable::noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint)
 {
-	// Don't add ourself
 	if (_pubk == m_node.address())
 		return;
 	
-	shared_ptr<NodeEntry> node;
-	{
-		Guard l(x_nodes);
-		auto n = m_nodes.find(_pubk);
-		if (n == m_nodes.end())
-		{
-			node.reset(new NodeEntry(m_node, _pubk, _endpoint));
-			m_nodes[_pubk] = node;
-//			clog(NodeTableMessageSummary) << "Adding node to cache: " << _pubk;
-		}
-		else
-		{
-			node = n->second;
-//			clog(NodeTableMessageSummary) << "Found node in cache: " << _pubk;
-		}
-	}
-	
+	shared_ptr<NodeEntry> node(addNode(_pubk, _endpoint));
+
 	// todo: sometimes node is nullptr here
 	if (!!node)
 		noteNode(node);

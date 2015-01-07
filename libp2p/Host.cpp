@@ -149,12 +149,8 @@ unsigned Host::protocolVersion() const
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
-#warning integration: todo rework so this is an exception
-	if (!_s->m_node || !_s->m_node->id)
-	{
-		cwarn << "Attempting to register a peer without node information!";
-		return;
-	}
+	assert(!!_s->m_node);
+	assert(!!_s->m_node->id);
 
 	{
 		RecursiveGuard l(x_peers);
@@ -182,8 +178,8 @@ void Host::seal(bytes& _b)
 	_b[7] = len & 0xff;
 }
 
-#warning integration: todo remove origin, ready, oldid. port to NodeTable. see Session.cpp#244,363
-shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId)
+// TODO P2P: remove oldid. port to NodeTable. (see noteNode calls, Session.cpp#218,337)
+shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, NodeId _oldId)
 {
 	RecursiveGuard l(x_peers);
 	if (_a.port() < 30300 || _a.port() > 30305)
@@ -194,8 +190,6 @@ shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o,
 		cwarn << "Private port being recorded - setting to 0";
 		_a = bi::tcp::endpoint(_a.address(), 0);
 	}
-
-//	cnote << "NodeInfo:" << _id.abridged() << _a << (_ready ? "ready" : "used") << _oldId.abridged() << (m_nodes.count(_id) ? "[have]" : "[NEW]");
 
 	// First check for another node with the same connection credentials, and put it in oldId if found.
 	if (!_oldId)
@@ -223,33 +217,21 @@ shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o,
 		m_nodes[_id] = make_shared<NodeInfo>();
 		m_nodes[_id]->id = _id;
 		m_nodes[_id]->index = i;
-		m_nodes[_id]->idOrigin = _o;
 	}
 	else
-	{
 		i = m_nodes[_id]->index;
-		m_nodes[_id]->idOrigin = max(m_nodes[_id]->idOrigin, _o);
-	}
 	m_nodes[_id]->address = _a;
-	m_ready.extendAll(i);
 	m_private.extendAll(i);
-	if (_ready)
-		m_ready += i;
-	else
-		m_ready -= i;
 	if (!_a.port() || (isPrivateAddress(_a.address()) && !m_netPrefs.localNetworking))
 		m_private += i;
 	else
 		m_private -= i;
 
-//	cnote << m_nodes[_id]->index << ":" << m_ready;
-
-	m_hadNewNodes = true;
-
 	return m_nodes[_id];
 }
 
-#warning integration: TBD caps in NodeTable/NodeEntry
+// TODO P2P: should be based on target
+// TODO P2P: store caps in NodeTable/NodeEntry
 Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
 {
 	RecursiveGuard l(x_peers);
@@ -340,13 +322,7 @@ void Host::runAcceptor()
 			{
 				try
 				{
-					try {
-						clog(NetConnect) << "Accepted connection from " << m_socket->remote_endpoint();
-					} catch (...){}
-					bi::address remoteAddress = m_socket->remote_endpoint().address();
-					// Port defaults to 0 - we let the hello tell us which port the peer listens to
-					auto p = std::make_shared<Session>(this, std::move(*m_socket.release()), bi::tcp::endpoint(remoteAddress, 0));
-					p->start();
+					doHandshake(m_socket.release());
 					success = true;
 				}
 				catch (Exception const& _e)
@@ -373,6 +349,16 @@ void Host::runAcceptor()
 	}
 }
 
+void Host::doHandshake(bi::tcp::socket* _socket, NodeId _egressNodeId)
+{
+	try {
+		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
+	} catch (...){}
+
+	auto p = std::make_shared<Session>(this, std::move(*_socket), m_nodes[_egressNodeId]);
+	p->start();
+}
+
 string Host::pocHost()
 {
 	vector<string> strs;
@@ -380,56 +366,51 @@ string Host::pocHost()
 	return "poc-" + strs[1] + ".ethdev.com";
 }
 
-#warning integration: todo remove all connect() w/ addNode makeRequired (this requires pubkey)
-void Host::connect(std::string const& _addr, unsigned short _port) noexcept
+// TODO P2P: support for TCP+UDP when manually connecting
+// TODO P2P: remove in favor of addNode(NodeId, string, uint16_t, bool _required = false)
+void Host::connect(NodeId const& _node, std::string const& _addr, unsigned short _port) noexcept
 {
 	if (!m_run)
 		return;
+	
+	assert(_node);
 
-	for (auto first: {true, false})
+	auto n = m_nodes[_node];
+	
+	// TODO: refactor into async_resolve
+	m_ioService.post([=]()
 	{
-		try
+		for (auto first: {true, false})
 		{
-			if (first)
+			try
 			{
-				bi::tcp::resolver r(m_ioService);
-				connect(r.resolve({_addr, toString(_port)})->endpoint());
+				bi::tcp::endpoint ep;
+				if (first)
+				{
+					bi::tcp::resolver r(m_ioService);
+					ep = r.resolve({_addr, toString(_port)})->endpoint();
+				}
+				else
+					ep = bi::tcp::endpoint(bi::address::from_string(_addr), _port);
+				
+				if (!n)
+					m_nodes[_node] = make_shared<NodeInfo>();
+				m_nodes[_node]->id = _node;
+				m_nodes[_node]->address = ep;
+				connect(m_nodes[_node]);
+				break;
 			}
-			else
-				connect(bi::tcp::endpoint(bi::address::from_string(_addr), _port));
-			break;
+			catch (Exception const& _e)
+			{
+				// Couldn't connect
+				clog(NetConnect) << "Bad host " << _addr << "\n" << diagnostic_information(_e);
+			}
+			catch (exception const& e)
+			{
+				// Couldn't connect
+				clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
+			}
 		}
-		catch (Exception const& _e)
-		{
-			// Couldn't connect
-			clog(NetConnect) << "Bad host " << _addr << "\n" << diagnostic_information(_e);
-		}
-		catch (exception const& e)
-		{
-			// Couldn't connect
-			clog(NetConnect) << "Bad host " << _addr << " (" << e.what() << ")";
-		}
-	}
-}
-
-void Host::connect(bi::tcp::endpoint const& _ep)
-{
-	if (!m_run)
-		return;
-
-	clog(NetConnect) << "Attempting single-shot connection to " << _ep;
-	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
-	s->async_connect(_ep, [=](boost::system::error_code const& ec)
-	{
-		if (ec)
-			clog(NetConnect) << "Connection refused to " << _ep << " (" << ec.message() << ")";
-		else
-		{
-			auto p = make_shared<Session>(this, std::move(*s), _ep);
-			clog(NetConnect) << "Connected to " << _ep;
-			p->start();
-		}
-		delete s;
 	});
 }
 
@@ -438,7 +419,7 @@ void Host::connect(std::shared_ptr<NodeInfo> const& _n)
 	if (!m_run)
 		return;
 	
-	// prevent concurrently connecting to a node; todo: better abstraction
+	// prevent concurrently connecting to a node
 	NodeInfo *nptr = _n.get();
 	{
 		Guard l(x_pendingNodeConns);
@@ -450,7 +431,6 @@ void Host::connect(std::shared_ptr<NodeInfo> const& _n)
 	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
 	_n->lastAttempted = std::chrono::system_clock::now();
 	_n->failedAttempts++;
-	m_ready -= _n->index;
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 
 	auto n = node(_n->id);
@@ -462,13 +442,12 @@ void Host::connect(std::shared_ptr<NodeInfo> const& _n)
 				clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
 				_n->lastDisconnect = TCPError;
 				_n->lastAttempted = std::chrono::system_clock::now();
-				m_ready += _n->index;
 			}
 			else
 			{
 				clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
 				_n->lastConnected = std::chrono::system_clock::now();
-				auto p = make_shared<Session>(this, std::move(*s), n, true);		// true because we don't care about ids matched for now. Once we have permenant IDs this will matter a lot more and we can institute a safer mechanism.
+				auto p = make_shared<Session>(this, std::move(*s), n);
 				p->start();
 			}
 			delete s;
@@ -476,7 +455,7 @@ void Host::connect(std::shared_ptr<NodeInfo> const& _n)
 			m_pendingNodeConns.erase(nptr);
 		});
 	else
-		clog(NetWarn) << "Trying to connect to node not in node table.";
+		clog(NetWarn) << "Aborted connect. Node not in node table.";
 }
 
 bool Host::havePeer(NodeId _id) const
@@ -515,8 +494,8 @@ unsigned NodeInfo::fallbackSeconds() const
 	}
 }
 
-#warning integration: ---- grow/prunePeers
-#warning integration: todo grow/prune into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
+// TODO P2P: rebuild noetable when localNetworking is enabled/disabled
+// TODO P2P: migrate grow/prunePeers into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
 //void Host::growPeers()
 //{
 //	RecursiveGuard l(x_peers);
@@ -585,14 +564,8 @@ PeerInfos Host::peers() const
 	if (!m_run)
 		return PeerInfos();
 
-#warning integration: ---- pingAll. It is called every 30secs via deadline timer.
-	RecursiveGuard l(x_peers);
-//    if (_updatePing)
-//	{
-//		const_cast<Host*>(this)->pingAll();
-//		this_thread::sleep_for(chrono::milliseconds(200));
-//	}
 	std::vector<PeerInfo> ret;
+	RecursiveGuard l(x_peers);
 	for (auto& i: m_peers)
 		if (auto j = i.second.lock())
 			if (j->m_socket.is_open())
@@ -604,6 +577,9 @@ void Host::run(boost::system::error_code const&)
 {
 	if (!m_run)
 	{
+		// reset NodeTable
+		m_nodeTable.reset();
+		
 		// stopping io service allows running manual network operations for shutdown
 		// and also stops blocking worker thread, allowing worker thread to exit
 		m_ioService.stop();
@@ -612,24 +588,10 @@ void Host::run(boost::system::error_code const&)
 		m_timer.reset();
 		return;
 	}
-
-#warning integration: ----
-//	m_lastTick += c_timerInterval;
-//	if (m_lastTick >= c_timerInterval * 10)
-//	{
-//		growPeers();
-//		prunePeers();
-//		m_lastTick = 0;
-//	}
 	
-	if (m_hadNewNodes)
-	{
-		for (auto p: m_peers)
-			if (auto pp = p.second.lock())
-				pp->serviceNodesRequest();
-		
-		m_hadNewNodes = false;
-	}
+	for (auto p: m_peers)
+		if (auto pp = p.second.lock())
+			pp->serviceNodesRequest();
 	
 	if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
 	{
@@ -675,20 +637,13 @@ void Host::startedWorking()
 		if (m_listenPort > 0)
 			runAcceptor();
 			
-#warning integration: ++++
 		if (!m_tcpPublic.address().is_unspecified())
 			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort, m_tcpPublic));
 		else
 			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort > 0 ? m_listenPort : 30303));
 	}
-	
-#warning integration: ----
-//	// if m_public address is valid then add us to node list
-//	// todo: abstract empty() and emplace logic
-//	if (!m_tcpPublic.address().is_unspecified() && (m_nodes.empty() || m_nodes[m_nodesList[0]]->id != id()))
-//		noteNode(id(), m_tcpPublic, Origin::Perfect, false);
-	
-	clog(NetNote) << "Id:" << id().abridged();
+
+	clog(NetNote) << "p2p.started id:" << id().abridged();
 	
 	run(boost::system::error_code());
 }
@@ -708,7 +663,7 @@ void Host::pingAll()
 	m_lastPing = chrono::steady_clock::now();
 }
 
-#warning integration: todo save/restoreNodes
+// TODO P2P: integration: todo save/restoreNodes
 bytes Host::saveNodes() const
 {
 	RLPStream nodes;
@@ -726,7 +681,7 @@ bytes Host::saveNodes() const
 					nodes << n.address.address().to_v4().to_bytes();
 				else
 					nodes << n.address.address().to_v6().to_bytes();
-				nodes << n.address.port() << n.id << (int)n.idOrigin
+				nodes << n.address.port() << n.id /* << (int)n.idOrigin */ << 0
 					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
 					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
 					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
@@ -751,7 +706,7 @@ void Host::restoreNodes(bytesConstRef _b)
 		{
 			auto oldId = id();
 			m_key = KeyPair(r[1].toHash<Secret>());
-			noteNode(id(), m_tcpPublic, Origin::Perfect, false, oldId);
+			noteNode(id(), m_tcpPublic, oldId);
 
 			for (auto i: r[2])
 			{
@@ -763,8 +718,8 @@ void Host::restoreNodes(bytesConstRef _b)
 				auto id = (NodeId)i[2];
 				if (!m_nodes.count(id))
 				{
-					auto o = (Origin)i[3].toInt<int>();
-					auto n = noteNode(id, ep, o, true);
+//					auto o = (Origin)i[3].toInt<int>();
+					auto n = noteNode(id, ep);
 					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 					n->failedAttempts = i[6].toInt<unsigned>();
@@ -787,7 +742,7 @@ void Host::restoreNodes(bytesConstRef _b)
 					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
 				else
 					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-				auto n = noteNode(id, ep, Origin::Self, true);
+				auto n = noteNode(id, ep);
 			}
 		}
 }
