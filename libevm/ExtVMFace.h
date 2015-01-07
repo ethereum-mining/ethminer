@@ -148,7 +148,7 @@ public:
 	virtual void revert() {}
 
 	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
-	h256 blockhash(u256 _number) { return _number < currentBlock.number && _number >= (std::max<u256>(256, currentBlock.number) - 256) ? lastHashes[(unsigned)(currentBlock.number - 1 - _number)] : h256(); }	// TODO: CHECK!!!
+	h256 blockhash(u256 _number) { return _number < currentBlock.number && _number >= (std::max<u256>(256, currentBlock.number) - 256) ? lastHashes[(unsigned)(currentBlock.number - 1 - _number)] : h256(); }
 
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }
