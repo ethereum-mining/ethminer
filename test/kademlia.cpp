@@ -14,29 +14,8 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file OurWebThreeStubServer.h
- * @author Gav Wood <i@gavwood.com>
+/** @file kademlia.cpp
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
-#include <QtCore/QObject>
-#include <libdevcore/CommonJS.h>
-#include <libdevcrypto/Common.h>
-#include <libweb3jsonrpc/WebThreeStubServer.h>
-
-class OurWebThreeStubServer: public QObject, public WebThreeStubServer
-{
-	Q_OBJECT
-
-public:
-	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
-
-	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
-
-signals:
-	void onNewId(QString _s);
-
-private:
-	dev::WebThreeDirect* m_web3;
-};
