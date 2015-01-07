@@ -51,15 +51,6 @@ namespace p2p
 
 class Host;
 
-enum class Origin
-{
-	Unknown,
-	Self,
-	SelfThird,
-	PerfectThird,
-	Perfect,
-};
-
 struct NodeInfo
 {
 	NodeId id;										///< Their id/public key.
@@ -81,9 +72,6 @@ struct NodeInfo
 	// p2p: move to protocol-specific map
 	int score = 0;									///< All time cumulative.
 	int rating = 0;									///< Trending.
-	
-	// p2p: remove
-	Origin idOrigin = Origin::Unknown;				///< How did we get to know this node's id?
 
 	// p2p: move to NodeEndpoint
 	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
@@ -125,6 +113,7 @@ using Nodes = std::vector<NodeInfo>;
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
+ * @todo determinePublic: ipv6, udp
  */
 class Host: public Worker
 {
@@ -151,8 +140,8 @@ public:
 
 	/// Connect to a peer explicitly.
 	static std::string pocHost();
-	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
-	void connect(bi::tcp::endpoint const& _ep);
+	void connect(NodeId const& _node, std::string const& _addr, unsigned short _port = 30303) noexcept;
+	void connect(NodeId const& _node, bi::tcp::endpoint const& _ep);
 	void connect(std::shared_ptr<NodeInfo> const& _n);
 
 	/// @returns true iff we have a peer of the given id.
@@ -209,6 +198,9 @@ private:
 	/// Called only from startedWorking().
 	void runAcceptor();
 	
+	/// Handler for verifying handshake siganture before creating session. _egressNodeId is passed for outbound connections.
+	void doHandshake(bi::tcp::socket* _socket, NodeId _egressNodeId = NodeId());
+	
 	void seal(bytes& _b);
 
 	/// Called by Worker. Not thread-safe; to be called only by worker.
@@ -222,7 +214,7 @@ private:
 	/// Shutdown network. Not thread-safe; to be called only by worker.
 	virtual void doneWorking();
 
-	std::shared_ptr<NodeInfo> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = NodeId());
+	std::shared_ptr<NodeInfo> noteNode(NodeId _id, bi::tcp::endpoint _a, NodeId _oldId = NodeId());
 	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
 	bool m_run = false;													///< Whether network is running.
@@ -252,8 +244,6 @@ private:
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 	std::map<CapDesc, unsigned> m_capIdealPeerCount;									///< Ideal peer count for capability.
 
-	bool m_hadNewNodes = false;
-
 	mutable RecursiveMutex x_peers;
 
 	/// The nodes to which we are currently connected.
@@ -261,13 +251,12 @@ private:
 	mutable std::map<NodeId, std::weak_ptr<Session>> m_peers;
 
 	/// Nodes to which we may connect (or to which we have connected).
-	/// TODO: does this need a lock?
+	/// TODO: mutex; replace with nodeTable
 	std::map<NodeId, std::shared_ptr<NodeInfo> > m_nodes;
 
 	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
 	std::vector<NodeId> m_nodesList;
 
-	RangeMask<unsigned> m_ready;											///< Indices into m_nodesList over to which nodes we are not currently connected, connecting or otherwise ignoring.
 	RangeMask<unsigned> m_private;										///< Indices into m_nodesList over to which nodes are private.
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.

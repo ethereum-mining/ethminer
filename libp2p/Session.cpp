@@ -36,23 +36,11 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual):
-	m_server(_s),
-	m_socket(std::move(_socket)),
-	m_node(nullptr),
-	m_manualEndpoint(_manual)	// NOTE: the port on this shouldn't be used if it's zero.
-{
-	m_lastReceived = m_connect = std::chrono::steady_clock::now();
-
-	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
-}
-
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n, bool _force):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_node(_n),
-	m_manualEndpoint(_n->address),
-	m_force(_force)
+	m_manualEndpoint(_n->address)
 {
 	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
@@ -60,13 +48,9 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> co
 
 Session::~Session()
 {
-	if (m_node)
-	{
-		if (id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)
-			m_server->m_ready += m_node->index;
-		else
-			m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
-	}
+	// TODO P2P: revisit (refactored from previous logic)
+	if (m_node && !(id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead))
+		m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -103,6 +87,7 @@ int Session::rating() const
 	return m_node->rating;
 }
 
+// TODO P2P: integration: session->? should be unavailable when socket isn't open
 bi::tcp::endpoint Session::endpoint() const
 {
 	if (m_socket.is_open() && m_node)
@@ -132,6 +117,7 @@ template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 	return ret;
 }
 
+// TODO P2P: integration: replace w/asio post -> serviceNodesRequest()
 void Session::ensureNodesRequested()
 {
 	if (isOpen() && !m_weRequestedNodes)
@@ -207,25 +193,8 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		if (m_node && m_node->id != id)
-		{
-			if (m_force || m_node->idOrigin <= Origin::SelfThird)
-				// SECURITY: We're forcing through the new ID, despite having been told
-				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Allowing anyway...";
-			else
-			{
-				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Disconnecting.";
-				disconnect(UnexpectedIdentity);
-				return true;
-			}
-
-			if (m_server->havePeer(id))
-			{
-				m_node->dead = true;
-				disconnect(DuplicatePeer);
-				return true;
-			}
-		}
+		assert(!!m_node);
+		assert(!!m_node->id);
 
 		if (m_server->havePeer(id))
 		{
@@ -241,9 +210,14 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
+		// TODO P2P: first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
+		// TODO P2P: remove oldid
+		// TODO P2P: with encrypted transport the handshake will fail and we won't get here
+		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), m_node->id);
 		if (m_node->isOffline())
 			m_node->lastConnected = chrono::system_clock::now();
+		
+		// TODO P2P: introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
 		m_knownNodes.extendAll(m_node->index);
 		m_knownNodes.unionWith(m_node->index);
 
@@ -360,7 +334,7 @@ bool Session::interpret(RLP const& _r)
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->noteNode(id, ep, m_node->idOrigin == Origin::Perfect ? Origin::PerfectThird : Origin::SelfThird, true);
+			m_server->noteNode(id, ep);
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}

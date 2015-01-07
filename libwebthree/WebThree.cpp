@@ -102,5 +102,5 @@ void WebThreeDirect::restoreNodes(bytesConstRef _saved)
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
 {
-	m_net.connect(_seedHost, _port);
+	m_net.connect(NodeId(), _seedHost, _port);
 }

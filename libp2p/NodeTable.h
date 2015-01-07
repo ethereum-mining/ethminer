@@ -131,6 +131,9 @@ public:
 	
 	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
+	/// Add node details and attempt adding to node table if node responds to ping. NodeEntry will immediately be returned and may be used for required connectivity.
+	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp = bi::tcp::endpoint());
+	
 	void join();
 	
 	NodeEntry root() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
@@ -192,7 +195,7 @@ protected:
 	Secret m_secret;											///< This nodes secret key.
 
 	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
-	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< NodeId -> Node table (most common lookup path)
+	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< NodeId -> Node table
 
 	mutable Mutex x_state;
 	std::array<NodeBucket, s_bins> m_state;					///< State table of binned nodes.
