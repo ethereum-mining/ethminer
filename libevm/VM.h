@@ -559,7 +559,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 			m_stack.push_back(_ext.gasPrice);
 			break;
 		case Instruction::BLOCKHASH:
-			m_stack.back() = (u256)_ext.prevhash(m_stack.back());
+			m_stack.back() = (u256)_ext.blockhash(m_stack.back());
 			break;
 		case Instruction::COINBASE:
 			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress);
