@@ -86,7 +86,8 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		for (unsigned i = 0; i < _ext.code.size(); ++i)
 			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
 				m_jumpDests.insert(i);
-
+			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
+				i += _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 	u256 nextPC = m_curPC + 1;
 	auto osteps = _steps;
 	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
