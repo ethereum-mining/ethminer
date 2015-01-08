@@ -36,16 +36,20 @@ namespace p2p
  */
 struct NodeIPEndpoint
 {
+	NodeIPEndpoint(): udp(bi::udp::endpoint()), tcp(bi::tcp::endpoint()) {}
 	NodeIPEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
 	NodeIPEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
 	NodeIPEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
 
 	bi::udp::endpoint udp;
 	bi::tcp::endpoint tcp;
+	
+	operator bool() const { return udp.address().is_unspecified() && tcp.address().is_unspecified(); }
 };
 
 struct Node
 {
+	Node(): endpoint(NodeIPEndpoint()) {};
 	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
 	Node(Public _pubk, bi::udp::endpoint _udp, bool _required = false): Node(_pubk, NodeIPEndpoint(_udp), _required) {}
 	
@@ -59,6 +63,8 @@ struct Node
 	
 	/// If true, node will not be removed from Node list.
 	bool required = false;
+	
+	operator bool() const { return (bool)id; }
 };
 
 
@@ -151,7 +157,7 @@ public:
 	std::list<NodeId> nodes() const;
 	std::list<NodeEntry> state() const;
 	
-	NodeEntry operator[](NodeId _id);
+	Node operator[](NodeId _id);
 	
 protected:
 	struct NodeBucket

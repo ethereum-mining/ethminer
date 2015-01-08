@@ -401,7 +401,7 @@ void Host::connect(NodeId const& _node, std::string const& _addr, unsigned short
 	
 	assert(_node);
 
-	auto n = m_nodes[_node];
+	auto n = (*m_nodeTable)[_node];
 	
 	// TODO: refactor into async_resolve
 	m_ioService.post([=]()
@@ -619,14 +619,8 @@ void Host::run(boost::system::error_code const&)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
 	
-	if (chrono::steady_clock::now() - m_lastPing > chrono::seconds(30))	// ping every 30s.
-	{
-		for (auto p: m_peers)
-			if (auto pp = p.second.lock())
-				if (chrono::steady_clock::now() - pp->m_lastReceived > chrono::seconds(60))
-					pp->disconnect(PingTimeout);
-		pingAll();
-	}
+	if (chrono::steady_clock::now() - m_lastPing >= chrono::seconds(30))	// ping every 30s.
+		keepAlivePeers();
 	
 	auto runcb = [this](boost::system::error_code const& error) -> void { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
@@ -680,12 +674,18 @@ void Host::doWork()
 		m_ioService.run();
 }
 
-void Host::pingAll()
+void Host::keepAlivePeers()
 {
 	RecursiveGuard l(x_peers);
-	for (auto& i: m_peers)
-		if (auto j = i.second.lock())
-			j->ping();
+	for (auto p: m_peers)
+		if (auto pp = p.second.lock())
+		{
+			if (chrono::steady_clock::now() - pp->m_lastReceived >= chrono::seconds(60))
+				pp->disconnect(PingTimeout);
+			else
+				pp->ping();
+		}
+
 	m_lastPing = chrono::steady_clock::now();
 }
 
