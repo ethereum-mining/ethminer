@@ -115,13 +115,14 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
 	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
 	Q_PROPERTY(QString gas READ gas CONSTANT)
-	Q_PROPERTY(QString gasLeft READ gasLeft CONSTANT)
-	Q_PROPERTY(QString debugStack READ debugStack CONSTANT)
-	Q_PROPERTY(QString debugStorage READ debugStorage CONSTANT)
+	Q_PROPERTY(QString instruction READ instruction CONSTANT)
+	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
+	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
 	Q_PROPERTY(QString debugMemory READ debugMemory CONSTANT)
 	Q_PROPERTY(QString debugCallData READ debugCallData CONSTANT)
 	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
+	Q_PROPERTY(QString newMemSize READ newMemSize CONSTANT)
 	Q_PROPERTY(QStringList levels READ levels CONSTANT)
 
 public:
@@ -137,9 +138,9 @@ public:
 	/// Get gas used.
 	QString gas();
 	/// Get stack.
-	QString debugStack();
+	QStringList debugStack();
 	/// Get storage.
-	QString debugStorage();
+	QStringList debugStorage();
 	/// Get memory.
 	QString debugMemory();
 	/// Get call data.
@@ -148,6 +149,10 @@ public:
 	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
+	/// Get the new memory size.
+	QString newMemSize();
+	/// Get current instruction
+	QString instruction();
 	/// Get all previous steps.
 	QStringList levels();
 	/// Get the current processed machine state.

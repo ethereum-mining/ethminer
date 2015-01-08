@@ -2,118 +2,89 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
 
-Rectangle {
 
-	objectName: "mainContent"
-	signal keyPressed(variant event)
-	focus: true
-	Keys.enabled: true
-	Keys.onPressed:
-	{
-		root.keyPressed(event.key);
-	}
-	anchors.fill: parent
-	id: root
+ColumnLayout {
+	property variant content;
+	property string title;
+	height: 250
 
-	function ensureRightView()
-	{
-		if (!rightView.visible)
+	RowLayout {
+
+		Image {
+			source: "qrc:/qml/img/jumpoverback.png"
+			width: 15
+			sourceSize.width: 15
+			id: imgArrow
+		}
+
+		Text {
+			color: "#8b8b8b"
+			text: title
+			id: listTitle
+		}
+
+		MouseArea
 		{
-			rightView.show();
+			anchors.fill: parent
+			onClicked: {
+				if (listContainer.state === "collapsed")
+					listContainer.state = "";
+				else
+					listContainer.state = "collapsed";
+			}
 		}
 	}
 
-	CodeEditorExtensionManager {
-		headerView: headerPaneTabs;
-		rightView: rightPaneTabs;
-		editor: codeEditor
-	}
-
-	GridLayout
+	Rectangle
 	{
-		anchors.fill: parent
-		rows: 2
-		flow: GridLayout.TopToBottom
-		columnSpacing: 0
-		rowSpacing: 0
-		Rectangle {
-			Layout.row: 0
-			Layout.fillWidth: true
-			Layout.preferredHeight: 50
-			id: headerView
-			TabView {
-				id: headerPaneTabs
-				tabsVisible: false
-				antialiasing: true
-				anchors.fill: parent
-				style: TabViewStyle {
-					frameOverlap: 1
-					tab: Rectangle {}
-					frame: Rectangle {}
+		Layout.fillWidth: true
+		transitions: [
+			Transition {
+				NumberAnimation { target: listContainer; property: "opacity"; duration: 400 }
+				NumberAnimation { target: listContainer; property: "height"; duration: 400 }
+				NumberAnimation { target: listContainer.parent; property: "height"; duration: 400 }
+				NumberAnimation { target: dumpList; property: "opacity"; duration: 400 }
+				NumberAnimation { target: dumpList; property: "height"; duration: 400 }
+			}
+		]
+		states: [
+			State {
+				name: "collapsed"
+				PropertyChanges {
+					target: listContainer
+					height: 0
+					opacity: 0
+				}
+				PropertyChanges {
+					target: listContainer.parent
+					height: 20
+				}
+				PropertyChanges {
+					target: dumpList
+					height: 0
+					opacity: 0
 				}
 			}
-		}
-
-		SplitView {
-			resizing: false
-			Layout.row: 1
-			orientation: Qt.Horizontal;
-			Layout.fillWidth: true
-			Layout.preferredHeight: root.height - headerView.height;
-			Rectangle {
-				id: editorRect;
-				height: parent.height;
-				width: parent.width;
-				TextArea {
-					id: codeEditor
-					anchors.fill: parent;
-					font.family: "Monospace"
-					font.pointSize: 12
-					backgroundVisible: true;
-					textColor: "white"
-					tabChangesFocus: false
-					style: TextAreaStyle {
-							backgroundColor: "black"
-						}
-					Keys.onPressed: {
-							if (event.key === Qt.Key_Tab) {
-								codeEditor.insert(codeEditor.cursorPosition, "\t");
-								event.accepted = true;
-							}
-						}
-				}
-			}
-			Rectangle {
-				visible: false;
-				id: rightView;
-				property real panelRelWidth: 0.38
-				function show() {
-					visible = true;
-					editorRect.width = parent.width * (1 - 0.38)
-					codeEditor.focus = false;
-					rightPaneTabs.focus = true;
-				}
-				height: parent.height;
-				width: Layout.minimumWidth
-				Layout.minimumWidth: parent.width * 0.38
-				Rectangle {
-					anchors.fill: parent;
-					id: rightPaneView
-					TabView {
-						id: rightPaneTabs
-						tabsVisible: false
-						antialiasing: true
-						anchors.fill: parent
-						style: TabViewStyle {
-							frameOverlap: 1
-							tab: Rectangle {}
-							frame: Rectangle {}
-						}
-					}
-				}
-			}
+		]
+		id: listContainer
+		//border.width: 3
+		//border.color: "#deddd9"
+		anchors.top: listTitle.bottom
+		height: 223
+		anchors.topMargin: 5
+		width: parent.width
+		color: "transparent"
+		TextArea {
+			readOnly: true
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.topMargin: 5
+			anchors.leftMargin: 5
+			width: parent.width
+			height: parent.height
+			id: dumpList
+			text: content
 		}
 	}
 }

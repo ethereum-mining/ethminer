@@ -12,5 +12,24 @@
         <file>qml/AlertMessageDialog.qml</file>
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
+        <file>qml/CompilationStatus.qml</file>
+        <file>qml/js/main.js</file>
+        <file>qml/img/jumpintoback.png</file>
+        <file>qml/img/jumpintoforward.png</file>
+        <file>qml/img/jumpoutback.png</file>
+        <file>qml/img/jumpoutforward.png</file>
+        <file>qml/img/jumpoverback.png</file>
+        <file>qml/img/jumpoverforward.png</file>
+        <file>qml/ImageButton.qml</file>
+        <file>qml/DataDump.qml</file>
+        <file>qml/Storage.qml</file>
+        <file>qml/StepActionImage.qml</file>
+        <file>qml/img/jumpintobackdisabled.png</file>
+        <file>qml/img/jumpintoforwarddisabled.png</file>
+        <file>qml/img/jumpoutbackdisabled.png</file>
+        <file>qml/img/jumpoutforwarddisabled.png</file>
+        <file>qml/img/jumpoverbackdisabled.png</file>
+        <file>qml/DebugBasicInfo.qml</file>
+        <file>qml/js/ErrorLocationFormater.js</file>
     </qresource>
 </RCC>

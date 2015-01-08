@@ -15,7 +15,7 @@ ApplicationWindow {
 	minimumHeight: 300
 	title: qsTr("mix")
 
-	menuBar: MenuBar {
+	/*menuBar: MenuBar {
 		Menu {
 			title: qsTr("File")
 			MenuItem {
@@ -28,14 +28,18 @@ ApplicationWindow {
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
 		}
-	}
+	}*/
+
 	Component.onCompleted: {
 		setX(Screen.width / 2 - width / 2);
 		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
+		id: mainContent;
+		anchors.fill: parent
 	}
+
 
 	ModalDialog {
 		objectName: "dialog"
@@ -51,7 +55,10 @@ ApplicationWindow {
 		id: debugRunAction
 		text: "&Run"
 		shortcut: "F5"
-		onTriggered: debugModel.debugDeployment();
+		onTriggered: {
+			mainContent.ensureRightView();
+			debugModel.debugDeployment();
+		}
 	}
 
 	Action {

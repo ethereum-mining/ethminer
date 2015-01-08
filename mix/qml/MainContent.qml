@@ -5,6 +5,7 @@ import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 
 Rectangle {
+
 	objectName: "mainContent"
 	signal keyPressed(variant event)
 	focus: true
@@ -14,69 +15,118 @@ Rectangle {
 		root.keyPressed(event.key);
 	}
 	anchors.fill: parent
-	height: parent.height
-	width: parent.width;
-	id:root
+	id: root
+
+	function ensureRightView()
+	{
+		if (!rightView.visible)
+		{
+			rightView.show();
+		}
+	}
+
+	function hideRightView()
+	{
+		if (rightView.visible)
+		{
+			rightView.hide();
+		}
+	}
 
 	CodeEditorExtensionManager {
-		headerView: headerView;
-		rightView: rightView;
+		headerView: headerPaneTabs;
+		rightView: rightPaneTabs;
 		editor: codeEditor
 	}
 
-	Column {
-		anchors.fill: parent;
-		anchors.horizontalCenter: parent.horizontalCenter
-		anchors.verticalCenter: parent.verticalCenter
+	GridLayout
+	{
+		anchors.fill: parent
+		rows: 2
+		flow: GridLayout.TopToBottom
+		columnSpacing: 0
+		rowSpacing: 0
 		Rectangle {
+			Layout.row: 0
+			Layout.fillWidth: true
+			Layout.preferredHeight: 50
 			id: headerView
-			height: 50
-			width: parent.width;
-		}
-		Row {
-			anchors.fill: parent;
-			anchors.horizontalCenter: parent.horizontalCenter
-			anchors.verticalCenter: parent.verticalCenter
-			SplitView {
-				orientation: Qt.Vertical;
-				anchors.fill: parent;
-				Rectangle {
-					id: editorRect;
-					height: parent.height;
-					width: parent.width /2;
-					TextArea {
-						id: codeEditor
-						height: parent.height
-						width: parent.width
-						font.family: "Monospace"
-						font.pointSize: 12
-						anchors.centerIn: parent
-						tabChangesFocus: false
-						Keys.onPressed: {
-								if (event.key === Qt.Key_Tab) {
-									codeEditor.insert(codeEditor.cursorPosition, "\t");
-									event.accepted = true;
-								}
-							}
-					}
+			TabView {
+				id: headerPaneTabs
+				tabsVisible: false
+				antialiasing: true
+				anchors.fill: parent
+				style: TabViewStyle {
+					frameOverlap: 1
+					tab: Rectangle {}
+					frame: Rectangle {}
 				}
+			}
+		}
+
+		SplitView {
+			resizing: false
+			Layout.row: 1
+			orientation: Qt.Horizontal;
+			Layout.fillWidth: true
+			Layout.preferredHeight: root.height - headerView.height;
+			Rectangle {
+				id: editorRect;
+				height: parent.height;
+				width: parent.width;
+				TextArea {
+					id: codeEditor
+					anchors.fill: parent;
+					font.family: "Monospace"
+					font.pointSize: 12
+					backgroundVisible: true;
+					textColor: "white"
+					tabChangesFocus: false
+					style: TextAreaStyle {
+							backgroundColor: "black"
+						}
+					Keys.onPressed: {
+							if (event.key === Qt.Key_Tab) {
+								codeEditor.insert(codeEditor.cursorPosition, "\t");
+								event.accepted = true;
+							}
+						}
+				}
+			}
+			Rectangle {
+
+				Keys.onEscapePressed:
+				{
+					hide();
+				}
+
+				visible: false;
+				id: rightView;
+				property real panelRelWidth: 0.38
+				function show() {
+					visible = true;
+					editorRect.width = parent.width * (1 - 0.38)
+				}
+
+				function hide() {
+					visible = false;
+					editorRect.width = parent.width;
+				}
+				height: parent.height;
+				width: Layout.minimumWidth
+				Layout.minimumWidth: parent.width * 0.38
 				Rectangle {
-					id: rightView;
-					height: parent.height;
-					width: parent.width /2;
-					Rectangle {
-						id: debugWindow;
-					}
-					Rectangle {
-						anchors.right: parent.right
-						id: rightPaneView
-						width: parent.width * 0.2
-						height: parent.height
-						Layout.minimumWidth: 20
-						TabView {
-							id: rightPaneTabs
-							antialiasing: true
-							anchors.fill: parent
+					anchors.fill: parent;
+					id: rightPaneView
+					TabView {
+						id: rightPaneTabs
+						tabsVisible: false
+						antialiasing: true
+						anchors.fill: parent
+						style: TabViewStyle {
+							frameOverlap: 1
+							tab: Rectangle {}
+							frame: Rectangle {}
 						}
 					}
 				}

@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Extension.h"
+#include "CodeModel.h"
 
 namespace dev
 {
@@ -32,6 +33,7 @@ namespace mix
 class ConstantCompilationControl: public Extension
 {
 	Q_OBJECT
+	Q_PROPERTY(CompilationResult* result READ result CONSTANT)
 
 public:
 	ConstantCompilationControl(AppContext* _appContext);
@@ -39,6 +41,7 @@ public:
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
+	CompilationResult* result() const;
 
 private:
 	void resetOutPut();

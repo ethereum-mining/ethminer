@@ -37,11 +37,12 @@ using namespace dev::mix;
 ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
 {
 	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
+	_context->appEngine()->rootContext()->setContextProperty("constantCompilation", this);
 }
 
 QString ConstantCompilationControl::contentUrl() const
 {
-	return QStringLiteral("qrc:/qml/BasicContent.qml");
+	return QStringLiteral("qrc:/qml/CompilationStatus.qml");
 }
 
 QString ConstantCompilationControl::title() const
@@ -53,30 +54,19 @@ void ConstantCompilationControl::start() const
 {
 }
 
+CompilationResult* ConstantCompilationControl::result() const
+{
+	return m_ctx->codeModel()->code();
+}
+
 void ConstantCompilationControl::update()
 {
-	auto result = m_ctx->codeModel()->code();
-
-	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
-	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
-	if (result->successfull())
-	{
-		status->setProperty("text", "succeeded");
-		status->setProperty("color", "green");
-		content->setProperty("text", result->assemblyCode());
-	}
-	else
-	{
-		status->setProperty("text", "failure");
-		status->setProperty("color", "red");
-		content->setProperty("text", result->compilerMessage());
-	}
+	QObject* ctrl = m_view->findChild<QObject*>("constantCompilationStatus", Qt::FindChildrenRecursively);
+	QMetaObject::invokeMethod(ctrl, "update");
 }
 
 void ConstantCompilationControl::resetOutPut()
 {
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
-	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
 	status->setProperty("text", "");
-	content->setProperty("text", "");
 }

@@ -66,13 +66,6 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 	return std::make_tuple(codeStr, QPointer<QQMLMap>(new QQMLMap(codeMapping)));
 }
 
-QString DebuggingStateWrapper::gasLeft()
-{
-	std::ostringstream ss;
-	ss << std::dec << (m_state.gas - m_state.gasCost);
-	return QString::fromStdString(ss.str());
-}
-
 QString DebuggingStateWrapper::gasCost()
 {
 	std::ostringstream ss;
@@ -87,22 +80,32 @@ QString DebuggingStateWrapper::gas()
 	return QString::fromStdString(ss.str());
 }
 
-QString DebuggingStateWrapper::debugStack()
+QString DebuggingStateWrapper::newMemSize()
 {
-	QString stack;
+	std::ostringstream ss;
+	ss << std::dec << m_state.newMemSize;
+	return QString::fromStdString(ss.str());
+}
+
+QStringList DebuggingStateWrapper::debugStack()
+{
+	QStringList stack;
 	for (auto i: m_state.stack)
-		stack.prepend(QString::fromStdString(prettyU256(i)) + "\n");
+		stack.append(QString::fromStdString(prettyU256(i)));
 
 	return stack;
 }
 
-QString DebuggingStateWrapper::debugStorage()
+QStringList DebuggingStateWrapper::debugStorage()
 {
-	std::stringstream s;
+	QStringList storage;
 	for (auto const& i: m_state.storage)
+	{
+		std::stringstream s;
 		s << "@" << prettyU256(i.first) << " " << prettyU256(i.second);
-
-	return QString::fromStdString(s.str());
+		storage.append(QString::fromStdString(s.str()));
+	}
+	return storage;
 }
 
 QString DebuggingStateWrapper::debugMemory()
@@ -133,6 +136,13 @@ QString DebuggingStateWrapper::headerInfo()
 {
 	std::ostringstream ss;
 	ss << std::dec << " " << QApplication::tr("STEP").toStdString() << " : " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " " << QApplication::tr("words").toStdString() << " | " << QApplication::tr("COST").toStdString() << " : " << std::dec << m_state.gasCost <<  "  | " << QApplication::tr("GAS").toStdString() << " : " << std::dec << m_state.gas;
+	return QString::fromStdString(ss.str());
+}
+
+QString DebuggingStateWrapper::instruction()
+{
+	std::ostringstream ss;
+	ss << dev::eth::instructionInfo(m_state.inst).name;
 	return QString::fromStdString(ss.str());
 }
 
