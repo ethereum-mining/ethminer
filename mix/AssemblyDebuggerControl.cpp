@@ -33,6 +33,7 @@
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 
+
 using namespace dev::eth;
 using namespace dev::mix;
 
@@ -50,7 +51,7 @@ QString toQString(dev::u256 _value)
 	return QString::fromStdString(s.str());
 }
 
-AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
+AssemblyDebuggerControl::AssemblyDebuggerControl(dev::mix::AppContext* _context):
 	Extension(_context, ExtensionDisplayBehavior::ModalDialog), m_running(false)
 {
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
@@ -111,7 +112,7 @@ void AssemblyDebuggerControl::debugState(QVariantMap _state)
 	executeSequence(transactionSequence, balance);
 }
 
-void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance)
+void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> const& _sequence, dev::u256 _balance)
 {
 	if (m_running)
 		throw (std::logic_error("debugging already running"));
