@@ -56,7 +56,7 @@ struct NodeInfo
 	NodeId id;										///< Their id/public key.
 	unsigned index;									///< Index into m_nodesList
 	
-	// p2p: move to NodeEndpoint
+	// p2p: move to NodeIPEndpoint
 	bi::tcp::endpoint address;						///< As reported from the node itself.
 	
 	// p2p: This information is relevant to the network-stack, ex: firewall, rather than node itself
@@ -73,14 +73,14 @@ struct NodeInfo
 	int score = 0;									///< All time cumulative.
 	int rating = 0;									///< Trending.
 
-	// p2p: move to NodeEndpoint
+	// p2p: move to NodeIPEndpoint
 	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
-	// p2p: move to NodeEndpoint
+	// p2p: move to NodeIPEndpoint
 	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
 
-	// p2p: move to NodeEndpoint
+	// p2p: move to NodeIPEndpoint
 	unsigned fallbackSeconds() const;
-	// p2p: move to NodeEndpoint
+	// p2p: move to NodeIPEndpoint
 	bool shouldReconnect() const { return std::chrono::system_clock::now() > lastAttempted + std::chrono::seconds(fallbackSeconds()); }
 
 	// p2p: This has two meanings now. It's possible UDP works but TPC is down (unable to punch hole).
@@ -114,6 +114,7 @@ using Nodes = std::vector<NodeInfo>;
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  * @todo determinePublic: ipv6, udp
+ * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  */
 class Host: public Worker
 {
@@ -128,6 +129,9 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 	
+	/// Default host for current version of client.
+	static std::string pocHost();
+	
 	/// Basic peer network protocol version.
 	unsigned protocolVersion() const;
 
@@ -137,10 +141,12 @@ public:
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
+	
+	/// Manually add node.
+	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort = 30303, unsigned short _udpPort = 30303);
 
 	/// Connect to a peer explicitly.
-	static std::string pocHost();
-	void connect(NodeId const& _node, std::string const& _addr, unsigned short _port = 30303) noexcept;
+	void connect(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort = 30303, unsigned short _udpPort = 30303) noexcept;
 	void connect(NodeId const& _node, bi::tcp::endpoint const& _ep);
 	void connect(std::shared_ptr<NodeInfo> const& _n);
 
@@ -192,6 +198,8 @@ public:
 	std::shared_ptr<NodeInfo> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<NodeInfo>(); }
 
 private:
+	KeyPair getHostIdentifier();
+	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
@@ -213,9 +221,11 @@ private:
 	
 	/// Shutdown network. Not thread-safe; to be called only by worker.
 	virtual void doneWorking();
+	
+	/// Add node
+	void addNode(Node const& _nodeInfo) { m_nodeTable->addNode(_nodeInfo); }
 
-	std::shared_ptr<NodeInfo> noteNode(NodeId _id, bi::tcp::endpoint _a, NodeId _oldId = NodeId());
-	Nodes potentialPeers(RangeMask<unsigned> const& _known);
+//	Nodes potentialPeers(RangeMask<unsigned> const& _known);
 
 	bool m_run = false;													///< Whether network is running.
 	std::mutex x_runTimer;												///< Start/stop mutex.
@@ -254,10 +264,10 @@ private:
 	/// TODO: mutex; replace with nodeTable
 	std::map<NodeId, std::shared_ptr<NodeInfo> > m_nodes;
 
-	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
-	std::vector<NodeId> m_nodesList;
+//	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
+//	std::vector<NodeId> m_nodesList;
 
-	RangeMask<unsigned> m_private;										///< Indices into m_nodesList over to which nodes are private.
+//	RangeMask<unsigned> m_private;										///< Indices into m_nodesList over to which nodes are private.
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 	

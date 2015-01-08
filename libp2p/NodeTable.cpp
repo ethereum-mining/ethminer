@@ -24,8 +24,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-NodeEntry::NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::dist(_src.id,_pubk)) {}
-NodeEntry::NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)), distance(NodeTable::dist(_src.id,_pubk)) {}
+NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::dist(_src.id,_pubk)) {}
+NodeEntry::NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeIPEndpoint(_udp)), distance(NodeTable::dist(_src.id,_pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udp, bi::tcp::endpoint _ep):
 	m_node(Node(_alias.pub(), bi::udp::endpoint())),
@@ -241,14 +241,23 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 
 shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
 {
+	auto node = Node(_pubk, NodeIPEndpoint(_udp, _tcp));
+	return move(addNode(node));
+}
+
+shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
+{
 	shared_ptr<NodeEntry> ret;
 	Guard l(x_nodes);
-	if (auto n = m_nodes[_pubk])
+	if (auto n = m_nodes[_node.id])
 		ret = n;
 	else
 	{
-		ret.reset(new NodeEntry(m_node, _pubk, _udp));
-		m_nodes[_pubk] = ret;
+		ret.reset(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
+		m_nodes[_node.id] = ret;
+		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
+		p.sign(m_secret);
+		m_socketPtr->send(p);
 	}
 	return move(ret);
 }

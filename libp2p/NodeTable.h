@@ -31,37 +31,45 @@ namespace dev
 namespace p2p
 {
 
-struct NodeDefaultEndpoint
+/**
+ * @brief IPv4,UDP/TCP endpoints.
+ */
+struct NodeIPEndpoint
 {
-	NodeDefaultEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
-	NodeDefaultEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
-	NodeDefaultEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
-	
+	NodeIPEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
+	NodeIPEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
+	NodeIPEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
+
 	bi::udp::endpoint udp;
 	bi::tcp::endpoint tcp;
 };
 
 struct Node
 {
-	Node(Public _pubk, NodeDefaultEndpoint _udp): id(_pubk), endpoint(_udp) {}
-	Node(Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeDefaultEndpoint(_udp)) {}
+	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
+	Node(Public _pubk, bi::udp::endpoint _udp, bool _required = false): Node(_pubk, NodeIPEndpoint(_udp), _required) {}
 	
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
 	
 	NodeId id;
-	NodeDefaultEndpoint endpoint;
+	
+	/// Endpoints by which we expect to reach node.
+	NodeIPEndpoint endpoint;
+	
+	/// If true, node will not be removed from Node list.
+	bool required = false;
 };
 
-	
+
 /**
  * NodeEntry
  * @brief Entry in Node Table
  */
 struct NodeEntry: public Node
 {
-	NodeEntry(Node _src, Public _pubk, NodeDefaultEndpoint _gw); //: Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
-	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp); //: Node(_pubk, NodeDefaultEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
+	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw); //: Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
+	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp); //: Node(_pubk, NodeIPEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
 
 	const unsigned distance;	///< Node's distance from _src (see constructor).
 };
@@ -131,9 +139,12 @@ public:
 	
 	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
-	/// Add node details and attempt adding to node table if node responds to ping. NodeEntry will immediately be returned and may be used for required connectivity.
+	/// Add node. Node will be pinged if it's not already known.
 	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp = bi::tcp::endpoint());
 	
+	/// Add node. Node will be pinged if it's not already known.
+	std::shared_ptr<NodeEntry> addNode(Node const& _node);
+
 	void join();
 	
 	NodeEntry root() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
@@ -141,7 +152,6 @@ public:
 	std::list<NodeEntry> state() const;
 	
 	NodeEntry operator[](NodeId _id);
-	
 	
 protected:
 	struct NodeBucket
@@ -195,10 +205,10 @@ protected:
 	Secret m_secret;											///< This nodes secret key.
 
 	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
-	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< NodeId -> Node table
+	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< Nodes
 
 	mutable Mutex x_state;
-	std::array<NodeBucket, s_bins> m_state;					///< State table of binned nodes.
+	std::array<NodeBucket, s_bins> m_state;					///< State of p2p node network.
 
 	Mutex x_evictions;
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
