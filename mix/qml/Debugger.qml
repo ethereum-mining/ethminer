@@ -4,266 +4,329 @@ import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import "js/Debugger.js" as Debugger
+import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Rectangle {
+	id: debugPanel
+	objectName: "debugPanel"
 	anchors.fill: parent;
-	color: "lightgrey"
-	Component.onCompleted: Debugger.init();
-	Rectangle {
-		color: "transparent"
-		id: headerInfo
-		anchors.horizontalCenter: parent.horizontalCenter
-		width: parent.width
-		height: 60
-		anchors.top: parent.top
-		Column {
-			width: parent.width
-			height: parent.height
-			Rectangle {
-				color: "transparent"
-				width: parent.width
-				height: 30
-				Label {
-					anchors.centerIn: parent
-					font.family: "Verdana"
-					font.pointSize: 9
-					font.italic: true
-					id: headerInfoLabel
-				}
-			}
-			Rectangle {
-				color: "transparent"
-				width: parent.width
-				anchors.horizontalCenter: parent.horizontalCenter
-				height: 30
-				ListView {
-					orientation: ListView.Horizontal
-					anchors.centerIn: parent;
-					width: parent.width
-					id: headerReturnList
-					delegate: renderDelegateReturnValues
-				}
-				Component {
-					id: renderDelegateReturnValues
-					Item {
-						id: wrapperItem
-						width: 80
-						Text {
-							anchors.centerIn: parent
-							text: variable.declaration.name + " = " + variable.value
-							font.pointSize: 9
-						}
-					}
-				}
-			}
-		}
-	}
+	color: "#ededed"
 
-	Keys.onPressed: {
+	Keys.onPressed:
+	{
 		if (event.key === Qt.Key_F10)
 			Debugger.moveSelection(1);
 		else if (event.key === Qt.Key_F9)
 			Debugger.moveSelection(-1);
 	}
 
-	Rectangle {
-		color: "transparent"
-		id: stateListContainer
-		focus: true
-		anchors.topMargin: 10
-		anchors.top: headerInfo.bottom
+	function init()
+	{
+		if (constantCompilation.result.successfull)
+		{
+			Debugger.init();
+			debugScrollArea.visible = true;
+			compilationErrorArea.visible = false;
+			machineStates.visible = true;
+		}
+		else
+		{
+			debugScrollArea.visible = false;
+			compilationErrorArea.visible = true;
+			machineStates.visible = false;
+			console.log(constantCompilation.result.compilerMessage);
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(constantCompilation.result.compilerMessage, false);
+			errorLocation.text = errorInfo.errorLocation;
+			errorDetail.text = errorInfo.errorDetail;
+			errorLine.text = errorInfo.errorLine;
+		}
+		forceActiveFocus();
+	}
+
+	Rectangle
+	{
+		visible: false;
+		id: compilationErrorArea
+		width: parent.width - 20
+		height: 500
+		color: "#ededed"
 		anchors.left: parent.left
-		height: parent.height - 70
-		width: parent.width * 0.5
-
-		ListView {
+		anchors.top: parent.top
+		anchors.margins: 10
+		ColumnLayout
+		{
+			width: parent.width
 			anchors.top: parent.top
-			height: parent.height * 0.60
-			width: 200
-			anchors.horizontalCenter: parent.horizontalCenter
-			id: statesList
-			model: humanReadableExecutionCode
-			delegate: renderDelegate
-			highlight: highlightBar
-			highlightFollowsCurrentItem: true
-		}
-
-		Component {
-			id: highlightBar
-			Rectangle {
-				height: statesList.currentItem.height
-				width: statesList.currentItem.width
-				border.color: "orange"
-				border.width: 1
-				Behavior on y { SpringAnimation { spring: 2; damping: 0.1 } }
-			}
-		}
-
-		Component {
-			id: renderDelegate
-			Item {
-				id: wrapperItem
-				height: 20
-				width: parent.width
-				Text {
-					anchors.centerIn: parent
-					text: line
-					font.pointSize: 9
+			spacing: 25
+			RowLayout
+			{
+				height: 100
+				Image {
+					id: compileFailed
+					source: "qrc:/qml/img/compilfailed.png"
+				}
+				ColumnLayout
+				{
+					Text {
+						color: "red"
+						id: errorLocation
+					}
+					Text {
+						color: "#4a4a4a"
+						id: errorDetail
+					}
 				}
 			}
-		}
 
-		Rectangle {
-			id: callStackPanel
-			anchors.top: statesList.bottom
-			height: parent.height * 0.35
-			width: parent.width
-			anchors.topMargin: 15
-			color: "transparent"
-			Label {
-				id: callStackLabel
-				anchors.bottomMargin: 10
-				horizontalAlignment: "AlignHCenter"
-				font.family: "Verdana"
-				font.pointSize: 8
-				font.letterSpacing: 2
-				width: parent.width
-				height: 15
-				text: qsTr("callstack")
+			Rectangle
+			{
+				width: parent.width - 6
+				height: 2
+				color: "#d0d0d0"
 			}
 
-			ListView {
-				height: parent.height - 15
-				width: 200
-				anchors.top: callStackLabel.bottom
-				anchors.horizontalCenter: parent.horizontalCenter
-				id: levelList
-				delegate: Component {
-					Item {
-						Text {
-							font.family: "Verdana"
-							font.pointSize: 8
-							text: modelData
-						}
-					}
+			RowLayout
+			{
+				Text
+				{
+					color: "#4a4a4a"
+					id: errorLine
 				}
 			}
 		}
 	}
 
-	Rectangle {
-		color: "transparent"
-		anchors.topMargin: 5
-		anchors.bottomMargin: 10
-		anchors.rightMargin: 10
-		height: parent.height - 30
-		width: parent.width * 0.5
-		anchors.right: parent.right
-		anchors.top: headerInfo.bottom
-		anchors.bottom: parent.bottom
 
-		Rectangle {
-			id: debugStack
+	Flickable {
+		id: debugScrollArea
+		flickableDirection: Flickable.VerticalFlick
+		anchors.fill: parent
+		contentHeight: machineStates.height
+		contentWidth: machineStates.width
+
+		GridLayout
+		{
+			property int sideMargin: 10
+			id: machineStates
 			anchors.top: parent.top
-			width: parent.width
-			height: parent.height * 0.25
-			color: "transparent"
-			Label {
-				horizontalAlignment: "AlignHCenter"
-				font.family: "Verdana"
-				font.pointSize: 8
-				width: parent.width
-				height: 15
-				anchors.top : parent.top
-				text: qsTr("debug stack")
-			}
-			TextArea {
-				anchors.bottom: parent.bottom
-				width: parent.width
-				font.family: "Verdana"
-				font.pointSize: 8
-				height: parent.height - 15
-				id: debugStackTxt
-				readOnly: true;
-			}
-		}
+			anchors.topMargin: 15
+			anchors.left: parent.left;
+			anchors.leftMargin: machineStates.sideMargin
+			anchors.right: parent.right;
+			anchors.rightMargin: machineStates.sideMargin
+			flow: GridLayout.TopToBottom
+			//columnSpacing: 7
+			rowSpacing: 15
+			RowLayout {
+				// step button + slider
+				spacing: 10
+				height: 27
+				width: debugPanel.width
+				RowLayout {
+					id: jumpButtons
+					spacing: 15
+					width: 250
+					height: parent.height
 
-		Rectangle {
-			id: debugMemory
-			anchors.top: debugStack.bottom
-			width: parent.width
-			height: parent.height * 0.25
-			color: "transparent"
-			Label {
-				horizontalAlignment: "AlignHCenter"
-				font.family: "Verdana"
-				font.pointSize: 8
-				width: parent.width
-				height: 15
-				anchors.top : parent.top
-				text: qsTr("debug memory")
-			}
-			TextArea {
-				anchors.bottom: parent.bottom
-				width: parent.width
-				font.family: "Verdana"
-				font.pointSize: 8
-				height: parent.height - 15
-				id: debugMemoryTxt
-				readOnly: true;
-			}
-		}
+					StepActionImage
+					{
+						id: jumpoutbackaction;
+						source: "qrc:/qml/img/jumpoutback.png"
+						disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
+						onClicked: Debugger.stepOutBack()
+					}
 
-		Rectangle {
-			id: debugStorage
-			anchors.top: debugMemory.bottom
-			width: parent.width
-			height: parent.height * 0.25
-			color: "transparent"
-			Label {
-				horizontalAlignment: "AlignHCenter"
-				font.family: "Verdana"
-				font.pointSize: 8
-				width: parent.width
-				height: 15
-				anchors.top : parent.top
-				text: qsTr("debug storage")
-			}
-			TextArea {
-				anchors.bottom: parent.bottom
-				width: parent.width
-				font.family: "Verdana"
-				font.pointSize: 8
-				height: parent.height - 15
-				id: debugStorageTxt
-				readOnly: true;
-			}
-		}
+					StepActionImage
+					{
+						id: jumpintobackaction
+						source: "qrc:/qml/img/jumpintoback.png"
+						disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
+						onClicked: Debugger.stepIntoBack()
+					}
 
-		Rectangle {
-			id: debugCallData
-			anchors.top: debugStorage.bottom
-			width: parent.width
-			height: parent.height * 0.25
-			color: "transparent"
-			Label {
-				horizontalAlignment: "AlignHCenter"
-				font.family: "Verdana"
-				font.pointSize: 8
-				width: parent.width
-				height: 15
-				anchors.top : parent.top
-				text: qsTr("debug calldata")
+					StepActionImage
+					{
+						id: jumpoverbackaction
+						source: "qrc:/qml/img/jumpoverback.png"
+						disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
+						onClicked: Debugger.stepOverBack()
+					}
+
+					StepActionImage
+					{
+						id: jumpoverforwardaction
+						source: "qrc:/qml/img/jumpoverforward.png"
+						disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
+						onClicked: Debugger.stepOverForward()
+					}
+
+					StepActionImage
+					{
+						id: jumpintoforwardaction
+						source: "qrc:/qml/img/jumpintoforward.png"
+						disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
+						onClicked: Debugger.stepIntoForward()
+					}
+
+					StepActionImage
+					{
+						id: jumpoutforwardaction
+						source: "qrc:/qml/img/jumpoutforward.png"
+						disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
+						onClicked: Debugger.stepOutForward()
+					}
+				}
+
+				Rectangle {
+					color: "transparent"
+					width: 250
+					height: parent.height
+					Slider {
+						id: statesSlider
+						anchors.fill: parent
+						tickmarksEnabled: true
+						stepSize: 1.0
+						height: parent.height
+						onValueChanged: Debugger.jumpTo(value);
+						style: SliderStyle {
+							groove: Rectangle {
+								implicitHeight: 3
+								color: "#7da4cd"
+								radius: 8
+							}
+							handle: Rectangle {
+								anchors.centerIn: parent
+								color: control.pressed ? "white" : "lightgray"
+								border.color: "gray"
+								border.width: 2
+								implicitWidth: 10
+								implicitHeight: 10
+								radius: 12
+							}
+						}
+					}
+				}
 			}
-			TextArea {
-				anchors.bottom: parent.bottom
-				width: parent.width
-				height: parent.height - 15
-				font.family: "Verdana"
-				font.pointSize: 8
-				font.letterSpacing: 2
-				id: debugCallDataTxt
-				readOnly: true;
+
+			RowLayout {
+				// Assembly code
+				width: debugPanel.width
+				height: 400
+				spacing: 10
+
+				Rectangle
+				{
+					width: 170
+					height: parent.height
+					border.width: 3
+					border.color: "#deddd9"
+					color: "white"
+
+					ListView {
+						anchors.fill: parent
+						anchors.topMargin: 3
+						anchors.bottomMargin: 3
+						clip: true
+						id: statesList
+						delegate: renderDelegate
+						highlight: highlightBar
+						highlightFollowsCurrentItem: true
+					}
+
+					Component {
+						id: highlightBar
+						Rectangle {
+							height: statesList.currentItem.height
+							width: statesList.currentItem.width
+							color: "#4b8fe2"
+							Behavior on y { SpringAnimation { spring: 2; damping: 0.1 } }
+						}
+					}
+
+					Component {
+						id: renderDelegate
+						Item {
+							id: wrapperItem
+							height: 20
+							width: parent.width
+							Text {
+								color: parent.ListView.isCurrentItem ? "white" : "black"
+								anchors.centerIn: parent
+								text: line
+								font.pointSize: 9
+							}
+						}
+					}
+				}
+
+				ColumnLayout {
+					width: 250
+					height: parent.height
+					Rectangle {
+						// Info
+						width: parent.width
+						id: basicInfoColumn
+						height: 150
+						color: "transparent"
+						DebugBasicInfo {
+							id: basicInfo
+							width: parent.width
+							height: parent.height
+						}
+					}
+
+					Rectangle {
+						// Stack
+						height: 250
+						width: parent.width
+						color: "transparent"
+
+						Storage {
+							id: stack
+							width: parent.width
+							title : qsTr("Stack")
+						}
+					}
+				}
+			}
+
+			Rectangle {
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 2;
+				color: "#e3e3e3"
+				radius: 3
+			}
+
+			Storage {
+				id: storage
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				title : qsTr("Storage")
+			}
+
+			Rectangle {
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 2;
+				color: "#e3e3e3"
+				radius: 3
+			}
+
+			Storage {
+				id: memoryDump
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				title: qsTr("Memory Dump")
+			}
+
+			Rectangle {
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 2;
+				color: "#e3e3e3"
+				radius: 3
+			}
+
+			Storage {
+				id: callDataDump
+				width: debugPanel.width;
+				title: qsTr("Call data")
 			}
 		}
 	}

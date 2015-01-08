@@ -80,9 +80,9 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 		try
 		{
 			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightView)
-				_ext->addContentOn(m_rightView);
+				_ext->addTabOn(m_rightView);
 			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::HeaderView)
-				_ext->addContentOn(m_headerView);
+				_ext->addTabOn(m_headerView);
 		}
 		catch (...)
 		{

@@ -55,7 +55,7 @@ QString toQString(dev::u256 _value)
 	return QString::fromStdString(s.str());
 }
 
-AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::ModalDialog)
+AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightView)
 {
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -128,7 +128,7 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, dev::Address
 {
 	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())
-		m_ctx->displayMessageDialog("debugger","compilation failed");
+		return;
 	else
 	{
 		ContractCallDataEncoder c;
@@ -194,10 +194,11 @@ void AssemblyDebuggerControl::updateGUI(bool _success, DebuggingStatusResult con
 		m_appEngine->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
 		m_appEngine->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
 		m_appEngine->rootContext()->setContextProperty("contractCallReturnParameters", QVariant::fromValue(new QVariableDefinitionList(_returnParam)));
-		this->addContentOn(this);
 	}
-	else
-		m_ctx->displayMessageDialog(QApplication::tr("debugger"), QApplication::tr("compilation failed"));
+
+	QVariant returnValue;
+	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
+	QMetaObject::invokeMethod(debugPanel, "init", Q_RETURN_ARG(QVariant, returnValue));
 }
 
 void AssemblyDebuggerControl::runTransaction(TransactionSettings const& _tr)
