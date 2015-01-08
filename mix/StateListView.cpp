@@ -14,40 +14,34 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file KeyEventManager.h
- * @author Yann yann@ethdev.com
+/** @file StateListView.cpp
+ * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2014
- * Used as an event handler for all classes which need keyboard interactions
+ * Ethereum IDE client.
  */
 
-#pragma once
+#include <QQuickItem>
+#include <QApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QDebug>
+#include "StateListView.h"
+using namespace dev::mix;
 
-#include <QObject>
-
-namespace dev
+StateListView::StateListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightView)
 {
-namespace mix
-{
-
-class KeyEventManager: public QObject
-{
-	Q_OBJECT
-
-public:
-	KeyEventManager() {}
-	/// Allows _receiver to handle key pressed event.
-	void registerEvent(const QObject* _receiver, const char* _slot);
-	/// Unregister _receiver.
-	void unRegisterEvent(QObject* _receiver);
-
-signals:
-	/// Emited when a key is pressed.
-	void onKeyPressed(int _event);
-
-public slots:
-	/// Called when a key is pressed.
-	void keyPressed(QVariant _event);
-};
-
 }
+
+QString StateListView::contentUrl() const
+{
+	return QStringLiteral("qrc:/qml/StateList.qml");
+}
+
+QString StateListView::title() const
+{
+	return QApplication::tr("State");
+}
+
+void StateListView::start() const
+{
 }

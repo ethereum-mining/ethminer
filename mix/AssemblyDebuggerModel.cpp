@@ -17,6 +17,10 @@
  * used as a model to debug contract assembly code.
  */
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <QApplication>
 #include <libdevcore/Common.h>
 #include <libevm/VM.h>
@@ -25,7 +29,6 @@
 #include <libethereum/ExtVM.h>
 #include "AssemblyDebuggerModel.h"
 #include "AppContext.h"
-#include "TransactionListModel.h"
 #include "DebuggingStateWrapper.h"
 
 using namespace std;

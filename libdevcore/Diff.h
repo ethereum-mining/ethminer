@@ -14,36 +14,39 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file KeyEventManager.cpp
- * @author Yann yann@ethdev.com
+/** @file Diff.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Used as an event handler for all classes which need keyboard interactions.
- * Can be improve by adding the possibility to register to a specific key.
  */
 
-#include <QDebug>
-#include <QKeySequence>
-#include "KeyEventManager.h"
+#pragma once
 
 namespace dev
 {
-namespace mix
-{
 
-void KeyEventManager::registerEvent(const QObject* _receiver, const char* _slot)
+enum class ExistDiff
 {
-	QObject::connect(this, SIGNAL(onKeyPressed(int)), _receiver, _slot);
+	Same,
+	New,
+	Dead
+};
+
+template <class T>
+class Diff
+{
+public:
+	Diff() {}
+	Diff(T _from, T _to): m_from(_from), m_to(_to) {}
+
+	T const& from() const { return m_from; }
+	T const& to() const { return m_to; }
+
+	explicit operator bool() const { return m_from != m_to; }
+
+private:
+	T m_from;
+	T m_to;
+};
+
 }
 
-void KeyEventManager::unRegisterEvent(QObject* _receiver)
-{
-	QObject::disconnect(_receiver);
-}
-
-void KeyEventManager::keyPressed(QVariant _event)
-{
-	emit onKeyPressed(_event.toInt());
-}
-
-}
-}

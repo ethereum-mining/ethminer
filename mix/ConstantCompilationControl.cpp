@@ -55,7 +55,7 @@ void ConstantCompilationControl::start() const
 
 void ConstantCompilationControl::update()
 {
-	auto result = m_ctx->codeModel()->lastCompilationResult();
+	auto result = m_ctx->codeModel()->code();
 
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);

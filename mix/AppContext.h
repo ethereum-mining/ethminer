@@ -47,7 +47,6 @@ namespace mix
 {
 
 class CodeModel;
-class KeyEventManager;
 /**
  * @brief Provides access to application scope variable.
  */
@@ -60,26 +59,25 @@ public:
 	AppContext(QQmlApplicationEngine* _engine);
 	~AppContext();
 	QQmlApplicationEngine* appEngine();
-	/// Initialize KeyEventManager (used to handle key pressed event).
-	void initKeyEventManager(QObject* _obj);
-	/// Get the current KeyEventManager instance.
-	KeyEventManager* getKeyEventManager();
 	/// Get code model
 	CodeModel* codeModel() { return m_codeModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Load project settings
+	void loadProject();
+signals:
+	void projectLoaded(QString const& _json);
 
 private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
-	std::unique_ptr<KeyEventManager> m_keyEventManager;
 	std::unique_ptr<CodeModel> m_codeModel;
 
 public slots:
 	/// Delete the current instance when application quit.
 	void quitApplication() {}
-	/// Initialize components after the loading of the main QML view.
-	void resourceLoaded(QObject* _obj, QUrl _url);
+
+	void saveProject(QString const& _json);
 };
 
 }

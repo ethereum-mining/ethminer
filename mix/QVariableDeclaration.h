@@ -35,6 +35,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 	Q_PROPERTY(QString type READ type CONSTANT)
 
 public:
+	QVariableDeclaration() {}
 	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
 	QString type() const { return m_type; }
 private:
@@ -43,5 +44,3 @@ private:
 
 }
 }
-
-Q_DECLARE_METATYPE(dev::mix::QVariableDeclaration*)

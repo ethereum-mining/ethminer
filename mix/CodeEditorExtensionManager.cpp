@@ -28,7 +28,7 @@
 #include <libevm/VM.h>
 #include "ConstantCompilationControl.h"
 #include "AssemblyDebuggerControl.h"
-#include "TransactionListView.h"
+#include "StateListView.h"
 #include "AppContext.h"
 #include "MixApplication.h"
 #include "CodeModel.h"
@@ -66,12 +66,11 @@ void CodeEditorExtensionManager::initExtensions()
 {
 	initExtension(std::make_shared<ConstantCompilationControl>(m_appContext));
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
-	std::shared_ptr<TransactionListView> tr = std::make_shared<TransactionListView>(m_appContext);
-	QObject::connect(tr->model(), &TransactionListModel::transactionStarted, debug.get(), &AssemblyDebuggerControl::runTransaction);
+	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
 	QObject::connect(m_doc, &QTextDocument::contentsChanged, [=]() { m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText()); });
 
 	initExtension(debug);
-	initExtension(tr);
+	initExtension(stateList);
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)

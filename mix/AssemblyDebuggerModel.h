@@ -19,6 +19,10 @@
 
 #pragma once
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
 #include <QObject>
 #include <QList>
 #include <libdevcore/Common.h>
@@ -26,12 +30,30 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "DebuggingStateWrapper.h"
-#include "TransactionListModel.h"
 
 namespace dev
 {
 namespace mix
 {
+
+/// Backend transaction config class
+struct TransactionSettings
+{
+	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+
+	/// Contract function name
+	QString functionId;
+	/// Transaction value
+	u256 value;
+	/// Gas
+	u256 gas;
+	/// Gas price
+	u256 gasPrice;
+	/// Mapping from contract function parameter name to value
+	std::map<QString, u256> parameterValues;
+};
+
 
 /**
  * @brief Long-life object for managing all executions.

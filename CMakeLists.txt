@@ -18,6 +18,7 @@ function(createDefaultCacheConfig)
 	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
+	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
 endfunction()
 
 
@@ -38,6 +39,10 @@ function(configureProject)
 			message(FATAL_ERROR "VM tracing requires debug.")
 		endif ()
 	endif ()
+
+	if (EVMJIT)
+		add_definitions(-DETH_EVMJIT)
+	endif()
 endfunction()
 
 
@@ -84,7 +89,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -106,6 +111,13 @@ include(EthDependencies)
 include(EthExecutableHelper)
 
 createBuildInfo()
+
+if (EVMJIT)
+	# Workaround for Ubuntu broken LLVM package
+	link_directories(/usr/lib/llvm-3.5/lib)
+	
+	add_subdirectory(evmjit)
+endif()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
