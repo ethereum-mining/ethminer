@@ -89,6 +89,7 @@ void interactiveHelp()
 		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
+		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -144,6 +145,8 @@ string credits(bool _interactive = false)
 void version()
 {
 	cout << "eth version " << dev::Version << endl;
+	cout << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cout << "Client database version: " << dev::eth::c_databaseVersion << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
@@ -606,6 +609,17 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
+			else if (c && cmd == "dumpreceipt")
+			{
+				unsigned block;
+				unsigned index;
+				iss >> block >> index;
+				dev::eth::TransactionReceipt r = c->blockChain().receipts(c->blockChain().numberHash(block)).receipts[index];
+				auto rb = r.rlp();
+				cout << "RLP: " << RLP(rb) << endl;
+				cout << "Hex: " << toHex(rb) << endl;
+				cout << r << endl;
+			}
 			else if (c && cmd == "dumptrace")
 			{
 				unsigned block;
@@ -619,7 +633,7 @@ int main(int argc, char** argv)
 				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
-					Executive e(state, 0);
+					Executive e(state, c->blockChain(), 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
 					bytes r = t.rlp();
@@ -660,7 +674,7 @@ int main(int argc, char** argv)
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
 						e.go(oof);
-						e.finalize(oof);
+						e.finalize();
 					}
 					catch(Exception const& _e)
 					{

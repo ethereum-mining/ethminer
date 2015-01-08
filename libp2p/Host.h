@@ -152,7 +152,7 @@ public:
 	void pingAll();
 
 	/// Get the port we're listening on currently.
-	unsigned short listenPort() const { return m_public.port(); }
+	unsigned short listenPort() const { return m_tcpPublic.port(); }
 
 	/// Serialise the set of known peers.
 	bytes saveNodes() const;
@@ -219,7 +219,7 @@ private:
 	int m_listenPort = -1;												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
 	ba::io_service m_ioService;							///< IOService for network stuff.
-	bi::tcp::acceptor m_acceptorV4;							///< Listening acceptor.
+	bi::tcp::acceptor m_tcp4Acceptor;							///< Listening acceptor.
 	std::unique_ptr<bi::tcp::socket> m_socket;								///< Listening socket.
 	
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
@@ -229,7 +229,7 @@ private:
 	std::set<Node*> m_pendingNodeConns;									/// Used only by connect(Node&) to limit concurrently connecting to same node. See connect(shared_ptr<Node>const&).
 	Mutex x_pendingNodeConns;
 
-	bi::tcp::endpoint m_public;											///< Our public listening endpoint.
+	bi::tcp::endpoint m_tcpPublic;											///< Our public listening endpoint.
 	KeyPair m_key;														///< Our unique ID.
 
 	bool m_hadNewNodes = false;

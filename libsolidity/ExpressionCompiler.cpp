@@ -217,7 +217,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 
 			unsigned returnParametersSize = CompilerUtils::getSizeOnStack(function.getReturnParameterTypes());
 			// callee adds return parameters, but removes arguments and return label
-			m_context.adjustStackOffset(returnParametersSize - CompilerUtils::getSizeOnStack(arguments) - 1);
+			m_context.adjustStackOffset(returnParametersSize - CompilerUtils::getSizeOnStack(function.getParameterTypes()) - 1);
 
 			// @todo for now, the return value of a function is its first return value, so remove
 			// all others
@@ -344,9 +344,9 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 			m_context << eth::Instruction::COINBASE;
 		else if (member == "timestamp")
 			m_context << eth::Instruction::TIMESTAMP;
-		else if (member == "prevhash")
-			m_context << eth::Instruction::PREVHASH;
-		else if (member == "difficulty")
+/*		else if (member == "blockhash")
+			m_context << eth::Instruction::BLOCKHASH;
+*/		else if (member == "difficulty")
 			m_context << eth::Instruction::DIFFICULTY;
 		else if (member == "number")
 			m_context << eth::Instruction::NUMBER;

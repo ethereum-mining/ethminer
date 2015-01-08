@@ -21,6 +21,7 @@
 #include <QDebug>
 #include <QQmlApplicationEngine>
 #include <libevm/VM.h>
+#include <libwebthree/WebThree.h>
 #include "Extension.h"
 #include "AppContext.h"
 using namespace dev;

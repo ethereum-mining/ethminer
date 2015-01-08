@@ -59,6 +59,7 @@ ApplicationWindow {
 			mainContent.ensureRightView();
 			debugModel.debugDeployment();
 		}
+		enabled: codeModel.hasContract && !debugModel.running;
 	}
 
 	Action {
@@ -67,4 +68,6 @@ ApplicationWindow {
 		shortcut: "F6"
 		onTriggered: debugModel.resetState();
 	}
+
+
 }

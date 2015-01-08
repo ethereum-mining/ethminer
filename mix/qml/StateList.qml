@@ -1,7 +1,7 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.2
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
+import QtQuick.Controls.Styles 1.1
+import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 
 Rectangle {
@@ -35,8 +35,7 @@ Rectangle {
 
 	Button {
 		anchors.bottom: parent.bottom
-		text: qsTr("Add")
-		onClicked: stateListModel.addState();
+		action: addStateAction
 	}
 
 	StateDialog {
@@ -61,7 +60,7 @@ Rectangle {
 		function addState() {
 			var item = {
 				title: "",
-				balance: "1000000000000",
+				balance: "100000000000000000000000000",
 				transactions: []
 			};
 			stateDialog.open(stateListModel.count, item);
@@ -120,6 +119,14 @@ Rectangle {
 				}
 			}
 		}
+	}
+
+	Action {
+		id: addStateAction
+		text: "&Add State"
+		shortcut: "Ctrl+N"
+		enabled: codeModel.hasContract && !debugModel.running;
+		onTriggered: stateListModel.addState();
 	}
 }
 
