@@ -15,7 +15,7 @@ ApplicationWindow {
 	minimumHeight: 300
 	title: qsTr("mix")
 
-	/*menuBar: MenuBar {
+	menuBar: MenuBar {
 		Menu {
 			title: qsTr("File")
 			MenuItem {
@@ -28,7 +28,7 @@ ApplicationWindow {
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
 		}
-	}*/
+	}
 
 	Component.onCompleted: {
 		setX(Screen.width / 2 - width / 2);
