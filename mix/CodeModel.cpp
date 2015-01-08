@@ -23,10 +23,13 @@
 #include <sstream>
 #include <QDebug>
 #include <QApplication>
+#include <QtQml>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevmcore/Instruction.h>
 #include "QContractDefinition.h"
+#include "QFunctionDefinition.h"
+#include "QVariableDeclaration.h"
 #include "CodeModel.h"
 
 namespace dev
@@ -38,6 +41,11 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 {
 	m_model->runCompilationJob(_jobId, _content);
 }
+
+CompilationResult::CompilationResult(QObject *_parent):
+	QObject(_parent), m_successfull(false),
+	m_contract(new QContractDefinition())
+{}
 
 CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler, QObject *_parent):
 	QObject(_parent), m_successfull(true),
@@ -55,10 +63,17 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 {}
 
 CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
-	m_backgroundWorker(this), m_backgroundJobId(0)
+	m_result(new CompilationResult(nullptr)), m_backgroundWorker(this), m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
+	connect(this, &CodeModel::compilationCompleteInternal, this, &CodeModel::onCompilationComplete, Qt::QueuedConnection);
+	qRegisterMetaType<CompilationResult*>("CompilationResult*");
+	qRegisterMetaType<QContractDefinition*>("QContractDefinition*");
+	qRegisterMetaType<QFunctionDefinition*>("QFunctionDefinition*");
+	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
+	qmlRegisterType<QFunctionDefinition>("org.ethereum.qml", 1, 0, "QFunctionDefinition");
+	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml", 1, 0, "QVariableDeclaration");
 	m_backgroundThread.start();
 }
 
@@ -93,19 +108,26 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	{
 		cs.setSource(_code.toStdString());
 		cs.compile(false);
-		std::shared_ptr<CompilationResult> result(new CompilationResult(cs, nullptr));
-		m_result.swap(result);
+		std::unique_ptr<CompilationResult> result(new CompilationResult(cs, nullptr));
 		qDebug() << QString(QApplication::tr("compilation succeeded"));
+		emit compilationCompleteInternal(result.release());
 	}
 	catch (dev::Exception const& _exception)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		std::shared_ptr<CompilationResult> result(new CompilationResult(*m_result, QString::fromStdString(error.str()), nullptr));
-		m_result.swap(result);
+		std::unique_ptr<CompilationResult> result(new CompilationResult(*m_result, QString::fromStdString(error.str()), nullptr));
 		qDebug() << QString(QApplication::tr("compilation failed") + " " + m_result->compilerMessage());
+		emit compilationCompleteInternal(result.release());
 	}
+}
+
+void CodeModel::onCompilationComplete(CompilationResult*_newResult)
+{
+	m_result.reset(_newResult);
 	emit compilationComplete();
+	if (m_result->successfull())
+		emit codeChanged();
 }
 
 }

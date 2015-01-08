@@ -17,6 +17,11 @@
  * display opcode debugging.
  */
 
+//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
+//@todo fix this is solidity headers
+#include <libsolidity/Token.h>
+#include <libsolidity/Types.h>
+#include <utility>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
@@ -26,19 +31,29 @@
 #include <libethereum/Transaction.h>
 #include "AssemblyDebuggerModel.h"
 #include "AssemblyDebuggerControl.h"
-#include "KeyEventManager.h"
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
-#include "TransactionListModel.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
 #include "ContractCallDataEncoder.h"
-#include "KeyEventManager.h"
 #include "CodeModel.h"
-#include "AssemblyDebuggerModel.h"
 
 using namespace dev::eth;
 using namespace dev::mix;
+
+/// @todo Move this to QML
+dev::u256 fromQString(QString const& _s)
+{
+	return dev::jsToU256(_s.toStdString());
+}
+
+/// @todo Move this to QML
+QString toQString(dev::u256 _value)
+{
+	std::ostringstream s;
+	s << _value;
+	return QString::fromStdString(s.str());
+}
 
 AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::ModalDialog)
 {
@@ -52,6 +67,8 @@ AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context): Extensio
 
 	connect(this, SIGNAL(dataAvailable(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)),
 			this, SLOT(updateGUI(bool, DebuggingStatusResult, QList<QVariableDefinition*>, QList<QObject*>, AssemblyDebuggerData)), Qt::QueuedConnection);
+
+	_context->appEngine()->rootContext()->setContextProperty("debugModel", this);
 
 	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
 }
@@ -68,29 +85,48 @@ QString AssemblyDebuggerControl::title() const
 
 void AssemblyDebuggerControl::start() const
 {
-	//start to listen on F5
-	m_ctx->getKeyEventManager()->registerEvent(this, SLOT(keyPressed(int)));
 }
 
-void AssemblyDebuggerControl::keyPressed(int _key)
+void AssemblyDebuggerControl::debugDeployment()
 {
-	if (_key == Qt::Key_F5)
+	deployContract();
+}
+
+void AssemblyDebuggerControl::debugState(QVariantMap _state)
+{
+	u256 balance = fromQString(_state.value("balance").toString());
+	QVariantList transactions = _state.value("transactions").toList();
+
+	resetState();
+	deployContract();
+
+	for (auto const& t : transactions)
 	{
-		QtConcurrent::run([this]()
-		{
-			deployContract();
-		});
-	}
-	else if (_key == Qt::Key_F6)
-	{
-		m_modelDebugger->resetState();
-		m_ctx->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
+		QVariantMap transaction = t.toMap();
+
+		QString functionId = transaction.value("functionId").toString();
+		u256 value = fromQString(transaction.value("value").toString());
+		u256 gas = fromQString(transaction.value("gas").toString());
+		u256 gasPrice = fromQString(transaction.value("gasPrice").toString());
+		QVariantMap params = transaction.value("parameters").toMap();
+		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
+
+		for (auto p = params.cbegin(); p != params.cend(); ++p)
+			transactionSettings.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
+
+		runTransaction(transactionSettings);
 	}
 }
 
-void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _contract)
+void AssemblyDebuggerControl::resetState()
 {
-	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	m_modelDebugger->resetState();
+	m_ctx->displayMessageDialog(QApplication::tr("State status"), QApplication::tr("State reseted ... need to redeploy contract"));
+}
+
+void AssemblyDebuggerControl::callContract(TransactionSettings _tr, dev::Address _contract)
+{
+	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())
 		m_ctx->displayMessageDialog("debugger","compilation failed");
 	else
@@ -98,11 +134,11 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 		ContractCallDataEncoder c;
 		QContractDefinition const* contractDef = compilerRes->contract();
 		QFunctionDefinition* f = nullptr;
-		for (int k = 0; k < contractDef->functions().size(); k++)
+		for (int k = 0; k < contractDef->functionsList().size(); k++)
 		{
-			if (contractDef->functions().at(k)->name() == _tr.functionId)
+			if (contractDef->functionsList().at(k)->name() == _tr.functionId)
 			{
-				f = (QFunctionDefinition*)contractDef->functions().at(k);
+				f = contractDef->functionsList().at(k);
 				break;
 			}
 		}
@@ -111,9 +147,9 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 		else
 		{
 			c.encode(f->index());
-			for (int k = 0; k < f->parameters().size(); k++)
+			for (int k = 0; k < f->parametersList().size(); k++)
 			{
-				QVariableDeclaration* var = (QVariableDeclaration*)f->parameters().at(k);
+				QVariableDeclaration* var = (QVariableDeclaration*)f->parametersList().at(k);
 				c.encode(var, _tr.parameterValues[var->name()]);
 			}
 			DebuggingContent debuggingContent = m_modelDebugger->callContract(_contract, c.encodedData(), _tr);
@@ -125,7 +161,7 @@ void AssemblyDebuggerControl::callContract(TransactionSettings _tr, Address _con
 
 void AssemblyDebuggerControl::deployContract()
 {
-	auto compilerRes = m_ctx->codeModel()->lastCompilationResult();
+	auto compilerRes = m_ctx->codeModel()->code();
 	if (!compilerRes->successfull())
 		emit dataAvailable(false, DebuggingStatusResult::Compilationfailed);
 	else
@@ -166,8 +202,5 @@ void AssemblyDebuggerControl::updateGUI(bool _success, DebuggingStatusResult con
 
 void AssemblyDebuggerControl::runTransaction(TransactionSettings const& _tr)
 {
-	QtConcurrent::run([this, _tr]()
-	{
-		callContract(_tr, m_previousDebugResult.contractAddress);
-	});
+	callContract(_tr, m_previousDebugResult.contractAddress);
 }

@@ -3,7 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
-import QtQuick.Window 2.0
+import QtQuick.Window 2.1
 import CodeEditorExtensionManager 1.0
 
 ApplicationWindow {
@@ -23,6 +23,11 @@ ApplicationWindow {
 				onTriggered: Qt.quit();
 			}
 		}
+		Menu {
+			title: qsTr("Debug")
+			MenuItem { action: debugRunAction }
+			MenuItem { action: debugResetStateAction }
+		}
 	}
 	Component.onCompleted: {
 		setX(Screen.width / 2 - width / 2);
@@ -40,5 +45,19 @@ ApplicationWindow {
 	AlertMessageDialog {
 		objectName: "alertMessageDialog"
 		id: messageDialog
+	}
+
+	Action {
+		id: debugRunAction
+		text: "&Run"
+		shortcut: "F5"
+		onTriggered: debugModel.debugDeployment();
+	}
+
+	Action {
+		id: debugResetStateAction
+		text: "Reset &State"
+		shortcut: "F6"
+		onTriggered: debugModel.resetState();
 	}
 }
