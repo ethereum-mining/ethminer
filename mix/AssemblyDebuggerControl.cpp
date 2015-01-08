@@ -33,7 +33,6 @@
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 
-
 using namespace dev::eth;
 using namespace dev::mix;
 
