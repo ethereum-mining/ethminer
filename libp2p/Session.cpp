@@ -48,7 +48,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> co
 
 Session::~Session()
 {
-	// TODO P2P: revisit (refactored from previous logic)
+	// TODO: P2P revisit (refactored from previous logic)
 	if (m_node && !(id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead))
 		m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
 
@@ -87,7 +87,7 @@ int Session::rating() const
 	return m_node->rating;
 }
 
-// TODO P2P: integration: session->? should be unavailable when socket isn't open
+// TODO: P2P integration: session->? should be unavailable when socket isn't open
 bi::tcp::endpoint Session::endpoint() const
 {
 	if (m_socket.is_open() && m_node)
@@ -117,7 +117,7 @@ template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 	return ret;
 }
 
-// TODO P2P: integration: replace w/asio post -> serviceNodesRequest()
+// TODO: P2P integration: replace w/asio post -> serviceNodesRequest()
 void Session::ensureNodesRequested()
 {
 	if (isOpen() && !m_weRequestedNodes)
@@ -133,7 +133,9 @@ void Session::serviceNodesRequest()
 	if (!m_theyRequestedNodes)
 		return;
 
-	auto peers = m_server->potentialPeers(m_knownNodes);
+// TODO: P2P
+//	auto peers = m_server->potentialPeers(m_knownNodes);
+	Nodes peers;
 	if (peers.empty())
 	{
 		addNote("peers", "requested");
@@ -210,14 +212,16 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		// TODO P2P: first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
-		// TODO P2P: remove oldid
-		// TODO P2P: with encrypted transport the handshake will fail and we won't get here
-		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), m_node->id);
+		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
+		// Discussion: Most this to Host so we consolidate authentication logic and eschew peer deduplication logic.
+		// TODO: P2P Move all node-lifecycle information into Host. Determine best way to handle peer-lifecycle properties vs node lifecycle.
+		// TODO: P2P remove oldid
+		// TODO: P2P with encrypted transport the handshake will fail and we won't get here
+//		m_node = m_server->noteNode(m_node->id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort));
 		if (m_node->isOffline())
 			m_node->lastConnected = chrono::system_clock::now();
-		
-		// TODO P2P: introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
+//
+//		// TODO: P2P introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
 		m_knownNodes.extendAll(m_node->index);
 		m_knownNodes.unionWith(m_node->index);
 
@@ -334,7 +338,9 @@ bool Session::interpret(RLP const& _r)
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->noteNode(id, ep);
+			
+			// TODO: P2P change to addNode()
+//			m_server->noteNode(id, ep);
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 		}

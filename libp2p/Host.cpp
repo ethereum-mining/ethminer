@@ -28,6 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
+#include <devcrypto/FileSystem.h>
 #include "Session.h"
 #include "Common.h"
 #include "Capability.h"
@@ -44,14 +45,14 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_key(KeyPair::create()),
+	m_key(move(getHostIdentifier())),
 	m_nodeTable(new NodeTable(m_ioService, m_key))
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
 			clog(NetNote) << "IP Address: " << address << " = " << (isPrivateAddress(address) ? "[LOCAL]" : "[PEER]");
 	
-	clog(NetNote) << "Id:" << id().abridged();
+	clog(NetNote) << "Id:" << id();
 	if (_start)
 		start();
 }
@@ -178,69 +179,78 @@ void Host::seal(bytes& _b)
 	_b[7] = len & 0xff;
 }
 
-// TODO P2P: remove oldid. port to NodeTable. (see noteNode calls, Session.cpp#218,337)
-shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, NodeId _oldId)
+// TODO: P2P port to NodeTable. (see noteNode calls, Session.cpp)
+//shared_ptr<NodeInfo> Host::noteNode(NodeId _id, bi::tcp::endpoint _a)
+//{
+//	RecursiveGuard l(x_peers);
+//	if (_a.port() < 30300 || _a.port() > 30305)
+//		cwarn << "Weird port being recorded: " << _a.port();
+//
+//	if (_a.port() >= /*49152*/32768)
+//	{
+//		cwarn << "Private port being recorded - setting to 0";
+//		_a = bi::tcp::endpoint(_a.address(), 0);
+//	}
+//
+//	unsigned i;
+//	if (!m_nodes.count(_id))
+//	{
+//		i = m_nodesList.size();
+//		m_nodesList.push_back(_id);
+//		m_nodes[_id] = make_shared<NodeInfo>();
+//		m_nodes[_id]->id = _id;
+//		m_nodes[_id]->index = i;
+//	}
+//	else
+//		i = m_nodes[_id]->index;
+//	m_nodes[_id]->address = _a;
+//	m_private.extendAll(i);
+//	if (!_a.port() || (isPrivateAddress(_a.address()) && !m_netPrefs.localNetworking))
+//		m_private += i;
+//	else
+//		m_private -= i;
+//
+//	return m_nodes[_id];
+//}
+
+// TODO: P2P base on target
+// TODO: P2P store caps in NodeTable/NodeEntry
+//Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
+//{
+//	RecursiveGuard l(x_peers);
+//	Nodes ret;
+//
+//	// todo: if localnetworking is enabled it should only share peers if remote
+//	// is within the same network as our interfaces.
+//	// this requires flagging nodes when we receive them as to if they're on private network
+//	auto ns = (m_netPrefs.localNetworking ? _known : (m_private + _known)).inverted();
+//	for (auto i: ns)
+//		ret.push_back(*m_nodes[m_nodesList[i]]);
+//	return ret;
+//}
+
+KeyPair Host::getHostIdentifier()
 {
-	RecursiveGuard l(x_peers);
-	if (_a.port() < 30300 || _a.port() > 30305)
-		cwarn << "Weird port being recorded: " << _a.port();
+	static string s_file(getDataDir() + "/host");
+	static mutex s_x;
+	lock_guard<mutex> l(s_x);
 
-	if (_a.port() >= /*49152*/32768)
-	{
-		cwarn << "Private port being recorded - setting to 0";
-		_a = bi::tcp::endpoint(_a.address(), 0);
-	}
-
-	// First check for another node with the same connection credentials, and put it in oldId if found.
-	if (!_oldId)
-		for (pair<h512, shared_ptr<NodeInfo>> const& n: m_nodes)
-			if (n.second->address == _a && n.second->id != _id)
-			{
-				_oldId = n.second->id;
-				break;
-			}
-
-	unsigned i;
-	if (!m_nodes.count(_id))
-	{
-		if (m_nodes.count(_oldId))
-		{
-			i = m_nodes[_oldId]->index;
-			m_nodes.erase(_oldId);
-			m_nodesList[i] = _id;
-		}
-		else
-		{
-			i = m_nodesList.size();
-			m_nodesList.push_back(_id);
-		}
-		m_nodes[_id] = make_shared<NodeInfo>();
-		m_nodes[_id]->id = _id;
-		m_nodes[_id]->index = i;
-	}
+	h256 secret;
+	bytes b = contents(s_file);
+	if (b.size() == 32)
+		memcpy(secret.data(), b.data(), 32);
 	else
-		i = m_nodes[_id]->index;
-	m_nodes[_id]->address = _a;
-	m_private.extendAll(i);
-	if (!_a.port() || (isPrivateAddress(_a.address()) && !m_netPrefs.localNetworking))
-		m_private += i;
-	else
-		m_private -= i;
-
-	return m_nodes[_id];
-}
-
-// TODO P2P: should be based on target
-// TODO P2P: store caps in NodeTable/NodeEntry
-Nodes Host::potentialPeers(RangeMask<unsigned> const& _known)
-{
-	RecursiveGuard l(x_peers);
-	Nodes ret;
-
-	auto ns = (m_netPrefs.localNetworking ? _known : (m_private + _known)).inverted();
-	for (auto i: ns)
-		ret.push_back(*m_nodes[m_nodesList[i]]);
-	return ret;
+	{
+		// todo: replace w/user entropy; abstract to devcrypto
+		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+		std::uniform_int_distribution<uint16_t> d(0, 255);
+		for (unsigned i = 0; i < 32; ++i)
+			secret[i] = (byte)d(s_eng);
+	}
+	
+	if (!secret)
+		BOOST_THROW_EXCEPTION(crypto::InvalidState());
+	return move(KeyPair(move(secret)));
 }
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)
@@ -366,9 +376,25 @@ string Host::pocHost()
 	return "poc-" + strs[1] + ".ethdev.com";
 }
 
-// TODO P2P: support for TCP+UDP when manually connecting
-// TODO P2P: remove in favor of addNode(NodeId, string, uint16_t, bool _required = false)
-void Host::connect(NodeId const& _node, std::string const& _addr, unsigned short _port) noexcept
+void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
+{
+	boost::system::error_code ec;
+	bi::address addr = bi::address::from_string(_addr, ec);
+	if (ec)
+	{
+		bi::tcp::resolver r(m_ioService);
+		r.async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt) {
+			if (_ec)
+				return;
+			bi::tcp::endpoint tcp = *_epIt;
+			addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
+		});
+	}
+	else
+		addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
+}
+
+void Host::connect(NodeId const& _node, std::string const& _addr, unsigned short _peerPort, unsigned short _nodePort) noexcept
 {
 	if (!m_run)
 		return;
@@ -388,10 +414,10 @@ void Host::connect(NodeId const& _node, std::string const& _addr, unsigned short
 				if (first)
 				{
 					bi::tcp::resolver r(m_ioService);
-					ep = r.resolve({_addr, toString(_port)})->endpoint();
+					ep = r.resolve({_addr, toString(_peerPort)})->endpoint();
 				}
 				else
-					ep = bi::tcp::endpoint(bi::address::from_string(_addr), _port);
+					ep = bi::tcp::endpoint(bi::address::from_string(_addr), _peerPort);
 				
 				if (!n)
 					m_nodes[_node] = make_shared<NodeInfo>();
@@ -494,8 +520,8 @@ unsigned NodeInfo::fallbackSeconds() const
 	}
 }
 
-// TODO P2P: rebuild noetable when localNetworking is enabled/disabled
-// TODO P2P: migrate grow/prunePeers into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
+// TODO: P2P rebuild noetable when localNetworking is enabled/disabled
+// TODO: P2P migrate grow/prunePeers into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
 //void Host::growPeers()
 //{
 //	RecursiveGuard l(x_peers);
@@ -663,7 +689,6 @@ void Host::pingAll()
 	m_lastPing = chrono::steady_clock::now();
 }
 
-// TODO P2P: integration: todo save/restoreNodes
 bytes Host::saveNodes() const
 {
 	RLPStream nodes;
@@ -704,9 +729,8 @@ void Host::restoreNodes(bytesConstRef _b)
 		{
 		case 0:
 		{
-			auto oldId = id();
 			m_key = KeyPair(r[1].toHash<Secret>());
-			noteNode(id(), m_tcpPublic, oldId);
+//			noteNode(id(), m_tcpPublic);
 
 			for (auto i: r[2])
 			{
@@ -718,14 +742,14 @@ void Host::restoreNodes(bytesConstRef _b)
 				auto id = (NodeId)i[2];
 				if (!m_nodes.count(id))
 				{
-//					auto o = (Origin)i[3].toInt<int>();
-					auto n = noteNode(id, ep);
-					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
-					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
-					n->failedAttempts = i[6].toInt<unsigned>();
-					n->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
-					n->score = (int)i[8].toInt<unsigned>();
-					n->rating = (int)i[9].toInt<unsigned>();
+////					auto o = (Origin)i[3].toInt<int>();
+//					auto n = noteNode(id, ep);
+//					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
+//					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+//					n->failedAttempts = i[6].toInt<unsigned>();
+//					n->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
+//					n->score = (int)i[8].toInt<unsigned>();
+//					n->rating = (int)i[9].toInt<unsigned>();
 				}
 			}
 		}
@@ -742,7 +766,7 @@ void Host::restoreNodes(bytesConstRef _b)
 					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
 				else
 					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-				auto n = noteNode(id, ep);
+//				auto n = noteNode(id, ep);
 			}
 		}
 }
