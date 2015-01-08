@@ -43,7 +43,8 @@ public:
 	MixApplication(int _argc, char* _argv[]);
 	virtual ~MixApplication();
 	AppContext* context() { return m_appContext.get(); }
-	QQmlApplicationEngine* engine( ) { return m_engine.get(); }
+	QQmlApplicationEngine* engine() { return m_engine.get(); }
+
 private:
 	std::unique_ptr<QQmlApplicationEngine> m_engine;
 	std::unique_ptr<AppContext> m_appContext;

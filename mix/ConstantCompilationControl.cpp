@@ -70,3 +70,13 @@ void ConstantCompilationControl::resetOutPut()
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	status->setProperty("text", "");
 }
+
+
+void ConstantCompilationControl::displayError(QString const& _error)
+{
+	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
+	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
+	status->setProperty("text", "failure");
+	status->setProperty("color", "red");
+	content->setProperty("text", _error);
+}

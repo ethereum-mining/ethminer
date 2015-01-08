@@ -195,7 +195,7 @@ bool Session::interpret(RLP const& _r)
 		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
 		stringstream capslog;
 		for (auto cap: caps)
-			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
+			capslog << "(" << cap.first << "," << dec << cap.second << ")";
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
 
@@ -522,7 +522,7 @@ void Session::start()
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
-					<< m_server->m_public.port()
+					<< m_server->m_tcpPublic.port()
 					<< m_server->id();
 	sealAndSend(s);
 	ping();

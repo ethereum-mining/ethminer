@@ -17,10 +17,6 @@
  * used as a model to debug contract assembly code.
  */
 
-//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
-//@todo fix this is solidity headers
-#include <libsolidity/Token.h>
-#include <libsolidity/Types.h>
 #include <QApplication>
 #include <libdevcore/Common.h>
 #include <libevm/VM.h>
@@ -41,20 +37,16 @@ namespace mix
 {
 
 AssemblyDebuggerModel::AssemblyDebuggerModel():
-	m_userAccount(KeyPair::create()),
-	m_baseState(Address(), m_overlayDB, BaseState::Empty)
+	m_userAccount(KeyPair::create())
 {
-	m_baseState.addBalance(m_userAccount.address(), 10000000 * ether);
-	m_executiveState = m_baseState;
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
+	resetState(10000000 * ether);
 }
 
 DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
 {
 	QList<DebuggingState> machineStates;
-	// Reset the state back to our clean premine.
-	m_currentExecution = std::unique_ptr<Executive>(new Executive(m_executiveState, 0));
-	m_currentExecution->setup(_rawTransaction);
+	eth::Executive  execution(m_executiveState, LastHashes(), 0);
+	execution.setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
 	bytes code;
 	bytesConstRef data;
@@ -80,12 +72,11 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 
-	m_currentExecution->go(onOp);
-	m_currentExecution->finalize(onOp);
-	m_executiveState.completeMine();
+	execution.go(onOp);
+	execution.finalize();
 
 	DebuggingContent d;
-	d.returnValue = m_currentExecution->out().toVector();
+	d.returnValue = execution.out().toVector();
 	d.machineStates = machineStates;
 	d.executionCode = code;
 	d.executionData = data;
@@ -99,7 +90,7 @@ DebuggingContent AssemblyDebuggerModel::deployContract(bytes const& _code)
 	u256 gasPrice = 10000000000000;
 	u256 gas = 1000000;
 	u256 amount = 100;
-	Transaction _tr(amount, gasPrice, min(gas, m_baseState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	Transaction _tr(amount, gasPrice, min(gas, m_executiveState.gasLimitRemaining()), _code, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = _tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	DebuggingContent d = executeTransaction(bytesRef);
@@ -110,7 +101,7 @@ DebuggingContent AssemblyDebuggerModel::deployContract(bytes const& _code)
 
 DebuggingContent AssemblyDebuggerModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_baseState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
+	Transaction tr = Transaction(_tr.value, _tr.gasPrice, min(_tr.gas, m_executiveState.gasLimitRemaining()), _contract, _data, m_executiveState.transactionsFrom(dev::toAddress(m_userAccount.secret())), m_userAccount.secret());
 	bytes b = tr.rlp();
 	dev::bytesConstRef bytesRef = &b;
 	DebuggingContent d = executeTransaction(bytesRef);
@@ -118,10 +109,10 @@ DebuggingContent AssemblyDebuggerModel::callContract(Address const& _contract, b
 	return d;
 }
 
-void AssemblyDebuggerModel::resetState()
+void AssemblyDebuggerModel::resetState(u256 _balance)
 {
-	// Reset the state back to our clean premine.
-	m_executiveState = m_baseState;
+	m_executiveState = eth::State(Address(), m_overlayDB, BaseState::Empty);
+	m_executiveState.addBalance(m_userAccount.address(), _balance);
 }
 
 }

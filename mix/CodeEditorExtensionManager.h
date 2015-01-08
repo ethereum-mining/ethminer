@@ -61,6 +61,10 @@ public:
 	/// Set current right tab view.
 	void setRightView(QQuickItem*);
 
+private slots:
+	void onCodeChange();
+	void applyCodeHighlight();
+
 private:
 	QQuickItem* m_editor;
 	QVector<std::shared_ptr<Extension>> m_features;

@@ -32,17 +32,17 @@
 #include <QObject>
 
 class QQmlApplicationEngine;
+namespace dev
+{
+	class WebThreeDirect;
+	namespace solidity
+	{
+		class CompilerStack;
+	}
+}
 
 namespace dev
 {
-
-class WebThreeDirect;
-
-namespace eth
-{
-	class Client;
-}
-
 namespace mix
 {
 
@@ -51,13 +51,14 @@ class CodeModel;
  * @brief Provides access to application scope variable.
  */
 
-class AppContext : public QObject
+class AppContext: public QObject
 {
 	Q_OBJECT
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	~AppContext();
+	virtual ~AppContext();
+	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
 	/// Get code model
 	CodeModel* codeModel() { return m_codeModel.get(); }
@@ -76,7 +77,7 @@ private:
 public slots:
 	/// Delete the current instance when application quit.
 	void quitApplication() {}
-
+	/// Write json to a settings file
 	void saveProject(QString const& _json);
 };
 

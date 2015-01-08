@@ -25,6 +25,8 @@
 #include "MixApplication.h"
 #include "AppContext.h"
 
+#include <QMenuBar>
+
 using namespace dev::mix;
 
 MixApplication::MixApplication(int _argc, char* _argv[]):

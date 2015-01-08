@@ -30,40 +30,57 @@
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
 #include "QVariableDeclaration.h"
+#include "CodeHighlighter.h"
 #include "CodeModel.h"
 
-namespace dev
-{
-namespace mix
-{
+using namespace dev::mix;
 
 void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 {
 	m_model->runCompilationJob(_jobId, _content);
 }
 
-CompilationResult::CompilationResult(QObject *_parent):
-	QObject(_parent), m_successfull(false),
-	m_contract(new QContractDefinition())
+CompilationResult::CompilationResult():
+	QObject(nullptr),
+	m_successful(false),
+	m_codeHash(qHash(QString())),
+	m_contract(new QContractDefinition()),
+	m_codeHighlighter(new CodeHighlighter())
 {}
 
-CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler, QObject *_parent):
-	QObject(_parent), m_successfull(true),
-	m_contract(new QContractDefinition(&_compiler.getContractDefinition(std::string()))),
-	m_bytes(_compiler.getBytecode()),
-	m_assemblyCode(QString::fromStdString((dev::eth::disassemble(m_bytes))))
-{}
+CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
+	QObject(nullptr),
+	m_successful(true),
+	m_codeHash(qHash(QString()))
+{
+	if (!_compiler.getContractNames().empty())
+	{
+		m_contract.reset(new QContractDefinition(&_compiler.getContractDefinition(std::string())));
+		m_bytes = _compiler.getBytecode();
+		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
+	}
+	else
+		m_contract.reset(new QContractDefinition());
+}
 
-CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage, QObject* _parent):
-	QObject(_parent), m_successfull(false),
+CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage):
+	QObject(nullptr),
+	m_successful(false),
+	m_codeHash(qHash(QString())),
 	m_contract(_prev.m_contract),
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
-	m_assemblyCode(_prev.m_assemblyCode)
+	m_assemblyCode(_prev.m_assemblyCode),
+	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
-CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
-	m_result(new CompilationResult(nullptr)), m_backgroundWorker(this), m_backgroundJobId(0)
+CodeModel::CodeModel(QObject* _parent):
+	QObject(_parent),
+	m_compiling(false),
+	m_result(new CompilationResult()),
+	m_codeHighlighterSettings(new CodeHighlighterSettings()),
+	m_backgroundWorker(this),
+	m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
@@ -90,13 +107,17 @@ void CodeModel::stop()
 	m_backgroundThread.wait();
 }
 
-void CodeModel::registerCodeChange(const QString &_code)
+void CodeModel::registerCodeChange(QString const& _code)
 {
 	// launch the background thread
+	uint hash = qHash(_code);
+	if (m_result->m_codeHash == hash)
+		return;
 	m_backgroundJobId++;
+	m_compiling = true;
+	emit stateChanged();
 	emit scheduleCompilationJob(m_backgroundJobId, _code);
 }
-
 
 void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 {
@@ -104,31 +125,53 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 		return; //obsolete job
 
 	solidity::CompilerStack cs;
+	std::unique_ptr<CompilationResult> result;
+
+	std::string source = _code.toStdString();
+	// run syntax highlighting first
+	// @todo combine this with compilation step
+	auto codeHighlighter = std::make_shared<CodeHighlighter>();
+	codeHighlighter->processSource(source);
+
+	// run compilation
 	try
 	{
-		cs.setSource(_code.toStdString());
+		cs.setSource(source);
 		cs.compile(false);
-		std::unique_ptr<CompilationResult> result(new CompilationResult(cs, nullptr));
+		codeHighlighter->processAST(cs.getAST());
+		result.reset(new CompilationResult(cs));
 		qDebug() << QString(QApplication::tr("compilation succeeded"));
-		emit compilationCompleteInternal(result.release());
 	}
 	catch (dev::Exception const& _exception)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		std::unique_ptr<CompilationResult> result(new CompilationResult(*m_result, QString::fromStdString(error.str()), nullptr));
-		qDebug() << QString(QApplication::tr("compilation failed") + " " + m_result->compilerMessage());
-		emit compilationCompleteInternal(result.release());
+		result.reset(new CompilationResult(*m_result, QString::fromStdString(error.str())));
+		codeHighlighter->processError(_exception);
+		qDebug() << QString(QApplication::tr("compilation failed:") + " " + result->compilerMessage());
 	}
+	result->m_codeHighlighter = codeHighlighter;
+	result->m_codeHash = qHash(_code);
+
+	emit compilationCompleteInternal(result.release());
 }
 
 void CodeModel::onCompilationComplete(CompilationResult*_newResult)
 {
+	m_compiling = false;
 	m_result.reset(_newResult);
 	emit compilationComplete();
+	emit stateChanged();
 	if (m_result->successfull())
 		emit codeChanged();
 }
 
+bool CodeModel::hasContract() const
+{
+	return m_result->contract()->functionsList().size() > 0;
 }
+
+void CodeModel::updateFormatting(QTextDocument* _document)
+{
+	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
 }

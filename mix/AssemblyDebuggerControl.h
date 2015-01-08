@@ -19,23 +19,14 @@
 
 #pragma once
 
-//These 2 includes should be at the top to avoid conflicts with macros defined in windows.h
-//@todo fix this is solidity headers
-#include <libsolidity/Token.h>
-#include <libsolidity/Types.h>
+#include <atomic>
 #include <QKeySequence>
 #include "Extension.h"
 #include "AssemblyDebuggerModel.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
-enum DebuggingStatusResult
-{
-	Ok,
-	Compilationfailed
-};
 
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
-Q_DECLARE_METATYPE(DebuggingStatusResult)
 Q_DECLARE_METATYPE(dev::mix::DebuggingContent)
 
 class AppContext;
@@ -59,26 +50,40 @@ public:
 	QString title() const override;
 	QString contentUrl() const override;
 
+	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
+
 private:
-	void deployContract();
-	void callContract(TransactionSettings _tr, Address _contract);
-	void finalizeExecution(DebuggingContent _content);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
-	DebuggingContent m_previousDebugResult; //TODO: to be replaced in a more consistent struct. Used for now to keep the contract address in case of future transaction call.
+	std::atomic<bool> m_running;
 
 public slots:
+	/// Run the contract constructor and show debugger window.
 	void debugDeployment();
+	/// Setup state, run transaction sequence, show debugger for the last transaction
+	/// @param _state JS object with state configuration
 	void debugState(QVariantMap _state);
-	void resetState();
+
+private slots:
 	/// Update UI with machine states result. Display a modal dialog.
-	void updateGUI(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
-	/// Run the given transaction.
-	void runTransaction(TransactionSettings const& _tr);
+	void showDebugger(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	/// Update UI with transaction run error.
+	void showDebugError(QString const& _error);
 
 signals:
+	/// Transaction execution started
+	void runStarted();
+	/// Transaction execution completed successfully
+	void runComplete();
+	/// Transaction execution completed with error
+	/// @param _message Error message
+	void runFailed(QString const& _message);
+	/// Execution state changed
+	void stateChanged();
+
 	/// Emited when machine states are available.
-	void dataAvailable(bool _success, DebuggingStatusResult const& _reason, QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	void dataAvailable(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 };
 
 }
