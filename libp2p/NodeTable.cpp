@@ -77,10 +77,11 @@ list<NodeEntry> NodeTable::state() const
 	return move(ret);
 }
 
-NodeEntry NodeTable::operator[](NodeId _id)
+Node NodeTable::operator[](NodeId _id)
 {
 	Guard l(x_nodes);
-	return *m_nodes[_id];
+	auto n = m_nodes[_id];
+	return !!n ? *n : Node();
 }
 
 void NodeTable::requestNeighbours(NodeEntry const& _node, NodeId _target) const

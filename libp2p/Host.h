@@ -165,8 +165,8 @@ public:
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
 	size_t peerCount() const { RecursiveGuard l(x_peers); return m_peers.size(); }
 
-	/// Ping the peers, to update the latency information.
-	void pingAll();
+	/// Ping the peers to update the latency information and disconnect peers which have timed out.
+	void keepAlivePeers();
 
 	/// Get the port we're listening on currently.
 	unsigned short listenPort() const { return m_tcpPublic.port(); }
