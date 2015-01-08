@@ -387,6 +387,9 @@ public:
 protected:
 	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
 	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
 		return TypePointer();
 	}
 };
@@ -412,6 +415,9 @@ public:
 protected:
 	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
 	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
 		return TypePointer();
 	}
 
@@ -442,6 +448,9 @@ public:
 protected:
 	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
 	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
 		return TypePointer();
 	}
 
