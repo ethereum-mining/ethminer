@@ -47,6 +47,7 @@ namespace mix
 {
 
 class CodeModel;
+class FileIo;
 /**
  * @brief Provides access to application scope variable.
  */
@@ -73,6 +74,7 @@ private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<CodeModel> m_codeModel;
+	std::unique_ptr<FileIo> m_fileIo;
 
 public slots:
 	/// Delete the current instance when application quit.

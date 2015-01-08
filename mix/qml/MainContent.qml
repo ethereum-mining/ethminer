@@ -20,9 +20,17 @@ Rectangle {
     SplitView {
         orientation: Qt.Horizontal
         anchors.fill: parent
+
+		ProjectList	{
+			anchors.left: parent.left
+			width: parent.width * 0.2
+			height: parent.height
+			Layout.minimumWidth: 20
+		}
+
         SplitView {
             //anchors.fill: parent
-            width: parent.width * 0.8
+			width: parent.width * 0.6
             orientation: Qt.Vertical
             Rectangle {
                 anchors.top: parent.top

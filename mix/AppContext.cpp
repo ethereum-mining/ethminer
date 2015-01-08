@@ -32,8 +32,10 @@
 #include <QDir>
 #include <libdevcrypto/FileSystem.h>
 #include <libwebthree/WebThree.h>
-#include "AppContext.h"
 #include "CodeModel.h"
+#include "FileIo.h"
+#include "AppContext.h"
+
 
 using namespace dev;
 using namespace dev::eth;
@@ -46,8 +48,13 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_applicationEngine = _engine;
 	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
-	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_fileIo.reset(new FileIo());
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
+	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+
 }
 
 AppContext::~AppContext()
