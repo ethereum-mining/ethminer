@@ -6,8 +6,16 @@ import org.ethereum.qml.ProjectModel 1.0
 
 Item {
 	ListView {
+		id: projectList
 		model: ProjectModel.listModel
+		anchors.fill: parent
 		delegate: renderDelegate
+		highlight: Rectangle {
+			color: "lightsteelblue";
+		}
+		highlightFollowsCurrentItem: true
+		focus: true
+		clip: true
 	}
 
 	Component {
@@ -21,19 +29,23 @@ Item {
 				Text {
 					Layout.fillWidth: true
 					Layout.fillHeight: true
-					text: title
+					text: name
 					font.pointSize: 12
 					verticalAlignment: Text.AlignBottom
+				}
+			}
+			MouseArea {
+				id: mouseArea
+				z: 1
+				hoverEnabled: false
+				anchors.fill: parent
+
+				onClicked:{
+					projectList.currentIndex = index;
+					ProjectModel.documentOpen(ProjectModel.listModel.get(index));
 				}
 			}
 		}
 	}
 
-	Action {
-		id: createProjectAction
-		text: qsTr("&New project")
-		shortcut: "Ctrl+N"
-		enabled: true;
-		onTriggered: ProjectModel.createProject();
-	}
 }

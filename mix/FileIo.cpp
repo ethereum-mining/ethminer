@@ -25,20 +25,23 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
+#include <QUrl>
 #include "FileIo.h"
 
 using namespace dev::mix;
 
-void FileIo::makeDir(QString const& _path)
+void FileIo::makeDir(QString const& _url)
 {
-	QDir dirPath(_path);
+	QUrl url(_url);
+	QDir dirPath(url.path());
 	if (!dirPath.exists())
 		dirPath.mkpath(dirPath.path());
 }
 
-QString FileIo::readFile(QString const& _path)
+QString FileIo::readFile(QString const& _url)
 {
-	QFile file(_path);
+	QUrl url(_url);
+	QFile file(url.path());
 	if(file.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);
@@ -46,23 +49,27 @@ QString FileIo::readFile(QString const& _path)
 		return data;
 	}
 	else
-		throw std::runtime_error(tr("Error reading file %1").arg(_path).toStdString());
+		error(tr("Error reading file %1").arg(_url));
+	return QString();
 }
 
-void FileIo::writeFile(QString const& _path, QString const& _data)
+void FileIo::writeFile(QString const& _url, QString const& _data)
 {
-	QFile file(_path);
+	QUrl url(_url);
+	QFile file(url.path());
 	if(file.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);
 		stream << _data;
 	}
 	else
-		throw std::runtime_error(tr("Error writing file %1").arg(_path).toStdString());
+		error(tr("Error writing file %1").arg(_url));
 }
 
-void FileIo::copyFile(QString const& _sourcePath, QString const& _destPath)
+void FileIo::copyFile(QString const& _sourceUrl, QString const& _destUrl)
 {
-	if (!QFile::copy(_sourcePath, _destPath))
-		throw std::runtime_error(tr("Error copying file %1 to %2").arg(_sourcePath).arg(_destPath).toStdString());
+	QUrl sourceUrl(_sourceUrl);
+	QUrl destUrl(_destUrl);
+	if (!QFile::copy(sourceUrl.path(), destUrl.path()))
+		error(tr("Error copying file %1 to %2").arg(_sourceUrl).arg(_destUrl));
 }

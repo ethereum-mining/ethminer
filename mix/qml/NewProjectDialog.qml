@@ -14,7 +14,7 @@ Window {
 	visible: false
 
 	property alias projectTitle : titleField.text
-	property alias projectPath : pathField.text
+	readonly property string projectPath : "file://" + pathField.text
 	signal accepted
 
 	function open() {
@@ -83,10 +83,10 @@ Window {
 		title: qsTr("Please choose a path for the project")
 		selectFolder: true
 		onAccepted: {
-				var u = createProjectFileDialog.fileUrl.toString();
-				if (u.indexOf("file://") == 0)
-					u = u.substring(7, u.length)
-				pathField.text = u;
-			}
+			var u = createProjectFileDialog.fileUrl.toString();
+			if (u.indexOf("file://") == 0)
+				u = u.substring(7, u.length)
+			pathField.text = u;
+		}
 	}
 }

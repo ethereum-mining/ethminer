@@ -34,15 +34,19 @@ class FileIo : public QObject
 {
 	Q_OBJECT
 
+signals:
+	/// Signalled in case of IO error
+	void error(QString const& _errorText);
+
 public:
-	/// Create a directory if it does not exist. Throws on failure.
-	Q_INVOKABLE void makeDir(QString const& _path);
-	/// Read file contents to a string. Throws on failure.
-	Q_INVOKABLE QString readFile(QString const& _path);
-	/// Write contents to a file. Throws on failure.
-	Q_INVOKABLE void writeFile(QString const& _path, QString const& _data);
-	/// Copy a file from _sourcePath to _destPath. Throws on failure.
-	Q_INVOKABLE void copyFile(QString const& _sourcePath, QString const& _destPath);
+	/// Create a directory if it does not exist. Signals on failure.
+	Q_INVOKABLE void makeDir(QString const& _url);
+	/// Read file contents to a string. Signals on failure.
+	Q_INVOKABLE QString readFile(QString const& _url);
+	/// Write contents to a file. Signals on failure.
+	Q_INVOKABLE void writeFile(QString const& _url, QString const& _data);
+	/// Copy a file from _sourcePath to _destPath. Signals on failure.
+	Q_INVOKABLE void copyFile(QString const& _sourceUrl, QString const& _destUrl);
 };
 
 }
