@@ -158,7 +158,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
-	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -1872,7 +1872,30 @@ void Main::on_send_clicked()
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
+			{
 				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+
+				// LTODO: work in progress, recompile contract and get the hash of the code
+				// Also .. yeah improve the heuristic for Solidity and abstract to a function
+				string src = ui->data->toPlainText().toStdString();
+				if (src.substr(0, 8) == "contract" || src.substr(0, 2) == "/*") // improve this heuristic
+				{
+
+					dev::solidity::CompilerStack compiler;
+					try
+					{
+						m_data = compiler.compile(src, m_enableOptimizer);
+						for (std::string& s: compiler.getContractNames())
+							m_natspecDB.add(compiler.getContractCodeHash(s),
+											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
+
+					}
+					catch (...)
+					{
+						statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+					}
+				}
+			}
 			else
 				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
@@ -2255,6 +2278,11 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
+}
+
+std::string Main::lookupNatSpec(dev::h256 const& _contractHash) const
+{
+	return m_natspecDB.retrieve(_contractHash);
 }
 
 void Main::refreshWhispers()

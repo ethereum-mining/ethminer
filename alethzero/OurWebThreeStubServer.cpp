@@ -24,12 +24,14 @@
 #include <QMessageBox>
 #include <libwebthree/WebThree.h>
 #include "MainWin.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
-	WebThreeStubServer(_conn, _web3, _accounts), m_web3(&_web3)
+OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3,
+											 std::vector<dev::KeyPair> const& _accounts, Main* main):
+	WebThreeStubServer(_conn, _web3, _accounts), m_web3(&_web3), m_main(main)
 {}
 
 std::string OurWebThreeStubServer::shh_newIdentity()
@@ -41,12 +43,10 @@ std::string OurWebThreeStubServer::shh_newIdentity()
 
 bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
 {
-	return true;
+	// return true;
 
 	// To get the balance of the sender
 	cnote << "Sender has ETH: " << m_web3->ethereum()->postState().balance(_t.from);
-
-	Main* main; // don't know this yet, should be a member and set at construction time by Main, who will construct us.
 
 	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
 
@@ -57,7 +57,7 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 		return true;	// or whatever.
 	}
 
-	std::string natspecJson = main->lookupNatSpec(contractCodeHash);
+	std::string natspecJson = m_main->lookupNatSpec(contractCodeHash);
 
 	if (natspecJson.empty())
 	{

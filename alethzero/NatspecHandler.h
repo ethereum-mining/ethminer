@@ -14,38 +14,32 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Defaults.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
+
+/** @file NatspecHandler.h
+ * @author Lefteris Karapetsas <lefteris@ethdev.com>
+ * @date 2015
  */
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#pragma warning(push)
+#pragma warning(disable: 4100 4267)
+#include <leveldb/db.h>
+#pragma warning(pop)
+#include <libdevcore/FixedHash.h>
 
+namespace ldb = leveldb;
 
-namespace dev
+class NatspecHandler
 {
-namespace eth
-{
+  public:
+	NatspecHandler();
 
-struct Defaults
-{
-	friend class BlockChain;
-	friend class State;
-
-public:
-	Defaults();
-
-	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
-	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
-	static std::string const& dbPath() { return get()->m_dbPath; }
-
-private:
-	std::string m_dbPath;
-
-	static Defaults* s_this;
+	void add(dev::h256 const& _contractHash, std::string const& _doc);
+	std::string retrieve(dev::h256 const& _contractHash) const;
+	
+  private:
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
+	ldb::DB* m_db;
 };
-
-}
-}
