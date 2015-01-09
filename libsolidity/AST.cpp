@@ -27,6 +27,8 @@
 #include <libsolidity/Exceptions.h>
 #include <libsolidity/AST_accept.h>
 
+#include <libdevcrypto/SHA3.h>
+
 using namespace std;
 
 namespace dev
@@ -50,18 +52,17 @@ void ContractDefinition::checkTypeRequirements()
 		function->checkTypeRequirements();
 }
 
-vector<FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
+map<FixedHash<4>, FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
 {
-	vector<FunctionDefinition const*> exportedFunctions;
+	map<FixedHash<4>, FunctionDefinition const*> exportedFunctions;
 	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
 		if (f->isPublic() && f->getName() != getName())
-			exportedFunctions.push_back(f.get());
-	auto compareNames = [](FunctionDefinition const* _a, FunctionDefinition const* _b)
-	{
-		return _a->getName().compare(_b->getName()) < 0;
-	};
+		{
+			FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
+			auto res = exportedFunctions.insert(std::make_pair(hash,f.get()));
+			solAssert(res.second, "Hash collision at Function Definition Hash calculation");
+		}
 
-	sort(exportedFunctions.begin(), exportedFunctions.end(), compareNames);
 	return exportedFunctions;
 }
 
@@ -108,6 +109,11 @@ void FunctionDefinition::checkTypeRequirements()
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
 
 	m_body->checkTypeRequirements();
+}
+
+string FunctionDefinition::getCanonicalSignature() const
+{
+	return getName() + FunctionType(*this).getCanonicalSignature();
 }
 
 void Block::checkTypeRequirements()
@@ -180,12 +186,18 @@ void Assignment::checkTypeRequirements()
 	//@todo later, assignments to structs might be possible, but not to mappings
 	if (!m_leftHandSide->getType()->isValueType() && !m_leftHandSide->isLocalLValue())
 		BOOST_THROW_EXCEPTION(createTypeError("Assignment to non-local non-value lvalue."));
-	m_rightHandSide->expectType(*m_leftHandSide->getType());
 	m_type = m_leftHandSide->getType();
-	if (m_assigmentOperator != Token::ASSIGN)
+	if (m_assigmentOperator == Token::ASSIGN)
+		m_rightHandSide->expectType(*m_type);
+	else
+	{
 		// compound assignment
-		if (!m_type->acceptsBinaryOperator(Token::AssignmentToBinaryOp(m_assigmentOperator)))
+		m_rightHandSide->checkTypeRequirements();
+		TypePointer resultType = Type::binaryOperatorResult(Token::AssignmentToBinaryOp(m_assigmentOperator),
+															m_type, m_rightHandSide->getType());
+		if (!resultType || *resultType != *m_type)
 			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
+	}
 }
 
 void ExpressionStatement::checkTypeRequirements()
@@ -225,24 +237,13 @@ void BinaryOperation::checkTypeRequirements()
 {
 	m_left->checkTypeRequirements();
 	m_right->checkTypeRequirements();
-	if (m_right->getType()->isImplicitlyConvertibleTo(*m_left->getType()))
-		m_commonType = m_left->getType();
-	else if (m_left->getType()->isImplicitlyConvertibleTo(*m_right->getType()))
-		m_commonType = m_right->getType();
-	else
-		BOOST_THROW_EXCEPTION(createTypeError("No common type found in binary operation: " +
-											  m_left->getType()->toString() + " vs. " +
+	m_commonType = Type::binaryOperatorResult(m_operator, m_left->getType(), m_right->getType());
+	if (!m_commonType)
+		BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_operator)) +
+											  " not compatible with types " +
+											  m_left->getType()->toString() + " and " +
 											  m_right->getType()->toString()));
-	if (Token::isCompareOp(m_operator))
-		m_type = make_shared<BoolType>();
-	else
-	{
-		m_type = m_commonType;
-		if (!m_commonType->acceptsBinaryOperator(m_operator))
-			BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_operator)) +
-												  " not compatible with type " +
-												  m_commonType->toString()));
-	}
+	m_type = Token::isCompareOp(m_operator) ? make_shared<BoolType>() : m_commonType;
 }
 
 void FunctionCall::checkTypeRequirements()

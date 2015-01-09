@@ -33,10 +33,7 @@
 #include "CodeHighlighter.h"
 #include "CodeModel.h"
 
-namespace dev
-{
-namespace mix
-{
+using namespace dev::mix;
 
 void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 {
@@ -44,14 +41,17 @@ void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
 }
 
 CompilationResult::CompilationResult():
-	QObject(nullptr), m_successfull(false),
+	QObject(nullptr),
+	m_successful(false),
+	m_codeHash(qHash(QString())),
 	m_contract(new QContractDefinition()),
-	m_codeHighlighter(new CodeHighlighter()),
-	m_codeHash(qHash(QString()))
+	m_codeHighlighter(new CodeHighlighter())
 {}
 
 CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
-	QObject(nullptr), m_successfull(true)
+	QObject(nullptr),
+	m_successful(true),
+	m_codeHash(qHash(QString()))
 {
 	if (!_compiler.getContractNames().empty())
 	{
@@ -64,7 +64,9 @@ CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
 }
 
 CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage):
-	QObject(nullptr), m_successfull(false),
+	QObject(nullptr),
+	m_successful(false),
+	m_codeHash(qHash(QString())),
 	m_contract(_prev.m_contract),
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
@@ -72,8 +74,13 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
-CodeModel::CodeModel(QObject* _parent) : QObject(_parent),
-	m_compiling(false), m_result(new CompilationResult()), m_codeHighlighterSettings(new CodeHighlighterSettings()), m_backgroundWorker(this), m_backgroundJobId(0)
+CodeModel::CodeModel(QObject* _parent):
+	QObject(_parent),
+	m_compiling(false),
+	m_result(new CompilationResult()),
+	m_codeHighlighterSettings(new CodeHighlighterSettings()),
+	m_backgroundWorker(this),
+	m_backgroundJobId(0)
 {
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
@@ -100,7 +107,7 @@ void CodeModel::stop()
 	m_backgroundThread.wait();
 }
 
-void CodeModel::registerCodeChange(const QString &_code)
+void CodeModel::registerCodeChange(QString const& _code)
 {
 	// launch the background thread
 	uint hash = qHash(_code);
@@ -167,7 +174,4 @@ bool CodeModel::hasContract() const
 void CodeModel::updateFormatting(QTextDocument* _document)
 {
 	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
-}
-
-}
 }

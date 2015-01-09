@@ -28,8 +28,7 @@ namespace dev
 namespace mix
 {
 
-/// Transactions list control
-/// @todo This should be moved into state as a sequence
+/// State list control
 class StateListView: public Extension
 {
 	Q_OBJECT

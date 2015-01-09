@@ -78,6 +78,8 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
+	std::string lookupNatSpec(dev::h256 const& _contractCode) const { (void)_contractCode; return ""; }	// TODO: actually implement with leveldb & a UI.
+
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 
 public slots:
@@ -168,6 +170,8 @@ private:
 	QString prettyU256(dev::u256 _n) const;
 
 	QString lookup(QString const& _n) const;
+	dev::Address getNameReg() const;
+	dev::Address getCurrencies() const;
 
 	void populateDebugger(dev::bytesConstRef r);
 	void initDebugger();

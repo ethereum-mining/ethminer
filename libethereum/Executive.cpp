@@ -220,7 +220,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 	return true;
 }
 
-void Executive::finalize(OnOpFunc const&)
+void Executive::finalize()
 {
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.

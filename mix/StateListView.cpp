@@ -26,6 +26,7 @@
 #include <QQmlContext>
 #include <QDebug>
 #include "StateListView.h"
+
 using namespace dev::mix;
 
 StateListView::StateListView(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::RightTab)
@@ -39,7 +40,7 @@ QString StateListView::contentUrl() const
 
 QString StateListView::title() const
 {
-	return QApplication::tr("State");
+	return QApplication::tr("States");
 }
 
 void StateListView::start() const

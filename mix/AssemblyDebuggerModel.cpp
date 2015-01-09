@@ -45,7 +45,6 @@ AssemblyDebuggerModel::AssemblyDebuggerModel():
 DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& _rawTransaction)
 {
 	QList<DebuggingState> machineStates;
-	// Reset the state back to our clean premine.
 	eth::Executive  execution(m_executiveState, LastHashes(), 0);
 	execution.setup(_rawTransaction);
 	std::vector<DebuggingState const*> levels;
@@ -74,8 +73,7 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 	};
 
 	execution.go(onOp);
-	execution.finalize(onOp);
-	m_executiveState.completeMine();
+	execution.finalize();
 
 	DebuggingContent d;
 	d.returnValue = execution.out().toVector();

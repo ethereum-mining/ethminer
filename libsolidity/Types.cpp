@@ -100,6 +100,16 @@ shared_ptr<Type const> Type::forLiteral(Literal const& _literal)
 	}
 }
 
+TypePointer Type::commonType(TypePointer const& _a, TypePointer const& _b)
+{
+	if (_b->isImplicitlyConvertibleTo(*_a))
+		return _a;
+	else if (_a->isImplicitlyConvertibleTo(*_b))
+		return _b;
+	else
+		return TypePointer();
+}
+
 const MemberList Type::EmptyMemberList = MemberList();
 
 shared_ptr<IntegerType const> IntegerType::smallestTypeForLiteral(string const& _literal)
@@ -146,16 +156,6 @@ bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::CONTRACT;
 }
 
-bool IntegerType::acceptsBinaryOperator(Token::Value _operator) const
-{
-	if (isAddress())
-		return Token::isCompareOp(_operator);
-	else if (isHash())
-		return Token::isCompareOp(_operator) || Token::isBitOp(_operator);
-	else
-		return true;
-}
-
 bool IntegerType::acceptsUnaryOperator(Token::Value _operator) const
 {
 	if (_operator == Token::DELETE)
@@ -190,6 +190,28 @@ u256 IntegerType::literalValue(Literal const& _literal) const
 {
 	bigint value(_literal.getValue());
 	return u256(value);
+}
+
+TypePointer IntegerType::binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const
+{
+	if (getCategory() != _other->getCategory())
+		return TypePointer();
+	auto commonType = dynamic_pointer_cast<IntegerType const>(Type::commonType(_this, _other));
+
+	if (!commonType)
+		return TypePointer();
+
+	// All integer types can be compared
+	if (Token::isCompareOp(_operator))
+		return commonType;
+
+	// Nothing else can be done with addresses, but hashes can receive bit operators
+	if (commonType->isAddress())
+		return TypePointer();
+	else if (commonType->isHash() && !Token::isBitOp(_operator))
+		return TypePointer();
+	else
+		return commonType;
 }
 
 const MemberList IntegerType::AddressMemberList =
@@ -266,6 +288,16 @@ u256 BoolType::literalValue(Literal const& _literal) const
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Bool type constructed from non-boolean literal."));
 }
 
+TypePointer BoolType::binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const
+{
+	if (getCategory() != _other->getCategory())
+		return TypePointer();
+	if (Token::isCompareOp(_operator) || _operator == Token::AND || _operator == Token::OR)
+		return _this;
+	else
+		return TypePointer();
+}
+
 bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
 	if (isImplicitlyConvertibleTo(_convertTo))
@@ -302,8 +334,8 @@ MemberList const& ContractType::getMembers() const
 	if (!m_members)
 	{
 		map<string, shared_ptr<Type const>> members;
-		for (FunctionDefinition const* function: m_contract.getInterfaceFunctions())
-			members[function->getName()] = make_shared<FunctionType>(*function, false);
+		for (auto const& it: m_contract.getInterfaceFunctions())
+			members[it.second->getName()] = make_shared<FunctionType>(*it.second, false);
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -322,15 +354,13 @@ shared_ptr<FunctionType const> const& ContractType::getConstructorType() const
 	return m_constructorType;
 }
 
-unsigned ContractType::getFunctionIndex(string const& _functionName) const
+u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 {
-	unsigned index = 0;
-	for (FunctionDefinition const* function: m_contract.getInterfaceFunctions())
-	{
-		if (function->getName() == _functionName)
-			return index;
-		++index;
-	}
+	auto interfaceFunctions = m_contract.getInterfaceFunctions();
+	for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it)
+		if (it->second->getName() == _functionName)
+			return FixedHash<4>::Arith(it->first);
+
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index of non-existing contract function requested."));
 }
 
@@ -450,6 +480,16 @@ unsigned FunctionType::getSizeOnStack() const
 	default:
 		return 0;
 	}
+}
+
+string FunctionType::getCanonicalSignature() const
+{
+	string ret = "(";
+
+	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
+		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
+
+	return ret + ")";
 }
 
 bool MappingType::operator==(Type const& _other) const
