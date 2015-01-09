@@ -64,7 +64,7 @@ namespace
 	};
 }
 
-CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, solidity::Location const& _location):
+CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, dev::solidity::Location const& _location):
 	token(_t), start(_location.start), length(_location.end - _location.start)
 {}
 
@@ -91,7 +91,7 @@ void CodeHighlighter::processSource(std::string const& _source)
 	std::sort(m_formats.begin(), m_formats.end());
 }
 
-void CodeHighlighter::processAST(solidity::ASTNode const& _ast)
+void CodeHighlighter::processAST(dev::solidity::ASTNode const& _ast)
 {
 	HighlightVisitor visitor(&m_formats);
 	_ast.accept(visitor);

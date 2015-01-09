@@ -30,6 +30,7 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
 #if ETH_READLINE
@@ -121,7 +122,11 @@ void help()
         << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
         << "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
         << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
-        << "    -V,--version  Show the version and exit." << endl;
+        << "    -V,--version  Show the version and exit." << endl
+#if ETH_EVMJIT
+		<< "    --jit  Use EVM JIT (default: off)." << endl
+#endif
+		;
         exit(0);
 }
 
@@ -193,6 +198,7 @@ int main(int argc, char** argv)
 	bool upnp = true;
 	bool useLocal = false;
 	bool forceMining = false;
+	bool jit = false;
 	string clientName;
 
 	// Init defaults
@@ -295,6 +301,15 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "--jit")
+		{
+#if ETH_EVMJIT
+			jit = true;
+#else
+			cerr << "EVM JIT not enabled" << endl;
+			return -1;
+#endif
+		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -308,9 +323,10 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
+	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	dev::WebThreeDirect web3(
-		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM),
+		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : ""),
 		dbPath,
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
