@@ -128,6 +128,7 @@ private slots:
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
 	void on_killBlockchain_triggered();
+	void on_clearPending_triggered();
 	void on_importKey_triggered();
 	void on_exportKey_triggered();
 	void on_inject_triggered();
