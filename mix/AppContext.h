@@ -52,7 +52,7 @@ class FileIo;
  * @brief Provides access to application scope variable.
  */
 
-class AppContext : public QObject
+class AppContext: public QObject
 {
 	Q_OBJECT
 

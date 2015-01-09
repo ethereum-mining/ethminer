@@ -958,6 +958,13 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+h256 State::codeHash(Address _contract) const
+{
+	if (!addressHasCode(_contract))
+		return EmptySHA3;
+	return m_cache[_contract].codeHash();
+}
+
 bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
 	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
@@ -999,9 +1006,9 @@ LastHashes State::getLastHashes(BlockChain const& _bc) const
 	ret.resize(256);
 	if (c_protocolVersion > 49)
 	{
-		unsigned n = (unsigned)m_previousBlock.number;
-		for (unsigned i = 0; i < 256; ++i)
-			ret[i] = _bc.numberHash(std::max<unsigned>(n, i) - i);
+		ret[0] = _bc.currentHash();
+		for (unsigned i = 1; i < 256; ++i)
+			ret[i] = ret[i - 1] ? _bc.details(ret[i - 1]).parent : h256();
 	}
 	return ret;
 }

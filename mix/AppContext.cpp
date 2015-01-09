@@ -67,7 +67,7 @@ void AppContext::loadProject()
 	if (!path.isEmpty())
 	{
 		QFile file(path);
-		if(file.open(QIODevice::ReadOnly | QIODevice::Text))
+		if (file.open(QIODevice::ReadOnly | QIODevice::Text))
 		{
 			QTextStream stream(&file);
 			QString json = stream.readAll();
@@ -102,7 +102,7 @@ void AppContext::saveProject(QString const& _json)
 	{
 		dirPath.mkpath(dirPath.path());
 		QFile file(path);
-		if(file.open(QIODevice::WriteOnly | QIODevice::Text))
+		if (file.open(QIODevice::WriteOnly | QIODevice::Text))
 		{
 			QTextStream stream(&file);
 			stream << _json;

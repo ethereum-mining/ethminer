@@ -25,25 +25,22 @@
 #include <QTextDocument>
 #include <QTextBlock>
 #include <QTextLayout>
+#include <libsolidity/ASTVisitor.h>
+#include <libsolidity/AST.h>
+#include <libsolidity/Scanner.h>
+#include <libsolidity/Exceptions.h>
 #include "CodeHighlighter.h"
-#include "libsolidity/ASTVisitor.h"
-#include "libsolidity/AST.h"
-#include "libsolidity/Scanner.h"
-#include "libsolidity/Exceptions.h"
 
-namespace dev
-{
-namespace mix
-{
+using namespace dev::mix;
 
 CodeHighlighterSettings::CodeHighlighterSettings()
 {
-	bg = QColor(0x00, 0x2b, 0x36);
-	fg = QColor (0xee, 0xe8, 0xd5);
+	backgroundColor = QColor(0x00, 0x2b, 0x36);
+	foregroundColor = QColor(0xee, 0xe8, 0xd5);
 	formats[Keyword].setForeground(QColor(0x93, 0xa1, 0xa1));
 	formats[Comment].setForeground(QColor(0x85, 0x99, 0x00));
 	formats[StringLiteral].setForeground(QColor(0xdc, 0x32, 0x2f));
-	formats[NumLiteral].setForeground(fg);
+	formats[NumLiteral].setForeground(foregroundColor);
 	formats[Import].setForeground(QColor(0x6c, 0x71, 0xc4));
 	formats[CompilationError].setUnderlineColor(Qt::red);
 	formats[CompilationError].setUnderlineStyle(QTextCharFormat::SingleUnderline);
@@ -52,7 +49,7 @@ CodeHighlighterSettings::CodeHighlighterSettings()
 namespace
 {
 	using namespace dev::solidity;
-	class HighlightVisitor : public solidity::ASTConstVisitor
+	class HighlightVisitor: public ASTConstVisitor
 	{
 	public:
 		HighlightVisitor(CodeHighlighter::Formats* _formats) { m_formats = _formats; }
@@ -66,7 +63,6 @@ namespace
 		}
 	};
 }
-
 
 CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, solidity::Location const& _location):
 	token(_t), start(_location.start), length(_location.end - _location.start)
@@ -171,10 +167,4 @@ void CodeHighlighter::updateFormatting(QTextDocument* _document, CodeHighlighter
 		}
 		++format;
 	}
-}
-
-
-
-
-}
 }

@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <QKeySequence>
 #include "Extension.h"
 #include "AssemblyDebuggerModel.h"
@@ -55,7 +56,7 @@ private:
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 
 	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
-	bool m_running;
+	std::atomic<bool> m_running;
 
 public slots:
 	/// Run the contract constructor and show debugger window.
@@ -67,13 +68,18 @@ public slots:
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
 	void showDebugger(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	/// Update UI with transaction run error.
 	void showDebugError(QString const& _error);
 
-
 signals:
+	/// Transaction execution started
 	void runStarted();
+	/// Transaction execution completed successfully
 	void runComplete();
+	/// Transaction execution completed with error
+	/// @param _message Error message
 	void runFailed(QString const& _message);
+	/// Execution state changed
 	void stateChanged();
 
 	/// Emited when machine states are available.

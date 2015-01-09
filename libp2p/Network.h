@@ -22,13 +22,18 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
+#include <deque>
+#include <array>
+#include <libdevcore/RLP.h>
+#include <libdevcore/Guards.h>
+#include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
 
 namespace dev
 {
-
 namespace p2p
 {
 
@@ -53,8 +58,8 @@ public:
 	static std::vector<bi::address> getInterfaceAddresses();
 	
 	/// Try to bind and listen on _listenPort, else attempt net-allocated port.
-	static int listen4(bi::tcp::acceptor& _acceptor, unsigned short _listenPort);
-	
+	static int tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort);
+
 	/// Return public endpoint of upnp interface. If successful o_upnpifaddr will be a private interface address and endpoint will contain public address and port.
 	static bi::tcp::endpoint traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
 };

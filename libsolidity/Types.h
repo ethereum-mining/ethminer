@@ -81,15 +81,23 @@ public:
 	///@{
 	///@name Factory functions
 	/// Factory functions that convert an AST @ref TypeName to a Type.
-	static std::shared_ptr<Type const> fromElementaryTypeName(Token::Value _typeToken);
-	static std::shared_ptr<Type const> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
-	static std::shared_ptr<Type const> fromMapping(Mapping const& _typeName);
-	static std::shared_ptr<Type const> fromFunction(FunctionDefinition const& _function);
+	static TypePointer fromElementaryTypeName(Token::Value _typeToken);
+	static TypePointer fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
+	static TypePointer fromMapping(Mapping const& _typeName);
+	static TypePointer fromFunction(FunctionDefinition const& _function);
 	/// @}
 
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
 	/// not fit any type.
-	static std::shared_ptr<Type const> forLiteral(Literal const& _literal);
+	static TypePointer forLiteral(Literal const& _literal);
+	/// @returns a pointer to _a or _b if the other is implicitly convertible to it or nullptr otherwise
+	static TypePointer commonType(TypePointer const& _a, TypePointer const& _b);
+	/// @returns the resulting type of applying the given operator or an empty pointer if this is not possible.
+	/// The default implementation allows comparison operators if a common type exists
+	static TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _a, TypePointer const& _b)
+	{
+		return _a->binaryOperatorResultImpl(_operator, _a, _b);
+	}
 
 	virtual Category getCategory() const = 0;
 	virtual bool isImplicitlyConvertibleTo(Type const& _other) const { return *this == _other; }
@@ -97,7 +105,6 @@ public:
 	{
 		return isImplicitlyConvertibleTo(_convertTo);
 	}
-	virtual bool acceptsBinaryOperator(Token::Value) const { return false; }
 	virtual bool acceptsUnaryOperator(Token::Value) const { return false; }
 
 	virtual bool operator==(Type const& _other) const { return getCategory() == _other.getCategory(); }
@@ -131,6 +138,11 @@ public:
 	}
 
 protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _a, TypePointer const& _b) const
+	{
+		return Token::isCompareOp(_operator) ? commonType(_a, _b) : TypePointer();
+	}
+
 	/// Convenience object used when returning an empty member list.
 	static const MemberList EmptyMemberList;
 };
@@ -155,7 +167,6 @@ public:
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual bool acceptsBinaryOperator(Token::Value _operator) const override;
 	virtual bool acceptsUnaryOperator(Token::Value _operator) const override;
 
 	virtual bool operator==(Type const& _other) const override;
@@ -172,6 +183,9 @@ public:
 	bool isHash() const { return m_modifier == Modifier::HASH || m_modifier == Modifier::ADDRESS; }
 	bool isAddress() const { return m_modifier == Modifier::ADDRESS; }
 	int isSigned() const { return m_modifier == Modifier::SIGNED; }
+
+protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override;
 
 private:
 	int m_bits;
@@ -217,10 +231,6 @@ public:
 	BoolType() {}
 	virtual Category getCategory() const { return Category::BOOL; }
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual bool acceptsBinaryOperator(Token::Value _operator) const override
-	{
-		return _operator == Token::AND || _operator == Token::OR;
-	}
 	virtual bool acceptsUnaryOperator(Token::Value _operator) const override
 	{
 		return _operator == Token::NOT || _operator == Token::DELETE;
@@ -231,6 +241,9 @@ public:
 
 	virtual std::string toString() const override { return "bool"; }
 	virtual u256 literalValue(Literal const& _literal) const override;
+
+protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override;
 };
 
 /**
@@ -254,7 +267,7 @@ public:
 	/// is not used, as this type cannot be the type of a variable or expression.
 	std::shared_ptr<FunctionType const> const& getConstructorType() const;
 
-	unsigned getFunctionIndex(std::string const& _functionName) const;
+	u256 getFunctionIdentifier(std::string const& _functionName) const;
 
 private:
 	ContractDefinition const& m_contract;
@@ -305,7 +318,7 @@ public:
 	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
 	/// BARE: contract address (non-abi contract call)
 	/// OTHERS: special virtual function, nothing on the stack
-	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160, BARE };
+	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160, LOG0, LOG1, LOG2, LOG3, LOG4, BARE };
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
@@ -325,6 +338,7 @@ public:
 	virtual unsigned getSizeOnStack() const override;
 
 	Location const& getLocation() const { return m_location; }
+	std::string getCanonicalSignature() const;
 
 private:
 	TypePointers m_parameterTypes;
@@ -369,6 +383,15 @@ public:
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned getSizeOnStack() const override { return 0; }
+
+protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
+	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
+		return TypePointer();
+	}
 };
 
 /**
@@ -388,6 +411,15 @@ public:
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
+
+protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
+	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
+		return TypePointer();
+	}
 
 private:
 	TypePointer m_actualType;
@@ -412,6 +444,15 @@ public:
 	virtual MemberList const& getMembers() const override { return m_members; }
 
 	virtual std::string toString() const override;
+
+protected:
+	virtual TypePointer binaryOperatorResultImpl(Token::Value _operator, TypePointer const& _this, TypePointer const& _other) const override
+	{
+		(void)_operator;
+		(void)_this;
+		(void)_other;
+		return TypePointer();
+	}
 
 private:
 	Kind m_kind;

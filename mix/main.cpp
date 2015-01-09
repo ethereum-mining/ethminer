@@ -23,7 +23,7 @@
 #include "MixApplication.h"
 using namespace dev::mix;
 
-int main(int _argc, char *_argv[])
+int main(int _argc, char* _argv[])
 {
 	MixApplication app(_argc, _argv);
 	return app.exec();
