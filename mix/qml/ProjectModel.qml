@@ -12,8 +12,9 @@ Item {
 
 	signal projectClosed
 	signal projectLoaded
+	signal documentOpen(var document)
 
-	property bool isEmpty: projectFile === ""
+	property bool isEmpty: (projectFile === "")
 	readonly property string projectFileName: ".mix"
 
 	property bool haveUnsavedChanges: false
@@ -30,24 +31,29 @@ Item {
 		newProjectDialog.open();
 	}
 
+	function browseProject() {
+		openProjectFileDialog.open();
+	}
+
 	function closeProject() {
-		console.log("closing project");
-		if (haveUnsavedChanges)
-			saveMessageDialog.open();
-		else
-			doCloseProject();
+		if (!isEmpty) {
+			console.log("closing project");
+			if (haveUnsavedChanges)
+				saveMessageDialog.open();
+			else
+				doCloseProject();
+		}
 	}
 
 	function saveProject() {
 		if (!isEmpty) {
 			var json = JSON.stringify(projectData);
-			fileIo.writeFile(projectFile, json)
+			fileIo.writeFile(projectFile, json);
 		}
 	}
 
 	function loadProject(path) {
-		if (!isEmpty)
-			closeProject();
+		closeProject();
 		console.log("loading project at " + path);
 		var json = fileIo.readFile(path);
 		projectData = JSON.parse(json);
@@ -55,14 +61,35 @@ Item {
 		if (!projectData.files)
 			projectData.files = [];
 
-		for(var i = 0; i < projectData.files; i++) {
+		for(var i = 0; i < projectData.files.length; i++) {
 			var p = projectData.files[i];
-			projectListModel.append({
-				path: p,
-				name: p.substring(p.lastIndexOf("/") + 1, p.length)
-			});
+			addFile(p);
 		}
-		onProjectLoaded();
+		projectSettings.lastProjectPath = projectFile;
+		projectLoaded();
+	}
+
+	function addExistingFile() {
+		addExistingFileDialog().open();
+	}
+
+	function addProjectFiles(files) {
+		for(var i = 0; i < files.length; i++)
+			addFile(files[i]);
+	}
+
+	function addFile(file) {
+		var p = file;
+		var fileData = {
+			contract: false,
+			path: p,
+			name: p.substring(p.lastIndexOf("/") + 1, p.length),
+			documentId: p,
+			isText: true,
+			isContract: p.substring(p.length - 4, p.length) === ".sol",
+		};
+
+		projectListModel.append(fileData);
 	}
 
 	function doCloseProject() {
@@ -73,16 +100,30 @@ Item {
 	}
 
 	function doCreateProject(title, path) {
-		if (!isEmpty)
-			closeProject();
+		closeProject();
 		console.log("creating project " + title + " at " + path);
 		if (path[path.length - 1] !== "/")
 			path += "/";
 		var dirPath = path + title;
 		fileIo.makeDir(dirPath);
 		var projectFile = dirPath + "/" + projectFileName;
-		fileIo.writeFile(projectFile, "");
+
+		var indexFile = dirPath + "/index.html";
+		var contractsFile = dirPath + "/contracts.sol";
+		var projectData = {
+			files: [ indexFile, contractsFile ]
+		};
+
+		fileIo.writeFile(indexFile, "<html></html>");
+		fileIo.writeFile(contractsFile, "contract MyContract {}");
+		var json = JSON.stringify(projectData);
+		fileIo.writeFile(projectFile, json);
 		loadProject(projectFile);
+	}
+
+	Component.onCompleted: {
+		if (projectSettings.lastProjectPath)
+			loadProject(projectSettings.lastProjectPath)
 	}
 
 	NewProjectDialog {
@@ -91,7 +132,7 @@ Item {
 		onAccepted: {
 			var title = newProjectDialog.projectTitle;
 			var path = newProjectDialog.projectPath;
-			projectModel.doCreateProject(title, path);
+			doCreateProject(title, path);
 		}
 	}
 
@@ -114,27 +155,33 @@ Item {
 		id: projectListModel
 	}
 
-	Component {
-		id: renderDelegate
-		Item {
-			id: wrapperItem
-			height: 20
-			width: parent.width
-			RowLayout {
-				anchors.fill: parent
-				Text {
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					text: title
-					font.pointSize: 12
-					verticalAlignment: Text.AlignBottom
-				}
-			}
-		}
-	}
-
 	Settings {
 		id: projectSettings
 		property string lastProjectPath;
 	}
+
+	FileDialog {
+		id: openProjectFileDialog
+		visible: false
+		title: qsTr("Open a project")
+		selectFolder: true
+		onAccepted: {
+			var path = openProjectFileDialog.fileUrl.toString();
+			path += "/" + projectFileName;
+				loadProject(path);
+		}
+	}
+
+	FileDialog {
+		id: addExistingFileDialog
+		visible: false
+		title: qsTr("Add a file")
+		selectFolder: false
+		onAccepted: {
+			var paths = openProjectFileDialog.fileUrls;
+				addProjectFiles(paths);
+		}
+	}
+
+
 }

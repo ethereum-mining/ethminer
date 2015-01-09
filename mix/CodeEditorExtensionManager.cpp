@@ -51,15 +51,6 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 	if (!_editor)
 		return;
 
-	QVariant doc = _editor->property("textDocument");
-	if (doc.canConvert<QQuickTextDocument*>())
-	{
-		QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
-		if (qqdoc)
-		{
-			m_doc = qqdoc->textDocument();
-		}
-	}
 }
 
 void CodeEditorExtensionManager::initExtensions()
@@ -67,7 +58,6 @@ void CodeEditorExtensionManager::initExtensions()
 	std::shared_ptr<ConstantCompilationControl> output = std::make_shared<ConstantCompilationControl>(m_appContext);
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
-	QObject::connect(m_doc, &QTextDocument::contentsChange, this, &CodeEditorExtensionManager::onCodeChange);
 	QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
 	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
 
@@ -97,35 +87,21 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	m_features.append(_ext);
 }
 
-void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
-{
-	this->loadEditor(_editor);
-	this->initExtensions();
-
-	auto args = QApplication::arguments();
-	if (args.length() > 1)
-	{
-		QString path = args[1];
-		QFile file(path);
-		if (file.exists() && file.open(QFile::ReadOnly))
-			m_doc->setPlainText(file.readAll());
-	}
-}
-
 void CodeEditorExtensionManager::onCodeChange()
 {
-	m_appContext->codeModel()->updateFormatting(m_doc); //update old formatting
-	m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText());
+//	m_appContext->codeModel()->updateFormatting(m_doc); //update old formatting
+//	m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText());
 }
 
 void CodeEditorExtensionManager::applyCodeHighlight()
 {
-	m_appContext->codeModel()->updateFormatting(m_doc);
+//	m_appContext->codeModel()->updateFormatting(m_doc);
 }
 
 void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
 {
 	m_rightTabView = _tabView;
+	initExtensions(); //TODO: this is not the right place for it
 }
 
 void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
