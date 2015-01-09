@@ -170,6 +170,8 @@ private:
 	QString prettyU256(dev::u256 _n) const;
 
 	QString lookup(QString const& _n) const;
+	dev::Address getNameReg() const;
+	dev::Address getCurrencies() const;
 
 	void populateDebugger(dev::bytesConstRef r);
 	void initDebugger();
