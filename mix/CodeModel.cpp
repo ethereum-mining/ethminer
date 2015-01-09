@@ -48,7 +48,7 @@ CompilationResult::CompilationResult():
 	m_codeHighlighter(new CodeHighlighter())
 {}
 
-CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
+CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compiler):
 	QObject(nullptr),
 	m_successful(true),
 	m_codeHash(qHash(QString()))
