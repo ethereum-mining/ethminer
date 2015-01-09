@@ -40,77 +40,69 @@ Compiler::Compiler(Options const& _options):
 
 void Compiler::createBasicBlocks(bytes const& _bytecode)
 {
-	// FIXME: Simplify this algorithm. All can be done in one pass
-
-	std::set<ProgramCounter> splitPoints; // Sorted collections of instruction indices where basic blocks start/end
-
-	std::vector<ProgramCounter> indirectJumpTargets;
-
-	splitPoints.insert(0);  // First basic block
-
-	for (auto curr = _bytecode.begin(); curr != _bytecode.end(); ++curr)
+	/// Helper function that skips push data and finds next iterator (can be the end)
+	auto skipPushDataAndGetNext = [](bytes::const_iterator _curr, bytes::const_iterator _end)
 	{
-		ProgramCounter currentPC = curr - _bytecode.begin();
+		static const auto push1  = static_cast<size_t>(Instruction::PUSH1);
+		static const auto push32 = static_cast<size_t>(Instruction::PUSH32);
+		size_t offset = 1;
+		if (*_curr >= push1 && *_curr <= push32)
+			offset += std::min<size_t>(*_curr - push1 + 1, (_end - _curr) - 1);
+		return _curr + offset;
+	};
 
-		auto inst = Instruction(*curr);
-		switch (inst)
+	auto begin = _bytecode.begin();
+	bool nextJumpDest = false;
+	for (auto curr = begin, next = begin; curr != _bytecode.end(); curr = next)
+	{
+		next = skipPushDataAndGetNext(curr, _bytecode.end());
+
+		bool isEnd = false;
+		switch (Instruction(*curr))
 		{
-
-		case Instruction::ANY_PUSH:
-		{
-			readPushData(curr, _bytecode.end());
-			break;
-		}
-
-		case Instruction::JUMPDEST:
-		{
-			// A basic block starts here.
-			splitPoints.insert(currentPC);
-			indirectJumpTargets.push_back(currentPC);
-			break;
-		}
-
 		case Instruction::JUMP:
 		case Instruction::JUMPI:
 		case Instruction::RETURN:
 		case Instruction::STOP:
 		case Instruction::SUICIDE:
-		{
-			// Create a basic block starting at the following instruction.
-			if (curr + 1 < _bytecode.end())
-				splitPoints.insert(currentPC + 1);
+			isEnd = true;
 			break;
-		}
+
+		case Instruction::JUMPDEST:
+			nextJumpDest = true;
+			break;
 
 		default:
 			break;
 		}
-	}
 
-	for (auto it = splitPoints.cbegin(); it != splitPoints.cend();)
-	{
-		auto beginInstIdx = *it;
-		++it;
-		auto endInstIdx = it != splitPoints.cend() ? *it : _bytecode.size();
-		basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginInstIdx), std::forward_as_tuple(beginInstIdx, endInstIdx, m_mainFunc, m_builder));
+		assert(next <= _bytecode.end());
+		if (next == _bytecode.end() || Instruction(*next) == Instruction::JUMPDEST)
+			isEnd = true;
+
+		if (isEnd)
+		{
+			auto beginIdx = begin - _bytecode.begin();
+			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
+					std::forward_as_tuple(begin, next, m_mainFunc, m_builder, nextJumpDest));
+			nextJumpDest = false;
+			begin = next;
+		}
 	}
 
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
-
-	for (auto it = indirectJumpTargets.cbegin(); it != indirectJumpTargets.cend(); ++it)
-		basicBlocks.find(*it)->second.markAsJumpDest();
 }
 
 llvm::BasicBlock* Compiler::getJumpTableBlock()
 {
 	if (!m_jumpTableBlock)
 	{
-		m_jumpTableBlock.reset(new BasicBlock("JumpTable", m_mainFunc, m_builder));
+		m_jumpTableBlock.reset(new BasicBlock("JumpTable", m_mainFunc, m_builder, true));
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
 		auto dest = m_jumpTableBlock->localStack().pop();
 		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock());
-		for (auto&& p : basicBlocks)
+		for (auto&& p : m_basicBlocks)
 		{
 			if (p.second.isJumpDest())
 				switchInstr->addCase(Constant::get(p.first), p.second.llvm());
@@ -123,7 +115,7 @@ llvm::BasicBlock* Compiler::getBadJumpBlock()
 {
 	if (!m_badJumpBlock)
 	{
-		m_badJumpBlock.reset(new BasicBlock("BadJump", m_mainFunc, m_builder));
+		m_badJumpBlock.reset(new BasicBlock("BadJump", m_mainFunc, m_builder, true));
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_badJumpBlock->llvm());
 		m_builder.CreateRet(Constant::get(ReturnCode::BadJumpDestination));
@@ -155,14 +147,14 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 	Stack stack(m_builder, runtimeManager);
 	Arith256 arith(m_builder);
 
-	m_builder.CreateBr(basicBlocks.begin()->second);
+	m_builder.CreateBr(m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second);
 
-	for (auto basicBlockPairIt = basicBlocks.begin(); basicBlockPairIt != basicBlocks.end(); ++basicBlockPairIt)
+	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
 		auto& basicBlock = basicBlockPairIt->second;
 		auto iterCopy = basicBlockPairIt;
 		++iterCopy;
-		auto nextBasicBlock = (iterCopy != basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
+		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
 		compileBasicBlock(basicBlock, _bytecode, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock);
 	}
 
@@ -178,7 +170,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 	if (m_options.optimizeStack)
 	{
 		std::vector<BasicBlock*> blockList;
-		for	(auto& entry : basicBlocks)
+		for	(auto& entry : m_basicBlocks)
 			blockList.push_back(&entry.second);
 
 		if (m_jumpTableBlock)
@@ -189,7 +181,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(bytes const& _bytecode, std::str
 		dumpCFGifRequired("blocks-opt.dot");
 	}
 
-	for (auto& entry : basicBlocks)
+	for (auto& entry : m_basicBlocks)
 		entry.second.synchronizeLocalStack(stack);
 	if (m_jumpTableBlock)
 		m_jumpTableBlock->synchronizeLocalStack(stack);
@@ -219,9 +211,9 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 	m_builder.SetInsertPoint(_basicBlock.llvm());
 	auto& stack = _basicBlock.localStack();
 
-	for (auto currentPC = _basicBlock.begin(); currentPC != _basicBlock.end(); ++currentPC)
+	for (auto it = _basicBlock.begin(); it != _basicBlock.end(); ++it)
 	{
-		auto inst = static_cast<Instruction>(_bytecode[currentPC]);
+		auto inst = Instruction(*it);
 
 		_gasMeter.count(inst);
 
@@ -483,10 +475,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 		case Instruction::ANY_PUSH:
 		{
-			auto curr = _bytecode.begin() + currentPC;	// TODO: replace currentPC with iterator
-			auto value = readPushData(curr, _bytecode.end());
-			currentPC = curr - _bytecode.begin();
-
+			auto value = readPushData(it, _basicBlock.end());
 			stack.push(Constant::get(value));
 			break;
 		}
@@ -561,24 +550,16 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
 			{
 				auto&& c = constant->getValue();
-				if (c.ult(_bytecode.size()))
-				{
-					auto v = c.getZExtValue();
-					auto it = basicBlocks.find(v);
-					if (it != basicBlocks.end() && it->second.isJumpDest())
-						targetBlock = it->second.llvm();
-				}
-
-				if (!targetBlock)
-					targetBlock = getBadJumpBlock();
+				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
+				auto it = m_basicBlocks.find(targetIdx);
+				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock();
 			}
 
+			// TODO: Improve; check for constants
 			if (inst == Instruction::JUMP)
 			{
 				if (targetBlock)
 				{
-					// The target address is computed at compile time,
-					// just pop it without looking...
 					m_builder.CreateBr(targetBlock);
 				}
 				else
@@ -614,7 +595,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 		case Instruction::PC:
 		{
-			auto value = Constant::get(currentPC);
+			auto value = Constant::get(it - _bytecode.begin());
 			stack.push(value);
 			break;
 		}
@@ -832,13 +813,13 @@ void Compiler::removeDeadBlocks()
 	do
 	{
 		sthErased = false;
-		for (auto it = basicBlocks.begin(); it != basicBlocks.end();)
+		for (auto it = m_basicBlocks.begin(); it != m_basicBlocks.end();)
 		{
 			auto llvmBB = it->second.llvm();
 			if (llvm::pred_begin(llvmBB) == llvm::pred_end(llvmBB))
 			{
 				llvmBB->eraseFromParent();
-				basicBlocks.erase(it++);
+				m_basicBlocks.erase(it++);
 				sthErased = true;
 			}
 			else
@@ -866,7 +847,7 @@ void Compiler::dumpCFGtoStream(std::ostream& _out)
 		 << "  entry [share=record, label=\"entry block\"];\n";
 
 	std::vector<BasicBlock*> blocks;
-	for (auto& pair : basicBlocks)
+	for (auto& pair : m_basicBlocks)
 		blocks.push_back(&pair.second);
 	if (m_jumpTableBlock)
 		blocks.push_back(m_jumpTableBlock.get());
@@ -905,7 +886,7 @@ void Compiler::dumpCFGtoStream(std::ostream& _out)
 
 void Compiler::dump()
 {
-	for (auto& entry : basicBlocks)
+	for (auto& entry : m_basicBlocks)
 		entry.second.dump();
 	if (m_jumpTableBlock != nullptr)
 		m_jumpTableBlock->dump();
