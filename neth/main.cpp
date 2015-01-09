@@ -299,6 +299,7 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	string dbPath;
 	unsigned mining = ~(unsigned)0;
+	(void)mining;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 #if ETH_JSONRPC
