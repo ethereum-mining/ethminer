@@ -16,6 +16,7 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Full-stack compiler that converts a source code string to bytecode.
  */
@@ -140,10 +141,15 @@ void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractN
 
 string const& CompilerStack::getInterface(string const& _contractName) const
 {
-	return getJsonDocumentation(_contractName, DocumentationType::ABI_INTERFACE);
+	return getMetadata(_contractName, DocumentationType::ABI_INTERFACE);
 }
 
-string const& CompilerStack::getJsonDocumentation(string const& _contractName, DocumentationType _type) const
+string const& CompilerStack::getSolidityInterface(string const& _contractName) const
+{
+	return getMetadata(_contractName, DocumentationType::ABI_SOLIDITY_INTERFACE);
+}
+
+string const& CompilerStack::getMetadata(string const& _contractName, DocumentationType _type) const
 {
 	if (!m_parseSuccessful)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Parsing was not successful."));
@@ -161,6 +167,9 @@ string const& CompilerStack::getJsonDocumentation(string const& _contractName, D
 		break;
 	case DocumentationType::ABI_INTERFACE:
 		doc = &contract.interface;
+		break;
+	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+		doc = &contract.solidityInterface;
 		break;
 	default:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Illegal documentation type."));
