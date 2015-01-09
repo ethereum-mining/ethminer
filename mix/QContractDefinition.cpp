@@ -33,11 +33,9 @@ using namespace dev::mix;
 
 QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
 {
-	std::vector<FunctionDefinition const*> functions = _contract->getInterfaceFunctions();
-	for (unsigned i = 0; i < functions.size(); i++)
-	{
-		FunctionDefinition const* func = functions.at(i);
-		m_functions.append(new QFunctionDefinition(func, i));
-	}
+	auto interfaceFunctions = _contract->getInterfaceFunctions();
+	unsigned i = 0;
+	for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it, ++i)
+		m_functions.append(new QFunctionDefinition(it->second, i));
 }
 
