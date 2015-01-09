@@ -165,6 +165,7 @@
     <addaction name="debugDumpStatePre"/>
     <addaction name="separator"/>
     <addaction name="paranoia"/>
+    <addaction name="clearPending"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="forceMining"/>
@@ -2047,6 +2048,11 @@ font-size: 14pt</string>
   <action name="newIdentity">
    <property name="text">
     <string>New Identity</string>
+   </property>
+  </action>
+  <action name="clearPending">
+   <property name="text">
+    <string>Clear Pe&amp;nd&amp;ing</string>
    </property>
   </action>
  </widget>
