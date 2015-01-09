@@ -24,12 +24,15 @@
 #include <libdevcrypto/Common.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 
+class Main;
+
 class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 {
 	Q_OBJECT
 
 public:
-	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3,
+						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
 	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
@@ -39,4 +42,5 @@ signals:
 
 private:
 	dev::WebThreeDirect* m_web3;
+	Main* m_main;
 };

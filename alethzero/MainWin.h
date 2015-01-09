@@ -37,6 +37,8 @@
 #include <libqethereum/QEthereum.h>
 #include <libwebthree/WebThree.h>
 
+#include "NatspecHandler.h"
+
 namespace Ui {
 class Main;
 }
@@ -80,7 +82,7 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	std::string lookupNatSpec(dev::h256 const& _contractCode) const { (void)_contractCode; return ""; }	// TODO: actually implement with leveldb & a UI.
+	std::string lookupNatSpec(dev::h256 const& _contractHash) const;
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 
@@ -269,4 +271,5 @@ private:
 	QWebThree* m_qweb = nullptr;
 
 	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
+	NatspecHandler m_natspecDB;
 };
