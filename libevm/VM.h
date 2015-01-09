@@ -202,9 +202,7 @@ inline bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _st
 		case Instruction::CREATE:
 		{
 			require(3);
-			u256 inOff = m_stack[m_stack.size() - 2];
-			u256 inSize = m_stack[m_stack.size() - 3];
-			newTempSize = (bigint)inOff + inSize;
+			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]);
 			runGas = c_createGas;
 			break;
 		}
