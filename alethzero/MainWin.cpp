@@ -105,9 +105,9 @@ static QString contentsOfQResource(std::string const& res)
 	return in.readAll();
 }
 
-Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
-Address c_newConfig = Address("d5f9d8d94886e70b06e474c3fb14fd43e2f23970");
-Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
+//Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+Address c_newConfig = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+//Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
@@ -265,22 +265,32 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installNameRegWatch(); });
-	installWatch(dev::eth::LogFilter().address(c_config), [=]() { installCurrenciesWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installCurrenciesWatch(); });
 	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
 	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
+}
+
+Address Main::getNameReg() const
+{
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+}
+
+Address Main::getCurrencies() const
+{
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)2)));
 }
 
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 0)), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)ethereum()->stateAt(c_config, 1)), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -288,7 +298,9 @@ void Main::installBalancesWatch()
 	dev::eth::LogFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+	Address coinsAddr = getCurrencies();
+
+	// TODO: Update for new currencies reg.
 	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
@@ -450,37 +462,37 @@ static Public stringToPublic(QString const& _a)
 		return Public();
 }
 
-static Address g_newNameReg;
+//static Address g_newNameReg;
 
 QString Main::pretty(dev::Address _a) const
 {
-	static std::map<Address, QString> s_memos;
+/*	static std::map<Address, QString> s_memos;
 
 	if (!s_memos.count(_a))
-	{
-		if (!g_newNameReg)
-			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+	{*/
+//		if (!g_newNameReg)
+			auto g_newNameReg = getNameReg();
 
 		if (g_newNameReg)
 		{
 			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn(2, _a)))));
-			s_memos[_a] = s;
+//			s_memos[_a] = s;
 			if (s.size())
 				return s;
 		}
-	}
+/*	}
 	else
 		if (s_memos[_a].size())
-			return s_memos[_a];
+			return s_memos[_a];*/
 
 	h256 n;
-
+/*
 	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
 		n = ethereum()->stateAt(nameReg, (u160)(_a));
 
 	if (!n)
 		n = ethereum()->stateAt(m_nameReg, (u160)(_a));
-
+*/
 	return fromRaw(n);
 }
 
@@ -505,21 +517,21 @@ Address Main::fromString(QString const& _n) const
 	if (_n == "(Create Contract)")
 		return Address();
 
-	static std::map<QString, Address> s_memos;
+/*	static std::map<QString, Address> s_memos;
 
 	if (!s_memos.count(_n))
-	{
-		if (!g_newNameReg)
-			g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+	{*/
+//		if (!g_newNameReg)
+			auto g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
 
 		if (g_newNameReg)
 		{
 			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn(0, ::fromString(_n.toStdString()))));
-			s_memos[_n] = a;
+//			s_memos[_n] = a;
 			if (a)
 				return a;
 		}
-	}
+/*	}
 	else
 		if (s_memos[_n])
 			return s_memos[_n];
@@ -532,14 +544,13 @@ Address Main::fromString(QString const& _n) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_n.size())
 	{
-
 		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
 			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
 
 		if (h256 a = ethereum()->stateAt(m_nameReg, n))
 			return right160(a);
-	}
+	}*/
 
 	if (_n.size() == 40)
 		return Address(fromHex(_n.toStdString()));
@@ -566,8 +577,9 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
-		ret = ethereum()->stateAt(dnsReg, n);
+	// TODO: fix with the new DNSreg contract
+//	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+//		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
 		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
 			ret = ethereum()->stateAt(nameReg, n2);
@@ -861,8 +873,8 @@ void Main::refreshBalances()
 	// update all the balance-dependent stuff.
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
-	map<Address, tuple<QString, u256, u256>> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
+/*	map<Address, tuple<QString, u256, u256>> altCoins;
+	Address coinsAddr = getCurrencies();
 	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
 	{
 		auto n = ethereum()->stateAt(coinsAddr, i + 1);
@@ -872,7 +884,7 @@ void Main::refreshBalances()
 			denom = 1;
 //		cdebug << n << addr << denom << sha3(h256(n).asBytes());
 		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
-	}
+	}*/
 	for (auto i: m_myKeys)
 	{
 		u256 b = ethereum()->balanceAt(i.address());
@@ -880,18 +892,18 @@ void Main::refreshBalances()
 			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
 		totalBalance += b;
 
-		for (auto& c: altCoins)
-			get<1>(c.second) += (u256)ethereum()->stateAt(c.first, (u160)i.address());
+//		for (auto& c: altCoins)
+//			get<1>(c.second) += (u256)ethereum()->stateAt(c.first, (u160)i.address());
 	}
 
 	QString b;
-	for (auto const& c: altCoins)
+/*	for (auto const& c: altCoins)
 		if (get<1>(c.second))
 		{
 			stringstream s;
 			s << setw(toString(get<2>(c.second) - 1).size()) << setfill('0') << (get<1>(c.second) % get<2>(c.second));
 			b += QString::fromStdString(toString(get<1>(c.second) / get<2>(c.second)) + "." + s.str() + " ") + get<0>(c.second).toUpper() + " | ";
-		}
+		}*/
 	ui->balance->setText(b + QString::fromStdString(formatBalance(totalBalance)));
 }
 
@@ -1224,6 +1236,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
 		Transaction tx(ethereum()->pending()[i]);
+		TransactionReceipt receipt(ethereum()->postState().receipt(i));
 		auto ss = tx.safeSender();
 		h256 th = sha3(rlpList(ss, tx.nonce()));
 		s << "<h3>" << th << "</h3>";
@@ -1246,12 +1259,15 @@ void Main::on_transactionQueue_currentItemChanged()
 			if (tx.data().size())
 				s << dev::memDump(tx.data(), 16, true);
 		}
+		s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
-
+		s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		auto r = receipt.rlp();
+		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+		s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
+		s << renderDiff(ethereum()->diff(i, -1));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
-
-		s << renderDiff(ethereum()->diff(i, 0));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -1364,11 +1380,6 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
-			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
-			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
-			auto r = receipt.rlp();
-			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			if (tx.isCreation())
 			{
 				if (tx.data().size())
@@ -1379,6 +1390,12 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data().size())
 					s << dev::memDump(tx.data(), 16, true);
 			}
+			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
+			s << "<hr/>";
+			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			auto r = receipt.rlp();
+			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			s << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
@@ -1619,12 +1636,15 @@ void Main::on_data_textChanged()
 		{
 			m_data = fromHex(src);
 		}
-		else if (src.substr(0, 8) == "contract") // improve this heuristic
+		else if (src.substr(0, 8) == "contract" || src.substr(0, 5) == "//sol") // improve this heuristic
 		{
 			dev::solidity::CompilerStack compiler;
 			try
 			{
 				m_data = compiler.compile(src, m_enableOptimizer);
+				solidity = "<h4>Solidity</h4>";
+				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
+				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
 			}
 			catch (dev::Exception const& exception)
 			{
@@ -1697,6 +1717,18 @@ void Main::on_data_textChanged()
 		}
 	}
 	updateFee();
+}
+
+void Main::on_clearPending_triggered()
+{
+	writeSettings();
+	ui->mine->setChecked(false);
+	ui->net->setChecked(false);
+	web3()->stopNetwork();
+	ethereum()->clearPending();
+	readSettings(true);
+	installWatches();
+	refreshAll();
 }
 
 void Main::on_killBlockchain_triggered()
