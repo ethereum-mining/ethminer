@@ -34,9 +34,9 @@ void HostCapabilityFace::seal(bytes& _b)
 
 std::vector<std::shared_ptr<Session> > HostCapabilityFace::peers() const
 {
-	RecursiveGuard l(m_host->x_peers);
+	RecursiveGuard l(m_host->x_sessions);
 	std::vector<std::shared_ptr<Session> > ret;
-	for (auto const& i: m_host->m_peers)
+	for (auto const& i: m_host->m_sessions)
 		if (std::shared_ptr<Session> p = i.second.lock())
 			if (p->m_capabilities.count(capDesc()))
 				ret.push_back(p);

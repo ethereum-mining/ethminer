@@ -36,21 +36,21 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<PeerInfo> const& _n):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_node(_n),
+	m_info({m_peer->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
+	m_peer(_n),
 	m_manualEndpoint(_n->address)
 {
 	m_lastReceived = m_connect = std::chrono::steady_clock::now();
-	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
 }
 
 Session::~Session()
 {
 	// TODO: P2P revisit (refactored from previous logic)
-	if (m_node && !(id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead))
-		m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
+	if (m_peer && !(id() && !isPermanentProblem(m_peer->lastDisconnect) && !m_peer->dead))
+		m_peer->lastConnected = m_peer->lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -70,35 +70,35 @@ Session::~Session()
 
 NodeId Session::id() const
 {
-	return m_node ? m_node->id : NodeId();
+	return m_peer ? m_peer->id : NodeId();
 }
 
 void Session::addRating(unsigned _r)
 {
-	if (m_node)
+	if (m_peer)
 	{
-		m_node->rating += _r;
-		m_node->score += _r;
+		m_peer->rating += _r;
+		m_peer->score += _r;
 	}
 }
 
 int Session::rating() const
 {
-	return m_node->rating;
+	return m_peer->rating;
 }
 
 // TODO: P2P integration: session->? should be unavailable when socket isn't open
 bi::tcp::endpoint Session::endpoint() const
 {
-	if (m_socket.is_open() && m_node)
+	if (m_socket.is_open() && m_peer)
 		try
 		{
-			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_node->address.port());
+			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_peer->address.port());
 		}
 		catch (...) {}
 
-	if (m_node)
-		return m_node->address;
+	if (m_peer)
+		return m_peer->address;
 
 	return m_manualEndpoint;
 }
@@ -195,10 +195,11 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		assert(!!m_node);
-		assert(!!m_node->id);
+		assert(!!m_peer);
+		assert(!!m_peer->id);
 
-		if (m_server->havePeer(id))
+		// TODO: P2P ensure disabled logic is covered
+		if (false /* m_server->havePeer(id) */)
 		{
 			// Already connected.
 			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
@@ -217,20 +218,28 @@ bool Session::interpret(RLP const& _r)
 		// TODO: P2P Move all node-lifecycle information into Host. Determine best way to handle peer-lifecycle properties vs node lifecycle.
 		// TODO: P2P remove oldid
 		// TODO: P2P with encrypted transport the handshake will fail and we won't get here
-//		m_node = m_server->noteNode(m_node->id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort));
-		if (m_node->isOffline())
-			m_node->lastConnected = chrono::system_clock::now();
+//		m_peer = m_server->noteNode(m_peer->id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort));
+		if (m_peer->isOffline())
+			m_peer->lastConnected = chrono::system_clock::now();
 //
 //		// TODO: P2P introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
-		m_knownNodes.extendAll(m_node->index);
-		m_knownNodes.unionWith(m_node->index);
+		m_knownNodes.extendAll(m_peer->index);
+		m_knownNodes.unionWith(m_peer->index);
 
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
 			disconnect(IncompatibleProtocol);
 			return true;
 		}
-		m_info = PeerInfo({id, clientVersion, m_socket.remote_endpoint().address().to_string(), listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() });
+		
+		// TODO: P2P migrate auth to Host and Handshake to constructor
+		m_info.clientVersion = clientVersion;
+		m_info.host = m_socket.remote_endpoint().address().to_string();
+		m_info.port = listenPort;
+		m_info.lastPing = std::chrono::steady_clock::duration();
+		m_info.caps = _r[3].toSet<CapDesc>();
+		m_info.socket = (unsigned)m_socket.native_handle();
+		m_info.notes = map<string, string>();
 
 		m_server->registerPeer(shared_from_this(), caps);
 		break;
@@ -285,64 +294,63 @@ bool Session::interpret(RLP const& _r)
 			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			NodeId id = _r[i][2].toHash<NodeId>();
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_nodes.count(id) << (m_server->m_nodes.count(id) ? isPrivateAddress(m_server->m_nodes.at(id)->address.address()) : -1);
+			
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+//			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_peers.count(id) << (m_server->m_peers.count(id) ? isPrivateAddress(m_server->m_peers.at(id)->address.address()) : -1);
 
-			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
+			// ignore if dist(us,item) - dist(us,them) > 1
+			
+			// TODO: isPrivate
+			if (!m_server->m_netPrefs.localNetworking && isPrivateAddress(peerAddress))
 				goto CONTINUE;	// Private address. Ignore.
 
 			if (!id)
-				goto CONTINUE;	// Null identity. Ignore.
+				goto LAMEPEER;	// Null identity. Ignore.
 
 			if (m_server->id() == id)
-				goto CONTINUE;	// Just our info - we already have that.
+				goto LAMEPEER;	// Just our info - we already have that.
 
 			if (id == this->id())
-				goto CONTINUE;	// Just their info - we already have that.
+				goto LAMEPEER;	// Just their info - we already have that.
 
+			// we don't worry about m_peers.count(id) now because node table will handle this and
+			// by default we will not blindly connect to nodes received via tcp; instead they will
+			// be pinged, as-is standard, by the node table and added if appropriate. unless flagged
+			// as required, nodes aren't connected to unless they respond via discovery; no matter if
+			// a node is relayed via udp or tcp.
 			// check that it's not us or one we already know:
-			if (m_server->m_nodes.count(id))
-			{
-				/*	MEH. Far from an ideal solution. Leave alone for now.
-				// Already got this node.
-				// See if it's any better that ours or not...
-				// This could be the public address of a known node.
-				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
-				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()) && ep.port() != 0)
-					// Update address if the node if we now have a public IP for it.
-					m_server->m_nodes[id]->address = ep;
-				*/
-				goto CONTINUE;
-			}
+//			if (m_server->m_peers.count(id))
+//			{
+//				/*	MEH. Far from an ideal solution. Leave alone for now.
+//				// Already got this node.
+//				// See if it's any better that ours or not...
+//				// This could be the public address of a known node.
+//				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
+//				if (m_server->m_peers.count(id) && isPrivateAddress(m_server->m_peers.at(id)->address.address()) && ep.port() != 0)
+//					// Update address if the node if we now have a public IP for it.
+//					m_server->m_peers[id]->address = ep;
+//				*/
+//				goto CONTINUE;
+//			}
 
 			if (!ep.port())
-				goto CONTINUE;	// Zero port? Don't think so.
+				goto LAMEPEER;	// Zero port? Don't think so.
 
 			if (ep.port() >= /*49152*/32768)
-				goto CONTINUE;	// Private port according to IANA.
+				goto LAMEPEER;	// Private port according to IANA.
 
-			// TODO: PoC-7:
-			// Technically fine, but ignore for now to avoid peers passing on incoming ports until we can be sure that doesn't happen any more.
-//			if (ep.port() < 30300 || ep.port() > 30305)
-//				goto CONTINUE;	// Wierd port.
-
-			// Avoid our random other addresses that they might end up giving us.
-			for (auto i: m_server->m_peerAddresses)
-				if (ep.address() == i && ep.port() == m_server->listenPort())
-					goto CONTINUE;
-
-			// Check that we don't already know about this addr:port combination. If we are, assume the original is best.
-			// SECURITY: Not a valid assumption in general. Should compare ID origins and pick the best or note uncertainty and weight each equally.
-			for (auto const& i: m_server->m_nodes)
-				if (i.second->address == ep)
-					goto CONTINUE;		// Same address but a different node.
+			// node table handles another node giving us a node which represents one of our other local network interfaces
+			// node table handles another node giving us a node we already know about
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
 			
 			// TODO: P2P change to addNode()
-//			m_server->noteNode(id, ep);
+			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), 30303), ep)));
+			
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
+			LAMEPEER:;
 		}
 		break;
 	default:
@@ -469,15 +477,15 @@ void Session::drop(DisconnectReason _reason)
 		}
 		catch (...) {}
 
-	if (m_node)
+	if (m_peer)
 	{
-		if (_reason != m_node->lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
-			m_node->failedAttempts = 0;
-		m_node->lastDisconnect = _reason;
+		if (_reason != m_peer->lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
+			m_peer->failedAttempts = 0;
+		m_peer->lastDisconnect = _reason;
 		if (_reason == BadProtocol)
 		{
-			m_node->rating /= 2;
-			m_node->score /= 2;
+			m_peer->rating /= 2;
+			m_peer->score /= 2;
 		}
 	}
 	m_dropped = true;

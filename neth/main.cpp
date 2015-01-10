@@ -913,7 +913,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		y = 1;
-		for (PeerInfo const& i: web3.peers())
+		for (PeerSessionInfo const& i: web3.peers())
 		{
 			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
 				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %

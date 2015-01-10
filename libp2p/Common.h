@@ -116,7 +116,7 @@ typedef std::pair<std::string, u256> CapDesc;
 typedef std::set<CapDesc> CapDescSet;
 typedef std::vector<CapDesc> CapDescs;
 
-struct PeerInfo
+struct PeerSessionInfo
 {
 	NodeId id;
 	std::string clientVersion;
@@ -128,7 +128,7 @@ struct PeerInfo
 	std::map<std::string, std::string> notes;
 };
 
-using PeerInfos = std::vector<PeerInfo>;
+using PeerSessionInfos = std::vector<PeerSessionInfo>;
 
 }
 }

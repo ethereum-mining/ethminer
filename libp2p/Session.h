@@ -39,7 +39,7 @@ namespace dev
 namespace p2p
 {
 
-struct NodeInfo;
+struct PeerInfo;
 
 /**
  * @brief The Session class
@@ -51,7 +51,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<NodeInfo> const& _n);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<PeerInfo> const& _n);
 	virtual ~Session();
 
 	void start();
@@ -80,7 +80,7 @@ public:
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
-	PeerInfo const& info() const { return m_info; }
+	PeerSessionInfo const& info() const { return m_info; }
 
 	void ensureNodesRequested();
 	void serviceNodesRequest();
@@ -109,10 +109,10 @@ private:
 	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
 	bytes m_incoming;						///< Read buffer for ingress bytes.
 
-	PeerInfo m_info;						///< Dynamic information about this peer.
+	PeerSessionInfo m_info;						///< Dynamic information about this peer.
 
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
-	std::shared_ptr<NodeInfo> m_node;			///< The NodeInfo object.
+	std::shared_ptr<PeerInfo> m_peer;			///< The PeerInfo object.
 	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
