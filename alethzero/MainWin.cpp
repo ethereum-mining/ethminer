@@ -273,12 +273,12 @@ void Main::installWatches()
 
 Address Main::getNameReg() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)1)));
 }
 
 Address Main::getCurrencies() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)2)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)2)));
 }
 
 void Main::installNameRegWatch()
@@ -475,7 +475,7 @@ QString Main::pretty(dev::Address _a) const
 
 		if (g_newNameReg)
 		{
-			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn(2, _a)))));
+			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("nameOf(address)", _a)))));
 //			s_memos[_a] = s;
 			if (s.size())
 				return s;
@@ -522,11 +522,11 @@ Address Main::fromString(QString const& _n) const
 	if (!s_memos.count(_n))
 	{*/
 //		if (!g_newNameReg)
-			auto g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+			auto g_newNameReg = getNameReg();
 
 		if (g_newNameReg)
 		{
-			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn(0, ::fromString(_n.toStdString()))));
+			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addressOf(string32)", ::fromString(_n.toStdString()))));
 //			s_memos[_n] = a;
 			if (a)
 				return a;
