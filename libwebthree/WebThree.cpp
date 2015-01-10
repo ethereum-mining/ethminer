@@ -75,7 +75,7 @@ void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
 		startNetwork();
 }
 
-std::vector<PeerInfo> WebThreeDirect::peers()
+std::vector<PeerSessionInfo> WebThreeDirect::peers()
 {
 	return m_net.peers();
 }
@@ -102,5 +102,5 @@ void WebThreeDirect::restoreNodes(bytesConstRef _saved)
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
 {
-	m_net.connect(NodeId(), _seedHost, _port);
+	m_net.addNode(NodeId(), _seedHost, _port, _port);
 }

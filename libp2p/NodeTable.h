@@ -22,6 +22,7 @@
 #pragma once
 
 #include <algorithm>
+#include <deque>
 #include <boost/integer/static_log2.hpp>
 #include <libdevcrypto/Common.h>
 #include <libp2p/UDP.h>
@@ -74,14 +75,37 @@ struct Node
  */
 struct NodeEntry: public Node
 {
-	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw); //: Node(_pubk, _gw), distance(dist(_src.id,_pubk)) {}
-	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp); //: Node(_pubk, NodeIPEndpoint(_udp)), distance(dist(_src.id,_pubk)) {}
+	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw);
+	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp);
 
-	const unsigned distance;	///< Node's distance from _src (see constructor).
+	const unsigned distance;	///< Node's distance (xor of _src as integer).
+};
+
+enum NodeTableEventType {
+	NodeEntryAdded,
+	NodeEntryRemoved
+};
+class NodeTable;
+class NodeTableEventHandler
+{
+	friend class NodeTable;
+public:
+	virtual void processEvent(NodeId _n, NodeTableEventType _e) =0;
+	
+protected:
+	/// Called by NodeTable on behalf of an implementation (Host) to process new events without blocking nodetable.
+	void processEvents() { std::list<std::pair<NodeId,NodeTableEventType>> events; { Guard l(x_events); if (!m_nodeEvents.size()) return; m_nodeEvents.unique(); for (auto const& n: m_nodeEvents) events.push_back(std::make_pair(n,m_events[n])); m_nodeEvents.empty(); m_events.empty(); } for (auto const& e: events) processEvent(e.first, e.second); }
+	
+	/// Called by NodeTable to append event.
+	virtual void appendEvent(NodeId _n, NodeTableEventType _e) { Guard l(x_events); m_nodeEvents.push_back(_n); m_events[_n] = _e; }
+	
+	Mutex x_events;
+	std::list<NodeId> m_nodeEvents;
+	std::map<NodeId,NodeTableEventType> m_events;
 };
 	
 /**
- * NodeTable using S/Kademlia system for node discovery and preference.
+ * NodeTable using modified kademlia for node discovery and preference.
  * untouched buckets are refreshed if they have not been touched within an hour
  *
  * Thread-safety is ensured by modifying NodeEntry details via 
@@ -122,7 +146,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 	
 public:
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303, bi::tcp::endpoint _ep = bi::tcp::endpoint());
+	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
 	~NodeTable();
 	
 	/// Constants for Kademlia, mostly derived from address space.
@@ -145,6 +169,12 @@ public:
 	
 	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
+	/// Set event handler for NodeEntryAdded and NodeEntryRemoved events.
+	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEvents.reset(_handler); }
+	
+	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryRemoved events. Events are coalesced by type whereby old events are ignored.
+	void processEvents() { if (m_nodeEvents) m_nodeEvents->processEvents(); }
+	
 	/// Add node. Node will be pinged if it's not already known.
 	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp = bi::tcp::endpoint());
 	
@@ -157,7 +187,9 @@ public:
 	std::list<NodeId> nodes() const;
 	std::list<NodeEntry> state() const;
 	
+	bool haveNode(NodeId _id) { Guard l(x_nodes); return !!m_nodes[_id]; }
 	Node operator[](NodeId _id);
+	std::shared_ptr<NodeEntry> getNodeEntry(NodeId _id);
 	
 protected:
 	struct NodeBucket
@@ -207,6 +239,8 @@ protected:
 	/// Sends FindNeighbor packet. See doFindNode.
 	void requestNeighbours(NodeEntry const& _node, NodeId _target) const;
 
+	std::unique_ptr<NodeTableEventHandler> m_nodeEvents;		///< Event handler for node events.
+	
 	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.
 

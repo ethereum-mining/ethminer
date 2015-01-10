@@ -51,7 +51,7 @@ namespace p2p
 
 class Host;
 
-struct NodeInfo
+struct PeerInfo
 {
 	NodeId id;										///< Their id/public key.
 	unsigned index;									///< Index into m_nodesList
@@ -88,7 +88,7 @@ struct NodeInfo
 	bool isOffline() const { return lastAttempted > lastConnected; }
 	
 	// p2p: Remove (in favor of lru eviction and sub-protocol ratings).
-	bool operator<(NodeInfo const& _n) const
+	bool operator<(PeerInfo const& _n) const
 	{
 		if (isOffline() != _n.isOffline())
 			return isOffline();
@@ -108,19 +108,30 @@ struct NodeInfo
 	}
 };
 
-using Nodes = std::vector<NodeInfo>;
+using Nodes = std::vector<PeerInfo>;
 
+	
+class Host;
+class HostNodeTableHandler: public NodeTableEventHandler
+{
+	HostNodeTableHandler(Host& _host);
+	virtual void processEvent(NodeId _n, NodeTableEventType _e);
+	Host& m_host;
+};
+	
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
+ * @todo gracefully disconnect peer if peer already connected
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  */
 class Host: public Worker
 {
+	friend class HostNodeTableHandler;
 	friend class Session;
 	friend class HostCapabilityFace;
-	friend struct NodeInfo;
+	friend struct PeerInfo;
 	
 public:
 	/// Start server, listening for connections on the given port.
@@ -142,31 +153,19 @@ public:
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 	
-	/// Manually add node.
-	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort = 30303, unsigned short _udpPort = 30303);
-
-	/// Connect to a peer explicitly.
-	void connect(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort = 30303, unsigned short _udpPort = 30303) noexcept;
-	void connect(NodeId const& _node, bi::tcp::endpoint const& _ep);
-	void connect(std::shared_ptr<NodeInfo> const& _n);
-
-	/// @returns true iff we have a peer of the given id.
-	bool havePeer(NodeId _id) const;
-
+	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); if (m_sessions.count(_id)) return !!m_sessions[_id].lock(); else return false; }
+	
+	/// Add node.
+	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
+	
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
-	
-	/// p2p: template?
-	void setIdealPeerCount(HostCapabilityFace* _cap, unsigned _n) { m_capIdealPeerCount[_cap->capDesc()] = _n; }
 
 	/// Get peer information.
-	PeerInfos peers() const;
+	PeerSessionInfos peers() const;
 
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	size_t peerCount() const { RecursiveGuard l(x_peers); return m_peers.size(); }
-
-	/// Ping the peers to update the latency information and disconnect peers which have timed out.
-	void keepAlivePeers();
+	size_t peerCount() const { RecursiveGuard l(x_sessions); return m_peers.size(); }
 
 	/// Get the port we're listening on currently.
 	unsigned short listenPort() const { return m_tcpPublic.port(); }
@@ -177,7 +176,8 @@ public:
 	/// Deserialise the data and populate the set of known peers.
 	void restoreNodes(bytesConstRef _b);
 
-	Nodes nodes() const { RecursiveGuard l(x_peers); Nodes ret; for (auto const& i: m_nodes) ret.push_back(*i.second); return ret; }
+	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
+	Nodes nodes() const { RecursiveGuard l(x_sessions); Nodes ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
@@ -195,13 +195,19 @@ public:
 
 	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
-	std::shared_ptr<NodeInfo> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<NodeInfo>(); }
+//	std::shared_ptr<PeerInfo> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<PeerInfo>(); }
+
+protected:
+	void onNodeTableEvent(NodeId _n, NodeTableEventType _e);
 
 private:
-	KeyPair getHostIdentifier();
-	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
+	
+	void connect(std::shared_ptr<PeerInfo> const& _n);
+	
+	/// Ping the peers to update the latency information and disconnect peers which have timed out.
+	void keepAlivePeers();
 	
 	/// Called only from startedWorking().
 	void runAcceptor();
@@ -223,9 +229,10 @@ private:
 	virtual void doneWorking();
 	
 	/// Add node
-	void addNode(Node const& _nodeInfo) { m_nodeTable->addNode(_nodeInfo); }
+	void addNode(Node const& _node) { m_nodeTable->addNode(_node); }
 
-//	Nodes potentialPeers(RangeMask<unsigned> const& _known);
+	/// Get or create host identifier (KeyPair).
+	KeyPair getHostIdentifier();
 
 	bool m_run = false;													///< Whether network is running.
 	std::mutex x_runTimer;												///< Start/stop mutex.
@@ -241,33 +248,24 @@ private:
 
 	ba::io_service m_ioService;											///< IOService for network stuff.
 	bi::tcp::acceptor m_tcp4Acceptor;										///< Listening acceptor.
-	std::unique_ptr<bi::tcp::socket> m_socket;								///< Listening socket.
 	
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
 	
-	std::set<NodeInfo*> m_pendingNodeConns;									/// Used only by connect(NodeInfo&) to limit concurrently connecting to same node. See connect(shared_ptr<NodeInfo>const&).
+	std::set<PeerInfo*> m_pendingNodeConns;									/// Used only by connect(PeerInfo&) to limit concurrently connecting to same node. See connect(shared_ptr<PeerInfo>const&).
 	Mutex x_pendingNodeConns;
 
 	bi::tcp::endpoint m_tcpPublic;											///< Our public listening endpoint.
 	KeyPair m_key;															///< Our unique ID.
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
-	std::map<CapDesc, unsigned> m_capIdealPeerCount;									///< Ideal peer count for capability.
 
-	mutable RecursiveMutex x_peers;
-
+	std::map<NodeId, std::shared_ptr<PeerInfo>> m_peers;
+	
+	mutable RecursiveMutex x_sessions;
+	
 	/// The nodes to which we are currently connected.
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
-	mutable std::map<NodeId, std::weak_ptr<Session>> m_peers;
-
-	/// Nodes to which we may connect (or to which we have connected).
-	/// TODO: mutex; replace with nodeTable
-	std::map<NodeId, std::shared_ptr<NodeInfo> > m_nodes;
-
-//	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
-//	std::vector<NodeId> m_nodesList;
-
-//	RangeMask<unsigned> m_private;										///< Indices into m_nodesList over to which nodes are private.
+	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 	
@@ -280,6 +278,6 @@ private:
 
 	bool m_accepting = false;
 };
-
+	
 }
 }

@@ -84,7 +84,7 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<p2p::PeerInfo> peers();
+	std::vector<p2p::PeerSessionInfo> peers();
 
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;
@@ -195,7 +195,7 @@ public:
 	// Peer network stuff - forward through RPCSlave, probably with P2PNetworkSlave/Master classes like Whisper & Ethereum.
 
 	/// Get information on the current peer set.
-	std::vector<p2p::PeerInfo> peers();
+	std::vector<p2p::PeerSessionInfo> peers();
 
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;

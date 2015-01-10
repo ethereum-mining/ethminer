@@ -906,7 +906,7 @@ void Main::refreshNetwork()
 	if (web3()->haveNetwork())
 	{
 		map<h512, QString> clients;
-		for (PeerInfo const& i: ps)
+		for (PeerSessionInfo const& i: ps)
 			ui->peers->addItem(QString("[%8 %7] %3 ms - %1:%2 - %4 %5 %6")
 							   .arg(QString::fromStdString(i.host))
 							   .arg(i.port)
