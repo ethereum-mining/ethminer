@@ -52,8 +52,8 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_key(move(getHostIdentifier())),
-	m_nodeTable(new NodeTable(m_ioService, m_key))
+	m_key(move(getHostIdentifier()))
+//	m_nodeTable(new NodeTable(m_ioService, m_key))
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -443,7 +443,7 @@ unsigned PeerInfo::fallbackSeconds() const
 	}
 }
 
-// TODO: P2P rebuild noetable when localNetworking is enabled/disabled
+// TODO: P2P rebuild nodetable when localNetworking is enabled/disabled
 // TODO: P2P migrate grow/prunePeers into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
 //void Host::growPeers()
 //{
