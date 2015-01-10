@@ -7,119 +7,33 @@ import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
 
+import "js/ProjectModel.js" as ProjectModelCode
+
 Item {
 	id: projectModel
 
 	signal projectClosed
 	signal projectLoaded
-	signal documentOpen(var document)
+	signal documentOpened(var document)
+	signal projectSaved
 
-	property bool isEmpty: (projectFile === "")
+	property bool isEmpty: (projectData === null)
 	readonly property string projectFileName: ".mix"
 
 	property bool haveUnsavedChanges: false
-	property string projectFile: ""
+	property string projectPath: ""
 	property var projectData: null
 	property var listModel: projectListModel
 
-	function saveAll() {
-		saveProject();
-	}
-
-	function createProject() {
-		closeProject();
-		newProjectDialog.open();
-	}
-
-	function browseProject() {
-		openProjectFileDialog.open();
-	}
-
-	function closeProject() {
-		if (!isEmpty) {
-			console.log("closing project");
-			if (haveUnsavedChanges)
-				saveMessageDialog.open();
-			else
-				doCloseProject();
-		}
-	}
-
-	function saveProject() {
-		if (!isEmpty) {
-			var json = JSON.stringify(projectData);
-			fileIo.writeFile(projectFile, json);
-		}
-	}
-
-	function loadProject(path) {
-		closeProject();
-		console.log("loading project at " + path);
-		var json = fileIo.readFile(path);
-		projectData = JSON.parse(json);
-		projectFile = path;
-		if (!projectData.files)
-			projectData.files = [];
-
-		for(var i = 0; i < projectData.files.length; i++) {
-			var p = projectData.files[i];
-			addFile(p);
-		}
-		projectSettings.lastProjectPath = projectFile;
-		projectLoaded();
-	}
-
-	function addExistingFile() {
-		addExistingFileDialog().open();
-	}
-
-	function addProjectFiles(files) {
-		for(var i = 0; i < files.length; i++)
-			addFile(files[i]);
-	}
-
-	function addFile(file) {
-		var p = file;
-		var fileData = {
-			contract: false,
-			path: p,
-			name: p.substring(p.lastIndexOf("/") + 1, p.length),
-			documentId: p,
-			isText: true,
-			isContract: p.substring(p.length - 4, p.length) === ".sol",
-		};
-
-		projectListModel.append(fileData);
-	}
-
-	function doCloseProject() {
-		projectListModel.clear();
-		projectFile = "";
-		projectData = null;
-		projectClosed();
-	}
-
-	function doCreateProject(title, path) {
-		closeProject();
-		console.log("creating project " + title + " at " + path);
-		if (path[path.length - 1] !== "/")
-			path += "/";
-		var dirPath = path + title;
-		fileIo.makeDir(dirPath);
-		var projectFile = dirPath + "/" + projectFileName;
-
-		var indexFile = dirPath + "/index.html";
-		var contractsFile = dirPath + "/contracts.sol";
-		var projectData = {
-			files: [ indexFile, contractsFile ]
-		};
-
-		fileIo.writeFile(indexFile, "<html></html>");
-		fileIo.writeFile(contractsFile, "contract MyContract {}");
-		var json = JSON.stringify(projectData);
-		fileIo.writeFile(projectFile, json);
-		loadProject(projectFile);
-	}
+	//interface
+	function saveAll() { ProjectModelCode.saveAll(); }
+	function createProject() { ProjectModelCode.createProject(); }
+	function browseProject() { ProjectModelCode.browseProject(); }
+	function closeProject() { ProjectModelCode.closeProject(); }
+	function saveProject() { ProjectModelCode.saveProject(); }
+	function loadProject(path) { ProjectModelCode.loadProject(path); }
+	function addExistingFile() { ProjectModelCode.addExistingFile(); }
+	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 
 	Component.onCompleted: {
 		if (projectSettings.lastProjectPath)
@@ -132,7 +46,7 @@ Item {
 		onAccepted: {
 			var title = newProjectDialog.projectTitle;
 			var path = newProjectDialog.projectPath;
-			doCreateProject(title, path);
+			ProjectModelCode.doCreateProject(title, path);
 		}
 	}
 
@@ -144,10 +58,10 @@ Item {
 		icon: StandardIcon.Question
 		onAccepted: {
 			projectModel.saveAll();
-			projectModel.doCloseProject();
+			ProjectModelCode.doCloseProject();
 		}
 		onRejected: {
-			projectModel.doCloseProject();
+			ProjectModelCode.doCloseProject();
 		}
 	}
 
@@ -167,8 +81,8 @@ Item {
 		selectFolder: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
-			path += "/" + projectFileName;
-				loadProject(path);
+			path += "/";
+			loadProject(path);
 		}
 	}
 
@@ -179,9 +93,7 @@ Item {
 		selectFolder: false
 		onAccepted: {
 			var paths = openProjectFileDialog.fileUrls;
-				addProjectFiles(paths);
+			ProjectModelCode.doAddExistingFiles(paths);
 		}
 	}
-
-
 }

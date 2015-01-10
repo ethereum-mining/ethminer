@@ -5,19 +5,36 @@ import QtQuick.Controls 1.0
 import org.ethereum.qml.ProjectModel 1.0
 
 Item {
-	ListView {
-		id: projectList
-		model: ProjectModel.listModel
-		anchors.fill: parent
-		delegate: renderDelegate
-		highlight: Rectangle {
-			color: "lightsteelblue";
-		}
-		highlightFollowsCurrentItem: true
-		focus: true
-		clip: true
-	}
 
+	ColumnLayout {
+		anchors.fill: parent
+		Text {
+			Layout.fillWidth: true
+			color: "blue"
+			text: ProjectModel.projectData ? ProjectModel.projectData.title : ""
+			horizontalAlignment: Text.AlignHCenter
+			visible: !ProjectModel.isEmpty;
+		}
+		ListView {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			id: projectList
+			model: ProjectModel.listModel
+
+			delegate: renderDelegate
+			highlight: Rectangle {
+				color: "lightsteelblue";
+			}
+			highlightFollowsCurrentItem: true
+			focus: true
+			clip: true
+
+			onCurrentIndexChanged: {
+				if (currentIndex >= 0 && currentIndex < ProjectModel.listModel.count)
+					ProjectModel.openDocument(ProjectModel.listModel.get(currentIndex).documentId);
+			}
+		}
+	}
 	Component {
 		id: renderDelegate
 		Item {
@@ -42,10 +59,16 @@ Item {
 
 				onClicked:{
 					projectList.currentIndex = index;
-					ProjectModel.documentOpen(ProjectModel.listModel.get(index));
+				}
+			}
+
+			Connections {
+				target: ProjectModel
+				onProjectLoaded: {
+					projectList.currentIndex = 0;
 				}
 			}
 		}
 	}
-
 }
+

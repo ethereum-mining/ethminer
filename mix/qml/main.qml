@@ -21,14 +21,12 @@ ApplicationWindow {
 			title: qsTr("File")
 			MenuItem { action: createProjectAction }
 			MenuItem { action: openProjectAction }
+			MenuItem { action: saveAllFilesAction }
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
 			MenuItem { action: addNewContractAction }
-			MenuItem {
-				text: qsTr("Exit")
-				onTriggered: Qt.quit();
-			}
+			MenuItem { action: exitAppAction }
 		}
 		Menu {
 			title: qsTr("Debug")
@@ -52,6 +50,13 @@ ApplicationWindow {
 	AlertMessageDialog {
 		objectName: "alertMessageDialog"
 		id: messageDialog
+	}
+
+	Action {
+		id: exitAppAction
+		text: qsTr("Exit")
+		shortcut: "Ctrl+Q"
+		onTriggered: Qt.quit();
 	}
 
 	Action {
@@ -115,5 +120,21 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+A"
 		enabled: !ProjectModel.isEmpty
 		onTriggered: ProjectModel.addExistingFile();
+	}
+
+	Action {
+		id: saveAllFilesAction
+		text: qsTr("Save all")
+		shortcut: "Ctrl+S"
+		enabled: !ProjectModel.isEmpty
+		onTriggered: ProjectModel.saveAll();
+	}
+
+	Action {
+		id: closeProjectAction
+		text: qsTr("Close project")
+		shortcut: "Ctrl+W"
+		enabled: !ProjectModel.isEmpty
+		onTriggered: ProjectModel.closeProject();
 	}
 }
