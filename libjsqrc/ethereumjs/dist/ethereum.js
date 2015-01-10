@@ -22,6 +22,11 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
  * @date 2014
  */
 
+// TODO: is these line is supposed to be here? 
+if ("build" !== 'build') {/*
+    var web3 = require('./web3'); // jshint ignore:line
+*/}
+
 // TODO: make these be actually accurate instead of falling back onto JS's doubles.
 var hexToDec = function (hex) {
     return parseInt(hex, 16).toString();
@@ -47,20 +52,51 @@ var findMethodIndex = function (json, methodName) {
 };
 
 var padLeft = function (string, chars) {
-    return Array(chars - string.length + 1).join("0") + string;
+    return new Array(chars - string.length + 1).join("0") + string;
+};
+
+var calcBitPadding = function (type, expected) {
+    var value = type.slice(expected.length);
+    if (value === "") {
+        return 32;
+    }
+    return parseInt(value) / 8;
+};
+
+var calcBytePadding = function (type, expected) {
+    var value = type.slice(expected.length);
+    if (value === "") {
+        return 32;
+    }
+    return parseInt(value);
+};
+
+var calcRealPadding = function (type, expected) {
+    var value = type.slice(expected.length);
+    if (value === "") {
+        return 32;
+    }
+    var sizes = value.split('x');
+    for (var padding = 0, i = 0; i < sizes; i++) {
+        padding += (sizes[i] / 8);
+    }
+    return padding;
 };
 
 var setupInputTypes = function () {
-    var prefixedType = function (prefix) {
+    
+    var prefixedType = function (prefix, calcPadding) {
         return function (type, value) {
             var expected = prefix;
             if (type.indexOf(expected) !== 0) {
                 return false;
             }
 
-            var padding = parseInt(type.slice(expected.length)) / 8;
+            var padding = calcPadding(type, expected);
             if (typeof value === "number")
                 value = value.toString(16);
+            else if (typeof value === "string")
+                value = web3.toHex(value); 
             else if (value.indexOf('0x') === 0)
                 value = value.substr(2);
             else
@@ -72,7 +108,7 @@ var setupInputTypes = function () {
     var namedType = function (name, padding, formatter) {
         return function (type, value) {
             if (type !== name) {
-                return false; 
+                return false;
             }
 
             return padLeft(formatter ? formatter(value) : value, padding * 2);
@@ -84,9 +120,12 @@ var setupInputTypes = function () {
     };
 
     return [
-        prefixedType('uint'),
-        prefixedType('int'),
-        prefixedType('hash'),
+        prefixedType('uint', calcBitPadding),
+        prefixedType('int', calcBitPadding),
+        prefixedType('hash', calcBitPadding),
+        prefixedType('string', calcBytePadding),
+        prefixedType('real', calcRealPadding),
+        prefixedType('ureal', calcRealPadding),
         namedType('address', 20),
         namedType('bool', 1, formatBool),
     ];
@@ -97,14 +136,13 @@ var inputTypes = setupInputTypes();
 var toAbiInput = function (json, methodName, params) {
     var bytes = "";
     var index = findMethodIndex(json, methodName);
-    
+
     if (index === -1) {
         return;
     }
 
-    bytes = "0x" + padLeft(index.toString(16), 2);
     var method = json[index];
-    
+
     for (var i = 0; i < method.inputs.length; i++) {
         var found = false;
         for (var j = 0; j < inputTypes.length && !found; j++) {
@@ -119,14 +157,15 @@ var toAbiInput = function (json, methodName, params) {
 };
 
 var setupOutputTypes = function () {
-    var prefixedType = function (prefix) {
+
+    var prefixedType = function (prefix, calcPadding) {
         return function (type) {
             var expected = prefix;
             if (type.indexOf(expected) !== 0) {
                 return -1;
             }
-            
-            var padding = parseInt(type.slice(expected.length)) / 8;
+
+            var padding = calcPadding(type, expected);
             return padding * 2;
         };
     };
@@ -149,10 +188,17 @@ var setupOutputTypes = function () {
         return value === '1' ? true : false;
     };
 
+    var formatString = function (value) {
+        return web3.toAscii(value);
+    };
+
     return [
-    { padding: prefixedType('uint'), format: formatInt },
-    { padding: prefixedType('int'), format: formatInt },
-    { padding: prefixedType('hash'), format: formatHash },
+    { padding: prefixedType('uint', calcBitPadding), format: formatInt },
+    { padding: prefixedType('int', calcBitPadding), format: formatInt },
+    { padding: prefixedType('hash', calcBitPadding), format: formatHash },
+    { padding: prefixedType('string', calcBytePadding), format: formatString },
+    { padding: prefixedType('real', calcRealPadding), format: formatInt },
+    { padding: prefixedType('ureal', calcRealPadding), format: formatInt },
     { padding: namedType('address', 20) },
     { padding: namedType('bool', 1), format: formatBool }
     ];
@@ -166,7 +212,7 @@ var fromAbiOutput = function (json, methodName, output) {
     if (index === -1) {
         return;
     }
-    
+
     output = output.slice(2);
 
     var result = [];
@@ -213,11 +259,23 @@ var outputParser = function (json) {
     return parser;
 };
 
-module.exports = {
-    inputParser: inputParser,
-    outputParser: outputParser
+var methodSignature = function (json, name) {
+    var method = json[findMethodIndex(json, name)];
+    var result = name + '(';
+    var inputTypes = method.inputs.map(function (inp) {
+        return inp.type;
+    });
+    result += inputTypes.join(',');
+    result += ')';
+
+    return web3.sha3(web3.fromAscii(result));
 };
 
+module.exports = {
+    inputParser: inputParser,
+    outputParser: outputParser,
+    methodSignature: methodSignature
+};
 
 },{}],2:[function(require,module,exports){
 /*
@@ -248,9 +306,11 @@ module.exports = {
  * if not tries to connect over websockets
  * if it fails, it uses HttpRpcProvider
  */
+
+// TODO: is these line is supposed to be here? 
 if ("build" !== 'build') {/*
     var WebSocket = require('ws'); // jshint ignore:line
-    var web3 = require('./main.js'); // jshint ignore:line
+    var web3 = require('./web3'); // jshint ignore:line
 */}
 
 var AutoProvider = function (userOptions) {
@@ -344,10 +404,15 @@ module.exports = AutoProvider;
  * @date 2014
  */
 
+// TODO: is these line is supposed to be here? 
 if ("build" !== 'build') {/*
     var web3 = require('./web3'); // jshint ignore:line
 */}
+
 var abi = require('./abi');
+
+// method signature length in bytes
+var ETH_METHOD_SIGNATURE_LENGTH = 4;
 
 var contract = function (address, desc) {
     var inputParser = abi.inputParser(desc);
@@ -368,8 +433,10 @@ var contract = function (address, desc) {
                 call: function (extra) {
                     extra = extra || {};
                     extra.to = address;
-                    extra.data = parsed;
-                    return web3.eth.call(extra).then(onSuccess);
+                    return abi.methodSignature(desc, method.name).then(function (signature) {
+                        extra.data = signature.slice(0, 2 + ETH_METHOD_SIGNATURE_LENGTH * 2) + parsed;
+                        return web3.eth.call(extra).then(onSuccess);
+                    });
                 },
                 transact: function (extra) {
                     extra = extra || {};
@@ -380,7 +447,7 @@ var contract = function (address, desc) {
             };
         };
     });
-         
+
     return contract;
 };
 
@@ -410,7 +477,8 @@ module.exports = contract;
  * @date 2014
  */
 
-if ("build" !== "build") {/*
+// TODO: is these line is supposed to be here? 
+if ("build" !== 'build') {/*
     var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest; // jshint ignore:line
 */}
 
@@ -498,6 +566,53 @@ module.exports = HttpRpcProvider;
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
+/** @file qt.js
+ * @authors:
+ *   Jeffrey Wilcke <jeff@ethdev.com>
+ *   Marek Kotewicz <marek@ethdev.com>
+ * @date 2014
+ */
+
+var QtProvider = function() {
+    this.handlers = [];
+
+    var self = this;
+    navigator.qt.onmessage = function (message) {
+        self.handlers.forEach(function (handler) {
+            handler.call(self, JSON.parse(message.data));
+        });
+    };
+};
+
+QtProvider.prototype.send = function(payload) {
+    navigator.qt.postMessage(JSON.stringify(payload));
+};
+
+Object.defineProperty(QtProvider.prototype, "onmessage", {
+    set: function(handler) {
+        this.handlers.push(handler);
+    }
+});
+
+module.exports = QtProvider;
+
+},{}],6:[function(require,module,exports){
+/*
+    This file is part of ethereum.js.
+
+    ethereum.js is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    ethereum.js is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /** @file main.js
  * @authors:
  *   Jeffrey Wilcke <jeff@ethdev.com>
@@ -558,11 +673,11 @@ var ethMethods = function () {
     };
 
     var transactionCall = function (args) {
-        return typeof args[0] === "string" ? 'eth_transactionByHash' : 'eth_transactionByNumber';   
+        return typeof args[0] === "string" ? 'eth_transactionByHash' : 'eth_transactionByNumber';
     };
 
     var uncleCall = function (args) {
-        return typeof args[0] === "string" ? 'eth_uncleByHash' : 'eth_uncleByNumber';       
+        return typeof args[0] === "string" ? 'eth_uncleByHash' : 'eth_uncleByNumber';
     };
 
     var methods = [
@@ -711,6 +826,16 @@ var web3 = {
     _events: {},
     providers: {},
 
+    toHex: function(str) {
+        var hex = "";
+        for(var i = 0; i < str.length; i++) {
+            var n = str.charCodeAt(i).toString(16);
+            hex += n.length < 2 ? '0' + n : n;
+        }
+
+        return hex;
+    },
+
     toAscii: function(hex) {
         // Find termination
         var str = "";
@@ -730,7 +855,7 @@ var web3 = {
     },
 
     fromAscii: function(str, pad) {
-        pad = pad === undefined ? 32 : pad;
+        pad = pad === undefined ? 0 : pad;
         var hex = this.toHex(str);
         while(hex.length < pad*2)
             hex += "00";
@@ -746,7 +871,7 @@ var web3 = {
     },
 
     toEth: function(str) {
-        var val = typeof str === "string" ? str.indexOf('0x') == 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
+        var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
         var unit = 0;
         var units = [ 'wei', 'Kwei', 'Mwei', 'Gwei', 'szabo', 'finney', 'ether', 'grand', 'Mether', 'Gether', 'Tether', 'Pether', 'Eether', 'Zether', 'Yether', 'Nether', 'Dether', 'Vether', 'Uether' ];
         while (val > 3000 && unit < units.length - 1)
@@ -755,10 +880,14 @@ var web3 = {
             unit++;
         }
         var s = val.toString().length < val.toFixed(2).length ? val.toString() : val.toFixed(2);
+        var replaceFunction = function($0, $1, $2) {
+            return $1 + ',' + $2;
+        };
+
         while (true) {
             var o = s;
-            s = s.replace(/(\d)(\d\d\d[\.\,])/, function($0, $1, $2) { return $1 + ',' + $2; });
-            if (o == s)
+            s = s.replace(/(\d)(\d\d\d[\.\,])/, replaceFunction);
+            if (o === s)
                 break;
         }
         return s + ' ' + units[unit];
@@ -975,55 +1104,8 @@ function messageHandler(data) {
     }
 }
 
-module.exports = web3;
-
-
-},{}],6:[function(require,module,exports){
-/*
-    This file is part of ethereum.js.
-
-    ethereum.js is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    ethereum.js is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file qt.js
- * @authors:
- *   Jeffrey Wilcke <jeff@ethdev.com>
- *   Marek Kotewicz <marek@ethdev.com>
- * @date 2014
- */
-
-var QtProvider = function() {
-    this.handlers = [];
-
-    var self = this;
-    navigator.qt.onmessage = function (message) {
-        self.handlers.forEach(function (handler) {
-            handler.call(self, JSON.parse(message.data));
-        });
-    };
-};
-
-QtProvider.prototype.send = function(payload) {
-    navigator.qt.postMessage(JSON.stringify(payload));
-};
-
-Object.defineProperty(QtProvider.prototype, "onmessage", {
-    set: function(handler) {
-        this.handlers.push(handler);
-    }
-});
-
-module.exports = QtProvider;
+if (typeof(module) !== "undefined")
+    module.exports = web3;
 
 },{}],7:[function(require,module,exports){
 /*
@@ -1050,7 +1132,8 @@ module.exports = QtProvider;
  * @date 2014
  */
 
-if ("build" !== "build") {/*
+// TODO: is these line is supposed to be here? 
+if ("build" !== 'build') {/*
     var WebSocket = require('ws'); // jshint ignore:line
 */}
 
@@ -1101,10 +1184,11 @@ Object.defineProperty(WebSocketProvider.prototype, "onmessage", {
     set: function(provider) { this.onMessage(provider); }
 });
 
-module.exports = WebSocketProvider;
+if (typeof(module) !== "undefined")
+    module.exports = WebSocketProvider;
 
 },{}],"web3":[function(require,module,exports){
-var web3 = require('./lib/main');
+var web3 = require('./lib/web3');
 web3.providers.WebSocketProvider = require('./lib/websocket');
 web3.providers.HttpRpcProvider = require('./lib/httprpc');
 web3.providers.QtProvider = require('./lib/qt');
@@ -1113,7 +1197,7 @@ web3.contract = require('./lib/contract');
 
 module.exports = web3;
 
-},{"./lib/autoprovider":2,"./lib/contract":3,"./lib/httprpc":4,"./lib/main":5,"./lib/qt":6,"./lib/websocket":7}]},{},[])
+},{"./lib/autoprovider":2,"./lib/contract":3,"./lib/httprpc":4,"./lib/qt":5,"./lib/web3":6,"./lib/websocket":7}]},{},["web3"])
 
 
 //# sourceMappingURL=ethereum.js.map

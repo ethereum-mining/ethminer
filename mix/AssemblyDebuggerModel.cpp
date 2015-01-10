@@ -74,7 +74,6 @@ DebuggingContent AssemblyDebuggerModel::executeTransaction(bytesConstRef const& 
 
 	execution.go(onOp);
 	execution.finalize();
-	m_executiveState.completeMine();
 
 	DebuggingContent d;
 	d.returnValue = execution.out().toVector();
