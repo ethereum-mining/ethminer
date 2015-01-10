@@ -11,7 +11,7 @@ Item {
 	function getDocumentText(documentId) {
 		for (i = 0; i < editorListModel.count; i++)	{
 			if (editorListModel.get(i).documentId === documentId) {
-				return editors.itemAt(i).getDocumentText();
+				return editors.itemAt(i).getText();
 			}
 		}
 		return "";
@@ -41,8 +41,19 @@ Item {
 
 	Connections {
 		target: ProjectModel
-		onDocumentOpen: {
+		onDocumentOpened: {
 			openDocument(document);
+		}
+		onProjectSaved: {
+			for (var i = 0; i < editorListModel.count; i++)
+				fileIo.writeFile(editorListModel.get(i).path, editors.itemAt(i).item.getText());
+		}
+		onProjectClosed: {
+			for (var i = 0; i < editorListModel.count; i++)	{
+				editors.itemAt(i).visible = false;
+			}
+			editorListModel.clear();
+			currentDocumentId = "";
 		}
 	}
 
@@ -58,7 +69,7 @@ Item {
 			asynchronous: true
 			anchors.fill:  parent
 			sourceComponent: codeEditor
-			visible: (currentDocumentId === editorListModel.get(index).documentId)
+			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
 			onVisibleChanged: {
 				loadIfNotLoaded()
 			}
