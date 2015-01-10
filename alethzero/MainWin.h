@@ -128,6 +128,7 @@ private slots:
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
 	void on_killBlockchain_triggered();
+	void on_clearPending_triggered();
 	void on_importKey_triggered();
 	void on_exportKey_triggered();
 	void on_inject_triggered();
@@ -170,6 +171,8 @@ private:
 	QString prettyU256(dev::u256 _n) const;
 
 	QString lookup(QString const& _n) const;
+	dev::Address getNameReg() const;
+	dev::Address getCurrencies() const;
 
 	void populateDebugger(dev::bytesConstRef r);
 	void initDebugger();

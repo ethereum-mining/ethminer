@@ -16,6 +16,7 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Solidity AST to EVM bytecode compiler for expressions.
  */
@@ -57,7 +58,7 @@ private:
 		m_optimize(_optimize), m_context(_compilerContext), m_currentLValue(m_context) {}
 
 	virtual bool visit(Assignment const& _assignment) override;
-	virtual void endVisit(UnaryOperation const& _unaryOperation) override;
+	virtual bool visit(UnaryOperation const& _unaryOperation) override;
 	virtual bool visit(BinaryOperation const& _binaryOperation) override;
 	virtual bool visit(FunctionCall const& _functionCall) override;
 	virtual bool visit(NewExpression const& _newExpression) override;
@@ -146,12 +147,12 @@ private:
 
 	private:
 		CompilerContext* m_context;
-		LValueType m_type;
+		LValueType m_type = NONE;
 		/// If m_type is STACK, this is base stack offset (@see
 		/// CompilerContext::getBaseStackOffsetOfVariable) of a local variable.
-		unsigned m_baseStackOffset;
+		unsigned m_baseStackOffset = 0;
 		/// Size of the value of this lvalue on the stack.
-		unsigned m_stackSize;
+		unsigned m_stackSize = 0;
 	};
 
 	bool m_optimize;
