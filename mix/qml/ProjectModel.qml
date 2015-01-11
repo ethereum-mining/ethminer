@@ -15,7 +15,7 @@ Item {
 	signal projectClosed
 	signal projectLoaded
 	signal documentOpened(var document)
-	signal projectSaved
+	signal projectSaving(var projectData)
 
 	property bool isEmpty: (projectData === null)
 	readonly property string projectFileName: ".mix"
@@ -35,9 +35,12 @@ Item {
 	function addExistingFile() { ProjectModelCode.addExistingFile(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 
-	Component.onCompleted: {
-		if (projectSettings.lastProjectPath)
-			loadProject(projectSettings.lastProjectPath)
+	Connections {
+		target: appContext
+		onAppLoaded: {
+			if (projectSettings.lastProjectPath)
+				loadProject(projectSettings.lastProjectPath)
+		}
 	}
 
 	NewProjectDialog {

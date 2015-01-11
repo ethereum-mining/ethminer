@@ -122,7 +122,7 @@ Window {
 			var item = {
 				value: "0",
 				functionId: "",
-				gas: "1000000000000",
+				gas: "125000",
 				gasPrice: "100000"
 			};
 

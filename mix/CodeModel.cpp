@@ -162,7 +162,7 @@ void CodeModel::onCompilationComplete(CompilationResult*_newResult)
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
-	if (m_result->successfull())
+	if (m_result->successful())
 		emit codeChanged();
 }
 

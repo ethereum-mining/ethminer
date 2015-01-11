@@ -73,3 +73,8 @@ void FileIo::copyFile(QString const& _sourceUrl, QString const& _destUrl)
 	if (!QFile::copy(sourceUrl.path(), destUrl.path()))
 		error(tr("Error copying file %1 to %2").arg(_sourceUrl).arg(_destUrl));
 }
+
+QString FileIo::getHomePath() const
+{
+	return QDir::homePath();
+}

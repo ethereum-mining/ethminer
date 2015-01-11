@@ -63,15 +63,15 @@ ApplicationWindow {
 		id: debugRunAction
 		text: "&Run"
 		shortcut: "F5"
-		enabled: codeModel.hasContract && !debugModel.running;
-		onTriggered: debugModel.debugDeployment();
+		enabled: codeModel.hasContract && !clientModel.running;
+		onTriggered: clientModel.debugDeployment();
 	}
 
 	Action {
 		id: debugResetStateAction
 		text: "Reset &State"
 		shortcut: "F6"
-		onTriggered: debugModel.resetState();
+		onTriggered: clientModel.resetState();
 	}
 
 	Action {
