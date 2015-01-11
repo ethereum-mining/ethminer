@@ -64,10 +64,10 @@ function(createBuildInfo)
 	endif ()
 
 	#cmake build type may be not specified when using msvc
-	if (${CMAKE_BUILD_TYPE})
+	if (CMAKE_BUILD_TYPE)
 		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
 	else()
-		set(_cmake_build_type "undefined")
+		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
 	# Generate header file containing useful build information

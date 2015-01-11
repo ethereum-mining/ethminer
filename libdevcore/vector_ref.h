@@ -28,7 +28,7 @@ public:
 
 	bool contentsEqual(std::vector<mutable_value_type> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
 	std::vector<mutable_value_type> toVector() const { return std::vector<mutable_value_type>(m_data, m_data + m_count); }
-	std::vector<unsigned char> toBytes() const { return std::vector<unsigned char>((unsigned char const*)m_data, m_data + m_count * sizeof(_T)); }
+	std::vector<unsigned char> toBytes() const { return std::vector<unsigned char>((unsigned char const*)m_data, (unsigned char const*)m_data + m_count * sizeof(_T)); }
 	std::string toString() const { return std::string((char const*)m_data, ((char const*)m_data) + m_count * sizeof(_T)); }
 	template <class _T2> operator vector_ref<_T2>() const { assert(m_count * sizeof(_T) / sizeof(_T2) * sizeof(_T2) / sizeof(_T) == m_count); return vector_ref<_T2>((_T2*)m_data, m_count * sizeof(_T) / sizeof(_T2)); }
 

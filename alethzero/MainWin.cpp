@@ -273,12 +273,12 @@ void Main::installWatches()
 
 Address Main::getNameReg() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)1)));
 }
 
 Address Main::getCurrencies() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)2)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)2)));
 }
 
 void Main::installNameRegWatch()
@@ -475,7 +475,7 @@ QString Main::pretty(dev::Address _a) const
 
 		if (g_newNameReg)
 		{
-			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn(2, _a)))));
+			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("nameOf(address)", _a)))));
 //			s_memos[_a] = s;
 			if (s.size())
 				return s;
@@ -522,11 +522,11 @@ Address Main::fromString(QString const& _n) const
 	if (!s_memos.count(_n))
 	{*/
 //		if (!g_newNameReg)
-			auto g_newNameReg = abiOut<Address>(ethereum()->call(c_newConfig, abiIn(1, (u256)1)));
+			auto g_newNameReg = getNameReg();
 
 		if (g_newNameReg)
 		{
-			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn(0, ::fromString(_n.toStdString()))));
+			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addressOf(string32)", ::fromString(_n.toStdString()))));
 //			s_memos[_n] = a;
 			if (a)
 				return a;
@@ -1236,6 +1236,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
 		Transaction tx(ethereum()->pending()[i]);
+		TransactionReceipt receipt(ethereum()->postState().receipt(i));
 		auto ss = tx.safeSender();
 		h256 th = sha3(rlpList(ss, tx.nonce()));
 		s << "<h3>" << th << "</h3>";
@@ -1258,12 +1259,15 @@ void Main::on_transactionQueue_currentItemChanged()
 			if (tx.data().size())
 				s << dev::memDump(tx.data(), 16, true);
 		}
+		s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
-
+		s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		auto r = receipt.rlp();
+		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+		s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
+		s << renderDiff(ethereum()->diff(i, -1));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
-
-		s << renderDiff(ethereum()->diff(i, 0));
 	}
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
@@ -1376,11 +1380,6 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
-			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
-			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
-			auto r = receipt.rlp();
-			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			if (tx.isCreation())
 			{
 				if (tx.data().size())
@@ -1391,6 +1390,12 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data().size())
 					s << dev::memDump(tx.data(), 16, true);
 			}
+			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
+			s << "<hr/>";
+			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			auto r = receipt.rlp();
+			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
+			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
 			s << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
@@ -1631,7 +1636,7 @@ void Main::on_data_textChanged()
 		{
 			m_data = fromHex(src);
 		}
-		else if (src.substr(0, 8) == "contract" || src.substr(0, 2) == "/*") // improve this heuristic
+		else if (src.substr(0, 8) == "contract" || src.substr(0, 5) == "//sol") // improve this heuristic
 		{
 			dev::solidity::CompilerStack compiler;
 			try
@@ -1712,6 +1717,18 @@ void Main::on_data_textChanged()
 		}
 	}
 	updateFee();
+}
+
+void Main::on_clearPending_triggered()
+{
+	writeSettings();
+	ui->mine->setChecked(false);
+	ui->net->setChecked(false);
+	web3()->stopNetwork();
+	ethereum()->clearPending();
+	readSettings(true);
+	installWatches();
+	refreshAll();
 }
 
 void Main::on_killBlockchain_triggered()

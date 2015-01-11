@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <unordered_map>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/ObjectCache.h>
 
 
@@ -34,6 +33,7 @@ class Cache
 {
 public:
 	static ObjectCache* getObjectCache();
+	static std::unique_ptr<llvm::Module> getObject(std::string const& id);
 };
 
 }
