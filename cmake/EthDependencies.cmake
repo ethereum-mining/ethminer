@@ -119,8 +119,8 @@ if (NOT HEADLESS)
 	message(" - nodejs location : ${ETH_NODE}")
 
 	find_program(ETH_NPM npm)
-	message(" - npm location    : ${ETH_NPM}")
 	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
+	message(" - npm location    : ${ETH_NPM}")
 
 endif() #HEADLESS
 
