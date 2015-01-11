@@ -72,7 +72,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LogEntry const& _e)
+static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
 	
@@ -80,13 +80,14 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
 		res["topics"].append(toJS(t));
+	res["number"] = _e.number;
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
 	Json::Value res;
-	for (dev::eth::LogEntry const& e: _es)
+	for (dev::eth::LocalisedLogEntry const& e: _es)
 		res.append(toJson(e));
 	return res;
 }

@@ -185,7 +185,7 @@ unsigned Client::installWatch(h256 _h)
 
 unsigned Client::installWatch(LogFilter const& _f)
 {
-	lock_guard<mutex> l(m_filterLock);
+	Guard l(m_filterLock);
 
 	h256 h = _f.sha3();
 
@@ -199,7 +199,7 @@ void Client::uninstallWatch(unsigned _i)
 {
 	cwatch << "XXX" << _i;
 
-	lock_guard<mutex> l(m_filterLock);
+	Guard l(m_filterLock);
 
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
@@ -215,7 +215,7 @@ void Client::uninstallWatch(unsigned _i)
 
 void Client::noteChanged(h256Set const& _filters)
 {
-	lock_guard<mutex> l(m_filterLock);
+	Guard l(m_filterLock);
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
 		{
@@ -227,7 +227,7 @@ void Client::noteChanged(h256Set const& _filters)
 void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
 {
 	// TODO: more precise check on whether the txs match.
-	lock_guard<mutex> l(m_filterLock);
+	Guard l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
 		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
 			o_changed.insert(i.first);
@@ -238,7 +238,7 @@ void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
 
-	lock_guard<mutex> l(m_filterLock);
+	Guard l(m_filterLock);
 	for (pair<h256, InstalledFilter> const& i: m_filters)
 		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
 			o_changed.insert(i.first);
@@ -592,16 +592,16 @@ BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 	return BlockInfo::fromHeader(b[2][_i].data());
 }
 
-LogEntries Client::logs(LogFilter const& _f) const
+LocalisedLogEntries Client::logs(LogFilter const& _f) const
 {
-	LogEntries ret;
-	unsigned begin = min<unsigned>(m_bc.number(), (unsigned)_f.latest());
-	unsigned end = min(begin, (unsigned)_f.earliest());
+	LocalisedLogEntries ret;
+	unsigned begin = min<unsigned>(m_bc.number() + 1, (unsigned)_f.latest());
+	unsigned end = min(m_bc.number(), min(begin, (unsigned)_f.earliest()));
 	unsigned m = _f.max();
 	unsigned s = _f.skip();
 
 	// Handle pending transactions differently as they're not on the block chain.
-	if (begin == m_bc.number())
+	if (begin > m_bc.number())
 	{
 		ReadGuard l(x_stateDB);
 		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
@@ -615,9 +615,10 @@ LogEntries Client::logs(LogFilter const& _f) const
 					if (s)
 						s--;
 					else
-						ret.insert(ret.begin(), le[j]);
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin));
 			}
 		}
+		begin = m_bc.number();
 	}
 
 #if ETH_DEBUG
@@ -649,7 +650,7 @@ LogEntries Client::logs(LogFilter const& _f) const
 							if (s)
 								s--;
 							else
-								ret.insert(ret.begin(), le[j]);
+								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n));
 						}
 					}
 				}
