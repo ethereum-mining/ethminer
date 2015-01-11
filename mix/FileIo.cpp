@@ -42,7 +42,7 @@ QString FileIo::readFile(QString const& _url)
 {
 	QUrl url(_url);
 	QFile file(url.path());
-	if(file.open(QIODevice::ReadOnly | QIODevice::Text))
+	if (file.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);
 		QString data = stream.readAll();
@@ -57,7 +57,7 @@ void FileIo::writeFile(QString const& _url, QString const& _data)
 {
 	QUrl url(_url);
 	QFile file(url.path());
-	if(file.open(QIODevice::WriteOnly | QIODevice::Text))
+	if (file.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);
 		stream << _data;

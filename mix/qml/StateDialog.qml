@@ -11,8 +11,8 @@ Window {
 
 	visible: false
 
-	property alias stateTitle : titleField.text
-	property alias stateBalance : balanceField.text
+	property alias stateTitle: titleField.text
+	property alias stateBalance: balanceField.text
 	property int stateIndex
 	property var stateTransactions: []
 	signal accepted
