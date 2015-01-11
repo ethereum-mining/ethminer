@@ -86,8 +86,8 @@ public:
 
 	// [LOGS API]
 	
-	virtual LogEntries logs(unsigned _watchId) const = 0;
-	virtual LogEntries logs(LogFilter const& _filter) const = 0;
+	virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
+	virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;
 
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter) = 0;
@@ -180,8 +180,7 @@ public:
 
 	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
 	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
-//	PastMessages messages() const { return m_c->messages(m_id); }
-	LogEntries logs() const { return m_c->logs(m_id); }
+	LocalisedLogEntries logs() const { return m_c->logs(m_id); }
 
 private:
 	Interface* m_c = nullptr;

@@ -72,7 +72,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LogEntry const& _e)
+static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
 	
@@ -80,13 +80,14 @@ static Json::Value toJson(dev::eth::LogEntry const& _e)
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
 		res["topics"].append(toJS(t));
+	res["number"] = _e.number;
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
 	Json::Value res;
-	for (dev::eth::LogEntry const& e: _es)
+	for (dev::eth::LocalisedLogEntry const& e: _es)
 		res.append(toJson(e));
 	return res;
 }
@@ -634,7 +635,7 @@ std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 	{
 		auto b = m_accounts.begin()->first;
 		for (auto a: m_accounts)
-			if (client()->balanceAt(a.first) > client()->balanceAt(b))
+			if (client()->balanceAt(a.first, 0) > client()->balanceAt(b, 0))
 				b = a.first;
 		t.from = b;
 	}
@@ -643,7 +644,7 @@ std::string WebThreeStubServer::eth_transact(Json::Value const& _json)
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from, 0) / t.gasPrice);
 	if (authenticate(t))
 	{
 		if (t.to)
