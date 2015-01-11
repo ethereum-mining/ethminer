@@ -177,21 +177,29 @@ void Client::clearPending()
 
 unsigned Client::installWatch(h256 _h)
 {
-	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-	m_watches[ret] = ClientWatch(_h);
-	cwatch << "+++" << ret << _h;
+	unsigned ret;
+	{
+		Guard l(m_filterLock);
+		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
+		m_watches[ret] = ClientWatch(_h);
+		cwatch << "+++" << ret << _h;
+	}
+	auto ch = logs(ret);
+	{
+		Guard l(m_filterLock);
+		swap(m_watches[ret].changes, ch);
+	}
 	return ret;
 }
 
 unsigned Client::installWatch(LogFilter const& _f)
 {
-	Guard l(m_filterLock);
-
 	h256 h = _f.sha3();
-
-	if (!m_filters.count(h))
-		m_filters.insert(make_pair(h, _f));
-
+	{
+		Guard l(m_filterLock);
+		if (!m_filters.count(h))
+			m_filters.insert(make_pair(h, _f));
+	}
 	return installWatch(h);
 }
 
@@ -216,32 +224,81 @@ void Client::uninstallWatch(unsigned _i)
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
+	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
 		{
 //			cwatch << "!!!" << i.first << i.second.id;
-			i.second.changes++;
+			try {
+				i.second.changes += m_filters.at(i.second.id).changes;
+			} catch(...){}
+		}
+	// clear the filters now.
+	for (auto& i: m_filters)
+		i.second.changes.clear();
+}
+
+LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
+{
+	Guard l(m_filterLock);
+
+	try {
+		return m_watches.at(_watchId).changes;
+	} catch (...) {}
+	return LocalisedLogEntries();
+}
+
+LocalisedLogEntries Client::checkWatch(unsigned _watchId)
+{
+	Guard l(m_filterLock);
+	LocalisedLogEntries ret;
+
+	try {
+		std::swap(ret, m_watches.at(_watchId).changes);
+	} catch (...) {}
+
+	return ret;
+}
+
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed)
+{
+	Guard l(m_filterLock);
+	for (pair<h256 const, InstalledFilter>& i: m_filters)
+		if ((unsigned)i.second.filter.latest() > m_bc.number())
+		{
+			// acceptable number.
+			auto m = i.second.filter.matches(_receipt);
+			if (m.size())
+			{
+				// filter catches them
+				for (LogEntry const& l: m)
+					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1));
+				io_changed.insert(i.first);
+			}
 		}
 }
 
-void Client::appendFromNewPending(LogBloom _bloom, h256Set& o_changed) const
-{
-	// TODO: more precise check on whether the txs match.
-	Guard l(m_filterLock);
-	for (pair<h256, InstalledFilter> const& i: m_filters)
-		if ((unsigned)i.second.filter.latest() > m_bc.number() && i.second.filter.matches(_bloom))
-			o_changed.insert(i.first);
-}
-
-void Client::appendFromNewBlock(h256 _block, h256Set& o_changed) const
+void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
+	auto br = m_bc.receipts(_block);
 
 	Guard l(m_filterLock);
-	for (pair<h256, InstalledFilter> const& i: m_filters)
+	for (pair<h256 const, InstalledFilter>& i: m_filters)
 		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
-			o_changed.insert(i.first);
+			// acceptable number & looks like block may contain a matching log entry.
+			for (TransactionReceipt const& tr: br.receipts)
+			{
+				auto m = i.second.filter.matches(tr);
+				if (m.size())
+				{
+					// filter catches them
+					for (LogEntry const& l: m)
+						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number));
+					io_changed.insert(i.first);
+				}
+			}
 }
 
 void Client::setForceMining(bool _enable)
@@ -468,10 +525,10 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		h512s newPendingBlooms = m_postMine.sync(m_bc, m_tq);
-		if (newPendingBlooms.size())
+		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq);
+		if (newPendingReceipts.size())
 		{
-			for (auto i: newPendingBlooms)
+			for (auto i: newPendingReceipts)
 				appendFromNewPending(i, changeds);
 			changeds.insert(PendingChangedFilter);
 

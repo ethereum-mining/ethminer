@@ -244,14 +244,14 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
-unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -266,10 +266,10 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installNameRegWatch(); });
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installCurrenciesWatch(); });
-	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
-	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
+	installWatch(dev::eth::PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
+	installWatch(dev::eth::ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
@@ -285,13 +285,13 @@ Address Main::getCurrencies() const
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -309,7 +309,7 @@ void Main::installBalancesWatch()
 			tf.address(c).topic(h256(i.address(), h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
-	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
+	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
 }
 
 void Main::onNameRegChange()
@@ -1171,8 +1171,11 @@ void Main::timerEvent(QTimerEvent*)
 		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
-		if (ethereum()->checkWatch(i.first))
-			i.second();
+	{
+		auto ls = ethereum()->checkWatch(i.first);
+		if (ls.size())
+			i.second(ls);
+	}
 }
 
 string Main::renderDiff(dev::eth::StateDiff const& _d) const
