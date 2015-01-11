@@ -26,7 +26,7 @@
 
 using namespace dev::mix;
 
-AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
+AssemblyDebuggerControl::AssemblyDebuggerControl(dev::mix::AppContext* _context):
 	Extension(_context, ExtensionDisplayBehavior::ModalDialog)
 {
 	connect(_context->clientModel(), &ClientModel::showDebuggerWindow, this, &AssemblyDebuggerControl::showDebugger, Qt::QueuedConnection);

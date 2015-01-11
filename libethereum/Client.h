@@ -119,9 +119,9 @@ template <class T, class ... U> bytes abiInAux(T const& _t, U const& ... _u)
 	return ABISerialiser<T>::serialise(_t) + abiInAux(_u ...);
 }
 
-template <class ... T> bytes abiIn(byte _id, T const& ... _t)
+template <class ... T> bytes abiIn(std::string _id, T const& ... _t)
 {
-	return bytes(1, _id) + abiInAux(_t ...);
+	return sha3(_id).ref().cropped(0, 4).toBytes() + abiInAux(_t ...);
 }
 
 template <class T> struct ABIDeserialiser {};

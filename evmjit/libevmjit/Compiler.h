@@ -20,19 +20,13 @@ public:
 	struct Options
 	{
 		/// Optimize stack operations between basic blocks
-		bool optimizeStack;
+		bool optimizeStack = true;
 
 		/// Rewrite switch instructions to sequences of branches
-		bool rewriteSwitchToBranches;
+		bool rewriteSwitchToBranches = true;
 
 		/// Dump CFG as a .dot file for graphviz
-		bool dumpCFG;
-
-		Options():
-			optimizeStack(true),
-			rewriteSwitchToBranches(true),
-			dumpCFG(false)
-		{}
+		bool dumpCFG = false;
 	};
 
 	using ProgramCounter = uint64_t;
@@ -69,7 +63,7 @@ private:
 	llvm::IRBuilder<> m_builder;
 
 	/// Maps a program counter pc to a basic block that starts at pc (if any).
-	std::map<ProgramCounter, BasicBlock> basicBlocks;
+	std::map<ProgramCounter, BasicBlock> m_basicBlocks;
 
 	/// Stop basic block - terminates execution with STOP code (0)
 	llvm::BasicBlock* m_stopBB = nullptr;
