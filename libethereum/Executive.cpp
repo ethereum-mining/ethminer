@@ -146,9 +146,17 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = VMFactory::create(_gas);
-	m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	return _init.empty();
+	if (_init.empty())
+	{
+		m_s.m_cache[m_newAddress].setCode({});
+		m_endGas = _gas;
+	}
+	else
+	{
+		m_vm = VMFactory::create(_gas);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	}
+	return !m_ext;
 }
 
 OnOpFunc Executive::simpleTrace()
