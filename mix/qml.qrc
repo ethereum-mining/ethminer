@@ -18,5 +18,6 @@
         <file>qml/CodeEditor.qml</file>
         <file>qml/CodeEditorView.qml</file>
         <file>qml/js/ProjectModel.js</file>
+        <file>qml/WebPreview.qml</file>
     </qresource>
 </RCC>

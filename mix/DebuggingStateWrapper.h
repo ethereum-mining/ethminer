@@ -28,44 +28,12 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "QVariableDefinition.h"
+#include "MixClient.h"
 
 namespace dev
 {
 namespace mix
 {
-
-/**
- * @brief Store information about a machine state.
- */
-struct DebuggingState
-{
-	uint64_t steps;
-	dev::Address cur;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<DebuggingState const*> levels;
-};
-
-/**
- * @brief Store information about a machine states.
- */
-struct DebuggingContent
-{
-	QList<DebuggingState> machineStates;
-	bytes executionCode;
-	bytesConstRef executionData;
-	Address contractAddress;
-	bool contentAvailable;
-	QString message;
-	bytes returnValue;
-	QList<QVariableDefinition*> returnParameters;
-};
 
 /**
  * @brief Contains the line nb of the assembly code and the corresponding index in the code bytes array.
@@ -151,14 +119,14 @@ public:
 	/// Get all previous steps.
 	QStringList levels();
 	/// Get the current processed machine state.
-	DebuggingState state() { return m_state; }
+	MachineState state() { return m_state; }
 	/// Set the current processed machine state.
-	void setState(DebuggingState _state) { m_state = _state;  }
+	void setState(MachineState _state) { m_state = _state;  }
 	/// Convert all machine state in human readable code.
 	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code);
 
 private:
-	DebuggingState m_state;
+	MachineState m_state;
 	bytes m_code;
 	bytes m_data;
 };

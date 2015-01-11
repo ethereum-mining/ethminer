@@ -44,7 +44,7 @@ Item {
 		onDocumentOpened: {
 			openDocument(document);
 		}
-		onProjectSaved: {
+		onProjectSaving: {
 			for (var i = 0; i < editorListModel.count; i++)
 				fileIo.writeFile(editorListModel.get(i).path, editors.itemAt(i).item.getText());
 		}

@@ -27,6 +27,7 @@
 #include <libsolidity/AST.h>
 #include "QVariableDeclaration.h"
 #include "QVariableDefinition.h"
+#include "QFunctionDefinition.h"
 #include "ContractCallDataEncoder.h"
 using namespace dev;
 using namespace dev::solidity;
@@ -37,9 +38,9 @@ bytes ContractCallDataEncoder::encodedData()
 	return m_encodedData;
 }
 
-void ContractCallDataEncoder::encode(int _functionIndex)
+void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 {
-	bytes i = jsToBytes(std::to_string(_functionIndex));
+	bytes i = _function->hash().asBytes();
 	m_encodedData.insert(m_encodedData.end(), i.begin(), i.end());
 }
 

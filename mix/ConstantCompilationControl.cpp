@@ -61,7 +61,7 @@ void ConstantCompilationControl::update()
 
 	QObject* status = m_view->findChild<QObject*>("status", Qt::FindChildrenRecursively);
 	QObject* content = m_view->findChild<QObject*>("content", Qt::FindChildrenRecursively);
-	if (result->successfull())
+	if (result->successful())
 	{
 		status->setProperty("text", "succeeded");
 		status->setProperty("color", "green");

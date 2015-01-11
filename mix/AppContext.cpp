@@ -27,13 +27,10 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <QStandardPaths>
-#include <QFile>
-#include <QDir>
-#include <libdevcrypto/FileSystem.h>
 #include <libwebthree/WebThree.h>
 #include "CodeModel.h"
 #include "FileIo.h"
+#include "ClientModel.h"
 #include "AppContext.h"
 
 
@@ -47,7 +44,8 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
 	m_applicationEngine = _engine;
 	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
-	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
+	m_codeModel.reset(new CodeModel(this));
+	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
@@ -59,21 +57,6 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 
 AppContext::~AppContext()
 {
-}
-
-void AppContext::loadProject()
-{
-	QString path = QStandardPaths::locate(QStandardPaths::DataLocation, c_projectFileName);
-	if (!path.isEmpty())
-	{
-		QFile file(path);
-		if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-		{
-			QTextStream stream(&file);
-			QString json = stream.readAll();
-			emit projectLoaded(json);
-		}
-	}
 }
 
 QQmlApplicationEngine* AppContext::appEngine()
@@ -92,20 +75,4 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
-}
-
-void AppContext::saveProject(QString const& _json)
-{
-	QDir dirPath(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
-	QString path = QDir(dirPath).filePath(c_projectFileName);
-	if (!path.isEmpty())
-	{
-		dirPath.mkpath(dirPath.path());
-		QFile file(path);
-		if (file.open(QIODevice::WriteOnly | QIODevice::Text))
-		{
-			QTextStream stream(&file);
-			stream << _json;
-		}
-	}
 }

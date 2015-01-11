@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FileIo.h
+/** @file Web3Server.h
  * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2015
  * Ethereum IDE client.
@@ -22,36 +22,35 @@
 
 #pragma once
 
-#include <QObject>
+#include <map>
+#include <string>
+#include <libweb3jsonrpc/WebThreeStubServerBase.h>
 
 namespace dev
 {
+
 namespace mix
 {
 
-///File services for QML
-class FileIo : public QObject
+class Web3Server: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
-	Q_OBJECT
-	Q_PROPERTY(QString homePath READ getHomePath CONSTANT);
-
-signals:
-	/// Signalled in case of IO error
-	void error(QString const& _errorText);
-
 public:
-	/// Create a directory if it does not exist. Signals on failure.
-	Q_INVOKABLE void makeDir(QString const& _url);
-	/// Read file contents to a string. Signals on failure.
-	Q_INVOKABLE QString readFile(QString const& _url);
-	/// Write contents to a file. Signals on failure.
-	Q_INVOKABLE void writeFile(QString const& _url, QString const& _data);
-	/// Copy a file from _sourcePath to _destPath. Signals on failure.
-	Q_INVOKABLE void copyFile(QString const& _sourceUrl, QString const& _destUrl);
+	Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client);
 
 private:
-	QString getHomePath() const;
+	dev::eth::Interface* client() override { return m_client; }
+	std::shared_ptr<dev::shh::Interface> face() override;
+	dev::WebThreeNetworkFace* network() override;
+	dev::WebThreeStubDatabaseFace* db() override { return this; }
+
+	std::string get(std::string const& _name, std::string const& _key) override;
+	void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
+
+private:
+	dev::eth::Interface* m_client;
+	std::map<std::string, std::string> m_db;
 };
 
 }
+
 }

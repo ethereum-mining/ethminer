@@ -29,6 +29,9 @@ Rectangle {
 				stateList.push(items[i])
 			}
 		}
+		onProjectSaving: {
+			projectData.states = stateList;
+		}
 	}
 
 	ListView {
@@ -78,7 +81,7 @@ Rectangle {
 
 		function runState(index) {
 			var item = stateList[index];
-			debugModel.debugState(item);
+			clientModel.debugState(item);
 		}
 
 		function deleteState(index) {
@@ -88,7 +91,6 @@ Rectangle {
 		}
 
 		function save() {
-			console.log(parent.id);
 			ProjectModel.saveProject();
 		}
 	}
@@ -131,7 +133,7 @@ Rectangle {
 		id: addStateAction
 		text: "&Add State"
 		shortcut: "Ctrl+T"
-		enabled: codeModel.hasContract && !debugModel.running;
+		enabled: codeModel.hasContract && !clientModel.running;
 		onTriggered: stateListModel.addState();
 	}
 }

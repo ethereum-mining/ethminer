@@ -22,7 +22,6 @@
 
 function saveAll() {
 	saveProject();
-	projectSaved();
 }
 
 function createProject() {
@@ -44,6 +43,7 @@ function closeProject() {
 
 function saveProject() {
 	if (!isEmpty) {
+		projectSaving(projectData);
 		var json = JSON.stringify(projectData);
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
