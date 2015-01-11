@@ -1811,8 +1811,6 @@ void Main::on_net_triggered()
 	web3()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		// TODO: alter network stuff?
-		//ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
