@@ -13,8 +13,8 @@ Window {
 
 	visible: false
 
-	property alias projectTitle : titleField.text
-	readonly property string projectPath : "file://" + pathField.text
+	property alias projectTitle: titleField.text
+	readonly property string projectPath: "file://" + pathField.text
 	signal accepted
 
 	function open() {

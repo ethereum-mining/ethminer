@@ -30,7 +30,7 @@ namespace mix
 {
 
 ///File services for QML
-class FileIo : public QObject
+class FileIo: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString homePath READ getHomePath CONSTANT)
