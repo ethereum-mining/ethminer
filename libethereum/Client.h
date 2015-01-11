@@ -78,6 +78,7 @@ struct InstalledFilter
 
 	LogFilter filter;
 	unsigned refCount = 1;
+	LocalisedLogEntries changes;
 };
 
 static const h256 PendingChangedFilter = u256(0);
@@ -89,7 +90,7 @@ struct ClientWatch
 	explicit ClientWatch(h256 _id): id(_id) {}
 
 	h256 id;
-	unsigned changes = 1;
+	LocalisedLogEntries changes;
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
@@ -182,8 +183,8 @@ public:
 	virtual unsigned installWatch(LogFilter const& _filter);
 	virtual unsigned installWatch(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
-	virtual bool peekWatch(unsigned _watchId) const { Guard l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
-	virtual bool checkWatch(unsigned _watchId) { Guard l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const;
+	virtual LocalisedLogEntries checkWatch(unsigned _watchId);
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
@@ -286,11 +287,11 @@ private:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(LogBloom _pendingTransactionBloom, h256Set& o_changed) const;
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewBlock(h256 _blockHash, h256Set& o_changed) const;
+	void appendFromNewBlock(h256 const& _blockHash, h256Set& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.

@@ -347,9 +347,9 @@ std::string WebThreeStubServer::eth_call(Json::Value const& _json)
 	return ret;
 }
 
-bool WebThreeStubServer::eth_changed(int const& _id)
+Json::Value WebThreeStubServer::eth_changed(int const& _id)
 {
-	return client()->checkWatch(_id);
+	return toJson(client()->checkWatch(_id));
 }
 
 std::string WebThreeStubServer::eth_codeAt(string const& _address)

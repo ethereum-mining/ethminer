@@ -140,10 +140,10 @@ public:
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	/// @returns a list of bloom filters one for each transaction placed from the queue into the state.
+	/// @returns a list of receipts one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	h512s sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 

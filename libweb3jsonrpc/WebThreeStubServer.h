@@ -71,7 +71,7 @@ public:
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
 	virtual Json::Value eth_blockByNumber(int const& _number);
 	virtual std::string eth_call(Json::Value const& _json);
-	virtual bool eth_changed(int const& _id);
+	virtual Json::Value eth_changed(int const& _id);
 	virtual std::string eth_codeAt(std::string const& _address);
 	virtual std::string eth_coinbase();
 	virtual Json::Value eth_compilers();
