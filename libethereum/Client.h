@@ -57,12 +57,6 @@ enum ClientWorkState
 	Deleted
 };
 
-enum class NodeMode
-{
-	PeerServer,
-	Full
-};
-
 class VersionChecker
 {
 public:
