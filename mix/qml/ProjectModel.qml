@@ -15,6 +15,8 @@ Item {
 	signal projectClosed
 	signal projectLoaded
 	signal documentOpened(var document)
+	signal documentRemoved(var documentId)
+	signal documentUpdated(var documentId) //renamed
 	signal projectSaving(var projectData)
 
 	property bool isEmpty: (projectData === null)
@@ -33,7 +35,12 @@ Item {
 	function saveProject() { ProjectModelCode.saveProject(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function addExistingFile() { ProjectModelCode.addExistingFile(); }
+	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
+	function newJsFile() { ProjectModelCode.newJsFile(); }
+	//function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
+	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
+	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 
 	Connections {
 		target: appContext
@@ -95,7 +102,7 @@ Item {
 		title: qsTr("Add a file")
 		selectFolder: false
 		onAccepted: {
-			var paths = openProjectFileDialog.fileUrls;
+			var paths = addExistingFileDialog.fileUrls;
 			ProjectModelCode.doAddExistingFiles(paths);
 		}
 	}
