@@ -40,6 +40,7 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
@@ -644,6 +645,7 @@ void Main::writeSettings()
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
+	s.setValue("jitvm", ui->jitvm->isChecked());
 
 	bytes d = m_webThree->saveNodes();
 	if (d.size())
@@ -718,6 +720,7 @@ void Main::readSettings(bool _skipGeometry)
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
+	ui->jitvm->setChecked(s.value("jitvm", true).toBool());
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -815,6 +818,12 @@ void Main::on_usePrivate_triggered()
 		m_privateChain.clear();
 	}
 	on_killBlockchain_triggered();
+}
+
+void Main::on_jitvm_triggered()
+{
+	bool jit = ui->jitvm->isChecked();
+	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 }
 
 void Main::on_urlEdit_returnPressed()

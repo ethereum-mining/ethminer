@@ -156,6 +156,7 @@ private slots:
 	void on_importKeyFile_triggered();
 	void on_post_clicked();
 	void on_newIdentity_triggered();
+	void on_jitvm_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();
