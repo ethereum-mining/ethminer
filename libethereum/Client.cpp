@@ -159,9 +159,10 @@ void Client::clearPending()
 		WriteGuard l(x_stateDB);
 		if (!m_postMine.pending().size())
 			return;
-		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-			appendFromNewPending(m_postMine.logBloom(i), changeds);
+//		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
+//			appendFromNewPending(m_postMine.logBloom(i), changeds);
 		changeds.insert(PendingChangedFilter);
+		m_tq.clear();
 		m_postMine = m_preMine;
 	}
 

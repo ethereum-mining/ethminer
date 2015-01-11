@@ -1274,7 +1274,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
-		s << renderDiff(ethereum()->diff(i, -1));
+		s << renderDiff(ethereum()->diff(i, 0));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
