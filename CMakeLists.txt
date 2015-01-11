@@ -49,6 +49,7 @@ endfunction()
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
+	set(ETH_BUILD_PLATFORM ${TARGET_PLATFORM})
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
