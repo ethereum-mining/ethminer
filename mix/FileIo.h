@@ -33,7 +33,7 @@ namespace mix
 class FileIo : public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString homePath READ getHomePath CONSTANT);
+	Q_PROPERTY(QString homePath READ getHomePath CONSTANT)
 
 signals:
 	/// Signalled in case of IO error
@@ -48,6 +48,10 @@ public:
 	Q_INVOKABLE void writeFile(QString const& _url, QString const& _data);
 	/// Copy a file from _sourcePath to _destPath. Signals on failure.
 	Q_INVOKABLE void copyFile(QString const& _sourceUrl, QString const& _destUrl);
+	/// Move (rename) a file from _sourcePath to _destPath. Signals on failure.
+	Q_INVOKABLE void moveFile(QString const& _sourceUrl, QString const& _destUrl);
+	/// Check if file exists
+	Q_INVOKABLE bool fileExists(QString const& _url);
 
 private:
 	QString getHomePath() const;

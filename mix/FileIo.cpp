@@ -78,3 +78,18 @@ QString FileIo::getHomePath() const
 {
 	return QDir::homePath();
 }
+
+void FileIo::moveFile(QString const& _sourceUrl, QString const& _destUrl)
+{
+	QUrl sourceUrl(_sourceUrl);
+	QUrl destUrl(_destUrl);
+	if (!QFile::rename(sourceUrl.path(), destUrl.path()))
+		error(tr("Error moving file %1 to %2").arg(_sourceUrl).arg(_destUrl));
+}
+
+bool FileIo::fileExists(QString const& _url)
+{
+	QUrl url(_url);
+	QFile file(url.path());
+	return file.exists();
+}

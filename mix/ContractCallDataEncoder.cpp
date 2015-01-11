@@ -92,7 +92,7 @@ int ContractCallDataEncoder::padding(QString type)
 	else if (type.indexOf("bool") != -1)
 		return 1;
 	else if ((type.indexOf("address") != -1))
-		return 20;
+		return 32;
 	else
 		return 0;
 }

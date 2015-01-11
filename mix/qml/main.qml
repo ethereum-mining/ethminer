@@ -21,11 +21,16 @@ ApplicationWindow {
 			title: qsTr("File")
 			MenuItem { action: createProjectAction }
 			MenuItem { action: openProjectAction }
+			MenuSeparator {}
 			MenuItem { action: saveAllFilesAction }
+			MenuSeparator {}
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
-			MenuItem { action: addNewContractAction }
+			MenuSeparator {}
+			//MenuItem { action: addNewContractAction }
+			MenuItem { action: closeProjectAction }
+			MenuSeparator {}
 			MenuItem { action: exitAppAction }
 		}
 		Menu {
@@ -95,7 +100,7 @@ ApplicationWindow {
 		text: qsTr("New JavaScript file")
 		shortcut: "Ctrl+Alt+J"
 		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.addJsFile();
+		onTriggered: ProjectModel.newJsFile();
 	}
 
 	Action {
@@ -103,7 +108,7 @@ ApplicationWindow {
 		text: qsTr("New HTML file")
 		shortcut: "Ctrl+Alt+H"
 		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.addHtmlFile();
+		onTriggered: ProjectModel.newHtmlFile();
 	}
 
 	Action {
@@ -111,7 +116,7 @@ ApplicationWindow {
 		text: qsTr("New contract")
 		shortcut: "Ctrl+Alt+C"
 		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.addContract();
+		onTriggered: ProjectModel.newContract();
 	}
 
 	Action {

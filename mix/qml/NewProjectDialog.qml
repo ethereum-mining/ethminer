@@ -9,7 +9,7 @@ Window {
 	modality: Qt.WindowModal
 
 	width: 640
-	height: 280
+	height: 120
 
 	visible: false
 
@@ -89,4 +89,5 @@ Window {
 			pathField.text = u;
 		}
 	}
+	Component.onCompleted: pathField.text = fileIo.homePath
 }

@@ -5,7 +5,7 @@ import QtQuick.Controls 1.0
 import org.ethereum.qml.ProjectModel 1.0
 
 Item {
-
+	property bool renameMode: false;
 	ColumnLayout {
 		anchors.fill: parent
 		Text {
@@ -16,9 +16,10 @@ Item {
 			visible: !ProjectModel.isEmpty;
 		}
 		ListView {
+			id: projectList
 			Layout.fillWidth: true
 			Layout.fillHeight: true
-			id: projectList
+
 			model: ProjectModel.listModel
 
 			delegate: renderDelegate
@@ -34,6 +35,21 @@ Item {
 					ProjectModel.openDocument(ProjectModel.listModel.get(currentIndex).documentId);
 			}
 		}
+		Menu {
+			id: contextMenu
+			MenuItem {
+				text: qsTr("Rename")
+				onTriggered: {
+					renameMode = true;
+				}
+			}
+			MenuItem {
+				text: qsTr("Delete")
+				onTriggered: {
+					ProjectModel.removeDocument(projectList.model.get(projectList.currentIndex).documentId);
+				}
+			}
+		}
 	}
 	Component {
 		id: renderDelegate
@@ -43,7 +59,9 @@ Item {
 			width: parent.width
 			RowLayout {
 				anchors.fill: parent
+				visible: !(index === projectList.currentIndex) || !renameMode
 				Text {
+					id: nameText
 					Layout.fillWidth: true
 					Layout.fillHeight: true
 					text: name
@@ -51,17 +69,56 @@ Item {
 					verticalAlignment: Text.AlignBottom
 				}
 			}
+
+			TextInput {
+				id: textInput
+				text: nameText.text
+				visible: (index === projectList.currentIndex) && renameMode
+				MouseArea {
+					id: textMouseArea
+					anchors.fill: parent
+					hoverEnabled: true
+					z:2
+					onClicked: {
+						console.log("clicked");
+						textInput.forceActiveFocus();
+					}
+				}
+
+				onVisibleChanged: {
+					if (visible) {
+						selectAll();
+						forceActiveFocus();
+					}
+				}
+
+				onAccepted: close(true);
+				onCursorVisibleChanged: {
+					if (!cursorVisible)
+						close(false);
+				}
+				onFocusChanged: {
+					if (!focus)
+						close(false);
+				}
+				function close(accept) {
+					renameMode = false;
+					if (accept)
+						ProjectModel.renameDocument(projectList.model.get(projectList.currentIndex).documentId, textInput.text);
+				}
+			}
 			MouseArea {
 				id: mouseArea
 				z: 1
 				hoverEnabled: false
 				anchors.fill: parent
-
+				acceptedButtons: Qt.LeftButton | Qt.RightButton
 				onClicked:{
 					projectList.currentIndex = index;
+					if (mouse.button === Qt.RightButton && !projectList.model.get(index).isContract)
+						contextMenu.popup();
 				}
 			}
-
 			Connections {
 				target: ProjectModel
 				onProjectLoaded: {
