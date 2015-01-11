@@ -188,11 +188,11 @@ public:
 	virtual unsigned installWatch(LogFilter const& _filter);
 	virtual unsigned installWatch(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
-	virtual bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
-	virtual bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+	virtual bool peekWatch(unsigned _watchId) const { Guard l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
+	virtual bool checkWatch(unsigned _watchId) { Guard l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
 
-	virtual LogEntries logs(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LogEntries(); } }
-	virtual LogEntries logs(LogFilter const& _filter) const;
+	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
+	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -313,7 +313,7 @@ private:
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
-	mutable boost::shared_mutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
+	mutable SharedMutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
@@ -321,7 +321,7 @@ private:
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	std::vector<Miner> m_miners;
-	mutable boost::shared_mutex x_miners;
+	mutable SharedMutex x_miners;
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
