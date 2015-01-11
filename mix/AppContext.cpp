@@ -27,12 +27,11 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <libwebthree/WebThree.h>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "AppContext.h"
-
+#include <libwebthree/WebThree.h>
 
 using namespace dev;
 using namespace dev::eth;
