@@ -20,12 +20,14 @@
  */
 
 #include <libsolidity/AST.h>
+#include <libdevcrypto/SHA3.h>
 #include "QVariableDeclaration.h"
 #include "QFunctionDefinition.h"
+
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index)
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index), m_hash(dev::sha3(_f->getCanonicalSignature()))
 {
 	std::vector<std::shared_ptr<VariableDeclaration>> parameters = _f->getParameterList().getParameters();
 	for (unsigned i = 0; i < parameters.size(); i++)
