@@ -80,6 +80,9 @@ using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
 using HexMap = std::map<bytes, std::string>;
 
+// String types.
+using strings = std::vector<std::string>;
+
 // Fixed-length string types.
 using string32 = std::array<char, 32>;
 
