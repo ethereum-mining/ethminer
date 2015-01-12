@@ -64,8 +64,6 @@ public:
 	NodeId id() const;
 	unsigned socketId() const { return m_socket.native_handle(); }
 
-	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
-
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
 
@@ -109,13 +107,12 @@ private:
 	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
 	bytes m_incoming;						///< Read buffer for ingress bytes.
 
-	PeerSessionInfo m_info;						///< Dynamic information about this peer.
-
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
 	std::shared_ptr<PeerInfo> m_peer;			///< The PeerInfo object.
-	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
+	PeerSessionInfo m_info;						///< Dynamic information about this peer.
+	
 	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
 	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 

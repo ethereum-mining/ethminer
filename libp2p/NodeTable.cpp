@@ -65,6 +65,10 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	shared_ptr<NodeEntry> ret = m_nodes[_node.id];
 	if (!ret)
 	{
+		clog(NodeTableNote) << "p2p.nodes.add " << _node.id.abridged();
+		if (m_nodeEvents)
+			m_nodeEvents->appendEvent(_node.id, NodeEntryAdded);
+		
 		ret.reset(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
 		m_nodes[_node.id] = ret;
 		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
@@ -317,8 +321,14 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 		Guard l(x_state);
 		s.nodes.remove_if([&_n](weak_ptr<NodeEntry> n) { return n.lock() == _n; });
 	}
-	Guard l(x_nodes);
-	m_nodes.erase(_n->id);
+	{
+		Guard l(x_nodes);
+		m_nodes.erase(_n->id);
+	}
+	
+	clog(NodeTableNote) << "p2p.nodes.drop " << _n->id.abridged();
+	if (m_nodeEvents)
+		m_nodeEvents->appendEvent(_n->id, NodeEntryRemoved);
 }
 
 NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)

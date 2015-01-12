@@ -39,9 +39,8 @@ using namespace dev::p2p;
 Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<PeerInfo> const& _n):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_info({m_peer->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
 	m_peer(_n),
-	m_manualEndpoint(_n->address)
+	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()})
 {
 	m_lastReceived = m_connect = std::chrono::steady_clock::now();
 }
@@ -87,21 +86,21 @@ int Session::rating() const
 	return m_peer->rating;
 }
 
-// TODO: P2P integration: session->? should be unavailable when socket isn't open
-bi::tcp::endpoint Session::endpoint() const
-{
-	if (m_socket.is_open() && m_peer)
-		try
-		{
-			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_peer->address.port());
-		}
-		catch (...) {}
-
-	if (m_peer)
-		return m_peer->address;
-
-	return m_manualEndpoint;
-}
+//// TODO: P2P integration: session->? should be unavailable when socket isn't open
+//bi::tcp::endpoint Session::endpoint() const
+//{
+//	if (m_socket.is_open() && m_peer)
+//		try
+//		{
+//			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_peer->address.port());
+//		}
+//		catch (...) {}
+//
+//	if (m_peer)
+//		return m_peer->address;
+//
+//	return m_manualEndpoint;
+//}
 
 template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 {
@@ -190,13 +189,10 @@ bool Session::interpret(RLP const& _r)
 		if (m_server->id() == id)
 		{
 			// Already connected.
-			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << m_info.id.abridged();
+			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << id.abridged();
 			disconnect(LocalIdentity);
 			return true;
 		}
-
-		assert(!!m_peer);
-		assert(!!m_peer->id);
 
 		// TODO: P2P ensure disabled logic is covered
 		if (false /* m_server->havePeer(id) */)
@@ -218,7 +214,13 @@ bool Session::interpret(RLP const& _r)
 		// TODO: P2P Move all node-lifecycle information into Host. Determine best way to handle peer-lifecycle properties vs node lifecycle.
 		// TODO: P2P remove oldid
 		// TODO: P2P with encrypted transport the handshake will fail and we won't get here
+		
+		// if peer is missing this is incoming connection and we need to tell host about new potential peer
+		
+		
 //		m_peer = m_server->noteNode(m_peer->id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort));
+		assert(!!m_peer);
+		assert(!!m_peer->id);
 		if (m_peer->isOffline())
 			m_peer->lastConnected = chrono::system_clock::now();
 //

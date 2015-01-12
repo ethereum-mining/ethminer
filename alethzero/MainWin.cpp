@@ -930,7 +930,7 @@ void Main::refreshNetwork()
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
-		for (p2p::Node const& i: ns)
+		for (p2p::PeerInfo const& i: ns)
 			if (!i.dead)
 				ui->nodes->insertItem(clients.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
 							   .arg(QString::fromStdString(i.id.abridged()))
@@ -940,7 +940,7 @@ void Main::refreshNetwork()
 							   .arg(i.secondsSinceLastConnected())
 							   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x" : "")
 							   .arg(i.rating)
-							   .arg((int)i.idOrigin)
+							   .arg(0 /* (int)i.idOrigin */)
 							   );
 	}
 }
