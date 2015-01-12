@@ -36,7 +36,7 @@ namespace dev
 {
 class WebThreeNetworkFace;
 class KeyPair;
-class TransactionSkeleton;
+struct TransactionSkeleton;
 namespace eth
 {
 class Interface;
