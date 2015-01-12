@@ -15,7 +15,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(..)
 
-set(EXECUTABLE qethereum)
+set(EXECUTABLE qwebthree)
 
 file(GLOB HEADERS "*.h")
 
