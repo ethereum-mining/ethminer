@@ -4,9 +4,10 @@ import QtQuick.Layouts 1.1
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Rectangle {
-	id: constantCompilationStatus
+	id: statusHeader
 	objectName: "statusPane"
-	function update()
+
+	function updateStatus()
 	{
 		if (statusPane.result.successfull)
 		{
@@ -23,7 +24,9 @@ Rectangle {
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
 		}
+		debugRunActionIcon.enabled = statusPane.result.successfull;
 	}
+
 	color: "transparent"
 	anchors.fill: parent
 	Rectangle {
@@ -88,6 +91,47 @@ Rectangle {
 					onClicked: {
 						mainContent.ensureRightView();
 						debugModel.updateDebugPanel();
+					}
+				}
+			}
+		}
+	}
+
+	Rectangle
+	{
+		color: "transparent"
+		width: 100
+		height: parent.height
+		anchors.top: statusHeader.top
+		anchors.right: statusHeader.right
+		RowLayout
+		{
+			anchors.fill: parent
+			Rectangle {
+				color: "transparent"
+				anchors.fill: parent
+				Button
+				{
+					anchors.right: parent.right
+					anchors.rightMargin: 15
+					anchors.verticalCenter: parent.verticalCenter
+					id: debugImg
+					iconSource: "qrc:/qml/img/bugiconinactive.png"
+					action: debugRunActionIcon
+				}
+				Action {
+					id: debugRunActionIcon
+					onTriggered: {
+						mainContent.ensureRightView();
+						debugModel.debugDeployment();
+					}
+					enabled: false
+					onEnabledChanged: {
+						console.log(debugRunActionIcon.enabled)
+						if (debugRunActionIcon.enabled)
+							debugImg.iconSource = "qrc:/qml/img/bugiconactive.png"
+						else
+							debugImg.iconSource = "qrc:/qml/img/bugiconinactive.png"
 					}
 				}
 			}

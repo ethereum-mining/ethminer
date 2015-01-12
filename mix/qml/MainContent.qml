@@ -25,25 +25,19 @@ Rectangle {
 			debugModel.updateDebugPanel();
 		}
 		else
-		{
 			rightView.hide();
-		}
 	}
 
 	function ensureRightView()
 	{
 		if (!rightView.visible)
-		{
 			rightView.show();
-		}
 	}
 
 	function hideRightView()
 	{
 		if (rightView.visible)
-		{
 			rightView.hide();
-		}
 	}
 
 	CodeEditorExtensionManager {
@@ -83,47 +77,6 @@ Rectangle {
 						frameOverlap: 1
 						tab: Rectangle {}
 						frame: Rectangle { color: "transparent" }
-					}
-				}
-			}
-
-			Rectangle
-			{
-				color: "transparent"
-				width: 100
-				height: parent.height
-				anchors.top: headerView.top
-				anchors.right: headerView.right
-				RowLayout
-				{
-					anchors.fill: parent
-					Rectangle {
-						color: "transparent"
-						anchors.fill: parent
-						Button
-						{
-							anchors.right: parent.right
-							anchors.rightMargin: 15
-							anchors.verticalCenter: parent.verticalCenter
-							id: debugImg
-							iconSource: "qrc:/qml/img/bugiconinactive.png"
-							action: debugRunActionIcon
-						}
-						Action {
-							id: debugRunActionIcon
-							shortcut: "F5"
-							onTriggered: {
-								mainContent.ensureRightView();
-								debugModel.debugDeployment();
-							}
-							enabled: codeModel.hasContract && !debugModel.running;
-							onEnabledChanged: {
-								if (enabled)
-									debugImg.iconSource = "qrc:/qml/img/bugiconactive.png"
-								else
-									debugImg.iconSource = "qrc:/qml/img/bugiconinactive.png"
-							}
-						}
 					}
 				}
 			}
@@ -188,7 +141,6 @@ Rectangle {
 						font.family: "Monospace"
 						font.pointSize: 12
 						width: parent.width
-						//anchors.centerIn: parent
 						tabChangesFocus: false
 						Keys.onPressed: {
 							if (event.key === Qt.Key_Tab) {
@@ -201,13 +153,16 @@ Rectangle {
 			}
 
 			Rectangle {
+				visible: false;
+				id: rightView;
+
 				Keys.onEscapePressed:
 				{
 					hide();
 				}
-				visible: false;
-				id: rightView;
+
 				property real panelRelWidth: 0.38
+
 				function show() {
 					visible = true;
 					contentView.width = parent.width * (1 - 0.38)
@@ -231,12 +186,10 @@ Rectangle {
 						anchors.fill: parent
 						style: TabViewStyle {
 							frameOverlap: 1
-
 							tabBar:
 								Rectangle {
 									color: "#ededed"
 									id: background
-
 								}
 							tab: Rectangle {
 								color: "#ededed"

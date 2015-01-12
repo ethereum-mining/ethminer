@@ -17,11 +17,10 @@ function init()
 	select(currentSelectedState);
 	//displayReturnValue();
 
-	jumpoutbackaction.state = "disabled";
-	jumpintobackaction.state = "disabled";
-	jumpintoforwardaction.state = "disabled"
-	jumpoutforwardaction.state = "disabled"
-
+	jumpoutbackaction.enabled(false);
+	jumpintobackaction.enabled(false);
+	jumpintoforwardaction.enabled(false);
+	jumpoutforwardaction.enabled(false);
 }
 
 function moveSelection(incr)
@@ -29,13 +28,8 @@ function moveSelection(incr)
 	if (currentSelectedState + incr >= 0)
 	{
 		if (currentSelectedState + incr < debugStates.length)
-		{
 			select(currentSelectedState + incr);
-		}
-		else
-		{
-			//endOfDebug();
-		}
+
 		statesSlider.value = currentSelectedState;
 	}
 }
@@ -47,18 +41,16 @@ function select(stateIndex)
 	highlightSelection(codeLine);
 	currentSelectedState = stateIndex;
 	completeCtxInformation(state);
-	//levelList.model = state.levels;
-	//levelList.update();
 
 	if (state.instruction === "JUMP")
-		jumpintoforwardaction.state = "";
+		jumpintoforwardaction.enabled(true);
 	else
-		jumpintoforwardaction.state = "disabled";
+		jumpintoforwardaction.enabled(false);
 
 	if (state.instruction === "JUMPDEST")
-		jumpintobackaction.state = "";
+		jumpintobackaction.enabled(true);
 	else
-		jumpintobackaction.state = "disabled";
+		jumpintobackaction.enabled(false);
 }
 
 function codeStr(stateIndex)
@@ -78,21 +70,11 @@ function completeCtxInformation(state)
 	basicInfo.mem = state.newMemSize + " " + qsTr("words");
 	basicInfo.stepCost = state.gasCost;
 	basicInfo.gasSpent = debugStates[0].gas - state.gas;
-	// This is available in all editors.
+
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;
 	memoryDump.listModel = state.debugMemory;
 	callDataDump.listModel = state.debugCallData;
-}
-
-function endOfDebug()
-{
-	var state = debugStates[debugStates.length - 1];
-	debugStorageTxt.text = "";
-	debugCallDataTxt.text = "";
-	debugStackTxt.text = "";
-	debugMemoryTxt.text = state.endOfDebug;
-	headerInfoLabel.text = "EXIT  |  GAS: " + state.gasLeft;
 }
 
 function displayReturnValue()
@@ -107,8 +89,8 @@ function stepOutBack()
 	{
 		select(jumpStartingPoint);
 		jumpStartingPoint = null;
-		jumpoutbackaction.state = "disabled";
-		jumpoutforwardaction.state = "disabled";
+		jumpoutbackaction.enabled(false);
+		jumpoutforwardaction.enabled(false);
 	}
 }
 
@@ -162,8 +144,8 @@ function stepIntoForward()
 	{
 		jumpStartingPoint = currentSelectedState;
 		moveSelection(1);
-		jumpoutbackaction.state = "";
-		jumpoutforwardaction.state = "";
+		jumpoutbackaction.enabled(true);
+		jumpoutforwardaction.enabled(true);
 	}
 }
 
@@ -173,8 +155,8 @@ function stepOutForward()
 	{
 		stepOutBack();
 		stepOverForward();
-		jumpoutbackaction.state = "disabled";
-		jumpoutforwardaction.state = "disabled";
+		jumpoutbackaction.enabled(false);
+		jumpoutforwardaction.enabled(false);
 	}
 }
 

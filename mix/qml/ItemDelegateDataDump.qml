@@ -7,10 +7,20 @@ Rectangle {
 	anchors.fill: parent
 	RowLayout
 	{
+		id: row;
+		function formatData(data, index)
+		{
+			if (data.indexOf("_separator_") !== -1)
+				return modelData.split("_separator_")[index];
+			else
+				return "";
+		}
+
 		anchors.fill: parent
 		spacing: 2
 		Rectangle
 		{
+			id: firstCol;
 			color: "#f7f7f7"
 			Layout.fillWidth: true
 			Layout.minimumWidth: 35
@@ -21,8 +31,8 @@ Rectangle {
 				anchors.centerIn: parent
 				anchors.leftMargin: 5
 				color: "#8b8b8b"
-				text: modelData.split("_separator_")[0]
-				font.pointSize: 9
+				text: row.formatData(modelData, 0)
+				font.pointSize: 9;
 			}
 
 		}
@@ -38,7 +48,7 @@ Rectangle {
 				anchors.left: parent.left
 				anchors.verticalCenter: parent.verticalCenter
 				color: "#8b8b8b"
-				text: modelData.split("_separator_")[1]
+				text: row.formatData(modelData, 1)
 				font.pointSize: 9
 			}
 		}
@@ -53,7 +63,7 @@ Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				color: "#ededed"
 				font.bold: true
-				text: modelData.split("_separator_")[2]
+				text: row.formatData(modelData, 2)
 				font.pointSize: 10
 			}
 		}
