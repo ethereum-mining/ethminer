@@ -398,12 +398,12 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 			break;
 		case Instruction::ADDMOD:
-			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) + bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack[m_stack.size() - 3] = m_stack[m_stack.size() - 3] ? u256((bigint(m_stack.back()) + bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]) : 0;
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
 		case Instruction::MULMOD:
-			m_stack[m_stack.size() - 3] = u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]);
+			m_stack[m_stack.size() - 3] = m_stack[m_stack.size() - 3] ? u256((bigint(m_stack.back()) * bigint(m_stack[m_stack.size() - 2])) % m_stack[m_stack.size() - 3]) : 0;
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
