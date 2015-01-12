@@ -10,11 +10,11 @@ Window {
 	visible: false
 
 	property int transactionIndex
-	property alias transactionParams : paramsModel;
-	property alias gas : gasField.text;
-	property alias gasPrice : gasPriceField.text;
-	property alias transactionValue : valueField.text;
-	property alias functionId : functionComboBox.currentText;
+	property alias transactionParams: paramsModel;
+	property alias gas: gasField.text;
+	property alias gasPrice: gasPriceField.text;
+	property alias transactionValue: valueField.text;
+	property alias functionId: functionComboBox.currentText;
 	property var itemParams;
 
 	signal accepted;
