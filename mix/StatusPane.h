@@ -43,9 +43,6 @@ public:
 	QString contentUrl() const override;
 	CompilationResult* result() const;
 
-private:
-	void resetOutPut();
-
 public slots:
 	void update();
 };

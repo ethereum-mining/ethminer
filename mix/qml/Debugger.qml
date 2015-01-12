@@ -34,7 +34,6 @@ Rectangle {
 			debugScrollArea.visible = false;
 			compilationErrorArea.visible = true;
 			machineStates.visible = false;
-			console.log(constantCompilation.result.compilerMessage);
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, false);
 			errorLocation.text = errorInfo.errorLocation;
 			errorDetail.text = errorInfo.errorDetail;

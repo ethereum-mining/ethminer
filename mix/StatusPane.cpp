@@ -62,5 +62,5 @@ CompilationResult* StatusPane::result() const
 void StatusPane::update()
 {
 	QObject* ctrl = m_view->findChild<QObject*>("statusPane", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(ctrl, "update");
+	QMetaObject::invokeMethod(ctrl, "updateStatus");
 }

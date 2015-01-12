@@ -9,6 +9,16 @@ Rectangle {
 	property string disableStateImg
 	property string enabledStateImg
 	signal clicked
+
+	function enabled(state)
+	{
+		buttonAction.enabled = state;
+		if (state)
+			debugImg.iconSource = enabledStateImg;
+		else
+			debugImg.iconSource = disableStateImg;
+	}
+
 	width: 15
 	height: 15
 	color: "transparent"
@@ -33,13 +43,6 @@ Rectangle {
 		id: buttonAction
 		onTriggered: {
 			buttonActionContainer.clicked();
-		}
-		enabled: codeModel.hasContract && !debugModel.running;
-		onEnabledChanged: {
-			if (enabled)
-				iconSource = enabledStateImg
-			else
-				iconSource = disableStateImg
 		}
 	}
 }

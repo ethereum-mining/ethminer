@@ -50,7 +50,7 @@ public:
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-	/// Display without managing machine states result. Displayed in the right side tab.
+	/// show panel without managing machine states result. Displayed in the right side tab.
 	Q_INVOKABLE void updateDebugPanel();
 
 private:
