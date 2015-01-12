@@ -1657,6 +1657,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
+				solidity += "<pre>" + QString::fromStdString(compiler.getFunctionHashes()).toHtmlEscaped() + "</pre>";
 			}
 			catch (dev::Exception const& exception)
 			{
