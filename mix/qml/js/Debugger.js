@@ -7,7 +7,11 @@ var currentSelectedState = null;
 var jumpStartingPoint = null;
 function init()
 {
+	if (debugStates === undefined)
+		return;
+
 	statesSlider.maximumValue = debugStates.length - 1;
+	statesSlider.value = 0;
 	statesList.model = humanReadableExecutionCode;
 	currentSelectedState = 0;
 	select(currentSelectedState);

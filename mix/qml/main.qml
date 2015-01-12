@@ -28,6 +28,10 @@ ApplicationWindow {
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
 		}
+		Menu {
+			title: qsTr("Windows")
+			MenuItem { action: showHideRightPanel }
+		}
 	}
 
 	Component.onCompleted: {
@@ -39,7 +43,6 @@ ApplicationWindow {
 		id: mainContent;
 		anchors.fill: parent
 	}
-
 
 	ModalDialog {
 		objectName: "dialog"
@@ -69,5 +72,10 @@ ApplicationWindow {
 		onTriggered: debugModel.resetState();
 	}
 
-
+	Action {
+		id: showHideRightPanel
+		text: "Show/Hide right view"
+		shortcut: "F7"
+		onTriggered: mainContent.toggleRightView();
+	}
 }

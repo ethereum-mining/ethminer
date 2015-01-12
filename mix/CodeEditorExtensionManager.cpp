@@ -68,7 +68,7 @@ void CodeEditorExtensionManager::initExtensions()
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
 	QObject::connect(m_doc, &QTextDocument::contentsChange, this, &CodeEditorExtensionManager::onCodeChange);
-	QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
+	//QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
 	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
 
 	initExtension(output);
@@ -123,9 +123,9 @@ void CodeEditorExtensionManager::applyCodeHighlight()
 	m_appContext->codeModel()->updateFormatting(m_doc);
 }
 
-void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 {
-	m_rightView = _tabView;
+	m_rightView = _rightView;
 }
 
 void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)

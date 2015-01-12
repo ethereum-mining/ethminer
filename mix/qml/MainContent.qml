@@ -17,6 +17,19 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
+	function toggleRightView()
+	{
+		if (!rightView.visible)
+		{
+			rightView.show();
+			debugModel.updateDebugPanel();
+		}
+		else
+		{
+			rightView.hide();
+		}
+	}
+
 	function ensureRightView()
 	{
 		if (!rightView.visible)
@@ -47,19 +60,71 @@ Rectangle {
 		columnSpacing: 0
 		rowSpacing: 0
 		Rectangle {
+			width: parent.width
+			height: 50
 			Layout.row: 0
 			Layout.fillWidth: true
 			Layout.preferredHeight: 50
 			id: headerView
-			TabView {
-				id: headerPaneTabs
-				tabsVisible: false
-				antialiasing: true
+			Rectangle
+			{
+				gradient: Gradient {
+					GradientStop { position: 0.0; color: "#f1f1f1" }
+					GradientStop { position: 1.0; color: "#d9d7da" }
+				}
+				id: headerPaneContainer
 				anchors.fill: parent
-				style: TabViewStyle {
-					frameOverlap: 1
-					tab: Rectangle {}
-					frame: Rectangle {}
+				TabView {
+					id: headerPaneTabs
+					tabsVisible: false
+					antialiasing: true
+					anchors.fill: parent
+					style: TabViewStyle {
+						frameOverlap: 1
+						tab: Rectangle {}
+						frame: Rectangle { color: "transparent" }
+					}
+				}
+			}
+
+			Rectangle
+			{
+				color: "transparent"
+				width: 100
+				height: parent.height
+				anchors.top: headerView.top
+				anchors.right: headerView.right
+				RowLayout
+				{
+					anchors.fill: parent
+					Rectangle {
+						color: "transparent"
+						anchors.fill: parent
+						Button
+						{
+							anchors.right: parent.right
+							anchors.rightMargin: 15
+							anchors.verticalCenter: parent.verticalCenter
+							id: debugImg
+							iconSource: "qrc:/qml/img/bugiconinactive.png"
+							action: debugRunActionIcon
+						}
+						Action {
+							id: debugRunActionIcon
+							shortcut: "F5"
+							onTriggered: {
+								mainContent.ensureRightView();
+								debugModel.debugDeployment();
+							}
+							enabled: codeModel.hasContract && !debugModel.running;
+							onEnabledChanged: {
+								if (enabled)
+									debugImg.iconSource = "qrc:/qml/img/bugiconactive.png"
+								else
+									debugImg.iconSource = "qrc:/qml/img/bugiconinactive.png"
+							}
+						}
+					}
 				}
 			}
 		}
@@ -133,27 +198,26 @@ Rectangle {
 						}
 					}
 				}
-
 			}
-			Rectangle {
 
+			Rectangle {
 				Keys.onEscapePressed:
 				{
 					hide();
 				}
-
 				visible: false;
 				id: rightView;
 				property real panelRelWidth: 0.38
 				function show() {
 					visible = true;
-					editorRect.width = parent.width * (1 - 0.38)
+					contentView.width = parent.width * (1 - 0.38)
 				}
 
 				function hide() {
 					visible = false;
-					editorRect.width = parent.width;
+					contentView.width = parent.width;
 				}
+
 				height: parent.height;
 				width: Layout.minimumWidth
 				Layout.minimumWidth: parent.width * 0.38
@@ -162,13 +226,31 @@ Rectangle {
 					id: rightPaneView
 					TabView {
 						id: rightPaneTabs
-						tabsVisible: false
+						tabsVisible: true
 						antialiasing: true
 						anchors.fill: parent
 						style: TabViewStyle {
 							frameOverlap: 1
-							tab: Rectangle {}
-							frame: Rectangle {}
+
+							tabBar:
+								Rectangle {
+									color: "#ededed"
+									id: background
+
+								}
+							tab: Rectangle {
+								color: "#ededed"
+								implicitWidth: 80
+								implicitHeight: 20
+								radius: 2
+								Text {
+									anchors.centerIn: parent
+									text: styleData.title
+									color: styleData.selected ? "#7da4cd" : "#202020"
+								}
+							}
+							frame: Rectangle {
+							}
 						}
 					}
 				}

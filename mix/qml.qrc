@@ -20,9 +20,6 @@
         <file>qml/img/jumpoutforward.png</file>
         <file>qml/img/jumpoverback.png</file>
         <file>qml/img/jumpoverforward.png</file>
-        <file>qml/ImageButton.qml</file>
-        <file>qml/DataDump.qml</file>
-        <file>qml/Storage.qml</file>
         <file>qml/StepActionImage.qml</file>
         <file>qml/img/jumpintobackdisabled.png</file>
         <file>qml/img/jumpintoforwarddisabled.png</file>
@@ -31,5 +28,11 @@
         <file>qml/img/jumpoverbackdisabled.png</file>
         <file>qml/DebugBasicInfo.qml</file>
         <file>qml/js/ErrorLocationFormater.js</file>
+        <file>qml/img/closedtriangleindicator.png</file>
+        <file>qml/img/opentriangleindicator.png</file>
+        <file>qml/img/bugiconactive.png</file>
+        <file>qml/img/bugiconinactive.png</file>
+        <file>qml/DebugInfoList.qml</file>
+        <file>qml/ItemDelegateDataDump.qml</file>
     </qresource>
 </RCC>

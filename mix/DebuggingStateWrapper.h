@@ -118,8 +118,8 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
 	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
 	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
-	Q_PROPERTY(QString debugMemory READ debugMemory CONSTANT)
-	Q_PROPERTY(QString debugCallData READ debugCallData CONSTANT)
+	Q_PROPERTY(QStringList debugMemory READ debugMemory CONSTANT)
+	Q_PROPERTY(QStringList debugCallData READ debugCallData CONSTANT)
 	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
 	Q_PROPERTY(QString newMemSize READ newMemSize CONSTANT)
@@ -142,9 +142,9 @@ public:
 	/// Get storage.
 	QStringList debugStorage();
 	/// Get memory.
-	QString debugMemory();
+	QStringList debugMemory();
 	/// Get call data.
-	QString debugCallData();
+	QStringList debugCallData();
 	/// Get info to be displayed in the header.
 	QString headerInfo();
 	/// get end of debug information.
@@ -166,6 +166,7 @@ private:
 	DebuggingState m_state;
 	bytes m_code;
 	bytes m_data;
+	QStringList fillList(QStringList _list, QString _emptyValue);
 };
 
 }
