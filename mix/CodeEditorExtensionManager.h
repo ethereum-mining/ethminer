@@ -59,7 +59,6 @@ public:
 	void setRightTabView(QQuickItem*);
 
 private slots:
-	void onCodeChange();
 	void applyCodeHighlight();
 
 private:

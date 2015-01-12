@@ -40,8 +40,8 @@ bytes ContractCallDataEncoder::encodedData()
 
 void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 {
-	bytes i = _function->hash().asBytes();
-	m_encodedData.insert(m_encodedData.end(), i.begin(), i.end());
+	bytes hash = _function->hash().asBytes();
+	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
 void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, bool _value)

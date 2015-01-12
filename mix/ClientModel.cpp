@@ -214,7 +214,6 @@ ExecutionResult ClientModel::deployContract(bytes const& _code)
 
 ExecutionResult ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	//bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
 	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
 	ExecutionResult r = m_client->lastExecutionResult();
 	r.contractAddress = _contract;
