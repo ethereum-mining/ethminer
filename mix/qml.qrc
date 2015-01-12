@@ -12,7 +12,6 @@
         <file>qml/AlertMessageDialog.qml</file>
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
-        <file>qml/CompilationStatus.qml</file>
         <file>qml/js/main.js</file>
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
@@ -34,5 +33,6 @@
         <file>qml/img/bugiconinactive.png</file>
         <file>qml/DebugInfoList.qml</file>
         <file>qml/ItemDelegateDataDump.qml</file>
+        <file>qml/StatusPane.qml</file>
     </qresource>
 </RCC>

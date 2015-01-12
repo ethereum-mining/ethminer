@@ -105,7 +105,7 @@ QStringList DebuggingStateWrapper::debugStorage()
 		s << "@" << prettyU256(i.first) << " " << prettyU256(i.second);
 		storage.append(QString::fromStdString(s.str()));
 	}
-	return fillList(storage, "@- -");
+	return fillList(storage, "@ -");
 }
 
 QStringList DebuggingStateWrapper::debugMemory()
