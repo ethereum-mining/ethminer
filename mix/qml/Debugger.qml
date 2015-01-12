@@ -11,7 +11,7 @@ Rectangle {
 	objectName: "debugPanel"
 	anchors.fill: parent;
 	color: "#ededed"
-
+	clip: true
 	Keys.onPressed:
 	{
 		if (event.key === Qt.Key_F10)
@@ -101,7 +101,7 @@ Rectangle {
 		id: debugScrollArea
 		flickableDirection: Flickable.VerticalFlick
 		anchors.fill: parent
-		contentHeight: machineStates.height
+		contentHeight: machineStates.height + 300
 		contentWidth: machineStates.width
 
 		GridLayout
@@ -115,7 +115,6 @@ Rectangle {
 			anchors.right: parent.right;
 			anchors.rightMargin: machineStates.sideMargin
 			flow: GridLayout.TopToBottom
-			//columnSpacing: 7
 			rowSpacing: 15
 			RowLayout {
 				// step button + slider
@@ -131,7 +130,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpoutbackaction;
-						source: "qrc:/qml/img/jumpoutback.png"
+						enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 						disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 						onClicked: Debugger.stepOutBack()
 					}
@@ -139,7 +138,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpintobackaction
-						source: "qrc:/qml/img/jumpintoback.png"
+						enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 						disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 						onClicked: Debugger.stepIntoBack()
 					}
@@ -147,7 +146,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpoverbackaction
-						source: "qrc:/qml/img/jumpoverback.png"
+						enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 						disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 						onClicked: Debugger.stepOverBack()
 					}
@@ -155,7 +154,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpoverforwardaction
-						source: "qrc:/qml/img/jumpoverforward.png"
+						enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 						disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 						onClicked: Debugger.stepOverForward()
 					}
@@ -163,7 +162,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpintoforwardaction
-						source: "qrc:/qml/img/jumpintoforward.png"
+						enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 						disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 						onClicked: Debugger.stepIntoForward()
 					}
@@ -171,7 +170,7 @@ Rectangle {
 					StepActionImage
 					{
 						id: jumpoutforwardaction
-						source: "qrc:/qml/img/jumpoutforward.png"
+						enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 						disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 						onClicked: Debugger.stepOutForward()
 					}
@@ -211,7 +210,7 @@ Rectangle {
 			RowLayout {
 				// Assembly code
 				width: debugPanel.width
-				height: 400
+				height: 405
 				spacing: 10
 
 				Rectangle
@@ -221,9 +220,11 @@ Rectangle {
 					border.width: 3
 					border.color: "#deddd9"
 					color: "white"
-
+					anchors.top: parent.top
 					ListView {
 						anchors.fill: parent
+						anchors.leftMargin: 3
+						anchors.rightMargin: 3
 						anchors.topMargin: 3
 						anchors.bottomMargin: 3
 						clip: true
@@ -236,8 +237,9 @@ Rectangle {
 					Component {
 						id: highlightBar
 						Rectangle {
+							radius: 4
 							height: statesList.currentItem.height
-							width: statesList.currentItem.width
+							width: statesList.currentItem.width;
 							color: "#4b8fe2"
 							Behavior on y { SpringAnimation { spring: 2; damping: 0.1 } }
 						}
@@ -245,14 +247,26 @@ Rectangle {
 
 					Component {
 						id: renderDelegate
-						Item {
+						RowLayout {
 							id: wrapperItem
 							height: 20
 							width: parent.width
+							spacing: 5
 							Text {
+								anchors.left: parent.left
+								anchors.leftMargin: 10
+								width: 15
+								color: "#b2b3ae"
+								text: line.split(' ')[0]
+								font.pointSize: 9
+								id: id
+								wrapMode: Text.NoWrap
+							}
+							Text {
+								wrapMode: Text.NoWrap
 								color: parent.ListView.isCurrentItem ? "white" : "black"
-								anchors.centerIn: parent
-								text: line
+								text: line.replace(line.split(' ')[0], '')
+								anchors.left: id.right
 								font.pointSize: 9
 							}
 						}
@@ -266,25 +280,80 @@ Rectangle {
 						// Info
 						width: parent.width
 						id: basicInfoColumn
-						height: 150
+						height: 125
 						color: "transparent"
 						DebugBasicInfo {
 							id: basicInfo
-							width: parent.width
 							height: parent.height
+							width: parent.width
 						}
 					}
 
 					Rectangle {
 						// Stack
-						height: 250
+						height: 275
 						width: parent.width
 						color: "transparent"
 
-						Storage {
+						DebugInfoList
+						{
 							id: stack
 							width: parent.width
+							height: parent.height
+							collapsible: false
 							title : qsTr("Stack")
+							itemDelegate: Item {
+								id: renderedItem
+								height: 27
+								width: parent.width
+								RowLayout
+								{
+									anchors.fill: parent
+									Rectangle
+									{
+										id: indexColumn
+										color: "#f7f7f7"
+										Layout.fillWidth: true
+										Layout.minimumWidth: 30
+										Layout.preferredWidth: 30
+										Layout.maximumWidth: 30
+										Layout.minimumHeight: parent.height
+										Text {
+											anchors.centerIn: parent
+											anchors.leftMargin: 5
+											color: "#8b8b8b"
+											text: model.index;
+											font.pointSize: 9
+										}
+									}
+
+									Rectangle
+									{
+										anchors.left: indexColumn.right
+										Layout.fillWidth: true
+										Layout.minimumWidth: 15
+										Layout.preferredWidth: 15
+										Layout.maximumWidth: 60
+										Layout.minimumHeight: parent.height
+										Text {
+											anchors.left: parent.left
+											anchors.leftMargin: 5
+											anchors.verticalCenter: parent.verticalCenter
+											color: "#8b8b8b"
+											text: modelData
+											font.pointSize: 9
+										}
+									}
+								}
+
+								Rectangle {
+								   id: separator
+								   width: parent.width;
+								   height: 1;
+								   color: "#cccccc"
+								   anchors.bottom: parent.bottom
+								 }
+							}
 						}
 					}
 				}
@@ -297,10 +366,70 @@ Rectangle {
 				radius: 3
 			}
 
-			Storage {
+			DebugInfoList
+			{
 				id: storage
 				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 223
+				collapsible: true
 				title : qsTr("Storage")
+				itemDelegate:
+					Item {
+					height: 27
+					width: parent.width;
+					RowLayout
+					{
+						id: row
+						width: parent.width
+						height: 26
+						Rectangle
+						{
+							color: "#f7f7f7"
+							Layout.fillWidth: true
+							Layout.minimumWidth: parent.width / 2
+							Layout.preferredWidth: parent.width / 2
+							Layout.maximumWidth: parent.width / 2
+							Layout.minimumHeight: parent.height
+							Layout.maximumHeight: parent.height
+							Text {
+								anchors.verticalCenter: parent.verticalCenter
+								anchors.left: parent.left
+								anchors.leftMargin: 5
+								color: "#8b8b8b"
+								text: modelData.split(' ')[0].substring(0, 10);
+								font.pointSize: 9
+							}
+						}
+						Rectangle
+						{
+							color: "transparent"
+							Layout.fillWidth: true
+							Layout.minimumWidth: parent.width / 2
+							Layout.preferredWidth: parent.width / 2
+							Layout.maximumWidth: parent.width / 2
+							Layout.minimumHeight: parent.height
+							Layout.maximumHeight: parent.height
+							Text {
+								anchors.leftMargin: 5
+								width: parent.width - 5
+								wrapMode: Text.Wrap
+								anchors.left: parent.left
+								anchors.verticalCenter: parent.verticalCenter
+								color: "#8b8b8b"
+								text: modelData.split(' ')[1].substring(0, 10);
+								font.pointSize: 9
+							}
+						}
+					}
+
+					Rectangle {
+						anchors.top: row.bottom
+						width: parent.width;
+						height: 1;
+						color: "#cccccc"
+						anchors.bottom: parent.bottom
+					 }
+				}
 			}
 
 			Rectangle {
@@ -310,10 +439,20 @@ Rectangle {
 				radius: 3
 			}
 
-			Storage {
+
+
+			DebugInfoList {
 				id: memoryDump
 				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 223
+				collapsible: true
 				title: qsTr("Memory Dump")
+				itemDelegate:
+					Item {
+					height: 29
+					width: parent.width - 3;
+					ItemDelegateDataDump {}
+				}
 			}
 
 			Rectangle {
@@ -323,10 +462,18 @@ Rectangle {
 				radius: 3
 			}
 
-			Storage {
+			DebugInfoList {
 				id: callDataDump
-				width: debugPanel.width;
+				width: debugPanel.width - 2 * machineStates.sideMargin
+				height: 223
+				collapsible: true
 				title: qsTr("Call data")
+				itemDelegate:
+					Item {
+					height: 29
+					width: parent.width - 3;
+					ItemDelegateDataDump {}
+				}
 			}
 		}
 	}

@@ -42,6 +42,7 @@ namespace mix
 class AssemblyDebuggerControl: public Extension
 {
 	Q_OBJECT
+	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
 
 public:
 	AssemblyDebuggerControl(AppContext* _context);
@@ -49,8 +50,8 @@ public:
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-
-	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
+	/// Display without managing machine states result. Displayed in the right side tab.
+	Q_INVOKABLE void updateDebugPanel();
 
 private:
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
@@ -66,7 +67,7 @@ public slots:
 	void debugState(QVariantMap _state);
 
 private slots:
-	/// Update UI with machine states result. Display a modal dialog.
+	/// Update UI with machine states result. Displayed in the right side tab.
 	void showDebugger(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 	/// Update UI with transaction run error.
 	void showDebugError(QString const& _error);

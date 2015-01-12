@@ -51,7 +51,7 @@ QString toQString(dev::u256 _value)
 }
 
 AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
-	Extension(_context, ExtensionDisplayBehavior::ModalDialog), m_running(false)
+	Extension(_context, ExtensionDisplayBehavior::RightView), m_running(false)
 {
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -82,7 +82,7 @@ void AssemblyDebuggerControl::start() const
 
 void AssemblyDebuggerControl::debugDeployment()
 {
-	executeSequence(std::vector<TransactionSettings>(), 0);
+	executeSequence(std::vector<TransactionSettings>(), 10000000 * ether);
 }
 
 void AssemblyDebuggerControl::debugState(QVariantMap _state)
@@ -166,7 +166,7 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 			for (unsigned i = 0; i < _sequence.size(); ++i)
 				debuggingContent = m_modelDebugger->callContract(address, transactonData.at(i), _sequence.at(i));
 
-			if (f)
+			if (f && (_sequence.size() > 0))
 				debuggingContent.returnParameters = c.decode(f->returnParameters(), debuggingContent.returnValue);
 
 			//we need to wrap states in a QObject before sending to QML.
@@ -186,7 +186,6 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 		{
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
-
 		catch(std::exception const& e)
 		{
 			emit runFailed(e.what());
@@ -198,15 +197,18 @@ void AssemblyDebuggerControl::executeSequence(std::vector<TransactionSettings> c
 
 void AssemblyDebuggerControl::showDebugger(QList<QVariableDefinition*> const& _returnParam, QList<QObject*> const& _wStates, AssemblyDebuggerData const& _code)
 {
-	Q_UNUSED(_reason);
 	m_appEngine->rootContext()->setContextProperty("debugStates", QVariant::fromValue(_wStates));
 	m_appEngine->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(_code)));
 	m_appEngine->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(_code)));
 	m_appEngine->rootContext()->setContextProperty("contractCallReturnParameters", QVariant::fromValue(new QVariableDefinitionList(_returnParam)));
+	updateDebugPanel();
+}
+
+void AssemblyDebuggerControl::updateDebugPanel()
+{
 	QVariant returnValue;
 	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
 	QMetaObject::invokeMethod(debugPanel, "init", Q_RETURN_ARG(QVariant, returnValue));
-
 }
 
 void AssemblyDebuggerControl::showDebugError(QString const& _error)

@@ -168,7 +168,7 @@ void CodeModel::onCompilationComplete(CompilationResult*_newResult)
 
 bool CodeModel::hasContract() const
 {
-	return m_result->contract()->functionsList().size() > 0;
+	return m_result->successfull();
 }
 
 void CodeModel::updateFormatting(QTextDocument* _document)

@@ -93,7 +93,7 @@ QStringList DebuggingStateWrapper::debugStack()
 	for (auto i: m_state.stack)
 		stack.append(QString::fromStdString(prettyU256(i)));
 
-	return stack;
+	return fillList(stack, "");
 }
 
 QStringList DebuggingStateWrapper::debugStorage()
@@ -105,17 +105,30 @@ QStringList DebuggingStateWrapper::debugStorage()
 		s << "@" << prettyU256(i.first) << " " << prettyU256(i.second);
 		storage.append(QString::fromStdString(s.str()));
 	}
-	return storage;
+	return fillList(storage, "@- -");
 }
 
-QString DebuggingStateWrapper::debugMemory()
+QStringList DebuggingStateWrapper::debugMemory()
 {
-	return QString::fromStdString(memDump(m_state.memory, 16, false));
+	QStringList re = QString::fromStdString(memDump(m_state.memory, 16, false, "_separator_")).split('\n');
+	return fillList(re, " ");
 }
 
-QString DebuggingStateWrapper::debugCallData()
+QStringList DebuggingStateWrapper::debugCallData()
 {
-	return QString::fromStdString(memDump(m_data, 16, false));
+	qDebug() << QString::fromStdString(memDump(m_data, 16, false, "_separator_"));
+	QStringList re = QString::fromStdString(memDump(m_data, 16, false, "_separator_")).split('\n');
+	return fillList(re, " ");
+}
+
+QStringList DebuggingStateWrapper::fillList(QStringList _list, QString _emptyValue)
+{
+	if (_list.size() < 20)
+	{
+		for (int k = _list.size(); k < 20 - _list.size(); k++)
+			_list.append(_emptyValue);
+	}
+	return _list;
 }
 
 QStringList DebuggingStateWrapper::levels()

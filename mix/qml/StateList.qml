@@ -5,7 +5,7 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 
 Rectangle {
-	color: "transparent"
+	color: "#ededed"
 	id: stateListContainer
 	focus: true
 	anchors.topMargin: 10
@@ -115,7 +115,10 @@ Rectangle {
 				ToolButton {
 					text: qsTr("Run");
 					Layout.fillHeight: true
-					onClicked: stateListModel.runState(index);
+					onClicked:
+					{
+						stateListModel.runState(index)
+					}
 				}
 			}
 		}

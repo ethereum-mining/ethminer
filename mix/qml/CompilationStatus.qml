@@ -1,5 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
+import QtQuick.Layouts 1.1
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Rectangle {
@@ -23,22 +24,17 @@ Rectangle {
 			logslink.visible = true;
 		}
 	}
-
+	color: "transparent"
 	anchors.fill: parent
-	gradient: Gradient {
-		GradientStop { position: 0.0; color: "#f1f1f1" }
-		GradientStop { position: 1.0; color: "#d9d7da" }
-	}
 	Rectangle {
+		id: statusContainer
 		anchors.horizontalCenter: parent.horizontalCenter
 		anchors.verticalCenter: parent.verticalCenter
-		anchors.topMargin: 10
-		anchors.bottomMargin: 10
 		radius: 3
 		width: 500
 		height: 30
-		color: "#fffcd5"
-		Row {
+		color: "#fcfbfc"
+		RowLayout {
 			anchors.horizontalCenter: parent.horizontalCenter
 			anchors.verticalCenter: parent.verticalCenter
 			spacing: 5
@@ -52,6 +48,10 @@ Rectangle {
 						PropertyChanges {
 							target: image
 							source: "qrc:/qml/img/compilfailed.png"
+						}
+						PropertyChanges {
+							target: statusContainer
+							color: "#fffcd5"
 						}
 					}
 				]
@@ -75,7 +75,6 @@ Rectangle {
 			}
 
 			Text {
-
 				visible: false
 				font.pointSize: 9
 				height: 9
@@ -88,7 +87,7 @@ Rectangle {
 					anchors.fill: parent
 					onClicked: {
 						mainContent.ensureRightView();
-						debugModel.debugDeployment();
+						debugModel.updateDebugPanel();
 					}
 				}
 			}

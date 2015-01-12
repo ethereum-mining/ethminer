@@ -26,14 +26,14 @@
 using namespace std;
 using namespace dev;
 
-string dev::memDump(bytes const& _b, unsigned _w, bool _html)
+string dev::memDump(bytes const& _b, unsigned _w, bool _html, string _separator)
 {
 	stringstream ret;
 	if (_html)
 		ret << "<pre style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">";
 	for (unsigned i = 0; i < _b.size(); i += _w)
 	{
-		ret << hex << setw(4) << setfill('0') << i << " ";
+		ret << hex << setw(4) << setfill('0') << i << _separator;
 		for (unsigned j = i; j < i + _w; ++j)
 			if (j < _b.size())
 				if (_b[j] >= 32 && _b[j] < 127)
@@ -47,7 +47,7 @@ string dev::memDump(bytes const& _b, unsigned _w, bool _html)
 					ret << '?';
 			else
 				ret << ' ';
-		ret << " ";
+		ret << _separator;
 		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
 			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
 		ret << "\n";
