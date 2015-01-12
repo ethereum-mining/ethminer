@@ -352,6 +352,10 @@ public:
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
+	FunctionType(strings const& _parameterTypes, strings const& _returnParameterTypes,
+				 Location _location = Location::INTERNAL):
+		FunctionType(parseElementaryTypeVector(_parameterTypes), parseElementaryTypeVector(_returnParameterTypes),
+					 _location) {}
 	FunctionType(TypePointers const& _parameterTypes, TypePointers const& _returnParameterTypes,
 				 Location _location = Location::INTERNAL):
 		m_parameterTypes(_parameterTypes), m_returnParameterTypes(_returnParameterTypes),
@@ -371,6 +375,8 @@ public:
 	std::string getCanonicalSignature() const;
 
 private:
+	static TypePointers parseElementaryTypeVector(strings const& _types);
+
 	TypePointers m_parameterTypes;
 	TypePointers m_returnParameterTypes;
 	Location m_location;

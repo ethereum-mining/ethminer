@@ -20,74 +20,23 @@ Rectangle {
     SplitView {
         orientation: Qt.Horizontal
         anchors.fill: parent
+
+		ProjectList	{
+			width: parent.width * 0.2
+			height: parent.height
+			Layout.minimumWidth: 200
+		}
+
         SplitView {
             //anchors.fill: parent
-            width: parent.width * 0.8
+			width: parent.width * 0.6
             orientation: Qt.Vertical
-            Rectangle {
-                anchors.top: parent.top
-                id: contentView
-                width: parent.width
-                height: parent.height * 0.7
+			CodeEditorView {
+				height: parent.height * 0.7
+				anchors.top: parent.top
+				width: parent.width
+			}
 
-				Item {
-						anchors.fill: parent
-						Rectangle {
-							id: lineColumn
-							property int rowHeight: codeEditor.font.pixelSize + 3
-							color: "#202020"
-							width: 50
-							height: parent.height
-							Column {
-								y: -codeEditor.flickableItem.contentY + 4
-								width: parent.width
-								Repeater {
-									model: Math.max(codeEditor.lineCount + 2, (lineColumn.height/lineColumn.rowHeight))
-									delegate: Text {
-										id: text
-										color: codeEditor.textColor
-										font: codeEditor.font
-										width: lineColumn.width - 4
-										horizontalAlignment: Text.AlignRight
-										verticalAlignment: Text.AlignVCenter
-										height: lineColumn.rowHeight
-										renderType: Text.NativeRendering
-										text: index + 1
-									}
-								}
-							}
-						}
-
-					TextArea {
-						id: codeEditor
-						textColor: "#EEE8D5"
-						style: TextAreaStyle {
-							backgroundColor: "#002B36"
-						}
-
-						anchors.left: lineColumn.right
-						anchors.right: parent.right
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						wrapMode: TextEdit.NoWrap
-						frameVisible: false
-
-						height: parent.height
-						font.family: "Monospace"
-						font.pointSize: 12
-						width: parent.width
-						//anchors.centerIn: parent
-						tabChangesFocus: false
-						Keys.onPressed: {
-							if (event.key === Qt.Key_Tab) {
-								codeEditor.insert(codeEditor.cursorPosition, "\t");
-								event.accepted = true;
-							}
-						}
-					}
-				}
-
-            }
             Rectangle {
                 anchors.bottom: parent.bottom
                 id: contextualView
@@ -118,7 +67,6 @@ Rectangle {
         CodeEditorExtensionManager {
                 tabView: contextualTabs
                 rightTabView: rightPaneTabs
-                editor: codeEditor
         }
     }
 }

@@ -20,14 +20,7 @@
 #pragma once
 
 #include <atomic>
-#include <QKeySequence>
 #include "Extension.h"
-#include "AssemblyDebuggerModel.h"
-
-using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
-
-Q_DECLARE_METATYPE(AssemblyDebuggerData)
-Q_DECLARE_METATYPE(dev::mix::DebuggingContent)
 
 class AppContext;
 
@@ -37,7 +30,7 @@ namespace mix
 {
 
 /**
- * @brief Extension which display transaction creation or transaction call debugging. handle: F5 to deploy contract, F6 to reset state.
+ * @brief Extension which display transaction creation or transaction call debugging.
  */
 class AssemblyDebuggerControl: public Extension
 {
@@ -50,40 +43,9 @@ public:
 	QString title() const override;
 	QString contentUrl() const override;
 
-	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
-
-private:
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
-
-	std::unique_ptr<AssemblyDebuggerModel> m_modelDebugger;
-	std::atomic<bool> m_running;
-
-public slots:
-	/// Run the contract constructor and show debugger window.
-	void debugDeployment();
-	/// Setup state, run transaction sequence, show debugger for the last transaction
-	/// @param _state JS object with state configuration
-	void debugState(QVariantMap _state);
-
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
-	void showDebugger(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
-	/// Update UI with transaction run error.
-	void showDebugError(QString const& _error);
-
-signals:
-	/// Transaction execution started
-	void runStarted();
-	/// Transaction execution completed successfully
-	void runComplete();
-	/// Transaction execution completed with error
-	/// @param _message Error message
-	void runFailed(QString const& _message);
-	/// Execution state changed
-	void stateChanged();
-
-	/// Emited when machine states are available.
-	void dataAvailable(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	void showDebugger();
 };
 
 }
