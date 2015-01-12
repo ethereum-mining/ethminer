@@ -88,21 +88,15 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	m_features.append(_ext);
 }
 
-void CodeEditorExtensionManager::onCodeChange()
-{
-//	m_appContext->codeModel()->updateFormatting(m_doc); //update old formatting
-//	m_appContext->codeModel()->registerCodeChange(m_doc->toPlainText());
-}
-
 void CodeEditorExtensionManager::applyCodeHighlight()
 {
-//	m_appContext->codeModel()->updateFormatting(m_doc);
+	//TODO: reimplement
 }
 
 void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
 {
 	m_rightTabView = _tabView;
-	initExtensions(); //TODO: this is not the right place for it
+	initExtensions(); //TODO: move this to a proper place
 }
 
 void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
