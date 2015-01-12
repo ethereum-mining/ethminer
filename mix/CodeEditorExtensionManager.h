@@ -26,7 +26,7 @@
 #include <QQuickItem>
 #include <QTextDocument>
 #include <QVector>
-#include "ConstantCompilationControl.h"
+#include "StatusPane.h"
 
 namespace dev
 {

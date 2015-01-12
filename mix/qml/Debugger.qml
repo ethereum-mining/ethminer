@@ -20,9 +20,9 @@ Rectangle {
 			Debugger.moveSelection(-1);
 	}
 
-	function init()
+	function update()
 	{
-		if (constantCompilation.result.successfull)
+		if (statusPane.result.successfull)
 		{
 			Debugger.init();
 			debugScrollArea.visible = true;
@@ -35,7 +35,7 @@ Rectangle {
 			compilationErrorArea.visible = true;
 			machineStates.visible = false;
 			console.log(constantCompilation.result.compilerMessage);
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(constantCompilation.result.compilerMessage, false);
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, false);
 			errorLocation.text = errorInfo.errorLocation;
 			errorDetail.text = errorInfo.errorDetail;
 			errorLine.text = errorInfo.errorLine;

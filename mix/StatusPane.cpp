@@ -27,40 +27,40 @@
 #include <QQmlApplicationEngine>
 #include <QtCore/QtCore>
 #include <QDebug>
-#include "ConstantCompilationControl.h"
+#include "StatusPane.h"
 #include "QContractDefinition.h"
 #include "AppContext.h"
 #include "CodeModel.h"
 
 using namespace dev::mix;
 
-ConstantCompilationControl::ConstantCompilationControl(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
+StatusPane::StatusPane(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
 {
-	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &ConstantCompilationControl::update);
-	_context->appEngine()->rootContext()->setContextProperty("constantCompilation", this);
+	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &StatusPane::update);
+	_context->appEngine()->rootContext()->setContextProperty("statusPane", this);
 }
 
-QString ConstantCompilationControl::contentUrl() const
+QString StatusPane::contentUrl() const
 {
-	return QStringLiteral("qrc:/qml/CompilationStatus.qml");
+	return QStringLiteral("qrc:/qml/StatusPane.qml");
 }
 
-QString ConstantCompilationControl::title() const
+QString StatusPane::title() const
 {
 	return QApplication::tr("compiler");
 }
 
-void ConstantCompilationControl::start() const
+void StatusPane::start() const
 {
 }
 
-CompilationResult* ConstantCompilationControl::result() const
+CompilationResult* StatusPane::result() const
 {
 	return m_ctx->codeModel()->code();
 }
 
-void ConstantCompilationControl::update()
+void StatusPane::update()
 {
-	QObject* ctrl = m_view->findChild<QObject*>("constantCompilationStatus", Qt::FindChildrenRecursively);
+	QObject* ctrl = m_view->findChild<QObject*>("statusPane", Qt::FindChildrenRecursively);
 	QMetaObject::invokeMethod(ctrl, "update");
 }

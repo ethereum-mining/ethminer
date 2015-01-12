@@ -208,7 +208,7 @@ void AssemblyDebuggerControl::updateDebugPanel()
 {
 	QVariant returnValue;
 	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(debugPanel, "init", Q_RETURN_ARG(QVariant, returnValue));
+	QMetaObject::invokeMethod(debugPanel, "update", Q_RETURN_ARG(QVariant, returnValue));
 }
 
 void AssemblyDebuggerControl::showDebugError(QString const& _error)

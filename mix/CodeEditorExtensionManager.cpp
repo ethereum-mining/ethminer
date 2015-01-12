@@ -25,7 +25,7 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
-#include "ConstantCompilationControl.h"
+#include "StatusPane.h"
 #include "AssemblyDebuggerControl.h"
 #include "StateListView.h"
 #include "AppContext.h"
@@ -64,11 +64,10 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	std::shared_ptr<ConstantCompilationControl> output = std::make_shared<ConstantCompilationControl>(m_appContext);
+	std::shared_ptr<StatusPane> output = std::make_shared<StatusPane>(m_appContext);
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
 	QObject::connect(m_doc, &QTextDocument::contentsChange, this, &CodeEditorExtensionManager::onCodeChange);
-	//QObject::connect(debug.get(), &AssemblyDebuggerControl::runFailed, output.get(), &ConstantCompilationControl::displayError);
 	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
 
 	initExtension(output);

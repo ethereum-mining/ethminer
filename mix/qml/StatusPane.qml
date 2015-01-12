@@ -5,10 +5,10 @@ import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Rectangle {
 	id: constantCompilationStatus
-	objectName: "constantCompilationStatus"
+	objectName: "statusPane"
 	function update()
 	{
-		if (constantCompilation.result.successfull)
+		if (statusPane.result.successfull)
 		{
 			image.state = "";
 			status.state = "";
@@ -19,7 +19,7 @@ Rectangle {
 		{
 			image.state = "error";
 			status.state = "error";
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(constantCompilation.result.compilerMessage, true);
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
 		}
