@@ -134,24 +134,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	if (!_addInfo.compare("internal"))
 		return;
 
-	if (!_addInfo.compare("eth_changed"))
-	{
-		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
-		for (int i = 0; i < resultsArray.size(); i++)
-		{
-			QJsonObject elem = resultsArray[i].toObject();
-			if (elem.contains("result") && elem["result"].toBool() == true)
-			{
-				QJsonObject res;
-				res["_event"] = _addInfo;
-				res["_id"] = (int)m_watches[i]; // we can do that couse poll is synchronous
-				response(QString::fromUtf8(QJsonDocument(res).toJson()));
-			}
-		}
-		return;
-	}
-	
-	if (!_addInfo.compare("shh_changed"))
+	if (!_addInfo.compare("shh_changed") || !_addInfo.compare("eth_changed"))
 	{
 		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
 		for (int i = 0; i < resultsArray.size(); i++)
@@ -161,13 +144,18 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 			{
 				QJsonObject res;
 				res["_event"] = _addInfo;
-				res["_id"] = (int)m_shhWatches[i];
+
+				if (!_addInfo.compare("shh_changed"))
+					res["_id"] = (int)m_shhWatches[i]; // we can do that couse poll is synchronous
+				else
+					res["_id"] = (int)m_watches[i];
+
 				res["data"] = elem["result"].toArray();
 				response(QString::fromUtf8(QJsonDocument(res).toJson()));
 			}
 		}
 	}
-	
+
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	
 	if ((!_addInfo.compare("eth_newFilter") || !_addInfo.compare("eth_newFilterString")) && f.contains("result"))
