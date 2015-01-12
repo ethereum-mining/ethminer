@@ -180,6 +180,12 @@ void sighandler(int)
 	g_exit = true;
 }
 
+enum class NodeMode
+{
+	PeerServer,
+	Full
+};
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;

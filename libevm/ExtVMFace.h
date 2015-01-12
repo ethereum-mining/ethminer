@@ -60,6 +60,16 @@ struct LogEntry
 
 using LogEntries = std::vector<LogEntry>;
 
+struct LocalisedLogEntry: public LogEntry
+{
+	LocalisedLogEntry() {}
+	LocalisedLogEntry(LogEntry const& _le, unsigned _number): LogEntry(_le), number(_number) {}
+
+	unsigned number = 0;
+};
+
+using LocalisedLogEntries = std::vector<LocalisedLogEntry>;
+
 inline LogBloom bloom(LogEntries const& _logs)
 {
 	LogBloom ret;

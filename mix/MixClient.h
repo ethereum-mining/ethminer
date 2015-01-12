@@ -82,13 +82,13 @@ public:
 	u256 stateAt(Address _a, u256 _l, int _block) const override;
 	bytes codeAt(Address _a, int _block) const override;
 	std::map<u256, u256> storageAt(Address _a, int _block) const override;
-	eth::LogEntries logs(unsigned _watchId) const override;
-	eth::LogEntries logs(eth::LogFilter const& _filter) const override;
+	eth::LocalisedLogEntries logs(unsigned _watchId) const override;
+	eth::LocalisedLogEntries logs(eth::LogFilter const& _filter) const override;
 	unsigned installWatch(eth::LogFilter const& _filter) override;
 	unsigned installWatch(h256 _filterId) override;
 	void uninstallWatch(unsigned _watchId) override;
-	bool peekWatch(unsigned _watchId) const override;
-	bool checkWatch(unsigned _watchId) override;
+	eth::LocalisedLogEntries peekWatch(unsigned _watchId) const override;
+	eth::LocalisedLogEntries checkWatch(unsigned _watchId) override;
 	h256 hashFromNumber(unsigned _number) const override;
 	eth::BlockInfo blockInfo(h256 _hash) const override;
 	eth::BlockDetails blockDetails(h256 _hash) const override;

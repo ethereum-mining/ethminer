@@ -412,10 +412,10 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h512s State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h512s ret;
+	TransactionReceipts ret;
 	auto ts = _tq.transactions();
 
 	auto lh = getLastHashes(_bc);
@@ -432,7 +432,7 @@ h512s State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transact
 					uncommitToMine();
 //					boost::timer t;
 					execute(lh, i.second);
-					ret.push_back(m_receipts.back().bloom());
+					ret.push_back(m_receipts.back());
 					_tq.noteGood(i);
 					++goodTxs;
 //					cnote << "TX took:" << t.elapsed() * 1000;
