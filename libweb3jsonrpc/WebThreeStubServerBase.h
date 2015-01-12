@@ -121,7 +121,7 @@ public:
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
 protected:
-	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
+	virtual bool authenticate(dev::TransactionSkeleton const& _t) const = 0;
 
 protected:
 	virtual dev::eth::Interface* client() = 0;

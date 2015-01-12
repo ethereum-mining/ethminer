@@ -33,6 +33,7 @@
 #include "CodeModel.h"
 #include "ClientModel.h"
 
+using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
