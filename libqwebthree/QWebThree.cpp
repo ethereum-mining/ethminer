@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file QEthereum.cpp
+/** @file QWebThree.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
@@ -22,7 +22,7 @@
  */
 
 #include <QtCore/QtCore>
-#include "QEthereum.h"
+#include "QWebThree.h"
 
 using namespace std;
 

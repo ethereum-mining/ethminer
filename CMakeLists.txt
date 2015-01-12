@@ -157,7 +157,7 @@ endif ()
 if (NOT HEADLESS)
 	
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqethereum)
+	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)
