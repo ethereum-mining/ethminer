@@ -51,6 +51,7 @@ private:
 
 	std::string get(std::string const& _name, std::string const& _key) override;
 	void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
+
 private:
 	dev::WebThreeDirect& m_web3;
 	leveldb::ReadOptions m_readOptions;

@@ -178,16 +178,16 @@ std::map<u256, u256> MixClient::storageAt(Address _a, int _block) const
 	return m_state.storage(_a);
 }
 
-eth::LogEntries MixClient::logs(unsigned _watchId) const
+eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
 {
 	(void)_watchId;
-	return LogEntries();
+	return LocalisedLogEntries();
 }
 
-eth::LogEntries MixClient::logs(eth::LogFilter const& _filter) const
+eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _filter) const
 {
 	(void)_filter;
-	return LogEntries();
+	return LocalisedLogEntries();
 }
 
 unsigned MixClient::installWatch(eth::LogFilter const& _filter)
@@ -208,13 +208,13 @@ void MixClient::uninstallWatch(unsigned _watchId)
 	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::uninstallWatch"));
 }
 
-bool MixClient::peekWatch(unsigned _watchId) const
+eth::LocalisedLogEntries MixClient::peekWatch(unsigned _watchId) const
 {
 	(void)_watchId;
 	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::peekWatch"));
 }
 
-bool MixClient::checkWatch(unsigned _watchId)
+eth::LocalisedLogEntries MixClient::checkWatch(unsigned _watchId)
 {
 	(void)_watchId;
 	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::checkWatch"));

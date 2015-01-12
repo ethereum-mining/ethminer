@@ -40,6 +40,7 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
@@ -243,14 +244,14 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
 	return ret;
 }
 
-unsigned Main::installWatch(dev::h256 _tf, std::function<void()> const& _f)
+unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -265,10 +266,10 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installNameRegWatch(); });
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=]() { installCurrenciesWatch(); });
-	installWatch(dev::eth::PendingChangedFilter, [=](){ onNewPending(); });
-	installWatch(dev::eth::ChainChangedFilter, [=](){ onNewBlock(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
+	installWatch(dev::eth::PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
+	installWatch(dev::eth::ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
@@ -284,13 +285,13 @@ Address Main::getCurrencies() const
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -308,7 +309,7 @@ void Main::installBalancesWatch()
 			tf.address(c).topic(h256(i.address(), h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
-	m_balancesFilter = installWatch(tf, [=](){ onBalancesChange(); });
+	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
 }
 
 void Main::onNameRegChange()
@@ -644,6 +645,7 @@ void Main::writeSettings()
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
+	s.setValue("jitvm", ui->jitvm->isChecked());
 
 	bytes d = m_webThree->saveNodes();
 	if (d.size())
@@ -718,6 +720,7 @@ void Main::readSettings(bool _skipGeometry)
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
+	ui->jitvm->setChecked(s.value("jitvm", true).toBool());
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -815,6 +818,12 @@ void Main::on_usePrivate_triggered()
 		m_privateChain.clear();
 	}
 	on_killBlockchain_triggered();
+}
+
+void Main::on_jitvm_triggered()
+{
+	bool jit = ui->jitvm->isChecked();
+	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 }
 
 void Main::on_urlEdit_returnPressed()
@@ -1162,8 +1171,11 @@ void Main::timerEvent(QTimerEvent*)
 		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
-		if (ethereum()->checkWatch(i.first))
-			i.second();
+	{
+		auto ls = ethereum()->checkWatch(i.first);
+		if (ls.size())
+			i.second(ls);
+	}
 }
 
 string Main::renderDiff(dev::eth::StateDiff const& _d) const
@@ -1265,7 +1277,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
-		s << renderDiff(ethereum()->diff(i, -1));
+		s << renderDiff(ethereum()->diff(i, 0));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
@@ -1802,8 +1814,6 @@ void Main::on_net_triggered()
 	web3()->setClientVersion(n);
 	if (ui->net->isChecked())
 	{
-		// TODO: alter network stuff?
-		//ui->port->value(), string(), 0, NodeMode::Full, ui->idealPeers->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
