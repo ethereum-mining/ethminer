@@ -317,6 +317,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			disable("Blacklisted client version.");
 		else if (host()->isBanned(session()->id()))
 			disable("Peer banned for previous bad behaviour.");
+		else
+			transition(Asking::Nothing);
 		break;
 	}
 	case GetTransactionsPacket: break;	// DEPRECATED.

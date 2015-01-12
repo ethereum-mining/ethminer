@@ -9,6 +9,7 @@ if(LLVM_DIR)	# local LLVM build
 	find_package(LLVM REQUIRED CONFIG)
 	message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 	message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+	add_definitions(${LLVM_DEFINITIONS})
 	# TODO: bitwriter is needed only for evmcc
 	llvm_map_components_to_libnames(LLVM_LIBS core support mcjit x86asmparser x86codegen bitwriter)
 else()

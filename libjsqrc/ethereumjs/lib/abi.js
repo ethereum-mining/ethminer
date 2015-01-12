@@ -92,6 +92,12 @@ var setupInputTypes = function () {
             }
 
             var padding = calcPadding(type, expected);
+            if (padding > 32)
+                return false;   // not allowed to be so big.
+            padding = 32;   // override as per the new ABI.
+
+            if (prefix === "string")
+                return web3.fromAscii(value, padding).substr(2);
             if (typeof value === "number")
                 value = value.toString(16);
             else if (typeof value === "string")
@@ -109,6 +115,8 @@ var setupInputTypes = function () {
             if (type !== name) {
                 return false;
             }
+
+            padding = 32;   //override as per the new ABI.
 
             return padLeft(formatter ? formatter(value) : value, padding * 2);
         };
@@ -140,7 +148,6 @@ var toAbiInput = function (json, methodName, params) {
         return;
     }
 
-    bytes = "0x" + padLeft(index.toString(16), 2);
     var method = json[index];
 
     for (var i = 0; i < method.inputs.length; i++) {
@@ -166,12 +173,16 @@ var setupOutputTypes = function () {
             }
 
             var padding = calcPadding(type, expected);
+            if (padding > 32)
+                return -1;   // not allowed to be so big.
+            padding = 32;  // override as per the new ABI.
             return padding * 2;
         };
     };
 
     var namedType = function (name, padding) {
         return function (type) {
+            padding = 32;  // override as per the new ABI.
             return name === type ? padding * 2 : -1;
         };
     };
@@ -259,7 +270,21 @@ var outputParser = function (json) {
     return parser;
 };
 
+var methodSignature = function (json, name) {
+    var method = json[findMethodIndex(json, name)];
+    var result = name + '(';
+    var inputTypes = method.inputs.map(function (inp) {
+        return inp.type;
+    });
+    result += inputTypes.join(',');
+    result += ')';
+
+    return web3.sha3(web3.fromAscii(result));
+};
+
 module.exports = {
     inputParser: inputParser,
-    outputParser: outputParser
+    outputParser: outputParser,
+    methodSignature: methodSignature
 };
+
