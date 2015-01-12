@@ -48,7 +48,7 @@ CompilationResult::CompilationResult():
 	m_codeHighlighter(new CodeHighlighter())
 {}
 
-CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
+CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compiler):
 	QObject(nullptr),
 	m_successful(true),
 	m_codeHash(qHash(QString()))
@@ -162,13 +162,13 @@ void CodeModel::onCompilationComplete(CompilationResult*_newResult)
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
-	if (m_result->successfull())
+	if (m_result->successful())
 		emit codeChanged();
 }
 
 bool CodeModel::hasContract() const
 {
-	return m_result->successfull();
+	return m_result->successful();
 }
 
 void CodeModel::updateFormatting(QTextDocument* _document)

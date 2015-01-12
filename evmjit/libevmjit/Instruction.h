@@ -58,7 +58,7 @@ enum class Instruction: uint8_t
 	EXTCODESIZE,		///< get external code size (from another contract)
 	EXTCODECOPY,		///< copy external code (from another contract)
 
-	PREVHASH = 0x40,	///< get hash of most recent complete block
+	BLOCKHASH = 0x40,	///< get hash of most recent complete block
 	COINBASE,			///< get the block's coinbase address
 	TIMESTAMP,			///< get the block's timestamp
 	NUMBER,				///< get the block's number
@@ -160,8 +160,12 @@ enum class Instruction: uint8_t
 
 /// Reads PUSH data from pointed fragment of bytecode and constructs number out of it
 /// Reading out of bytecode means reading 0
-/// @param _curr is updates and points the last real byte read
+/// @param _curr is updated and points the last real byte read
 llvm::APInt readPushData(bytes::const_iterator& _curr, bytes::const_iterator _end);
+
+/// Skips PUSH data in pointed fragment of bytecode.
+/// @param _curr is updated and points the last real byte skipped
+void skipPushData(bytes::const_iterator& _curr, bytes::const_iterator _end);
 
 #define ANY_PUSH	  PUSH1:  \
 	case Instruction::PUSH2:  \

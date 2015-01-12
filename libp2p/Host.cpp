@@ -558,7 +558,7 @@ void Host::prunePeers()
 			for (auto i: m_peers)
 				if (!dc.count(i.first))
 					if (auto p = i.second.lock())
-						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+						if (chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
 						{
 							++agedPeers;
 							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones

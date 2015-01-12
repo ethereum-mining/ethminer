@@ -49,6 +49,7 @@ endfunction()
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
+	set(ETH_BUILD_PLATFORM ${TARGET_PLATFORM})
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
@@ -64,10 +65,10 @@ function(createBuildInfo)
 	endif ()
 
 	#cmake build type may be not specified when using msvc
-	if (${CMAKE_BUILD_TYPE})
+	if (CMAKE_BUILD_TYPE)
 		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
 	else()
-		set(_cmake_build_type "undefined")
+		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
 	# Generate header file containing useful build information
@@ -156,7 +157,7 @@ endif ()
 if (NOT HEADLESS)
 	
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqethereum)
+	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)

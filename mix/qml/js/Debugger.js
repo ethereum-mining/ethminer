@@ -7,6 +7,7 @@ var currentSelectedState = null;
 var jumpStartingPoint = null;
 function init()
 {
+	console.log('popopop');
 	if (debugStates === undefined)
 		return;
 
@@ -66,10 +67,10 @@ function highlightSelection(index)
 
 function completeCtxInformation(state)
 {
-	basicInfo.currentStep = state.step;
-	basicInfo.mem = state.newMemSize + " " + qsTr("words");
-	basicInfo.stepCost = state.gasCost;
-	basicInfo.gasSpent = debugStates[0].gas - state.gas;
+	currentStep.update(state.step);
+	mem.update(state.newMemSize + " " + qsTr("words"));
+	stepCost.update(state.gasCost);
+	gasSpent.update(debugStates[0].gas - state.gas);
 
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;

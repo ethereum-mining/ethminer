@@ -22,7 +22,7 @@ Rectangle {
 
 	function update()
 	{
-		if (statusPane.result.successfull)
+		if (statusPane.result.successful)
 		{
 			Debugger.init();
 			debugScrollArea.visible = true;
@@ -39,7 +39,11 @@ Rectangle {
 			errorDetail.text = errorInfo.errorDetail;
 			errorLine.text = errorInfo.errorLine;
 		}
-		forceActiveFocus();
+	}
+
+	Connections {
+		target: codeModel
+		onCompilationComplete: update()
 	}
 
 	Rectangle
@@ -281,10 +285,26 @@ Rectangle {
 						id: basicInfoColumn
 						height: 125
 						color: "transparent"
-						DebugBasicInfo {
-							id: basicInfo
-							height: parent.height
+						ColumnLayout {
+							spacing: 0
 							width: parent.width
+							height: parent.height
+							DebugBasicInfo {
+								id: currentStep
+								titleStr: qsTr("Current step")
+							}
+							DebugBasicInfo {
+								id: mem
+								titleStr: qsTr("Adding memory")
+							}
+							DebugBasicInfo {
+								id: stepCost
+								titleStr: qsTr("Step cost")
+							}
+							DebugBasicInfo {
+								id: gasSpent
+								titleStr: qsTr("Total gas spent")
+							}
 						}
 					}
 
