@@ -2,6 +2,7 @@
 #include <libsolidity/InterfaceHandler.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/CompilerStack.h>
+using namespace std;
 
 namespace dev
 {
@@ -26,6 +27,8 @@ std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefiniti
 		return getDevDocumentation(_contractDef);
 	case DocumentationType::ABI_INTERFACE:
 		return getABIInterface(_contractDef);
+	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+		return getABISolidityInterface(_contractDef);
 	}
 
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown documentation type"));
@@ -36,7 +39,7 @@ std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinitio
 {
 	Json::Value methods(Json::arrayValue);
 
-	for (FunctionDefinition const* f: _contractDef.getInterfaceFunctions())
+	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
 		Json::Value method;
 		Json::Value inputs(Json::arrayValue);
@@ -55,13 +58,36 @@ std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinitio
 			return params;
 		};
 
-		method["name"] = f->getName();
-		method["constant"] = f->isDeclaredConst();
-		method["inputs"] = populateParameters(f->getParameters());
-		method["outputs"] = populateParameters(f->getReturnParameters());
+		method["name"] = it.second->getName();
+		method["constant"] = it.second->isDeclaredConst();
+		method["inputs"] = populateParameters(it.second->getParameters());
+		method["outputs"] = populateParameters(it.second->getReturnParameters());
 		methods.append(method);
 	}
 	return std::unique_ptr<std::string>(new std::string(m_writer.write(methods)));
+}
+
+unique_ptr<string> InterfaceHandler::getABISolidityInterface(ContractDefinition const& _contractDef)
+{
+	string ret = "contract " + _contractDef.getName() + "{";
+	for (auto const& it: _contractDef.getInterfaceFunctions())
+	{
+		FunctionDefinition const* f = it.second;
+		auto populateParameters = [](vector<ASTPointer<VariableDeclaration>> const& _vars)
+		{
+			string r = "";
+			for (ASTPointer<VariableDeclaration> const& var: _vars)
+				r += (r.size() ? "," : "(") + var->getType()->toString() + " " + var->getName();
+			return r.size() ? r + ")" : "()";
+		};
+		ret += "function " + f->getName() + populateParameters(f->getParameters()) + (f->isDeclaredConst() ? "constant " : "");
+		if (f->getReturnParameters().size())
+			ret += "returns" + populateParameters(f->getReturnParameters());
+		else if (ret.back() == ' ')
+			ret.pop_back();
+		ret += "{}";
+	}
+	return unique_ptr<string>(new string(ret + "}"));
 }
 
 std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefinition const& _contractDef)
@@ -69,10 +95,10 @@ std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefi
 	Json::Value doc;
 	Json::Value methods(Json::objectValue);
 
-	for (FunctionDefinition const* f: _contractDef.getInterfaceFunctions())
+	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
 		Json::Value user;
-		auto strPtr = f->getDocumentation();
+		auto strPtr = it.second->getDocumentation();
 		if (strPtr)
 		{
 			resetUser();
@@ -80,7 +106,7 @@ std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefi
 			if (!m_notice.empty())
 			{// since @notice is the only user tag if missing function should not appear
 				user["notice"] = Json::Value(m_notice);
-				methods[f->getName()] = user;
+				methods[it.second->getName()] = user;
 			}
 		}
 	}
@@ -110,10 +136,10 @@ std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefin
 			doc["title"] = m_title;
 	}
 
-	for (FunctionDefinition const* f: _contractDef.getInterfaceFunctions())
+	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
 		Json::Value method;
-		auto strPtr = f->getDocumentation();
+		auto strPtr = it.second->getDocumentation();
 		if (strPtr)
 		{
 			resetDev();
@@ -136,7 +162,7 @@ std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefin
 				method["return"] = m_return;
 
 			if (!method.empty()) // add the function, only if we have any documentation to add
-				methods[f->getName()] = method;
+				methods[it.second->getName()] = method;
 		}
 	}
 	doc["methods"] = methods;
@@ -323,8 +349,13 @@ void InterfaceHandler::parseDocString(std::string const& _string, CommentOwner _
 		}
 		else if (m_lastTag != DocTagType::NONE) // continuation of the previous tag
 			currPos = appendDocTag(currPos, end, _owner);
-		else if (currPos != end) // skip the line if a newline was found
+		else if (currPos != end)
+		{
+			if (nlPos == end) //end of text
+				return;
+			// else skip the line if a newline was found
 			currPos = nlPos + 1;
+		}
 	}
 }
 

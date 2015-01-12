@@ -27,6 +27,8 @@
 #include <libsolidity/Exceptions.h>
 #include <libsolidity/AST_accept.h>
 
+#include <libdevcrypto/SHA3.h>
+
 using namespace std;
 
 namespace dev
@@ -50,18 +52,17 @@ void ContractDefinition::checkTypeRequirements()
 		function->checkTypeRequirements();
 }
 
-vector<FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
+map<FixedHash<4>, FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
 {
-	vector<FunctionDefinition const*> exportedFunctions;
+	map<FixedHash<4>, FunctionDefinition const*> exportedFunctions;
 	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
 		if (f->isPublic() && f->getName() != getName())
-			exportedFunctions.push_back(f.get());
-	auto compareNames = [](FunctionDefinition const* _a, FunctionDefinition const* _b)
-	{
-		return _a->getName().compare(_b->getName()) < 0;
-	};
+		{
+			FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
+			auto res = exportedFunctions.insert(std::make_pair(hash,f.get()));
+			solAssert(res.second, "Hash collision at Function Definition Hash calculation");
+		}
 
-	sort(exportedFunctions.begin(), exportedFunctions.end(), compareNames);
 	return exportedFunctions;
 }
 
@@ -173,7 +174,15 @@ void VariableDefinition::checkTypeRequirements()
 		{
 			// no type declared and no previous assignment, infer the type
 			m_value->checkTypeRequirements();
-			m_variable->setType(m_value->getType());
+			TypePointer type = m_value->getType();
+			if (type->getCategory() == Type::Category::INTEGER_CONSTANT)
+			{
+				auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
+				if (!intType)
+					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
+				type = intType;
+			}
+			m_variable->setType(type);
 		}
 	}
 }
@@ -192,16 +201,22 @@ void Assignment::checkTypeRequirements()
 	{
 		// compound assignment
 		m_rightHandSide->checkTypeRequirements();
-		TypePointer resultType = Type::binaryOperatorResult(Token::AssignmentToBinaryOp(m_assigmentOperator),
-															m_type, m_rightHandSide->getType());
+		TypePointer resultType = m_type->binaryOperatorResult(Token::AssignmentToBinaryOp(m_assigmentOperator),
+															  m_rightHandSide->getType());
 		if (!resultType || *resultType != *m_type)
-			BOOST_THROW_EXCEPTION(createTypeError("Operator not compatible with type."));
+			BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_assigmentOperator)) +
+												  " not compatible with types " +
+												  m_type->toString() + " and " +
+												  m_rightHandSide->getType()->toString()));
 	}
 }
 
 void ExpressionStatement::checkTypeRequirements()
 {
 	m_expression->checkTypeRequirements();
+	if (m_expression->getType()->getCategory() == Type::Category::INTEGER_CONSTANT)
+		if (!dynamic_pointer_cast<IntegerConstantType const>(m_expression->getType())->getIntegerType())
+			BOOST_THROW_EXCEPTION(m_expression->createTypeError("Invalid integer constant."));
 }
 
 void Expression::expectType(Type const& _expectedType)
@@ -227,8 +242,8 @@ void UnaryOperation::checkTypeRequirements()
 	m_subExpression->checkTypeRequirements();
 	if (m_operator == Token::Value::INC || m_operator == Token::Value::DEC || m_operator == Token::Value::DELETE)
 		m_subExpression->requireLValue();
-	m_type = m_subExpression->getType();
-	if (!m_type->acceptsUnaryOperator(m_operator))
+	m_type = m_subExpression->getType()->unaryOperatorResult(m_operator);
+	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Unary operator not compatible with type."));
 }
 
@@ -236,7 +251,7 @@ void BinaryOperation::checkTypeRequirements()
 {
 	m_left->checkTypeRequirements();
 	m_right->checkTypeRequirements();
-	m_commonType = Type::binaryOperatorResult(m_operator, m_left->getType(), m_right->getType());
+	m_commonType = m_left->getType()->binaryOperatorResult(m_operator, m_right->getType());
 	if (!m_commonType)
 		BOOST_THROW_EXCEPTION(createTypeError("Operator " + string(Token::toString(m_operator)) +
 											  " not compatible with types " +
@@ -300,7 +315,7 @@ void NewExpression::checkTypeRequirements()
 	m_contract = dynamic_cast<ContractDefinition const*>(m_contractName->getReferencedDeclaration());
 	if (!m_contract)
 		BOOST_THROW_EXCEPTION(createTypeError("Identifier is not a contract."));
-	shared_ptr<ContractType const> type = make_shared<ContractType const>(*m_contract);
+	shared_ptr<ContractType const> type = make_shared<ContractType>(*m_contract);
 	m_type = type;
 	TypePointers const& parameterTypes = type->getConstructorType()->getParameterTypes();
 	if (parameterTypes.size() != m_arguments.size())
@@ -351,7 +366,7 @@ void Identifier::checkTypeRequirements()
 	if (structDef)
 	{
 		// note that we do not have a struct type here
-		m_type = make_shared<TypeType const>(make_shared<StructType const>(*structDef));
+		m_type = make_shared<TypeType>(make_shared<StructType>(*structDef));
 		return;
 	}
 	FunctionDefinition const* functionDef = dynamic_cast<FunctionDefinition const*>(m_referencedDeclaration);
@@ -360,13 +375,13 @@ void Identifier::checkTypeRequirements()
 		// a function reference is not a TypeType, because calling a TypeType converts to the type.
 		// Calling a function (e.g. function(12), otherContract.function(34)) does not do a type
 		// conversion.
-		m_type = make_shared<FunctionType const>(*functionDef);
+		m_type = make_shared<FunctionType>(*functionDef);
 		return;
 	}
 	ContractDefinition const* contractDef = dynamic_cast<ContractDefinition const*>(m_referencedDeclaration);
 	if (contractDef)
 	{
-		m_type = make_shared<TypeType const>(make_shared<ContractType>(*contractDef));
+		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef));
 		return;
 	}
 	MagicVariableDeclaration const* magicVariable = dynamic_cast<MagicVariableDeclaration const*>(m_referencedDeclaration);
@@ -380,14 +395,14 @@ void Identifier::checkTypeRequirements()
 
 void ElementaryTypeNameExpression::checkTypeRequirements()
 {
-	m_type = make_shared<TypeType const>(Type::fromElementaryTypeName(m_typeToken));
+	m_type = make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
 }
 
 void Literal::checkTypeRequirements()
 {
 	m_type = Type::forLiteral(*this);
 	if (!m_type)
-		BOOST_THROW_EXCEPTION(createTypeError("Literal value too large."));
+		BOOST_THROW_EXCEPTION(createTypeError("Invalid literal value."));
 }
 
 }

@@ -9,7 +9,7 @@ Rectangle {
 
 	function updateStatus()
 	{
-		if (statusPane.result.successfull)
+		if (statusPane.result.successful)
 		{
 			image.state = "";
 			status.state = "";
@@ -24,7 +24,7 @@ Rectangle {
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
 		}
-		debugRunActionIcon.enabled = statusPane.result.successfull;
+		debugRunActionIcon.enabled = statusPane.result.successful;
 	}
 
 	color: "transparent"
@@ -90,7 +90,8 @@ Rectangle {
 					anchors.fill: parent
 					onClicked: {
 						mainContent.ensureRightView();
-						debugModel.updateDebugPanel();
+						//clientModel.showDebugger();
+						//debugModel.updateDebugPanel();
 					}
 				}
 			}
@@ -123,16 +124,9 @@ Rectangle {
 					id: debugRunActionIcon
 					onTriggered: {
 						mainContent.ensureRightView();
-						debugModel.debugDeployment();
+						clientModel.debugDeployment();
 					}
 					enabled: false
-					onEnabledChanged: {
-						console.log(debugRunActionIcon.enabled)
-						if (debugRunActionIcon.enabled)
-							debugImg.iconSource = "qrc:/qml/img/bugiconactive.png"
-						else
-							debugImg.iconSource = "qrc:/qml/img/bugiconinactive.png"
-					}
 				}
 			}
 		}

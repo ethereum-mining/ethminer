@@ -20,10 +20,7 @@ Rectangle {
 	function toggleRightView()
 	{
 		if (!rightView.visible)
-		{
 			rightView.show();
-			debugModel.updateDebugPanel();
-		}
 		else
 			rightView.hide();
 	}
@@ -43,7 +40,6 @@ Rectangle {
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 		rightView: rightPaneTabs;
-		editor: codeEditor
 	}
 
 	GridLayout
@@ -88,68 +84,24 @@ Rectangle {
 			orientation: Qt.Horizontal;
 			Layout.fillWidth: true
 			Layout.preferredHeight: root.height - headerView.height;
+
+			ProjectList	{
+				width: parent.width * 0.2
+				height: parent.height
+				Layout.minimumWidth: 200
+			}
+
 			Rectangle {
 
 				anchors.top: parent.top
 				id: contentView
 				width: parent.width
-				height: parent.height * 0.7
-
-				Item {
-					anchors.fill: parent
-					Rectangle {
-						id: lineColumn
-						property int rowHeight: codeEditor.font.pixelSize + 3
-						color: "#202020"
-						width: 50
-						height: parent.height
-						Column {
-							y: -codeEditor.flickableItem.contentY + 4
-							width: parent.width
-							Repeater {
-								model: Math.max(codeEditor.lineCount + 2, (lineColumn.height/lineColumn.rowHeight))
-								delegate: Text {
-									id: text
-									color: codeEditor.textColor
-									font: codeEditor.font
-									width: lineColumn.width - 4
-									horizontalAlignment: Text.AlignRight
-									verticalAlignment: Text.AlignVCenter
-									height: lineColumn.rowHeight
-									renderType: Text.NativeRendering
-									text: index + 1
-								}
+				height: parent.height
+				CodeEditorView {
+								height: parent.height
+								anchors.top: parent.top
+								width: parent.width
 							}
-						}
-					}
-
-					TextArea {
-						id: codeEditor
-						textColor: "#EEE8D5"
-						style: TextAreaStyle {
-							backgroundColor: "#002B36"
-						}
-
-						anchors.left: lineColumn.right
-						anchors.right: parent.right
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						wrapMode: TextEdit.NoWrap
-						frameVisible: false
-
-						height: parent.height
-						font.family: "Monospace"
-						font.pointSize: 12
-						width: parent.width
-						tabChangesFocus: false
-						Keys.onPressed: {
-							if (event.key === Qt.Key_Tab) {
-								codeEditor.insert(codeEditor.cursorPosition, "\t");
-								event.accepted = true;
-							}
-						}
-					}
-				}
 			}
 
 			Rectangle {

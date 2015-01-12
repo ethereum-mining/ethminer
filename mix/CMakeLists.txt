@@ -27,7 +27,7 @@ eth_add_executable(${EXECUTABLE}
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Gui)
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} qethereum)
+target_link_libraries(${EXECUTABLE} qwebthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)
@@ -46,3 +46,6 @@ eth_install_executable(${EXECUTABLE}
 	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
 )
 
+#add qml files to project tree in Qt creator
+file(GLOB_RECURSE QMLFILES "qml/*.*")
+add_custom_target(dummy SOURCES ${QMLFILES})

@@ -43,7 +43,6 @@ class CodeEditorExtensionManager: public QObject
 {
 	Q_OBJECT
 
-	Q_PROPERTY(QQuickItem* editor MEMBER m_editor WRITE setEditor)
 	Q_PROPERTY(QQuickItem* headerView MEMBER m_headerView WRITE setHeaderView)
 	Q_PROPERTY(QQuickItem* rightView MEMBER m_rightView WRITE setRightView)
 
@@ -54,19 +53,15 @@ public:
 	void initExtensions();
 	/// Initialize extension.
 	void initExtension(std::shared_ptr<Extension>);
-	/// Set current text editor.
-	void setEditor(QQuickItem*);
 	/// Set current tab view
 	void setHeaderView(QQuickItem*);
 	/// Set current right tab view.
 	void setRightView(QQuickItem*);
 
 private slots:
-	void onCodeChange();
 	void applyCodeHighlight();
 
 private:
-	QQuickItem* m_editor;
 	QVector<std::shared_ptr<Extension>> m_features;
 	QQuickItem* m_headerView;
 	QQuickItem* m_rightView;

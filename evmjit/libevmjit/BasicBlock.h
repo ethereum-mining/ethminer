@@ -1,9 +1,7 @@
 #pragma once
-
 #include <vector>
-
 #include <llvm/IR/BasicBlock.h>
-
+#include "Common.h"
 #include "Stack.h"
 
 namespace dev
@@ -52,20 +50,21 @@ public:
 		BasicBlock& m_bblock;
 	};
 
-	/// Basic block name prefix. The rest is beging instruction index.
+	/// Basic block name prefix. The rest is instruction index.
 	static const char* NamePrefix;
 
-	explicit BasicBlock(ProgramCounter _beginInstIdx, ProgramCounter _endInstIdx, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder);
-	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder);
+	explicit BasicBlock(bytes::const_iterator _begin, bytes::const_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
+	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 
 	BasicBlock(const BasicBlock&) = delete;
 	void operator=(const BasicBlock&) = delete;
 
-	operator llvm::BasicBlock*() { return m_llvmBB; }
 	llvm::BasicBlock* llvm() { return m_llvmBB; }
 
-	ProgramCounter begin() { return m_beginInstIdx; }
-	ProgramCounter end() { return m_endInstIdx; }
+	bytes::const_iterator begin() { return m_begin; }
+	bytes::const_iterator end() { return m_end; }
+
+	bool isJumpDest() const { return m_isJumpDest; }
 
 	LocalStack& localStack() { return m_stack; }
 
@@ -82,8 +81,8 @@ public:
 	void dump(std::ostream& os, bool _dotOutput = false);
 
 private:
-	ProgramCounter const m_beginInstIdx;
-	ProgramCounter const m_endInstIdx;
+	bytes::const_iterator const m_begin;
+	bytes::const_iterator const m_end;
 
 	llvm::BasicBlock* const m_llvmBB;
 
@@ -99,16 +98,20 @@ private:
 	/// the item below the top and so on. The stack grows as the code
 	/// accesses more items on the EVM stack but once a value is put on
 	/// the stack, it will never be replaced.
-	std::vector<llvm::Value*> m_initialStack = {};
+	std::vector<llvm::Value*> m_initialStack;
 
 	/// This stack tracks the contents of the EVM stack as the basic block
 	/// executes. It may grow on both sides, as the code pushes items on
 	/// top of the stack or changes existing items.
-	std::vector<llvm::Value*> m_currentStack = {};
+	std::vector<llvm::Value*> m_currentStack;
 
 	/// How many items higher is the current stack than the initial one.
 	/// May be negative.
 	int m_tosOffset = 0;
+
+	/// Is the basic block a valid jump destination.
+	/// JUMPDEST is the first instruction of the basic block.
+	bool const m_isJumpDest = false;
 };
 
 }

@@ -18,6 +18,28 @@ struct MemoryRef
 	llvm::Value* size;
 };
 
+template<typename _EnumT>
+struct sizeOf
+{
+	static const size_t value = static_cast<size_t>(_EnumT::_size);
+};
+
+enum class EnvFunc
+{
+	sload,
+	sstore,
+	sha3,
+	balance,
+	create,
+	call,
+	log,
+	blockhash,
+	getExtCode,
+	calldataload,  // Helper function, not client Env interface
+
+	_size
+};
+
 class Ext : public RuntimeHelper
 {
 public:
@@ -30,6 +52,7 @@ public:
 	llvm::Value* calldataload(llvm::Value* _index);
 	llvm::Value* create(llvm::Value*& _gas, llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize);
 	llvm::Value* call(llvm::Value*& _gas, llvm::Value* _receiveAddress, llvm::Value* _value, llvm::Value* _inOff, llvm::Value* _inSize, llvm::Value* _outOff, llvm::Value* _outSize, llvm::Value* _codeAddress);
+	llvm::Value* blockhash(llvm::Value* _number);
 
 	llvm::Value* sha3(llvm::Value* _inOff, llvm::Value* _inSize);
 	MemoryRef getExtCode(llvm::Value* _addr);
@@ -39,27 +62,16 @@ public:
 private:
 	Memory& m_memoryMan;
 
-	llvm::Value* m_args[2];
-	llvm::Value* m_arg2;
-	llvm::Value* m_arg3;
-	llvm::Value* m_arg4;
-	llvm::Value* m_arg5;
-	llvm::Value* m_arg6;
-	llvm::Value* m_arg7;
-	llvm::Value* m_arg8;
 	llvm::Value* m_size;
 	llvm::Value* m_data = nullptr;
-	llvm::Function* m_sload;
-	llvm::Function* m_sstore;
-	llvm::Function* m_calldataload;
-	llvm::Function* m_balance = nullptr;
-	llvm::Function* m_create;
-	llvm::Function* m_call;
-	llvm::Function* m_sha3;
-	llvm::Function* m_getExtCode;
-	llvm::Function* m_log;
 
-	llvm::Function* getBalanceFunc();
+	std::array<llvm::Function*, sizeOf<EnvFunc>::value> m_funcs;
+	std::array<llvm::Value*, 8> m_argAllocas;
+	size_t m_argCounter = 0;
+
+	llvm::CallInst* createCall(EnvFunc _funcId, std::initializer_list<llvm::Value*> const& _args);
+	llvm::Value* getArgAlloca();
+	llvm::Value* byPtr(llvm::Value* _value);
 };
 
 
