@@ -110,10 +110,10 @@ struct PeerInfo
 
 using Nodes = std::vector<PeerInfo>;
 
-	
-class Host;
+
 class HostNodeTableHandler: public NodeTableEventHandler
 {
+	friend class Host;
 	HostNodeTableHandler(Host& _host);
 	virtual void processEvent(NodeId _n, NodeTableEventType _e);
 	Host& m_host;
@@ -213,7 +213,7 @@ private:
 	void runAcceptor();
 	
 	/// Handler for verifying handshake siganture before creating session. _egressNodeId is passed for outbound connections.
-	void doHandshake(bi::tcp::socket* _socket, NodeId _egressNodeId = NodeId());
+	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId);
 	
 	void seal(bytes& _b);
 

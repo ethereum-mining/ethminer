@@ -177,6 +177,8 @@ void Host::onNodeTableEvent(NodeId _n, NodeTableEventType _e)
 {
 	if (_e == NodeEntryAdded)
 	{
+		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
+		
 		auto n = (*m_nodeTable)[_n];
 		if (n)
 		{
@@ -196,6 +198,8 @@ void Host::onNodeTableEvent(NodeId _n, NodeTableEventType _e)
 	}
 	else if (_e == NodeEntryRemoved)
 	{
+		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryRemoved " << _n;
+		
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
@@ -294,7 +298,17 @@ void Host::runAcceptor()
 			{
 				try
 				{
-					doHandshake(s);
+//					RecursiveGuard l(x_sessions);
+//					auto p = m_peers[_n];
+//					if (!p)
+//					{
+//						m_peers[_n] = make_shared<PeerInfo>();
+//						p = m_peers[_n];
+//						p->id = _n;
+//					}
+//					p->address = n.endpoint.tcp;
+					
+					doHandshake(s, NodeId());
 					success = true;
 				}
 				catch (Exception const& _e)
@@ -329,6 +343,7 @@ void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
 		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
 	} catch (...){}
 
+	//
 	auto p = std::make_shared<Session>(this, std::move(*_socket), m_peers[_nodeId]);
 	p->start();
 }
@@ -538,6 +553,8 @@ void Host::run(boost::system::error_code const&)
 		return;
 	}
 	
+	m_nodeTable->processEvents();
+	
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
@@ -585,6 +602,7 @@ void Host::startedWorking()
 			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort));
 		else
 			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort > 0 ? m_listenPort : 30303));
+		m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	}
 
 	clog(NetNote) << "p2p.started id:" << id().abridged();
