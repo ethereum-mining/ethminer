@@ -84,13 +84,16 @@ struct InstalledFilter
 static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
 
+static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
+static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
+
 struct ClientWatch
 {
 	ClientWatch() {}
 	explicit ClientWatch(h256 _id): id(_id) {}
 
 	h256 id;
-	LocalisedLogEntries changes;
+	LocalisedLogEntries changes = { InitialChange };
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
