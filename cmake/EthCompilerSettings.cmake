@@ -28,8 +28,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	# specify Exception Handling Model in msvc
-	set(CMAKE_C_FLAGS "/EHsc")
-	set(CMAKE_CXX_FLAGS "/EHsc")
+	# disable unknown pragma warning (4068)
+	# disable unsafe function warning (4996)
+	# disable decorated name length exceeded, name was truncated (4503)
+	# disable warning C4535: calling _set_se_translator() requires /EHa (for boost tests)
+	# declare Windows XP requirement
+	add_compile_options(/EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501)
+	# disable empty object file warning
+	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
+	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 
+	# warning LNK4099: pdb was not found with lib
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075")
 	# windows likes static
 	set(ETH_STATIC 1)
 
