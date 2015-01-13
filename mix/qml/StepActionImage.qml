@@ -19,8 +19,8 @@ Rectangle {
 			debugImg.iconSource = disableStateImg;
 	}
 
-	width: 15
-	height: 15
+	width: debugImg.width + 4
+	height: debugImg.height
 	color: "transparent"
 	Button
 	{
@@ -28,16 +28,8 @@ Rectangle {
 		id: debugImg
 		iconSource: enabledStateImg
 		action: buttonAction
-		style: ButtonStyle {
-			background: Component {
-				Rectangle {
-					color: "transparent"
-					border.width: 0
-					width: 15
-					height: 15
-				}
-			}
-		}
+		width: 17
+		height: 27
 	}
 	Action {
 		id: buttonAction

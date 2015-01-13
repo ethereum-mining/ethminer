@@ -101,6 +101,8 @@ Rectangle {
 
 
 	Flickable {
+		property int firstColumnWidth: 170
+		property int secondColumnWidth: 250
 		id: debugScrollArea
 		flickableDirection: Flickable.VerticalFlick
 		anchors.fill: parent
@@ -121,74 +123,76 @@ Rectangle {
 			rowSpacing: 15
 			RowLayout {
 				// step button + slider
-				spacing: 10
+				spacing: machineStates.sideMargin
 				height: 27
 				width: debugPanel.width
-				RowLayout {
-					id: jumpButtons
-					spacing: 15
-					width: 250
+				Rectangle
+				{
 					height: parent.height
+					color: "transparent"
+					width: debugScrollArea.firstColumnWidth
+					RowLayout {
+						anchors.horizontalCenter: parent.horizontalCenter
+						id: jumpButtons
+						spacing: 3
+						StepActionImage
+						{
+							id: jumpoutbackaction;
+							enabledStateImg: "qrc:/qml/img/jumpoutback.png"
+							disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
+							onClicked: Debugger.stepOutBack()
+						}
 
-					StepActionImage
-					{
-						id: jumpoutbackaction;
-						enabledStateImg: "qrc:/qml/img/jumpoutback.png"
-						disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
-						onClicked: Debugger.stepOutBack()
-					}
+						StepActionImage
+						{
+							id: jumpintobackaction
+							enabledStateImg: "qrc:/qml/img/jumpintoback.png"
+							disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
+							onClicked: Debugger.stepIntoBack()
+						}
 
-					StepActionImage
-					{
-						id: jumpintobackaction
-						enabledStateImg: "qrc:/qml/img/jumpintoback.png"
-						disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
-						onClicked: Debugger.stepIntoBack()
-					}
+						StepActionImage
+						{
+							id: jumpoverbackaction
+							enabledStateImg: "qrc:/qml/img/jumpoverback.png"
+							disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
+							onClicked: Debugger.stepOverBack()
+						}
 
-					StepActionImage
-					{
-						id: jumpoverbackaction
-						enabledStateImg: "qrc:/qml/img/jumpoverback.png"
-						disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
-						onClicked: Debugger.stepOverBack()
-					}
+						StepActionImage
+						{
+							id: jumpoverforwardaction
+							enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
+							disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
+							onClicked: Debugger.stepOverForward()
+						}
 
-					StepActionImage
-					{
-						id: jumpoverforwardaction
-						enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
-						disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
-						onClicked: Debugger.stepOverForward()
-					}
+						StepActionImage
+						{
+							id: jumpintoforwardaction
+							enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
+							disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
+							onClicked: Debugger.stepIntoForward()
+						}
 
-					StepActionImage
-					{
-						id: jumpintoforwardaction
-						enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
-						disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
-						onClicked: Debugger.stepIntoForward()
-					}
-
-					StepActionImage
-					{
-						id: jumpoutforwardaction
-						enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
-						disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
-						onClicked: Debugger.stepOutForward()
+						StepActionImage
+						{
+							id: jumpoutforwardaction
+							enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
+							disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
+							onClicked: Debugger.stepOutForward()
+						}
 					}
 				}
-
 				Rectangle {
 					color: "transparent"
-					width: 250
+					width: debugScrollArea.secondColumnWidth
 					height: parent.height
 					Slider {
 						id: statesSlider
 						anchors.fill: parent
 						tickmarksEnabled: true
 						stepSize: 1.0
-						height: parent.height
 						onValueChanged: Debugger.jumpTo(value);
 						style: SliderStyle {
 							groove: Rectangle {
@@ -214,11 +218,11 @@ Rectangle {
 				// Assembly code
 				width: debugPanel.width
 				height: 405
-				spacing: 10
+				spacing: machineStates.sideMargin
 
 				Rectangle
 				{
-					width: 170
+					width: debugScrollArea.firstColumnWidth
 					height: parent.height
 					border.width: 3
 					border.color: "#deddd9"
@@ -243,7 +247,7 @@ Rectangle {
 							radius: 4
 							height: statesList.currentItem.height
 							width: statesList.currentItem.width;
-							color: "#4b8fe2"
+							color: "#4A90E2"
 							Behavior on y { SpringAnimation { spring: 2; damping: 0.1 } }
 						}
 					}
@@ -277,7 +281,7 @@ Rectangle {
 				}
 
 				ColumnLayout {
-					width: 250
+					width: debugScrollArea.secondColumnWidth
 					height: parent.height
 					Rectangle {
 						// Info
@@ -457,8 +461,6 @@ Rectangle {
 				color: "#e3e3e3"
 				radius: 3
 			}
-
-
 
 			DebugInfoList {
 				id: memoryDump
