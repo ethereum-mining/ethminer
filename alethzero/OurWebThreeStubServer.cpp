@@ -22,6 +22,7 @@
 #include "OurWebThreeStubServer.h"
 
 #include <QMessageBox>
+#include <QAbstractButton>
 #include <libwebthree/WebThree.h>
 #include "MainWin.h"
 
@@ -62,7 +63,8 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 
 
 	//LTODO: Actually find and use the method name  here
-	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, "multiply");
+	// std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, "multiply");
+	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
 	if (userNotice.empty())
 	{
 		QMessageBox userInput;
@@ -77,8 +79,10 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 	// otherwise it's a transaction to a contract for which we have the natspec
 	QMessageBox userInput;
 	userInput.setText("Pending Transaction");
-	userInput.setInformativeText(QString::fromStdString(userNotice));
+	userInput.setInformativeText(QString::fromStdString(userNotice + "\n Do you wish to allow this?"));
 	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	userInput.button(QMessageBox::Ok)->setText("Allow");
+	userInput.button(QMessageBox::Cancel)->setText("Reject");
 	userInput.setDefaultButton(QMessageBox::Cancel);
 	return userInput.exec() == QMessageBox::Ok;
 
