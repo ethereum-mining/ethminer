@@ -45,8 +45,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 	{
 		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, llvm::getGlobalContext()));
 		auto mainFuncType = llvm::FunctionType::get(llvm::IntegerType::get(llvm::getGlobalContext(), 32), {}, false);
-		auto func = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
-		(void)func;
+		llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
 	}
 	return nullptr;
 }
@@ -69,9 +68,8 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 	cacheFile << _object->getBuffer();
 }
 
-llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
+llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const*)
 {
-	(void)_module;
 	auto o = lastObject;
 	lastObject = nullptr;
 	return o;

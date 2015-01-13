@@ -90,7 +90,7 @@ function addFile(fileName) {
 		name: isContract ? "Contract" : fileName,
 		documentId: fileName,
 		isText: isContract || extension === ".html" || extension === ".js",
-		isContract: fileData,
+		isContract: isContract,
 	};
 
 	projectListModel.append(fileData);
@@ -130,11 +130,11 @@ function doCreateProject(title, path) {
 	var contractsFile = "contracts.sol";
 	var projectData = {
 		title: title,
-		files: [ indexFile, contractsFile ]
+		files: [ contractsFile, indexFile ]
 	};
 	//TODO: copy from template
 	fileIo.writeFile(dirPath + indexFile, "<html></html>");
-	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n  }\n");
+	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n}\n");
 	var json = JSON.stringify(projectData);
 	fileIo.writeFile(projectFile, json);
 	loadProject(dirPath);
