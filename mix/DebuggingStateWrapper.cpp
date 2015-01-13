@@ -128,10 +128,10 @@ QVariantList DebuggingStateWrapper::debugCallData()
 	return fillList(qVariantDump(dump), QVariant(filled));
 }
 
-QVariantList DebuggingStateWrapper::qVariantDump(std::list<std::list<std::string>> const& dump)
+QVariantList DebuggingStateWrapper::qVariantDump(std::list<std::list<std::string>> const& _dump)
 {
 	QVariantList ret;
-	for (std::list<std::string> line: dump)
+	for (std::list<std::string> line: _dump)
 	{
 		QStringList qLine;
 		for (std::string cell: line)
