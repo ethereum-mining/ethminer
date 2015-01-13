@@ -184,7 +184,7 @@ shared_ptr<Node> Host::noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, boo
 {
 	RecursiveGuard l(x_peers);
 	if (_a.port() < 30300 || _a.port() > 30305)
-		cwarn << "Weird port being recorded: " << _a.port();
+		cwarn << "Non-standard port being recorded: " << _a.port();
 
 	if (_a.port() >= /*49152*/32768)
 	{
