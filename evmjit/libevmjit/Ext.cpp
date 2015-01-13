@@ -22,11 +22,9 @@ namespace jit
 
 Ext::Ext(RuntimeManager& _runtimeManager, Memory& _memoryMan):
 	RuntimeHelper(_runtimeManager),
-	m_memoryMan(_memoryMan)
-	// TODO: fix: either initialise properly or don't specify in constructor.
-	/*,
-	m_funcs{},
-	m_argAllocas{}*/
+	m_memoryMan(_memoryMan),
+	m_funcs({}),  // The only std::array initialization that works in both Visual Studio & GCC
+	m_argAllocas({})
 {
 	m_size = m_builder.CreateAlloca(Type::Size, nullptr, "env.size");
 }
