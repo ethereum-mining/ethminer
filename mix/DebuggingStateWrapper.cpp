@@ -121,7 +121,7 @@ QStringList DebuggingStateWrapper::debugCallData()
 	return fillList(re, " ");
 }
 
-QStringList DebuggingStateWrapper::fillList(QStringList _list, QString _emptyValue)
+QStringList DebuggingStateWrapper::fillList(QStringList& _list, QString const& _emptyValue)
 {
 	if (_list.size() < 20)
 	{

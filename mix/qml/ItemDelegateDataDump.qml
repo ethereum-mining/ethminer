@@ -34,8 +34,8 @@ Rectangle {
 				text: row.formatData(modelData, 0)
 				font.pointSize: 9;
 			}
-
 		}
+
 		Rectangle
 		{
 			anchors.left: firstCol.right
@@ -46,6 +46,7 @@ Rectangle {
 			Layout.minimumHeight: parent.height
 			Text {
 				anchors.left: parent.left
+				anchors.leftMargin: 7
 				anchors.verticalCenter: parent.verticalCenter
 				color: "#8b8b8b"
 				text: row.formatData(modelData, 1)

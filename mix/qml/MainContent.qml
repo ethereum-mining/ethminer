@@ -86,16 +86,15 @@ Rectangle {
 			Layout.preferredHeight: root.height - headerView.height;
 
 			ProjectList	{
-				width: parent.width * 0.2
+				id: projectList
+				width: 200
 				height: parent.height
 				Layout.minimumWidth: 200
 			}
 
 			Rectangle {
-
-				anchors.top: parent.top
 				id: contentView
-				width: parent.width
+				width: parent.width - projectList.width
 				height: parent.height
 				CodeEditorView {
 								height: parent.height
@@ -113,21 +112,19 @@ Rectangle {
 					hide();
 				}
 
-				property real panelRelWidth: 0.38
-
 				function show() {
 					visible = true;
-					contentView.width = parent.width * (1 - 0.38)
+					contentView.width = parent.width - projectList.width - rightView.width;
 				}
 
 				function hide() {
 					visible = false;
-					contentView.width = parent.width;
+					contentView.width = parent.width - projectList.width;
 				}
 
 				height: parent.height;
-				width: Layout.minimumWidth
-				Layout.minimumWidth: parent.width * 0.38
+				width: 450
+				Layout.minimumWidth: 450
 				Rectangle {
 					anchors.fill: parent;
 					id: rightPaneView

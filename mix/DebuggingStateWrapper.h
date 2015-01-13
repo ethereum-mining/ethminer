@@ -134,7 +134,7 @@ private:
 	MachineState m_state;
 	bytes m_code;
 	bytes m_data;
-	QStringList fillList(QStringList _list, QString _emptyValue);
+	QStringList fillList(QStringList& _list, QString const& _emptyValue);
 };
 
 }

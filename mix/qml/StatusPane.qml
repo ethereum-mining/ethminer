@@ -90,8 +90,6 @@ Rectangle {
 					anchors.fill: parent
 					onClicked: {
 						mainContent.ensureRightView();
-						//clientModel.showDebugger();
-						//debugModel.updateDebugPanel();
 					}
 				}
 			}
@@ -114,7 +112,7 @@ Rectangle {
 				Button
 				{
 					anchors.right: parent.right
-					anchors.rightMargin: 15
+					anchors.rightMargin: 7
 					anchors.verticalCenter: parent.verticalCenter
 					id: debugImg
 					iconSource: "qrc:/qml/img/bugiconinactive.png"
