@@ -2294,6 +2294,11 @@ std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, std::s
 	return m_natspecDB.getUserNotice(_contractHash, _methodName);
 }
 
+std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
+{
+	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
+}
+
 void Main::refreshWhispers()
 {
 	ui->whispers->clear();
