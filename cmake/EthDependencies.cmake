@@ -113,6 +113,15 @@ if (NOT HEADLESS)
 		message(" - macdeployqt path: ${MACDEPLOYQT_APP}")
 	endif()
 
+# TODO check node && npm version
+	find_program(ETH_NODE node)
+	string(REGEX REPLACE "node" "" ETH_NODE_DIRECTORY ${ETH_NODE})
+	message(" - nodejs location : ${ETH_NODE}")
+
+	find_program(ETH_NPM npm)
+	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
+	message(" - npm location    : ${ETH_NPM}")
+
 endif() #HEADLESS
 
 # use multithreaded boost libraries, with -mt suffix
