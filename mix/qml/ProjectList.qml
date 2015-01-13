@@ -80,7 +80,6 @@ Item {
 					hoverEnabled: true
 					z:2
 					onClicked: {
-						console.log("clicked");
 						textInput.forceActiveFocus();
 					}
 				}
