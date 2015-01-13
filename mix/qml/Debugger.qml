@@ -141,6 +141,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 							disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 							onClicked: Debugger.stepOutBack()
+							width: 25
+							height: 27
 						}
 
 						StepActionImage
@@ -149,6 +151,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 							disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 							onClicked: Debugger.stepIntoBack()
+							width: 25
+							height: 27
 						}
 
 						StepActionImage
@@ -157,6 +161,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 							disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 							onClicked: Debugger.stepOverBack()
+							width: 25
+							height: 27
 						}
 
 						StepActionImage
@@ -165,6 +171,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 							disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 							onClicked: Debugger.stepOverForward()
+							width: 25
+							height: 27
 						}
 
 						StepActionImage
@@ -173,6 +181,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 							disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 							onClicked: Debugger.stepIntoForward()
+							width: 25
+							height: 27
 						}
 
 						StepActionImage
@@ -181,6 +191,8 @@ Rectangle {
 							enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 							disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 							onClicked: Debugger.stepOutForward()
+							width: 25
+							height: 27
 						}
 					}
 				}

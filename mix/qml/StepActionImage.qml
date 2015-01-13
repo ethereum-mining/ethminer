@@ -19,8 +19,6 @@ Rectangle {
 			debugImg.iconSource = disableStateImg;
 	}
 
-	width: debugImg.width + 4
-	height: debugImg.height
 	color: "transparent"
 	Button
 	{
@@ -28,9 +26,10 @@ Rectangle {
 		id: debugImg
 		iconSource: enabledStateImg
 		action: buttonAction
-		width: 17
-		height: 27
+		width: buttonActionContainer.width - 3
+		height: buttonActionContainer.height
 	}
+
 	Action {
 		id: buttonAction
 		onTriggered: {

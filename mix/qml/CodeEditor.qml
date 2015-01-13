@@ -73,7 +73,6 @@ Component {
 				}
 			}
 			onTextChanged: {
-				console.log("textchange")
 				editorTextChanged();
 			}
 
