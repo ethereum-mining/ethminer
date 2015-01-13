@@ -43,8 +43,6 @@ std::string OurWebThreeStubServer::shh_newIdentity()
 
 bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
 {
-	// return true;
-
 	// To get the balance of the sender
 	cnote << "Sender has ETH: " << m_web3->ethereum()->postState().balance(_t.from);
 
@@ -57,18 +55,31 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 		return true;	// or whatever.
 	}
 
-	std::string natspecJson = m_main->lookupNatSpec(contractCodeHash);
+	//LTODO: Just for debugging here
+	cnote << "Contract hash:\n" << contractCodeHash;
+	cnote << "Transaction Value:\n" << "0x" + toHex(_t.value);
+	cnote << "Transaction Data:\n" << "0x" + toHex(_t.data);
 
-	if (natspecJson.empty())
+
+	//LTODO: Actually find and use the method name  here
+	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, "multiply");
+	if (userNotice.empty())
 	{
-		// TODO: HUGE warning - we don't know what this will do!
-		return false;	// or whatever.
+		QMessageBox userInput;
+		userInput.setText("Unverified Pending Transaction");
+		userInput.setInformativeText("An undocumented transaction is about to be executed."
+									 "Are you really sure you want to go through with it?");
+		userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+		userInput.setDefaultButton(QMessageBox::Cancel);
+		return userInput.exec() == QMessageBox::Ok;
 	}
 
-	// otherwise it's a transaction to contract for which we have the natspec:
-	// determine the actual message (embellish with real data) and ask user.
+	// otherwise it's a transaction to a contract for which we have the natspec
+	QMessageBox userInput;
+	userInput.setText("Pending Transaction");
+	userInput.setInformativeText(QString::fromStdString(userNotice));
+	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	userInput.setDefaultButton(QMessageBox::Cancel);
+	return userInput.exec() == QMessageBox::Ok;
 
-//	QMessageBox::question();
-
-	return true;
 }

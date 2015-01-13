@@ -25,6 +25,8 @@
 
 #include <libethereum/Defaults.h>
 #include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
+
 
 using namespace dev;
 using namespace dev::eth;
@@ -54,5 +56,20 @@ std::string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 	return ret;
 }
 
+
+std::string NatspecHandler::getUserNotice(std::string const& json, std::string const& _methodName)
+{
+	Json::Value natspec, userNotice;
+	std::string retStr;
+	m_reader.parse(json, natspec);
+	retStr = natspec["methods"][_methodName]["notice"].toStyledString();
+
+	return (retStr == "null\n") ? "" : retStr;
+}
+
+std::string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, std::string const& _methodName)
+{
+	return getUserNotice(retrieve(_contractHash), _methodName);
+}
 
 
