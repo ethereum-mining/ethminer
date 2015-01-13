@@ -108,17 +108,37 @@ QStringList DebuggingStateWrapper::debugStorage()
 	return fillList(storage, "@ -");
 }
 
-QStringList DebuggingStateWrapper::debugMemory()
+QVariantList DebuggingStateWrapper::debugMemory()
 {
-	QStringList re = QString::fromStdString(memDump(m_state.memory, 16, false, "_separator_")).split('\n');
-	return fillList(re, " ");
+	std::list<std::list<std::string>> dump = memDumpToList(m_state.memory, 16);
+	QStringList filled;
+	filled.append(" ");
+	filled.append(" ");
+	filled.append(" ");
+	return fillList(qVariantDump(dump), QVariant(filled));
 }
 
-QStringList DebuggingStateWrapper::debugCallData()
+QVariantList DebuggingStateWrapper::debugCallData()
 {
-	qDebug() << QString::fromStdString(memDump(m_data, 16, false, "_separator_"));
-	QStringList re = QString::fromStdString(memDump(m_data, 16, false, "_separator_")).split('\n');
-	return fillList(re, " ");
+	std::list<std::list<std::string>> dump = memDumpToList(m_data, 16);
+	QStringList filled;
+	filled.append(" ");
+	filled.append(" ");
+	filled.append(" ");
+	return fillList(qVariantDump(dump), QVariant(filled));
+}
+
+QVariantList DebuggingStateWrapper::qVariantDump(std::list<std::list<std::string>> const& dump)
+{
+	QVariantList ret;
+	for (std::list<std::string> line: dump)
+	{
+		QStringList qLine;
+		for (std::string cell: line)
+			qLine.push_back(QString::fromStdString(cell));
+		ret.append(QVariant(qLine));
+	}
+	return ret;
 }
 
 QStringList DebuggingStateWrapper::fillList(QStringList& _list, QString const& _emptyValue)
@@ -130,6 +150,17 @@ QStringList DebuggingStateWrapper::fillList(QStringList& _list, QString const& _
 	}
 	return _list;
 }
+
+QVariantList DebuggingStateWrapper::fillList(QVariantList _list, QVariant const& _emptyValue)
+{
+	if (_list.size() < 20)
+	{
+		for (int k = _list.size(); k < 20 - _list.size(); k++)
+			_list.append(_emptyValue);
+	}
+	return _list;
+}
+
 
 QStringList DebuggingStateWrapper::levels()
 {

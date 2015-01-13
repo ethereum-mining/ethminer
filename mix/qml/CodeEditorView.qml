@@ -32,7 +32,6 @@ Item {
 
 	function doLoadDocument(editor, document) {
 		var data = fileIo.readFile(document.path);
-		console.log(document.isContract)
 		if (document.isContract)
 			editor.onEditorTextChanged.connect(function() {
 				codeModel.registerCodeChange(editor.getText());

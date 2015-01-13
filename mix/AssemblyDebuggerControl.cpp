@@ -29,17 +29,6 @@ using namespace dev::mix;
 AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
 	Extension(_context, ExtensionDisplayBehavior::RightView)
 {
-	/*
-	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
-	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
-	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
-	qRegisterMetaType<QList<QVariableDeclaration*>>("QList<QVariableDeclaration*>");
-	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
-	qRegisterMetaType<AssemblyDebuggerData>("AssemblyDebuggerData");
-	connect(this, &AssemblyDebuggerControl::dataAvailable, this, &AssemblyDebuggerControl::showDebugger, Qt::QueuedConnection);
-	m_modelDebugger = std::unique_ptr<AssemblyDebuggerModel>(new AssemblyDebuggerModel);
-	_context->appEngine()->rootContext()->setContextProperty("debugModel", this);*/
-
 	connect(_context->clientModel(), &ClientModel::showDebuggerWindow, this, &AssemblyDebuggerControl::showDebugger, Qt::QueuedConnection);
 }
 
