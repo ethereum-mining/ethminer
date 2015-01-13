@@ -64,10 +64,6 @@ Rectangle {
 			RowLayout
 			{
 				height: 100
-				Image {
-					id: compileFailed
-					source: "qrc:/qml/img/compilfailed.png"
-				}
 				ColumnLayout
 				{
 					Text {

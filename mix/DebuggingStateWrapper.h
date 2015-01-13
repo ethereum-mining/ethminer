@@ -136,7 +136,7 @@ private:
 	bytes m_data;
 	QStringList fillList(QStringList& _list, QString const& _emptyValue);
 	QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
-	QVariantList qVariantDump(std::list<std::list<std::string>> const& dump);
+	QVariantList qVariantDump(std::list<std::list<std::string>> const& _dump);
 };
 
 }

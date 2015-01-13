@@ -7,7 +7,6 @@ var currentSelectedState = null;
 var jumpStartingPoint = null;
 function init()
 {
-	console.log('popopop');
 	if (debugStates === undefined)
 		return;
 
@@ -16,7 +15,6 @@ function init()
 	statesList.model = humanReadableExecutionCode;
 	currentSelectedState = 0;
 	select(currentSelectedState);
-	//displayReturnValue();
 
 	jumpoutbackaction.enabled(false);
 	jumpintobackaction.enabled(false);
@@ -30,7 +28,6 @@ function moveSelection(incr)
 	{
 		if (currentSelectedState + incr < debugStates.length)
 			select(currentSelectedState + incr);
-
 		statesSlider.value = currentSelectedState;
 	}
 }
