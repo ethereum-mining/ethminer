@@ -1887,8 +1887,11 @@ void Main::on_send_clicked()
 					{
 						m_data = compiler.compile(src, m_enableOptimizer);
 						for (std::string& s: compiler.getContractNames())
-							m_natspecDB.add(compiler.getContractCodeHash(s),
+						{
+							h256 contractHash = compiler.getContractCodeHash(s);
+							m_natspecDB.add(contractHash,
 											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
+						}
 
 					}
 					catch (...)
@@ -2284,6 +2287,11 @@ void Main::on_post_clicked()
 std::string Main::lookupNatSpec(dev::h256 const& _contractHash) const
 {
 	return m_natspecDB.retrieve(_contractHash);
+}
+
+std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, std::string const& _methodName)
+{
+	return m_natspecDB.getUserNotice(_contractHash, _methodName);
 }
 
 void Main::refreshWhispers()
