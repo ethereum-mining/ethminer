@@ -30,7 +30,7 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
-#include <libqethereum/QEthereum.h>
+#include <libqwebthree/QWebThree.h>
 
 namespace Ui {
 class Main;

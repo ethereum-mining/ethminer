@@ -3,6 +3,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
+import org.ethereum.qml.ProjectModel 1.0
 
 Rectangle {
 	color: "transparent"
@@ -15,13 +16,21 @@ Rectangle {
 	property var stateList: []
 
 	Connections {
-		target: appContext
+		target: ProjectModel
+		onProjectClosed: {
+			stateListModel.clear();
+		}
 		onProjectLoaded: {
-			var items = JSON.parse(_json);
+			if (!target.projectData.states)
+				target.projectData.states = [];
+			var items = target.projectData.states;
 			for(var i = 0; i < items.length; i++) {
 				stateListModel.append(items[i]);
 				stateList.push(items[i])
 			}
+		}
+		onProjectSaving: {
+			projectData.states = stateList;
 		}
 	}
 
@@ -72,7 +81,7 @@ Rectangle {
 
 		function runState(index) {
 			var item = stateList[index];
-			debugModel.debugState(item);
+			clientModel.debugState(item);
 		}
 
 		function deleteState(index) {
@@ -82,8 +91,7 @@ Rectangle {
 		}
 
 		function save() {
-			var json = JSON.stringify(stateList);
-			appContext.saveProject(json);
+			ProjectModel.saveProject();
 		}
 	}
 
@@ -124,8 +132,8 @@ Rectangle {
 	Action {
 		id: addStateAction
 		text: "&Add State"
-		shortcut: "Ctrl+N"
-		enabled: codeModel.hasContract && !debugModel.running;
+		shortcut: "Ctrl+T"
+		enabled: codeModel.hasContract && !clientModel.running;
 		onTriggered: stateListModel.addState();
 	}
 }
