@@ -7,7 +7,7 @@ include(eth_download.cmake)
 # all dependencies will be installed into this directory, separated by platform
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/install/${_system_name}")
-set(ETH_DEPENDENCY_SERVER "http://poc-7.ethdev.com/precompiled/${_system_name}")
+set(ETH_DEPENDENCY_SERVER "http://build.ethdev.com/builds/${_system_name}-precompiled")
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/lib)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/include)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/bin)
