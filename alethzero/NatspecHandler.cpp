@@ -26,41 +26,49 @@
 #include <libethereum/Defaults.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
+#include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/SHA3.h>
 
 
 using namespace dev;
 using namespace dev::eth;
+using namespace std;
 
 NatspecHandler::NatspecHandler()
 {
-	std::string path = Defaults::dbPath();
+	string path = Defaults::dbPath();
 	boost::filesystem::create_directories(path);
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path + "/natspec", &m_db);
 }
 
-void NatspecHandler::add(dev::h256 const& _contractHash, std::string const& _doc)
+NatspecHandler::~NatspecHandler()
+{
+	delete m_db;
+}
+
+void NatspecHandler::add(dev::h256 const& _contractHash, string const& _doc)
 {
 	bytes k = _contractHash.asBytes();
-	std::string v = _doc;
+	string v = _doc;
 	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
 }
 
-std::string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
+string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 {
 	bytes k = _contractHash.asBytes();
-	std::string ret;
+	string ret;
 	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
 	return ret;
 }
 
-std::string NatspecHandler::getUserNotice(std::string const& json, const dev::bytes& _transactionData)
+string NatspecHandler::getUserNotice(string const& json, dev::bytes const& _transactionData)
 {
-	Json::Value natspec, userNotice;
-	std::string retStr;
+	Json::Value natspec;
+	Json::Value userNotice;
+	string retStr;
 	m_reader.parse(json, natspec);
 	bytes transactionFunctionPart(_transactionData.begin(), _transactionData.begin() + 4);
 	FixedHash<4> transactionFunctionHash(transactionFunctionPart);
@@ -68,11 +76,19 @@ std::string NatspecHandler::getUserNotice(std::string const& json, const dev::by
 	Json::Value methods = natspec["methods"];
 	for (Json::ValueIterator it= methods.begin(); it != methods.end(); ++it)
 	{
-		std::string functionSig = it.key().asString();
+		Json::Value keyValue = it.key();
+		if (!keyValue.isString())
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Illegal Natspec JSON detected"));
+
+		string functionSig = keyValue.asString();
 		FixedHash<4> functionHash(dev::sha3(functionSig));
 
-		if (functionHash == transactionFunctionHash) {
-			return (*it)["notice"].asString();
+		if (functionHash == transactionFunctionHash)
+		{
+			Json::Value val = (*it)["notice"];
+			if (!val.isString())
+				BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Illegal Natspec JSON detected"));
+			return val.asString();
 		}
 	}
 
@@ -80,7 +96,7 @@ std::string NatspecHandler::getUserNotice(std::string const& json, const dev::by
 	return "";
 }
 
-std::string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
+string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
 {
 	return getUserNotice(retrieve(_contractHash), _transactionData);
 }

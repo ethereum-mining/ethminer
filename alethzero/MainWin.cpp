@@ -37,7 +37,7 @@
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
-#include <libsolidity/CompilerStack.h>
+#include <libsolidity/AST.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
@@ -1642,6 +1642,22 @@ bool Main::sourceIsSolidity(std::string const& _source)
 	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
 }
 
+string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
+									 string const& _contractName)
+{
+	string ret = "";
+	auto const& contract = _compiler.getContractDefinition(_contractName);
+	auto interfaceFunctions = contract.getInterfaceFunctions();
+
+	for (auto const& it: interfaceFunctions)
+	{
+		ret += it.first.abridged();
+		ret += " :";
+		ret += it.second->getName() + "\n";
+	}
+	return ret;
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -1664,7 +1680,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
-				solidity += "<pre>" + QString::fromStdString(compiler.getFunctionHashes()).toHtmlEscaped() + "</pre>";
+				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
 			catch (dev::Exception const& exception)
 			{

@@ -44,7 +44,6 @@ std::string OurWebThreeStubServer::shh_newIdentity()
 
 bool OurWebThreeStubServer::showAuthenticationPopup(std::string const& _title, std::string const& _text) const
 {
-	// otherwise it's a transaction to a contract for which we have the natspec
 	QMessageBox userInput;
 	userInput.setText(QString::fromStdString(_title));
 	userInput.setInformativeText(QString::fromStdString(_text + "\n Do you wish to allow this?"));
