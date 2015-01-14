@@ -35,7 +35,7 @@ namespace solidity
 
 shared_ptr<Type const> Type::fromElementaryTypeName(Token::Value _typeToken)
 {
-	solAssert(Token::isElementaryTypeName(_typeToken), "");
+	solAssert(Token::isElementaryTypeName(_typeToken), "Elementary type name expected.");
 
 	if (Token::INT <= _typeToken && _typeToken <= Token::HASH256)
 	{
@@ -204,18 +204,12 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 }
 
 const MemberList IntegerType::AddressMemberList =
-	MemberList({{"balance",
-					make_shared<IntegerType >(256)},
-				{"callstring32",
-					make_shared<FunctionType>(TypePointers({make_shared<StaticStringType>(32)}),
-											  TypePointers(), FunctionType::Location::BARE)},
-				{"callstring32string32",
-					make_shared<FunctionType>(TypePointers({make_shared<StaticStringType>(32),
-															make_shared<StaticStringType>(32)}),
-											  TypePointers(), FunctionType::Location::BARE)},
-				{"send",
-					make_shared<FunctionType>(TypePointers({make_shared<IntegerType>(256)}),
-											  TypePointers(), FunctionType::Location::SEND)}});
+	MemberList({{"balance", make_shared<IntegerType >(256)},
+				{"callstring32", make_shared<FunctionType>(strings{"string32"}, strings{},
+														   FunctionType::Location::BARE)},
+				{"callstring32string32", make_shared<FunctionType>(strings{"string32", "string32"},
+																   strings{}, FunctionType::Location::BARE)},
+				{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::SEND)}});
 
 shared_ptr<IntegerConstantType const> IntegerConstantType::fromLiteral(string const& _literal)
 {
@@ -424,13 +418,18 @@ TypePointer BoolType::binaryOperatorResult(Token::Value _operator, TypePointer c
 		return TypePointer();
 }
 
-bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+bool ContractType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	if (isImplicitlyConvertibleTo(_convertTo))
+	if (*this == _convertTo)
 		return true;
 	if (_convertTo.getCategory() == Category::INTEGER)
 		return dynamic_cast<IntegerType const&>(_convertTo).isAddress();
 	return false;
+}
+
+bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	return isImplicitlyConvertibleTo(_convertTo) || _convertTo.getCategory() == Category::INTEGER;
 }
 
 bool ContractType::operator==(Type const& _other) const
@@ -459,7 +458,9 @@ MemberList const& ContractType::getMembers() const
 	// We need to lazy-initialize it because of recursive references.
 	if (!m_members)
 	{
-		map<string, shared_ptr<Type const>> members;
+		// All address members and all interface functions
+		map<string, shared_ptr<Type const>> members(IntegerType::AddressMemberList.begin(),
+													IntegerType::AddressMemberList.end());
 		for (auto const& it: m_contract.getInterfaceFunctions())
 			members[it.second->getName()] = make_shared<FunctionType>(*it.second, false);
 		m_members.reset(new MemberList(members));
@@ -487,7 +488,7 @@ u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 		if (it->second->getName() == _functionName)
 			return FixedHash<4>::Arith(it->first);
 
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Index of non-existing contract function requested."));
+	return Invalid256;
 }
 
 bool StructType::operator==(Type const& _other) const
@@ -545,7 +546,8 @@ u256 StructType::getStorageOffsetOfMember(string const& _name) const
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage offset of non-existing member requested."));
 }
 
-FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal)
+FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal):
+	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL)
 {
 	TypePointers params;
 	TypePointers retParams;
@@ -557,7 +559,6 @@ FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal
 		retParams.push_back(var->getType());
 	swap(params, m_parameterTypes);
 	swap(retParams, m_returnParameterTypes);
-	m_location = _isInternal ? Location::INTERNAL : Location::EXTERNAL;
 }
 
 bool FunctionType::operator==(Type const& _other) const
@@ -579,6 +580,9 @@ bool FunctionType::operator==(Type const& _other) const
 	if (!equal(m_returnParameterTypes.cbegin(), m_returnParameterTypes.cend(),
 			   other.m_returnParameterTypes.cbegin(), typeCompare))
 		return false;
+	//@todo this is ugly, but cannot be prevented right now
+	if (m_gasSet != other.m_gasSet || m_valueSet != other.m_valueSet)
+		return false;
 	return true;
 }
 
@@ -595,16 +599,44 @@ string FunctionType::toString() const
 
 unsigned FunctionType::getSizeOnStack() const
 {
+	unsigned size = 0;
+	if (m_location == Location::EXTERNAL)
+		size = 2;
+	else if (m_location == Location::INTERNAL || m_location == Location::BARE)
+		size = 1;
+	if (m_gasSet)
+		size++;
+	if (m_valueSet)
+		size++;
+	return size;
+}
+
+MemberList const& FunctionType::getMembers() const
+{
 	switch (m_location)
 	{
-	case Location::INTERNAL:
-		return 1;
 	case Location::EXTERNAL:
-		return 2;
+	case Location::CREATION:
+	case Location::ECRECOVER:
+	case Location::SHA256:
+	case Location::RIPEMD160:
 	case Location::BARE:
-		return 1;
+		if (!m_members)
+		{
+			map<string, TypePointer> members{
+				{"gas", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
+												  TypePointers{copyAndSetGasOrValue(true, false)},
+												  Location::SET_GAS, m_gasSet, m_valueSet)},
+				{"value", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
+													TypePointers{copyAndSetGasOrValue(false, true)},
+													Location::SET_VALUE, m_gasSet, m_valueSet)}};
+			if (m_location == Location::CREATION)
+				members.erase("gas");
+			m_members.reset(new MemberList(members));
+		}
+		return *m_members;
 	default:
-		return 0;
+		return EmptyMemberList;
 	}
 }
 
@@ -616,6 +648,21 @@ string FunctionType::getCanonicalSignature() const
 		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
 
 	return ret + ")";
+}
+
+TypePointers FunctionType::parseElementaryTypeVector(strings const& _types)
+{
+	TypePointers pointers;
+	pointers.reserve(_types.size());
+	for (string const& type: _types)
+		pointers.push_back(Type::fromElementaryTypeName(Token::fromIdentifierOrKeyword(type)));
+	return pointers;
+}
+
+TypePointer FunctionType::copyAndSetGasOrValue(bool _setGas, bool _setValue) const
+{
+	return make_shared<FunctionType>(m_parameterTypes, m_returnParameterTypes, m_location,
+									 m_gasSet || _setGas, m_valueSet || _setValue);
 }
 
 bool MappingType::operator==(Type const& _other) const

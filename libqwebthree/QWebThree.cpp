@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file QEthereum.cpp
+/** @file QWebThree.cpp
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
@@ -22,7 +22,7 @@
  */
 
 #include <QtCore/QtCore>
-#include "QEthereum.h"
+#include "QWebThree.h"
 
 using namespace std;
 
@@ -134,24 +134,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	if (!_addInfo.compare("internal"))
 		return;
 
-	if (!_addInfo.compare("eth_changed"))
-	{
-		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
-		for (int i = 0; i < resultsArray.size(); i++)
-		{
-			QJsonObject elem = resultsArray[i].toObject();
-			if (elem.contains("result") && elem["result"].toBool() == true)
-			{
-				QJsonObject res;
-				res["_event"] = _addInfo;
-				res["_id"] = (int)m_watches[i]; // we can do that couse poll is synchronous
-				response(QString::fromUtf8(QJsonDocument(res).toJson()));
-			}
-		}
-		return;
-	}
-	
-	if (!_addInfo.compare("shh_changed"))
+	if (!_addInfo.compare("shh_changed") || !_addInfo.compare("eth_changed"))
 	{
 		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
 		for (int i = 0; i < resultsArray.size(); i++)
@@ -161,13 +144,18 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 			{
 				QJsonObject res;
 				res["_event"] = _addInfo;
-				res["_id"] = (int)m_shhWatches[i];
+
+				if (!_addInfo.compare("shh_changed"))
+					res["_id"] = (int)m_shhWatches[i]; // we can do that couse poll is synchronous
+				else
+					res["_id"] = (int)m_watches[i];
+
 				res["data"] = elem["result"].toArray();
 				response(QString::fromUtf8(QJsonDocument(res).toJson()));
 			}
 		}
 	}
-	
+
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	
 	if ((!_addInfo.compare("eth_newFilter") || !_addInfo.compare("eth_newFilterString")) && f.contains("result"))

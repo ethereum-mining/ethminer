@@ -47,6 +47,8 @@ namespace mix
 {
 
 class CodeModel;
+class ClientModel;
+class FileIo;
 /**
  * @brief Provides access to application scope variable.
  */
@@ -62,23 +64,25 @@ public:
 	QQmlApplicationEngine* appEngine();
 	/// Get code model
 	CodeModel* codeModel() { return m_codeModel.get(); }
+	/// Get client model
+	ClientModel* clientModel() { return m_clientModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
-	/// Load project settings
-	void loadProject();
+
 signals:
-	void projectLoaded(QString const& _json);
+	/// Triggered once components have been loaded
+	void appLoaded();
 
 private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<CodeModel> m_codeModel;
+	std::unique_ptr<ClientModel> m_clientModel;
+	std::unique_ptr<FileIo> m_fileIo;
 
 public slots:
 	/// Delete the current instance when application quit.
 	void quitApplication() {}
-	/// Write json to a settings file
-	void saveProject(QString const& _json);
 };
 
 }

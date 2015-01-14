@@ -49,6 +49,7 @@ endfunction()
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
+	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
@@ -61,6 +62,16 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/clang")
 	else ()
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
+	endif ()
+
+	if (EVMJIT)
+		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/JIT")
+	else ()
+		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/int")
+	endif ()
+
+	if (PARANOIA)
+		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/PARA")
 	endif ()
 
 	#cmake build type may be not specified when using msvc
@@ -156,7 +167,7 @@ endif ()
 if (NOT HEADLESS)
 	
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqethereum)
+	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)
