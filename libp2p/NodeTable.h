@@ -102,8 +102,8 @@ protected:
 				return;
 			m_nodeEvents.unique();
 			for (auto const& n: m_nodeEvents) events.push_back(std::make_pair(n,m_events[n]));
-			m_nodeEvents.empty();
-			m_events.empty();
+			m_nodeEvents.clear();
+			m_events.clear();
 		}
 		for (auto const& e: events)
 			processEvent(e.first, e.second);
