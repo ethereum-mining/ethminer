@@ -136,7 +136,11 @@ private:
 	bytes m_data;
 	QStringList fillList(QStringList& _list, QString const& _emptyValue);
 	QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
-	QVariantList qVariantDump(std::list<std::list<std::string>> const& _dump);
+	QVariantList qVariantDump(std::vector<std::vector<std::string>> const& _dump);
+	/// Nicely renders the given bytes to a string, store the content in an array.
+	/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
+	std::vector<std::vector<std::string>> memDumpToList(bytes const& _bytes, unsigned _width);
+
 };
 
 }

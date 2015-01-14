@@ -110,7 +110,7 @@ QStringList DebuggingStateWrapper::debugStorage()
 
 QVariantList DebuggingStateWrapper::debugMemory()
 {
-	std::list<std::list<std::string>> dump = memDumpToList(m_state.memory, 16);
+	std::vector<std::vector<std::string>> dump = memDumpToList(m_state.memory, 16);
 	QStringList filled;
 	filled.append(" ");
 	filled.append(" ");
@@ -120,7 +120,7 @@ QVariantList DebuggingStateWrapper::debugMemory()
 
 QVariantList DebuggingStateWrapper::debugCallData()
 {
-	std::list<std::list<std::string>> dump = memDumpToList(m_data, 16);
+	std::vector<std::vector<std::string>> dump = memDumpToList(m_data, 16);
 	QStringList filled;
 	filled.append(" ");
 	filled.append(" ");
@@ -128,13 +128,45 @@ QVariantList DebuggingStateWrapper::debugCallData()
 	return fillList(qVariantDump(dump), QVariant(filled));
 }
 
-QVariantList DebuggingStateWrapper::qVariantDump(std::list<std::list<std::string>> const& _dump)
+std::vector<std::vector<std::string>> DebuggingStateWrapper::memDumpToList(bytes const& _bytes, unsigned _width)
+{
+	std::vector<std::vector<std::string>> dump;
+	for (unsigned i = 0; i < _bytes.size(); i += _width)
+	{
+		std::stringstream ret;
+		std::vector<std::string> dumpLine;
+		ret << std::hex << std::setw(4) << std::setfill('0') << i << " ";
+		dumpLine.push_back(ret.str());
+		ret.str(std::string());
+		ret.clear();
+
+		for (unsigned j = i; j < i + _width; ++j)
+			if (j < _bytes.size())
+				if (_bytes[j] >= 32 && _bytes[j] < 127)
+					ret << (char)_bytes[j];
+				else
+					ret << '?';
+			else
+				ret << ' ';
+		dumpLine.push_back(ret.str());
+		ret.str(std::string());
+		ret.clear();
+
+		for (unsigned j = i; j < i + _width && j < _bytes.size(); ++j)
+			ret << std::setfill('0') << std::setw(2) << std::hex << (unsigned)_bytes[j] << " ";
+		dumpLine.push_back(ret.str());
+		dump.push_back(dumpLine);
+	}
+	return dump;
+}
+
+QVariantList DebuggingStateWrapper::qVariantDump(std::vector<std::vector<std::string>> const& _dump)
 {
 	QVariantList ret;
-	for (std::list<std::string> line: _dump)
+	for (std::vector<std::string> const& line: _dump)
 	{
 		QStringList qLine;
-		for (std::string cell: line)
+		for (std::string const& cell: line)
 			qLine.push_back(QString::fromStdString(cell));
 		ret.append(QVariant(qLine));
 	}
@@ -185,9 +217,7 @@ QString DebuggingStateWrapper::headerInfo()
 
 QString DebuggingStateWrapper::instruction()
 {
-	std::ostringstream ss;
-	ss << dev::eth::instructionInfo(m_state.inst).name;
-	return QString::fromStdString(ss.str());
+	return QString::fromStdString(dev::eth::instructionInfo(m_state.inst).name);
 }
 
 QString DebuggingStateWrapper::endOfDebug()

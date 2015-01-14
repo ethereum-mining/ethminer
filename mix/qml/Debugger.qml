@@ -133,7 +133,7 @@ Rectangle {
 						spacing: 3
 						StepActionImage
 						{
-							id: jumpoutbackaction;
+							id: jumpOutBackAction;
 							enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 							disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 							onClicked: Debugger.stepOutBack()
@@ -143,7 +143,7 @@ Rectangle {
 
 						StepActionImage
 						{
-							id: jumpintobackaction
+							id: jumpIntoBackAction
 							enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 							disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 							onClicked: Debugger.stepIntoBack()
@@ -153,7 +153,7 @@ Rectangle {
 
 						StepActionImage
 						{
-							id: jumpoverbackaction
+							id: jumpOverBackAction
 							enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 							disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 							onClicked: Debugger.stepOverBack()
@@ -163,7 +163,7 @@ Rectangle {
 
 						StepActionImage
 						{
-							id: jumpoverforwardaction
+							id: jumpOverForwardAction
 							enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 							disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 							onClicked: Debugger.stepOverForward()
@@ -173,7 +173,7 @@ Rectangle {
 
 						StepActionImage
 						{
-							id: jumpintoforwardaction
+							id: jumpIntoForwardAction
 							enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 							disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 							onClicked: Debugger.stepIntoForward()
@@ -183,7 +183,7 @@ Rectangle {
 
 						StepActionImage
 						{
-							id: jumpoutforwardaction
+							id: jumpOutForwardAction
 							enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 							disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 							onClicked: Debugger.stepOutForward()
