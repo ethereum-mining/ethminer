@@ -74,7 +74,7 @@ string NatspecHandler::getUserNotice(string const& json, dev::bytes const& _tran
 	FixedHash<4> transactionFunctionHash(transactionFunctionPart);
 
 	Json::Value methods = natspec["methods"];
-	for (Json::ValueIterator it= methods.begin(); it != methods.end(); ++it)
+	for (Json::ValueIterator it = methods.begin(); it != methods.end(); ++it)
 	{
 		Json::Value keyValue = it.key();
 		if (!keyValue.isString())
