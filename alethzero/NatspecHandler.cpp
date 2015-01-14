@@ -42,7 +42,6 @@ NatspecHandler::NatspecHandler()
 	ldb::DB::Open(o, path + "/natspec", &m_db);
 }
 
-
 void NatspecHandler::add(dev::h256 const& _contractHash, std::string const& _doc)
 {
 	bytes k = _contractHash.asBytes();
@@ -58,17 +57,6 @@ std::string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 	return ret;
 }
 
-
-std::string NatspecHandler::getUserNotice(std::string const& json, std::string const& _methodName)
-{
-	Json::Value natspec, userNotice;
-	std::string retStr;
-	m_reader.parse(json, natspec);
-	retStr = natspec["methods"][_methodName]["notice"].asString();
-
-	return (retStr == "null\n") ? "" : retStr;
-}
-
 std::string NatspecHandler::getUserNotice(std::string const& json, const dev::bytes& _transactionData)
 {
 	Json::Value natspec, userNotice;
@@ -77,9 +65,8 @@ std::string NatspecHandler::getUserNotice(std::string const& json, const dev::by
 	bytes transactionFunctionPart(_transactionData.begin(), _transactionData.begin() + 4);
 	FixedHash<4> transactionFunctionHash(transactionFunctionPart);
 
-	// for (auto const& it: natspec["methods"])
 	Json::Value methods = natspec["methods"];
-	for (Json::ValueIterator it= methods.begin(); it != methods.end(); ++it )
+	for (Json::ValueIterator it= methods.begin(); it != methods.end(); ++it)
 	{
 		std::string functionSig = it.key().asString();
 		FixedHash<4> functionHash(dev::sha3(functionSig));
@@ -91,11 +78,6 @@ std::string NatspecHandler::getUserNotice(std::string const& json, const dev::by
 
 	// not found
 	return "";
-}
-
-std::string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, std::string const& _methodName)
-{
-	return getUserNotice(retrieve(_contractHash), _methodName);
 }
 
 std::string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)

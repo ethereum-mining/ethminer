@@ -41,11 +41,8 @@ class NatspecHandler
 	/// Retrieves the natspec documentation as a string given a contract code hash
 	std::string retrieve(dev::h256 const& _contractHash) const;
 
-	/// Given a json natspec string, retrieve the user notice string
-	std::string getUserNotice(std::string const& json, std::string const& _methodName);
+	/// Given a json natspec string and the transaction data return the user notice
 	std::string getUserNotice(std::string const& json, const dev::bytes& _transactionData);
-	/// Given a contract code hash, retrieve the natspec documentation's user notice for that contract
-	std::string getUserNotice(dev::h256 const& _contractHash, std::string const& _methodName);
 	/// Given a contract code hash and the transaction's data retrieve the natspec documention's
 	/// user notice for that transaction.
 	/// @returns The user notice or an empty string if no natspec for the contract exists
