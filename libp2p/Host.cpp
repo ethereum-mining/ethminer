@@ -157,13 +157,15 @@ unsigned Host::protocolVersion() const
 
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
-	assert(!!_s->m_peer);
-	assert(!!_s->m_peer->id);
+	asserts(!!_s->m_peer->id);
 
 	{
 		RecursiveGuard l(x_sessions);
+		if (!m_peers.count(_s->m_peer->id))
+			m_peers[_s->m_peer->id] = _s->m_peer;
 		m_sessions[_s->m_peer->id] = _s;
 	}
+	
 	unsigned o = (unsigned)UserPacket;
 	for (auto const& i: _caps)
 		if (haveCapability(i))
@@ -298,16 +300,7 @@ void Host::runAcceptor()
 			{
 				try
 				{
-//					RecursiveGuard l(x_sessions);
-//					auto p = m_peers[_n];
-//					if (!p)
-//					{
-//						m_peers[_n] = make_shared<PeerInfo>();
-//						p = m_peers[_n];
-//						p->id = _n;
-//					}
-//					p->address = n.endpoint.tcp;
-					
+					// incoming connection so we don't yet know nodeid
 					doHandshake(s, NodeId());
 					success = true;
 				}
@@ -343,9 +336,18 @@ void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
 		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
 	} catch (...){}
 
-	//
-	auto p = std::make_shared<Session>(this, std::move(*_socket), m_peers[_nodeId]);
-	p->start();
+	shared_ptr<PeerInfo> p;
+	if (_nodeId)
+		p = m_peers[_nodeId];
+	
+	if (!p)
+	{
+		p = make_shared<PeerInfo>();
+		p->address.address(_socket->remote_endpoint().address());
+	}
+
+	auto ps = std::make_shared<Session>(this, std::move(*_socket), p);
+	ps->start();
 }
 
 string Host::pocHost()
@@ -426,8 +428,8 @@ void Host::connect(std::shared_ptr<PeerInfo> const& _n)
 			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
 			
 			_n->lastConnected = std::chrono::system_clock::now();
-			auto p = make_shared<Session>(this, std::move(*s), _n);
-			p->start();
+			auto ps = make_shared<Session>(this, std::move(*s), _n);
+			ps->start();
 			
 		}
 		delete s;

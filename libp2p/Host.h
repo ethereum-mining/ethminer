@@ -212,8 +212,8 @@ private:
 	/// Called only from startedWorking().
 	void runAcceptor();
 	
-	/// Handler for verifying handshake siganture before creating session. _egressNodeId is passed for outbound connections.
-	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId);
+	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections.
+	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId = NodeId());
 	
 	void seal(bytes& _b);
 
@@ -261,11 +261,10 @@ private:
 
 	std::map<NodeId, std::shared_ptr<PeerInfo>> m_peers;
 	
-	mutable RecursiveMutex x_sessions;
-	
 	/// The nodes to which we are currently connected.
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
+	mutable RecursiveMutex x_sessions;
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 	
