@@ -1639,7 +1639,7 @@ static shh::Topic topicFromText(QString _s)
 bool Main::sourceIsSolidity(std::string const& _source)
 {
 	// TODO: Improve this heuristic
-	return (_source.substr(0, 8) == "contract" || _source.substr(0, 2) == "/*");
+	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
 }
 
 void Main::on_data_textChanged()
@@ -1901,7 +1901,7 @@ void Main::on_send_clicked()
 					}
 					catch (...)
 					{
-						statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
+						statusBar()->showMessage("Couldn't compile Solidity Contract.");
 					}
 				}
 			}

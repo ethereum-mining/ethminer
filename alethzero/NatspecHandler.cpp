@@ -15,7 +15,7 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/** @file NatspecHandler.h
+/** @file NatspecHandler.cpp
  * @author Lefteris Karapetsas <lefteris@ethdev.com>
  * @date 2015
  */
