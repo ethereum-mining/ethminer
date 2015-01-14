@@ -42,48 +42,32 @@ std::string OurWebThreeStubServer::shh_newIdentity()
 	return toJS(kp.pub());
 }
 
-bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::showAuthenticationPopup(std::string const& _title, std::string const& _text) const
 {
-	// To get the balance of the sender
-	cnote << "Sender has ETH: " << m_web3->ethereum()->postState().balance(_t.from);
-
-	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
-
-	if (contractCodeHash == EmptySHA3)
-	{
-		// recipient has no code - nothing special about this transaction.
-		// TODO: show basic message for value transfer.
-		return true;
-	}
-
-	//LTODO: Just for debugging here
-	cnote << "Contract hash:\n" << contractCodeHash;
-	cnote << "Transaction Value:\n" << "0x" + toHex(_t.value);
-	cnote << "Transaction Data:\n" << "0x" + toHex(_t.data);
-
-
-	//LTODO: Actually find and use the method name  here
-	// std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, "multiply");
-	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
-	if (userNotice.empty())
-	{
-		QMessageBox userInput;
-		userInput.setText("Unverified Pending Transaction");
-		userInput.setInformativeText("An undocumented transaction is about to be executed."
-									 "Are you really sure you want to go through with it?");
-		userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-		userInput.setDefaultButton(QMessageBox::Cancel);
-		return userInput.exec() == QMessageBox::Ok;
-	}
-
 	// otherwise it's a transaction to a contract for which we have the natspec
 	QMessageBox userInput;
-	userInput.setText("Pending Transaction");
-	userInput.setInformativeText(QString::fromStdString(userNotice + "\n Do you wish to allow this?"));
+	userInput.setText(QString::fromStdString(_title));
+	userInput.setInformativeText(QString::fromStdString(_text + "\n Do you wish to allow this?"));
 	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
 	userInput.button(QMessageBox::Ok)->setText("Allow");
 	userInput.button(QMessageBox::Cancel)->setText("Reject");
 	userInput.setDefaultButton(QMessageBox::Cancel);
 	return userInput.exec() == QMessageBox::Ok;
+}
 
+bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
+{
+	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
+	if (contractCodeHash == EmptySHA3)
+		// recipient has no code - nothing special about this transaction.
+		// TODO: show basic message for value transfer.
+		return true;
+
+	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
+	if (userNotice.empty())
+		return showAuthenticationPopup("Unverified Pending Transaction",
+									   "An undocumented transaction is about to be executed.");
+
+	// otherwise it's a transaction to a contract for which we have the natspec
+	return showAuthenticationPopup("Pending Transaction", userNotice);
 }

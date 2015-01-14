@@ -230,6 +230,9 @@ private:
 	void refreshBlockCount();
 	void refreshBalances();
 
+	/// Attempts to infer that @c _source contains Solidity code
+	bool sourceIsSolidity(std::string const& _source);
+
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;

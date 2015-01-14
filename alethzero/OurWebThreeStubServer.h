@@ -41,6 +41,8 @@ signals:
 	void onNewId(QString _s);
 
 private:
+	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
+
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
 };

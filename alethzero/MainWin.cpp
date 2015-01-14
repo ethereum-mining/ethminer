@@ -1635,6 +1635,13 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
+
+bool Main::sourceIsSolidity(std::string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 8) == "contract" || _source.substr(0, 2) == "/*");
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -1648,7 +1655,7 @@ void Main::on_data_textChanged()
 		{
 			m_data = fromHex(src);
 		}
-		else if (src.substr(0, 8) == "contract" || src.substr(0, 5) == "//sol") // improve this heuristic
+		else if (sourceIsSolidity(src))
 		{
 			dev::solidity::CompilerStack compiler;
 			try
@@ -1874,12 +1881,11 @@ void Main::on_send_clicked()
 			Secret s = i.secret();
 			if (isCreation())
 			{
+				// If execution is a contract creation, add Natspec to
+				// a local Natspec LEVELDB
 				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
-
-				// LTODO: work in progress, recompile contract and get the hash of the code
-				// Also .. yeah improve the heuristic for Solidity and abstract to a function
 				string src = ui->data->toPlainText().toStdString();
-				if (src.substr(0, 8) == "contract" || src.substr(0, 2) == "/*") // improve this heuristic
+				if (sourceIsSolidity(src))
 				{
 
 					dev::solidity::CompilerStack compiler;
@@ -1892,7 +1898,6 @@ void Main::on_send_clicked()
 							m_natspecDB.add(contractHash,
 											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
 						}
-
 					}
 					catch (...)
 					{
