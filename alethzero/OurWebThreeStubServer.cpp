@@ -53,7 +53,7 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 	{
 		// recipient has no code - nothing special about this transaction.
 		// TODO: show basic message for value transfer.
-		return true;	// or whatever.
+		return true;
 	}
 
 	//LTODO: Just for debugging here

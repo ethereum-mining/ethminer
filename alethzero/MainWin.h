@@ -83,7 +83,6 @@ public:
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
 	std::string lookupNatSpec(dev::h256 const& _contractHash) const;
-	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, std::string const& _methodName);
 	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData);
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }

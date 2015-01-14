@@ -2289,11 +2289,6 @@ std::string Main::lookupNatSpec(dev::h256 const& _contractHash) const
 	return m_natspecDB.retrieve(_contractHash);
 }
 
-std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, std::string const& _methodName)
-{
-	return m_natspecDB.getUserNotice(_contractHash, _methodName);
-}
-
 std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
 {
 	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
