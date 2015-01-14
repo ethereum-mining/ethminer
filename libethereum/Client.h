@@ -93,7 +93,7 @@ struct ClientWatch
 	explicit ClientWatch(h256 _id): id(_id) {}
 
 	h256 id;
-	LocalisedLogEntries changes = { InitialChange };
+	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
