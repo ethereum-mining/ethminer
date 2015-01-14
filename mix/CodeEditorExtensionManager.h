@@ -65,7 +65,6 @@ private:
 	QVector<std::shared_ptr<Extension>> m_features;
 	QQuickItem* m_headerView;
 	QQuickItem* m_rightView;
-	QTextDocument* m_doc;
 	AppContext* m_appContext;
 	void loadEditor(QQuickItem* _editor);
 };

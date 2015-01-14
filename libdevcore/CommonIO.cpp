@@ -26,67 +26,30 @@
 using namespace std;
 using namespace dev;
 
-std::list<std::list<std::string>> dev::memDumpToList(bytes const& _b, unsigned _w)
-{
-	std::list<std::list<std::string>> dump;
-	for (unsigned i = 0; i < _b.size(); i += _w)
-	{
-		stringstream ret;
-		std::list<std::string> dumpLine;
-		ret << hex << setw(4) << setfill('0') << i << " ";
-		dumpLine.push_back(ret.str());
-		ret.str(std::string());
-		ret.clear();
-
-		for (unsigned j = i; j < i + _w; ++j)
-			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 127)
-					if ((char)_b[j] == '<')
-						ret << "&lt;";
-					else if ((char)_b[j] == '&')
-						ret << "&amp;";
-					else
-						ret << (char)_b[j];
-				else
-					ret << '?';
-			else
-				ret << ' ';
-		dumpLine.push_back(ret.str());
-		ret.str(std::string());
-		ret.clear();
-
-		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
-			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
-		dumpLine.push_back(ret.str());
-		dump.push_back(dumpLine);
-	}
-	return dump;
-}
-
-string dev::memDump(bytes const& _b, unsigned _w, bool _html)
+string dev::memDump(bytes const& _bytes, unsigned _width, bool _html)
 {
 	stringstream ret;
 	if (_html)
 		ret << "<pre style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">";
-	for (unsigned i = 0; i < _b.size(); i += _w)
+	for (unsigned i = 0; i < _bytes.size(); i += _width)
 	{
 		ret << hex << setw(4) << setfill('0') << i << " ";
-		for (unsigned j = i; j < i + _w; ++j)
-			if (j < _b.size())
-				if (_b[j] >= 32 && _b[j] < 127)
-					if ((char)_b[j] == '<' && _html)
+		for (unsigned j = i; j < i + _width; ++j)
+			if (j < _bytes.size())
+				if (_bytes[j] >= 32 && _bytes[j] < 127)
+					if ((char)_bytes[j] == '<' && _html)
 						ret << "&lt;";
-					else if ((char)_b[j] == '&' && _html)
+					else if ((char)_bytes[j] == '&' && _html)
 						ret << "&amp;";
 					else
-						ret << (char)_b[j];
+						ret << (char)_bytes[j];
 				else
 					ret << '?';
 			else
 				ret << ' ';
 		ret << " ";
-		for (unsigned j = i; j < i + _w && j < _b.size(); ++j)
-			ret << setfill('0') << setw(2) << hex << (unsigned)_b[j] << " ";
+		for (unsigned j = i; j < i + _width && j < _bytes.size(); ++j)
+			ret << setfill('0') << setw(2) << hex << (unsigned)_bytes[j] << " ";
 		ret << "\n";
 	}
 	if (_html)

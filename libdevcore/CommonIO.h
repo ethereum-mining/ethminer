@@ -47,9 +47,8 @@ bytes contents(std::string const& _file);
 void writeFile(std::string const& _file, bytes const& _data);
 
 /// Nicely renders the given bytes to a string, optionally as HTML.
-std::string memDump(bytes const& _b, unsigned _w = 8, bool _html = false);
-/// Nicely renders the given bytes to a string, store the content in an array.
-std::list<std::list<std::string>> memDumpToList(bytes const& _b, unsigned _w);
+/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
+std::string memDump(bytes const& _bytes, unsigned _width = 8, bool _html = false);
 
 // Stream I/O functions.
 // Provides templated stream I/O for all STL collections so they can be shifted on to any iostream-like interface.

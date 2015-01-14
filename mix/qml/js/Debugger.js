@@ -16,10 +16,10 @@ function init()
 	currentSelectedState = 0;
 	select(currentSelectedState);
 
-	jumpoutbackaction.enabled(false);
-	jumpintobackaction.enabled(false);
-	jumpintoforwardaction.enabled(false);
-	jumpoutforwardaction.enabled(false);
+	jumpOutBackAction.enabled(false);
+	jumpIntoBackAction.enabled(false);
+	jumpIntoForwardAction.enabled(false);
+	jumpOutForwardAction.enabled(false);
 }
 
 function moveSelection(incr)
@@ -41,14 +41,14 @@ function select(stateIndex)
 	completeCtxInformation(state);
 
 	if (state.instruction === "JUMP")
-		jumpintoforwardaction.enabled(true);
+		jumpIntoForwardAction.enabled(true);
 	else
-		jumpintoforwardaction.enabled(false);
+		jumpIntoForwardAction.enabled(false);
 
 	if (state.instruction === "JUMPDEST")
-		jumpintobackaction.enabled(true);
+		jumpIntoBackAction.enabled(true);
 	else
-		jumpintobackaction.enabled(false);
+		jumpIntoBackAction.enabled(false);
 }
 
 function codeStr(stateIndex)
@@ -87,8 +87,8 @@ function stepOutBack()
 	{
 		select(jumpStartingPoint);
 		jumpStartingPoint = null;
-		jumpoutbackaction.enabled(false);
-		jumpoutforwardaction.enabled(false);
+		jumpOutBackAction.enabled(false);
+		jumpOutForwardAction.enabled(false);
 	}
 }
 
@@ -142,8 +142,8 @@ function stepIntoForward()
 	{
 		jumpStartingPoint = currentSelectedState;
 		moveSelection(1);
-		jumpoutbackaction.enabled(true);
-		jumpoutforwardaction.enabled(true);
+		jumpOutBackAction.enabled(true);
+		jumpOutForwardAction.enabled(true);
 	}
 }
 
@@ -153,8 +153,8 @@ function stepOutForward()
 	{
 		stepOutBack();
 		stepOverForward();
-		jumpoutbackaction.enabled(false);
-		jumpoutforwardaction.enabled(false);
+		jumpOutBackAction.enabled(false);
+		jumpOutForwardAction.enabled(false);
 	}
 }
 
