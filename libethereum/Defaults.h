@@ -23,7 +23,6 @@
 
 #include <libdevcore/Common.h>
 
-
 namespace dev
 {
 namespace eth

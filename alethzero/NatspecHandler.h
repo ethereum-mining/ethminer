@@ -35,6 +35,7 @@ class NatspecHandler
 {
   public:
 	NatspecHandler();
+	~NatspecHandler();
 
 	/// Stores locally in a levelDB a key value pair of contract code hash to natspec documentation
 	void add(dev::h256 const& _contractHash, std::string const& _doc);
