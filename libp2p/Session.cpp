@@ -86,22 +86,6 @@ int Session::rating() const
 	return m_peer->rating;
 }
 
-//// TODO: P2P integration: session->? should be unavailable when socket isn't open
-//bi::tcp::endpoint Session::endpoint() const
-//{
-//	if (m_socket.is_open() && m_peer)
-//		try
-//		{
-//			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_peer->address.port());
-//		}
-//		catch (...) {}
-//
-//	if (m_peer)
-//		return m_peer->address;
-//
-//	return m_manualEndpoint;
-//}
-
 template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 {
 	if (_t.size() <= _n)
@@ -172,6 +156,11 @@ bool Session::interpret(RLP const& _r)
 	{
 	case HelloPacket:
 	{
+		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
+		// Move auth to Host so we consolidate authentication logic and eschew peer deduplication logic.
+		// Move all node-lifecycle information into Host.
+		// Finalize peer-lifecycle properties vs node lifecycle.
+		
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
 		auto caps = _r[3].toVector<CapDesc>();
@@ -194,7 +183,7 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		// TODO: P2P ensure disabled logic is covered
+		// TODO: P2P ensure disabled logic is considered
 		if (false /* m_server->havePeer(id) */)
 		{
 			// Already connected.
@@ -203,27 +192,28 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
+		// if peer and connection have id, check for UnexpectedIdentity
 		if (!id)
 		{
 			disconnect(NullIdentity);
 			return true;
 		}
-
-		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
-		// Discussion: Most this to Host so we consolidate authentication logic and eschew peer deduplication logic.
-		// TODO: P2P Move all node-lifecycle information into Host. Determine best way to handle peer-lifecycle properties vs node lifecycle.
-		// TODO: P2P remove oldid
-		// TODO: P2P with encrypted transport the handshake will fail and we won't get here
+		else if (!m_peer->id)
+		{
+			m_peer->id = id;
+			m_peer->address.port(listenPort);
+		}
+		else if (m_peer->id != id)
+		{
+			disconnect(UnexpectedIdentity);
+			return true;
+		}
 		
-		// if peer is missing this is incoming connection and we need to tell host about new potential peer
-		
-		
-//		m_peer = m_server->noteNode(m_peer->id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort));
 		assert(!!m_peer);
 		assert(!!m_peer->id);
 		if (m_peer->isOffline())
 			m_peer->lastConnected = chrono::system_clock::now();
-//
+
 //		// TODO: P2P introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
 		m_knownNodes.extendAll(m_peer->index);
 		m_knownNodes.unionWith(m_peer->index);
@@ -234,7 +224,6 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 		
-		// TODO: P2P migrate auth to Host and Handshake to constructor
 		m_info.clientVersion = clientVersion;
 		m_info.host = m_socket.remote_endpoint().address().to_string();
 		m_info.port = listenPort;
@@ -347,7 +336,7 @@ bool Session::interpret(RLP const& _r)
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
 			
-			// TODO: P2P change to addNode()
+			// TODO: P2P test
 			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), 30303), ep)));
 			
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
