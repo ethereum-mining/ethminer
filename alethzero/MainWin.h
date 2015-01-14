@@ -34,7 +34,7 @@
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libqethereum/QEthereum.h>
+#include <libqwebthree/QWebThree.h>
 #include <libwebthree/WebThree.h>
 
 namespace Ui {
@@ -65,6 +65,8 @@ struct WorldState
 	std::map<dev::u256, dev::u256> storage;
 	std::vector<WorldState const*> levels;
 };
+
+using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
 class Main : public QMainWindow
 {
@@ -156,6 +158,7 @@ private slots:
 	void on_importKeyFile_triggered();
 	void on_post_clicked();
 	void on_newIdentity_triggered();
+	void on_jitvm_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();
@@ -194,8 +197,8 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
-	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
+	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
@@ -228,7 +231,7 @@ private:
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 
-	std::map<unsigned, std::function<void()>> m_handlers;
+	std::map<unsigned, WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;

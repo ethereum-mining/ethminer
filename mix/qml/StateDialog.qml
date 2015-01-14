@@ -11,8 +11,8 @@ Window {
 
 	visible: false
 
-	property alias stateTitle : titleField.text
-	property alias stateBalance : balanceField.text
+	property alias stateTitle: titleField.text
+	property alias stateBalance: balanceField.text
 	property int stateIndex
 	property var stateTransactions: []
 	signal accepted
@@ -122,7 +122,7 @@ Window {
 			var item = {
 				value: "0",
 				functionId: "",
-				gas: "1000000000000",
+				gas: "125000",
 				gasPrice: "100000"
 			};
 

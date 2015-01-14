@@ -51,7 +51,8 @@ public:
 	static void compileExpression(CompilerContext& _context, Expression const& _expression, bool _optimize = false);
 
 	/// Appends code to remove dirty higher order bits in case of an implicit promotion to a wider type.
-	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack, Type const& _targetType);
+	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack,
+									 Type const& _targetType, bool _cleanupNeeded = false);
 
 private:
 	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
@@ -86,24 +87,13 @@ private:
 	//// Appends code that cleans higher-order bits for integer types.
 	void appendHighBitsCleanup(IntegerType const& _typeOnStack);
 
-	/// Additional options used in appendExternalFunctionCall.
-	struct FunctionCallOptions
-	{
-		FunctionCallOptions() {}
-		/// Invoked to copy the address to the stack
-		std::function<void()> obtainAddress;
-		/// Invoked to copy the ethe value to the stack (if not specified, value is 0).
-		std::function<void()> obtainValue;
-		/// If true, do not prepend function index to call data
-		bool bare = false;
-		/// If false, use calling convention that all arguments and return values are packed as
-		/// 32 byte values with padding.
-		bool packDensely = true;
-	};
-
 	/// Appends code to call a function of the given type with the given arguments.
 	void appendExternalFunctionCall(FunctionType const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
-									FunctionCallOptions const& _options = FunctionCallOptions());
+									bool bare = false);
+	/// Appends code that copies the given arguments to memory (with optional offset).
+	/// @returns the number of bytes copied to memory
+	unsigned appendArgumentCopyToMemory(TypePointers const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
+										unsigned _memoryOffset = 0);
 
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.

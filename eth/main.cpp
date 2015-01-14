@@ -180,6 +180,12 @@ void sighandler(int)
 	g_exit = true;
 }
 
+enum class NodeMode
+{
+	PeerServer,
+	Full
+};
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
@@ -264,13 +270,14 @@ int main(int argc, char** argv)
 				mining = ~(unsigned)0;
 			else if (isFalse(m))
 				mining = 0;
-			else if (int i = stoi(m))
-				mining = i;
 			else
-			{
-				cerr << "Unknown -m/--mining option: " << m << endl;
-				return -1;
-			}
+				try {
+					mining = stoi(m);
+				}
+				catch (...) {
+					cerr << "Unknown -m/--mining option: " << m << endl;
+					return -1;
+				}
 		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;

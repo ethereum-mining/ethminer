@@ -23,6 +23,7 @@
 
 #include <boost/regex.hpp>
 #include <libethcore/CommonEth.h>
+#include <libdevcrypto/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -32,7 +33,7 @@ bytes dev::eth::parseData(string const& _args)
 	bytes m_data;
 
 	boost::smatch what;
-	static const boost::regex r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
+	static const boost::regex r("(!|#|@|\\$)?\"([^\"]*)\"(\\s.*)?");
 	static const boost::regex d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
 	static const boost::regex h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
 
@@ -67,13 +68,15 @@ bytes dev::eth::parseData(string const& _args)
 		}
 		else if (boost::regex_match(s, what, r))
 		{
-			for (auto i: (string)what[2])
-				m_data.push_back((byte)i);
-			if (what[1] != "$")
-				for (int i = what[2].length(); i < 32; ++i)
-					m_data.push_back(0);
+			bytes d = asBytes(what[2]);
+			if (what[1] == "!")
+				m_data += FixedHash<4>(sha3(d)).asBytes();
+			else if (what[1] == "#")
+				m_data += sha3(d).asBytes();
+			else if (what[1] == "$")
+				m_data += d + bytes{0};
 			else
-				m_data.push_back(0);
+				m_data += d + bytes(32 - what[2].length() % 32, 0);
 			s = what[3];
 		}
 		else

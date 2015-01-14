@@ -30,6 +30,10 @@ namespace dev
 namespace mix
 {
 
+class QFunctionDefinition;
+class QVariableDeclaration;
+class QVariableDefinition;
+
 /**
  * @brief Encode/Decode data to be sent to a transaction or to be displayed in a view.
  */
@@ -43,8 +47,8 @@ public:
 	void encode(QVariableDeclaration const* _dec, u256 _value);
 	/// Encode variable in order to be sent as parameter.
 	void encode(QVariableDeclaration const* _dec, bool _value);
-	/// Encode index of the function to call.
-	void encode(int _functionIndex);
+	/// Encode hash of the function to call.
+	void encode(QFunctionDefinition const* _function);
 	/// Decode variable in order to be sent to QML view.
 	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> _dec, bytes _value);
 	/// Get all encoded data encoded by encode function.

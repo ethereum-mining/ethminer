@@ -177,6 +177,7 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 
 void Host::onNodeTableEvent(NodeId _n, NodeTableEventType _e)
 {
+
 	if (_e == NodeEntryAdded)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
@@ -360,7 +361,7 @@ string Host::pocHost()
 void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
 {
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
-		cwarn << "Weird port being recorded: " << _tcpPeerPort;
+		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
 
 	if (_tcpPeerPort >= /*49152*/32768)
 	{
@@ -464,27 +465,27 @@ unsigned PeerInfo::fallbackSeconds() const
 // TODO: P2P migrate grow/prunePeers into 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
 //void Host::growPeers()
 //{
-//	RecursiveGuard l(x_sessions);
-//	int morePeers = (int)m_idealPeerCount - m_sessions.size();
+//	RecursiveGuard l(x_peers);
+//	int morePeers = (int)m_idealPeerCount - m_peers.size();
 //	if (morePeers > 0)
 //	{
 //		auto toTry = m_ready;
 //		if (!m_netPrefs.localNetworking)
 //			toTry -= m_private;
-//		set<PeerInfo> ns;
+//		set<Node> ns;
 //		for (auto i: toTry)
 //			if (m_nodes[m_nodesList[i]]->shouldReconnect())
 //				ns.insert(*m_nodes[m_nodesList[i]]);
 //
 //		if (ns.size())
-//			for (PeerInfo const& i: ns)
+//			for (Node const& i: ns)
 //			{
 //				connect(m_nodes[i.id]);
 //				if (!--morePeers)
 //					return;
 //			}
 //		else
-//			for (auto const& i: m_sessions)
+//			for (auto const& i: m_peers)
 //				if (auto p = i.second.lock())
 //					p->ensureNodesRequested();
 //	}
@@ -492,20 +493,20 @@ unsigned PeerInfo::fallbackSeconds() const
 //
 //void Host::prunePeers()
 //{
-//	RecursiveGuard l(x_sessions);
+//	RecursiveGuard l(x_peers);
 //	// We'll keep at most twice as many as is ideal, halfing what counts as "too young to kill" until we get there.
 //	set<NodeId> dc;
-//	for (unsigned old = 15000; m_sessions.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
-//		if (m_sessions.size() - dc.size() > m_idealPeerCount)
+//	for (unsigned old = 15000; m_peers.size() - dc.size() > m_idealPeerCount * 2 && old > 100; old /= 2)
+//		if (m_peers.size() - dc.size() > m_idealPeerCount)
 //		{
 //			// look for worst peer to kick off
 //			// first work out how many are old enough to kick off.
 //			shared_ptr<Session> worst;
 //			unsigned agedPeers = 0;
-//			for (auto i: m_sessions)
+//			for (auto i: m_peers)
 //				if (!dc.count(i.first))
 //					if (auto p = i.second.lock())
-//						if (/*(m_mode != NodeMode::Host || p->m_caps != 0x01) &&*/ chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
+//						if (chrono::steady_clock::now() > p->m_connect + chrono::milliseconds(old))	// don't throw off new peers; peer-servers should never kick off other peer-servers.
 //						{
 //							++agedPeers;
 //							if ((!worst || p->rating() < worst->rating() || (p->rating() == worst->rating() && p->m_connect > worst->m_connect)))	// kill older ones
@@ -518,11 +519,11 @@ unsigned PeerInfo::fallbackSeconds() const
 //		}
 //
 //	// Remove dead peers from list.
-//	for (auto i = m_sessions.begin(); i != m_sessions.end();)
+//	for (auto i = m_peers.begin(); i != m_peers.end();)
 //		if (i->second.lock().get())
 //			++i;
 //		else
-//			i = m_sessions.erase(i);
+//			i = m_peers.erase(i);
 //}
 
 PeerSessionInfos Host::peers() const

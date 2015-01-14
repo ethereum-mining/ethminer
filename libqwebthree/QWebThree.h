@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file QEthereum.h
+/** @file QWebThree.h
  * @authors:
  *   Gav Wood <i@gavwood.com>
  *   Marek Kotewicz <marek@ethdev.com>
@@ -85,7 +85,7 @@ private:
 	_frame->addToJavaScriptWindowObject("_web3", qweb, QWebFrame::ScriptOwnership); \
 	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/es6-promise-2.0.0.js")); \
-	_frame->evaluateJavaScript(contentsOfQResource(":/js/ethereum.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/webthree.js")); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/setup.js")); \
 }
 

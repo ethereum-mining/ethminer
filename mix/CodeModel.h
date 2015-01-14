@@ -69,7 +69,7 @@ class CompilationResult: public QObject
 public:
 	/// Empty compilation result constructor
 	CompilationResult();
-	/// Successfull compilation result constructor
+	/// Successful compilation result constructor
 	CompilationResult(solidity::CompilerStack const& _compiler);
 	/// Failed compilation result constructor
 	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage);
@@ -78,9 +78,9 @@ public:
 	QContractDefinition* contract() { return m_contract.get(); }
 	/// @returns contract definition
 	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
-	/// Indicates if the compilation was successfull
-	bool successfull() const { return m_successful; }
-	/// @returns compiler error message in case of unsuccessfull compilation
+	/// Indicates if the compilation was successful
+	bool successful() const { return m_successful; }
+	/// @returns compiler error message in case of unsuccessful compilation
 	QString compilerMessage() const { return m_compilerMessage; }
 	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }

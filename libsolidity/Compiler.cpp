@@ -95,7 +95,7 @@ void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
 	// copy constructor arguments from code to memory and then to stack, they are supplied after the actual program
 	unsigned argumentSize = 0;
 	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
-		argumentSize += var->getType()->getCalldataEncodedSize();
+		argumentSize += CompilerUtils::getPaddedSize(var->getType()->getCalldataEncodedSize());
 	if (argumentSize > 0)
 	{
 		m_context << u256(argumentSize);
@@ -154,14 +154,15 @@ unsigned Compiler::appendCalldataUnpacker(FunctionDefinition const& _function, b
 	//@todo this can be done more efficiently, saving some CALLDATALOAD calls
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
 	{
-		unsigned const numBytes = var->getType()->getCalldataEncodedSize();
-		if (numBytes > 32)
+		unsigned const c_numBytes = var->getType()->getCalldataEncodedSize();
+		if (c_numBytes > 32)
 			BOOST_THROW_EXCEPTION(CompilerError()
 								  << errinfo_sourceLocation(var->getLocation())
 								  << errinfo_comment("Type " + var->getType()->toString() + " not yet supported."));
-		bool leftAligned = var->getType()->getCategory() == Type::Category::STRING;
-		CompilerUtils(m_context).loadFromMemory(dataOffset, numBytes, leftAligned, !_fromMemory);
-		dataOffset += numBytes;
+		bool const c_leftAligned = var->getType()->getCategory() == Type::Category::STRING;
+		bool const c_padToWords = true;
+		dataOffset += CompilerUtils(m_context).loadFromMemory(dataOffset, c_numBytes, c_leftAligned,
+															  !_fromMemory, c_padToWords);
 	}
 	return dataOffset;
 }
@@ -181,10 +182,11 @@ void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
 								  << errinfo_sourceLocation(parameters[i]->getLocation())
 								  << errinfo_comment("Type " + paramType.toString() + " not yet supported."));
 		CompilerUtils(m_context).copyToStackTop(stackDepth, paramType);
-		bool const leftAligned = paramType.getCategory() == Type::Category::STRING;
-		CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, leftAligned);
+		ExpressionCompiler::appendTypeConversion(m_context, paramType, paramType, true);
+		bool const c_leftAligned = paramType.getCategory() == Type::Category::STRING;
+		bool const c_padToWords = true;
+		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, c_leftAligned, c_padToWords);
 		stackDepth -= paramType.getSizeOnStack();
-		dataOffset += numBytes;
 	}
 	// note that the stack is not cleaned up here
 	m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
@@ -230,16 +232,16 @@ bool Compiler::visit(FunctionDefinition const& _function)
 	// Note that the fact that the return arguments are of increasing index is vital for this
 	// algorithm to work.
 
-	unsigned const argumentsSize = CompilerUtils::getSizeOnStack(_function.getParameters());
-	unsigned const returnValuesSize = CompilerUtils::getSizeOnStack(_function.getReturnParameters());
-	unsigned const localVariablesSize = CompilerUtils::getSizeOnStack(_function.getLocalVariables());
+	unsigned const c_argumentsSize = CompilerUtils::getSizeOnStack(_function.getParameters());
+	unsigned const c_returnValuesSize = CompilerUtils::getSizeOnStack(_function.getReturnParameters());
+	unsigned const c_localVariablesSize = CompilerUtils::getSizeOnStack(_function.getLocalVariables());
 
 	vector<int> stackLayout;
-	stackLayout.push_back(returnValuesSize); // target of return address
-	stackLayout += vector<int>(argumentsSize, -1); // discard all arguments
-	for (unsigned i = 0; i < returnValuesSize; ++i)
+	stackLayout.push_back(c_returnValuesSize); // target of return address
+	stackLayout += vector<int>(c_argumentsSize, -1); // discard all arguments
+	for (unsigned i = 0; i < c_returnValuesSize; ++i)
 		stackLayout.push_back(i);
-	stackLayout += vector<int>(localVariablesSize, -1);
+	stackLayout += vector<int>(c_localVariablesSize, -1);
 
 	while (stackLayout.back() != int(stackLayout.size() - 1))
 		if (stackLayout.back() < 0)

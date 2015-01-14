@@ -68,3 +68,4 @@ project.pbxproj
 evmjit
 doc/html
 *.autosave
+node_modules/

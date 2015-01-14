@@ -84,6 +84,18 @@ var calcRealPadding = function (type, expected) {
 
 var setupInputTypes = function () {
     
+    // convert from int, decimal-string, prefixed hex string whatever into a bare hex string.
+    var formatStandard = function (value) {
+        if (typeof value === "number")
+            return value.toString(16);
+        else if (typeof value === "string" && value.indexOf('0x') === 0)
+            return value.substr(2);
+        else if (typeof value === "string")
+            return web3.toHex(value);
+        else
+            return (+value).toString(16);
+    };
+
     var prefixedType = function (prefix, calcPadding) {
         return function (type, value) {
             var expected = prefix;
@@ -92,15 +104,13 @@ var setupInputTypes = function () {
             }
 
             var padding = calcPadding(type, expected);
-            if (typeof value === "number")
-                value = value.toString(16);
-            else if (typeof value === "string")
-                value = web3.toHex(value); 
-            else if (value.indexOf('0x') === 0)
-                value = value.substr(2);
-            else
-                value = (+value).toString(16);
-            return padLeft(value, padding * 2);
+            if (padding > 32)
+                return false;   // not allowed to be so big.
+            padding = 32;   // override as per the new ABI.
+
+            if (prefix === "string")
+                return web3.fromAscii(value, padding).substr(2);
+            return padLeft(formatStandard(value), padding * 2);
         };
     };
 
@@ -110,12 +120,14 @@ var setupInputTypes = function () {
                 return false;
             }
 
+            padding = 32;   //override as per the new ABI.
+
             return padLeft(formatter ? formatter(value) : value, padding * 2);
         };
     };
 
     var formatBool = function (value) {
-        return value ? '0x1' : '0x0';
+        return value ? '01' : '00';
     };
 
     return [
@@ -125,7 +137,7 @@ var setupInputTypes = function () {
         prefixedType('string', calcBytePadding),
         prefixedType('real', calcRealPadding),
         prefixedType('ureal', calcRealPadding),
-        namedType('address', 20),
+        namedType('address', 20, formatStandard),
         namedType('bool', 1, formatBool),
     ];
 };
@@ -165,12 +177,16 @@ var setupOutputTypes = function () {
             }
 
             var padding = calcPadding(type, expected);
+            if (padding > 32)
+                return -1;   // not allowed to be so big.
+            padding = 32;  // override as per the new ABI.
             return padding * 2;
         };
     };
 
     var namedType = function (name, padding) {
         return function (type) {
+            padding = 32;  // override as per the new ABI.
             return name === type ? padding * 2 : -1;
         };
     };
@@ -275,3 +291,4 @@ module.exports = {
     outputParser: outputParser,
     methodSignature: methodSignature
 };
+

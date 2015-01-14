@@ -292,6 +292,12 @@ int nc_window_streambuf::sync()
 
 vector<string> form_dialog(vector<string> _sfields, vector<string> _lfields, vector<string> _bfields, int _cols, int _rows, string _post_form);
 
+enum class NodeMode
+{
+	PeerServer,
+	Full
+};
+
 int main(int argc, char** argv)
 {
 	unsigned short listenPort = 30303;
