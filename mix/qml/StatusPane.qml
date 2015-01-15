@@ -11,14 +11,12 @@ Rectangle {
 	{
 		if (statusPane.result.successful)
 		{
-			image.state = "";
 			status.state = "";
 			status.text = qsTr("Compile without errors.");
 			logslink.visible = false;
 		}
 		else
 		{
-			image.state = "error";
 			status.state = "error";
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
@@ -41,24 +39,6 @@ Rectangle {
 			anchors.horizontalCenter: parent.horizontalCenter
 			anchors.verticalCenter: parent.verticalCenter
 			spacing: 5
-			Image
-			{
-				source: "qrc:/qml/img/compilsuceeded.png"
-				id: image
-				states:[
-					State {
-						name: "error"
-						PropertyChanges {
-							target: image
-							source: "qrc:/qml/img/compilfailed.png"
-						}
-						PropertyChanges {
-							target: statusContainer
-							color: "#fffcd5"
-						}
-					}
-				]
-			}
 
 			Text {
 				font.pointSize: 10
@@ -72,6 +52,10 @@ Rectangle {
 						PropertyChanges {
 							target: status
 							color: "red"
+						}
+						PropertyChanges {
+							target: statusContainer
+							color: "#fffcd5"
 						}
 					}
 				]
