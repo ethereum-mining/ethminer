@@ -1902,11 +1902,9 @@ void Main::on_send_clicked()
 				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
 				string src = ui->data->toPlainText().toStdString();
 				if (sourceIsSolidity(src))
-				{
-
-					dev::solidity::CompilerStack compiler;
 					try
 					{
+						dev::solidity::CompilerStack compiler;
 						m_data = compiler.compile(src, m_enableOptimizer);
 						for (std::string& s: compiler.getContractNames())
 						{
@@ -1919,7 +1917,6 @@ void Main::on_send_clicked()
 					{
 						statusBar()->showMessage("Couldn't compile Solidity Contract.");
 					}
-				}
 			}
 			else
 				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
