@@ -125,6 +125,7 @@ class HostNodeTableHandler: public NodeTableEventHandler
  * @todo gracefully disconnect peer if peer already connected
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
+ * @todo writing host identifier
  */
 class Host: public Worker
 {

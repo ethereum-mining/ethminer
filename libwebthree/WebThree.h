@@ -54,7 +54,7 @@ class WebThreeNetworkFace
 {
 public:
 	/// Get information on the current peer set.
-	virtual std::vector<p2p::PeerInfo> peers() = 0;
+	virtual std::vector<p2p::PeerSessionInfo> peers() = 0;
 
 	/// Same as peers().size(), but more efficient.
 	virtual size_t peerCount() const = 0;
