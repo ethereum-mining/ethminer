@@ -116,7 +116,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 		{
 			bytes contractCode = compilerRes->bytes();
 			std::vector<dev::bytes> transactonData;
-			QFunctionDefinition* f;
+			QFunctionDefinition* f = nullptr;
 			ContractCallDataEncoder c;
 			//encode data for all transactions
 			for (auto const& t: _sequence)
