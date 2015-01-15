@@ -53,8 +53,8 @@ void CompilerContext::addAndInitializeVariable(VariableDeclaration const& _decla
 {
 	addVariable(_declaration);
 
-	unsigned const size = _declaration.getType()->getSizeOnStack();
-	for (unsigned i = 0; i < size; ++i)
+	int const size = _declaration.getType()->getSizeOnStack();
+	for (int i = 0; i < size; ++i)
 		*this << u256(0);
 	m_asm.adjustDeposit(-size);
 }
@@ -93,6 +93,11 @@ unsigned CompilerContext::getBaseStackOffsetOfVariable(Declaration const& _decla
 unsigned CompilerContext::baseToCurrentStackOffset(unsigned _baseOffset) const
 {
 	return _baseOffset + m_asm.deposit();
+}
+
+unsigned CompilerContext::currentToBaseStackOffset(unsigned _offset) const
+{
+	return -baseToCurrentStackOffset(-_offset);
 }
 
 u256 CompilerContext::getStorageLocationOfVariable(const Declaration& _declaration) const
