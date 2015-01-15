@@ -344,7 +344,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	return false;
 }
 
-bool ExpressionCompiler::visit(NewExpression const& _newExpression)
+bool ExpressionCompiler::visit(NewExpression const&)
 {
 	// code is created for the function call (CREATION) only
 	return false;
