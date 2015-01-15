@@ -33,8 +33,8 @@ class AppContext;
 
 enum ExtensionDisplayBehavior
 {
-	Tab,
-	RightTab,
+	HeaderView,
+	RightView,
 	ModalDialog
 };
 

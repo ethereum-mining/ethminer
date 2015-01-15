@@ -232,13 +232,13 @@ void FakeExtVM::importCallCreates(mArray& _callcreates)
 	for (mValue& v: _callcreates)
 	{
 		auto tx = v.get_obj();
-		BOOST_REQUIRE(tx.count("data") > 0);
-		BOOST_REQUIRE(tx.count("value") > 0);
-		BOOST_REQUIRE(tx.count("destination") > 0);
-		BOOST_REQUIRE(tx.count("gasLimit") > 0);
+		assert(tx.count("data") > 0);
+		assert(tx.count("value") > 0);
+		assert(tx.count("destination") > 0);
+		assert(tx.count("gasLimit") > 0);
 		Transaction t = tx["destination"].get_str().empty() ?
-			Transaction(toInt(tx["value"]), 0, toInt(tx["gasLimit"]), data.toBytes()) :
-			Transaction(toInt(tx["value"]), 0, toInt(tx["gasLimit"]), Address(tx["destination"].get_str()), data.toBytes());
+			Transaction(toInt(tx["value"]), 0, toInt(tx["gasLimit"]), fromHex(tx["data"].get_str())) :
+			Transaction(toInt(tx["value"]), 0, toInt(tx["gasLimit"]), Address(tx["destination"].get_str()), fromHex(tx["data"].get_str()));
 		callcreates.push_back(t);
 	}
 }
@@ -448,7 +448,8 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				}
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
-				BOOST_CHECK(test.callcreates == fev.callcreates);
+
+				checkCallCreates(fev.callcreates, test.callcreates);
 
 				checkLog(fev.sub.logs, test.sub.logs);
 			}
@@ -507,23 +508,28 @@ BOOST_AUTO_TEST_CASE(vmLogTest)
 	dev::test::executeTests("vmLogTest", "/VMTests", dev::test::doVMTests);
 }
 
-BOOST_AUTO_TEST_CASE(vmPerformanceTest)
+BOOST_AUTO_TEST_CASE(vmSystemOperationsTest)
+{
+	dev::test::executeTests("vmSystemOperationsTest", "/VMTests", dev::test::doVMTests);
+}
+
+BOOST_AUTO_TEST_CASE(vmInputLimitsTest1)
 {
 	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
 	{
 		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--performance")
-			dev::test::executeTests("vmPerformanceTest", "/VMTests", dev::test::doVMTests);
+		if (arg == "--inputlimits")
+			dev::test::executeTests("vmInputLimitsTest1", "/VMTests", dev::test::doVMTests);
 	}
 }
 
-BOOST_AUTO_TEST_CASE(vmArithPerformanceTest)
+BOOST_AUTO_TEST_CASE(vmInputLimitsTest2)
 {
 	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
 	{
 		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--performance")
-			dev::test::executeTests("vmArithPerformanceTest", "/VMTests", dev::test::doVMTests);
+		if (arg == "--inputlimits")
+			dev::test::executeTests("vmInputLimitsTest2", "/VMTests", dev::test::doVMTests);
 	}
 }
 

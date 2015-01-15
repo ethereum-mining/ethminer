@@ -26,7 +26,7 @@
 #include <QQuickItem>
 #include <QTextDocument>
 #include <QVector>
-#include "ConstantCompilationControl.h"
+#include "StatusPane.h"
 
 namespace dev
 {
@@ -43,8 +43,8 @@ class CodeEditorExtensionManager: public QObject
 {
 	Q_OBJECT
 
-	Q_PROPERTY(QQuickItem* tabView MEMBER m_tabView WRITE setTabView)
-	Q_PROPERTY(QQuickItem* rightTabView MEMBER m_rightTabView WRITE setRightTabView)
+	Q_PROPERTY(QQuickItem* headerView MEMBER m_headerView WRITE setHeaderView)
+	Q_PROPERTY(QQuickItem* rightView MEMBER m_rightView WRITE setRightView)
 
 public:
 	CodeEditorExtensionManager();
@@ -54,17 +54,17 @@ public:
 	/// Initialize extension.
 	void initExtension(std::shared_ptr<Extension>);
 	/// Set current tab view
-	void setTabView(QQuickItem*);
+	void setHeaderView(QQuickItem*);
 	/// Set current right tab view.
-	void setRightTabView(QQuickItem*);
+	void setRightView(QQuickItem*);
 
 private slots:
 	void applyCodeHighlight();
 
 private:
 	QVector<std::shared_ptr<Extension>> m_features;
-	QQuickItem* m_tabView;
-	QQuickItem* m_rightTabView;
+	QQuickItem* m_headerView;
+	QQuickItem* m_rightView;
 	AppContext* m_appContext;
 	void loadEditor(QQuickItem* _editor);
 };
