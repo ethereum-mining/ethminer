@@ -20,16 +20,15 @@
  * @date 2015
  */
 #include "NatspecHandler.h"
-#include <boost/filesystem.hpp>
 #include <string>
+#include <boost/filesystem.hpp>
 
-#include <libethereum/Defaults.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/SHA3.h>
-
+#include <libethereum/Defaults.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -93,7 +92,7 @@ string NatspecHandler::getUserNotice(string const& json, dev::bytes const& _tran
 	}
 
 	// not found
-	return "";
+	return string();
 }
 
 string NatspecHandler::getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
