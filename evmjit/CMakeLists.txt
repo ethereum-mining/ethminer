@@ -4,8 +4,17 @@ project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+else ()
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
+endif()
+
+if(APPLE)
+	set(CMAKE_SHARED_LINKER_FLAGS "-undefined dynamic_lookup")
+endif()
+
 # LLVM
-if(LLVM_DIR)	# local LLVM build
+if(LLVM_DIR OR APPLE)	# local LLVM build
 	find_package(LLVM REQUIRED CONFIG)
 	message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 	message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -18,11 +27,19 @@ else()
 	execute_process(COMMAND llvm-config-3.5 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS)
 	message(STATUS "LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
 	set(LLVM_LIBS "-lLLVMBitWriter -lLLVMX86CodeGen -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMInstCombine -lLLVMTransformUtils -lLLVMipa -lLLVMAnalysis -lLLVMX86AsmParser -lLLVMX86Desc -lLLVMX86Info -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMMCJIT -lLLVMTarget -lLLVMRuntimeDyld -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMExecutionEngine -lLLVMMC -lLLVMCore -lLLVMSupport -lz -lpthread -lffi -ltinfo -ldl -lm")
+	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
+	link_directories(/usr/lib/llvm-3.5/lib)
 endif()
 
 # Boost
 find_package(Boost REQUIRED)
 
 add_subdirectory(libevmjit)
-add_subdirectory(libevmjit-cpp)
-add_subdirectory(evmcc)
+
+if(EVMJIT_CPP)
+	add_subdirectory(libevmjit-cpp)
+endif()
+
+if(EVMJIT_TOOLS)
+	add_subdirectory(evmcc)
+endif()
