@@ -83,13 +83,14 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
 	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
 	Q_PROPERTY(QString gas READ gas CONSTANT)
-	Q_PROPERTY(QString gasLeft READ gasLeft CONSTANT)
-	Q_PROPERTY(QString debugStack READ debugStack CONSTANT)
-	Q_PROPERTY(QString debugStorage READ debugStorage CONSTANT)
-	Q_PROPERTY(QString debugMemory READ debugMemory CONSTANT)
-	Q_PROPERTY(QString debugCallData READ debugCallData CONSTANT)
+	Q_PROPERTY(QString instruction READ instruction CONSTANT)
+	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
+	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
+	Q_PROPERTY(QVariantList debugMemory READ debugMemory CONSTANT)
+	Q_PROPERTY(QVariantList debugCallData READ debugCallData CONSTANT)
 	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
+	Q_PROPERTY(QString newMemSize READ newMemSize CONSTANT)
 	Q_PROPERTY(QStringList levels READ levels CONSTANT)
 
 public:
@@ -105,17 +106,21 @@ public:
 	/// Get gas used.
 	QString gas();
 	/// Get stack.
-	QString debugStack();
+	QStringList debugStack();
 	/// Get storage.
-	QString debugStorage();
+	QStringList debugStorage();
 	/// Get memory.
-	QString debugMemory();
+	QVariantList debugMemory();
 	/// Get call data.
-	QString debugCallData();
+	QVariantList debugCallData();
 	/// Get info to be displayed in the header.
 	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
+	/// Get the new memory size.
+	QString newMemSize();
+	/// Get current instruction
+	QString instruction();
 	/// Get all previous steps.
 	QStringList levels();
 	/// Get the current processed machine state.
@@ -129,6 +134,13 @@ private:
 	MachineState m_state;
 	bytes m_code;
 	bytes m_data;
+	QStringList fillList(QStringList& _list, QString const& _emptyValue);
+	QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
+	QVariantList qVariantDump(std::vector<std::vector<std::string>> const& _dump);
+	/// Nicely renders the given bytes to a string, store the content in an array.
+	/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
+	std::vector<std::vector<std::string>> memDumpToList(bytes const& _bytes, unsigned _width);
+
 };
 
 }
