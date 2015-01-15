@@ -26,8 +26,8 @@
 
 using namespace dev::mix;
 
-AssemblyDebuggerControl::AssemblyDebuggerControl(dev::mix::AppContext* _context):
-	Extension(_context, ExtensionDisplayBehavior::ModalDialog)
+AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
+	Extension(_context, ExtensionDisplayBehavior::RightView)
 {
 	connect(_context->clientModel(), &ClientModel::showDebuggerWindow, this, &AssemblyDebuggerControl::showDebugger, Qt::QueuedConnection);
 }
@@ -48,5 +48,6 @@ void AssemblyDebuggerControl::start() const
 
 void AssemblyDebuggerControl::showDebugger()
 {
-	this->addContentOn(this);
+	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
+	QMetaObject::invokeMethod(debugPanel, "update");
 }
