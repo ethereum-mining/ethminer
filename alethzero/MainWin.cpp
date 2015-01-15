@@ -37,7 +37,7 @@
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
-#include <libsolidity/CompilerStack.h>
+#include <libsolidity/AST.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
@@ -158,7 +158,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
-	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -1635,6 +1635,29 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
+
+bool Main::sourceIsSolidity(std::string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
+									 string const& _contractName)
+{
+	string ret = "";
+	auto const& contract = _compiler.getContractDefinition(_contractName);
+	auto interfaceFunctions = contract.getInterfaceFunctions();
+
+	for (auto const& it: interfaceFunctions)
+	{
+		ret += it.first.abridged();
+		ret += " :";
+		ret += it.second->getName() + "\n";
+	}
+	return ret;
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -1648,7 +1671,7 @@ void Main::on_data_textChanged()
 		{
 			m_data = fromHex(src);
 		}
-		else if (src.substr(0, 8) == "contract" || src.substr(0, 5) == "//sol") // improve this heuristic
+		else if (sourceIsSolidity(src))
 		{
 			dev::solidity::CompilerStack compiler;
 			try
@@ -1657,6 +1680,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
+				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
 			catch (dev::Exception const& exception)
 			{
@@ -1872,7 +1896,28 @@ void Main::on_send_clicked()
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
+			{
+				// If execution is a contract creation, add Natspec to
+				// a local Natspec LEVELDB
 				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+				string src = ui->data->toPlainText().toStdString();
+				if (sourceIsSolidity(src))
+					try
+					{
+						dev::solidity::CompilerStack compiler;
+						m_data = compiler.compile(src, m_enableOptimizer);
+						for (std::string& s: compiler.getContractNames())
+						{
+							h256 contractHash = compiler.getContractCodeHash(s);
+							m_natspecDB.add(contractHash,
+											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
+						}
+					}
+					catch (...)
+					{
+						statusBar()->showMessage("Couldn't compile Solidity Contract.");
+					}
+			}
 			else
 				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
@@ -2255,6 +2300,16 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
+}
+
+std::string Main::lookupNatSpec(dev::h256 const& _contractHash) const
+{
+	return m_natspecDB.retrieve(_contractHash);
+}
+
+std::string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
+{
+	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
 }
 
 void Main::refreshWhispers()
