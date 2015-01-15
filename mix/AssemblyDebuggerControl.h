@@ -22,12 +22,12 @@
 #include <atomic>
 #include "Extension.h"
 
-class AppContext;
-
 namespace dev
 {
 namespace mix
 {
+
+class AppContext;
 
 /**
  * @brief Extension which display transaction creation or transaction call debugging.
