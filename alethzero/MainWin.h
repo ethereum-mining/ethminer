@@ -36,6 +36,9 @@
 #include <libethereum/Executive.h>
 #include <libqwebthree/QWebThree.h>
 #include <libwebthree/WebThree.h>
+#include <libsolidity/CompilerStack.h>
+
+#include "NatspecHandler.h"
 
 namespace Ui {
 class Main;
@@ -80,7 +83,8 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	std::string lookupNatSpec(dev::h256 const& _contractCode) const { (void)_contractCode; return ""; }	// TODO: actually implement with leveldb & a UI.
+	std::string lookupNatSpec(dev::h256 const& _contractHash) const;
+	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData);
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 
@@ -227,6 +231,12 @@ private:
 	void refreshBlockCount();
 	void refreshBalances();
 
+	/// Attempts to infer that @c _source contains Solidity code
+	bool sourceIsSolidity(std::string const& _source);
+	/// @eturns all method hashes of a Solidity contract in a string
+	std::string const getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
+										std::string const& _contractName = "");
+
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
@@ -269,4 +279,5 @@ private:
 	QWebThree* m_qweb = nullptr;
 
 	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
+	NatspecHandler m_natspecDB;
 };

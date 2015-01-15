@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Extension.h"
+#include "CodeModel.h"
 
 namespace dev
 {
@@ -29,23 +30,21 @@ namespace mix
 /**
  * @brief Extension which display assembly code of the contract being edited.
  */
-class ConstantCompilationControl: public Extension
+class StatusPane: public Extension
 {
 	Q_OBJECT
+	Q_PROPERTY(CompilationResult* result READ result CONSTANT)
 
 public:
-	ConstantCompilationControl(AppContext* _appContext);
-	~ConstantCompilationControl() {}
+	StatusPane(AppContext* _appContext);
+	~StatusPane() {}
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-
-private:
-	void resetOutPut();
+	CompilationResult* result() const;
 
 public slots:
 	void update();
-	void displayError(QString const& _error);
 };
 
 }
