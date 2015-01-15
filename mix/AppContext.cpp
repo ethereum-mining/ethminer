@@ -22,16 +22,17 @@
  * - KeyEventManager
  */
 
+#include <stdexcept>
 #include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <libwebthree/WebThree.h>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "AppContext.h"
-#include <libwebthree/WebThree.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -48,7 +49,12 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_fileIo.reset(new FileIo());
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
-	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
+	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
+	QObject* projectModel = projectModelComponent.create();
+	if (projectModelComponent.isError())
+		throw std::runtime_error("Error loading ProjectModel: " + projectModelComponent.errorString().toStdString());
+	QQmlEngine::setObjectOwnership(projectModel, QQmlEngine::JavaScriptOwnership);
+	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
 
