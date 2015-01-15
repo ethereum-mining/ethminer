@@ -19,7 +19,6 @@
  * @date 2014
  */
 
-#include "MainWin.h"
 #include <fstream>
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
@@ -49,6 +48,7 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
