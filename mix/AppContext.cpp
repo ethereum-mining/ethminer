@@ -22,7 +22,6 @@
  * - KeyEventManager
  */
 
-#include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlContext>
