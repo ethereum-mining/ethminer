@@ -185,6 +185,8 @@ unsigned Client::installWatch(h256 _h)
 		cwatch << "+++" << ret << _h;
 	}
 	auto ch = logs(ret);
+	if (ch.empty())
+		ch.push_back(InitialChange);
 	{
 		Guard l(m_filterLock);
 		swap(m_watches[ret].changes, ch);
@@ -229,9 +231,10 @@ void Client::noteChanged(h256Set const& _filters)
 		if (_filters.count(i.second.id))
 		{
 //			cwatch << "!!!" << i.first << i.second.id;
-			try {
+			if (m_filters.count(i.second.id))
 				i.second.changes += m_filters.at(i.second.id).changes;
-			} catch(...){}
+			else
+				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
 		}
 	// clear the filters now.
 	for (auto& i: m_filters)
