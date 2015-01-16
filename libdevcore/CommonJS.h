@@ -65,7 +65,7 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 {
 	if (_s.substr(0, 2) == "0x")
 		// Hex
-		return FixedHash<N>(_s.substr(2));
+		return FixedHash<N>(_s.substr(2 + std::max<unsigned>(40, _s.size() - 2) - 40));
 	else if (_s.find_first_not_of("0123456789") == std::string::npos)
 		// Decimal
 		return (typename FixedHash<N>::Arith)(_s);

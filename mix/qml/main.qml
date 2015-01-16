@@ -38,13 +38,20 @@ ApplicationWindow {
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
 		}
+		Menu {
+			title: qsTr("Windows")
+			MenuItem { action: showHideRightPanel }
+		}
 	}
+
 	Component.onCompleted: {
 		setX(Screen.width / 2 - width / 2);
 		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
+		id: mainContent;
+		anchors.fill: parent
 	}
 
 	ModalDialog {
@@ -68,8 +75,11 @@ ApplicationWindow {
 		id: debugRunAction
 		text: "&Run"
 		shortcut: "F5"
+		onTriggered: {
+			mainContent.ensureRightView();
+			clientModel.debugDeployment();
+		}
 		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: clientModel.debugDeployment();
 	}
 
 	Action {
@@ -77,6 +87,13 @@ ApplicationWindow {
 		text: "Reset &State"
 		shortcut: "F6"
 		onTriggered: clientModel.resetState();
+	}
+
+	Action {
+		id: showHideRightPanel
+		text: "Show/Hide right view"
+		shortcut: "F7"
+		onTriggered: mainContent.toggleRightView();
 	}
 
 	Action {
