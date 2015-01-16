@@ -140,7 +140,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 		for (int i = 0; i < resultsArray.size(); i++)
 		{
 			QJsonObject elem = resultsArray[i].toObject();
-			if (elem.contains("result"))
+			if (elem["result"].isArray() && elem["result"].toArray().size() > 0)
 			{
 				QJsonObject res;
 				res["_event"] = _addInfo;
