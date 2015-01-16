@@ -28,6 +28,7 @@
 #include <memory>
 #include <utility>
 #include <thread>
+#include <boost/asio.hpp>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>

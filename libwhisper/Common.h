@@ -23,6 +23,7 @@
 
 #include <string>
 #include <chrono>
+#include <boost/asio.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
