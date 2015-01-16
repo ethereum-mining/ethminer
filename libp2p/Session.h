@@ -27,6 +27,7 @@
 #include <set>
 #include <memory>
 #include <utility>
+#include <boost/asio.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/RangeMask.h>

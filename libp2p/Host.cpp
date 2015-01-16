@@ -24,6 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <boost/asio.hpp>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>

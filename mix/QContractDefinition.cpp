@@ -20,6 +20,7 @@
  */
 
 #include <QObject>
+#include <boost/asio.hpp>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>

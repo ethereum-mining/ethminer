@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <thread>
+#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
 #include <libp2p/Host.h>

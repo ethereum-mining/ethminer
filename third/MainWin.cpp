@@ -20,6 +20,11 @@
  */
 
 #include <fstream>
+
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -27,7 +32,6 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <boost/algorithm/string.hpp>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
@@ -112,7 +116,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
-	
+
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
@@ -124,7 +128,7 @@ Main::Main(QWidget *parent) :
 //	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_httpConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
-	
+
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		QWebFrame* f = ui->webView->page()->mainFrame();
@@ -138,16 +142,16 @@ Main::Main(QWidget *parent) :
 			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
 		});
 	});
-	
+
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 	});
-	
+
 	connect(ui->webView, &QWebView::titleChanged, [=]()
 	{
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
-	
+
 	readSettings();
 
 	installWatches();
@@ -521,7 +525,7 @@ void Main::timerEvent(QTimerEvent*)
 	// 7/18, Alex: aggregating timers, prelude to better threading?
 	// Runs much faster on slower dual-core processors
 	static int interval = 100;
-	
+
 	// refresh mining every 200ms
 	if (interval / 100 % 2 == 0)
 		refreshMining();

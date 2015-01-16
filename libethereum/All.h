@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/asio.hpp>
 #include "Account.h"
 #include "CanonBlockChain.h"
 #include "Client.h"
