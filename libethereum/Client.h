@@ -27,6 +27,7 @@
 #include <atomic>
 #include <string>
 #include <array>
+#include <boost/asio.hpp>
 #include <boost/utility.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>

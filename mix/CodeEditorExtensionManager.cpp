@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include <boost/asio.hpp>
 #include <QQuickItem>
 #include <QGraphicsObject>
 #include <QQmlEngine>

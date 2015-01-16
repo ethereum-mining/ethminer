@@ -22,6 +22,7 @@
  * - KeyEventManager
  */
 
+#include <boost/asio.hpp>
 #include <QMessageBox>
 #include <QClipboard>
 #include <QQmlComponent>

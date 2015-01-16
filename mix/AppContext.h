@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <boost/asio.hpp>
 #include <memory>
 #include <QUrl>
 #include <QObject>

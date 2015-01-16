@@ -20,6 +20,7 @@
  */
 
 #include <fstream>
+#include <boost/asio.hpp>
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>

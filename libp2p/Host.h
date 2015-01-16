@@ -30,6 +30,7 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+#include <boost/asio.hpp>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>

@@ -25,6 +25,7 @@
 #include <mutex>
 #include <list>
 #include <atomic>
+#include <boost/asio.hpp>
 #include <boost/utility.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
