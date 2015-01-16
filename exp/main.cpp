@@ -78,7 +78,7 @@ int main()
 #elif 0
 int main()
 {
-    KeyPair u = KeyPair::create();
+	KeyPair u = KeyPair::create();
 	KeyPair cb = KeyPair::create();
 	OverlayDB db;
 	State s(cb.address(), db, BaseState::Empty);
@@ -98,8 +98,8 @@ int main()
 #else
 int main()
 {
-    cnote << KeyPair(Secret("0000000000000000000000000000000000000000000000000000000000000000")).address();
-    cnote << KeyPair(Secret("1111111111111111111111111111111111111111111111111111111111111111")).address();
+	cnote << KeyPair(Secret("0000000000000000000000000000000000000000000000000000000000000000")).address();
+	cnote << KeyPair(Secret("1111111111111111111111111111111111111111111111111111111111111111")).address();
 }
 #endif
 
