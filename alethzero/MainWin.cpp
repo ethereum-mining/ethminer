@@ -344,8 +344,8 @@ void Main::onNewBlock()
 	refreshBlockChain();
 	refreshAccounts();
 
-    // We must update balances since we can't filter updates to basic accounts.
-    refreshBalances();
+	// We must update balances since we can't filter updates to basic accounts.
+	refreshBalances();
 }
 
 void Main::onNewPending()
