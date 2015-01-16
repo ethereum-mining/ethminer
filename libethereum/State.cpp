@@ -539,7 +539,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			cwarn << TransactionReceipt(&b);
 		}
         cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
-		auto rs = _bc.receipts(bi.hash);
+		auto rs = _bc.receipts(m_currentBlock.hash);
 		for (unsigned j = 0; j < rs.receipts.size(); ++j)
 		{
 			auto b = rs.receipts[j].rlp();
