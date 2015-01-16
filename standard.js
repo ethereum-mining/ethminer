@@ -1,10 +1,13 @@
 var compile = function(name) { return web3.eth.solidity(env.contents("../../dapp-bin/" + name + "/" + name + ".sol")); };
 var create = function(code) { return web3.eth.transact({ 'code': code }); };
+var createVal = function(code, val) { return web3.eth.transact(val ? { 'code': code, 'value': val } : { 'code': code }); };
 var send = function(from, val, to) { return web3.eth.transact({ 'from': from, 'value': val, 'to': to }); };
 var initService = function(name, dep) { return dep.then(function(){ return compile(name).then(create); }); };
+var initServiceVal = function(name, dep, val) { return dep.then(function(){ return compile(name).then(function(c) { createVal(c, val); }); }); };
 
 var addrConfig = compile("config").then(create);
 var addrNameReg = initService("namereg", addrConfig);
+var addrGavsino = initServiceVal("gavmble", addrNameReg, "1000000000000000000");
 
 var abiNameReg = [{"constant":true,"inputs":[{"name":"name","type":"string32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":false,"inputs":[],"name":"kill","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"string32"}]},{"constant":false,"inputs":[{"name":"name","type":"string32"}],"name":"register","outputs":[]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]}];
 var regName = function(account, name) { return web3.contract(addrNameReg, abiNameReg).register(name).transact({'from': account, 'gas': 10000}); };
@@ -26,6 +29,7 @@ addrConfig.then(function() {
             regName(accounts[1], 'Gav Would');
         });
 		regName(accounts[0], 'Gav');
+		
         // TODO: once we have the exchange.
 //		approve(accounts[0], exchange).then(function(){ offer(accounts[0], coin, '5000', '0', '5000000000000000000'); });
 //      funded.then(function(){ approve(accounts[1], exchange); });

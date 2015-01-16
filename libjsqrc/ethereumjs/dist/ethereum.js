@@ -91,8 +91,8 @@ var setupInputTypes = function () {
             return value.toString(16);
         else if (typeof value === "string" && value.indexOf('0x') === 0)
             return value.substr(2);
-        else if (typeof value === "string")
-            return web3.toHex(value);
+//        else if (typeof value === "string")
+//            return web3.toHex(value);
         else
             return (+value).toString(16);
     };
