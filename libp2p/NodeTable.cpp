@@ -63,7 +63,15 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 {
 	Guard l(x_nodes);
 	shared_ptr<NodeEntry> ret = m_nodes[_node.id];
-	if (!ret)
+	if (ret)
+	{
+		// TODO: p2p robust percolation of node-endpoint changes
+//		// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
+//		if (m_server->m_peers.count(id) && isPrivateAddress(m_server->m_peers.at(id)->address.address()) && ep.port() != 0)
+//			// Update address if the node if we now have a public IP for it.
+//			m_server->m_peers[id]->address = ep;
+	}
+	else
 	{
 		clog(NodeTableNote) << "p2p.nodes.add " << _node.id.abridged();
 		if (m_nodeEvents)

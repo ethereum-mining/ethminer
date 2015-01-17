@@ -47,9 +47,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<PeerInfo> co
 
 Session::~Session()
 {
-	// TODO: P2P revisit (refactored from previous logic)
-	if (m_peer && !(id() && !isPermanentProblem(m_peer->lastDisconnect) && !m_peer->dead))
-		m_peer->lastConnected = m_peer->lastAttempted - chrono::seconds(1);
+	m_peer->lastConnected = m_peer->lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -136,8 +134,6 @@ void Session::serviceNodesRequest()
 			s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
 		else// if (i.second.address().is_v6()) - assumed
 			s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
-		m_knownNodes.extendAll(i.index);
-		m_knownNodes.unionWith(i.index);
 	}
 	sealAndSend(s);
 	m_theyRequestedNodes = false;
@@ -183,15 +179,6 @@ bool Session::interpret(RLP const& _r)
 			return true;
 		}
 
-		// TODO: P2P ensure disabled logic is considered
-		if (false /* m_server->havePeer(id) */)
-		{
-			// Already connected.
-			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
-			disconnect(DuplicatePeer);
-			return true;
-		}
-
 		// if peer and connection have id, check for UnexpectedIdentity
 		if (!id)
 		{
@@ -208,15 +195,17 @@ bool Session::interpret(RLP const& _r)
 			disconnect(UnexpectedIdentity);
 			return true;
 		}
+
+		if (m_server->havePeerSession(id))
+		{
+			// Already connected.
+			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
+			disconnect(DuplicatePeer);
+			return true;
+		}
 		
-		assert(!!m_peer);
-		assert(!!m_peer->id);
 		if (m_peer->isOffline())
 			m_peer->lastConnected = chrono::system_clock::now();
-
-//		// TODO: P2P introduce map of nodes we've given to this node (if GetPeers/Peers stays in TCP)
-		m_knownNodes.extendAll(m_peer->index);
-		m_knownNodes.unionWith(m_peer->index);
 
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
@@ -262,12 +251,20 @@ bool Session::interpret(RLP const& _r)
 		break;
 	case GetPeersPacket:
 	{
+		// Disabled for interop testing.
+		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+		break;
+		
         clogS(NetTriviaSummary) << "GetPeers";
 		m_theyRequestedNodes = true;
 		serviceNodesRequest();
 		break;
 	}
 	case PeersPacket:
+		// Disabled for interop testing.
+		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+		break;
+			
         clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		m_weRequestedNodes = false;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
@@ -304,41 +301,15 @@ bool Session::interpret(RLP const& _r)
 			if (id == this->id())
 				goto LAMEPEER;	// Just their info - we already have that.
 
-			// we don't worry about m_peers.count(id) now because node table will handle this and
-			// by default we will not blindly connect to nodes received via tcp; instead they will
-			// be pinged, as-is standard, by the node table and added if appropriate. unless flagged
-			// as required, nodes aren't connected to unless they respond via discovery; no matter if
-			// a node is relayed via udp or tcp.
-			// check that it's not us or one we already know:
-//			if (m_server->m_peers.count(id))
-//			{
-//				/*	MEH. Far from an ideal solution. Leave alone for now.
-//				// Already got this node.
-//				// See if it's any better that ours or not...
-//				// This could be the public address of a known node.
-//				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
-//				if (m_server->m_peers.count(id) && isPrivateAddress(m_server->m_peers.at(id)->address.address()) && ep.port() != 0)
-//					// Update address if the node if we now have a public IP for it.
-//					m_server->m_peers[id]->address = ep;
-//				*/
-//				goto CONTINUE;
-//			}
-
 			if (!ep.port())
 				goto LAMEPEER;	// Zero port? Don't think so.
 
 			if (ep.port() >= /*49152*/32768)
 				goto LAMEPEER;	// Private port according to IANA.
 
-			// node table handles another node giving us a node which represents one of our other local network interfaces
-			// node table handles another node giving us a node we already know about
-
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			
-			// TODO: P2P test
 			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), 30303), ep)));
-			
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 			LAMEPEER:;

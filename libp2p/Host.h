@@ -54,7 +54,6 @@ class Host;
 struct PeerInfo
 {
 	NodeId id;										///< Their id/public key.
-	unsigned index;									///< Index into m_nodesList
 	
 	// p2p: move to NodeIPEndpoint
 	bi::tcp::endpoint address;						///< As reported from the node itself.
@@ -64,10 +63,6 @@ struct PeerInfo
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;
 	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
-
-	// p2p: just remove node
-	// p2p: revisit logic in see Session.cpp#210
-	bool dead = false;								///< If true, we believe this node is permanently dead - forget all about it.
 
 	// p2p: move to protocol-specific map
 	int score = 0;									///< All time cumulative.
@@ -125,7 +120,8 @@ class HostNodeTableHandler: public NodeTableEventHandler
  * @todo gracefully disconnect peer if peer already connected
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
- * @todo writing host identifier
+ * @todo write host identifier to disk along w/nodes
+ * @todo move Session::addRating into Host and implement via sender-tagged events
  */
 class Host: public Worker
 {
