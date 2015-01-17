@@ -94,7 +94,8 @@ public:
 	
 protected:
 	/// Called by NodeTable on behalf of an implementation (Host) to process new events without blocking nodetable.
-	void processEvents() {
+	void processEvents()
+	{
 		std::list<std::pair<NodeId,NodeTableEventType>> events;
 		{
 			Guard l(x_events);
@@ -183,10 +184,7 @@ public:
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEvents.reset(_handler); }
 	
 	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryRemoved events. Events are coalesced by type whereby old events are ignored.
-	void processEvents() {
-		if (m_nodeEvents)
-			m_nodeEvents->processEvents();
-	}
+	void processEvents();
 	
 	/// Add node. Node will be pinged if it's not already known.
 	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp = bi::tcp::endpoint());

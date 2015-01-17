@@ -53,6 +53,12 @@ NodeTable::~NodeTable()
 	m_socketPtr->disconnect();
 }
 
+void NodeTable::processEvents()
+{
+	if (m_nodeEvents)
+		m_nodeEvents->processEvents();
+}
+
 shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
 {
 	auto node = Node(_pubk, NodeIPEndpoint(_udp, _tcp));
