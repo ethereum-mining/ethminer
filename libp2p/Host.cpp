@@ -374,7 +374,8 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 	if (ec)
 	{
 		bi::tcp::resolver r(m_ioService);
-		r.async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt) {
+		r.async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt)
+		{
 			if (_ec)
 				return;
 			bi::tcp::endpoint tcp = *_epIt;
@@ -503,7 +504,7 @@ void Host::run(boost::system::error_code const&)
 	if (chrono::steady_clock::now() - m_lastPing >= chrono::seconds(30))	// ping every 30s.
 		keepAlivePeers();
 	
-	auto runcb = [this](boost::system::error_code const& error) -> void { run(error); };
+	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
 	m_timer->async_wait(runcb);
 }

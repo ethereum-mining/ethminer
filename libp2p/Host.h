@@ -78,11 +78,10 @@ struct PeerInfo
 	// p2p: move to NodeIPEndpoint
 	bool shouldReconnect() const { return std::chrono::system_clock::now() > lastAttempted + std::chrono::seconds(fallbackSeconds()); }
 
-	// p2p: This has two meanings now. It's possible UDP works but TPC is down (unable to punch hole).
-	// p2p: Rename to isConnect() and move to endpoint. revisit Session.cpp#245, MainWin.cpp#877
+	// p2p: This has two meanings now. It's possible UDP works but TPC is down or vice-versa.
 	bool isOffline() const { return lastAttempted > lastConnected; }
 	
-	// p2p: Remove (in favor of lru eviction and sub-protocol ratings).
+	// p2p: Remove (in favor of lr-seen eviction and ratings).
 	bool operator<(PeerInfo const& _n) const
 	{
 		if (isOffline() != _n.isOffline())
