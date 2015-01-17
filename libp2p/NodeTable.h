@@ -125,19 +125,19 @@ protected:
  * shared_ptr replacement instead of mutating values.
  *
  * [Integration]
- * @todo deadline-timer which maintains tcp/peer connections
  * @todo restore nodes: affects refreshbuckets
  * @todo TCP endpoints
  * @todo makeRequired: don't try to evict node if node isRequired.
  * @todo makeRequired: exclude bucket from refresh if we have node as peer.
  *
  * [Optimization]
+ * @todo serialize evictions per-bucket
+ * @todo store evictions in map, unit-test eviction logic
+ * @todo store root node in table
  * @todo encapsulate doFindNode into NetworkAlgorithm (task)
  * @todo Pong to include ip:port where ping was received
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
- * @todo std::shared_ptr<PingNode> m_cachedPingPacket;
- * @todo std::shared_ptr<FindNeighbours> m_cachedFindSelfPacket;
- * @todo store root node in table?
+ * @todo cache Ping and FindSelf
  *
  * [Networking]
  * @todo TCP endpoints
@@ -145,11 +145,8 @@ protected:
  * @todo firewall
  *
  * [Protocol]
- * @todo post-eviction pong
  * @todo optimize knowledge at opposite edges; eg, s_bitsPerStep lookups. (Can be done via pointers to NodeBucket)
- * @todo ^ s_bitsPerStep = 5; // Denoted by b in [Kademlia]. Bits by which address space is divided.
- * @todo optimize (use tree for state and/or custom compare for cache)
- * @todo reputation (aka universal siblings lists)
+ * @todo ^ s_bitsPerStep = 8; // Denoted by b in [Kademlia]. Bits by which address space is divided.
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
