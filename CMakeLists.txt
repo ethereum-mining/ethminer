@@ -124,9 +124,7 @@ include(EthExecutableHelper)
 createBuildInfo()
 
 if (EVMJIT)
-	# Workaround for Ubuntu broken LLVM package
-	link_directories(/usr/lib/llvm-3.5/lib)
-	
+	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 endif()
 
