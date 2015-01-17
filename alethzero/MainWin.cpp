@@ -279,7 +279,7 @@ Address Main::getNameReg() const
 
 Address Main::getCurrencies() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)2)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)));
 }
 
 void Main::installNameRegWatch()
@@ -343,6 +343,9 @@ void Main::onNewBlock()
 	refreshBlockCount();
 	refreshBlockChain();
 	refreshAccounts();
+
+	// We must update balances since we can't filter updates to basic accounts.
+	refreshBalances();
 }
 
 void Main::onNewPending()
@@ -2140,7 +2143,9 @@ QString Main::prettyU256(dev::u256 _n) const
 	unsigned inc = 0;
 	QString raw;
 	ostringstream s;
-	if (!(_n >> 64))
+	if (_n > szabo && _n < 1000000 * ether)
+		s << "<span style=\"color: #215\">" << formatBalance(_n) << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
+	else if (!(_n >> 64))
 		s << "<span style=\"color: #008\">" << (uint64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
 	else if (!~(_n >> 64))
 		s << "<span style=\"color: #008\">" << (int64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (int64_t)_n << ")</span>";
