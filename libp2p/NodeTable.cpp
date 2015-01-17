@@ -374,7 +374,19 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 //				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
 				
-				// whenever a pong is received, first check if it's in m_evictions
+				// whenever a pong is received, check if it's in m_evictions
+				Guard le(x_evictions);
+				for (auto it = m_evictions.begin(); it != m_evictions.end(); it++)
+					if (it->first.first == nodeid && it->first.second > std::chrono::steady_clock::now())
+					{
+						if (auto n = getNodeEntry(it->second))
+							dropNode(n);
+						
+						if (auto n = (*this)[it->first.first])
+							addNode(n);
+						
+						m_evictions.erase(it);
+					}
 				
 				break;
 			}
