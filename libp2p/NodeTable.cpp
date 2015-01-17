@@ -506,7 +506,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 	}
 
 	unsigned nextRefresh = connected ? (refreshed ? 200 : c_bucketRefresh.count()*1000) : 10000;
-	auto runcb = [this](boost::system::error_code const& error) -> void { doRefreshBuckets(error); };
+	auto runcb = [this](boost::system::error_code const& error) { doRefreshBuckets(error); };
 	m_bucketRefreshTimer.expires_from_now(boost::posix_time::milliseconds(nextRefresh));
 	m_bucketRefreshTimer.async_wait(runcb);
 }
