@@ -25,7 +25,7 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
-#include "ConstantCompilationControl.h"
+#include "StatusPane.h"
 #include "AssemblyDebuggerControl.h"
 #include "StateListView.h"
 #include "AppContext.h"
@@ -56,10 +56,9 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	std::shared_ptr<ConstantCompilationControl> output = std::make_shared<ConstantCompilationControl>(m_appContext);
+	std::shared_ptr<StatusPane> output = std::make_shared<StatusPane>(m_appContext);
 	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
 	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
-	QObject::connect(m_appContext->clientModel(), &ClientModel::runFailed, output.get(), &ConstantCompilationControl::displayError);
 	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
 
 	initExtension(output);
@@ -73,10 +72,10 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	{
 		try
 		{
-			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
-				_ext->addTabOn(m_tabView);
-			else if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightTab)
-				_ext->addTabOn(m_rightTabView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightView)
+				_ext->addTabOn(m_rightView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::HeaderView)
+				_ext->addTabOn(m_headerView);
 		}
 		catch (...)
 		{
@@ -93,13 +92,13 @@ void CodeEditorExtensionManager::applyCodeHighlight()
 	//TODO: reimplement
 }
 
-void CodeEditorExtensionManager::setRightTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 {
-	m_rightTabView = _tabView;
+	m_rightView = _rightView;
 	initExtensions(); //TODO: move this to a proper place
 }
 
-void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)
 {
-	m_tabView = _tabView;
+	m_headerView = _headerView;
 }

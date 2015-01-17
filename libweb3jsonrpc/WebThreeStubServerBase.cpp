@@ -84,7 +84,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 
 static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
 {
-	Json::Value res;
+	Json::Value res(Json::arrayValue);
 	for (dev::eth::LocalisedLogEntry const& e: _es)
 		res.append(toJson(e));
 	return res;

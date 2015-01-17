@@ -326,6 +326,13 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << u256(32) << u256(0) << eth::logInstruction(logNumber);
 			break;
 		}
+		case Location::BLOCKHASH:
+		{
+			arguments[0]->accept(*this);
+			appendTypeConversion(*arguments[0]->getType(), *function.getParameterTypes()[0], true);
+			m_context << eth::Instruction::BLOCKHASH;
+			break;
+		}
 		case Location::ECRECOVER:
 		case Location::SHA256:
 		case Location::RIPEMD160:
@@ -344,7 +351,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	return false;
 }
 
-bool ExpressionCompiler::visit(NewExpression const& _newExpression)
+bool ExpressionCompiler::visit(NewExpression const&)
 {
 	// code is created for the function call (CREATION) only
 	return false;
