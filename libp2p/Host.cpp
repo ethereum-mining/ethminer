@@ -28,7 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
-#include <devcrypto/FileSystem.h>
+#include <libdevcrypto/FileSystem.h>
 #include "Session.h"
 #include "Common.h"
 #include "Capability.h"
