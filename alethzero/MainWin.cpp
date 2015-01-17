@@ -37,7 +37,7 @@
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
-#include <libsolidity/CompilerStack.h>
+#include <libsolidity/AST.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
@@ -48,10 +48,10 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
-#include "MainWin.h"
 #include "OurWebThreeStubServer.h"
 #include "ui_Main.h"
 using namespace std;
@@ -66,11 +66,11 @@ static void initUnits(QComboBox* _b)
 		_b->addItem(QString::fromStdString(units()[n].second), n);
 }
 
-QString Main::fromRaw(dev::h256 _n, unsigned* _inc)
+QString Main::fromRaw(h256 _n, unsigned* _inc)
 {
 	if (_n)
 	{
-		std::string s((char const*)_n.data(), 32);
+		string s((char const*)_n.data(), 32);
 		auto l = s.find_first_of('\0');
 		if (!l)
 			return QString();
@@ -91,13 +91,13 @@ QString Main::fromRaw(dev::h256 _n, unsigned* _inc)
 	return QString();
 }
 
-static std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& keys)
+static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
 {
 	auto list = keys.toStdList();
 	return {begin(list), end(list)};
 }
 
-static QString contentsOfQResource(std::string const& res)
+static QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -116,7 +116,7 @@ Main::Main(QWidget *parent) :
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
-	g_logPost = [=](std::string const& s, char const* c)
+	g_logPost = [=](string const& s, char const* c)
 	{
 		simpleDebugOut(s, c);
 		m_logLock.lock();
@@ -136,8 +136,8 @@ Main::Main(QWidget *parent) :
 	cerr << "Block Hash: " << BlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
-	cerr << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
-	cerr << "Client database version: " << dev::eth::c_databaseVersion << endl;
+	cerr << "Network protocol version: " << c_protocolVersion << endl;
+	cerr << "Client database version: " << c_databaseVersion << endl;
 
 	ui->configDock->close();
 	on_verbosity_valueChanged();
@@ -158,7 +158,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
-	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -234,7 +234,7 @@ void Main::addNewId(QString _ids)
 	refreshWhisper();
 }
 
-dev::p2p::NetworkPreferences Main::netPrefs() const
+NetworkPreferences Main::netPrefs() const
 {
 	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), ui->localNetworking->isChecked());
 }
@@ -244,7 +244,7 @@ void Main::onKeysChanged()
 	installBalancesWatch();
 }
 
-unsigned Main::installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f)
+unsigned Main::installWatch(LogFilter const& _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
@@ -266,10 +266,10 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
-	installWatch(dev::eth::LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
-	installWatch(dev::eth::PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
-	installWatch(dev::eth::ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
+	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
+	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
+	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
+	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
@@ -279,24 +279,24 @@ Address Main::getNameReg() const
 
 Address Main::getCurrencies() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)2)));
+	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)));
 }
 
 void Main::installNameRegWatch()
 {
 	uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address((u160)getNameReg()), [=](LocalisedLogEntries const&){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(LogFilter().address((u160)getNameReg()), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address((u160)getCurrencies()), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(LogFilter().address((u160)getCurrencies()), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
 {
-	dev::eth::LogFilter tf;
+	LogFilter tf;
 
 	vector<Address> altCoins;
 	Address coinsAddr = getCurrencies();
@@ -343,6 +343,9 @@ void Main::onNewBlock()
 	refreshBlockCount();
 	refreshBlockChain();
 	refreshAccounts();
+
+	// We must update balances since we can't filter updates to basic accounts.
+	refreshBalances();
 }
 
 void Main::onNewPending()
@@ -467,7 +470,7 @@ static Public stringToPublic(QString const& _a)
 
 QString Main::pretty(dev::Address _a) const
 {
-/*	static std::map<Address, QString> s_memos;
+/*	static map<Address, QString> s_memos;
 
 	if (!s_memos.count(_a))
 	{*/
@@ -505,7 +508,7 @@ QString Main::render(dev::Address _a) const
 	return QString::fromStdString(_a.abridged());
 }
 
-string32 fromString(std::string const& _s)
+string32 fromString(string const& _s)
 {
 	string32 ret;
 	for (unsigned i = 0; i < 32 && i <= _s.size(); ++i)
@@ -518,7 +521,7 @@ Address Main::fromString(QString const& _n) const
 	if (_n == "(Create Contract)")
 		return Address();
 
-/*	static std::map<QString, Address> s_memos;
+/*	static map<QString, Address> s_memos;
 
 	if (!s_memos.count(_n))
 	{*/
@@ -860,18 +863,18 @@ void Main::on_preview_triggered()
 
 void Main::refreshMining()
 {
-	dev::eth::MineProgress p = ethereum()->miningProgress();
+	MineProgress p = ethereum()->miningProgress();
 	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
-	list<dev::eth::MineInfo> l = ethereum()->miningHistory();
+	list<MineInfo> l = ethereum()->miningHistory();
 	static unsigned lh = 0;
 	if (p.hashes < lh)
 		ui->miningView->resetStats();
 	lh = p.hashes;
 	ui->miningView->appendStats(l, p);
 /*	if (p.ms)
-		for (dev::eth::MineInfo const& i: l)
+		for (MineInfo const& i: l)
 			cnote << i.hashes * 10 << "h/sec, need:" << i.requirement << " best:" << i.best << " best-so-far:" << p.best << " avg-speed:" << (p.hashes * 1000 / p.ms) << "h/sec";
 */
 }
@@ -1026,10 +1029,10 @@ void Main::refreshBlockCount()
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
 	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(dev::eth::c_protocolVersion).arg(dev::eth::c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
+	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
-static bool blockMatch(string const& _f, dev::eth::BlockDetails const& _b, h256 _h, BlockChain const& _bc)
+static bool blockMatch(string const& _f, BlockDetails const& _b, h256 _h, BlockChain const& _bc)
 {
 	try
 	{
@@ -1178,7 +1181,7 @@ void Main::timerEvent(QTimerEvent*)
 	}
 }
 
-string Main::renderDiff(dev::eth::StateDiff const& _d) const
+string Main::renderDiff(StateDiff const& _d) const
 {
 	stringstream s;
 
@@ -1187,24 +1190,24 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 	{
 		s << "<hr/>";
 
-		dev::eth::AccountDiff const& ad = i.second;
+		AccountDiff const& ad = i.second;
 		s << "<code style=\"white-space: pre; font-weight: bold\">" << lead(ad.changeType()) << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
 		if (!ad.exist.to())
 			continue;
 
 		if (ad.balance)
 		{
-			s << "<br/>" << indent << "Balance " << std::dec << formatBalance(ad.balance.to());
-			s << " <b>" << std::showpos << (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from())) << std::noshowpos << "</b>";
+			s << "<br/>" << indent << "Balance " << dec << formatBalance(ad.balance.to());
+			s << " <b>" << showpos << (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from())) << noshowpos << "</b>";
 		}
 		if (ad.nonce)
 		{
-			s << "<br/>" << indent << "Count #" << std::dec << ad.nonce.to();
-			s << " <b>" << std::showpos << (((dev::bigint)ad.nonce.to()) - ((dev::bigint)ad.nonce.from())) << std::noshowpos << "</b>";
+			s << "<br/>" << indent << "Count #" << dec << ad.nonce.to();
+			s << " <b>" << showpos << (((dev::bigint)ad.nonce.to()) - ((dev::bigint)ad.nonce.from())) << noshowpos << "</b>";
 		}
 		if (ad.code)
 		{
-			s << "<br/>" << indent << "Code " << std::hex << ad.code.to().size() << " bytes";
+			s << "<br/>" << indent << "Code " << hex << ad.code.to().size() << " bytes";
 			if (ad.code.from().size())
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}
@@ -1226,7 +1229,7 @@ string Main::renderDiff(dev::eth::StateDiff const& _d) const
 			else if (i.first > u160(1) << 150)
 				s << (h160)(u160)i.first;
 			else
-				s << std::hex << i.first;
+				s << hex << i.first;
 */
 			if (!i.second.from())
 				s << ": " << prettyU256(i.second.to()).toStdString();
@@ -1479,10 +1482,10 @@ void Main::populateDebugger(dev::bytesConstRef _r)
 		bytesConstRef lastData;
 		h256 lastHash;
 		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
+		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
 		{
-			dev::eth::VM& vm = *voidVM;
-			dev::eth::ExtVM const& ext = *static_cast<dev::eth::ExtVM const*>(voidExt);
+			VM& vm = *voidVM;
+			ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 			if (ext.code != lastExtCode)
 			{
 				lastExtCode = ext.code;
@@ -1605,11 +1608,11 @@ static shh::Topic topicFromText(QString _s)
 		{
 			u256 v(d.cap(2).toStdString());
 			if (d.cap(6) == "szabo")
-				v *= dev::eth::szabo;
+				v *= szabo;
 			else if (d.cap(5) == "finney")
-				v *= dev::eth::finney;
+				v *= finney;
 			else if (d.cap(4) == "ether")
-				v *= dev::eth::ether;
+				v *= ether;
 			bytes bs = dev::toCompactBigEndian(v);
 			if (d.cap(1) != "$")
 				for (auto i = bs.size(); i < 32; ++i)
@@ -1635,6 +1638,29 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
+
+bool Main::sourceIsSolidity(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
+									 string const& _contractName)
+{
+	string ret = "";
+	auto const& contract = _compiler.getContractDefinition(_contractName);
+	auto interfaceFunctions = contract.getInterfaceFunctions();
+
+	for (auto const& it: interfaceFunctions)
+	{
+		ret += it.first.abridged();
+		ret += " :";
+		ret += it.second->getName() + "\n";
+	}
+	return ret;
+}
+
 void Main::on_data_textChanged()
 {
 	m_pcWarp.clear();
@@ -1648,7 +1674,7 @@ void Main::on_data_textChanged()
 		{
 			m_data = fromHex(src);
 		}
-		else if (src.substr(0, 8) == "contract" || src.substr(0, 5) == "//sol") // improve this heuristic
+		else if (sourceIsSolidity(src))
 		{
 			dev::solidity::CompilerStack compiler;
 			try
@@ -1657,6 +1683,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
+				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
 			catch (dev::Exception const& exception)
 			{
@@ -1671,7 +1698,7 @@ void Main::on_data_textChanged()
 		}
 		else
 		{
-			m_data = dev::eth::compileLLL(src, m_enableOptimizer, &errors);
+			m_data = compileLLL(src, m_enableOptimizer, &errors);
 			if (errors.size())
 			{
 				try
@@ -1687,11 +1714,11 @@ void Main::on_data_textChanged()
 			}
 			else
 			{
-				auto asmcode = dev::eth::compileLLLToAsm(src, false);
+				auto asmcode = compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 				if (m_enableOptimizer)
 				{
-					asmcode = dev::eth::compileLLLToAsm(src, true);
+					asmcode = compileLLLToAsm(src, true);
 					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
 				}
 			}
@@ -1872,7 +1899,28 @@ void Main::on_send_clicked()
 			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
+			{
+				// If execution is a contract creation, add Natspec to
+				// a local Natspec LEVELDB
 				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+				string src = ui->data->toPlainText().toStdString();
+				if (sourceIsSolidity(src))
+					try
+					{
+						dev::solidity::CompilerStack compiler;
+						m_data = compiler.compile(src, m_enableOptimizer);
+						for (string& s: compiler.getContractNames())
+						{
+							h256 contractHash = compiler.getContractCodeHash(s);
+							m_natspecDB.add(contractHash,
+											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
+						}
+					}
+					catch (...)
+					{
+						statusBar()->showMessage("Couldn't compile Solidity Contract.");
+					}
+			}
 			else
 				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
@@ -2008,7 +2056,7 @@ void Main::on_dumpTracePretty_triggered()
 			f << "    STORAGE" << endl;
 			for (auto const& i: ws.storage)
 				f << showbase << hex << i.first << ": " << i.second << endl;
-			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << dev::eth::instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
+			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
 		}
 }
 
@@ -2095,7 +2143,9 @@ QString Main::prettyU256(dev::u256 _n) const
 	unsigned inc = 0;
 	QString raw;
 	ostringstream s;
-	if (!(_n >> 64))
+	if (_n > szabo && _n < 1000000 * ether)
+		s << "<span style=\"color: #215\">" << formatBalance(_n) << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
+	else if (!(_n >> 64))
 		s << "<span style=\"color: #008\">" << (uint64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (uint64_t)_n << ")</span>";
 	else if (!~(_n >> 64))
 		s << "<span style=\"color: #008\">" << (int64_t)_n << "</span> <span style=\"color: #448\">(0x" << hex << (int64_t)_n << ")</span>";
@@ -2235,7 +2285,7 @@ void Main::updateDebugger()
 				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
 
 			ostringstream ss;
-			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << dev::eth::instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
+			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
 			for (auto const& i: ws.storage)
@@ -2255,6 +2305,16 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
+}
+
+string Main::lookupNatSpec(dev::h256 const& _contractHash) const
+{
+	return m_natspecDB.retrieve(_contractHash);
+}
+
+string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
+{
+	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
 }
 
 void Main::refreshWhispers()
