@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import org.ethereum.qml.QEther 1.0
 
 Window {
 	modality: Qt.WindowModal
@@ -12,7 +13,7 @@ Window {
 	visible: false
 
 	property alias stateTitle: titleField.text
-	property alias stateBalance: balanceField.text
+	property alias stateBalance: balanceField.value
 	property int stateIndex
 	property var stateTransactions: []
 	signal accepted
@@ -20,7 +21,7 @@ Window {
 	function open(index, item) {
 		stateIndex = index;
 		stateTitle = item.title;
-		stateBalance = item.balance;
+		balanceField.value = item.balance;
 		transactionsModel.clear();
 		stateTransactions = [];
 		var transactions = item.transactions;
@@ -66,9 +67,15 @@ Window {
 		Label {
 			text: qsTr("Balance")
 		}
-		TextField {
+		Ether {
 			id: balanceField
+			edit: true
+			displayFormattedValue: true
 			Layout.fillWidth: true
+			value: QEther {
+				value: "100000"
+				unit: "ether"
+			}
 		}
 
 		Label {
@@ -114,16 +121,25 @@ Window {
 			transactionDialog.open(index, transactionsModel.get(index));
 		}
 
+		function ether(_value, _unit)
+		{
+			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
+			var ether = etherComponent.createObject(transactionsModel);
+			ether.setValue(_value);
+			ether.setUnit(_unit);
+			return ether;
+		}
+
 		function addTransaction() {
 
 			// Set next id here to work around Qt bug
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
 			// Second call to signal handler would just edit the item that was just created, no harm done
 			var item = {
-				value: "0",
+				value: ether("0", "ether"),
 				functionId: "",
-				gas: "125000",
-				gasPrice: "100000"
+				gas: ether("125000", "ether"),
+				gasPrice: ether("100000", "ether")
 			};
 
 			transactionDialog.open(transactionsModel.count, item);

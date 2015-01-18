@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import org.ethereum.qml.QEther 1.0
 
 Window {
 	modality: Qt.WindowModal
@@ -11,9 +12,9 @@ Window {
 
 	property int transactionIndex
 	property alias transactionParams: paramsModel;
-	property alias gas: gasField.text;
-	property alias gasPrice: gasPriceField.text;
-	property alias transactionValue: valueField.text;
+	property alias gas: gasField.value;
+	property alias gasPrice: gasPriceField.value;
+	property alias transactionValue: valueField.value;
 	property alias functionId: functionComboBox.currentText;
 	property var itemParams;
 
@@ -21,9 +22,9 @@ Window {
 
 	function open(index, item) {
 		transactionIndex = index;
-		gas = item.gas;
-		gasPrice = item.gasPrice;
-		transactionValue = item.value;
+		gasField.value = item.gas;
+		gasPriceField.value = item.gasPrice;
+		valueField.value = item.value;
 		var functionId = item.functionId;
 		itemParams = item.parameters !== undefined ? item.parameters : {};
 		functionsModel.clear();
@@ -53,7 +54,7 @@ Window {
 			var parameters = func.parameters;
 			for (var p = 0; p < parameters.length; p++) {
 				var pname = parameters[p].name;
-				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname] : "" });
+				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
 			}
 		}
 	}
@@ -74,7 +75,11 @@ Window {
 		}
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			item.parameters[parameter.name] = parameter.value;
+			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
+			var param = etherComponent.createObject(stateListModel);
+			ether.setValue(parameter.value);
+			ether.setUnit("ether");
+			item.parameters[parameter.name] = param;
 		}
 		return item;
 	}
@@ -107,25 +112,52 @@ Window {
 		Label {
 			text: qsTr("Value")
 		}
-		TextField {
-			id: valueField
+		Rectangle
+		{
 			Layout.fillWidth: true
+			Ether {
+				id: valueField
+				edit: true
+				displayFormattedValue: true
+				value: QEther {
+					value: "100000"
+					unit: "ether"
+				}
+			}
 		}
 
 		Label {
 			text: qsTr("Gas")
 		}
-		TextField {
-			id: gasField
+		Rectangle
+		{
 			Layout.fillWidth: true
+			Ether {
+				id: gasField
+				edit: true
+				displayFormattedValue: true
+				value: QEther {
+					value: "100000"
+					unit: "ether"
+				}
+			}
 		}
 
 		Label {
 			text: qsTr("Gas price")
 		}
-		TextField {
-			id: gasPriceField
+		Rectangle
+		{
 			Layout.fillWidth: true
+			Ether {
+				id: gasPriceField
+				edit: true
+				displayFormattedValue: true
+				value: QEther {
+					value: "100000"
+					unit: "ether"
+				}
+			}
 		}
 
 		Label {

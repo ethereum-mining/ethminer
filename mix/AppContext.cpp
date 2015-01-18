@@ -49,6 +49,7 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
 	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
 
