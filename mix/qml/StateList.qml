@@ -4,6 +4,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.ProjectModel 1.0
+import org.ethereum.qml.QEther 1.0
 
 Rectangle {
 	color: "#ededed"
@@ -67,9 +68,13 @@ Rectangle {
 		id: stateListModel
 
 		function addState() {
+			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
+			var ether = etherComponent.createObject(stateListModel);
+			ether.setValue("100000000000000000000000000");
+			ether.setUnit("ether");
 			var item = {
 				title: "",
-				balance: "100000000000000000000000000",
+				balance: ether,
 				transactions: []
 			};
 			stateDialog.open(stateListModel.count, item);
