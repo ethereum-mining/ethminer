@@ -35,7 +35,7 @@ using namespace dev::eth;
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
-    m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
+	m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
 	m_depth(_level)
 {}
 

@@ -199,6 +199,8 @@ bool Secp256k1::verifySecret(Secret const& _s, Public& _p)
 
 void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
+	(void)o_s;
+	(void)_s;
 	ECDH<ECP>::Domain d(m_oid);
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
