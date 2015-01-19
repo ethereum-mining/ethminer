@@ -20,11 +20,24 @@
  * Ethereum IDE client.
  */
 
+#include <iostream>
 #include "MixApplication.h"
+#include "Exceptions.h"
 using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
 {
-	MixApplication app(_argc, _argv);
-	return app.exec();
+	try
+	{
+		MixApplication app(_argc, _argv);
+		return app.exec();
+	}
+	catch (boost::exception const& _e)
+	{
+		std::cerr << boost::diagnostic_information(_e);
+	}
+	catch (std::exception const& _e)
+	{
+		std::cerr << _e.what();
+	}
 }

@@ -2,7 +2,6 @@ import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
-import org.ethereum.qml.ProjectModel 1.0
 
 Item {
 	property bool renameMode: false;
@@ -11,16 +10,16 @@ Item {
 		Text {
 			Layout.fillWidth: true
 			color: "blue"
-			text: ProjectModel.projectData ? ProjectModel.projectData.title : ""
+			text: projectModel.projectData ? projectModel.projectData.title : ""
 			horizontalAlignment: Text.AlignHCenter
-			visible: !ProjectModel.isEmpty;
+			visible: !projectModel.isEmpty;
 		}
 		ListView {
 			id: projectList
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 
-			model: ProjectModel.listModel
+			model: projectModel.listModel
 
 			delegate: renderDelegate
 			highlight: Rectangle {
@@ -31,8 +30,8 @@ Item {
 			clip: true
 
 			onCurrentIndexChanged: {
-				if (currentIndex >= 0 && currentIndex < ProjectModel.listModel.count)
-					ProjectModel.openDocument(ProjectModel.listModel.get(currentIndex).documentId);
+				if (currentIndex >= 0 && currentIndex < projectModel.listModel.count)
+					projectModel.openDocument(projectModel.listModel.get(currentIndex).documentId);
 			}
 		}
 		Menu {
@@ -46,7 +45,7 @@ Item {
 			MenuItem {
 				text: qsTr("Delete")
 				onTriggered: {
-					ProjectModel.removeDocument(projectList.model.get(projectList.currentIndex).documentId);
+					projectModel.removeDocument(projectList.model.get(projectList.currentIndex).documentId);
 				}
 			}
 		}
@@ -103,7 +102,7 @@ Item {
 				function close(accept) {
 					renameMode = false;
 					if (accept)
-						ProjectModel.renameDocument(projectList.model.get(projectList.currentIndex).documentId, textInput.text);
+						projectModel.renameDocument(projectList.model.get(projectList.currentIndex).documentId, textInput.text);
 				}
 			}
 			MouseArea {
@@ -119,7 +118,7 @@ Item {
 				}
 			}
 			Connections {
-				target: ProjectModel
+				target: projectModel
 				onProjectLoaded: {
 					projectList.currentIndex = 0;
 				}
