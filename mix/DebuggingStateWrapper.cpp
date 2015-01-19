@@ -23,6 +23,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QPointer>
+#include <QQmlEngine>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
@@ -69,17 +70,23 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 
 QBigInt* DebuggingStateWrapper::gasCost()
 {
-	return new QBigInt(m_state.gasCost, this);
+	QBigInt* re = new QBigInt(m_state.gasCost, this);
+	QQmlEngine::setObjectOwnership(re, QQmlEngine::JavaScriptOwnership);
+	return re;
 }
 
 QBigInt* DebuggingStateWrapper::gas()
 {
-	return new QBigInt(m_state.gas, this);
+	QBigInt* r = new QBigInt(m_state.gas, this);
+	QQmlEngine::setObjectOwnership(r, QQmlEngine::JavaScriptOwnership);
+	return r;
 }
 
 QBigInt* DebuggingStateWrapper::newMemSize()
 {
-	return new QBigInt(m_state.newMemSize, this);
+	QBigInt* r = new QBigInt(m_state.newMemSize, this);
+	QQmlEngine::setObjectOwnership(r, QQmlEngine::JavaScriptOwnership);
+	return r;
 }
 
 QStringList DebuggingStateWrapper::debugStack()

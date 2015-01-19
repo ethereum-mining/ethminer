@@ -19,8 +19,8 @@
  * @date 2015
  */
 
-#include "boost/variant/multivisitors.hpp"
-#include "boost/variant.hpp"
+#include <boost/variant/multivisitors.hpp>
+#include <boost/variant.hpp>
 #include <libdevcore/CommonJS.h>
 #include "QBigInt.h"
 
