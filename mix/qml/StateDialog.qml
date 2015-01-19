@@ -5,6 +5,7 @@ import QtQuick.Window 2.0
 import org.ethereum.qml.QEther 1.0
 
 Window {
+	id: modalStateDialog
 	modality: Qt.WindowModal
 
 	width:640
@@ -72,10 +73,6 @@ Window {
 			edit: true
 			displayFormattedValue: true
 			Layout.fillWidth: true
-			value: QEther {
-				value: "100000"
-				unit: "ether"
-			}
 		}
 
 		Label {
@@ -124,7 +121,7 @@ Window {
 		function ether(_value, _unit)
 		{
 			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
-			var ether = etherComponent.createObject(transactionsModel);
+			var ether = etherComponent.createObject(modalStateDialog);
 			ether.setValue(_value);
 			ether.setUnit(_unit);
 			return ether;
@@ -136,10 +133,10 @@ Window {
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
 			// Second call to signal handler would just edit the item that was just created, no harm done
 			var item = {
-				value: ether("0", "ether"),
+				value: ether("0", QEther.Wei),
 				functionId: "",
-				gas: ether("125000", "ether"),
-				gasPrice: ether("100000", "ether")
+				gas: ether("125000", QEther.Wei),
+				gasPrice: ether("100000", QEther.Wei)
 			};
 
 			transactionDialog.open(transactionsModel.count, item);

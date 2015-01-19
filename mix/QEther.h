@@ -17,7 +17,7 @@
 /** @file QEther.h
  * @author Yann yann@ethdev.com
  * @date 2014
- * Represent an Ether value in QML (mapped to u256 in c++).
+ * Represent an amount of Ether in QML (mapped to u256 in c++).
  */
 
 #pragma once
@@ -36,7 +36,7 @@ class QEther: public QBigInt
 	Q_OBJECT
 	Q_ENUMS(EtherUnit)
 	Q_PROPERTY(QString value READ value WRITE setValue NOTIFY valueChanged)
-	Q_PROPERTY(QString unit READ unit WRITE setUnit NOTIFY unitChanged)
+	Q_PROPERTY(EtherUnit unit READ unit WRITE setUnit NOTIFY unitChanged)
 
 public:
 	enum EtherUnit
@@ -52,25 +52,31 @@ public:
 		Tether,
 		Gether,
 		Mether,
-		grand,
-		ether,
-		finney,
-		szabo,
+		Grand,
+		Ether,
+		Finney,
+		Szabo,
 		Gwei,
 		Mwei,
 		Kwei,
-		wei
+		Wei
 	};
 
-	QEther(QObject* _parent = 0): QBigInt(dev::u256(0), _parent), m_currentUnit(EtherUnit::ether) {}
+	QEther(QObject* _parent = 0): QBigInt(dev::u256(0), _parent), m_currentUnit(EtherUnit::Wei) {}
 	QEther(dev::u256 _value, EtherUnit _unit, QObject* _parent = 0): QBigInt(_value, _parent), m_currentUnit(_unit) {}
 	~QEther() {}
 
+	/// @returns user-friendly string representation of the amount of ether. Invokable from QML.
 	Q_INVOKABLE QString format() const;
+	/// @returns the current amount of Ether in Wei. Invokable from QML.
 	Q_INVOKABLE QBigInt* toWei() const;
-	Q_INVOKABLE void setValue(QString const& _value) { m_internalValue = dev::jsToU256(_value.toStdString()); }
-	Q_INVOKABLE QString unit() const;
+	/// @returns the current unit used. Invokable from QML.
+	Q_INVOKABLE EtherUnit unit() const { return m_currentUnit; }
+	/// Set the unit to be used. Invokable from QML.
+	Q_INVOKABLE void setUnit(EtherUnit const& _unit) { m_currentUnit = _unit; }
+	/// Set the unit to be used. Invokable from QML.
 	Q_INVOKABLE void setUnit(QString const& _unit);
+	/// @returns the u256 value of the current amount of Ether in Wei.
 	dev::u256 toU256Wei() { return boost::get<dev::u256>(toWei()->internalValue()); }
 
 private:

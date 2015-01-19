@@ -29,6 +29,7 @@
 #include <libevmcore/Instruction.h>
 #include <libdevcore/Common.h>
 #include "DebuggingStateWrapper.h"
+#include "QBigInt.h"
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
@@ -66,25 +67,19 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 	return std::make_tuple(codeStr, QPointer<QQMLMap>(new QQMLMap(codeMapping)));
 }
 
-QString DebuggingStateWrapper::gasCost()
+QBigInt* DebuggingStateWrapper::gasCost()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.gasCost;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.gasCost, this);
 }
 
-QString DebuggingStateWrapper::gas()
+QBigInt* DebuggingStateWrapper::gas()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.gas;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.gas, this);
 }
 
-QString DebuggingStateWrapper::newMemSize()
+QBigInt* DebuggingStateWrapper::newMemSize()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.newMemSize;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.newMemSize, this);
 }
 
 QStringList DebuggingStateWrapper::debugStack()

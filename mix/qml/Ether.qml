@@ -1,3 +1,10 @@
+/*
+ * Display a row containing :
+ *  - The amount of Ether.
+ *  - The unit used.
+ *  - User-friendly string representation of the amout of Ether (if displayFormattedValue == true).
+ * 'value' has to be a QEther obj.
+*/
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
@@ -13,20 +20,16 @@ Rectangle {
 
 	function update()
 	{
-		etherValueEdit.text = value.value;
-		selectUnit(value.unit);
+		if (value !== undefined)
+		{
+			etherValueEdit.text = value.value;
+			selectUnit(value.unit);
+		}
 	}
 
 	function selectUnit(unit)
 	{
-		for(var i = 0; i < unitsModel.count; ++i)
-		{
-			if (unitsModel.get(i).text === unit)
-			{
-				units.currentIndex = i;
-				return;
-			}
-		}
+		units.currentIndex = unit;
 	}
 
 	RowLayout
@@ -43,8 +46,11 @@ Rectangle {
 			{
 				onTextChanged:
 				{
-					value.setValue(text)
-					formattedValue.text = value.format();
+					if (value !== undefined)
+					{
+						value.setValue(text)
+						formattedValue.text = value.format();
+					}
 				}
 				width: parent.width
 				readOnly: !edit
@@ -64,30 +70,33 @@ Rectangle {
 				id: units
 				onCurrentTextChanged:
 				{
-					value.setUnit(currentText);
-					formattedValue.text = value.format();
+					if (value !== undefined)
+					{
+						value.setUnit(currentText);
+						formattedValue.text = value.format();
+					}
 				}
 				model: ListModel {
 					id: unitsModel
-					ListElement { text: "wei"; }
-					ListElement { text: "Kwei"; }
-					ListElement { text: "Mwei"; }
-					ListElement { text: "Gwei"; }
-					ListElement { text: "szabo"; }
-					ListElement { text: "finney"; }
-					ListElement { text: "ether"; }
-					ListElement { text: "grand"; }
-					ListElement { text: "Mether"; }
-					ListElement { text: "Gether"; }
-					ListElement { text: "Tether"; }
-					ListElement { text: "Pether"; }
-					ListElement { text: "Eether"; }
-					ListElement { text: "Zether"; }
-					ListElement { text: "Yether"; }
-					ListElement { text: "Nether"; }
-					ListElement { text: "Dether"; }
-					ListElement { text: "Vether"; }
 					ListElement { text: "Uether"; }
+					ListElement { text: "Vether"; }
+					ListElement { text: "Dether"; }
+					ListElement { text: "Nether"; }
+					ListElement { text: "Yether"; }
+					ListElement { text: "Zether"; }
+					ListElement { text: "Eether"; }
+					ListElement { text: "Pether"; }
+					ListElement { text: "Tether"; }
+					ListElement { text: "Gether"; }
+					ListElement { text: "Mether"; }
+					ListElement { text: "grand"; }
+					ListElement { text: "ether"; }
+					ListElement { text: "finney"; }
+					ListElement { text: "szabo"; }
+					ListElement { text: "Gwei"; }
+					ListElement { text: "Mwei"; }
+					ListElement { text: "Kwei"; }
+					ListElement { text: "wei"; }
 				}
 			}
 			Rectangle
