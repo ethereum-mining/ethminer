@@ -32,6 +32,7 @@
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 #include "ClientModel.h"
+#include "QEther.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -41,7 +42,7 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false)
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
-	qRegisterMetaType<QBigInt*>("QEther*");
+	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");

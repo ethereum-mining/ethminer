@@ -31,7 +31,9 @@
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "AppContext.h"
+#include "QEther.h"
 #include <libwebthree/WebThree.h>
+
 
 using namespace dev;
 using namespace dev::eth;

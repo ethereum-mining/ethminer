@@ -26,7 +26,6 @@
 #include <atomic>
 #include "DebuggingStateWrapper.h"
 #include "MixClient.h"
-#include "QEther.h"
 
 using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 
