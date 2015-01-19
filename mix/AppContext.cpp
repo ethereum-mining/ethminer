@@ -32,7 +32,8 @@
 #include "CodeEditorExtensionManager.h"
 #include "Exceptions.h"
 #include "AppContext.h"
-#include <libwebthree/WebThree.h> //this needs to be last because it pulls windows.h through libp2p/boost_asio
+#include "QEther.h"
+#include <libwebthree/WebThree.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -59,6 +60,8 @@ void AppContext::load()
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())
