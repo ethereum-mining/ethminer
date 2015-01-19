@@ -22,7 +22,6 @@
  * - KeyEventManager
  */
 
-#include <stdexcept>
 #include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
@@ -32,6 +31,8 @@
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
+#include "CodeEditorExtensionManager.h"
+#include "Exceptions.h"
 #include "AppContext.h"
 
 using namespace dev;
@@ -47,21 +48,31 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
-	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
-	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
-	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
-	QObject* projectModel = projectModelComponent.create();
-	if (projectModelComponent.isError())
-		throw std::runtime_error("Error loading ProjectModel: " + projectModelComponent.errorString().toStdString());
-	QQmlEngine::setObjectOwnership(projectModel, QQmlEngine::JavaScriptOwnership);
-	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
-	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
-	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
-
 }
 
 AppContext::~AppContext()
 {
+}
+
+void AppContext::load()
+{
+	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
+	QObject* projectModel = projectModelComponent.create();
+	if (projectModelComponent.isError())
+	{
+		QmlLoadException exception;
+		for (auto const& e : projectModelComponent.errors())
+			exception << QmlErrorInfo(e);
+		BOOST_THROW_EXCEPTION(exception);
+	}
+	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
+	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
+	appLoaded();
 }
 
 QQmlApplicationEngine* AppContext::appEngine()

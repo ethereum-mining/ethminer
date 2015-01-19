@@ -44,7 +44,7 @@ Item {
 		target: appContext
 		onAppLoaded: {
 			if (projectSettings.lastProjectPath)
-				loadProject(projectSettings.lastProjectPath)
+				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}
 
