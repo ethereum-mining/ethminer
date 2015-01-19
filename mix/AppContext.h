@@ -60,6 +60,8 @@ class AppContext: public QObject
 public:
 	AppContext(QQmlApplicationEngine* _engine);
 	virtual ~AppContext();
+	/// Load the UI from qml files
+	void load();
 	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
 	/// Get code model
