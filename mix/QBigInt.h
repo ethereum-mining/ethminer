@@ -25,6 +25,7 @@
 #include "boost/variant.hpp"
 #include "boost/variant/multivisitors.hpp"
 #include <QObject>
+#include <QQmlEngine>
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/Common.h>
 
@@ -61,15 +62,19 @@ struct divide: public boost::static_visitor<BigIntVariant>
 	BigIntVariant operator()(T1 const& _value, T2 const& _otherValue) const { return _value / _otherValue; }
 };
 
+/*
+ * Represent big integer like big int and u256 in QML.
+ * The ownership is set by default to Javascript.
+ */
 class QBigInt: public QObject
 {
 	Q_OBJECT
 
 public:
-	QBigInt(QObject* _parent = 0): QObject(_parent), m_internalValue(dev::u256(0)) {}
-	QBigInt(dev::u256 const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) {}
-	QBigInt(dev::bigint const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) {}
-	QBigInt(BigIntVariant const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value){}
+	QBigInt(QObject* _parent = 0): QObject(_parent), m_internalValue(dev::u256(0)) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
+	QBigInt(dev::u256 const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
+	QBigInt(dev::bigint const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
+	QBigInt(BigIntVariant const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value){ QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
 	~QBigInt() {}
 
 	/// @returns the current used big integer.
