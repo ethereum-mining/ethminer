@@ -26,13 +26,13 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <libwebthree/WebThree.h>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "CodeEditorExtensionManager.h"
 #include "Exceptions.h"
 #include "AppContext.h"
+#include <libwebthree/WebThree.h> //this needs to be last because it pulls windows.h through libp2p/boost_asio
 
 using namespace dev;
 using namespace dev::eth;
