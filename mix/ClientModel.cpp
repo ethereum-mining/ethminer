@@ -72,9 +72,9 @@ void ClientModel::debugState(QVariantMap _state)
 		QVariantMap transaction = t.toMap();
 
 		QString functionId = transaction.value("functionId").toString();
-		u256 gas = (qvariant_cast<QEther*>(_state.value("gas")))->toU256Wei();
-		u256 value = (qvariant_cast<QEther*>(_state.value("value")))->toU256Wei();
-		u256 gasPrice = (qvariant_cast<QEther*>(_state.value("gasPrice")))->toU256Wei();
+		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
+		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
+		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QVariantMap params = transaction.value("parameters").toMap();
 		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 

@@ -5,11 +5,9 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.1
-import org.ethereum.qml.QEther 1.0
+import org.ethereum.qml.QBigInt 1.0
 
-QEther
+QBigInt
 {
-	id: basicEther
-	value: "100000000000"
-	unit: QEther.Wei
+	id: bigInt
 }

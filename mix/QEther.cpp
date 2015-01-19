@@ -29,27 +29,27 @@ QString QEther::format() const
 	return QString::fromStdString(dev::eth::formatBalance(boost::get<dev::u256>(toWei()->internalValue())));
 }
 
-QString QEther::unit() const
-{
-	QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("EtherUnit"));
-	const char* key = units.valueToKey(m_currentUnit);
-	return QString(key);
-}
-
-void QEther::setUnit(QString const& _unit)
-{
-	QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("EtherUnit"));
-	m_currentUnit = static_cast<EtherUnit>(units.keysToValue(_unit.toStdString().c_str()));
-}
-
 QBigInt* QEther::toWei() const
 {
 	QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("EtherUnit"));
 	const char* key = units.valueToKey(m_currentUnit);
 	for (std::pair<dev::u256, std::string> rawUnit: dev::eth::units())
 	{
-		if (rawUnit.second == QString(key).toStdString())
+		if (rawUnit.second == QString(key).toLower().toStdString())
 			return multiply(new QBigInt(rawUnit.first));
 	}
 	return new QBigInt(dev::u256(0));
+}
+
+void QEther::setUnit(QString const& _unit)
+{
+	QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("EtherUnit"));
+	for (int k = 0; k < units.keyCount(); k++)
+	{
+		if (QString(units.key(k)).toLower() == _unit)
+		{
+			m_currentUnit = static_cast<EtherUnit>(units.keysToValue(units.key(k)));
+			return;
+		}
+	}
 }

@@ -17,7 +17,7 @@
 /** @file QBigInt.h
  * @author Yann yann@ethdev.com
  * @date 2015
- * Represent a big integer (u256, bigint, ...) to be used in QML.
+ * Represent a big integer (u256, bigint) to be used in QML.
  */
 
 #pragma once
@@ -66,16 +66,25 @@ class QBigInt: public QObject
 	Q_OBJECT
 
 public:
+	QBigInt(QObject* _parent = 0): QObject(_parent), m_internalValue(dev::u256(0)) {}
 	QBigInt(dev::u256 const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) {}
 	QBigInt(dev::bigint const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) {}
 	QBigInt(BigIntVariant const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value){}
 	~QBigInt() {}
 
+	/// @returns the current used big integer.
 	BigIntVariant internalValue() { return m_internalValue; }
+	/// @returns a string representation of the big integer used. Invokable from QML.
 	Q_INVOKABLE QString value() const;
+	/// Set the value of the BigInteger used. Will use u256 type. Invokable from QML.
+	Q_INVOKABLE void setValue(QString const& _value) { m_internalValue = dev::jsToU256(_value.toStdString()); }
+	/// Subtract by @a _value. Invokable from QML.
 	Q_INVOKABLE QBigInt* subtract(QBigInt* const& _value) const;
+	/// Add @a _value to the current big integer. Invokable from QML.
 	Q_INVOKABLE QBigInt* add(QBigInt* const& _value) const;
+	/// Multiply by @a _value. Invokable from QML.
 	Q_INVOKABLE QBigInt* multiply(QBigInt* const& _value) const;
+	/// divide by @a _value. Invokable from QML.
 	Q_INVOKABLE QBigInt* divide(QBigInt* const& _value) const;
 
 protected:

@@ -5,6 +5,7 @@ import QtQuick.Window 2.0
 import org.ethereum.qml.QEther 1.0
 
 Window {
+	id: modalTransactionDialog
 	modality: Qt.WindowModal
 	width:640
 	height:480
@@ -75,10 +76,9 @@ Window {
 		}
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
-			var param = etherComponent.createObject(stateListModel);
-			ether.setValue(parameter.value);
-			ether.setUnit("ether");
+			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
+			var param = intComponent.createObject(modalTransactionDialog);
+			param.setValue(parameter.value);
 			item.parameters[parameter.name] = param;
 		}
 		return item;
@@ -119,10 +119,6 @@ Window {
 				id: valueField
 				edit: true
 				displayFormattedValue: true
-				value: QEther {
-					value: "100000"
-					unit: "ether"
-				}
 			}
 		}
 
@@ -136,10 +132,6 @@ Window {
 				id: gasField
 				edit: true
 				displayFormattedValue: true
-				value: QEther {
-					value: "100000"
-					unit: "ether"
-				}
 			}
 		}
 
@@ -153,10 +145,6 @@ Window {
 				id: gasPriceField
 				edit: true
 				displayFormattedValue: true
-				value: QEther {
-					value: "100000"
-					unit: "ether"
-				}
 			}
 		}
 

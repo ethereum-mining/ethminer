@@ -69,9 +69,9 @@ Rectangle {
 
 		function addState() {
 			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
-			var ether = etherComponent.createObject(stateListModel);
+			var ether = etherComponent.createObject(stateListContainer);
 			ether.setValue("100000000000000000000000000");
-			ether.setUnit("ether");
+			ether.setUnit(QEther.Wei);
 			var item = {
 				title: "",
 				balance: ether,

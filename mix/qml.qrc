@@ -42,5 +42,6 @@
         <file>qml/WebPreview.qml</file>
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
+        <file>qml/BigIntValue.qml</file>
     </qresource>
 </RCC>
