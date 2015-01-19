@@ -70,23 +70,17 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 
 QBigInt* DebuggingStateWrapper::gasCost()
 {
-	QBigInt* re = new QBigInt(m_state.gasCost, this);
-	QQmlEngine::setObjectOwnership(re, QQmlEngine::JavaScriptOwnership);
-	return re;
+	return new QBigInt(m_state.gasCost);
 }
 
 QBigInt* DebuggingStateWrapper::gas()
 {
-	QBigInt* r = new QBigInt(m_state.gas, this);
-	QQmlEngine::setObjectOwnership(r, QQmlEngine::JavaScriptOwnership);
-	return r;
+	return new QBigInt(m_state.gas);
 }
 
 QBigInt* DebuggingStateWrapper::newMemSize()
 {
-	QBigInt* r = new QBigInt(m_state.newMemSize, this);
-	QQmlEngine::setObjectOwnership(r, QQmlEngine::JavaScriptOwnership);
-	return r;
+	return new QBigInt(m_state.newMemSize);
 }
 
 QStringList DebuggingStateWrapper::debugStack()
