@@ -40,25 +40,25 @@ using BigIntVariant = boost::variant<dev::u256, dev::bigint>;
 struct add: public boost::static_visitor<BigIntVariant>
 {
 	template<class T1, class T2>
-	BigIntVariant operator()(T1 _value, T2 _otherValue) const { return _value + _otherValue; }
+	BigIntVariant operator()(T1 const& _value, T2 const& _otherValue) const { return _value + _otherValue; }
 };
 
 struct subtract: public boost::static_visitor<BigIntVariant>
 {
 	template<class T1, class T2>
-	BigIntVariant operator()(T1 _value, T2 _otherValue) const { return _value - _otherValue; }
+	BigIntVariant operator()(T1 const& _value, T2 const& _otherValue) const { return _value - _otherValue; }
 };
 
 struct multiply: public boost::static_visitor<BigIntVariant>
 {
 	template<class T1, class T2>
-	BigIntVariant operator()(T1 _value, T2 _otherValue) const { return _value * _otherValue; }
+	BigIntVariant operator()(T1 const& _value, T2 const& _otherValue) const { return _value * _otherValue; }
 };
 
 struct divide: public boost::static_visitor<BigIntVariant>
 {
 	template<class T1, class T2>
-	BigIntVariant operator()(T1 _value, T2 _otherValue) const { return _value / _otherValue; }
+	BigIntVariant operator()(T1 const& _value, T2 const& _otherValue) const { return _value / _otherValue; }
 };
 
 class QBigInt: public QObject
