@@ -14,27 +14,18 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MixApplication.cpp
- * @author Yann yann@ethdev.com
- * @date 2014
+/** @file Exceptions.cpp
+ * @author Arkadiy Paronyan arkadiy@ethdev.com
+ * @date 2015
+ * Ethereum IDE client.
  */
 
-#include <QDebug>
-#include <QQmlApplicationEngine>
-#include "MixApplication.h"
-#include "AppContext.h"
+#include <ostream>
+#include <QQmlError>
+#include "Exceptions.h"
 
-#include <QMenuBar>
-
-using namespace dev::mix;
-
-MixApplication::MixApplication(int _argc, char* _argv[]):
-	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
+std::ostream& operator<<(std::ostream& _out, QQmlError const& _error)
 {
-	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	m_appContext->load();
-}
-
-MixApplication::~MixApplication()
-{
+	_out << _error.toString().toStdString();
+	return _out;
 }

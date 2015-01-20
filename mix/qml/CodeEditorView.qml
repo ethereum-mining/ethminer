@@ -2,7 +2,6 @@ import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
-import org.ethereum.qml.ProjectModel 1.0
 
 Item {
 
@@ -40,7 +39,7 @@ Item {
 	}
 
 	Connections {
-		target: ProjectModel
+		target: projectModel
 		onDocumentOpened: {
 			openDocument(document);
 		}
