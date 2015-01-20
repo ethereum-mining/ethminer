@@ -63,10 +63,37 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 		return true;
 
 	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
-	if (userNotice.empty())
-		return showAuthenticationPopup("Unverified Pending Transaction",
-									   "An undocumented transaction is about to be executed.");
+	
+	// TODO: uncomment this
+//	if (userNotice.empty())
+//		return showAuthenticationPopup("Unverified Pending Transaction",
+//									   "An undocumented transaction is about to be executed.");
+
+	auto evaluator = QNatspecExpressionEvaluator(*m_web3, m_main);
+	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
 
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Pending Transaction", userNotice);
 }
+
+QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(dev::WebThreeDirect& _web3, Main* _main):
+	m_web3(&_web3), m_main(_main)
+{}
+
+QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
+{}
+
+QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
+{
+	// evaluate the natspec
+	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
+	auto result = m_main->evalRaw("evaluateExpression(\"2 + 1\")");
+//	auto result = m_main->evalRaw(_expression);
+	return result.toString();
+}
+
+
+
+
+
+
