@@ -1,5 +1,3 @@
-pragma Singleton
-
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
@@ -50,7 +48,7 @@ Item {
 		target: appContext
 		onAppLoaded: {
 			if (projectSettings.lastProjectPath)
-				loadProject(projectSettings.lastProjectPath)
+				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}
 

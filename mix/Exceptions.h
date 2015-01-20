@@ -14,27 +14,32 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MixApplication.cpp
- * @author Yann yann@ethdev.com
- * @date 2014
+/** @file Exceptions.h
+ * @author Arkadiy Paronyan arkadiy@ethdev.com
+ * @date 2015
+ * Ethereum IDE client.
  */
 
-#include <QDebug>
-#include <QQmlApplicationEngine>
-#include "MixApplication.h"
-#include "AppContext.h"
+#pragma once
 
-#include <QMenuBar>
+#include <iosfwd>
+#include <libdevcore/Exceptions.h>
 
-using namespace dev::mix;
+class QTextDocument;
+class QQmlError;
 
-MixApplication::MixApplication(int _argc, char* _argv[]):
-	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
+namespace dev
 {
-	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	m_appContext->load();
+namespace mix
+{
+
+struct QmlLoadException: virtual Exception {};
+struct FileIoException: virtual Exception {};
+
+typedef boost::error_info<struct tagQmlError, QQmlError> QmlErrorInfo;
+typedef boost::error_info<struct tagFileError, std::string> FileError;
+
+}
 }
 
-MixApplication::~MixApplication()
-{
-}
+std::ostream& operator<<(std::ostream& _out, QQmlError const& _error);
