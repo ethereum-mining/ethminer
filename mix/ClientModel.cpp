@@ -32,28 +32,17 @@
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 #include "ClientModel.h"
+#include "QEther.h"
 
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-/// @todo Move this to QML
-dev::u256 fromQString(QString const& _s)
-{
-	return dev::jsToU256(_s.toStdString());
-}
-
-/// @todo Move this to QML
-QString toQString(dev::u256 _value)
-{
-	std::ostringstream s;
-	s << _value;
-	return QString::fromStdString(s.str());
-}
-
 ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false)
 {
+	qRegisterMetaType<QBigInt*>("QBigInt*");
+	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
@@ -74,7 +63,7 @@ void ClientModel::debugDeployment()
 
 void ClientModel::debugState(QVariantMap _state)
 {
-	u256 balance = fromQString(_state.value("balance").toString());
+	u256 balance = (qvariant_cast<QEther*>(_state.value("balance")))->toU256Wei();
 	QVariantList transactions = _state.value("transactions").toList();
 
 	std::vector<TransactionSettings> transactionSequence;
@@ -84,14 +73,14 @@ void ClientModel::debugState(QVariantMap _state)
 		QVariantMap transaction = t.toMap();
 
 		QString functionId = transaction.value("functionId").toString();
-		u256 value = fromQString(transaction.value("value").toString());
-		u256 gas = fromQString(transaction.value("gas").toString());
-		u256 gasPrice = fromQString(transaction.value("gasPrice").toString());
+		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
+		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
+		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QVariantMap params = transaction.value("parameters").toMap();
 		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 
 		for (auto p = params.cbegin(); p != params.cend(); ++p)
-			transactionSettings.parameterValues.insert(std::make_pair(p.key(), fromQString(p.value().toString())));
+			transactionSettings.parameterValues.insert(std::make_pair(p.key(), (qvariant_cast<QEther*>(p.value()))->toU256Wei()));
 
 		transactionSequence.push_back(transactionSettings);
 	}

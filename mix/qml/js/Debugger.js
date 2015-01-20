@@ -65,9 +65,9 @@ function highlightSelection(index)
 function completeCtxInformation(state)
 {
 	currentStep.update(state.step);
-	mem.update(state.newMemSize + " " + qsTr("words"));
-	stepCost.update(state.gasCost);
-	gasSpent.update(debugStates[0].gas - state.gas);
+	mem.update(state.newMemSize.value() + " " + qsTr("words"));
+	stepCost.update(state.gasCost.value());
+	gasSpent.update(debugStates[0].gas.subtract(state.gas).value());
 
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;
