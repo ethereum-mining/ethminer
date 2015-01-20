@@ -21,9 +21,9 @@ Rectangle {
 			stateListModel.clear();
 		}
 		onProjectLoaded: {
-			if (!target.projectData.states)
-				target.projectData.states = [];
-			var items = target.projectData.states;
+			if (!projectData.states)
+				projectData.states = [];
+			var items = projectData.states;
 			for(var i = 0; i < items.length; i++) {
 				stateListModel.append(items[i]);
 				stateList.push(items[i])

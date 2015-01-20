@@ -96,11 +96,19 @@ Rectangle {
 				id: contentView
 				width: parent.width - projectList.width
 				height: parent.height
-				CodeEditorView {
-								height: parent.height
-								anchors.top: parent.top
-								width: parent.width
-							}
+				SplitView {
+					anchors.fill: parent
+					orientation: Qt.Vertical
+					CodeEditorView {
+						height: parent.height * 0.6
+						anchors.top: parent.top
+						width: parent.width
+					}
+					WebPreview {
+						height: parent.height * 0.4
+						width: parent.width
+					}
+				}
 			}
 
 			Rectangle {
