@@ -431,12 +431,19 @@ bool ContractType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 		return true;
 	if (_convertTo.getCategory() == Category::INTEGER)
 		return dynamic_cast<IntegerType const&>(_convertTo).isAddress();
+	if (_convertTo.getCategory() == Category::CONTRACT)
+	{
+		auto const& bases = getContractDefinition().getLinearizedBaseContracts();
+		return find(bases.begin(), bases.end(),
+					&dynamic_cast<ContractType const&>(_convertTo).getContractDefinition()) != bases.end();
+	}
 	return false;
 }
 
 bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	return isImplicitlyConvertibleTo(_convertTo) || _convertTo.getCategory() == Category::INTEGER;
+	return isImplicitlyConvertibleTo(_convertTo) || _convertTo.getCategory() == Category::INTEGER ||
+			_convertTo.getCategory() == Category::CONTRACT;
 }
 
 TypePointer ContractType::unaryOperatorResult(Token::Value _operator) const
@@ -694,6 +701,29 @@ bool TypeType::operator==(Type const& _other) const
 	TypeType const& other = dynamic_cast<TypeType const&>(_other);
 	return *getActualType() == *other.getActualType();
 }
+
+MemberList const& TypeType::getMembers() const
+{
+	// We need to lazy-initialize it because of recursive references.
+	if (!m_members)
+	{
+		map<string, TypePointer> members;
+		if (m_actualType->getCategory() == Category::CONTRACT && m_currentContract != nullptr)
+		{
+			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*m_actualType).getContractDefinition();
+			vector<ContractDefinition const*> currentBases = m_currentContract->getLinearizedBaseContracts();
+			if (find(currentBases.begin(), currentBases.end(), &contract) != currentBases.end())
+				// We are accessing the type of a base contract, so add all public and private
+				// functions. Note that this does not add inherited functions on purpose.
+				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
+					if (f->getName() != contract.getName())
+						members[f->getName()] = make_shared<FunctionType>(*f);
+		}
+		m_members.reset(new MemberList(members));
+	}
+	return *m_members;
+}
+
 
 MagicType::MagicType(MagicType::Kind _kind):
 	m_kind(_kind)

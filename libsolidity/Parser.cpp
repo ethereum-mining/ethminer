@@ -117,10 +117,18 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
 	expectToken(Token::CONTRACT);
 	ASTPointer<ASTString> name = expectIdentifierToken();
-	expectToken(Token::LBRACE);
+	vector<ASTPointer<InheritanceSpecifier>> baseContracts;
 	vector<ASTPointer<StructDefinition>> structs;
 	vector<ASTPointer<VariableDeclaration>> stateVariables;
 	vector<ASTPointer<FunctionDefinition>> functions;
+	if (m_scanner->getCurrentToken() == Token::IS)
+		do
+		{
+			m_scanner->next();
+			baseContracts.push_back(parseInheritanceSpecifier());
+		}
+		while (m_scanner->getCurrentToken() == Token::COMMA);
+	expectToken(Token::LBRACE);
 	bool visibilityIsPublic = true;
 	while (true)
 	{
@@ -149,7 +157,25 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::RBRACE);
-	return nodeFactory.createNode<ContractDefinition>(name, docstring, structs, stateVariables, functions);
+	return nodeFactory.createNode<ContractDefinition>(name, docstring, baseContracts, structs,
+													  stateVariables, functions);
+}
+
+ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<Identifier> name = ASTNodeFactory(*this).createNode<Identifier>(expectIdentifierToken());
+	vector<ASTPointer<Expression>> arguments;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+	{
+		m_scanner->next();
+		arguments = parseFunctionCallArguments();
+		nodeFactory.markEndPosition();
+		expectToken(Token::RPAREN);
+	}
+	else
+		nodeFactory.setEndPositionFromNode(name);
+	return nodeFactory.createNode<InheritanceSpecifier>(name, arguments);
 }
 
 ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
