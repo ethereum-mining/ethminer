@@ -27,6 +27,9 @@ using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
 {
+#ifdef ETH_HAVE_WEBENGINE
+	Q_INIT_RESOURCE(js);
+#endif
 	try
 	{
 		MixApplication app(_argc, _argv);
