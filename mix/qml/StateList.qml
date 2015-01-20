@@ -3,7 +3,6 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
-import org.ethereum.qml.ProjectModel 1.0
 import org.ethereum.qml.QEther 1.0
 
 Rectangle {

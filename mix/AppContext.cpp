@@ -48,6 +48,7 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
+/*
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
 	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
@@ -55,6 +56,7 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+*/
 }
 
 AppContext::~AppContext()
@@ -67,6 +69,8 @@ void AppContext::load()
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())
