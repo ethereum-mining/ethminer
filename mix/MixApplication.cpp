@@ -21,6 +21,11 @@
 
 #include <QDebug>
 #include <QQmlApplicationEngine>
+
+#ifdef ETH_HAVE_WEBENGINE
+#include <QtWebEngine/QtWebEngine>
+#endif
+
 #include "MixApplication.h"
 #include "AppContext.h"
 
@@ -31,6 +36,9 @@ using namespace dev::mix;
 MixApplication::MixApplication(int _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
 	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
 	m_appContext->load();
 }

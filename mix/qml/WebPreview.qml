@@ -3,18 +3,25 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
-import QtWebKit 3.0
-import QtWebKit.experimental 1.0
-import org.ethereum.qml.ProjectModel 1.0
+import QtWebEngine 1.0
+import QtWebEngine.experimental 1.0
 
 Item {
 	id: webPreview
+	property string pendingPageUrl: ""
+	property bool initialized: false
+
+	function setPreviewUrl(url) {
+		if (!initialized)
+			pendingPageUrl = url;
+		else {
+			pendingPageUrl = "";
+			webView.runJavaScript("loadPage(\"" + url + "\")");
+		}
+	}
 
 	function reload() {
-
-
-
-		webView.reload();
+		webView.runJavaScript("reloadPage()");
 	}
 
 	function reloadOnSave() {
@@ -30,21 +37,28 @@ Item {
 
 	function changePage() {
 		if (pageCombo.currentIndex >=0 && pageCombo.currentIndex < pageListModel.count) {
-			webView.url = pageListModel.get(pageCombo.currentIndex).path;
-			reload();
+			setPreviewUrl(pageListModel.get(pageCombo.currentIndex).path);
 		} else {
-			webView.loadHtml("");
+			setPreviewUrl("");
+		}
+	}
+	Connections {
+		target: appContext
+		onAppLoaded: {
+			//We need to load the container using file scheme so that web security would allow loading local files in iframe
+			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
+			webView.loadHtml(containerPage, "file:///")
 		}
 	}
 
 	Connections {
-		target: ProjectModel
+		target: projectModel
 		onProjectSaved : reloadOnSave();
 		onDocumentSaved: reloadOnSave();
 		onDocumentAdded: {
 			console.log("added")
 			console.log(documentId)
-			var document = ProjectModel.getDocument(documentId)
+			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
 				pageListModel.append(document);
 		}
@@ -52,7 +66,7 @@ Item {
 			updateDocument(documentId, function(i) { pageListModel.remove(i) } )
 		}
 		onDocumentUpdated: {
-			updateDocument(documentId, function(i) { pageListModel.set(i, ProjectModel.getDocument(documentId)) } )
+			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
 		onProjectLoaded: {
@@ -77,10 +91,12 @@ Item {
 
 	ColumnLayout {
 		anchors.fill: parent
+
 		RowLayout {
+			anchors.top: parent.top
 			Layout.fillWidth: true;
 			Text {
-				text: qsTr("Page");
+				text: qsTr("Page")
 			}
 			ComboBox {
 				id: pageCombo
@@ -90,83 +106,32 @@ Item {
 				onCurrentIndexChanged: changePage()
 			}
 			Button {
-				text: qsTr("Reload");
+				text: qsTr("Reload")
 				onClicked: reload()
 			}
 			CheckBox {
 				id: autoReloadOnSave
 				checked: true
-				text: qsTr("Auto reload on save");
+				text: qsTr("Auto reload on save")
 			}
 		}
 
-		ScrollView {
-				Layout.fillWidth: true;
-				Layout.fillHeight: true;
-			WebView {
-				id: webView
-				url: "http://google.com"
-				anchors.fill: parent
-				experimental.preferences.developerExtrasEnabled: true
-				experimental.itemSelector: itemSelector
+		WebEngineView {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			id: webView
+			experimental.settings.localContentCanAccessFileUrls: true
+			experimental.settings.localContentCanAccessRemoteUrls: true
+			onJavaScriptConsoleMessage: {
+				console.log(sourceID + ":" + lineNumber + ":" + message);
 			}
-		}
-	}
-
-	Component {
-		id: itemSelector
-		MouseArea {
-			// To avoid conflicting with ListView.model when inside ListView context.
-			property QtObject selectorModel: model
-			anchors.fill: parent
-			onClicked: selectorModel.reject()
-			Rectangle {
-				clip: true
-				width: 200
-				height: Math.min(listView.contentItem.height + listView.anchors.topMargin + listView.anchors.bottomMargin
-								 , Math.max(selectorModel.elementRect.y, parent.height - selectorModel.elementRect.y - selectorModel.elementRect.height))
-				x: (selectorModel.elementRect.x + 200 > parent.width) ? parent.width - 200 : selectorModel.elementRect.x
-				y: (selectorModel.elementRect.y + selectorModel.elementRect.height + height < parent.height ) ? selectorModel.elementRect.y + selectorModel.elementRect.height
-																											  : selectorModel.elementRect.y - height;
-				radius: 5
-				color: "gainsboro"
-				opacity: 0.8
-				ListView {
-					id: listView
-					anchors.fill: parent
-					anchors.margins: 10
-					spacing: 5
-					model: selectorModel.items
-					delegate: Rectangle {
-						color: model.selected ? "gold" : "silver"
-						height: 50
-						width: parent.width
-						Text {
-							anchors.centerIn: parent
-							text: model.text
-							color: model.enabled ? "black" : "gainsboro"
-						}
-						MouseArea {
-							anchors.fill: parent
-							enabled: model.enabled
-							onClicked: selectorModel.accept(model.index)
-						}
-					}
-					section.property: "group"
-					section.delegate: Rectangle {
-						height: 30
-						width: parent.width
-						color: "silver"
-						Text {
-							anchors.centerIn: parent
-							text: section
-							font.bold: true
-						}
-					}
+			onLoadingChanged: {
+				if (!loading) {
+					initialized = true;
+					if (pendingPageUrl)
+						setPreviewUrl(pendingPageUrl);
 				}
 			}
 		}
-
 	}
-
 }
