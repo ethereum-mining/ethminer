@@ -32,23 +32,24 @@ class Compiler: private ASTConstVisitor
 public:
 	explicit Compiler(bool _optimize = false): m_optimize(_optimize), m_context(), m_returnTag(m_context.newTag()) {}
 
-	void compileContract(ContractDefinition const& _contract, std::vector<MagicVariableDeclaration const*> const& _magicGlobals,
+	void compileContract(ContractDefinition const& _contract,
 						 std::map<ContractDefinition const*, bytes const*> const& _contracts);
 	bytes getAssembledBytecode() { return m_context.getAssembledBytecode(m_optimize); }
 	bytes getRuntimeBytecode() { return m_runtimeContext.getAssembledBytecode(m_optimize);}
 	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
 
 private:
-	/// Registers the global objects and the non-function objects inside the contract with the context.
-	void initializeContext(ContractDefinition const& _contract, std::vector<MagicVariableDeclaration const*> const& _magicGlobals,
+	/// Registers the non-function objects inside the contract with the context.
+	void initializeContext(ContractDefinition const& _contract,
 						   std::map<ContractDefinition const*, bytes const*> const& _contracts);
 	/// Adds the code that is run at creation time. Should be run after exchanging the run-time context
-	/// with a new and initialized context.
-	/// adds the constructor code.
+	/// with a new and initialized context. Adds the constructor code.
 	void packIntoContractCreator(ContractDefinition const& _contract, CompilerContext const& _runtimeContext);
+	void appendBaseConstructorCall(FunctionDefinition const& _constructor,
+								   std::vector<ASTPointer<Expression>> const& _arguments);
 	void appendConstructorCall(FunctionDefinition const& _constructor);
-	/// Recursively searches the call graph and returns all functions needed by the constructor (including itself).
-	std::set<FunctionDefinition const*> getFunctionsNeededByConstructor(FunctionDefinition const& _constructor);
+	/// Recursively searches the call graph and returns all functions referenced inside _nodes.
+	std::set<FunctionDefinition const*> getFunctionsCalled(std::set<ASTNode const*> const& _nodes);
 	void appendFunctionSelector(ContractDefinition const& _contract);
 	/// Creates code that unpacks the arguments for the given function, from memory if
 	/// @a _fromMemory is true, otherwise from call data. @returns the size of the data in bytes.

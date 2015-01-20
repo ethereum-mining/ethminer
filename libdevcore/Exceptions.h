@@ -31,7 +31,7 @@
 namespace dev
 {
 // base class for all exceptions
-struct Exception: virtual std::exception, virtual boost::exception {};
+struct Exception: virtual std::exception, virtual boost::exception { mutable std::string m_message; };
 
 struct BadHexCharacter: virtual Exception {};
 struct RLPException: virtual Exception {};

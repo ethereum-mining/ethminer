@@ -29,6 +29,7 @@
 #include <libethereum/Executive.h>
 #include "QVariableDefinition.h"
 #include "MixClient.h"
+#include "QBigInt.h"
 
 namespace dev
 {
@@ -81,8 +82,8 @@ class DebuggingStateWrapper: public QObject
 	Q_OBJECT
 	Q_PROPERTY(int step READ step CONSTANT)
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
-	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
-	Q_PROPERTY(QString gas READ gas CONSTANT)
+	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
+	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
 	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
 	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
@@ -90,7 +91,7 @@ class DebuggingStateWrapper: public QObject
 	Q_PROPERTY(QVariantList debugCallData READ debugCallData CONSTANT)
 	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
-	Q_PROPERTY(QString newMemSize READ newMemSize CONSTANT)
+	Q_PROPERTY(QBigInt* newMemSize READ newMemSize CONSTANT)
 	Q_PROPERTY(QStringList levels READ levels CONSTANT)
 
 public:
@@ -99,12 +100,10 @@ public:
 	int step() { return  (int)m_state.steps; }
 	/// Get the proccessed code index.
 	int curPC() { return (int)m_state.curPC; }
-	/// Get gas left.
-	QString gasLeft();
 	/// Get gas cost.
-	QString gasCost();
+	QBigInt* gasCost();
 	/// Get gas used.
-	QString gas();
+	QBigInt* gas();
 	/// Get stack.
 	QStringList debugStack();
 	/// Get storage.
@@ -118,7 +117,7 @@ public:
 	/// get end of debug information.
 	QString endOfDebug();
 	/// Get the new memory size.
-	QString newMemSize();
+	QBigInt* newMemSize();
 	/// Get current instruction
 	QString instruction();
 	/// Get all previous steps.

@@ -20,7 +20,6 @@
  * Ethereum IDE client.
  */
 
-#include <stdexcept>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>

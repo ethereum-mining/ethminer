@@ -85,6 +85,7 @@ private:
 	_frame->addToJavaScriptWindowObject("_web3", qweb, QWebFrame::ScriptOwnership); \
 	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/es6-promise-2.0.0.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js")); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/webthree.js")); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/setup.js")); \
 }
