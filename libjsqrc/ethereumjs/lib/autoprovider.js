@@ -27,12 +27,21 @@
  * if it fails, it uses HttpRpcProvider
  */
 
-// TODO: is these line is supposed to be here? 
+var web3 = require('./web3'); // jshint ignore:line
 if (process.env.NODE_ENV !== 'build') {
     var WebSocket = require('ws'); // jshint ignore:line
-    var web3 = require('./web3'); // jshint ignore:line
 }
 
+/**
+ * AutoProvider object prototype is implementing 'provider protocol'
+ * Automatically tries to setup correct provider(Qt, WebSockets or HttpRpc)
+ * First it checkes if we are ethereum browser (if navigator.qt object is available)
+ * if yes, we are using QtProvider
+ * if no, we check if it is possible to establish websockets connection with ethereum (ws://localhost:40404/eth is default)
+ * if it's not possible, we are using httprpc provider (http://localhost:8080)
+ * The constructor allows you to specify uris on which we are trying to connect over http or websockets
+ * You can do that by passing objects with fields httrpc and websockets
+ */
 var AutoProvider = function (userOptions) {
     if (web3.haveProvider()) {
         return;
@@ -63,7 +72,7 @@ var AutoProvider = function (userOptions) {
             self.poll = self.provider.poll.bind(self.provider);
         }
         self.sendQueue.forEach(function (payload) {
-            self.provider(payload);
+            self.provider.send(payload);
         });
         self.onmessageQueue.forEach(function (handler) {
             self.provider.onmessage = handler;
@@ -81,6 +90,8 @@ var AutoProvider = function (userOptions) {
     };
 };
 
+/// Sends message forward to the provider, that is being used
+/// if provider is not yet set, enqueues the message
 AutoProvider.prototype.send = function (payload) {
     if (this.provider) {
         this.provider.send(payload);
@@ -89,6 +100,7 @@ AutoProvider.prototype.send = function (payload) {
     this.sendQueue.push(payload);
 };
 
+/// On incoming message sends the message to the provider that is currently being used
 Object.defineProperty(AutoProvider.prototype, 'onmessage', {
     set: function (handler) {
         if (this.provider) {
