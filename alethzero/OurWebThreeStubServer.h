@@ -48,13 +48,18 @@ private:
 };
 
 
-class QNatspecExpressionEvaluator
+class QNatspecExpressionEvaluator: public QObject
 {
+	Q_OBJECT
+	
 public:
 	QNatspecExpressionEvaluator(dev::WebThreeDirect& _web3, Main* _main);
-	~QNatspecExpressionEvaluator();
+	virtual ~QNatspecExpressionEvaluator();
 	
 	QString evalExpression(QString const& _expression);
+	
+	Q_INVOKABLE QString stateAt(QString _key);
+	Q_INVOKABLE QString call(QString _method);
 	
 private:
 	dev::WebThreeDirect* m_web3;

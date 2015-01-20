@@ -69,7 +69,7 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 //		return showAuthenticationPopup("Unverified Pending Transaction",
 //									   "An undocumented transaction is about to be executed.");
 
-	auto evaluator = QNatspecExpressionEvaluator(*m_web3, m_main);
+	QNatspecExpressionEvaluator evaluator(*m_web3, m_main);
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
 
 	// otherwise it's a transaction to a contract for which we have the natspec
@@ -82,6 +82,16 @@ QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(dev::WebThreeDirect& _w
 
 QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
 {}
+
+QString QNatspecExpressionEvaluator::stateAt(QString _key)
+{
+	return "1";
+}
+
+QString QNatspecExpressionEvaluator::call(QString _method)
+{
+	return "2";
+}
 
 QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
 {
