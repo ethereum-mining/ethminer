@@ -97,7 +97,7 @@ static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
 	return {begin(list), end(list)};
 }
 
-static QString contentsOfQResource(string const& res)
+QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -427,6 +427,11 @@ void Main::on_jsInput_returnPressed()
 {
 	eval(ui->jsInput->text());
 	ui->jsInput->setText("");
+}
+
+QVariant Main::evalRaw(QString const& _js)
+{
+	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
 }
 
 void Main::eval(QString const& _js)

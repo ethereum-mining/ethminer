@@ -46,3 +46,17 @@ private:
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
 };
+
+
+class QNatspecExpressionEvaluator
+{
+public:
+	QNatspecExpressionEvaluator(dev::WebThreeDirect& _web3, Main* _main);
+	~QNatspecExpressionEvaluator();
+	
+	QString evalExpression(QString const& _expression);
+	
+private:
+	dev::WebThreeDirect* m_web3;
+	Main* m_main;
+};
