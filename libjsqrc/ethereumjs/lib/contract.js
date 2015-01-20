@@ -20,16 +20,32 @@
  * @date 2014
  */
 
-// TODO: is these line is supposed to be here? 
-if (process.env.NODE_ENV !== 'build') {
-    var web3 = require('./web3'); // jshint ignore:line
-}
-
+var web3 = require('./web3'); // jshint ignore:line
 var abi = require('./abi');
 
-// method signature length in bytes
+/// method signature length in bytes
 var ETH_METHOD_SIGNATURE_LENGTH = 4;
 
+/**
+ * This method should be called when we want to call / transact some solidity method from javascript
+ * it returns an object which has same methods available as solidity contract description
+ * usage example: 
+ *
+ * var abi = [{
+ *      name: 'myMethod',
+ *      inputs: [{ name: 'a', type: 'string' }],
+ *      outputs: [{name: 'd', type: 'string' }]
+ * }];  // contract abi
+ *
+ * var myContract = web3.eth.contract('0x0123123121', abi); // creation of contract object
+ *
+ * myContract.myMethod('this is test string param for call').call(); // myMethod call
+ * myContract.myMethod('this is test string param for transact').transact() // myMethod transact
+ *
+ * @param address - address of the contract, which should be called
+ * @param desc - abi json description of the contract, which is being created
+ * @returns contract object
+ */
 var contract = function (address, desc) {
     var inputParser = abi.inputParser(desc);
     var outputParser = abi.outputParser(desc);
@@ -70,3 +86,4 @@ var contract = function (address, desc) {
 };
 
 module.exports = contract;
+
