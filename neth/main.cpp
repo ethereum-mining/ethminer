@@ -433,6 +433,8 @@ int main(int argc, char** argv)
 		web3.connect(Host::pocHost());
 	if (remoteHost.size())
 		web3.connect(remoteHost, remotePort);
+	if (mining)
+		c->startMining();
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
