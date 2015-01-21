@@ -85,7 +85,7 @@ Item {
 	FileDialog {
 		id: openProjectFileDialog
 		visible: false
-		title: qsTr("Open a project")
+		title: qsTr("Open a Project")
 		selectFolder: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
@@ -97,7 +97,7 @@ Item {
 	FileDialog {
 		id: addExistingFileDialog
 		visible: false
-		title: qsTr("Add a file")
+		title: qsTr("Add a File")
 		selectFolder: false
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;

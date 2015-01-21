@@ -65,7 +65,7 @@ Rectangle {
 				visible: false
 				font.pointSize: 9
 				height: 9
-				text: qsTr("See log.")
+				text: qsTr("See Log.")
 				font.family: "Monospace"
 				objectName: "status"
 				id: logslink
@@ -105,8 +105,9 @@ Rectangle {
 				Action {
 					id: debugRunActionIcon
 					onTriggered: {
-						mainContent.ensureRightView();
-						clientModel.debugDeployment();
+						mainContent.toggleRightView();
+						if (mainContent.rightViewVisible())
+							clientModel.debugDeployment();
 					}
 					enabled: false
 				}

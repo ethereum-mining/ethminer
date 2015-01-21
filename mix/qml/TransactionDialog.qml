@@ -136,7 +136,7 @@ Window {
 		}
 
 		Label {
-			text: qsTr("Gas price")
+			text: qsTr("Gas Price")
 		}
 		Rectangle
 		{
@@ -183,7 +183,7 @@ Window {
 		anchors.right: parent.right;
 
 		Button {
-			text: qsTr("Ok");
+			text: qsTr("OK");
 			onClicked: {
 				close();
 				accepted();

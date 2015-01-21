@@ -7,7 +7,7 @@ var currentSelectedState = null;
 var jumpStartingPoint = null;
 function init()
 {
-	if (debugStates === undefined)
+	if (typeof(debugStates) === "undefined")
 		return;
 
 	statesSlider.maximumValue = debugStates.length - 1;
@@ -24,6 +24,9 @@ function init()
 
 function moveSelection(incr)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	if (currentSelectedState + incr >= 0)
 	{
 		if (currentSelectedState + incr < debugStates.length)
@@ -34,6 +37,9 @@ function moveSelection(incr)
 
 function select(stateIndex)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	var codeLine = codeStr(stateIndex);
 	var state = debugStates[stateIndex];
 	highlightSelection(codeLine);
@@ -53,6 +59,9 @@ function select(stateIndex)
 
 function codeStr(stateIndex)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	var state = debugStates[stateIndex];
 	return bytesCodeMapping.getValue(state.curPC);
 }
@@ -64,6 +73,9 @@ function highlightSelection(index)
 
 function completeCtxInformation(state)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	currentStep.update(state.step);
 	mem.update(state.newMemSize.value() + " " + qsTr("words"));
 	stepCost.update(state.gasCost.value());
@@ -83,6 +95,9 @@ function displayReturnValue()
 
 function stepOutBack()
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	if (jumpStartingPoint != null)
 	{
 		select(jumpStartingPoint);
@@ -99,6 +114,9 @@ function stepIntoBack()
 
 function stepOverBack()
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	var state = debugStates[currentSelectedState];
 	if (state.instruction === "JUMPDEST")
 	{
@@ -118,6 +136,9 @@ function stepOverBack()
 
 function stepOverForward()
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	var state = debugStates[currentSelectedState];
 	if (state.instruction === "JUMP")
 	{
@@ -137,6 +158,9 @@ function stepOverForward()
 
 function stepIntoForward()
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	var state = debugStates[currentSelectedState];
 	if (state.instruction === "JUMP")
 	{
