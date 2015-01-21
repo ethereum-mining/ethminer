@@ -91,6 +91,7 @@ public:
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 	
 	QVariant evalRaw(QString const& _js);
+	void addToWindowObject(QObject* _object, QString const& _name);
 
 public slots:
 	void load(QString _file);

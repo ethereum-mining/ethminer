@@ -434,6 +434,12 @@ QVariant Main::evalRaw(QString const& _js)
 	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
 }
 
+void Main::addToWindowObject(QObject* _object, QString const& _name)
+{
+	QWebFrame* f = ui->webView->page()->mainFrame();
+	f->addToJavaScriptWindowObject(_name, _object, QWebFrame::QtOwnership);
+}
+
 void Main::eval(QString const& _js)
 {
 	if (_js.trimmed().isEmpty())

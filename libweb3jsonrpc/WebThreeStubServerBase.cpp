@@ -631,7 +631,7 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	return ret;
 }
 
-bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t) const
+bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t)
 {
 	cwarn << "Silently signing transaction from address" << _t.from.abridged() << ": User validation hook goes here.";
 	return true;
