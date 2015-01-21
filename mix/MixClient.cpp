@@ -88,6 +88,7 @@ void MixClient::executeTransaction(bytesConstRef _rlp, State& _state)
 	d.executionData = data;
 	d.contentAvailable = true;
 	d.message = "ok";
+	d.contractAddress = m_lastExecutionResult.contractAddress;
 	m_lastExecutionResult = d;
 }
 
@@ -113,7 +114,9 @@ Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init,
 	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
 	bytes rlp = t.rlp();
 	executeTransaction(&rlp, m_state);
-	return right160(sha3(rlpList(t.sender(), t.nonce())));
+	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
+	m_lastExecutionResult.contractAddress = address;
+	return address;
 }
 
 void MixClient::inject(bytesConstRef _rlp)
@@ -128,7 +131,6 @@ void MixClient::flushTransactions()
 
 bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	bytes out;
 	u256 n;
 	State temp;
 	{

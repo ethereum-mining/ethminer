@@ -16,11 +16,19 @@ reloadPage = function() {
 	preview.contentWindow.location.reload();
 };
 
+updateContract = function(address, definition) {
+	if (window.web3) {
+		window.contractAddress = address;
+		window.contractDefinition = definition;
+		window.contract = window.web3.eth.contract(address, definition);
+	}
+};
+
 init = function(url) {
 	web3 = require('web3');
 	web3.setProvider(new web3.providers.WebSocketProvider(url));
 	window.web3 = web3;
-}
+};
 
 </script>
 
