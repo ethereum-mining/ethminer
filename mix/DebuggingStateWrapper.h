@@ -28,44 +28,13 @@
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include "QVariableDefinition.h"
+#include "MixClient.h"
+#include "QBigInt.h"
 
 namespace dev
 {
 namespace mix
 {
-
-/**
- * @brief Store information about a machine state.
- */
-struct DebuggingState
-{
-	uint64_t steps;
-	dev::Address cur;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<DebuggingState const*> levels;
-};
-
-/**
- * @brief Store information about a machine states.
- */
-struct DebuggingContent
-{
-	QList<DebuggingState> machineStates;
-	bytes executionCode;
-	bytesConstRef executionData;
-	Address contractAddress;
-	bool contentAvailable;
-	QString message;
-	bytes returnValue;
-	QList<QVariableDefinition*> returnParameters;
-};
 
 /**
  * @brief Contains the line nb of the assembly code and the corresponding index in the code bytes array.
@@ -113,15 +82,16 @@ class DebuggingStateWrapper: public QObject
 	Q_OBJECT
 	Q_PROPERTY(int step READ step CONSTANT)
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
-	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
-	Q_PROPERTY(QString gas READ gas CONSTANT)
-	Q_PROPERTY(QString gasLeft READ gasLeft CONSTANT)
-	Q_PROPERTY(QString debugStack READ debugStack CONSTANT)
-	Q_PROPERTY(QString debugStorage READ debugStorage CONSTANT)
-	Q_PROPERTY(QString debugMemory READ debugMemory CONSTANT)
-	Q_PROPERTY(QString debugCallData READ debugCallData CONSTANT)
+	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
+	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
+	Q_PROPERTY(QString instruction READ instruction CONSTANT)
+	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
+	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
+	Q_PROPERTY(QVariantList debugMemory READ debugMemory CONSTANT)
+	Q_PROPERTY(QVariantList debugCallData READ debugCallData CONSTANT)
 	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
+	Q_PROPERTY(QBigInt* newMemSize READ newMemSize CONSTANT)
 	Q_PROPERTY(QStringList levels READ levels CONSTANT)
 
 public:
@@ -130,37 +100,46 @@ public:
 	int step() { return  (int)m_state.steps; }
 	/// Get the proccessed code index.
 	int curPC() { return (int)m_state.curPC; }
-	/// Get gas left.
-	QString gasLeft();
 	/// Get gas cost.
-	QString gasCost();
+	QBigInt* gasCost();
 	/// Get gas used.
-	QString gas();
+	QBigInt* gas();
 	/// Get stack.
-	QString debugStack();
+	QStringList debugStack();
 	/// Get storage.
-	QString debugStorage();
+	QStringList debugStorage();
 	/// Get memory.
-	QString debugMemory();
+	QVariantList debugMemory();
 	/// Get call data.
-	QString debugCallData();
+	QVariantList debugCallData();
 	/// Get info to be displayed in the header.
 	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
+	/// Get the new memory size.
+	QBigInt* newMemSize();
+	/// Get current instruction
+	QString instruction();
 	/// Get all previous steps.
 	QStringList levels();
 	/// Get the current processed machine state.
-	DebuggingState state() { return m_state; }
+	MachineState state() { return m_state; }
 	/// Set the current processed machine state.
-	void setState(DebuggingState _state) { m_state = _state;  }
+	void setState(MachineState _state) { m_state = _state;  }
 	/// Convert all machine state in human readable code.
 	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code);
 
 private:
-	DebuggingState m_state;
+	MachineState m_state;
 	bytes m_code;
 	bytes m_data;
+	QStringList fillList(QStringList& _list, QString const& _emptyValue);
+	QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
+	QVariantList qVariantDump(std::vector<std::vector<std::string>> const& _dump);
+	/// Nicely renders the given bytes to a string, store the content in an array.
+	/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
+	std::vector<std::vector<std::string>> memDumpToList(bytes const& _bytes, unsigned _width);
+
 };
 
 }

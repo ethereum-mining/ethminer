@@ -27,14 +27,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
+#if ALL_COMPILERS_ARE_CPP11
 #define ETH_RETURN_STRING(S) thread_local static string s_what; s_what = S; return s_what.c_str();
+#elsif USE_BOOST_TLS
+static boost::thread_specific_ptr<string> g_exceptionMessage;
+#define ETH_RETURN_STRING(S) if (!g_exceptionMessage.get()); g_exceptionMessage.reset(new string); *g_exceptionMessage.get() = S; return g_exceptionMessage.get()->c_str();
 #else
-#define ETH_RETURN_STRING(S) \
-	static boost::thread_specific_ptr<string> s_what; \
-	if (!s_what.get()) \
-		s_what.reset(new string); \
-	*s_what = S; return s_what->c_str();
+#define ETH_RETURN_STRING(S) m_message = S; return m_message.c_str();
 #endif
 
 const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }

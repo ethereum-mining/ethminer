@@ -16,6 +16,7 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Full-stack compiler that converts a source code string to bytecode.
  */
@@ -29,6 +30,8 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/InterfaceHandler.h>
 
+#include <libdevcrypto/SHA3.h>
+
 using namespace std;
 
 namespace dev
@@ -38,7 +41,7 @@ namespace solidity
 
 bool CompilerStack::addSource(string const& _name, string const& _content)
 {
-	bool existed = m_sources.count(_name);
+	bool existed = m_sources.count(_name) != 0;
 	reset(true);
 	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
 	return existed;
@@ -110,12 +113,11 @@ void CompilerStack::compile(bool _optimize)
 		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 			{
-				m_globalContext->setCurrentContract(*contract);
 				shared_ptr<Compiler> compiler = make_shared<Compiler>(_optimize);
-				compiler->compileContract(*contract, m_globalContext->getMagicVariables(),
-										  contractBytecode);
+				compiler->compileContract(*contract, contractBytecode);
 				Contract& compiledContract = m_contracts[contract->getName()];
 				compiledContract.bytecode = compiler->getAssembledBytecode();
+				compiledContract.runtimeBytecode = compiler->getRuntimeBytecode();
 				compiledContract.compiler = move(compiler);
 				contractBytecode[compiledContract.contract] = &compiledContract.bytecode;
 			}
@@ -133,6 +135,16 @@ bytes const& CompilerStack::getBytecode(string const& _contractName) const
 	return getContract(_contractName).bytecode;
 }
 
+bytes const& CompilerStack::getRuntimeBytecode(string const& _contractName) const
+{
+	return getContract(_contractName).runtimeBytecode;
+}
+
+dev::h256 CompilerStack::getContractCodeHash(string const& _contractName) const
+{
+	return dev::sha3(getRuntimeBytecode(_contractName));
+}
+
 void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractName) const
 {
 	getContract(_contractName).compiler->streamAssembly(_outStream);
@@ -140,10 +152,15 @@ void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractN
 
 string const& CompilerStack::getInterface(string const& _contractName) const
 {
-	return getJsonDocumentation(_contractName, DocumentationType::ABI_INTERFACE);
+	return getMetadata(_contractName, DocumentationType::ABI_INTERFACE);
 }
 
-string const& CompilerStack::getJsonDocumentation(string const& _contractName, DocumentationType _type) const
+string const& CompilerStack::getSolidityInterface(string const& _contractName) const
+{
+	return getMetadata(_contractName, DocumentationType::ABI_SOLIDITY_INTERFACE);
+}
+
+string const& CompilerStack::getMetadata(string const& _contractName, DocumentationType _type) const
 {
 	if (!m_parseSuccessful)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Parsing was not successful."));
@@ -161,6 +178,9 @@ string const& CompilerStack::getJsonDocumentation(string const& _contractName, D
 		break;
 	case DocumentationType::ABI_INTERFACE:
 		doc = &contract.interface;
+		break;
+	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+		doc = &contract.solidityInterface;
 		break;
 	default:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Illegal documentation type."));

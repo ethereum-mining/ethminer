@@ -14,11 +14,19 @@ find_package (Qt5WebEngine REQUIRED)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
+find_package (Qt5WebEngine)
 qt5_add_resources(UI_RESOURCES qml.qrc)
 
 file(GLOB HEADERS "*.h")
 
 set(EXECUTABLE mix)
+
+if ("${Qt5WebEngine_VERSION_STRING}" VERSION_GREATER "5.3.0")
+	set (ETH_HAVE_WEBENGINE TRUE)
+	qt5_add_resources(UI_RESOURCES web.qrc)
+else()
+	qt5_add_resources(UI_RESOURCES noweb.qrc)
+endif()
 
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
@@ -30,7 +38,7 @@ target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Gui)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} qethereum)
+target_link_libraries(${EXECUTABLE} qwebthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)
@@ -41,8 +49,13 @@ target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
+
+if (${ETH_HAVE_WEBENGINE})
+	add_definitions(-DETH_HAVE_WEBENGINE)
+	target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
+endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE}
@@ -52,4 +65,3 @@ eth_install_executable(${EXECUTABLE}
 #add qml resources to proect tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
 add_custom_target(dummy SOURCES ${QMLFILES})
-

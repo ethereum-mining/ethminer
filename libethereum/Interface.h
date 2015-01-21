@@ -86,15 +86,15 @@ public:
 
 	// [LOGS API]
 	
-	virtual LogEntries logs(unsigned _watchId) const = 0;
-	virtual LogEntries logs(LogFilter const& _filter) const = 0;
+	virtual LocalisedLogEntries logs(unsigned _watchId) const = 0;
+	virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;
 
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter) = 0;
 	virtual unsigned installWatch(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
-	virtual bool peekWatch(unsigned _watchId) const = 0;
-	virtual bool checkWatch(unsigned _watchId) = 0;
+	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const = 0;
+	virtual LocalisedLogEntries checkWatch(unsigned _watchId) = 0;
 
 	// [BLOCK QUERY API]
 
@@ -178,10 +178,9 @@ public:
 	Watch(Interface& _c, LogFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
-	bool check() { return m_c ? m_c->checkWatch(m_id) : false; }
-	bool peek() { return m_c ? m_c->peekWatch(m_id) : false; }
-//	PastMessages messages() const { return m_c->messages(m_id); }
-	LogEntries logs() const { return m_c->logs(m_id); }
+	LocalisedLogEntries check() { return m_c ? m_c->checkWatch(m_id) : LocalisedLogEntries(); }
+	LocalisedLogEntries peek() { return m_c ? m_c->peekWatch(m_id) : LocalisedLogEntries(); }
+	LocalisedLogEntries logs() const { return m_c->logs(m_id); }
 
 private:
 	Interface* m_c = nullptr;

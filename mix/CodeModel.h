@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+	This file is part of cpp-ethereum.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file CodeModel.h
  * @author Arkadiy Paronyan arkadiy@ethdev.com
@@ -65,11 +65,14 @@ class CompilationResult: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QContractDefinition* contract READ contract)
+	Q_PROPERTY(QString compilerMessage READ compilerMessage CONSTANT)
+	Q_PROPERTY(bool successful READ successful CONSTANT)
+	Q_PROPERTY(QString contractDefinition READ contractDefinition CONSTANT)
 
 public:
 	/// Empty compilation result constructor
 	CompilationResult();
-	/// Successfull compilation result constructor
+	/// Successful compilation result constructor
 	CompilationResult(solidity::CompilerStack const& _compiler);
 	/// Failed compilation result constructor
 	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage);
@@ -78,14 +81,16 @@ public:
 	QContractDefinition* contract() { return m_contract.get(); }
 	/// @returns contract definition
 	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
-	/// Indicates if the compilation was successfull
-	bool successfull() const { return m_successful; }
-	/// @returns compiler error message in case of unsuccessfull compilation
+	/// Indicates if the compilation was successful
+	bool successful() const { return m_successful; }
+	/// @returns compiler error message in case of unsuccessful compilation
 	QString compilerMessage() const { return m_compilerMessage; }
 	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }
 	/// @returns contract bytecode in human-readable form
 	QString assemblyCode() const { return m_assemblyCode; }
+	/// @returns contract definition in JSON format
+	QString contractDefinition() const { return m_contractDefinition; }
 	/// Get code highlighter
 	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
@@ -96,6 +101,7 @@ private:
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
+	QString m_contractDefinition;
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 
 	friend class CodeModel;
@@ -135,6 +141,8 @@ signals:
 	void scheduleCompilationJob(int _jobId, QString const& _content);
 	/// Emitted if there are any changes in the code model
 	void codeChanged();
+	/// Emitted if there are any changes in the contract interface
+	void contractDefinitionChanged();
 	/// Emitted on compilation complete. Internal
 	void compilationCompleteInternal(CompilationResult* _newResult);
 

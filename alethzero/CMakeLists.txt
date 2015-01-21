@@ -34,7 +34,7 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} qethereum)
+target_link_libraries(${EXECUTABLE} qwebthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)

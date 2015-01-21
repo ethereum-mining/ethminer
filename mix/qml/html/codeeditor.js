@@ -1,11 +1,11 @@
 
 var editor = CodeMirror(document.body, {
 							lineNumbers: true,
-							styleActiveLine: true,
+							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
-
 						});
+
 editor.setOption("theme", "blackboard");
 editor.setOption("fullScreen", true);
 
@@ -26,6 +26,11 @@ getText = function() {
 	return editor.getValue();
 };
 
+
+setTextBase64 = function(text) {
+	editor.setValue(window.atob(text));
+	editor.focus();
+};
 
 setText = function(text) {
 	editor.setValue(text);

@@ -22,6 +22,7 @@
 #pragma once
 
 #include <exception>
+#include <string>
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
 #include "CommonData.h"
@@ -30,7 +31,7 @@
 namespace dev
 {
 // base class for all exceptions
-struct Exception: virtual std::exception, virtual boost::exception {};
+struct Exception: virtual std::exception, virtual boost::exception { mutable std::string m_message; };
 
 struct BadHexCharacter: virtual Exception {};
 struct RLPException: virtual Exception {};
@@ -40,6 +41,7 @@ struct NoNetworking: virtual Exception {};
 struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
 struct FileError: virtual Exception {};
+struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): m_f("Interface " + _f + " not supported.") {} virtual const char* what() const noexcept { return m_f.c_str(); } private: std::string m_f; };
 
 // error information to be added to exceptions
 typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;

@@ -51,17 +51,22 @@ public:
 
 	void adjustStackOffset(int _adjustment) { m_asm.adjustDeposit(_adjustment); }
 
-	bool isMagicGlobal(Declaration const* _declaration) const { return m_magicGlobals.count(_declaration); }
-	bool isFunctionDefinition(Declaration const* _declaration) const { return m_functionEntryLabels.count(_declaration); }
+	bool isMagicGlobal(Declaration const* _declaration) const { return m_magicGlobals.count(_declaration) != 0; }
+	bool isFunctionDefinition(Declaration const* _declaration) const { return m_functionEntryLabels.count(_declaration) != 0; }
 	bool isLocalVariable(Declaration const* _declaration) const;
-	bool isStateVariable(Declaration const* _declaration) const { return m_stateVariables.count(_declaration); }
+	bool isStateVariable(Declaration const* _declaration) const { return m_stateVariables.count(_declaration) != 0; }
 
 	eth::AssemblyItem getFunctionEntryLabel(FunctionDefinition const& _function) const;
+	/// @returns the entry label of the given function and takes overrides into account.
+	eth::AssemblyItem getVirtualFunctionEntryLabel(FunctionDefinition const& _function) const;
 	/// Returns the distance of the given local variable from the top of the local variable stack.
 	unsigned getBaseStackOffsetOfVariable(Declaration const& _declaration) const;
 	/// If supplied by a value returned by @ref getBaseStackOffsetOfVariable(variable), returns
 	/// the distance of that variable from the current top of the stack.
 	unsigned baseToCurrentStackOffset(unsigned _baseOffset) const;
+	/// Converts an offset relative to the current stack height to a value that can be used later
+	/// with baseToCurrentStackOffset to point to the same stack element.
+	unsigned currentToBaseStackOffset(unsigned _offset) const;
 	u256 getStorageLocationOfVariable(Declaration const& _declaration) const;
 
 	/// Appends a JUMPI instruction to a new tag and @returns the tag
@@ -113,6 +118,8 @@ private:
 	unsigned m_localVariablesSize;
 	/// Labels pointing to the entry points of funcitons.
 	std::map<Declaration const*, eth::AssemblyItem> m_functionEntryLabels;
+	/// Labels pointing to the entry points of function overrides.
+	std::map<std::string, eth::AssemblyItem> m_virtualFunctionEntryLabels;
 };
 
 }

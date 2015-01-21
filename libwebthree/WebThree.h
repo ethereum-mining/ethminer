@@ -38,8 +38,6 @@
 namespace dev
 {
 
-class InterfaceNotSupported: public Exception { public: InterfaceNotSupported(std::string _f): m_f(_f) {} virtual const char* what() const noexcept { return ("Interface " + m_f + " not supported.").c_str(); } private: std::string m_f; };
-
 enum WorkState
 {
 	Active = 0,
@@ -51,6 +49,48 @@ namespace eth { class Interface; }
 namespace shh { class Interface; }
 namespace bzz { class Interface; }
 
+
+class WebThreeNetworkFace
+{
+public:
+	/// Get information on the current peer set.
+	virtual std::vector<p2p::PeerInfo> peers() = 0;
+
+	/// Same as peers().size(), but more efficient.
+	virtual size_t peerCount() const = 0;
+
+	/// Connect to a particular peer.
+	virtual void connect(std::string const& _seedHost, unsigned short _port) = 0;
+
+	/// Save peers
+	virtual dev::bytes saveNodes() = 0;
+
+	/// Restore peers
+	virtual void restoreNodes(bytesConstRef _saved) = 0;
+
+	/// Sets the ideal number of peers.
+	virtual void setIdealPeerCount(size_t _n) = 0;
+
+	virtual bool haveNetwork() const = 0;
+
+	virtual void setNetworkPreferences(p2p::NetworkPreferences const& _n) = 0;
+
+	virtual p2p::NodeId id() const = 0;
+
+	/// Gets the nodes.
+	virtual p2p::Nodes nodes() const = 0;
+
+	/// Start the network subsystem.
+	virtual void startNetwork() = 0;
+
+	/// Stop the network subsystem.
+	virtual void stopNetwork() = 0;
+
+	/// Is network working? there may not be any peers yet.
+	virtual bool isNetworkStarted() const = 0;
+};
+
+
 /**
  * @brief Main API hub for interfacing with Web 3 components. This doesn't do any local multiplexing, so you can only have one
  * running on any given machine for the provided DB path.
@@ -61,7 +101,7 @@ namespace bzz { class Interface; }
  *
  * Provides a baseline for the multiplexed multi-protocol session class, WebThree.
  */
-class WebThreeDirect
+class WebThreeDirect : public WebThreeNetworkFace
 {
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
@@ -84,40 +124,40 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<p2p::PeerInfo> peers();
+	std::vector<p2p::PeerInfo> peers() override;
 
 	/// Same as peers().size(), but more efficient.
-	size_t peerCount() const;
+	size_t peerCount() const override;
 
 	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, unsigned short _port = 30303);
+	void connect(std::string const& _seedHost, unsigned short _port = 30303) override;
 
 	/// Save peers
-	dev::bytes saveNodes();
+	dev::bytes saveNodes() override;
 
 	/// Restore peers
-	void restoreNodes(bytesConstRef _saved);
+	void restoreNodes(bytesConstRef _saved) override;
 
 	/// Sets the ideal number of peers.
-	void setIdealPeerCount(size_t _n);
+	void setIdealPeerCount(size_t _n) override;
 
-	bool haveNetwork() const { return m_net.isStarted(); }
+	bool haveNetwork() const override { return m_net.isStarted(); }
 
-	void setNetworkPreferences(p2p::NetworkPreferences const& _n);
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n) override;
 
-	p2p::NodeId id() const { return m_net.id(); }
+	p2p::NodeId id() const override { return m_net.id(); }
 
 	/// Gets the nodes.
-	p2p::Nodes nodes() const { return m_net.nodes(); }
+	p2p::Nodes nodes() const override { return m_net.nodes(); }
 
 	/// Start the network subsystem.
-	void startNetwork() { m_net.start(); }
+	void startNetwork() override { m_net.start(); }
 
 	/// Stop the network subsystem.
-	void stopNetwork() { m_net.stop(); }
+	void stopNetwork() override { m_net.stop(); }
 	
 	/// Is network working? there may not be any peers yet.
-	bool isNetworkStarted() { return m_net.isStarted(); }
+	bool isNetworkStarted() const override { return m_net.isStarted(); }
 
 private:
 	std::string m_clientVersion;					///< Our end-application client's name/version.

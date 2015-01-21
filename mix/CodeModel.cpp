@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+	This file is part of cpp-ethereum.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file CodeModel.cpp
  * @author Arkadiy Paronyan arkadiy@ethdev.com
@@ -26,6 +26,7 @@
 #include <QtQml>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#include <libsolidity/InterfaceHandler.h>
 #include <libevmcore/Instruction.h>
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
@@ -48,16 +49,19 @@ CompilationResult::CompilationResult():
 	m_codeHighlighter(new CodeHighlighter())
 {}
 
-CompilationResult::CompilationResult(const solidity::CompilerStack& _compiler):
+CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compiler):
 	QObject(nullptr),
 	m_successful(true),
 	m_codeHash(qHash(QString()))
 {
 	if (!_compiler.getContractNames().empty())
 	{
-		m_contract.reset(new QContractDefinition(&_compiler.getContractDefinition(std::string())));
+		auto const& contractDefinition = _compiler.getContractDefinition(std::string());
+		m_contract.reset(new QContractDefinition(&contractDefinition));
 		m_bytes = _compiler.getBytecode();
 		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
+		dev::solidity::InterfaceHandler interfaceHandler;
+		m_contractDefinition = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	}
 	else
 		m_contract.reset(new QContractDefinition());
@@ -71,6 +75,7 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
 	m_assemblyCode(_prev.m_assemblyCode),
+	m_contractDefinition(_prev.m_contractDefinition),
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
@@ -156,19 +161,24 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	emit compilationCompleteInternal(result.release());
 }
 
-void CodeModel::onCompilationComplete(CompilationResult*_newResult)
+void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 {
 	m_compiling = false;
+	bool contractChanged = m_result->contractDefinition() != _newResult->contractDefinition();
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
-	if (m_result->successfull())
+	if (m_result->successful())
+	{
 		emit codeChanged();
+		if (contractChanged)
+			emit contractDefinitionChanged();
+	}
 }
 
 bool CodeModel::hasContract() const
 {
-	return m_result->contract()->functionsList().size() > 0;
+	return m_result->successful();
 }
 
 void CodeModel::updateFormatting(QTextDocument* _document)

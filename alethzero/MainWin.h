@@ -34,8 +34,11 @@
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libqethereum/QEthereum.h>
+#include <libqwebthree/QWebThree.h>
 #include <libwebthree/WebThree.h>
+#include <libsolidity/CompilerStack.h>
+
+#include "NatspecHandler.h"
 
 namespace Ui {
 class Main;
@@ -66,6 +69,8 @@ struct WorldState
 	std::vector<WorldState const*> levels;
 };
 
+using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
+
 class Main : public QMainWindow
 {
 	Q_OBJECT
@@ -78,7 +83,8 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	std::string lookupNatSpec(dev::h256 const& _contractCode) const { (void)_contractCode; return ""; }	// TODO: actually implement with leveldb & a UI.
+	std::string lookupNatSpec(dev::h256 const& _contractHash) const;
+	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData);
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 
@@ -128,6 +134,7 @@ private slots:
 	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
 	void on_killBlockchain_triggered();
+	void on_clearPending_triggered();
 	void on_importKey_triggered();
 	void on_exportKey_triggered();
 	void on_inject_triggered();
@@ -155,6 +162,7 @@ private slots:
 	void on_importKeyFile_triggered();
 	void on_post_clicked();
 	void on_newIdentity_triggered();
+	void on_jitvm_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();
@@ -170,6 +178,8 @@ private:
 	QString prettyU256(dev::u256 _n) const;
 
 	QString lookup(QString const& _n) const;
+	dev::Address getNameReg() const;
+	dev::Address getCurrencies() const;
 
 	void populateDebugger(dev::bytesConstRef r);
 	void initDebugger();
@@ -191,8 +201,8 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
-	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
+	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
@@ -221,11 +231,17 @@ private:
 	void refreshBlockCount();
 	void refreshBalances();
 
+	/// Attempts to infer that @c _source contains Solidity code
+	bool sourceIsSolidity(std::string const& _source);
+	/// @eturns all method hashes of a Solidity contract in a string
+	std::string const getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
+										std::string const& _contractName = "");
+
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 
-	std::map<unsigned, std::function<void()>> m_handlers;
+	std::map<unsigned, WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
@@ -263,4 +279,5 @@ private:
 	QWebThree* m_qweb = nullptr;
 
 	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
+	NatspecHandler m_natspecDB;
 };
