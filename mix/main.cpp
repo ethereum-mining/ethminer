@@ -31,7 +31,7 @@ int main(int _argc, char* _argv[])
 #if __linux
 	//work around ubuntu appmenu-qt5 bug
 	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
-	putenv("QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
 #endif
 
 	try
