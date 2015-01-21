@@ -21,6 +21,7 @@
  * @date 2014
  */
 
+#include <boost/asio.hpp>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>

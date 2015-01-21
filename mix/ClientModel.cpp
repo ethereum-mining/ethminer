@@ -18,6 +18,7 @@
  * Ethereum IDE client.
  */
 
+#include <boost/asio.hpp>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
