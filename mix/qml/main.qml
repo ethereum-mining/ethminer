@@ -40,6 +40,7 @@ ApplicationWindow {
 		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: showHideRightPanel }
+			MenuItem { action: toggleWebPreview }
 		}
 	}
 
@@ -90,7 +91,7 @@ ApplicationWindow {
 
 	Action {
 		id: toggleWebPreview
-		text: "Show/Hide web view"
+		text: "Show Web View"
 		shortcut: "F2"
 		checkable: true
 		checked: mainContent.webViewVisible
@@ -99,7 +100,7 @@ ApplicationWindow {
 
 	Action {
 		id: showHideRightPanel
-		text: "Show right view"
+		text: "Show Right View"
 		shortcut: "F7"
 		checkable: true
 		checked: mainContent.rightViewVisible
