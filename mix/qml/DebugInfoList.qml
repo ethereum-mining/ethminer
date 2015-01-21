@@ -54,7 +54,6 @@ ColumnLayout {
 					{
 						storageContainer.state = "";
 						storageContainer.parent.parent.height = storageContainer.parent.parent.Layout.maximumHeight;
-
 					}
 					else
 						storageContainer.state = "collapsed";
