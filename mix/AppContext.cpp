@@ -22,18 +22,18 @@
  * - KeyEventManager
  */
 
-#include <QDebug>
 #include <QMessageBox>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <QStandardPaths>
-#include <QFile>
-#include <QDir>
-#include <libdevcrypto/FileSystem.h>
-#include <libwebthree/WebThree.h>
-#include "AppContext.h"
 #include "CodeModel.h"
+#include "FileIo.h"
+#include "ClientModel.h"
+#include "CodeEditorExtensionManager.h"
+#include "Exceptions.h"
+#include "AppContext.h"
+#include "QEther.h"
+#include <libwebthree/WebThree.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -45,28 +45,45 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
 	m_applicationEngine = _engine;
 	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
-	m_codeModel = std::unique_ptr<CodeModel>(new CodeModel(this));
-	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_codeModel.reset(new CodeModel(this));
+	m_clientModel.reset(new ClientModel(this));
+	m_fileIo.reset(new FileIo());
+/*
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
+	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+*/
 }
 
 AppContext::~AppContext()
 {
 }
 
-void AppContext::loadProject()
+void AppContext::load()
 {
-	QString path = QStandardPaths::locate(QStandardPaths::DataLocation, c_projectFileName);
-	if (!path.isEmpty())
+	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
+	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
+	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
+	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
+	QObject* projectModel = projectModelComponent.create();
+	if (projectModelComponent.isError())
 	{
-		QFile file(path);
-		if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-		{
-			QTextStream stream(&file);
-			QString json = stream.readAll();
-			emit projectLoaded(json);
-		}
+		QmlLoadException exception;
+		for (auto const& e : projectModelComponent.errors())
+			exception << QmlErrorInfo(e);
+		BOOST_THROW_EXCEPTION(exception);
 	}
+	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
+	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
+	appLoaded();
 }
 
 QQmlApplicationEngine* AppContext::appEngine()
@@ -85,20 +102,4 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
-}
-
-void AppContext::saveProject(QString const& _json)
-{
-	QDir dirPath(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
-	QString path = QDir(dirPath).filePath(c_projectFileName);
-	if (!path.isEmpty())
-	{
-		dirPath.mkpath(dirPath.path());
-		QFile file(path);
-		if (file.open(QIODevice::WriteOnly | QIODevice::Text))
-		{
-			QTextStream stream(&file);
-			stream << _json;
-		}
-	}
 }

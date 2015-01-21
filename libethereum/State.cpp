@@ -412,13 +412,13 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h512s State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h512s ret;
+	TransactionReceipts ret;
 	auto ts = _tq.transactions();
 
-	auto lh = getLastHashes(_bc);
+	auto lh = getLastHashes(_bc, _bc.number());
 
 	for (int goodTxs = 1; goodTxs;)
 	{
@@ -432,7 +432,7 @@ h512s State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transact
 					uncommitToMine();
 //					boost::timer t;
 					execute(lh, i.second);
-					ret.push_back(m_receipts.back().bloom());
+					ret.push_back(m_receipts.back());
 					_tq.noteGood(i);
 					++goodTxs;
 //					cnote << "TX took:" << t.elapsed() * 1000;
@@ -498,7 +498,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
 	receiptsTrie.init();
 
-	LastHashes lh = getLastHashes(_bc);
+	LastHashes lh = getLastHashes(_bc, (unsigned)m_previousBlock.number);
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
@@ -527,7 +527,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		cwarn << "Bad receipts state root.";
 		cwarn << "Block:" << toHex(_block);
 		cwarn << "Block RLP:" << RLP(_block);
-		cwarn << "Want: " << receiptsTrie.root() << ", got: " << m_currentBlock.receiptsRoot;
+		cwarn << "Calculated: " << receiptsTrie.root();
 		for (unsigned j = 0; j < i; ++j)
 		{
 			RLPStream k;
@@ -537,6 +537,16 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			cwarn << "RLP: " << RLP(b);
 			cwarn << "Hex: " << toHex(b);
 			cwarn << TransactionReceipt(&b);
+		}
+        cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
+		auto rs = _bc.receipts(m_currentBlock.hash);
+		for (unsigned j = 0; j < rs.receipts.size(); ++j)
+		{
+			auto b = rs.receipts[j].rlp();
+			cwarn << j << ": ";
+			cwarn << "RLP: " << RLP(b);
+			cwarn << "Hex: " << toHex(b);
+			cwarn << rs.receipts[j];
 		}
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
@@ -1000,17 +1010,27 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-LastHashes State::getLastHashes(BlockChain const& _bc) const
+LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
 {
 	LastHashes ret;
 	ret.resize(256);
 	if (c_protocolVersion > 49)
 	{
-		unsigned n = (unsigned)m_previousBlock.number;
-		for (unsigned i = 0; i < 256; ++i)
-			ret[i] = _bc.numberHash(std::max<unsigned>(n, i) - i);
+		ret[0] = _bc.numberHash(_n);
+		for (unsigned i = 1; i < 256; ++i)
+			ret[i] = ret[i - 1] ? _bc.details(ret[i - 1]).parent : h256();
 	}
 	return ret;
+}
+
+u256 State::execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output, bool _commit)
+{
+	return execute(getLastHashes(_bc, _bc.number()), &_rlp, o_output, _commit);
+}
+
+u256 State::execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output, bool _commit)
+{
+	return execute(getLastHashes(_bc, _bc.number()), _rlp, o_output, _commit);
 }
 
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.

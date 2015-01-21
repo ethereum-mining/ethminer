@@ -110,6 +110,9 @@ inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toB
 inline bytes toBigEndian(u256 _val) { bytes ret(32); toBigEndian(_val, ret); return ret; }
 inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); return ret; }
 
+/// Convenience function for conversion of a u256 to hex
+inline std::string toHex(u256 val) { return toHex(toBigEndian(val)); }
+
 /// Convenience function for toBigEndian.
 /// @returns a byte array just big enough to represent @a _val.
 template <class _T>
@@ -120,6 +123,10 @@ inline bytes toCompactBigEndian(_T _val, unsigned _min = 0)
 	bytes ret(std::max<unsigned>(_min, i), 0);
 	toBigEndian(_val, ret);
 	return ret;
+}
+inline bytes toCompactBigEndian(byte _val, unsigned _min = 0)
+{
+	return (_min || _val) ? bytes{ _val } : bytes{};
 }
 
 /// Convenience function for toBigEndian.

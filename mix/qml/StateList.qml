@@ -1,11 +1,12 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.2
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
+import QtQuick.Controls.Styles 1.1
+import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
+import org.ethereum.qml.QEther 1.0
 
 Rectangle {
-	color: "transparent"
+	color: "#ededed"
 	id: stateListContainer
 	focus: true
 	anchors.topMargin: 10
@@ -15,13 +16,21 @@ Rectangle {
 	property var stateList: []
 
 	Connections {
-		target: appContext
+		target: projectModel
+		onProjectClosed: {
+			stateListModel.clear();
+		}
 		onProjectLoaded: {
-			var items = JSON.parse(_json);
+			if (!projectData.states)
+				projectData.states = [];
+			var items = projectData.states;
 			for(var i = 0; i < items.length; i++) {
 				stateListModel.append(items[i]);
 				stateList.push(items[i])
 			}
+		}
+		onProjectSaving: {
+			projectData.states = stateList;
 		}
 	}
 
@@ -58,9 +67,13 @@ Rectangle {
 		id: stateListModel
 
 		function addState() {
+			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
+			var ether = etherComponent.createObject(stateListContainer);
+			ether.setValue("100000000000000000000000000");
+			ether.setUnit(QEther.Wei);
 			var item = {
 				title: "",
-				balance: "100000000000000000000000000",
+				balance: ether,
 				transactions: []
 			};
 			stateDialog.open(stateListModel.count, item);
@@ -72,7 +85,7 @@ Rectangle {
 
 		function runState(index) {
 			var item = stateList[index];
-			debugModel.debugState(item);
+			clientModel.debugState(item);
 		}
 
 		function deleteState(index) {
@@ -82,8 +95,7 @@ Rectangle {
 		}
 
 		function save() {
-			var json = JSON.stringify(stateList);
-			appContext.saveProject(json);
+			projectModel.saveProject();
 		}
 	}
 
@@ -115,7 +127,10 @@ Rectangle {
 				ToolButton {
 					text: qsTr("Run");
 					Layout.fillHeight: true
-					onClicked: stateListModel.runState(index);
+					onClicked:
+					{
+						stateListModel.runState(index)
+					}
 				}
 			}
 		}
@@ -124,8 +139,8 @@ Rectangle {
 	Action {
 		id: addStateAction
 		text: "&Add State"
-		shortcut: "Ctrl+N"
-		enabled: codeModel.hasContract && !debugModel.running;
+		shortcut: "Ctrl+T"
+		enabled: codeModel.hasContract && !clientModel.running;
 		onTriggered: stateListModel.addState();
 	}
 }

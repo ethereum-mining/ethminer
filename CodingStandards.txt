@@ -128,6 +128,10 @@ d. Use override, final and const judiciously.
 e. No implementations with the class declaration, except:
 - template or force-inline method (though prefer implementation at bottom of header file).
 - one-line implementation (in which case include it in same line as declaration).
+f. For a method 'foo'
+- Member: m_foo;
+- Getter: foo() [ also: for booleans, isFoo() ];
+- Setter: setFoo();
 
 
 
@@ -161,4 +165,20 @@ d. In general expressions should be roughly as important/semantically meaningful
 11. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
+
+12. Include Headers
+
+a. Includes should go in order of lower level (STL -> boost -> libdevcore -> libdevcrypto -> libethcore -> libethereum) to higher level. Lower levels are basically dependencies to the higher levels. For example:
+
+#include <string>
+#include <boost/filesystem.hpp>
+
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/Exceptions.h>
+#include <libdevcore/Log.h>
+#include <libdevcrypto/SHA3.h>
+#include <libethereum/Defaults.h>
+
+b. The only exception to the above rule is the top of a .cpp file where its corresponding header should be located.
 

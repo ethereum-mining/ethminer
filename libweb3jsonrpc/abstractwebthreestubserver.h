@@ -45,7 +45,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newFilterStringI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uninstallFilterI);
-            this->bindAndAddMethod(new jsonrpc::Procedure("eth_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_changedI);
+            this->bindAndAddMethod(new jsonrpc::Procedure("eth_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_changedI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_filterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_filterLogsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("eth_logs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_logsI);
             this->bindAndAddMethod(new jsonrpc::Procedure("db_put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putI);
@@ -287,7 +287,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual int eth_newFilter(const Json::Value& param1) = 0;
         virtual int eth_newFilterString(const std::string& param1) = 0;
         virtual bool eth_uninstallFilter(const int& param1) = 0;
-        virtual bool eth_changed(const int& param1) = 0;
+        virtual Json::Value eth_changed(const int& param1) = 0;
         virtual Json::Value eth_filterLogs(const int& param1) = 0;
         virtual Json::Value eth_logs(const Json::Value& param1) = 0;
         virtual bool db_put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;

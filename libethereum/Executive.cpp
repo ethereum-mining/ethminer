@@ -35,7 +35,7 @@ using namespace dev::eth;
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
-	m_lastHashes(_s.getLastHashes(_bc)),
+	m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
 	m_depth(_level)
 {}
 
@@ -146,9 +146,17 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = VMFactory::create(_gas);
-	m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	return _init.empty();
+	if (_init.empty())
+	{
+		m_s.m_cache[m_newAddress].setCode({});
+		m_endGas = _gas;
+	}
+	else
+	{
+		m_vm = VMFactory::create(_gas);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	}
+	return !m_ext;
 }
 
 OnOpFunc Executive::simpleTrace()
@@ -189,7 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
-				m_s.m_cache[m_newAddress].setCode(m_out);
+				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
 		catch (StepsDone const&)

@@ -49,9 +49,12 @@ public:
 	QList<QVariableDeclaration*> returnParameters() const { return m_returnParameters; }
 	/// Get the index of this function on the contract ABI.
 	int index() const { return m_index; }
+	/// Get the hash of this function declaration on the contract ABI.
+	FixedHash<4> hash() const { return m_hash; }
 
 private:
 	int m_index;
+	FixedHash<4> m_hash;
 	QList<QVariableDeclaration*> m_parameters;
 	QList<QVariableDeclaration*> m_returnParameters;
 	void initQParameters();
