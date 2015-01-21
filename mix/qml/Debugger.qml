@@ -314,7 +314,6 @@ Rectangle {
 						}
 					}
 
-					//ColumnLayout {
 					Rectangle {
 						Layout.fillWidth: true
 						height: parent.height //- 2 * stateListContainer.border.width
@@ -348,7 +347,6 @@ Rectangle {
 								Layout.fillWidth: true
 								height: 30
 							}
-
 							DebugInfoList
 							{
 								Layout.fillHeight: true
@@ -412,8 +410,6 @@ Rectangle {
 								}
 							}
 						}
-
-
 					}
 				}
 

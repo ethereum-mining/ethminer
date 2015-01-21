@@ -1,7 +1,6 @@
 import QtQuick 2.2
 
 Rectangle {
-
 	property variant itemToStick;
 	property int itemMinimumWidth;
 	property string direction;
@@ -22,10 +21,7 @@ Rectangle {
 	{
 		property int startX: 0;
 		anchors.fill: parent
-		onPressed:
-		{
-			startX = mouseX;
-		}
+		onPressed: startX = mouseX;
 		onPositionChanged:
 		{
 			parent.x += mouseX;
