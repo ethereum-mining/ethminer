@@ -43,5 +43,6 @@
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
+        <file>qml/Splitter.qml</file>
     </qresource>
 </RCC>

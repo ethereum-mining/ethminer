@@ -89,6 +89,7 @@ QStringList DebuggingStateWrapper::debugStack()
 	for (auto i: m_state.stack)
 		stack.append(QString::fromStdString(prettyU256(i)));
 
+	std::reverse(stack.begin(), stack.end());
 	return fillList(stack, "");
 }
 
