@@ -15,6 +15,13 @@ reloadPage = function() {
 	var preview = document.getElementById('preview');
 	preview.contentWindow.location.reload();
 };
+
+init = function(url) {
+	web3 = require('web3');
+	web3.setProvider(new web3.providers.WebSocketProvider(url));
+	window.web3 = web3;
+}
+
 </script>
 
 <style>

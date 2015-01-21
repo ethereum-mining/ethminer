@@ -117,7 +117,6 @@ function doCloseProject() {
 	console.log("closing project");
 	projectListModel.clear();
 	projectPath = "";
-	projectData = null;
 	projectClosed();
 }
 
