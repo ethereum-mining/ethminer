@@ -14,6 +14,7 @@ Rectangle {
 			status.state = "";
 			status.text = qsTr("Compile without errors.");
 			logslink.visible = false;
+			debugImg.state = "active";
 		}
 		else
 		{
@@ -21,6 +22,7 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
+			debugImg.state = "";
 		}
 		debugRunActionIcon.enabled = statusPane.result.successful;
 	}
@@ -96,11 +98,17 @@ Rectangle {
 				Button
 				{
 					anchors.right: parent.right
-					anchors.rightMargin: 7
+					anchors.rightMargin: 9
 					anchors.verticalCenter: parent.verticalCenter
 					id: debugImg
 					iconSource: "qrc:/qml/img/bugiconinactive.png"
 					action: debugRunActionIcon
+					states: [
+						State{
+							name: "active"
+							PropertyChanges { target: debugImg; iconSource: "qrc:/qml/img/bugiconactive.png"}
+						}
+					]
 				}
 				Action {
 					id: debugRunActionIcon
