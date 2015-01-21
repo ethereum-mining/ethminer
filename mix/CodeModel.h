@@ -67,6 +67,7 @@ class CompilationResult: public QObject
 	Q_PROPERTY(QContractDefinition* contract READ contract)
 	Q_PROPERTY(QString compilerMessage READ compilerMessage CONSTANT)
 	Q_PROPERTY(bool successful READ successful CONSTANT)
+	Q_PROPERTY(QString contractDefinition READ contractDefinition CONSTANT)
 
 public:
 	/// Empty compilation result constructor
@@ -88,6 +89,8 @@ public:
 	dev::bytes const& bytes() const { return m_bytes; }
 	/// @returns contract bytecode in human-readable form
 	QString assemblyCode() const { return m_assemblyCode; }
+	/// @returns contract definition in JSON format
+	QString contractDefinition() const { return m_contractDefinition; }
 	/// Get code highlighter
 	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
@@ -98,6 +101,7 @@ private:
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
+	QString m_contractDefinition;
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 
 	friend class CodeModel;
@@ -137,6 +141,8 @@ signals:
 	void scheduleCompilationJob(int _jobId, QString const& _content);
 	/// Emitted if there are any changes in the code model
 	void codeChanged();
+	/// Emitted if there are any changes in the contract interface
+	void contractDefinitionChanged();
 	/// Emitted on compilation complete. Internal
 	void compilationCompleteInternal(CompilationResult* _newResult);
 

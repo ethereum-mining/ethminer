@@ -89,9 +89,20 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleWebPreview
+		text: "Show/Hide web view"
+		shortcut: "F2"
+		checkable: true
+		checked: mainContent.webViewVisible
+		onTriggered: mainContent.toggleWebPreview();
+	}
+
+	Action {
 		id: showHideRightPanel
-		text: "Show/Hide right view"
+		text: "Show right view"
 		shortcut: "F7"
+		checkable: true
+		checked: mainContent.rightViewVisible
 		onTriggered: mainContent.toggleRightView();
 	}
 

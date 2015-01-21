@@ -5,7 +5,7 @@ import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import Qt.WebSockets 1.0
-import QtWebEngine.experimental 1.0
+//import QtWebEngine.experimental 1.0
 
 Item {
 	id: webPreview
@@ -17,12 +17,18 @@ Item {
 			pendingPageUrl = url;
 		else {
 			pendingPageUrl = "";
+			updateContract();
 			webView.runJavaScript("loadPage(\"" + url + "\")");
 		}
 	}
 
 	function reload() {
+		updateContract();
 		webView.runJavaScript("reloadPage()");
+	}
+
+	function updateContract() {
+		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractDefinition + ")");
 	}
 
 	function reloadOnSave() {
@@ -54,12 +60,20 @@ Item {
 	}
 
 	Connections {
+		target: clientModel
+		onContractAddressChanged: reload();
+	}
+
+	Connections {
+		target: codeModel
+		onContractDefinitionChanged: reload();
+	}
+
+	Connections {
 		target: projectModel
 		onProjectSaved : reloadOnSave();
 		onDocumentSaved: reloadOnSave();
 		onDocumentAdded: {
-			console.log("added")
-			console.log(documentId)
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
 				pageListModel.append(document);
@@ -98,7 +112,12 @@ Item {
 		onClientConnected:
 		{
 			webSocket.onTextMessageReceived.connect(function(message) {
-				console.log("rpc: " + message);
+				console.log("rpc_request: " + message);
+				clientModel.apiRequest(message);
+			});
+			clientModel.onApiResponse.connect(function(message) {
+				console.log("rpc_response: " + message);
+				webSocket.sendTextMessage(message);
 			});
 		}
 	}
@@ -134,8 +153,8 @@ Item {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			id: webView
-			experimental.settings.localContentCanAccessFileUrls: true
-			experimental.settings.localContentCanAccessRemoteUrls: true
+			//experimental.settings.localContentCanAccessFileUrls: true
+			//experimental.settings.localContentCanAccessRemoteUrls: true
 			onJavaScriptConsoleMessage: {
 				console.log(sourceID + ":" + lineNumber + ":" + message);
 			}

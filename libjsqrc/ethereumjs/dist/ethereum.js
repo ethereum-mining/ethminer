@@ -1465,10 +1465,8 @@ var WebSocketProvider = function(host) {
 /// Response for the call will be received by ws.onmessage
 /// @param payload is inner message object
 WebSocketProvider.prototype.send = function(payload) {
-	console.log("wsSend");
     if (this.ready) {
         var data = JSON.stringify(payload);
-	console.log(payload);
 
         this.ws.send(data);
     } else {

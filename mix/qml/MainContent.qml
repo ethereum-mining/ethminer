@@ -17,24 +17,28 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
-	function toggleRightView()
-	{
+	property alias rightViewVisible : rightView.visible
+	property alias webViewVisible : webPreview.visible
+
+	function toggleRightView() {
 		if (!rightView.visible)
 			rightView.show();
 		else
 			rightView.hide();
 	}
 
-	function ensureRightView()
-	{
+	function ensureRightView() {
 		if (!rightView.visible)
 			rightView.show();
 	}
 
-	function hideRightView()
-	{
+	function hideRightView() {
 		if (rightView.visible)
 			rightView.hide();
+	}
+
+	function toggleWebPreview() {
+		webPreview.visible = !webPreview.visible;
 	}
 
 	CodeEditorExtensionManager {
@@ -102,11 +106,13 @@ Rectangle {
 					CodeEditorView {
 						height: parent.height * 0.6
 						anchors.top: parent.top
-						width: parent.width
+						Layout.fillWidth: true
+						Layout.fillHeight: true
 					}
 					WebPreview {
+						id: webPreview
 						height: parent.height * 0.4
-						width: parent.width
+						Layout.fillWidth: true
 					}
 				}
 			}

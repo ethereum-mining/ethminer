@@ -20,10 +20,10 @@ file(GLOB HEADERS "*.h")
 set(EXECUTABLE mix)
 
 if ("${Qt5WebEngine_VERSION_STRING}" VERSION_GREATER "5.3.0")
-        set (ETH_HAVE_WEBENGINE TRUE)
-        qt5_add_resources(UI_RESOURCES web.qrc)
+	set (ETH_HAVE_WEBENGINE TRUE)
+	qt5_add_resources(UI_RESOURCES web.qrc)
 else()
-        qt5_add_resources(UI_RESOURCES noweb.qrc)
+	qt5_add_resources(UI_RESOURCES noweb.qrc)
 endif()
 
 
@@ -47,12 +47,12 @@ target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)
+target_link_libraries(${EXECUTABLE} jsqrc)
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
 
 if (${ETH_HAVE_WEBENGINE})
-        add_definitions(-DETH_HAVE_WEBENGINE)
-        target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
-        target_link_libraries(${EXECUTABLE} jsqrc)
-        target_link_libraries(${EXECUTABLE} web3jsonrpc)
+	add_definitions(-DETH_HAVE_WEBENGINE)
+	target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
