@@ -755,7 +755,7 @@ void Main::on_importKey_triggered()
 
 void Main::on_importKeyFile_triggered()
 {
-	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
 		js::mValue val;
@@ -785,8 +785,12 @@ void Main::on_importKeyFile_triggered()
 
 			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 			{
-				m_myKeys.append(k);
-				keysChanged();
+				if (m_myKeys.empty())
+				{
+					m_myKeys.push_back(KeyPair::create());
+					keysChanged();
+				}
+				ethereum()->transact(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
 			}
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
@@ -1969,9 +1973,24 @@ void Main::on_debug_clicked()
 	}
 }
 
+bool beginsWith(Address _a, bytes const& _b)
+{
+	for (unsigned i = 0; i < min<unsigned>(20, _b.size()); ++i)
+		if (_a[i] != _b[i])
+			return false;
+	return true;
+}
+
 void Main::on_create_triggered()
 {
-	m_myKeys.append(KeyPair::create());
+	bool ok = true;
+	QString s = QInputDialog::getText(this, "Special Beginning?", "If you want a special key, enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+	if (!ok)
+		return;
+	KeyPair p;
+	while (!beginsWith(p.address(), asBytes(s.toStdString())))
+		p = KeyPair::create();
+	m_myKeys.append(p);
 	keysChanged();
 }
 
