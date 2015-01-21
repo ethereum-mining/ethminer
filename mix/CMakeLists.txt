@@ -26,7 +26,6 @@ else()
 	qt5_add_resources(UI_RESOURCES noweb.qrc)
 endif()
 
-
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON mix

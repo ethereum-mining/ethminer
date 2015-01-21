@@ -5,7 +5,6 @@ import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import Qt.WebSockets 1.0
-//import QtWebEngine.experimental 1.0
 
 Item {
 	id: webPreview
@@ -153,8 +152,6 @@ Item {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			id: webView
-			//experimental.settings.localContentCanAccessFileUrls: true
-			//experimental.settings.localContentCanAccessRemoteUrls: true
 			onJavaScriptConsoleMessage: {
 				console.log(sourceID + ":" + lineNumber + ":" + message);
 			}
