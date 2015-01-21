@@ -21,9 +21,13 @@
 
 #include "OurWebThreeStubServer.h"
 
+#include <QtCore/QString>
+#include <QtCore/QtCore>
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <libwebthree/WebThree.h>
+#include <jsoncpp/json/json.h>
+
 #include "MainWin.h"
 
 using namespace std;
@@ -54,7 +58,7 @@ bool OurWebThreeStubServer::showAuthenticationPopup(std::string const& _title, s
 	return userInput.exec() == QMessageBox::Ok;
 }
 
-bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t)
 {
 	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
 	if (contractCodeHash == EmptySHA3)
@@ -69,15 +73,15 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 //		return showAuthenticationPopup("Unverified Pending Transaction",
 //									   "An undocumented transaction is about to be executed.");
 
-	QNatspecExpressionEvaluator evaluator(*m_web3, m_main);
+	QNatspecExpressionEvaluator evaluator(this, m_main);
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
 
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Pending Transaction", userNotice);
 }
 
-QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(dev::WebThreeDirect& _web3, Main* _main):
-	m_web3(&_web3), m_main(_main)
+QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main)
+: m_server(_server), m_main(_main)
 {}
 
 QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
@@ -85,20 +89,35 @@ QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
 
 QString QNatspecExpressionEvaluator::stateAt(QString _key)
 {
+	(void)_key;
 	return "1";
 }
 
-QString QNatspecExpressionEvaluator::call(QString _method)
+QString QNatspecExpressionEvaluator::call(QString _json)
 {
-	return "2";
+	QJsonObject jsonObject = QJsonDocument::fromJson(_json.toUtf8()).object();
+	Json::Value input;
+	input["to"] = jsonObject["to"].toString().toStdString();
+	input["data"] = jsonObject["data"].toString().toStdString();
+	return QString::fromStdString(m_server->eth_call(input));
+}
+
+QString QNatspecExpressionEvaluator::sha3(QString _method)
+{
+	return QString::fromStdString(m_server->web3_sha3(_method.toStdString()));
 }
 
 QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
 {
+	
 	// evaluate the natspec
+	m_main->addToWindowObject(this, "_natspec");
 	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
-	auto result = m_main->evalRaw("evaluateExpression(\"2 + 1\")");
+	
+	(void)_expression;
+	auto result = m_main->evalRaw(QString::fromStdString((string)"evaluateExpression('" + "multiply(4)" + "')"));
 //	auto result = m_main->evalRaw(_expression);
+	
 	return result.toString();
 }
 
