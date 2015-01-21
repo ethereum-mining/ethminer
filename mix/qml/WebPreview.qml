@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
+import Qt.WebSockets 1.0
 import QtWebEngine.experimental 1.0
 
 Item {
@@ -48,6 +49,7 @@ Item {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
 			webView.loadHtml(containerPage, "file:///")
+
 		}
 	}
 
@@ -89,6 +91,18 @@ Item {
 		id: pageListModel
 	}
 
+	WebSocketServer {
+		id: socketServer
+		listen: true
+		name: "mix"
+		onClientConnected:
+		{
+			webSocket.onTextMessageReceived.connect(function(message) {
+				console.log("rpc: " + message);
+			});
+		}
+	}
+
 	ColumnLayout {
 		anchors.fill: parent
 
@@ -128,6 +142,7 @@ Item {
 			onLoadingChanged: {
 				if (!loading) {
 					initialized = true;
+					webView.runJavaScript("init(\"" + socketServer.url + "\")");
 					if (pendingPageUrl)
 						setPreviewUrl(pendingPageUrl);
 				}
