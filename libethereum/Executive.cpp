@@ -197,7 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
-				m_s.m_cache[m_newAddress].setCode(m_out);
+				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
 		catch (StepsDone const&)
