@@ -26,6 +26,7 @@
 #include <vector>
 #include <deque>
 #include <array>
+#include <boost/asio.hpp>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/SHA3.h>

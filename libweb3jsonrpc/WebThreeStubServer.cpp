@@ -21,6 +21,7 @@
  * @date 2014
  */
 
+#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <libwebthree/WebThree.h>
 #include <libdevcrypto/FileSystem.h>
