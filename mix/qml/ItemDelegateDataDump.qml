@@ -20,29 +20,33 @@ Rectangle {
 			Layout.maximumWidth: 35
 			Layout.minimumHeight: parent.height
 			Text {
-				anchors.centerIn: parent
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.left: parent.left
+				anchors.leftMargin: 3
 				font.family: "monospace"
 				font.bold: true
 				color: "#4a4a4a"
 				text: modelData[0]
-				font.pointSize: 9;
+				font.pointSize: 8;
 			}
 		}
 
 		Rectangle
 		{
 			Layout.fillWidth: true
-			Layout.minimumWidth: 90
-			Layout.preferredWidth: 90
-			Layout.maximumWidth: 90
+			Layout.minimumWidth: 110
+			Layout.preferredWidth: 110
+			Layout.maximumWidth: 110
 			Layout.minimumHeight: parent.height
 			Text {
 				font.family: "monospace"
 				font.bold: true
 				anchors.verticalCenter: parent.verticalCenter
+				anchors.left: parent.left
+				anchors.leftMargin: 4
 				color: "#4a4a4a"
 				text: modelData[1]
-				font.pointSize: 9
+				font.pointSize: 8
 			}
 		}
 
@@ -57,7 +61,7 @@ Rectangle {
 				font.family: "monospace"
 				color: "#4a4a4a"
 				text: modelData[2]
-				font.pointSize: 9
+				font.pointSize: 8
 			}
 		}
 	}
