@@ -48,13 +48,20 @@ std::map<Address, Account> const& dev::eth::genesisState()
 		js::mValue val;
 		json_spirit::read_string(c_genesisInfo, val);
 		for (auto account: val.get_obj())
-			if (account.second.get_obj()["code"].get_str().size())
+		{
+			u256 balance;
+			if (account.second.get_obj().count("balance"))
+				balance = fromBigEndian<u256>(fromHex(account.second.get_obj()["balance"].get_str()));
+			else
+				balance = u256(account.second.get_obj()["finney"].get_str()) * finney;
+			if (account.second.get_obj().count("code"))
 			{
-				s_ret[Address(fromHex(account.first))] = Account(fromBigEndian<u256>(fromHex(account.second.get_obj()["balance"].get_str())), Account::ContractConception);
+				s_ret[Address(fromHex(account.first))] = Account(balance, Account::ContractConception);
 				s_ret[Address(fromHex(account.first))].setCode(fromHex(account.second.get_obj()["code"].get_str()));
 			}
 			else
-				s_ret[Address(fromHex(account.first))] = Account(fromBigEndian<u256>(fromHex(account.second.get_obj()["balance"].get_str())), Account::NormalCreation);
+				s_ret[Address(fromHex(account.first))] = Account(balance, Account::NormalCreation);
+		}
 	}
 	return s_ret;
 }
