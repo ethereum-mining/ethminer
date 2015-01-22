@@ -52,7 +52,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_key(move(getHostIdentifier()))
+	m_alias(move(getHostIdentifier()))
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -186,12 +186,20 @@ void Host::onNodeTableEvent(NodeId _n, NodeTableEventType _e)
 			auto p = m_peers[_n];
 			if (!p)
 			{
-				m_peers[_n] = make_shared<PeerInfo>();
+				m_peers[_n] = make_shared<Peer>();
 				p = m_peers[_n];
 				p->id = _n;
 			}
-			p->address = n.endpoint.tcp;
+			p->endpoint.tcp = n.endpoint.tcp;
 			
+			// TODO: Implement similar to doFindNode. Attempt connecting to nodes
+			//       until ideal peer count is reached; if all nodes are tried,
+			//       repeat. Notably, this is an integrated process such that
+			//       when onNodeTableEvent occurs we should also update +/-
+			//       the list of nodes to be tried. Thus:
+			//       1) externalize connection attempts
+			//       2) attempt copies potentialPeer list
+			//       3) replace this logic w/maintenance of potentialPeers
 			if (peerCount() < m_idealPeerCount)
 				connect(p);
 		}
@@ -334,14 +342,14 @@ void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
 		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
 	} catch (...){}
 
-	shared_ptr<PeerInfo> p;
+	shared_ptr<Peer> p;
 	if (_nodeId)
 		p = m_peers[_nodeId];
 	
 	if (!p)
 	{
-		p = make_shared<PeerInfo>();
-		p->address.address(_socket->remote_endpoint().address());
+		p = make_shared<Peer>();
+		p->endpoint.tcp.address(_socket->remote_endpoint().address());
 	}
 
 	auto ps = std::make_shared<Session>(this, std::move(*_socket), p);
@@ -357,6 +365,8 @@ string Host::pocHost()
 
 void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
 {
+	
+	
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
 
@@ -383,7 +393,7 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
 }
 
-void Host::connect(std::shared_ptr<PeerInfo> const& _n)
+void Host::connect(std::shared_ptr<Peer> const& _n)
 {
 	if (!m_run)
 		return;
@@ -401,7 +411,7 @@ void Host::connect(std::shared_ptr<PeerInfo> const& _n)
 	}
 	
 	// prevent concurrently connecting to a node
-	PeerInfo *nptr = _n.get();
+	Peer *nptr = _n.get();
 	{
 		Guard l(x_pendingNodeConns);
 		if (m_pendingNodeConns.count(nptr))
@@ -409,22 +419,19 @@ void Host::connect(std::shared_ptr<PeerInfo> const& _n)
 		m_pendingNodeConns.insert(nptr);
 	}
 	
-	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->address << "from" << id().abridged();
-	_n->lastAttempted = std::chrono::system_clock::now();
-	_n->failedAttempts++;
-	
+	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->peerEndpoint() << "from" << id().abridged();
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
-	s->async_connect(_n->address, [=](boost::system::error_code const& ec)
+	s->async_connect(_n->peerEndpoint(), [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->address << "(" << ec.message() << ")";
+			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->peerEndpoint() << "(" << ec.message() << ")";
 			_n->lastDisconnect = TCPError;
 			_n->lastAttempted = std::chrono::system_clock::now();
 		}
 		else
 		{
-			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->address;
+			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->peerEndpoint();
 			
 			_n->lastConnected = std::chrono::system_clock::now();
 			auto ps = make_shared<Session>(this, std::move(*s), _n);
@@ -436,31 +443,6 @@ void Host::connect(std::shared_ptr<PeerInfo> const& _n)
 		m_pendingNodeConns.erase(nptr);
 	});
 }
-
-unsigned PeerInfo::fallbackSeconds() const
-{
-	switch (lastDisconnect)
-	{
-	case BadProtocol:
-		return 30 * (failedAttempts + 1);
-	case UselessPeer:
-	case TooManyPeers:
-	case ClientQuit:
-		return 15 * (failedAttempts + 1);
-	case NoDisconnect:
-		return 0;
-	default:
-		if (failedAttempts < 5)
-			return failedAttempts * 5;
-		else if (failedAttempts < 15)
-			return 25 + (failedAttempts - 5) * 10;
-		else
-			return 25 + 100 + (failedAttempts - 15) * 20;
-	}
-}
-
-// TODO: P2P rebuild nodetable when localNetworking is enabled/disabled
-// TODO: P2P implement 'maintainPeers' & evaluate reputation instead of availability. schedule via deadline timer.
 
 PeerSessionInfos Host::peers() const
 {
@@ -538,12 +520,14 @@ void Host::startedWorking()
 			
 		if (!m_tcpPublic.address().is_unspecified())
 			// TODO: add m_tcpPublic endpoint; sort out endpoint stuff for nodetable
-			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort));
+			m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort));
 		else
-			m_nodeTable.reset(new NodeTable(m_ioService, m_key, m_listenPort > 0 ? m_listenPort : 30303));
+			m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort > 0 ? m_listenPort : 30303));
 		m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	}
-
+	else
+		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Invalid listen-port. Node Table Disabled.";
+	
 	clog(NetNote) << "p2p.started id:" << id().abridged();
 	
 	run(boost::system::error_code());
@@ -578,16 +562,16 @@ bytes Host::saveNodes() const
 		RecursiveGuard l(x_sessions);
 		for (auto const& i: m_peers)
 		{
-			PeerInfo const& n = *(i.second);
+			Peer const& n = *(i.second);
 			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
-			if (chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.address.port() > 0 && n.address.port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.address.address()))
+			if (chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.peerEndpoint().port() > 0 && n.peerEndpoint().port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.peerEndpoint().address()))
 			{
 				nodes.appendList(10);
-				if (n.address.address().is_v4())
-					nodes << n.address.address().to_v4().to_bytes();
+				if (n.peerEndpoint().address().is_v4())
+					nodes << n.peerEndpoint().address().to_v4().to_bytes();
 				else
-					nodes << n.address.address().to_v6().to_bytes();
-				nodes << n.address.port() << n.id /* << (int)n.idOrigin */ << 0
+					nodes << n.peerEndpoint().address().to_v6().to_bytes();
+				nodes << n.peerEndpoint().port() << n.id /* << (int)n.idOrigin */ << 0
 					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
 					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
 					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
@@ -596,11 +580,12 @@ bytes Host::saveNodes() const
 		}
 	}
 	RLPStream ret(3);
-	ret << 0 << m_key.secret();
+	ret << 0 << m_alias.secret();
 	ret.appendList(count).appendRaw(nodes.out(), count);
 	return ret.out();
 }
 
+// TODO: p2p Import-ant
 void Host::restoreNodes(bytesConstRef _b)
 {
 	RecursiveGuard l(x_sessions);
@@ -610,7 +595,7 @@ void Host::restoreNodes(bytesConstRef _b)
 		{
 		case 0:
 		{
-			m_key = KeyPair(r[1].toHash<Secret>());
+			m_alias = KeyPair(r[1].toHash<Secret>());
 //			noteNode(id(), m_tcpPublic);
 
 			for (auto i: r[2])
@@ -623,7 +608,7 @@ void Host::restoreNodes(bytesConstRef _b)
 				auto id = (NodeId)i[2];
 				if (!m_peers.count(id))
 				{
-////					auto o = (Origin)i[3].toInt<int>();
+					// TODO: p2p Important :)
 //					auto n = noteNode(id, ep);
 //					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 //					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));

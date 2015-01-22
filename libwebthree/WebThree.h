@@ -78,7 +78,7 @@ public:
 	virtual p2p::NodeId id() const = 0;
 
 	/// Gets the nodes.
-	virtual p2p::Nodes nodes() const = 0;
+	virtual p2p::Peers nodes() const = 0;
 
 	/// Start the network subsystem.
 	virtual void startNetwork() = 0;
@@ -148,7 +148,7 @@ public:
 	p2p::NodeId id() const override { return m_net.id(); }
 
 	/// Gets the nodes.
-	p2p::Nodes nodes() const override { return m_net.nodes(); }
+	p2p::Peers nodes() const override { return m_net.nodes(); }
 
 	/// Start the network subsystem.
 	void startNetwork() override { m_net.start(); }

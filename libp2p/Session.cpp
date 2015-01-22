@@ -36,7 +36,7 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<PeerInfo> const& _n):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n):
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_peer(_n),
@@ -114,9 +114,9 @@ void Session::serviceNodesRequest()
 	if (!m_theyRequestedNodes)
 		return;
 
-// TODO: P2P
+// TODO: P2P reimplement, as per TCP "close nodes" gossip specifications (WiP)
 //	auto peers = m_server->potentialPeers(m_knownNodes);
-	Nodes peers;
+	Peers peers;
 	if (peers.empty())
 	{
 		addNote("peers", "requested");
@@ -129,11 +129,11 @@ void Session::serviceNodesRequest()
 	auto rs = randomSelection(peers, 10);
 	for (auto const& i: rs)
 	{
-		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.address;
-		if (i.address.address().is_v4())
-			s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
+		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.peerEndpoint();
+		if (i.peerEndpoint().address().is_v4())
+			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v4().to_bytes().data(), 4) << i.peerEndpoint().port() << i.id;
 		else// if (i.second.address().is_v6()) - assumed
-			s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
+			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v6().to_bytes().data(), 16) << i.peerEndpoint().port() << i.id;
 	}
 	sealAndSend(s);
 	m_theyRequestedNodes = false;
@@ -188,7 +188,7 @@ bool Session::interpret(RLP const& _r)
 		else if (!m_peer->id)
 		{
 			m_peer->id = id;
-			m_peer->address.port(listenPort);
+			m_peer->endpoint.tcp.port(listenPort);
 		}
 		else if (m_peer->id != id)
 		{
@@ -386,7 +386,6 @@ void Session::send(bytes&& _msg)
 	if (!checkPacket(bytesConstRef(&_msg)))
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
-//	cerr << (void*)this << " writeImpl" << endl;
 	if (!m_socket.is_open())
 		return;
 

@@ -51,58 +51,50 @@ namespace p2p
 
 class Host;
 
-struct PeerInfo
+/**
+ * @brief Representation of connectivity state and all other pertinent Peer metadata.
+ * A Peer represents connectivity between two nodes, which in this case, are the host
+ * and remote nodes.
+ *
+ * State information necessary for loading network topology is maintained by NodeTable.
+ *
+ * @todo Implement 'bool required'
+ * @todo reputation: Move score, rating to capability-specific map (&& remove friend class)
+ * @todo reputation: implement via origin-tagged events
+ * @todo Populate metadata upon construction; save when destroyed.
+ * @todo Metadata for peers needs to be handled via a storage backend. 
+ * Specifically, peers can be utilized in a variety of
+ * many-to-many relationships while also needing to modify shared instances of
+ * those peers. Modifying these properties via a storage backend alleviates
+ * Host of the responsibility. (&& remove save/restoreNodes)
+ * @todo reimplement recording of historical session information on per-transport basis
+ * @todo rebuild nodetable when localNetworking is enabled/disabled
+ */
+class Peer: public Node
 {
-	NodeId id;										///< Their id/public key.
+	friend class Session;		/// Allows Session to update score and rating.
+	friend class Host;		/// For Host: saveNodes(), restoreNodes()
+public:
+	bool isOffline() const { return !m_session.lock(); }
+
+	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
 	
-	// p2p: move to NodeIPEndpoint
-	bi::tcp::endpoint address;						///< As reported from the node itself.
+protected:
 	
-	// p2p: This information is relevant to the network-stack, ex: firewall, rather than node itself
+	/// Used by isOffline() and (todo) for peer to emit session information.
+	std::weak_ptr<Session> m_session;
+	
+	int score = 0;									///< All time cumulative.
+	int rating = 0;									///< Trending.
+	
+	/// Network Availability
+	
 	std::chrono::system_clock::time_point lastConnected;
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;
 	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
-
-	// p2p: move to protocol-specific map
-	int score = 0;									///< All time cumulative.
-	int rating = 0;									///< Trending.
-
-	// p2p: move to NodeIPEndpoint
-	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
-	// p2p: move to NodeIPEndpoint
-	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
-
-	// p2p: move to NodeIPEndpoint
-	unsigned fallbackSeconds() const;
-	// p2p: move to NodeIPEndpoint
-	bool shouldReconnect() const { return std::chrono::system_clock::now() > lastAttempted + std::chrono::seconds(fallbackSeconds()); }
-
-	// p2p: This has two meanings now. It's possible UDP works but TPC is down or vice-versa.
-	bool isOffline() const { return lastAttempted > lastConnected; }
-	
-	// p2p: Remove (in favor of lr-seen eviction and ratings).
-	bool operator<(PeerInfo const& _n) const
-	{
-		if (isOffline() != _n.isOffline())
-			return isOffline();
-		else if (isOffline())
-			if (lastAttempted == _n.lastAttempted)
-				return failedAttempts < _n.failedAttempts;
-			else
-				return lastAttempted < _n.lastAttempted;
-		else
-			if (score == _n.score)
-				if (rating == _n.rating)
-					return failedAttempts < _n.failedAttempts;
-				else
-					return rating < _n.rating;
-			else
-				return score < _n.score;
-	}
 };
-
-using Nodes = std::vector<PeerInfo>;
+using Peers = std::vector<Peer>;
 
 
 class HostNodeTableHandler: public NodeTableEventHandler
@@ -116,18 +108,18 @@ class HostNodeTableHandler: public NodeTableEventHandler
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
- * @todo gracefully disconnect peer if peer already connected
+ *
+ * @todo onNodeTableEvent: move peer-connection logic into ensurePeers
+ * @todo handshake: gracefully disconnect peer if peer already connected
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
- * @todo write host identifier to disk along w/nodes
- * @todo move Session::addRating into Host and implement via sender-tagged events
+ * @todo write host identifier to disk w/nodes
  */
 class Host: public Worker
 {
 	friend class HostNodeTableHandler;
 	friend class Session;
 	friend class HostCapabilityFace;
-	friend struct PeerInfo;
 	
 public:
 	/// Start server, listening for connections on the given port.
@@ -163,6 +155,9 @@ public:
 	/// Get number of peers connected; equivalent to, but faster than, peers().size().
 	size_t peerCount() const { RecursiveGuard l(x_sessions); return m_peers.size(); }
 
+	/// Get the address we're listening on currently.
+	std::string listenAddress() const { return m_tcpPublic.address().to_string(); }
+	
 	/// Get the port we're listening on currently.
 	unsigned short listenPort() const { return m_tcpPublic.port(); }
 
@@ -173,7 +168,7 @@ public:
 	void restoreNodes(bytesConstRef _b);
 
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
-	Nodes nodes() const { RecursiveGuard l(x_sessions); Nodes ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
+	Peers nodes() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
@@ -187,11 +182,9 @@ public:
 	/// @returns if network is running.
 	bool isStarted() const { return m_run; }
 
-	NodeId id() const { return m_key.pub(); }
+	NodeId id() const { return m_alias.pub(); }
 
 	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
-
-//	std::shared_ptr<PeerInfo> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<PeerInfo>(); }
 
 protected:
 	void onNodeTableEvent(NodeId _n, NodeTableEventType _e);
@@ -200,7 +193,7 @@ private:
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
-	void connect(std::shared_ptr<PeerInfo> const& _n);
+	void connect(std::shared_ptr<Peer> const& _n);
 	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
@@ -225,7 +218,7 @@ private:
 	virtual void doneWorking();
 	
 	/// Add node
-	void addNode(Node const& _node) { m_nodeTable->addNode(_node); }
+	void addNode(Node const& _node) { if (m_nodeTable) m_nodeTable->addNode(_node); }
 
 	/// Get or create host identifier (KeyPair).
 	KeyPair getHostIdentifier();
@@ -248,16 +241,17 @@ private:
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
 	
-	std::set<PeerInfo*> m_pendingNodeConns;									/// Used only by connect(PeerInfo&) to limit concurrently connecting to same node. See connect(shared_ptr<PeerInfo>const&).
+	std::set<Peer*> m_pendingNodeConns;									/// Used only by connect(Peer&) to limit concurrently connecting to same node. See connect(shared_ptr<Peer>const&).
 	Mutex x_pendingNodeConns;
 
 	bi::tcp::endpoint m_tcpPublic;											///< Our public listening endpoint.
-	KeyPair m_key;															///< Our unique ID.
+	KeyPair m_alias;															///< Alias for network communication. Network address is k*G. k is key material. TODO: Replace KeyPair.
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 
-	std::map<NodeId, std::shared_ptr<PeerInfo>> m_peers;
+	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
+	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
 	
-	/// The nodes to which we are currently connected.
+	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
 	mutable RecursiveMutex x_sessions;
