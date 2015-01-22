@@ -755,7 +755,7 @@ void Main::on_importKey_triggered()
 
 void Main::on_importKeyFile_triggered()
 {
-	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
 		js::mValue val;
@@ -785,8 +785,12 @@ void Main::on_importKeyFile_triggered()
 
 			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 			{
-				m_myKeys.append(k);
-				keysChanged();
+				if (m_myKeys.empty())
+				{
+					m_myKeys.push_back(KeyPair::create());
+					keysChanged();
+				}
+				ethereum()->transact(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
 			}
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
@@ -1093,7 +1097,7 @@ void Main::refreshBlockChain()
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
-			Transaction t(i.data());
+			Transaction t(i.data(), CheckSignature::Sender);
 			if (bm || transactionMatch(filter, t))
 			{
 				QString s = t.receiveAddress() ?
@@ -1381,7 +1385,7 @@ void Main::on_blocks_currentItemChanged()
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi].data());
+			Transaction tx(block[1][txi].data(), CheckSignature::Sender);
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
 			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
@@ -1644,11 +1648,16 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
-
 bool Main::sourceIsSolidity(string const& _source)
 {
 	// TODO: Improve this heuristic
 	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+static bool sourceIsSerpent(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 5) == "//ser");
 }
 
 string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
@@ -1685,6 +1694,7 @@ void Main::on_data_textChanged()
 			dev::solidity::CompilerStack compiler;
 			try
 			{
+//				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
@@ -1702,23 +1712,23 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
 			}
 		}
+		else if (sourceIsSerpent(src))
+		{
+			try
+			{
+				m_data = dev::asBytes(::compile(src));
+				for (auto& i: errors)
+					i = "(LLL " + i + ")";
+			}
+			catch (string err)
+			{
+				errors.push_back("Serpent " + err);
+			}
+		}
 		else
 		{
 			m_data = compileLLL(src, m_enableOptimizer, &errors);
-			if (errors.size())
-			{
-				try
-				{
-					m_data = dev::asBytes(::compile(src));
-					for (auto& i: errors)
-						i = "(LLL " + i + ")";
-				}
-				catch (string err)
-				{
-					errors.push_back("Serpent " + err);
-				}
-			}
-			else
+			if (errors.empty())
 			{
 				auto asmcode = compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
@@ -1969,9 +1979,24 @@ void Main::on_debug_clicked()
 	}
 }
 
+bool beginsWith(Address _a, bytes const& _b)
+{
+	for (unsigned i = 0; i < min<unsigned>(20, _b.size()); ++i)
+		if (_a[i] != _b[i])
+			return false;
+	return true;
+}
+
 void Main::on_create_triggered()
 {
-	m_myKeys.append(KeyPair::create());
+	bool ok = true;
+	QString s = QInputDialog::getText(this, "Special Beginning?", "If you want a special key, enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+	if (!ok)
+		return;
+	KeyPair p;
+	while (!beginsWith(p.address(), asBytes(s.toStdString())))
+		p = KeyPair::create();
+	m_myKeys.append(p);
 	keysChanged();
 }
 

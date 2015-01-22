@@ -49,5 +49,5 @@ void AssemblyDebuggerControl::start() const
 void AssemblyDebuggerControl::showDebugger()
 {
 	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(debugPanel, "update");
+	QMetaObject::invokeMethod(debugPanel, "update", Q_ARG(QVariant, true));
 }
