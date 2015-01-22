@@ -26,6 +26,7 @@
 #include <QtQml>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#include <libsolidity/InterfaceHandler.h>
 #include <libevmcore/Instruction.h>
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
@@ -55,9 +56,12 @@ CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compil
 {
 	if (!_compiler.getContractNames().empty())
 	{
-		m_contract.reset(new QContractDefinition(&_compiler.getContractDefinition(std::string())));
+		auto const& contractDefinition = _compiler.getContractDefinition(std::string());
+		m_contract.reset(new QContractDefinition(&contractDefinition));
 		m_bytes = _compiler.getBytecode();
 		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
+		dev::solidity::InterfaceHandler interfaceHandler;
+		m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	}
 	else
 		m_contract.reset(new QContractDefinition());
@@ -71,6 +75,7 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
 	m_assemblyCode(_prev.m_assemblyCode),
+	m_contractInterface(_prev.m_contractInterface),
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
@@ -156,14 +161,19 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	emit compilationCompleteInternal(result.release());
 }
 
-void CodeModel::onCompilationComplete(CompilationResult*_newResult)
+void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 {
 	m_compiling = false;
+	bool contractChanged = m_result->contractInterface() != _newResult->contractInterface();
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
 	if (m_result->successful())
+	{
 		emit codeChanged();
+		if (contractChanged)
+			emit contractInterfaceChanged();
+	}
 }
 
 bool CodeModel::hasContract() const

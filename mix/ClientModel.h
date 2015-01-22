@@ -32,12 +32,16 @@ using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
 Q_DECLARE_METATYPE(dev::mix::ExecutionResult)
 
+class QWebThree;
+class QWebThreeConnector;
+
 namespace dev
 {
 namespace mix
 {
 
 class AppContext;
+class Web3Server;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -67,10 +71,16 @@ class ClientModel: public QObject
 
 public:
 	ClientModel(AppContext* _context);
-
+	~ClientModel();
+	/// @returns true if currently executing contract code
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
+	/// @returns address of the last executed contract
+	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
 
 public slots:
+	/// ethereum.js RPC request entry point
+	/// @param _message RPC request in Json format
+	void apiRequest(QString const& _message);
 	/// Run the contract constructor and show debugger window.
 	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -91,15 +101,21 @@ signals:
 	/// Transaction execution completed with error
 	/// @param _message Error message
 	void runFailed(QString const& _message);
+	/// Contract address changed
+	void contractAddressChanged();
 	/// Execution state changed
 	void stateChanged();
 	/// Show debugger window request
 	void showDebuggerWindow();
+	/// ethereum.js RPC response ready
+	/// @param _message RPC response in Json format
+	void apiResponse(QString const& _message);
 
 	/// Emited when machine states are available.
 	void dataAvailable(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 
 private:
+	QString contractAddress() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 	ExecutionResult deployContract(bytes const& _code);
 	ExecutionResult callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
@@ -107,6 +123,9 @@ private:
 	AppContext* m_context;
 	std::atomic<bool> m_running;
 	std::unique_ptr<MixClient> m_client;
+	QWebThree* m_qWebThree;
+	std::unique_ptr<QWebThreeConnector> m_qWebThreeConnector;
+	std::unique_ptr<Web3Server> m_web3Server;
 };
 
 }
