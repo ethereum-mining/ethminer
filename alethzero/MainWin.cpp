@@ -60,6 +60,11 @@ using namespace dev::p2p;
 using namespace dev::eth;
 namespace js = json_spirit;
 
+#define Small "font-size: small; "
+#define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
+#define Div(S) "<div style=\"" S "\">"
+#define Span(S) "<span style=\"" S "\">"
+
 static void initUnits(QComboBox* _b)
 {
 	for (auto n = (unsigned)units().size(); n-- != 0; )
@@ -452,7 +457,7 @@ void Main::eval(QString const& _js)
 	else
 		s = "<span style=\"color: #888\">unknown type</span>";
 	m_consoleHistory.push_back(qMakePair(_js, s));
-	s = "<html><body style=\"font-family: Monospace, Ubuntu Mono, Lucida Console, Courier New; margin: 0; font-size: 12pt\"><div style=\"position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%\">";
+	s = "<html><body style=\"margin: 0;\">" Div(Mono "position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%");
 	for (auto const& i: m_consoleHistory)
 		s +=	"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em; color: #888; font-weight: bold\">&gt;</span><span style=\"color: #35d\">" + i.first.toHtmlEscaped() + "</span></div>"
 				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
@@ -755,7 +760,7 @@ void Main::on_importKey_triggered()
 
 void Main::on_importKeyFile_triggered()
 {
-	QString s = QFileDialog::getOpenFileName(this, "Import Account", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
 		js::mValue val;
@@ -785,8 +790,12 @@ void Main::on_importKeyFile_triggered()
 
 			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 			{
-				m_myKeys.append(k);
-				keysChanged();
+				if (m_myKeys.empty())
+				{
+					m_myKeys.push_back(KeyPair::create());
+					keysChanged();
+				}
+				ethereum()->transact(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
 			}
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
@@ -1093,7 +1102,7 @@ void Main::refreshBlockChain()
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
-			Transaction t(i.data());
+			Transaction t(i.data(), CheckSignature::Sender);
 			if (bm || transactionMatch(filter, t))
 			{
 				QString s = t.receiveAddress() ?
@@ -1276,12 +1285,12 @@ void Main::on_transactionQueue_currentItemChanged()
 			if (tx.data().size())
 				s << dev::memDump(tx.data(), 16, true);
 		}
-		s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(tx.rlp()) << "</span></div>";
+		s << "<div>Hex: " Span(Mono) << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
 		s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-		s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
+		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
 		s << renderDiff(ethereum()->diff(i, 0));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
@@ -1372,13 +1381,13 @@ void Main::on_blocks_currentItemChanged()
 			for (auto const& i: block[1])
 				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
-			s << "<br/>Dump: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[0].data()) << "</span>";
-			s << "<div>Receipts-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(ethereum()->blockChain().receipts(h).rlp()) << "</span></div>";
+			s << "<br/>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>";
+			s << "<div>Receipts-Hex: " Span(Mono) << toHex(ethereum()->blockChain().receipts(h).rlp()) << "</span></div>";
 		}
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi].data());
+			Transaction tx(block[1][txi].data(), CheckSignature::Sender);
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
 			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
@@ -1407,12 +1416,12 @@ void Main::on_blocks_currentItemChanged()
 				if (tx.data().size())
 					s << dev::memDump(tx.data(), 16, true);
 			}
-			s << "<div>Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(block[1][txi].data()) << "</span></div>";
+			s << "<div>Hex: " Span(Mono) << toHex(block[1][txi].data()) << "</span></div>";
 			s << "<hr/>";
 			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-			s << "<div>Receipt-Hex: <span style=\"font-family: Monospace,Lucida Console,Courier,Courier New,sans-serif; font-size: small\">" << toHex(receipt.rlp()) << "</span></div>";
+			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
 			s << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
@@ -1531,6 +1540,7 @@ void Main::on_contracts_currentItemChanged()
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
 			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
+			s << Div(Mono) << toHex(ethereum()->codeAt(address)) << "</div>";
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
 		catch (dev::InvalidTrie)
@@ -1640,11 +1650,16 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
-
 bool Main::sourceIsSolidity(string const& _source)
 {
 	// TODO: Improve this heuristic
 	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+static bool sourceIsSerpent(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 5) == "//ser");
 }
 
 string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
@@ -1681,6 +1696,7 @@ void Main::on_data_textChanged()
 			dev::solidity::CompilerStack compiler;
 			try
 			{
+//				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
@@ -1698,23 +1714,23 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
 			}
 		}
+		else if (sourceIsSerpent(src))
+		{
+			try
+			{
+				m_data = dev::asBytes(::compile(src));
+				for (auto& i: errors)
+					i = "(LLL " + i + ")";
+			}
+			catch (string err)
+			{
+				errors.push_back("Serpent " + err);
+			}
+		}
 		else
 		{
 			m_data = compileLLL(src, m_enableOptimizer, &errors);
-			if (errors.size())
-			{
-				try
-				{
-					m_data = dev::asBytes(::compile(src));
-					for (auto& i: errors)
-						i = "(LLL " + i + ")";
-				}
-				catch (string err)
-				{
-					errors.push_back("Serpent " + err);
-				}
-			}
-			else
+			if (errors.empty())
 			{
 				auto asmcode = compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
@@ -1732,7 +1748,7 @@ void Main::on_data_textChanged()
 			for (auto const& i: errors)
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
-		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped());
+		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 		ui->gas->setMinimum((qint64)Client::txGas(m_data, 0));
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
@@ -1965,9 +1981,24 @@ void Main::on_debug_clicked()
 	}
 }
 
+bool beginsWith(Address _a, bytes const& _b)
+{
+	for (unsigned i = 0; i < min<unsigned>(20, _b.size()); ++i)
+		if (_a[i] != _b[i])
+			return false;
+	return true;
+}
+
 void Main::on_create_triggered()
 {
-	m_myKeys.append(KeyPair::create());
+	bool ok = true;
+	QString s = QInputDialog::getText(this, "Special Beginning?", "If you want a special key, enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+	if (!ok)
+		return;
+	KeyPair p;
+	while (!beginsWith(p.address(), asBytes(s.toStdString())))
+		p = KeyPair::create();
+	m_myKeys.append(p);
 	keysChanged();
 }
 

@@ -42,7 +42,7 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-		Transaction t(_transactionRLP, true);
+		Transaction t(_transactionRLP, CheckSignature::Sender);
 
 		UpgradeGuard ul(l);
 		// If valid, append to blocks.
@@ -69,14 +69,14 @@ void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
 	if (m_current.count(_t.first))
 	{
 		m_current.erase(_t.first);
-		m_unknown.insert(make_pair(Transaction(_t.second).sender(), _t));
+		m_unknown.insert(make_pair(Transaction(_t.second, CheckSignature::Sender).sender(), _t));
 	}
 }
 
 void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
 {
 	WriteGuard l(m_lock);
-	auto r = m_unknown.equal_range(Transaction(_t.second).sender());
+	auto r = m_unknown.equal_range(Transaction(_t.second, CheckSignature::Sender).sender());
 	for (auto it = r.first; it != r.second; ++it)
 		m_current.insert(it->second);
 	m_unknown.erase(r.first, r.second);
