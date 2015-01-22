@@ -49,10 +49,6 @@ class Client;
 class State;
 }}
 
-namespace jsonrpc {
-class CorsHttpServer;
-}
-
 class QQuickView;
 class OurWebThreeStubServer;
 
@@ -95,7 +91,6 @@ public:
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 	
 	QVariant evalRaw(QString const& _js);
-	void addToWindowObject(QObject* _object, QString const& _name);
 
 public slots:
 	void load(QString _file);
@@ -284,7 +279,6 @@ private:
 	bool m_logChanged = true;
 
 	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
-//	std::unique_ptr<jsonrpc::CorsHttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 

@@ -48,7 +48,6 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
 #include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
@@ -159,7 +158,6 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
-//	m_httpConnector.reset(new jsonrpc::CorsHttpServer(8080));
 	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
@@ -434,12 +432,6 @@ void Main::on_jsInput_returnPressed()
 QVariant Main::evalRaw(QString const& _js)
 {
 	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
-}
-
-void Main::addToWindowObject(QObject* _object, QString const& _name)
-{
-	QWebFrame* f = ui->webView->page()->mainFrame();
-	f->addToJavaScriptWindowObject(_name, _object, QWebFrame::QtOwnership);
 }
 
 void Main::eval(QString const& _js)
