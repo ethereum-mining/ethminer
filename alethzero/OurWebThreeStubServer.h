@@ -58,10 +58,6 @@ public:
 	
 	QString evalExpression(QString const& _expression);
 	
-	Q_INVOKABLE QString stateAt(QString _key);
-	Q_INVOKABLE QString call(QString _json);
-	Q_INVOKABLE QString sha3(QString _method);
-	
 private:
 	OurWebThreeStubServer* m_server;
 	Main* m_main;

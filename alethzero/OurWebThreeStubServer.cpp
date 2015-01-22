@@ -87,31 +87,10 @@ QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(OurWebThreeStubServer* 
 QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
 {}
 
-QString QNatspecExpressionEvaluator::stateAt(QString _key)
-{
-	(void)_key;
-	return "1";
-}
-
-QString QNatspecExpressionEvaluator::call(QString _json)
-{
-	QJsonObject jsonObject = QJsonDocument::fromJson(_json.toUtf8()).object();
-	Json::Value input;
-	input["to"] = jsonObject["to"].toString().toStdString();
-	input["data"] = jsonObject["data"].toString().toStdString();
-	return QString::fromStdString(m_server->eth_call(input));
-}
-
-QString QNatspecExpressionEvaluator::sha3(QString _method)
-{
-	return QString::fromStdString(m_server->web3_sha3(_method.toStdString()));
-}
-
 QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
 {
 	
 	// evaluate the natspec
-	m_main->addToWindowObject(this, "_natspec");
 	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
 	
 	(void)_expression;
