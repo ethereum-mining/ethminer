@@ -34,9 +34,6 @@ class QWebThree: public QObject
 public:
 	QWebThree(QObject* _p);
 	virtual ~QWebThree();
-
-	void poll();
-	void clearWatches();
 	void clientDieing();
 	
 	Q_INVOKABLE QString callMethod(QString _json);
@@ -51,8 +48,6 @@ signals:
 	void onNewId(QString _id);
 	
 private:
-	std::vector<unsigned> m_watches;
-	std::vector<unsigned> m_shhWatches;
 	QString m_response;
 };
 

@@ -36,58 +36,8 @@ QWebThree::~QWebThree()
 	clientDieing();
 }
 
-static QString toJsonRpcBatch(std::vector<unsigned> const& _watches, QString _method)
-{
-	QJsonArray batch;
-	for (int w: _watches)
-	{
-		QJsonObject res;
-		res["jsonrpc"] = QString::fromStdString("2.0");
-		res["method"] = _method;
-		
-		QJsonArray params;
-		params.append(w);
-		res["params"] = params;
-		res["id"] = w;
-		batch.append(res);
-	}
-
-	return QString::fromUtf8(QJsonDocument(batch).toJson());
-}
-
-void QWebThree::poll()
-{
-	if (m_watches.size() > 0)
-	{
-		QString batch = toJsonRpcBatch(m_watches, "eth_changed");
-		emit processData(batch, "eth_changed");
-	}
-	if (m_shhWatches.size() > 0)
-	{
-		QString batch = toJsonRpcBatch(m_shhWatches, "shh_changed");
-		emit processData(batch, "shh_changed");
-	}
-}
-
-void QWebThree::clearWatches()
-{
-	if (m_watches.size() > 0)
-	{
-		QString batch = toJsonRpcBatch(m_watches, "eth_uninstallFilter");
-		m_watches.clear();
-		emit processData(batch, "internal");
-	}
-	if (m_shhWatches.size() > 0)
-	{
-		QString batch = toJsonRpcBatch(m_shhWatches, "shh_uninstallFilter");
-		m_shhWatches.clear();
-		emit processData(batch, "internal");
-	}
-}
-
 void QWebThree::clientDieing()
 {
-	clearWatches();
 	this->disconnect();
 }
 
@@ -104,70 +54,14 @@ static QString formatInput(QJsonObject const& _object)
 QString QWebThree::callMethod(QString _json)
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
-
-	QString method = f["call"].toString();
-	if (!method.compare("eth_uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
-	{
-		int idToRemove = f["args"].toArray()[0].toInt();
-		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
-	}
-	else if (!method.compare("eth_uninstallFilter") && f["args"].isArray() && f["args"].toArray().size())
-	{
-		int idToRemove = f["args"].toArray()[0].toInt();
-		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
-	}
-	
-	emit processData(formatInput(f), method); // it's synchronous
+	emit processData(formatInput(f), ""); // it's synchronous
 	return m_response;
 }
 
-//static QString formatOutput(QJsonObject const& _object)
-//{
-//	QJsonObject res;
-//	res["_id"] = _object["id"];
-//	res["data"] = _object["result"];
-//	res["error"] = _object["error"];
-//	return QString::fromUtf8(QJsonDocument(res).toJson());
-//}
-
 void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 {
-	if (!_addInfo.compare("internal"))
-		return;
-
-	if (!_addInfo.compare("shh_changed") || !_addInfo.compare("eth_changed"))
-	{
-		QJsonArray resultsArray = QJsonDocument::fromJson(_json.toUtf8()).array();
-		for (int i = 0; i < resultsArray.size(); i++)
-		{
-			QJsonObject elem = resultsArray[i].toObject();
-			if (elem["result"].isArray() && elem["result"].toArray().size() > 0)
-			{
-				QJsonObject res;
-				res["_event"] = _addInfo;
-
-				if (!_addInfo.compare("shh_changed"))
-					res["_id"] = (int)m_shhWatches[i]; // we can do that couse poll is synchronous
-				else
-					res["_id"] = (int)m_watches[i];
-
-				res["data"] = elem["result"].toArray();
-				syncResponse(QString::fromUtf8(QJsonDocument(res).toJson()));
-			}
-		}
-	}
-
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
-	
-	if ((!_addInfo.compare("eth_newFilter") || !_addInfo.compare("eth_newFilterString")) && f.contains("result"))
-		m_watches.push_back(f["result"].toInt());
-	else if (!_addInfo.compare("shh_newFilter") && f.contains("result"))
-		m_shhWatches.push_back(f["result"].toInt());
-	else if (!_addInfo.compare("shh_newIdentity") && f.contains("result"))
-		emit onNewId(f["result"].toString());
-
 	syncResponse(QString::fromUtf8(QJsonDocument(f).toJson()));
-//	syncResponse(formatOutput(f));
 }
 
 void QWebThree::syncResponse(QString _json)
