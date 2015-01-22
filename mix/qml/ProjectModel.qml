@@ -1,5 +1,3 @@
-pragma Singleton
-
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
@@ -13,18 +11,21 @@ Item {
 	id: projectModel
 
 	signal projectClosed
-	signal projectLoaded
+	signal projectLoaded(var projectData)
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
+	signal documentAdded(var documentId)
 	signal projectSaving(var projectData)
+	signal projectSaved()
+	signal documentSaved(var documentId)
 
-	property bool isEmpty: (projectData === null)
+	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
 
 	property bool haveUnsavedChanges: false
 	property string projectPath: ""
-	property var projectData: null
+	property string projectTitle: ""
 	property var listModel: projectListModel
 
 	//interface
@@ -41,12 +42,13 @@ Item {
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
+	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 
 	Connections {
 		target: appContext
 		onAppLoaded: {
 			if (projectSettings.lastProjectPath)
-				loadProject(projectSettings.lastProjectPath)
+				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}
 
@@ -87,7 +89,7 @@ Item {
 	FileDialog {
 		id: openProjectFileDialog
 		visible: false
-		title: qsTr("Open a project")
+		title: qsTr("Open a Project")
 		selectFolder: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
@@ -99,7 +101,7 @@ Item {
 	FileDialog {
 		id: addExistingFileDialog
 		visible: false
-		title: qsTr("Add a file")
+		title: qsTr("Add a File")
 		selectFolder: false
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;

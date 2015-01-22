@@ -147,7 +147,7 @@ TypePointer IntegerType::unaryOperatorResult(Token::Value _operator) const
 {
 	// "delete" is ok for all integer types
 	if (_operator == Token::DELETE)
-		return shared_from_this();
+		return make_shared<VoidType>();
 	// no further unary operators for addresses
 	else if (isAddress())
 		return TypePointer();
@@ -408,6 +408,13 @@ u256 BoolType::literalValue(Literal const* _literal) const
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Bool type constructed from non-boolean literal."));
 }
 
+TypePointer BoolType::unaryOperatorResult(Token::Value _operator) const
+{
+	if (_operator == Token::DELETE)
+		return make_shared<VoidType>();
+	return (_operator == Token::NOT) ? shared_from_this() : TypePointer();
+}
+
 TypePointer BoolType::binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const
 {
 	if (getCategory() != _other->getCategory())
@@ -424,12 +431,24 @@ bool ContractType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 		return true;
 	if (_convertTo.getCategory() == Category::INTEGER)
 		return dynamic_cast<IntegerType const&>(_convertTo).isAddress();
+	if (_convertTo.getCategory() == Category::CONTRACT)
+	{
+		auto const& bases = getContractDefinition().getLinearizedBaseContracts();
+		return find(bases.begin(), bases.end(),
+					&dynamic_cast<ContractType const&>(_convertTo).getContractDefinition()) != bases.end();
+	}
 	return false;
 }
 
 bool ContractType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	return isImplicitlyConvertibleTo(_convertTo) || _convertTo.getCategory() == Category::INTEGER;
+	return isImplicitlyConvertibleTo(_convertTo) || _convertTo.getCategory() == Category::INTEGER ||
+			_convertTo.getCategory() == Category::CONTRACT;
+}
+
+TypePointer ContractType::unaryOperatorResult(Token::Value _operator) const
+{
+	return _operator == Token::DELETE ? make_shared<VoidType>() : TypePointer();
 }
 
 bool ContractType::operator==(Type const& _other) const
@@ -438,14 +457,6 @@ bool ContractType::operator==(Type const& _other) const
 		return false;
 	ContractType const& other = dynamic_cast<ContractType const&>(_other);
 	return other.m_contract == m_contract;
-}
-
-u256 ContractType::getStorageSize() const
-{
-	u256 size = 0;
-	for (ASTPointer<VariableDeclaration> const& variable: m_contract.getStateVariables())
-		size += variable->getType()->getStorageSize();
-	return max<u256>(1, size);
 }
 
 string ContractType::toString() const
@@ -489,6 +500,11 @@ u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 			return FixedHash<4>::Arith(it->first);
 
 	return Invalid256;
+}
+
+TypePointer StructType::unaryOperatorResult(Token::Value _operator) const
+{
+	return _operator == Token::DELETE ? make_shared<VoidType>() : TypePointer();
 }
 
 bool StructType::operator==(Type const& _other) const
@@ -685,6 +701,29 @@ bool TypeType::operator==(Type const& _other) const
 	TypeType const& other = dynamic_cast<TypeType const&>(_other);
 	return *getActualType() == *other.getActualType();
 }
+
+MemberList const& TypeType::getMembers() const
+{
+	// We need to lazy-initialize it because of recursive references.
+	if (!m_members)
+	{
+		map<string, TypePointer> members;
+		if (m_actualType->getCategory() == Category::CONTRACT && m_currentContract != nullptr)
+		{
+			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*m_actualType).getContractDefinition();
+			vector<ContractDefinition const*> currentBases = m_currentContract->getLinearizedBaseContracts();
+			if (find(currentBases.begin(), currentBases.end(), &contract) != currentBases.end())
+				// We are accessing the type of a base contract, so add all public and private
+				// functions. Note that this does not add inherited functions on purpose.
+				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
+					if (!f->isConstructor())
+						members[f->getName()] = make_shared<FunctionType>(*f);
+		}
+		m_members.reset(new MemberList(members));
+	}
+	return *m_members;
+}
+
 
 MagicType::MagicType(MagicType::Kind _kind):
 	m_kind(_kind)

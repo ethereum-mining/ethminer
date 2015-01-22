@@ -43,6 +43,11 @@ TypeError ASTNode::createTypeError(string const& _description) const
 
 void ContractDefinition::checkTypeRequirements()
 {
+	for (ASTPointer<InheritanceSpecifier> const& base: getBaseContracts())
+		base->checkTypeRequirements();
+
+	checkIllegalOverrides();
+
 	FunctionDefinition const* constructor = getConstructor();
 	if (constructor && !constructor->getReturnParameters().empty())
 		BOOST_THROW_EXCEPTION(constructor->getReturnParameterList()->createTypeError(
@@ -52,7 +57,6 @@ void ContractDefinition::checkTypeRequirements()
 		function->checkTypeRequirements();
 
 	// check for hash collisions in function signatures
-	vector<pair<FixedHash<4>, FunctionDefinition const*>> exportedFunctionList = getInterfaceFunctionList();
 	set<FixedHash<4>> hashes;
 	for (auto const& hashAndFunction: getInterfaceFunctionList())
 	{
@@ -78,22 +82,63 @@ map<FixedHash<4>, FunctionDefinition const*> ContractDefinition::getInterfaceFun
 FunctionDefinition const* ContractDefinition::getConstructor() const
 {
 	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
-		if (f->getName() == getName())
+		if (f->isConstructor())
 			return f.get();
 	return nullptr;
 }
 
-vector<pair<FixedHash<4>, FunctionDefinition const*>> ContractDefinition::getInterfaceFunctionList() const
+void ContractDefinition::checkIllegalOverrides() const
 {
-	vector<pair<FixedHash<4>, FunctionDefinition const*>> exportedFunctions;
-	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
-		if (f->isPublic() && f->getName() != getName())
-		{
-			FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
-			exportedFunctions.push_back(make_pair(hash, f.get()));
-		}
+	map<string, FunctionDefinition const*> functions;
 
-	return exportedFunctions;
+	// We search from derived to base, so the stored item causes the error.
+	for (ContractDefinition const* contract: getLinearizedBaseContracts())
+		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
+		{
+			if (function->isConstructor())
+				continue; // constructors can neither be overriden nor override anything
+			FunctionDefinition const*& override = functions[function->getName()];
+			if (!override)
+				override = function.get();
+			else if (override->isPublic() != function->isPublic() ||
+					 override->isDeclaredConst() != function->isDeclaredConst() ||
+					 FunctionType(*override) != FunctionType(*function))
+				BOOST_THROW_EXCEPTION(override->createTypeError("Override changes extended function signature."));
+		}
+}
+
+vector<pair<FixedHash<4>, FunctionDefinition const*>> const& ContractDefinition::getInterfaceFunctionList() const
+{
+	if (!m_interfaceFunctionList)
+	{
+		set<string> functionsSeen;
+		m_interfaceFunctionList.reset(new vector<pair<FixedHash<4>, FunctionDefinition const*>>());
+		for (ContractDefinition const* contract: getLinearizedBaseContracts())
+			for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
+				if (f->isPublic() && !f->isConstructor() && functionsSeen.count(f->getName()) == 0)
+				{
+					functionsSeen.insert(f->getName());
+					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
+					m_interfaceFunctionList->push_back(make_pair(hash, f.get()));
+				}
+	}
+	return *m_interfaceFunctionList;
+}
+
+void InheritanceSpecifier::checkTypeRequirements()
+{
+	m_baseName->checkTypeRequirements();
+	for (ASTPointer<Expression> const& argument: m_arguments)
+		argument->checkTypeRequirements();
+
+	ContractDefinition const* base = dynamic_cast<ContractDefinition const*>(m_baseName->getReferencedDeclaration());
+	solAssert(base, "Base contract not available.");
+	TypePointers parameterTypes = ContractType(*base).getConstructorType()->getParameterTypes();
+	if (parameterTypes.size() != m_arguments.size())
+		BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for constructor call."));
+	for (size_t i = 0; i < m_arguments.size(); ++i)
+		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
+			BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in constructer call."));
 }
 
 void StructDefinition::checkMemberTypes() const
@@ -346,7 +391,8 @@ void MemberAccess::checkTypeRequirements()
 	Type const& type = *m_expression->getType();
 	m_type = type.getMemberType(*m_memberName);
 	if (!m_type)
-		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found in " + type.toString()));
+		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found or not "
+											  "visible in " + type.toString()));
 	//@todo later, this will not always be STORAGE
 	m_lvalue = type.getCategory() == Type::Category::STRUCT ? LValueType::STORAGE : LValueType::NONE;
 }
@@ -396,7 +442,7 @@ void Identifier::checkTypeRequirements()
 	ContractDefinition const* contractDef = dynamic_cast<ContractDefinition const*>(m_referencedDeclaration);
 	if (contractDef)
 	{
-		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef));
+		m_type = make_shared<TypeType>(make_shared<ContractType>(*contractDef), m_currentContract);
 		return;
 	}
 	MagicVariableDeclaration const* magicVariable = dynamic_cast<MagicVariableDeclaration const*>(m_referencedDeclaration);

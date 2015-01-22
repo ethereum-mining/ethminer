@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+#include <boost/range/adaptor/reversed.hpp>
 #include <libevmcore/Instruction.h>
 #include <libevmcore/Assembly.h>
 #include <libsolidity/AST.h>
@@ -34,48 +35,103 @@ using namespace std;
 namespace dev {
 namespace solidity {
 
-void Compiler::compileContract(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals,
+void Compiler::compileContract(ContractDefinition const& _contract,
 							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
 	m_context = CompilerContext(); // clear it just in case
-	initializeContext(_contract, _magicGlobals, _contracts);
+	initializeContext(_contract, _contracts);
 
-	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
-		if (function->getName() != _contract.getName()) // don't add the constructor here
-			m_context.addFunction(*function);
+	for (ContractDefinition const* contract: _contract.getLinearizedBaseContracts())
+		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
+			if (!function->isConstructor())
+				m_context.addFunction(*function);
 
 	appendFunctionSelector(_contract);
-	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
-		if (function->getName() != _contract.getName()) // don't add the constructor here
-			function->accept(*this);
+	for (ContractDefinition const* contract: _contract.getLinearizedBaseContracts())
+		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
+			if (!function->isConstructor())
+				function->accept(*this);
 
 	// Swap the runtime context with the creation-time context
 	swap(m_context, m_runtimeContext);
-	initializeContext(_contract, _magicGlobals, _contracts);
+	initializeContext(_contract, _contracts);
 	packIntoContractCreator(_contract, m_runtimeContext);
 }
 
-void Compiler::initializeContext(ContractDefinition const& _contract, vector<MagicVariableDeclaration const*> const& _magicGlobals,
+void Compiler::initializeContext(ContractDefinition const& _contract,
 								 map<ContractDefinition const*, bytes const*> const& _contracts)
 {
 	m_context.setCompiledContracts(_contracts);
-	for (MagicVariableDeclaration const* variable: _magicGlobals)
-		m_context.addMagicGlobal(*variable);
 	registerStateVariables(_contract);
 }
 
 void Compiler::packIntoContractCreator(ContractDefinition const& _contract, CompilerContext const& _runtimeContext)
 {
+	// arguments for base constructors, filled in derived-to-base order
+	map<ContractDefinition const*, vector<ASTPointer<Expression>> const*> baseArguments;
 	set<FunctionDefinition const*> neededFunctions;
-	FunctionDefinition const* constructor = _contract.getConstructor();
-	if (constructor)
-		neededFunctions = getFunctionsNeededByConstructor(*constructor);
+	set<ASTNode const*> nodesUsedInConstructors;
 
+	// Determine the arguments that are used for the base constructors and also which functions
+	// are needed at compile time.
+	std::vector<ContractDefinition const*> const& bases = _contract.getLinearizedBaseContracts();
+	for (ContractDefinition const* contract: bases)
+	{
+		if (FunctionDefinition const* constructor = contract->getConstructor())
+			nodesUsedInConstructors.insert(constructor);
+		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
+		{
+			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
+													base->getName()->getReferencedDeclaration());
+			solAssert(baseContract, "");
+			if (baseArguments.count(baseContract) == 0)
+			{
+				baseArguments[baseContract] = &base->getArguments();
+				for (ASTPointer<Expression> const& arg: base->getArguments())
+					nodesUsedInConstructors.insert(arg.get());
+			}
+		}
+	}
+
+	auto overrideResolver = [&](string const& _name) -> FunctionDefinition const*
+	{
+		for (ContractDefinition const* contract: bases)
+			for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
+				if (!function->isConstructor() && function->getName() == _name)
+					return function.get();
+		return nullptr;
+	};
+
+	neededFunctions = getFunctionsCalled(nodesUsedInConstructors, overrideResolver);
+
+	// First add all overrides (or the functions themselves if there is no override)
 	for (FunctionDefinition const* fun: neededFunctions)
-		m_context.addFunction(*fun);
+	{
+		FunctionDefinition const* override = nullptr;
+		if (!fun->isConstructor())
+			override = overrideResolver(fun->getName());
+		if (!!override && neededFunctions.count(override))
+			m_context.addFunction(*override);
+	}
+	// now add the rest
+	for (FunctionDefinition const* fun: neededFunctions)
+		if (fun->isConstructor() || overrideResolver(fun->getName()) != fun)
+			m_context.addFunction(*fun);
 
-	if (constructor)
-		appendConstructorCall(*constructor);
+	// Call constructors in base-to-derived order.
+	// The Constructor for the most derived contract is called later.
+	for (unsigned i = 1; i < bases.size(); i++)
+	{
+		ContractDefinition const* base = bases[bases.size() - i];
+		solAssert(base, "");
+		FunctionDefinition const* baseConstructor = base->getConstructor();
+		if (!baseConstructor)
+			continue;
+		solAssert(baseArguments[base], "");
+		appendBaseConstructorCall(*baseConstructor, *baseArguments[base]);
+	}
+	if (_contract.getConstructor())
+		appendConstructorCall(*_contract.getConstructor());
 
 	eth::AssemblyItem sub = m_context.addSubroutine(_runtimeContext.getAssembly());
 	// stack contains sub size
@@ -86,6 +142,21 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	// labels
 	for (FunctionDefinition const* fun: neededFunctions)
 		fun->accept(*this);
+}
+
+void Compiler::appendBaseConstructorCall(FunctionDefinition const& _constructor,
+										 vector<ASTPointer<Expression>> const& _arguments)
+{
+	FunctionType constructorType(_constructor);
+	eth::AssemblyItem returnLabel = m_context.pushNewTag();
+	for (unsigned i = 0; i < _arguments.size(); ++i)
+	{
+		compileExpression(*_arguments[i]);
+		ExpressionCompiler::appendTypeConversion(m_context, *_arguments[i]->getType(),
+												 *constructorType.getParameterTypes()[i]);
+	}
+	m_context.appendJumpTo(m_context.getFunctionEntryLabel(_constructor));
+	m_context << returnLabel;
 }
 
 void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
@@ -107,11 +178,12 @@ void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
 	m_context << returnTag;
 }
 
-set<FunctionDefinition const*> Compiler::getFunctionsNeededByConstructor(FunctionDefinition const& _constructor)
+set<FunctionDefinition const*> Compiler::getFunctionsCalled(set<ASTNode const*> const& _nodes,
+						function<FunctionDefinition const*(string const&)> const& _resolveOverrides)
 {
-	CallGraph callgraph;
-	callgraph.addFunction(_constructor);
-	callgraph.computeCallGraph();
+	CallGraph callgraph(_resolveOverrides);
+	for (ASTNode const* node: _nodes)
+		callgraph.addNode(*node);
 	return callgraph.getCalls();
 }
 
@@ -193,9 +265,9 @@ void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
 
 void Compiler::registerStateVariables(ContractDefinition const& _contract)
 {
-	//@todo sort them?
-	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
-		m_context.addStateVariable(*variable);
+	for (ContractDefinition const* contract: boost::adaptors::reverse(_contract.getLinearizedBaseContracts()))
+		for (ASTPointer<VariableDeclaration> const& variable: contract->getStateVariables())
+			m_context.addStateVariable(*variable);
 }
 
 bool Compiler::visit(FunctionDefinition const& _function)

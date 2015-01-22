@@ -158,10 +158,12 @@ public:
 	ContractDefinition(Location const& _location,
 					   ASTPointer<ASTString> const& _name,
 					   ASTPointer<ASTString> const& _documentation,
+					   std::vector<ASTPointer<InheritanceSpecifier>> const& _baseContracts,
 					   std::vector<ASTPointer<StructDefinition>> const& _definedStructs,
 					   std::vector<ASTPointer<VariableDeclaration>> const& _stateVariables,
 					   std::vector<ASTPointer<FunctionDefinition>> const& _definedFunctions):
 		Declaration(_location, _name),
+		m_baseContracts(_baseContracts),
 		m_definedStructs(_definedStructs),
 		m_stateVariables(_stateVariables),
 		m_definedFunctions(_definedFunctions),
@@ -171,12 +173,13 @@ public:
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
+	std::vector<ASTPointer<InheritanceSpecifier>> const& getBaseContracts() const { return m_baseContracts; }
 	std::vector<ASTPointer<StructDefinition>> const& getDefinedStructs() const { return m_definedStructs; }
 	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() const { return m_stateVariables; }
 	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() const { return m_definedFunctions; }
 
-	/// Checks that the constructor does not have a "returns" statement and calls
-	/// checkTypeRequirements on all its functions.
+	/// Checks that there are no illegal overrides, that the constructor does not have a "returns"
+	/// and calls checkTypeRequirements on all its functions.
 	void checkTypeRequirements();
 
 	/// @return A shared pointer of an ASTString.
@@ -187,16 +190,47 @@ public:
 	/// as intended for use by the ABI.
 	std::map<FixedHash<4>, FunctionDefinition const*> getInterfaceFunctions() const;
 
+	/// List of all (direct and indirect) base contracts in order from derived to base, including
+	/// the contract itself. Available after name resolution
+	std::vector<ContractDefinition const*> const& getLinearizedBaseContracts() const { return m_linearizedBaseContracts; }
+	void setLinearizedBaseContracts(std::vector<ContractDefinition const*> const& _bases) { m_linearizedBaseContracts = _bases; }
+
 	/// Returns the constructor or nullptr if no constructor was specified
 	FunctionDefinition const* getConstructor() const;
 
 private:
-	std::vector<std::pair<FixedHash<4>, FunctionDefinition const*>> getInterfaceFunctionList() const;
+	void checkIllegalOverrides() const;
 
+	std::vector<std::pair<FixedHash<4>, FunctionDefinition const*>> const& getInterfaceFunctionList() const;
+
+	std::vector<ASTPointer<InheritanceSpecifier>> m_baseContracts;
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
 	std::vector<ASTPointer<VariableDeclaration>> m_stateVariables;
 	std::vector<ASTPointer<FunctionDefinition>> m_definedFunctions;
 	ASTPointer<ASTString> m_documentation;
+
+	std::vector<ContractDefinition const*> m_linearizedBaseContracts;
+	mutable std::unique_ptr<std::vector<std::pair<FixedHash<4>, FunctionDefinition const*>>> m_interfaceFunctionList;
+};
+
+class InheritanceSpecifier: public ASTNode
+{
+public:
+	InheritanceSpecifier(Location const& _location, ASTPointer<Identifier> const& _baseName,
+						 std::vector<ASTPointer<Expression>> _arguments):
+		ASTNode(_location), m_baseName(_baseName), m_arguments(_arguments) {}
+
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+
+	ASTPointer<Identifier> const& getName() const { return m_baseName; }
+	std::vector<ASTPointer<Expression>> const& getArguments() const { return m_arguments; }
+
+	void checkTypeRequirements();
+
+private:
+	ASTPointer<Identifier> m_baseName;
+	std::vector<ASTPointer<Expression>> m_arguments;
 };
 
 class StructDefinition: public Declaration
@@ -247,12 +281,13 @@ class FunctionDefinition: public Declaration
 public:
 	FunctionDefinition(Location const& _location, ASTPointer<ASTString> const& _name,
 					bool _isPublic,
+					bool _isConstructor,
 					ASTPointer<ASTString> const& _documentation,
 					ASTPointer<ParameterList> const& _parameters,
 					bool _isDeclaredConst,
 					ASTPointer<ParameterList> const& _returnParameters,
 					ASTPointer<Block> const& _body):
-	Declaration(_location, _name), m_isPublic(_isPublic),
+	Declaration(_location, _name), m_isPublic(_isPublic), m_isConstructor(_isConstructor),
 	m_parameters(_parameters),
 	m_isDeclaredConst(_isDeclaredConst),
 	m_returnParameters(_returnParameters),
@@ -264,6 +299,7 @@ public:
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
 	bool isPublic() const { return m_isPublic; }
+	bool isConstructor() const { return m_isConstructor; }
 	bool isDeclaredConst() const { return m_isDeclaredConst; }
 	std::vector<ASTPointer<VariableDeclaration>> const& getParameters() const { return m_parameters->getParameters(); }
 	ParameterList const& getParameterList() const { return *m_parameters; }
@@ -287,6 +323,7 @@ public:
 
 private:
 	bool m_isPublic;
+	bool m_isConstructor;
 	ASTPointer<ParameterList> m_parameters;
 	bool m_isDeclaredConst;
 	ASTPointer<ParameterList> m_returnParameters;
@@ -581,7 +618,7 @@ public:
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override;
 
-	void setFunctionReturnParameters(ParameterList& _parameters) { m_returnParameters = &_parameters; }
+	void setFunctionReturnParameters(ParameterList const& _parameters) { m_returnParameters = &_parameters; }
 	ParameterList const& getFunctionReturnParameters() const
 	{
 		solAssert(m_returnParameters, "");
@@ -593,7 +630,7 @@ private:
 	ASTPointer<Expression> m_expression; ///< value to return, optional
 
 	/// Pointer to the parameter list of the function, filled by the @ref NameAndTypeResolver.
-	ParameterList* m_returnParameters;
+	ParameterList const* m_returnParameters;
 };
 
 /**
@@ -870,21 +907,30 @@ class Identifier: public PrimaryExpression
 {
 public:
 	Identifier(Location const& _location, ASTPointer<ASTString> const& _name):
-		PrimaryExpression(_location), m_name(_name), m_referencedDeclaration(nullptr) {}
+		PrimaryExpression(_location), m_name(_name) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override;
 
 	ASTString const& getName() const { return *m_name; }
 
-	void setReferencedDeclaration(Declaration const& _referencedDeclaration) { m_referencedDeclaration = &_referencedDeclaration; }
+	void setReferencedDeclaration(Declaration const& _referencedDeclaration,
+								  ContractDefinition const* _currentContract = nullptr)
+	{
+		m_referencedDeclaration = &_referencedDeclaration;
+		m_currentContract = _currentContract;
+	}
 	Declaration const* getReferencedDeclaration() const { return m_referencedDeclaration; }
+	ContractDefinition const* getCurrentContract() const { return m_currentContract; }
 
 private:
 	ASTPointer<ASTString> m_name;
 
 	/// Declaration the name refers to.
-	Declaration const* m_referencedDeclaration;
+	Declaration const* m_referencedDeclaration = nullptr;
+	/// Stores a reference to the current contract. This is needed because types of base contracts
+	/// change depending on the context.
+	ContractDefinition const* m_currentContract = nullptr;
 };
 
 /**

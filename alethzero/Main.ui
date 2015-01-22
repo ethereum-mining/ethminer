@@ -95,8 +95,8 @@
            <widget class="QLineEdit" name="urlEdit"/>
           </item>
           <item>
-           <widget class="QWebView" name="webView" native="true">
-            <property name="url" stdset="0">
+           <widget class="QWebView" name="webView">
+            <property name="url">
              <url>
               <string>about:blank</string>
              </url>
@@ -1212,8 +1212,8 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QWebView" name="jsConsole" native="true">
-       <property name="url" stdset="0">
+      <widget class="QWebView" name="jsConsole">
+       <property name="url">
         <url>
          <string>about:blank</string>
         </url>
@@ -2035,7 +2035,7 @@ font-size: 14pt</string>
   </action>
   <action name="importKeyFile">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Claim Ether Presale &amp;Wallet...</string>
