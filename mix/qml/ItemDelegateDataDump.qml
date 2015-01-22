@@ -20,29 +20,33 @@ Rectangle {
 			Layout.maximumWidth: 35
 			Layout.minimumHeight: parent.height
 			Text {
-				anchors.centerIn: parent
-				anchors.leftMargin: 5
-				color: "#8b8b8b"
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.left: parent.left
+				anchors.leftMargin: 3
+				font.family: "monospace"
+				font.bold: true
+				color: "#4a4a4a"
 				text: modelData[0]
-				font.pointSize: 9;
+				font.pointSize: 8;
 			}
 		}
 
 		Rectangle
 		{
-			anchors.left: firstCol.right
 			Layout.fillWidth: true
-			Layout.minimumWidth: 90
-			Layout.preferredWidth: 90
-			Layout.maximumWidth: 90
+			Layout.minimumWidth: 110
+			Layout.preferredWidth: 110
+			Layout.maximumWidth: 110
 			Layout.minimumHeight: parent.height
 			Text {
-				anchors.left: parent.left
-				anchors.leftMargin: 7
+				font.family: "monospace"
+				font.bold: true
 				anchors.verticalCenter: parent.verticalCenter
-				color: "#8b8b8b"
+				anchors.left: parent.left
+				anchors.leftMargin: 4
+				color: "#4a4a4a"
 				text: modelData[1]
-				font.pointSize: 9
+				font.pointSize: 8
 			}
 		}
 
@@ -52,12 +56,12 @@ Rectangle {
 			Layout.minimumWidth: 50
 			Layout.minimumHeight: parent.height
 			Text {
-				anchors.left: parent.left
 				anchors.verticalCenter: parent.verticalCenter
-				color: "#ededed"
-				font.bold: true
+				anchors.horizontalCenter:  parent.horizontalCenter
+				font.family: "monospace"
+				color: "#4a4a4a"
 				text: modelData[2]
-				font.pointSize: 10
+				font.pointSize: 8
 			}
 		}
 	}

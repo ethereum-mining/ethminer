@@ -86,9 +86,8 @@ QBigInt* DebuggingStateWrapper::newMemSize()
 QStringList DebuggingStateWrapper::debugStack()
 {
 	QStringList stack;
-	for (auto i: m_state.stack)
-		stack.append(QString::fromStdString(prettyU256(i)));
-
+	for (std::vector<u256>::reverse_iterator i = m_state.stack.rbegin(); i != m_state.stack.rend(); ++i)
+		stack.append(QString::fromStdString(prettyU256(*i)));
 	return fillList(stack, "");
 }
 
