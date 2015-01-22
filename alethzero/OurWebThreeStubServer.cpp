@@ -21,12 +21,9 @@
 
 #include "OurWebThreeStubServer.h"
 
-#include <QtCore/QString>
-#include <QtCore/QtCore>
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <libwebthree/WebThree.h>
-#include <jsoncpp/json/json.h>
 
 #include "MainWin.h"
 
