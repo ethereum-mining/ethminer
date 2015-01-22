@@ -9,8 +9,6 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package (Qt5WebEngine REQUIRED)
-
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
@@ -36,7 +34,6 @@ eth_add_executable(${EXECUTABLE}
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Gui)
-target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qwebthree)
 target_link_libraries(${EXECUTABLE} ethereum)
