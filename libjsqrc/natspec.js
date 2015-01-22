@@ -19,7 +19,7 @@ var copyToContext = function (obj, context) {
 
 /// Function called to get all contract's storage values
 /// @returns hashmap with contract properties which are used
-var getContractProperties = function (expression, abi) {
+var getContractProperties = function (address, abi) {
     return {};
 };
 
@@ -38,13 +38,32 @@ var evaluateExpression = function (expression) {
     var abi = web3._currentContractAbi;
     var address = web3._currentContractAddress;
 
-    var storage = getContractProperties(expression, abi); 
+    var storage = getContractProperties(address, abi); 
     var methods = getContractMethods(address, abi);
 
     copyToContext(storage, self);
     copyToContext(methods, self);
 
     // TODO: test if it is safe
-    return eval(expression).toString();
+    var evaluatedExpression = "";
+
+    // match everything in `` quotes
+    var pattern = /\`(?:\\.|[^`\\])*\`/gim
+    var match;
+    var lastIndex = 0;
+    while ((match = pattern.exec(expression)) !== null) {
+        var startIndex = pattern.lastIndex - match[0].length;
+
+        var toEval = match[0].slice(1, match[0].length - 1);
+
+        evaluatedExpression += expression.slice(lastIndex, startIndex);
+        evaluatedExpression += eval(toEval).toString();
+    
+        lastIndex = pattern.lastIndex;
+    }
+
+    evaluatedExpression += expression.slice(lastIndex);
+    
+    return evaluatedExpression;
 };
 

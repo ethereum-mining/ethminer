@@ -68,10 +68,9 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t)
 
 	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
 	
-	// TODO: uncomment this
-//	if (userNotice.empty())
-//		return showAuthenticationPopup("Unverified Pending Transaction",
-//									   "An undocumented transaction is about to be executed.");
+	if (userNotice.empty())
+		return showAuthenticationPopup("Unverified Pending Transaction",
+									   "An undocumented transaction is about to be executed.");
 
 	QNatspecExpressionEvaluator evaluator(this, m_main);
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
@@ -93,9 +92,10 @@ QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
 	// evaluate the natspec
 	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
 	
-	(void)_expression;
-	auto result = m_main->evalRaw(QString::fromStdString((string)"evaluateExpression('" + "multiply(4)" + "')"));
-//	auto result = m_main->evalRaw(_expression);
+	// _expression should be in the format like this
+	// auto toEval = QString::fromStdString("the result of calling multiply(4) is `multiply(4)`");
+	auto toEval = _expression;
+	auto result = m_main->evalRaw("evaluateExpression('" + toEval + "')");
 	
 	return result.toString();
 }
