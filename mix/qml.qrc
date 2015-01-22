@@ -43,5 +43,7 @@
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
+        <file>qml/js/QEtherHelper.js</file>
+        <file>qml/js/TransactionHelper.js</file>
     </qresource>
 </RCC>
