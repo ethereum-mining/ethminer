@@ -129,7 +129,7 @@ ApplicationWindow {
 
 	Action {
 		id: createProjectAction
-		text: qsTr("&New project")
+		text: qsTr("&New Project")
 		shortcut: "Ctrl+N"
 		enabled: true;
 		onTriggered: projectModel.createProject();
@@ -137,7 +137,7 @@ ApplicationWindow {
 
 	Action {
 		id: openProjectAction
-		text: qsTr("&Open project")
+		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
 		onTriggered: projectModel.browseProject();
@@ -145,7 +145,7 @@ ApplicationWindow {
 
 	Action {
 		id: addNewJsFileAction
-		text: qsTr("New JavaScript file")
+		text: qsTr("New JavaScript File")
 		shortcut: "Ctrl+Alt+J"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newJsFile();
@@ -153,7 +153,7 @@ ApplicationWindow {
 
 	Action {
 		id: addNewHtmlFileAction
-		text: qsTr("New HTML file")
+		text: qsTr("New HTML File")
 		shortcut: "Ctrl+Alt+H"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newHtmlFile();
@@ -161,7 +161,7 @@ ApplicationWindow {
 
 	Action {
 		id: addNewContractAction
-		text: qsTr("New contract")
+		text: qsTr("New Contract")
 		shortcut: "Ctrl+Alt+C"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newContract();
@@ -169,7 +169,7 @@ ApplicationWindow {
 
 	Action {
 		id: addExistingFileAction
-		text: qsTr("Add existing file")
+		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.addExistingFile();
@@ -177,7 +177,7 @@ ApplicationWindow {
 
 	Action {
 		id: saveAllFilesAction
-		text: qsTr("Save all")
+		text: qsTr("Save All")
 		shortcut: "Ctrl+S"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.saveAll();
@@ -185,7 +185,7 @@ ApplicationWindow {
 
 	Action {
 		id: closeProjectAction
-		text: qsTr("Close project")
+		text: qsTr("Close Project")
 		shortcut: "Ctrl+W"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.closeProject();

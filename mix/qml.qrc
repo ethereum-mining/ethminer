@@ -45,5 +45,6 @@
         <file>qml/BigIntValue.qml</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
+        <file>qml/Splitter.qml</file>
     </qresource>
 </RCC>

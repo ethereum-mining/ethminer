@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
+import Qt.labs.settings 1.0
 
 Rectangle {
 
@@ -16,6 +17,14 @@ Rectangle {
 	}
 	anchors.fill: parent
 	id: root
+
+	onWidthChanged:
+	{
+		if (rightView.visible)
+			contentView.width = parent.width - projectList.width - rightView.width;
+		else
+			contentView.width = parent.width - projectList.width;
+	}
 
 	function toggleRightView()
 	{
@@ -35,6 +44,11 @@ Rectangle {
 	{
 		if (rightView.visible)
 			rightView.hide();
+	}
+
+	function rightViewVisible()
+	{
+		return rightView.visible;
 	}
 
 	CodeEditorExtensionManager {
@@ -78,21 +92,37 @@ Rectangle {
 			}
 		}
 
-		SplitView {
-			resizing: false
-			Layout.row: 1
-			orientation: Qt.Horizontal;
+		Rectangle {
 			Layout.fillWidth: true
 			Layout.preferredHeight: root.height - headerView.height;
 
+			Settings {
+				id: splitSettings
+				property alias projectWidth: projectList.width
+				property alias contentViewWidth: contentView.width
+				property alias rightViewWidth: rightView.width
+			}
+
 			ProjectList	{
+				anchors.left: parent.left
 				id: projectList
 				width: 200
 				height: parent.height
 				Layout.minimumWidth: 200
 			}
 
+			Splitter
+			{
+				id: resizeLeft
+				itemToStick: projectList
+				itemMinimumWidth: projectList.Layout.minimumWidth
+				direction: "right"
+				brother: contentView
+				color: "#a2a2a2"
+			}
+
 			Rectangle {
+				anchors.left: projectList.right
 				id: contentView
 				width: parent.width - projectList.width
 				height: parent.height
@@ -103,28 +133,39 @@ Rectangle {
 							}
 			}
 
+			Splitter
+			{
+				id: resizeRight
+				visible: false;
+				itemToStick: rightView
+				itemMinimumWidth: rightView.Layout.minimumWidth
+				direction: "left"
+				brother: contentView
+				color: "#a2a2a2"
+			}
+
 			Rectangle {
 				visible: false;
 				id: rightView;
 
-				Keys.onEscapePressed:
-				{
-					hide();
-				}
+				Keys.onEscapePressed: hide()
 
 				function show() {
 					visible = true;
+					resizeRight.visible = true;
 					contentView.width = parent.width - projectList.width - rightView.width;
 				}
 
 				function hide() {
+					resizeRight.visible = false;
 					visible = false;
 					contentView.width = parent.width - projectList.width;
 				}
 
 				height: parent.height;
-				width: 450
-				Layout.minimumWidth: 450
+				width: 515
+				Layout.minimumWidth: 515
+				anchors.right: parent.right
 				Rectangle {
 					anchors.fill: parent;
 					id: rightPaneView

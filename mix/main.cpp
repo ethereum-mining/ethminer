@@ -21,12 +21,19 @@
  */
 
 #include <iostream>
+#include <stdlib.h>
 #include "MixApplication.h"
 #include "Exceptions.h"
 using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
 {
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+#endif
+
 	try
 	{
 		MixApplication app(_argc, _argv);
