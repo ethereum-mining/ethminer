@@ -9,12 +9,16 @@ Component {
 	Item {
 		signal editorTextChanged
 		property string currentText: ""
+		property string currentMode: ""
 		property bool initialized: false
 
-		function setText(text) {
+		function setText(text, mode) {
 			currentText = text;
-			if (initialized)
+			currentMode = mode;
+			if (initialized) {
 				editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
+				editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
+			}
 			editorBrowser.forceActiveFocus();
 		}
 
@@ -37,7 +41,7 @@ Component {
 			{
 				if (!loading) {
 					initialized = true;
-					setText(currentText);
+					setText(currentText, currentMode);
 					runJavaScript("getTextChanged()", function(result) { });
 					pollTimer.running = true;
 				}

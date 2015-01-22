@@ -6,7 +6,7 @@ var editor = CodeMirror(document.body, {
 							autofocus: true,
 						});
 
-editor.setOption("theme", "blackboard");
+editor.setOption("theme", "solarized dark");
 editor.setOption("fullScreen", true);
 
 editor.changeRegistered = false;
@@ -34,4 +34,8 @@ setTextBase64 = function(text) {
 
 setText = function(text) {
 	editor.setValue(text);
+};
+
+setMode = function(mode) {
+	this.editor.setOption("mode", mode);
 };
