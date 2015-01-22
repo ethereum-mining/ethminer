@@ -16,9 +16,10 @@
 */
 /** @file Common.h
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  *
- * Miscellanea required for the Host/Session classes.
+ * Miscellanea required for the Host/Session/NodeTable classes.
  */
 
 #pragma once
@@ -29,9 +30,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
-#include <libdevcore/Common.h>
+#include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/FixedHash.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -116,6 +116,11 @@ typedef std::pair<std::string, u256> CapDesc;
 typedef std::set<CapDesc> CapDescSet;
 typedef std::vector<CapDesc> CapDescs;
 
+/*
+ * Used by Host to pass negotiated information about a connection to a
+ * new Peer Session; PeerSessionInfo is then maintained by Session and can
+ * be queried for point-in-time status information via Host.
+ */
 struct PeerSessionInfo
 {
 	NodeId id;
@@ -129,6 +134,42 @@ struct PeerSessionInfo
 };
 
 using PeerSessionInfos = std::vector<PeerSessionInfo>;
+
+/**
+ * @brief IPv4,UDP/TCP endpoints.
+ */
+struct NodeIPEndpoint
+{
+	NodeIPEndpoint(): udp(bi::udp::endpoint()), tcp(bi::tcp::endpoint()) {}
+	NodeIPEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
+	NodeIPEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
+	NodeIPEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
+
+	bi::udp::endpoint udp;
+	bi::tcp::endpoint tcp;
+	
+	operator bool() const { return udp.address().is_unspecified() && tcp.address().is_unspecified(); }
+};
+
+struct Node
+{
+	Node(): endpoint(NodeIPEndpoint()) {};
+	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
+	Node(Public _pubk, bi::udp::endpoint _udp, bool _required = false): Node(_pubk, NodeIPEndpoint(_udp), _required) {}
+	
+	virtual NodeId const& address() const { return id; }
+	virtual Public const& publicKey() const { return id; }
+	
+	NodeId id;
+	
+	/// Endpoints by which we expect to reach node.
+	NodeIPEndpoint endpoint;
+	
+	/// If true, node will not be removed from Node list.
+	bool required = false;
+	
+	operator bool() const { return (bool)id; }
+};
 
 }
 }

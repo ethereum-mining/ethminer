@@ -24,50 +24,13 @@
 #include <algorithm>
 #include <deque>
 #include <boost/integer/static_log2.hpp>
-#include <libdevcrypto/Common.h>
 #include <libp2p/UDP.h>
+#include "Common.h"
 
 namespace dev
 {
 namespace p2p
 {
-
-/**
- * @brief IPv4,UDP/TCP endpoints.
- */
-struct NodeIPEndpoint
-{
-	NodeIPEndpoint(): udp(bi::udp::endpoint()), tcp(bi::tcp::endpoint()) {}
-	NodeIPEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
-	NodeIPEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
-	NodeIPEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
-
-	bi::udp::endpoint udp;
-	bi::tcp::endpoint tcp;
-	
-	operator bool() const { return udp.address().is_unspecified() && tcp.address().is_unspecified(); }
-};
-
-struct Node
-{
-	Node(): endpoint(NodeIPEndpoint()) {};
-	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
-	Node(Public _pubk, bi::udp::endpoint _udp, bool _required = false): Node(_pubk, NodeIPEndpoint(_udp), _required) {}
-	
-	virtual NodeId const& address() const { return id; }
-	virtual Public const& publicKey() const { return id; }
-	
-	NodeId id;
-	
-	/// Endpoints by which we expect to reach node.
-	NodeIPEndpoint endpoint;
-	
-	/// If true, node will not be removed from Node list.
-	bool required = false;
-	
-	operator bool() const { return (bool)id; }
-};
-
 
 /**
  * NodeEntry
@@ -151,7 +114,6 @@ protected:
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
-	friend struct Neighbours;
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
 	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
