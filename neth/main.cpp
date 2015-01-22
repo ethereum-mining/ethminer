@@ -886,7 +886,7 @@ int main(int argc, char** argv)
 			auto b = bc.block(h);
 			for (auto const& i: RLP(b)[1])
 			{
-				Transaction t(i.data());
+				Transaction t(i.data(), CheckSignature::Sender);
 				auto s = t.receiveAddress() ?
 					boost::format("  %1% %2%> %3%: %4% [%5%]") %
 						toString(t.safeSender()) %

@@ -101,7 +101,7 @@ Window {
 		anchors.right: parent.right;
 
 		Button {
-			text: qsTr("Ok");
+			text: qsTr("OK");
 			onClicked: {
 				close();
 				accepted();
