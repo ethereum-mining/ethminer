@@ -101,7 +101,7 @@ static QString formatInput(QJsonObject const& _object)
 	return QString::fromUtf8(QJsonDocument(res).toJson());
 }
 
-void QWebThree::postMessage(QString _json)
+QString QWebThree::callMethod(QString _json)
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 
@@ -117,7 +117,8 @@ void QWebThree::postMessage(QString _json)
 		m_watches.erase(std::remove(m_watches.begin(), m_watches.end(), idToRemove), m_watches.end());
 	}
 	
-	emit processData(formatInput(f), method);
+	emit processData(formatInput(f), method); // it's synchronous
+	return m_response;
 }
 
 static QString formatOutput(QJsonObject const& _object)
@@ -151,7 +152,7 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 					res["_id"] = (int)m_watches[i];
 
 				res["data"] = elem["result"].toArray();
-				response(QString::fromUtf8(QJsonDocument(res).toJson()));
+				syncResponse(QString::fromUtf8(QJsonDocument(res).toJson()));
 			}
 		}
 	}
@@ -165,7 +166,12 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	else if (!_addInfo.compare("shh_newIdentity") && f.contains("result"))
 		emit onNewId(f["result"].toString());
 
-	response(formatOutput(f));
+	syncResponse(formatOutput(f));
+}
+
+void QWebThree::syncResponse(QString _json)
+{
+	m_response = _json;
 }
 
 QWebThreeConnector::QWebThreeConnector()

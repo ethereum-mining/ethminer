@@ -49,6 +49,10 @@ class Client;
 class State;
 }}
 
+namespace jsonrpc {
+class CorsHttpServer;
+}
+
 class QQuickView;
 class OurWebThreeStubServer;
 
@@ -280,6 +284,7 @@ private:
 	bool m_logChanged = true;
 
 	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
+//	std::unique_ptr<jsonrpc::CorsHttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 	QWebThree* m_qweb = nullptr;
 

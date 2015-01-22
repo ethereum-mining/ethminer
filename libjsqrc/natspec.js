@@ -39,10 +39,10 @@ var getContractMethods = function (address, abi) {
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
             var parsed = inputParser[displayName][typeName].apply(null, params);
-            var methodSignature = _natspec.sha3(web3.fromAscii(method.name)).slice(0, 10);
+            var signature = web3.abi.methodSignature(web3.method.name); 
             var output = _natspec.call(JSON.stringify({
                 to: address,
-                data: methodSignature + parsed
+                data: signature + parsed
             }));
             return outputParser[displayName][typeName](output);
         };
