@@ -218,4 +218,3 @@ ExecutionResult ClientModel::callContract(Address const& _contract, bytes const&
 	r.contractAddress = _contract;
 	return r;
 }
-

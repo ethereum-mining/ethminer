@@ -78,20 +78,28 @@ ApplicationWindow {
 		text: "&Run"
 		shortcut: "F5"
 		onTriggered: {
-
+			var item = TransactionHelper.defaultTransaction();
+			item.executeConstructor = true;
 			if (codeModel.code.contract.constructor.parameters.length === 0)
 			{
 				mainContent.ensureRightView();
-				clientModel.debugDeployment();
+				startF5Debugging(item);
 			}
 			else
-			{
-				var item = TransactionHelper.defaultTransaction();
-				item.executeConstructor = true;
 				transactionDialog.open(0, item);
-			}
 		}
 		enabled: codeModel.hasContract && !clientModel.running;
+	}
+
+	function startF5Debugging(transaction)
+	{
+		var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+		var state = {
+			title: "",
+			balance: ether,
+			transactions: [transaction]
+		};
+		clientModel.debugState(state);
 	}
 
 	TransactionDialog {
@@ -99,13 +107,8 @@ ApplicationWindow {
 		onAccepted: {
 			mainContent.ensureRightView();
 			var item = transactionDialog.getItem();
-			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
-			var state = {
-				title: "",
-				balance: ether,
-				transactions: [item]
-			};
-			clientModel.debugState(state);
+			item.executeConstructor = true;
+			startF5Debugging(item);
 		}
 		useTransactionDefaultValue: true
 	}
