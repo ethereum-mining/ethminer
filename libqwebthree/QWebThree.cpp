@@ -121,14 +121,14 @@ QString QWebThree::callMethod(QString _json)
 	return m_response;
 }
 
-static QString formatOutput(QJsonObject const& _object)
-{
-	QJsonObject res;
-	res["_id"] = _object["id"];
-	res["data"] = _object["result"];
-	res["error"] = _object["error"];
-	return QString::fromUtf8(QJsonDocument(res).toJson());
-}
+//static QString formatOutput(QJsonObject const& _object)
+//{
+//	QJsonObject res;
+//	res["_id"] = _object["id"];
+//	res["data"] = _object["result"];
+//	res["error"] = _object["error"];
+//	return QString::fromUtf8(QJsonDocument(res).toJson());
+//}
 
 void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 {
@@ -166,7 +166,8 @@ void QWebThree::onDataProcessed(QString _json, QString _addInfo)
 	else if (!_addInfo.compare("shh_newIdentity") && f.contains("result"))
 		emit onNewId(f["result"].toString());
 
-	syncResponse(formatOutput(f));
+	syncResponse(QString::fromUtf8(QJsonDocument(f).toJson()));
+//	syncResponse(formatOutput(f));
 }
 
 void QWebThree::syncResponse(QString _json)
