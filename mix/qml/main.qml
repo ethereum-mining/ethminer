@@ -5,6 +5,9 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 import CodeEditorExtensionManager 1.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 ApplicationWindow {
 	id: mainApplication
@@ -75,10 +78,36 @@ ApplicationWindow {
 		text: "&Run"
 		shortcut: "F5"
 		onTriggered: {
-			mainContent.ensureRightView();
-			clientModel.debugDeployment();
+
+			if (codeModel.code.contract.constructor.parameters.length === 0)
+			{
+				mainContent.ensureRightView();
+				clientModel.debugDeployment();
+			}
+			else
+			{
+				var item = TransactionHelper.defaultTransaction();
+				item.executeConstructor = true;
+				transactionDialog.open(0, item);
+			}
 		}
 		enabled: codeModel.hasContract && !clientModel.running;
+	}
+
+	TransactionDialog {
+		id: transactionDialog
+		onAccepted: {
+			mainContent.ensureRightView();
+			var item = transactionDialog.getItem();
+			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+			var state = {
+				title: "",
+				balance: ether,
+				transactions: [item]
+			};
+			clientModel.debugState(state);
+		}
+		useTransactionDefaultValue: true
 	}
 
 	Action {

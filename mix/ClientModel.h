@@ -42,6 +42,7 @@ class AppContext;
 /// Backend transaction config class
 struct TransactionSettings
 {
+	TransactionSettings() {}
 	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
 		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 
@@ -55,6 +56,10 @@ struct TransactionSettings
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
 	std::map<QString, u256> parameterValues;
+
+public:
+	/// @returns true if the functionId has not be set
+	bool isEmpty() const { return functionId.isNull() || functionId.isEmpty(); }
 };
 
 
@@ -100,8 +105,8 @@ signals:
 	void dataAvailable(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
 
 private:
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
-	ExecutionResult deployContract(bytes const& _code);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& ctrTransaction = TransactionSettings());
+	ExecutionResult deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	ExecutionResult callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 
 	AppContext* m_context;

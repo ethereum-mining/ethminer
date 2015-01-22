@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import org.ethereum.qml.QEther 1.0
+import "js/TransactionHelper.js" as TransactionHelper
 
 Window {
 	id: modalTransactionDialog
@@ -18,15 +19,29 @@ Window {
 	property alias transactionValue: valueField.value;
 	property alias functionId: functionComboBox.currentText;
 	property var itemParams;
+	property bool isConstructorTransaction;
+	property bool useTransactionDefaultValue: false
 
 	signal accepted;
 
 	function open(index, item) {
+		valueLabel.visible = !useTransactionDefaultValue;
+		valueField.visible = !useTransactionDefaultValue;
+		gasLabel.visible = !useTransactionDefaultValue;
+		gasFieldRect.visible = !useTransactionDefaultValue;
+		gasPriceLabel.visible = !useTransactionDefaultValue;
+		gasPriceRect.visible = !useTransactionDefaultValue;
+
 		transactionIndex = index;
 		gasField.value = item.gas;
 		gasPriceField.value = item.gasPrice;
 		valueField.value = item.value;
 		var functionId = item.functionId;
+		isConstructorTransaction = item.executeConstructor;
+		functionLabel.visible = !item.executeConstructor;
+		functionComboBox.visible = !item.executeConstructor;
+		console.log(item.executeConstructor);
+
 		itemParams = item.parameters !== undefined ? item.parameters : {};
 		functionsModel.clear();
 		var functionIndex = -1;
@@ -41,7 +56,18 @@ Window {
 			functionIndex = 0; //@todo suggest unused funtion
 
 		functionComboBox.currentIndex = functionIndex;
-		loadParameters();
+		paramsModel.clear();
+		if (!item.executeConstructor)
+			loadParameters();
+		else
+		{
+			console.log("load ctro paramters");
+			var parameters = codeModel.code.contract.constructor.parameters;
+			for (var p = 0; p < parameters.length; p++) {
+				var pname = parameters[p].name;
+				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
+			}
+		}
 		visible = true;
 		valueField.focus = true;
 	}
@@ -49,7 +75,6 @@ Window {
 	function loadParameters() {
 		if (!paramsModel)
 			return;
-		paramsModel.clear();
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
@@ -67,17 +92,37 @@ Window {
 
 	function getItem()
 	{
-		var item = {
-			functionId: transactionDialog.functionId,
-			gas: transactionDialog.gas,
-			gasPrice: transactionDialog.gasPrice,
-			value: transactionDialog.transactionValue,
-			parameters: {}
+		var item;
+		if (!useTransactionDefaultValue)
+		{
+			item = {
+				functionId: transactionDialog.functionId,
+				gas: transactionDialog.gas,
+				gasPrice: transactionDialog.gasPrice,
+				value: transactionDialog.transactionValue,
+				parameters: {},
+				executeConstructor: isConstructorTransaction
+			};
 		}
+		else
+		{
+			item = TransactionHelper.defaultTransaction();
+			item.functionId = transactionDialog.functionId;
+			item.executeConstructor = isConstructorTransaction;
+		}
+
+		if (isConstructorTransaction)
+			item.functionId = qsTr("Constructor");
+
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
 			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
 			var param = intComponent.createObject(modalTransactionDialog);
+			console.log(param);
+			console.log(JSON.stringify(param));
+			console.log(item);
+			console.log(JSON.stringify(item));
+
 			param.setValue(parameter.value);
 			item.parameters[parameter.name] = param;
 		}
@@ -93,6 +138,7 @@ Window {
 		columnSpacing: 10
 
 		Label {
+			id: functionLabel;
 			text: qsTr("Function")
 		}
 		ComboBox {
@@ -110,10 +156,12 @@ Window {
 		}
 
 		Label {
+			id: valueLabel
 			text: qsTr("Value")
 		}
 		Rectangle
 		{
+			id: valueFieldRect
 			Layout.fillWidth: true
 			Ether {
 				id: valueField
@@ -123,10 +171,12 @@ Window {
 		}
 
 		Label {
+			id: gasLabel
 			text: qsTr("Gas")
 		}
 		Rectangle
 		{
+			id: gasFieldRect
 			Layout.fillWidth: true
 			Ether {
 				id: gasField
@@ -136,10 +186,12 @@ Window {
 		}
 
 		Label {
+			id: gasPriceLabel
 			text: qsTr("Gas price")
 		}
 		Rectangle
 		{
+			id: gasPriceRect
 			Layout.fillWidth: true
 			Ether {
 				id: gasPriceField
