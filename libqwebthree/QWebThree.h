@@ -39,7 +39,8 @@ public:
 	void clearWatches();
 	void clientDieing();
 	
-	Q_INVOKABLE void postMessage(QString _json);
+	Q_INVOKABLE QString callMethod(QString _json);
+	void syncResponse(QString _json);
 	
 public slots:
 	void onDataProcessed(QString _json, QString _addInfo);
@@ -52,6 +53,7 @@ signals:
 private:
 	std::vector<unsigned> m_watches;
 	std::vector<unsigned> m_shhWatches;
+	QString m_response;
 };
 
 class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnector

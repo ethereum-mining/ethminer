@@ -24,7 +24,12 @@
 namespace jsonrpc
 {
 
-bool CorsHttpServer::SendResponse(std::string const& _response, void* _addInfo)
+int HttpServer::callback(struct mg_connection *conn)
+{
+		
+}
+
+bool CorsHttpServer::SendResponse(const std::string& _response, void* _addInfo)
 {
 	struct mg_connection* conn = (struct mg_connection*) _addInfo;
 	if (mg_printf(conn, "HTTP/1.1 200 OK\r\n"

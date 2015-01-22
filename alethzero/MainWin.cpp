@@ -48,6 +48,7 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/CorsHttpServer.h>
 #include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
@@ -158,6 +159,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
+//	m_httpConnector.reset(new jsonrpc::CorsHttpServer(8080));
 	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
@@ -173,6 +175,7 @@ Main::Main(QWidget *parent) :
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
