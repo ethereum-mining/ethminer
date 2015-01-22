@@ -1097,7 +1097,7 @@ void Main::refreshBlockChain()
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
-			Transaction t(i.data());
+			Transaction t(i.data(), CheckSignature::Sender);
 			if (bm || transactionMatch(filter, t))
 			{
 				QString s = t.receiveAddress() ?
@@ -1385,7 +1385,7 @@ void Main::on_blocks_currentItemChanged()
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi].data());
+			Transaction tx(block[1][txi].data(), CheckSignature::Sender);
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
 			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
@@ -1648,11 +1648,16 @@ static shh::Topic topicFromText(QString _s)
 	return ret;
 }
 
-
 bool Main::sourceIsSolidity(string const& _source)
 {
 	// TODO: Improve this heuristic
 	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+static bool sourceIsSerpent(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 5) == "//ser");
 }
 
 string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
@@ -1689,6 +1694,7 @@ void Main::on_data_textChanged()
 			dev::solidity::CompilerStack compiler;
 			try
 			{
+//				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
@@ -1706,23 +1712,23 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
 			}
 		}
+		else if (sourceIsSerpent(src))
+		{
+			try
+			{
+				m_data = dev::asBytes(::compile(src));
+				for (auto& i: errors)
+					i = "(LLL " + i + ")";
+			}
+			catch (string err)
+			{
+				errors.push_back("Serpent " + err);
+			}
+		}
 		else
 		{
 			m_data = compileLLL(src, m_enableOptimizer, &errors);
-			if (errors.size())
-			{
-				try
-				{
-					m_data = dev::asBytes(::compile(src));
-					for (auto& i: errors)
-						i = "(LLL " + i + ")";
-				}
-				catch (string err)
-				{
-					errors.push_back("Serpent " + err);
-				}
-			}
-			else
+			if (errors.empty())
 			{
 				auto asmcode = compileLLLToAsm(src, false);
 				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
