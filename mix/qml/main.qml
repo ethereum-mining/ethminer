@@ -5,7 +5,6 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 import CodeEditorExtensionManager 1.0
-import org.ethereum.qml.ProjectModel 1.0
 
 ApplicationWindow {
 	id: mainApplication
@@ -41,6 +40,7 @@ ApplicationWindow {
 		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: showHideRightPanel }
+			MenuItem { action: toggleWebPreview }
 		}
 	}
 
@@ -90,73 +90,84 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleWebPreview
+		text: "Show Web View"
+		shortcut: "F2"
+		checkable: true
+		checked: mainContent.webViewVisible
+		onTriggered: mainContent.toggleWebPreview();
+	}
+
+	Action {
 		id: showHideRightPanel
-		text: "Show/Hide right view"
+		text: "Show Right View"
 		shortcut: "F7"
+		checkable: true
+		checked: mainContent.rightViewVisible
 		onTriggered: mainContent.toggleRightView();
 	}
 
 	Action {
 		id: createProjectAction
-		text: qsTr("&New project")
+		text: qsTr("&New Project")
 		shortcut: "Ctrl+N"
 		enabled: true;
-		onTriggered: ProjectModel.createProject();
+		onTriggered: projectModel.createProject();
 	}
 
 	Action {
 		id: openProjectAction
-		text: qsTr("&Open project")
+		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
-		onTriggered: ProjectModel.browseProject();
+		onTriggered: projectModel.browseProject();
 	}
 
 	Action {
 		id: addNewJsFileAction
-		text: qsTr("New JavaScript file")
+		text: qsTr("New JavaScript File")
 		shortcut: "Ctrl+Alt+J"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newJsFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newJsFile();
 	}
 
 	Action {
 		id: addNewHtmlFileAction
-		text: qsTr("New HTML file")
+		text: qsTr("New HTML File")
 		shortcut: "Ctrl+Alt+H"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newHtmlFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newHtmlFile();
 	}
 
 	Action {
 		id: addNewContractAction
-		text: qsTr("New contract")
+		text: qsTr("New Contract")
 		shortcut: "Ctrl+Alt+C"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newContract();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newContract();
 	}
 
 	Action {
 		id: addExistingFileAction
-		text: qsTr("Add existing file")
+		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.addExistingFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.addExistingFile();
 	}
 
 	Action {
 		id: saveAllFilesAction
-		text: qsTr("Save all")
+		text: qsTr("Save All")
 		shortcut: "Ctrl+S"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.saveAll();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.saveAll();
 	}
 
 	Action {
 		id: closeProjectAction
-		text: qsTr("Close project")
+		text: qsTr("Close Project")
 		shortcut: "Ctrl+W"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.closeProject();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.closeProject();
 	}
 }

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/WebPreview.qml</file>
+        <file>qml/html/WebContainer.html</file>
+    </qresource>
+</RCC>

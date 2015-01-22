@@ -64,7 +64,7 @@ Window {
 
 			Button {
 				enabled: titleField.text != "" && pathField.text != ""
-				text: qsTr("Ok");
+				text: qsTr("OK");
 				onClicked: {
 					close();
 					accepted();

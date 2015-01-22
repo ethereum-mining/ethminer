@@ -20,7 +20,6 @@
  * Ethereum IDE client.
  */
 
-#include <stdexcept>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -41,7 +40,10 @@ void FileIo::makeDir(QString const& _url)
 QString FileIo::readFile(QString const& _url)
 {
 	QUrl url(_url);
-	QFile file(url.path());
+	QString path(url.path());
+	if (url.scheme() == "qrc")
+		path = ":" + path;
+	QFile file(path);
 	if (file.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);

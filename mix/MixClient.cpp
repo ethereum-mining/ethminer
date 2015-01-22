@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+	This file is part of cpp-ethereum.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file MixClient.cpp
  * @author Yann yann@ethdev.com
@@ -88,6 +88,7 @@ void MixClient::executeTransaction(bytesConstRef _rlp, State& _state)
 	d.executionData = data;
 	d.contentAvailable = true;
 	d.message = "ok";
+	d.contractAddress = m_lastExecutionResult.contractAddress;
 	m_lastExecutionResult = d;
 }
 
@@ -113,7 +114,9 @@ Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init,
 	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
 	bytes rlp = t.rlp();
 	executeTransaction(&rlp, m_state);
-	return right160(sha3(rlpList(t.sender(), t.nonce())));
+	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
+	m_lastExecutionResult.contractAddress = address;
+	return address;
 }
 
 void MixClient::inject(bytesConstRef _rlp)
@@ -128,7 +131,6 @@ void MixClient::flushTransactions()
 
 bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
-	bytes out;
 	u256 n;
 	State temp;
 	{

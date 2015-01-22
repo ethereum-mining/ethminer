@@ -124,6 +124,10 @@ inline bytes toCompactBigEndian(_T _val, unsigned _min = 0)
 	toBigEndian(_val, ret);
 	return ret;
 }
+inline bytes toCompactBigEndian(byte _val, unsigned _min = 0)
+{
+	return (_min || _val) ? bytes{ _val } : bytes{};
+}
 
 /// Convenience function for toBigEndian.
 /// @returns a string just big enough to represent @a _val.
