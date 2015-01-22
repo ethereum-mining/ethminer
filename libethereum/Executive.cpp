@@ -53,7 +53,7 @@ void Executive::accrueSubState(SubState& _parentContext)
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp);
+	m_t = Transaction(_rlp, CheckSignature::Sender);
 
 	// Avoid invalid transactions.
 	auto nonceReq = m_s.transactionsFrom(m_t.sender());
@@ -197,7 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
-				m_s.m_cache[m_newAddress].setCode(m_out);
+				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
 		catch (StepsDone const&)
