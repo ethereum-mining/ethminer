@@ -65,7 +65,7 @@ Item {
 
 	Connections {
 		target: codeModel
-		onContractInterfceChanged: reload();
+		onContractInterfaceChanged: reload();
 	}
 
 	Connections {

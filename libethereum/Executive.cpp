@@ -53,7 +53,7 @@ void Executive::accrueSubState(SubState& _parentContext)
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp);
+	m_t = Transaction(_rlp, CheckSignature::Sender);
 
 	// Avoid invalid transactions.
 	auto nonceReq = m_s.transactionsFrom(m_t.sender());

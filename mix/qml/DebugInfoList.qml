@@ -9,6 +9,23 @@ ColumnLayout {
 	property bool collapsible;
 	property Component itemDelegate
 	spacing: 0
+
+	function collapse()
+	{
+		storageContainer.state = "collapsed";
+	}
+
+	function show()
+	{
+		storageContainer.state = "";
+	}
+
+	Component.onCompleted:
+	{
+		if (storageContainer.parent.parent.height === 25)
+			storageContainer.state = "collapsed";
+	}
+
 	RowLayout {
 		height: 25
 		id: header
@@ -17,7 +34,6 @@ ColumnLayout {
 			width: 15
 			sourceSize.width: 15
 			id: storageImgArrow
-			visible: collapsible
 		}
 
 		Text {
@@ -32,52 +48,50 @@ ColumnLayout {
 			enabled: collapsible
 			anchors.fill: parent
 			onClicked: {
-				if (storageContainer.state == "collapsed")
-					storageContainer.state = "";
-				else
-					storageContainer.state = "collapsed";
+				if (collapsible)
+				{
+					if (storageContainer.state == "collapsed")
+					{
+						storageContainer.state = "";
+						storageContainer.parent.parent.height = storageContainer.parent.parent.Layout.maximumHeight;
+					}
+					else
+						storageContainer.state = "collapsed";
+				}
 			}
 		}
 	}
-
-	RowLayout
+	Rectangle
 	{
-		height: parent.height - header.height
-		clip: true
-		Rectangle
-		{
-			height: parent.height
-			border.width: 3
-			border.color: "#deddd9"
-			Layout.fillWidth: true
-			states: [
-				State {
-					name: "collapsed"
-					PropertyChanges {
-						target: storageContainer.parent
-						height: 0
-						visible: false
-					}
-					PropertyChanges {
-						target: storageImgArrow
-						source: "qrc:/qml/img/closedtriangleindicator.png"
-					}
+		border.width: 3
+		border.color: "#deddd9"
+		Layout.fillWidth: true
+		Layout.fillHeight: true
+		states: [
+			State {
+				name: "collapsed"
+				PropertyChanges {
+					target: storageImgArrow
+					source: "qrc:/qml/img/closedtriangleindicator.png"
 				}
-			]
-			id: storageContainer
-			width: parent.width
-			ListView {
-				clip: true;
-				anchors.top: parent.top
-				anchors.left: parent.left
-				anchors.topMargin: 3
-				anchors.leftMargin: 3
-				width: parent.width - 3
-				height: parent.height - 6
-				id: storageList
-				model: listModel
-				delegate: itemDelegate
+				PropertyChanges {
+					target: storageContainer.parent.parent
+					height: 25
+				}
 			}
+		]
+		id: storageContainer
+		ListView {
+			clip: true;
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.topMargin: 3
+			anchors.leftMargin: 3
+			width: parent.width - 3
+			height: parent.height - 6
+			id: storageList
+			model: listModel
+			delegate: itemDelegate
 		}
 	}
 }
