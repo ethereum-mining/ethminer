@@ -26,35 +26,7 @@ var getContractProperties = function (expression, abi) {
 /// Function called to get all contract's methods
 /// @returns hashmap with used contract's methods
 var getContractMethods = function (address, abi) {
-
-    var contract = {};
-    var inputParser = web3.abi.inputParser(abi);
-    var outputParser = web3.abi.outputParser(abi);
-
-    abi.forEach(function (method) {
-
-        var displayName = web3.abi.methodDisplayName(method.name);
-        var typeName = web3.abi.methodTypeName(method.name);
-
-        var impl = function () {
-            var params = Array.prototype.slice.call(arguments);
-            var parsed = inputParser[displayName][typeName].apply(null, params);
-            var signature = web3.abi.methodSignature(method.name); 
-            var output = _natspec.call(JSON.stringify({
-                to: address,
-                data: signature + parsed
-            }));
-            return outputParser[displayName][typeName](output);
-        };
-
-        if (contract[displayName] === undefined) {
-            contract[displayName] = impl;
-        }
-
-        contract[displayName][typeName] = impl;
-    });
-
-    return contract; 
+    return web3.eth.contract(address, abi);
 };
 
 /// Should be called to evaluate single expression
