@@ -25,9 +25,13 @@ using namespace dev::p2p;
 
 h256 RLPXDatagramFace::sign(Secret const& _k)
 {
-	RLPStream rlpstream;
-	streamRLP(rlpstream);
-	bytes rlpBytes(rlpstream.out());
+	assert(packetType());
+	
+	RLPStream rlpxstream;
+//	rlpxstream.appendRaw(toPublic(_k).asBytes()); // for mdc-based signature
+	rlpxstream.appendRaw(bytes(1, packetType()));
+	streamRLP(rlpxstream);
+	bytes rlpBytes(rlpxstream.out());
 	
 	bytesConstRef rlp(&rlpBytes);
 	h256 hash(dev::sha3(rlp));
@@ -35,12 +39,16 @@ h256 RLPXDatagramFace::sign(Secret const& _k)
 	
 	data.resize(h256::size + Signature::size + rlp.size());
 	bytesConstRef packetHash(&data[0], h256::size);
+
 	bytesConstRef signedPayload(&data[h256::size], Signature::size + rlp.size());
 	bytesConstRef payloadSig(&data[h256::size], Signature::size);
 	bytesConstRef payload(&data[h256::size + Signature::size], rlp.size());
 	
 	sig.ref().copyTo(payloadSig);
+//	rlp.cropped(Public::size, rlp.size() - Public::size).copyTo(payload);
 	rlp.copyTo(payload);
+	
+//	hash.ref().copyTo(packetHash); // for mdc-based signature
 	dev::sha3(signedPayload).ref().copyTo(packetHash);
 
 	return std::move(hash);

@@ -352,24 +352,24 @@ NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
 
 void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet)
 {
-	// h256 + Signature + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
-	if (_packet.size() < h256::size + Signature::size + 3)
+	// h256 + Signature + type + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
+	if (_packet.size() < h256::size + Signature::size + 1 + 3)
 	{
 		clog(NodeTableMessageSummary) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
-	bytesConstRef signedBytes(_packet.cropped(h256::size, _packet.size() - h256::size));
-	h256 hashSigned(sha3(signedBytes));
+	bytesConstRef hashedBytes(_packet.cropped(h256::size, _packet.size() - h256::size));
+	h256 hashSigned(sha3(hashedBytes));
 	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
 	{
 		clog(NodeTableMessageSummary) << "Invalid Message hash from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
+	
+	bytesConstRef rlpBytes(hashedBytes.cropped(Signature::size, hashedBytes.size() - Signature::size));
 
-	bytesConstRef rlpBytes(signedBytes.cropped(Signature::size, signedBytes.size() - Signature::size));
-	RLP rlp(rlpBytes);
-	unsigned itemCount = rlp.itemCount();
+	// todo: verify sig via known-nodeid and MDC, or, do ping/pong auth if node/endpoint is unknown/untrusted
 	
 	bytesConstRef sigBytes(_packet.cropped(h256::size, Signature::size));
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(rlpBytes)));
@@ -378,8 +378,13 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 		clog(NodeTableMessageSummary) << "Invalid Message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
-	noteNode(nodeid, _from);
 	
+	if (rlpBytes[0] && rlpBytes[0] < 4)
+		noteNode(nodeid, _from);
+	
+	// todo: switch packet-type
+	RLP rlp(rlpBytes.cropped(1, rlpBytes.size() - 1));
+	unsigned itemCount = rlp.itemCount();
 	try {
 		switch (itemCount)
 		{
@@ -435,14 +440,14 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
 				
 				Pong p(_from);
-				p.replyTo = sha3(rlpBytes);
+				p.echo = sha3(rlpBytes);
 				p.sign(m_secret);
 				m_socketPtr->send(p);
 				break;
 			}
 				
 			default:
-				clog(NodeTableMessageSummary) << "Invalid Message received from " << _from.address().to_string() << ":" << _from.port();
+				clog(NodeTableMessageSummary) << "Invalid Message, " << std::hex << rlpBytes[0] << ", received from " << _from.address().to_string() << ":" << _from.port();
 				return;
 		}
 	}
