@@ -4,6 +4,9 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Rectangle {
 
@@ -24,6 +27,41 @@ Rectangle {
 			contentView.width = parent.width - projectList.width - rightView.width;
 		else
 			contentView.width = parent.width - projectList.width;
+	}
+
+	function startQuickDebugging()
+	{
+		var item = TransactionHelper.defaultTransaction();
+		item.executeConstructor = true;
+		if (codeModel.code.contract.constructor.parameters.length === 0)
+		{
+			ensureRightView();
+			startF5Debugging(item);
+		}
+		else
+			transactionDialog.open(0, item);
+	}
+
+	function startF5Debugging(transaction)
+	{
+		var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+		var state = {
+			title: "",
+			balance: ether,
+			transactions: [transaction]
+		};
+		clientModel.debugState(state);
+	}
+
+	TransactionDialog {
+		id: transactionDialog
+		onAccepted: {
+			ensureRightView();
+			var item = transactionDialog.getItem();
+			item.executeConstructor = true;
+			startF5Debugging(item);
+		}
+		useTransactionDefaultValue: true
 	}
 
 	function toggleRightView()

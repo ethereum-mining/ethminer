@@ -25,12 +25,10 @@ Window {
 	signal accepted;
 
 	function open(index, item) {
-		valueLabel.visible = !useTransactionDefaultValue;
-		valueField.visible = !useTransactionDefaultValue;
-		gasLabel.visible = !useTransactionDefaultValue;
-		gasFieldRect.visible = !useTransactionDefaultValue;
-		gasPriceLabel.visible = !useTransactionDefaultValue;
-		gasPriceRect.visible = !useTransactionDefaultValue;
+		rowFunction.visible = !useTransactionDefaultValue;
+		rowValue.visible = !useTransactionDefaultValue;
+		rowGas.visible = !useTransactionDefaultValue;
+		rowGasPrice.visible = !useTransactionDefaultValue;
 
 		transactionIndex = index;
 		gasField.value = item.gas;
@@ -38,9 +36,7 @@ Window {
 		valueField.value = item.value;
 		var functionId = item.functionId;
 		isConstructorTransaction = item.executeConstructor;
-		functionLabel.visible = !item.executeConstructor;
-		functionComboBox.visible = !item.executeConstructor;
-		console.log(item.executeConstructor);
+		rowFunction.visible = !item.executeConstructor;
 
 		itemParams = item.parameters !== undefined ? item.parameters : {};
 		functionsModel.clear();
@@ -117,10 +113,6 @@ Window {
 			var parameter = transactionDialog.transactionParams.get(p);
 			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
 			var param = intComponent.createObject(modalTransactionDialog);
-			console.log(param);
-			console.log(JSON.stringify(param));
-			console.log(item);
-			console.log(JSON.stringify(item));
 
 			param.setValue(parameter.value);
 			item.parameters[parameter.name] = param;
@@ -128,102 +120,126 @@ Window {
 		return item;
 	}
 
-	GridLayout {
+	ColumnLayout {
 		id: dialogContent
-		columns: 2
-		anchors.fill: parent
+		width: parent.width
+		anchors.left: parent.left
+		anchors.right: parent.right
 		anchors.margins: 10
-		rowSpacing: 10
-		columnSpacing: 10
-
-		Label {
-			id: functionLabel;
-			text: qsTr("Function")
-		}
-		ComboBox {
-			id: functionComboBox
-			Layout.fillWidth: true
-			currentIndex: -1
-			textRole: "text"
-			editable: false
-			model: ListModel {
-				id: functionsModel
-			}
-			onCurrentIndexChanged: {
-				loadParameters();
-			}
-		}
-
-		Label {
-			id: valueLabel
-			text: qsTr("Value")
-		}
-		Rectangle
+		spacing: 30
+		RowLayout
 		{
-			id: valueFieldRect
+			id: rowFunction
 			Layout.fillWidth: true
-			Ether {
-				id: valueField
-				edit: true
-				displayFormattedValue: true
+			height: 150
+			Label {
+				Layout.preferredWidth: 75
+				text: qsTr("Function")
+			}
+			ComboBox {
+				id: functionComboBox
+				Layout.fillWidth: true
+				currentIndex: -1
+				textRole: "text"
+				editable: false
+				model: ListModel {
+					id: functionsModel
+				}
+				onCurrentIndexChanged: {
+					loadParameters();
+				}
 			}
 		}
 
-		Label {
-			id: gasLabel
-			text: qsTr("Gas")
-		}
-		Rectangle
+
+		RowLayout
 		{
-			id: gasFieldRect
+			id: rowValue
 			Layout.fillWidth: true
-			Ether {
-				id: gasField
-				edit: true
-				displayFormattedValue: true
+			Label {
+				Layout.preferredWidth: 75
+				text: qsTr("Value")
+			}
+			Rectangle
+			{
+				Layout.fillWidth: true
+				Ether {
+					id: valueField
+					edit: true
+					displayFormattedValue: true
+				}
 			}
 		}
 
-		Label {
-			id: gasPriceLabel
-			text: qsTr("Gas Price")
-		}
-		Rectangle
+
+		RowLayout
 		{
-			id: gasPriceRect
+			id: rowGas
 			Layout.fillWidth: true
-			Ether {
-				id: gasPriceField
-				edit: true
-				displayFormattedValue: true
+			Label {
+				Layout.preferredWidth: 75
+				text: qsTr("Gas")
+			}
+			Rectangle
+			{
+				Layout.fillWidth: true
+				Ether {
+					id: gasField
+					edit: true
+					displayFormattedValue: true
+				}
 			}
 		}
 
-		Label {
-			text: qsTr("Parameters")
-		}
-		TableView {
-			model: paramsModel
+		RowLayout
+		{
+			id: rowGasPrice
 			Layout.fillWidth: true
+			Label {
+				Layout.preferredWidth: 75
+				text: qsTr("Gas Price")
+			}
+			Rectangle
+			{
+				Layout.fillWidth: true
+				Ether {
+					id: gasPriceField
+					edit: true
+					displayFormattedValue: true
+				}
+			}
+		}
 
-			TableViewColumn {
-				role: "name"
-				title: "Name"
-				width: 120
+		RowLayout
+		{
+			Layout.fillWidth: true
+			Label {
+				text: qsTr("Parameters")
+				Layout.preferredWidth: 75
 			}
-			TableViewColumn {
-				role: "type"
-				title: "Type"
-				width: 120
-			}
-			TableViewColumn {
-				role: "value"
-				title: "Value"
-				width: 120
-			}
+			TableView {
+				model: paramsModel
+				Layout.fillWidth: true
 
-			itemDelegate: {
-				return editableDelegate;
+				TableViewColumn {
+					role: "name"
+					title: "Name"
+					width: 120
+				}
+				TableViewColumn {
+					role: "type"
+					title: "Type"
+					width: 120
+				}
+				TableViewColumn {
+					role: "value"
+					title: "Value"
+					width: 120
+				}
+
+				itemDelegate: {
+					return editableDelegate;
+				}
 			}
 		}
 	}
