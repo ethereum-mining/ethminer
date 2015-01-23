@@ -4,6 +4,7 @@ var editor = CodeMirror(document.body, {
 							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
+							indentWithTabs: true,
 						});
 
 editor.setOption("theme", "solarized dark");
