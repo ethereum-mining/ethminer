@@ -80,6 +80,11 @@ Rectangle {
 			rightView.show();
 	}
 
+	function rightViewIsVisible()
+	{
+		return rightView.visible;
+	}
+
 	function hideRightView() {
 		if (rightView.visible)
 			rightView.hide();
@@ -87,10 +92,6 @@ Rectangle {
 
 	function toggleWebPreview() {
 		webPreview.visible = !webPreview.visible;
-	}
-
-	function rightViewVisible()	{
-		return rightView.visible;
 	}
 
 	CodeEditorExtensionManager {

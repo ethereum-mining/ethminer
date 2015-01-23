@@ -113,7 +113,7 @@ Rectangle {
 				Action {
 					id: debugRunActionIcon
 					onTriggered: {
-						if (mainContent.rightViewVisible())
+						if (mainContent.rightViewIsVisible())
 							mainContent.hideRightView()
 						else
 							mainContent.startQuickDebugging();
