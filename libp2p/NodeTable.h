@@ -122,7 +122,7 @@ public:
 	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
 	~NodeTable();
 	
-	/// Constants for Kademlia, mostly derived from address space.
+	/// Constants for Kademlia, derived from address space.
 	
 	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
 	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
@@ -269,6 +269,9 @@ struct PingNode: RLPXDatagram<PingNode>
 	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep) {}
 	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
 
+	uint8_t packetType() { return 1; }
+	
+	unsigned version = 1;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
@@ -283,20 +286,17 @@ struct PingNode: RLPXDatagram<PingNode>
  * RLP Encoded Items: 1
  * Minimum Encoded Size: 33 bytes
  * Maximum Encoded Size: 33 bytes
- *
- * @todo expiration
- * @todo value of replyTo
- * @todo create from PingNode (reqs RLPXDatagram verify flag)
  */
 struct Pong: RLPXDatagram<Pong>
 {
 	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep) {}
 
-	h256 replyTo; // hash of rlp of PingNode
+	uint8_t packetType() { return 2; }
+	h256 echo;				///< MCD of PingNode
 	unsigned expiration;
 	
-	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << replyTo; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); replyTo = (h256)r[0]; }
+	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << echo; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; }
 };
 
 /**
@@ -317,6 +317,7 @@ struct FindNode: RLPXDatagram<FindNode>
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
 	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram<FindNode>(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
 	
+	uint8_t packetType() { return 3; }
 	h512 target;
 	unsigned expiration;
 	
@@ -329,8 +330,6 @@ struct FindNode: RLPXDatagram<FindNode>
  *
  * RLP Encoded Items: 2 (first item is list)
  * Minimum Encoded Size: 10 bytes
- *
- * @todo nonce: Should be replaced with expiration.
  */
 struct Neighbours: RLPXDatagram<Neighbours>
 {
@@ -346,7 +345,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	};
 	
 	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep) {}
-	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to)
+	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), expiration(futureFromEpoch(std::chrono::seconds(30)))
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
@@ -359,6 +358,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		}
 	}
 	
+	uint8_t packetType() { return 4; }
 	std::list<Node> nodes;
 	unsigned expiration = 1;
 

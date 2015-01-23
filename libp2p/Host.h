@@ -69,6 +69,7 @@ class Host;
  * Host of the responsibility. (&& remove save/restoreNodes)
  * @todo reimplement recording of historical session information on per-transport basis
  * @todo rebuild nodetable when localNetworking is enabled/disabled
+ * @todo move attributes into protected
  */
 class Peer: public Node
 {
@@ -79,11 +80,6 @@ public:
 
 	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
 	
-protected:
-	
-	/// Used by isOffline() and (todo) for peer to emit session information.
-	std::weak_ptr<Session> m_session;
-	
 	int score = 0;									///< All time cumulative.
 	int rating = 0;									///< Trending.
 	
@@ -93,6 +89,10 @@ protected:
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;
 	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
+	
+protected:
+	/// Used by isOffline() and (todo) for peer to emit session information.
+	std::weak_ptr<Session> m_session;
 };
 using Peers = std::vector<Peer>;
 
@@ -260,7 +260,6 @@ private:
 	
 	std::set<bi::address> m_peerAddresses;									///< Public addresses that peers (can) know us by.
 
-	// Our capabilities.
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
