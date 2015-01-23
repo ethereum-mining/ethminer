@@ -85,13 +85,17 @@ function addFile(fileName) {
 	var extension = fileName.substring(fileName.lastIndexOf("."), fileName.length);
 	var isContract = extension === ".sol";
 	var isHtml = extension === ".html";
+	var isCss = extension === ".css";
+	var isJs = extension === ".js";
+	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
 	var docData = {
 		contract: false,
 		path: p,
 		fileName: fileName,
 		name: isContract ? "Contract" : fileName,
 		documentId: fileName,
-		isText: isContract || isHtml || extension === ".js",
+		syntaxMode: syntaxMode,
+		isText: isContract || isHtml || isCss || isJs,
 		isContract: isContract,
 		isHtml: isHtml,
 	};
