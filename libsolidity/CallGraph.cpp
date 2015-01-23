@@ -31,17 +31,14 @@ namespace dev
 namespace solidity
 {
 
-void CallGraph::addFunction(FunctionDefinition const& _function)
+void CallGraph::addNode(ASTNode const& _node)
 {
-	if (!m_functionsSeen.count(&_function))
-	{
-		m_functionsSeen.insert(&_function);
-		m_workQueue.push(&_function);
-	}
+	_node.accept(*this);
 }
 
 set<FunctionDefinition const*> const& CallGraph::getCalls()
 {
+	computeCallGraph();
 	return m_functionsSeen;
 }
 
@@ -49,8 +46,7 @@ void CallGraph::computeCallGraph()
 {
 	while (!m_workQueue.empty())
 	{
-		FunctionDefinition const* fun = m_workQueue.front();
-		fun->accept(*this);
+		m_workQueue.front()->accept(*this);
 		m_workQueue.pop();
 	}
 }
@@ -59,8 +55,49 @@ bool CallGraph::visit(Identifier const& _identifier)
 {
 	FunctionDefinition const* fun = dynamic_cast<FunctionDefinition const*>(_identifier.getReferencedDeclaration());
 	if (fun)
+	{
+		if (m_overrideResolver)
+			fun = (*m_overrideResolver)(fun->getName());
+		solAssert(fun, "Error finding override for function " + fun->getName());
 		addFunction(*fun);
+	}
 	return true;
+}
+
+bool CallGraph::visit(FunctionDefinition const& _function)
+{
+	addFunction(_function);
+	return true;
+}
+
+bool CallGraph::visit(MemberAccess const& _memberAccess)
+{
+	// used for "BaseContract.baseContractFunction"
+	if (_memberAccess.getExpression().getType()->getCategory() == Type::Category::TYPE)
+	{
+		TypeType const& type = dynamic_cast<TypeType const&>(*_memberAccess.getExpression().getType());
+		if (type.getMembers().getMemberType(_memberAccess.getMemberName()))
+		{
+			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*type.getActualType())
+													.getContractDefinition();
+			for (ASTPointer<FunctionDefinition> const& function: contract.getDefinedFunctions())
+				if (function->getName() == _memberAccess.getMemberName())
+				{
+					addFunction(*function);
+					return true;
+				}
+		}
+	}
+	return true;
+}
+
+void CallGraph::addFunction(FunctionDefinition const& _function)
+{
+	if (!m_functionsSeen.count(&_function))
+	{
+		m_functionsSeen.insert(&_function);
+		m_workQueue.push(&_function);
+	}
 }
 
 }

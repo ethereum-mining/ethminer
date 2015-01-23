@@ -20,13 +20,21 @@
  */
 
 #include "Exceptions.h"
+#include <boost/thread.hpp>
 #include <libdevcore/CommonIO.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-#define ETH_RETURN_STRING(S) static string s_what; s_what = S; return s_what.c_str();
+#if ALL_COMPILERS_ARE_CPP11
+#define ETH_RETURN_STRING(S) thread_local static string s_what; s_what = S; return s_what.c_str();
+#elsif USE_BOOST_TLS
+static boost::thread_specific_ptr<string> g_exceptionMessage;
+#define ETH_RETURN_STRING(S) if (!g_exceptionMessage.get()); g_exceptionMessage.reset(new string); *g_exceptionMessage.get() = S; return g_exceptionMessage.get()->c_str();
+#else
+#define ETH_RETURN_STRING(S) m_message = S; return m_message.c_str();
+#endif
 
 const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }
 const char* UncleInChain::what() const noexcept { ETH_RETURN_STRING("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"); }

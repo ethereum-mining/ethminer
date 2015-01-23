@@ -4,59 +4,186 @@
 //statesList => ListView
 
 var currentSelectedState = null;
+var jumpStartingPoint = null;
 function init()
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	statesSlider.maximumValue = debugStates.length - 1;
+	statesSlider.value = 0;
+	statesList.model = humanReadableExecutionCode;
 	currentSelectedState = 0;
 	select(currentSelectedState);
+
+	jumpOutBackAction.enabled(false);
+	jumpIntoBackAction.enabled(false);
+	jumpIntoForwardAction.enabled(false);
+	jumpOutForwardAction.enabled(false);
 }
 
 function moveSelection(incr)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
 	if (currentSelectedState + incr >= 0)
 	{
 		if (currentSelectedState + incr < debugStates.length)
-		{
 			select(currentSelectedState + incr);
-		}
-		else
-		{
-			endOfDebug();
-		}
+		statesSlider.value = currentSelectedState;
 	}
 }
 
 function select(stateIndex)
 {
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	var codeLine = codeStr(stateIndex);
 	var state = debugStates[stateIndex];
-	var codeStr = bytesCodeMapping.getValue(state.curPC);
-	highlightSelection(codeStr);
-	currentSelectedState = codeStr;
+	highlightSelection(codeLine);
+	currentSelectedState = stateIndex;
 	completeCtxInformation(state);
-	levelList.model = state.levels;
-	levelList.update();
+
+	if (state.instruction === "JUMP")
+		jumpIntoForwardAction.enabled(true);
+	else
+		jumpIntoForwardAction.enabled(false);
+
+	if (state.instruction === "JUMPDEST")
+		jumpIntoBackAction.enabled(true);
+	else
+		jumpIntoBackAction.enabled(false);
+}
+
+function codeStr(stateIndex)
+{
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	var state = debugStates[stateIndex];
+	return bytesCodeMapping.getValue(state.curPC);
 }
 
 function highlightSelection(index)
 {
-	console.log(index);
 	statesList.currentIndex = index;
 }
 
 function completeCtxInformation(state)
 {
-	debugStackTxt.text = state.debugStack;
-	debugStorageTxt.text = state.debugStorage;
-	debugMemoryTxt.text = state.debugMemory;
-	debugCallDataTxt.text = state.debugCallData;
-	headerInfoLabel.text = state.headerInfo
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	currentStep.update(state.step);
+	mem.update(state.newMemSize.value() + " " + qsTr("words"));
+	stepCost.update(state.gasCost.value());
+	gasSpent.update(debugStates[0].gas.subtract(state.gas).value());
+
+	stack.listModel = state.debugStack;
+	storage.listModel = state.debugStorage;
+	memoryDump.listModel = state.debugMemory;
+	callDataDump.listModel = state.debugCallData;
 }
 
-function endOfDebug()
+function displayReturnValue()
 {
-	var state = debugStates[debugStates.length - 1];
-	debugStorageTxt.text = "";
-	debugCallDataTxt.text = "";
-	debugStackTxt.text = "";
-	debugMemoryTxt.text = state.endOfDebug;
-	headerInfoLabel.text = "EXIT  |  GAS: " + state.gasLeft;
+	headerReturnList.model = contractCallReturnParameters;
+	headerReturnList.update();
+}
+
+function stepOutBack()
+{
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	if (jumpStartingPoint != null)
+	{
+		select(jumpStartingPoint);
+		jumpStartingPoint = null;
+		jumpOutBackAction.enabled(false);
+		jumpOutForwardAction.enabled(false);
+	}
+}
+
+function stepIntoBack()
+{
+	moveSelection(-1);
+}
+
+function stepOverBack()
+{
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	var state = debugStates[currentSelectedState];
+	if (state.instruction === "JUMPDEST")
+	{
+		for (var k = currentSelectedState; k > 0; k--)
+		{
+			var line = bytesCodeMapping.getValue(debugStates[k].curPC);
+			if (line === statesList.currentIndex - 2)
+			{
+				select(k);
+				break;
+			}
+		}
+	}
+	else
+		moveSelection(-1);
+}
+
+function stepOverForward()
+{
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	var state = debugStates[currentSelectedState];
+	if (state.instruction === "JUMP")
+	{
+		for (var k = currentSelectedState; k < debugStates.length; k++)
+		{
+			var line = bytesCodeMapping.getValue(debugStates[k].curPC);
+			if (line === statesList.currentIndex + 2)
+			{
+				select(k);
+				break;
+			}
+		}
+	}
+	else
+		moveSelection(1);
+}
+
+function stepIntoForward()
+{
+	if (typeof(debugStates) === "undefined")
+		return;
+
+	var state = debugStates[currentSelectedState];
+	if (state.instruction === "JUMP")
+	{
+		jumpStartingPoint = currentSelectedState;
+		moveSelection(1);
+		jumpOutBackAction.enabled(true);
+		jumpOutForwardAction.enabled(true);
+	}
+}
+
+function stepOutForward()
+{
+	if (jumpStartingPoint != null)
+	{
+		stepOutBack();
+		stepOverForward();
+		jumpOutBackAction.enabled(false);
+		jumpOutForwardAction.enabled(false);
+	}
+}
+
+function jumpTo(value)
+{
+	currentSelectedState = value;
+	select(currentSelectedState);
 }

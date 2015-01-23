@@ -16,6 +16,7 @@
 */
 /**
  * @author Lefteris <lefteris@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Solidity command line interface.
  */
@@ -35,6 +36,7 @@
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
 #include <libsolidity/ASTPrinter.h>
+#include <libsolidity/ASTJsonConverter.h>
 #include <libsolidity/NameAndTypeResolver.h>
 #include <libsolidity/Exceptions.h>
 #include <libsolidity/CompilerStack.h>
@@ -50,9 +52,11 @@ namespace solidity
 
 // LTODO: Maybe some argument class pairing names with
 // extensions and other attributes would be a better choice here?
-static string const g_argAbiStr         = "abi";
+static string const g_argAbiStr         = "json-abi";
+static string const g_argSolAbiStr      = "sol-abi";
 static string const g_argAsmStr         = "asm";
 static string const g_argAstStr         = "ast";
+static string const g_argAstJson        = "ast-json";
 static string const g_argBinaryStr      = "binary";
 static string const g_argOpcodesStr     = "opcodes";
 static string const g_argNatspecDevStr  = "natspec-dev";
@@ -60,7 +64,7 @@ static string const g_argNatspecUserStr = "natspec-user";
 
 static void version()
 {
-	cout << "solc, the solidity complier commandline interface " << dev::Version << endl
+	cout << "solc, the solidity compiler commandline interface " << dev::Version << endl
 		 << "  by Christian <c@ethdev.com> and Lefteris <lefteris@ethdev.com>, (c) 2014." << endl
 		 << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
@@ -73,9 +77,12 @@ static inline bool argToStdout(po::variables_map const& _args, string const& _na
 
 static bool needStdout(po::variables_map const& _args)
 {
-	return argToStdout(_args, g_argAbiStr) || argToStdout(_args, g_argNatspecUserStr) ||
-		   argToStdout(_args, g_argNatspecDevStr) || argToStdout(_args, g_argAsmStr) ||
-		   argToStdout(_args, g_argOpcodesStr) || argToStdout(_args, g_argBinaryStr);
+
+	return
+		argToStdout(_args, g_argAbiStr) || argToStdout(_args, g_argSolAbiStr) ||
+		argToStdout(_args, g_argNatspecUserStr) || argToStdout(_args, g_argAstJson) ||
+		argToStdout(_args, g_argNatspecDevStr) || argToStdout(_args, g_argAsmStr) ||
+		argToStdout(_args, g_argOpcodesStr) || argToStdout(_args, g_argBinaryStr);
 }
 
 static inline bool outputToFile(OutputType type)
@@ -146,8 +153,7 @@ void CommandLineInterface::handleBytecode(string const& _contract)
 		handleBinary(_contract);
 }
 
-void CommandLineInterface::handleJson(DocumentationType _type,
-									  string const& _contract)
+void CommandLineInterface::handleMeta(DocumentationType _type, string const& _contract)
 {
 	std::string argName;
 	std::string suffix;
@@ -157,10 +163,15 @@ void CommandLineInterface::handleJson(DocumentationType _type,
 	case DocumentationType::ABI_INTERFACE:
 		argName = g_argAbiStr;
 		suffix = ".abi";
-		title = "Contract ABI";
+		title = "Contract JSON ABI";
+		break;
+	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+		argName = g_argSolAbiStr;
+		suffix = ".sol";
+		title = "Contract Solidity ABI";
 		break;
 	case DocumentationType::NATSPEC_USER:
-		argName = "g_argNatspecUserStr";
+		argName = g_argNatspecUserStr;
 		suffix = ".docuser";
 		title = "User Documentation";
 		break;
@@ -180,13 +191,13 @@ void CommandLineInterface::handleJson(DocumentationType _type,
 		if (outputToStdout(choice))
 		{
 			cout << title << endl;
-			cout << m_compiler.getJsonDocumentation(_contract, _type);
+			cout << m_compiler.getMetadata(_contract, _type) << endl;
 		}
 
 		if (outputToFile(choice))
 		{
 			ofstream outFile(_contract + suffix);
-			outFile << m_compiler.getJsonDocumentation(_contract, _type);
+			outFile << m_compiler.getMetadata(_contract, _type);
 			outFile.close();
 		}
 	}
@@ -207,6 +218,8 @@ bool CommandLineInterface::parseArguments(int argc, char** argv)
 		("input-file", po::value<vector<string>>(), "input file")
 		(g_argAstStr.c_str(), po::value<OutputType>(),
 		 "Request to output the AST of the contract. " OUTPUT_TYPE_STR)
+		(g_argAstJson.c_str(), po::value<OutputType>(),
+		 "Request to output the AST of the contract in JSON format. " OUTPUT_TYPE_STR)
 		(g_argAsmStr.c_str(), po::value<OutputType>(),
 		 "Request to output the EVM assembly of the contract. " OUTPUT_TYPE_STR)
 		(g_argOpcodesStr.c_str(), po::value<OutputType>(),
@@ -214,7 +227,9 @@ bool CommandLineInterface::parseArguments(int argc, char** argv)
 		(g_argBinaryStr.c_str(), po::value<OutputType>(),
 		 "Request to output the contract in binary (hexadecimal). " OUTPUT_TYPE_STR)
 		(g_argAbiStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract's ABI interface. "  OUTPUT_TYPE_STR)
+		 "Request to output the contract's JSON ABI interface. "  OUTPUT_TYPE_STR)
+		(g_argSolAbiStr.c_str(), po::value<OutputType>(),
+		 "Request to output the contract's Solidity ABI interface. "  OUTPUT_TYPE_STR)
 		(g_argNatspecUserStr.c_str(), po::value<OutputType>(),
 		 "Request to output the contract's Natspec user documentation. " OUTPUT_TYPE_STR)
 		(g_argNatspecDevStr.c_str(), po::value<OutputType>(),
@@ -329,20 +344,44 @@ bool CommandLineInterface::processInput()
 	return true;
 }
 
-void CommandLineInterface::actOnInput()
+void CommandLineInterface::handleAst(string const& _argStr)
 {
-	// do we need AST output?
-	if (m_args.count(g_argAstStr))
+	string title;
+	string suffix;
+
+	if (_argStr == g_argAstStr)
 	{
-		auto choice = m_args[g_argAstStr].as<OutputType>();
+		title = "Syntax trees:";
+		suffix = ".ast";
+	}
+	else if (_argStr == g_argAstJson)
+	{
+		title = "JSON AST:";
+		suffix = ".json";
+	}
+	else
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Illegal argStr for AST"));
+
+	// do we need AST output?
+	if (m_args.count(_argStr))
+	{
+		auto choice = m_args[_argStr].as<OutputType>();
 		if (outputToStdout(choice))
 		{
-			cout << "Syntax trees:" << endl << endl;
+			cout << title << endl << endl;
 			for (auto const& sourceCode: m_sourceCodes)
 			{
 				cout << endl << "======= " << sourceCode.first << " =======" << endl;
-				ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
-				printer.print(cout);
+				if (_argStr == g_argAstStr)
+				{
+					ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
+					printer.print(cout);
+				}
+				else
+				{
+					ASTJsonConverter converter(m_compiler.getAST(sourceCode.first));
+					converter.print(cout);
+				}
 			}
 		}
 
@@ -352,12 +391,27 @@ void CommandLineInterface::actOnInput()
 			{
 				boost::filesystem::path p(sourceCode.first);
 				ofstream outFile(p.stem().string() + ".ast");
-				ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
-				printer.print(outFile);
+				if (_argStr == g_argAstStr)
+				{
+					ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
+					printer.print(outFile);
+				}
+				else
+				{
+					ASTJsonConverter converter(m_compiler.getAST(sourceCode.first));
+					converter.print(outFile);
+				}
 				outFile.close();
 			}
 		}
 	}
+}
+
+void CommandLineInterface::actOnInput()
+{
+	// do we need AST output?
+	handleAst(g_argAstStr);
+	handleAst(g_argAstJson);
 
 	vector<string> contracts = m_compiler.getContractNames();
 	for (string const& contract: contracts)
@@ -384,9 +438,10 @@ void CommandLineInterface::actOnInput()
 		}
 
 		handleBytecode(contract);
-		handleJson(DocumentationType::ABI_INTERFACE, contract);
-		handleJson(DocumentationType::NATSPEC_DEV, contract);
-		handleJson(DocumentationType::NATSPEC_USER, contract);
+		handleMeta(DocumentationType::ABI_INTERFACE, contract);
+		handleMeta(DocumentationType::ABI_SOLIDITY_INTERFACE, contract);
+		handleMeta(DocumentationType::NATSPEC_DEV, contract);
+		handleMeta(DocumentationType::NATSPEC_USER, contract);
 	} // end of contracts iteration
 }
 

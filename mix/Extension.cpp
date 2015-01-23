@@ -19,26 +19,28 @@
 
 #include <QMessageBox>
 #include <QDebug>
+#include <QQmlApplicationEngine>
 #include <libevm/VM.h>
+#include <libwebthree/WebThree.h>
 #include "Extension.h"
 #include "AppContext.h"
 using namespace dev;
 using namespace dev::mix;
 
-Extension::Extension()
+Extension::Extension(AppContext* _context)
 {
-	init();
+	init(_context);
 }
 
-Extension::Extension(ExtensionDisplayBehavior _displayBehavior)
+Extension::Extension(AppContext* _context, ExtensionDisplayBehavior _displayBehavior)
 {
-	init();
+	init(_context);
 	m_displayBehavior = _displayBehavior;
 }
 
-void Extension::init()
+void Extension::init(AppContext* _context)
 {
-	m_ctx = AppContext::getInstance();
+	m_ctx = _context;
 	m_appEngine = m_ctx->appEngine();
 }
 
@@ -49,7 +51,7 @@ void Extension::addTabOn(QObject* _view)
 
 	QVariant returnValue;
 	QQmlComponent* component = new QQmlComponent(
-				AppContext::getInstance()->appEngine(),
+				m_appEngine,
 				QUrl(contentUrl()), _view);
 
 	QMetaObject::invokeMethod(_view, "addTab",
@@ -65,10 +67,10 @@ void Extension::addContentOn(QObject* _view)
 	Q_UNUSED(_view);
 	if (m_displayBehavior == ExtensionDisplayBehavior::ModalDialog)
 	{
-		QObject* dialogWin = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
-		QObject* dialogWinComponent = AppContext::getInstance()->appEngine()->rootObjects().at(0)->findChild<QObject*>("modalDialogContent", Qt::FindChildrenRecursively);
-		QMetaObject::invokeMethod(dialogWin, "close");
-		dialogWinComponent->setProperty("source", contentUrl());
+		QQmlComponent* component = new QQmlComponent(m_appEngine, QUrl(contentUrl()), _view);
+		QObject* dialogWin = m_appEngine->rootObjects().at(0)->findChild<QObject*>("dialog", Qt::FindChildrenRecursively);
+		QObject* dialogWinComponent = m_appEngine->rootObjects().at(0)->findChild<QObject*>("modalDialogContent", Qt::FindChildrenRecursively);
+		dialogWinComponent->setProperty("sourceComponent", QVariant::fromValue(component));
 		dialogWin->setProperty("title", title());
 		QMetaObject::invokeMethod(dialogWin, "open");
 	}

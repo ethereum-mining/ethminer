@@ -20,12 +20,19 @@
  */
 
 #include "OurWebThreeStubServer.h"
+
+#include <QMessageBox>
+#include <QAbstractButton>
+#include <libwebthree/WebThree.h>
+#include "MainWin.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
-	WebThreeStubServer(_conn, _web3, _accounts)
+OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3,
+											 std::vector<dev::KeyPair> const& _accounts, Main* main):
+	WebThreeStubServer(_conn, _web3, _accounts), m_web3(&_web3), m_main(main)
 {}
 
 std::string OurWebThreeStubServer::shh_newIdentity()
@@ -33,4 +40,33 @@ std::string OurWebThreeStubServer::shh_newIdentity()
 	dev::KeyPair kp = dev::KeyPair::create();
 	emit onNewId(QString::fromStdString(toJS(kp.sec())));
 	return toJS(kp.pub());
+}
+
+bool OurWebThreeStubServer::showAuthenticationPopup(std::string const& _title, std::string const& _text) const
+{
+	QMessageBox userInput;
+	userInput.setText(QString::fromStdString(_title));
+	userInput.setInformativeText(QString::fromStdString(_text + "\n Do you wish to allow this?"));
+	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	userInput.button(QMessageBox::Ok)->setText("Allow");
+	userInput.button(QMessageBox::Cancel)->setText("Reject");
+	userInput.setDefaultButton(QMessageBox::Cancel);
+	return userInput.exec() == QMessageBox::Ok;
+}
+
+bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
+{
+	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
+	if (contractCodeHash == EmptySHA3)
+		// recipient has no code - nothing special about this transaction.
+		// TODO: show basic message for value transfer.
+		return true;
+
+	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
+	if (userNotice.empty())
+		return showAuthenticationPopup("Unverified Pending Transaction",
+									   "An undocumented transaction is about to be executed.");
+
+	// otherwise it's a transaction to a contract for which we have the natspec
+	return showAuthenticationPopup("Pending Transaction", userNotice);
 }

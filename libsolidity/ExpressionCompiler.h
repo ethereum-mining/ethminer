@@ -16,6 +16,7 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Solidity AST to EVM bytecode compiler for expressions.
  */
@@ -50,14 +51,15 @@ public:
 	static void compileExpression(CompilerContext& _context, Expression const& _expression, bool _optimize = false);
 
 	/// Appends code to remove dirty higher order bits in case of an implicit promotion to a wider type.
-	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack, Type const& _targetType);
+	static void appendTypeConversion(CompilerContext& _context, Type const& _typeOnStack,
+									 Type const& _targetType, bool _cleanupNeeded = false);
 
 private:
 	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
 		m_optimize(_optimize), m_context(_compilerContext), m_currentLValue(m_context) {}
 
 	virtual bool visit(Assignment const& _assignment) override;
-	virtual void endVisit(UnaryOperation const& _unaryOperation) override;
+	virtual bool visit(UnaryOperation const& _unaryOperation) override;
 	virtual bool visit(BinaryOperation const& _binaryOperation) override;
 	virtual bool visit(FunctionCall const& _functionCall) override;
 	virtual bool visit(NewExpression const& _newExpression) override;
@@ -85,24 +87,13 @@ private:
 	//// Appends code that cleans higher-order bits for integer types.
 	void appendHighBitsCleanup(IntegerType const& _typeOnStack);
 
-	/// Additional options used in appendExternalFunctionCall.
-	struct FunctionCallOptions
-	{
-		FunctionCallOptions() {}
-		/// Invoked to copy the address to the stack
-		std::function<void()> obtainAddress;
-		/// Invoked to copy the ethe value to the stack (if not specified, value is 0).
-		std::function<void()> obtainValue;
-		/// If true, do not prepend function index to call data
-		bool bare = false;
-		/// If false, use calling convention that all arguments and return values are packed as
-		/// 32 byte values with padding.
-		bool packDensely = true;
-	};
-
 	/// Appends code to call a function of the given type with the given arguments.
 	void appendExternalFunctionCall(FunctionType const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
-									FunctionCallOptions const& _options = FunctionCallOptions());
+									bool bare = false);
+	/// Appends code that copies the given arguments to memory (with optional offset).
+	/// @returns the number of bytes copied to memory
+	unsigned appendArgumentCopyToMemory(TypePointers const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
+										unsigned _memoryOffset = 0);
 
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.
@@ -120,7 +111,7 @@ private:
 		/// Set type according to the declaration and retrieve the reference.
 		/// @a _expression is the current expression
 		void fromIdentifier(Identifier const& _identifier, Declaration const& _declaration);
-		void reset() { m_type = NONE; m_baseStackOffset = 0; }
+		void reset() { m_type = NONE; m_baseStackOffset = 0; m_size = 0; }
 
 		bool isValid() const { return m_type != NONE; }
 		bool isInOnStack() const { return m_type == STACK; }
@@ -139,19 +130,21 @@ private:
 		/// Also removes the stored value from the stack if @a _move is
 		/// true. @a _expression is the current expression, used for error reporting.
 		void storeValue(Expression const& _expression, bool _move = false) const;
-
+		/// Stores zero in the lvalue.
+		/// @a _expression is the current expression, used for error reporting.
+		void setToZero(Expression const& _expression) const;
 		/// Convenience function to convert the stored reference to a value and reset type to NONE if
 		/// the reference was not requested by @a _expression.
 		void retrieveValueIfLValueNotRequested(Expression const& _expression);
 
 	private:
 		CompilerContext* m_context;
-		LValueType m_type;
+		LValueType m_type = NONE;
 		/// If m_type is STACK, this is base stack offset (@see
 		/// CompilerContext::getBaseStackOffsetOfVariable) of a local variable.
-		unsigned m_baseStackOffset;
-		/// Size of the value of this lvalue on the stack.
-		unsigned m_stackSize;
+		unsigned m_baseStackOffset = 0;
+		/// Size of the value of this lvalue on the stack or the storage.
+		unsigned m_size = 0;
 	};
 
 	bool m_optimize;

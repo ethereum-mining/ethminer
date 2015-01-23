@@ -50,7 +50,7 @@ void TransactionReceipt::streamRLP(RLPStream& _s) const
 		l.streamRLP(_s);
 }
 
-std::ostream& dev::operator<<(std::ostream& _out, TransactionReceipt const& _r)
+std::ostream& dev::eth::operator<<(std::ostream& _out, TransactionReceipt const& _r)
 {
 	_out << "Root: " << _r.stateRoot() << std::endl;
 	_out << "Gas used: " << _r.gasUsed() << std::endl;

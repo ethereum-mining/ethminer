@@ -28,6 +28,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
+#include <liblll/Compiler.h>
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
@@ -56,6 +57,7 @@ std::map<Address, Account> const& dev::eth::genesisState()
 {
 	static std::map<Address, Account> s_ret;
 	if (s_ret.empty())
+	{
 		// Initialise.
 		for (auto i: vector<string>({
             "51ba59315b3a95761d0863b05ccc7a7f54703d99",
@@ -68,10 +70,11 @@ std::map<Address, Account> const& dev::eth::genesisState()
 			"e4157b34ea9615cfbde6b4fda419828124b70c78"
 		}))
 			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
+	}
 	return s_ret;
 }
 
-BlockInfo* BlockChain::s_genesis = nullptr;
+std::unique_ptr<BlockInfo> BlockChain::s_genesis;
 boost::shared_mutex BlockChain::x_genesis;
 
 ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
