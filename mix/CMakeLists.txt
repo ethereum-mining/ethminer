@@ -59,6 +59,6 @@ eth_install_executable(${EXECUTABLE}
 	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
 )
 
-#add qml resources to proect tree in Qt creator
+#add qml files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
 add_custom_target(dummy SOURCES ${QMLFILES})

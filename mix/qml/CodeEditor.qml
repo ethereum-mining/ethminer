@@ -64,6 +64,7 @@ Component {
 			font.family: "Monospace"
 			font.pointSize: 12
 			width: parent.width
+
 			tabChangesFocus: false
 			Keys.onPressed: {
 				if (event.key === Qt.Key_Tab) {
