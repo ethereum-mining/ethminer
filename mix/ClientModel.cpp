@@ -24,7 +24,7 @@
 #include <QQmlApplicationEngine>
 #include <libdevcore/CommonJS.h>
 #include <libethereum/Transaction.h>
-#include "ClientModel.h"
+#include <libqwebthree/QWebThree.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "QContractDefinition.h"
@@ -33,13 +33,15 @@
 #include "CodeModel.h"
 #include "ClientModel.h"
 #include "QEther.h"
+#include "Web3Server.h"
+#include "ClientModel.h"
 
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
 ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false)
+	m_context(_context), m_running(false), m_qWebThree(nullptr)
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QEther*>("QEther*");
@@ -53,7 +55,28 @@ ClientModel::ClientModel(AppContext* _context):
 	connect(this, &ClientModel::dataAvailable, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient());
 
+	m_qWebThree = new QWebThree(this);
+	m_qWebThreeConnector.reset(new QWebThreeConnector());
+	m_qWebThreeConnector->setQWeb(m_qWebThree);
+	m_web3Server.reset(new Web3Server(*m_qWebThreeConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
+	connect(m_qWebThree, &QWebThree::response, this, &ClientModel::apiResponse);
+
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
+}
+
+ClientModel::~ClientModel()
+{
+}
+
+void ClientModel::apiRequest(const QString& _message)
+{
+	m_qWebThree->postMessage(_message);
+}
+
+QString ClientModel::contractAddress() const
+{
+	QString address = QString::fromStdString(dev::toJS(m_client->lastContractAddress()));
+	return address;
 }
 
 void ClientModel::debugDeployment()
@@ -196,18 +219,21 @@ void ClientModel::showDebugError(QString const& _error)
 
 ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& ctrTransaction)
 {
-	Address contractAddress;
+	Address newAddress;
 	if (!ctrTransaction.isEmpty())
-		contractAddress = m_client->transact(m_client->userAccount().secret(), ctrTransaction.value, _code, ctrTransaction.gas, ctrTransaction.gasPrice);
+		newAddress = m_client->transact(m_client->userAccount().secret(), ctrTransaction.value, _code, ctrTransaction.gas, ctrTransaction.gasPrice);
 	else
 	{
 		u256 gasPrice = 10000000000000;
 		u256 gas = 125000;
 		u256 amount = 100;
-		contractAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
+		newAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
 	}
+
+	Address lastAddress = m_client->lastContractAddress();
 	ExecutionResult r = m_client->lastExecutionResult();
-	r.contractAddress = contractAddress;
+	if (newAddress != lastAddress)
+		contractAddressChanged();
 	return r;
 }
 
