@@ -451,13 +451,17 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto word = stack.pop();
 
 			auto k32_ = m_builder.CreateTrunc(idx, m_builder.getIntNTy(5), "k_32");
-			auto k32 = m_builder.CreateZExt(k32_, Type::Word);
-			auto k32x8 = m_builder.CreateMul(k32, Constant::get(8), "kx8");
+			auto k32 = m_builder.CreateZExt(k32_, Type::lowPrecision);
+			auto k32x8 = m_builder.CreateMul(k32, m_builder.getInt64(8), "kx8");
 
 			// test for word >> (k * 8 + 7)
-			auto bitpos = m_builder.CreateAdd(k32x8, Constant::get(7), "bitpos");
-			auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
-			auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
+			auto bitpos = m_builder.CreateAdd(k32x8, m_builder.getInt64(7), "bitpos");
+			auto bittester = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto bitresult = m_builder.CreateAnd(word, bittester);
+			auto bittest = m_builder.CreateICmpUGT(bitresult, Constant::get(0));
+			// FIXME: The following does not work - LLVM bug, report!
+			//auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
+			//auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
 
 			auto mask_ = m_builder.CreateShl(Constant::get(1), bitpos);
 			auto mask = m_builder.CreateSub(mask_, Constant::get(1), "mask");
