@@ -318,13 +318,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		else if (host()->isBanned(session()->id()))
 			disable("Peer banned for previous bad behaviour.");
 		else
-		{
-			// Grab transactions off them.
-			RLPStream s;
-			prep(s, GetTransactionsPacket);
-			sealAndSend(s);
 			transition(Asking::Nothing);
-		}
 		break;
 	}
 	case GetTransactionsPacket: break;	// DEPRECATED.

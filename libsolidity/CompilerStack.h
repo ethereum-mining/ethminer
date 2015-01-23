@@ -16,6 +16,7 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Full-stack compiler that converts a source code string to bytecode.
  */
@@ -27,6 +28,7 @@
 #include <memory>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
 
 namespace dev {
 namespace solidity {
@@ -43,7 +45,8 @@ enum class DocumentationType: uint8_t
 {
 	NATSPEC_USER = 1,
 	NATSPEC_DEV,
-	ABI_INTERFACE
+	ABI_INTERFACE,
+	ABI_SOLIDITY_INTERFACE
 };
 
 /**
@@ -73,7 +76,13 @@ public:
 	/// @returns the compiled bytecode
 	bytes const& compile(std::string const& _sourceCode, bool _optimize = false);
 
+	/// @returns the assembled bytecode for a contract.
 	bytes const& getBytecode(std::string const& _contractName = "") const;
+	/// @returns the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
+	bytes const& getRuntimeBytecode(std::string const& _contractName = "") const;
+	/// @returns hash of the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
+	dev::h256 getContractCodeHash(std::string const& _contractName = "") const;
+
 	/// Streams a verbose version of the assembly to @a _outStream.
 	/// Prerequisite: Successful compilation.
 	void streamAssembly(std::ostream& _outStream, std::string const& _contractName = "") const;
@@ -81,11 +90,14 @@ public:
 	/// Returns a string representing the contract interface in JSON.
 	/// Prerequisite: Successful call to parse or compile.
 	std::string const& getInterface(std::string const& _contractName = "") const;
+	/// Returns a string representing the contract interface in Solidity.
+	/// Prerequisite: Successful call to parse or compile.
+	std::string const& getSolidityInterface(std::string const& _contractName = "") const;
 	/// Returns a string representing the contract's documentation in JSON.
 	/// Prerequisite: Successful call to parse or compile.
 	/// @param type The type of the documentation to get.
-	/// Can be one of 3 types defined at @c DocumentationType
-	std::string const& getJsonDocumentation(std::string const& _contractName, DocumentationType _type) const;
+	/// Can be one of 4 types defined at @c DocumentationType
+	std::string const& getMetadata(std::string const& _contractName, DocumentationType _type) const;
 
 	/// @returns the previously used scanner, useful for counting lines during error reporting.
 	Scanner const& getScanner(std::string const& _sourceName = "") const;
@@ -113,16 +125,22 @@ private:
 
 	struct Contract
 	{
-		ContractDefinition const* contract;
+		ContractDefinition const* contract = nullptr;
 		std::shared_ptr<Compiler> compiler;
 		bytes bytecode;
+		bytes runtimeBytecode;
 		std::shared_ptr<InterfaceHandler> interfaceHandler;
 		mutable std::unique_ptr<std::string const> interface;
+		mutable std::unique_ptr<std::string const> solidityInterface;
 		mutable std::unique_ptr<std::string const> userDocumentation;
 		mutable std::unique_ptr<std::string const> devDocumentation;
 
 		Contract();
 	};
+
+	/// Expand source code with preprocessor-like includes.
+	/// @todo Replace with better framework.
+	std::string expanded(std::string const& _sourceCode);
 
 	void reset(bool _keepSources = false);
 	void resolveImports();

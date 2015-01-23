@@ -111,7 +111,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 	return std::move(addresses);
 }
 
-int Network::listen4(bi::tcp::acceptor& _acceptor, unsigned short _listenPort)
+int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort)
 {
 	int retport = -1;
 	for (unsigned i = 0; i < 2; ++i)

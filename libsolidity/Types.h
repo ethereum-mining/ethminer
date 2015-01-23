@@ -70,26 +70,28 @@ private:
 /**
  * Abstract base class that forms the root of the type hierarchy.
  */
-class Type: private boost::noncopyable
+class Type: private boost::noncopyable, public std::enable_shared_from_this<Type>
 {
 public:
 	enum class Category
 	{
-		INTEGER, BOOL, REAL, STRING, CONTRACT, STRUCT, FUNCTION, MAPPING, VOID, TYPE, MAGIC
+		INTEGER, INTEGER_CONSTANT, BOOL, REAL, STRING, CONTRACT, STRUCT, FUNCTION, MAPPING, VOID, TYPE, MAGIC
 	};
 
 	///@{
 	///@name Factory functions
 	/// Factory functions that convert an AST @ref TypeName to a Type.
-	static std::shared_ptr<Type const> fromElementaryTypeName(Token::Value _typeToken);
-	static std::shared_ptr<Type const> fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
-	static std::shared_ptr<Type const> fromMapping(Mapping const& _typeName);
-	static std::shared_ptr<Type const> fromFunction(FunctionDefinition const& _function);
+	static TypePointer fromElementaryTypeName(Token::Value _typeToken);
+	static TypePointer fromUserDefinedTypeName(UserDefinedTypeName const& _typeName);
+	static TypePointer fromMapping(Mapping const& _typeName);
+	static TypePointer fromFunction(FunctionDefinition const& _function);
 	/// @}
 
 	/// Auto-detect the proper type for a literal. @returns an empty pointer if the literal does
 	/// not fit any type.
-	static std::shared_ptr<Type const> forLiteral(Literal const& _literal);
+	static TypePointer forLiteral(Literal const& _literal);
+	/// @returns a pointer to _a or _b if the other is implicitly convertible to it or nullptr otherwise
+	static TypePointer commonType(TypePointer const& _a, TypePointer const& _b);
 
 	virtual Category getCategory() const = 0;
 	virtual bool isImplicitlyConvertibleTo(Type const& _other) const { return *this == _other; }
@@ -97,14 +99,24 @@ public:
 	{
 		return isImplicitlyConvertibleTo(_convertTo);
 	}
-	virtual bool acceptsBinaryOperator(Token::Value) const { return false; }
-	virtual bool acceptsUnaryOperator(Token::Value) const { return false; }
+	/// @returns the resulting type of applying the given unary operator or an empty pointer if
+	/// this is not possible.
+	/// The default implementation does not allow any unary operator.
+	virtual TypePointer unaryOperatorResult(Token::Value) const { return TypePointer(); }
+	/// @returns the resulting type of applying the given binary operator or an empty pointer if
+	/// this is not possible.
+	/// The default implementation allows comparison operators if a common type exists
+	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const
+	{
+		return Token::isCompareOp(_operator) ? commonType(shared_from_this(), _other) : TypePointer();
+	}
 
 	virtual bool operator==(Type const& _other) const { return getCategory() == _other.getCategory(); }
 	virtual bool operator!=(Type const& _other) const { return !this->operator ==(_other); }
 
 	/// @returns number of bytes used by this type when encoded for CALL, or 0 if the encoding
-	/// is not a simple big-endian encoding or the type cannot be stored on the stack.
+	/// is not a simple big-endian encoding or the type cannot be stored in calldata.
+	/// Note that irrespective of this size, each calldata element is padded to a multiple of 32 bytes.
 	virtual unsigned getCalldataEncodedSize() const { return 0; }
 	/// @returns number of bytes required to hold this value in storage.
 	/// For dynamically "allocated" types, it returns the size of the statically allocated head,
@@ -124,7 +136,7 @@ public:
 	TypePointer getMemberType(std::string const& _name) const { return getMembers().getMemberType(_name); }
 
 	virtual std::string toString() const = 0;
-	virtual u256 literalValue(Literal const&) const
+	virtual u256 literalValue(Literal const*) const
 	{
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Literal value requested "
 																		  "for type without literals."));
@@ -147,16 +159,12 @@ public:
 	};
 	virtual Category getCategory() const override { return Category::INTEGER; }
 
-	/// @returns the smallest integer type for the given literal or an empty pointer
-	/// if no type fits.
-	static std::shared_ptr<IntegerType const> smallestTypeForLiteral(std::string const& _literal);
-
 	explicit IntegerType(int _bits, Modifier _modifier = Modifier::UNSIGNED);
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual bool acceptsBinaryOperator(Token::Value _operator) const override;
-	virtual bool acceptsUnaryOperator(Token::Value _operator) const override;
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
 
 	virtual bool operator==(Type const& _other) const override;
 
@@ -166,17 +174,51 @@ public:
 	virtual MemberList const& getMembers() const { return isAddress() ? AddressMemberList : EmptyMemberList; }
 
 	virtual std::string toString() const override;
-	virtual u256 literalValue(Literal const& _literal) const override;
 
 	int getNumBits() const { return m_bits; }
 	bool isHash() const { return m_modifier == Modifier::HASH || m_modifier == Modifier::ADDRESS; }
 	bool isAddress() const { return m_modifier == Modifier::ADDRESS; }
-	int isSigned() const { return m_modifier == Modifier::SIGNED; }
+	bool isSigned() const { return m_modifier == Modifier::SIGNED; }
+
+	static const MemberList AddressMemberList;
 
 private:
 	int m_bits;
 	Modifier m_modifier;
-	static const MemberList AddressMemberList;
+};
+
+/**
+ * Integer constants either literals or computed. Example expressions: 2, 2+10, ~10.
+ * There is one distinct type per value.
+ */
+class IntegerConstantType: public Type
+{
+public:
+	virtual Category getCategory() const override { return Category::INTEGER_CONSTANT; }
+
+	static std::shared_ptr<IntegerConstantType const> fromLiteral(std::string const& _literal);
+
+	explicit IntegerConstantType(bigint _value): m_value(_value) {}
+
+	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
+
+	virtual bool operator==(Type const& _other) const override;
+
+	virtual bool canBeStored() const override { return false; }
+	virtual bool canLiveOutsideStorage() const override { return false; }
+	virtual unsigned getSizeOnStack() const override { return 1; }
+
+	virtual std::string toString() const override;
+	virtual u256 literalValue(Literal const* _literal) const override;
+
+	/// @returns the smallest integer type that can hold the value or an empty pointer if not possible.
+	std::shared_ptr<IntegerType const> getIntegerType() const;
+
+private:
+	bigint m_value;
 };
 
 /**
@@ -200,7 +242,7 @@ public:
 	virtual bool isValueType() const override { return true; }
 
 	virtual std::string toString() const override { return "string" + dev::toString(m_bytes); }
-	virtual u256 literalValue(Literal const& _literal) const override;
+	virtual u256 literalValue(Literal const* _literal) const override;
 
 	int getNumBytes() const { return m_bytes; }
 
@@ -217,20 +259,14 @@ public:
 	BoolType() {}
 	virtual Category getCategory() const { return Category::BOOL; }
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual bool acceptsBinaryOperator(Token::Value _operator) const override
-	{
-		return _operator == Token::AND || _operator == Token::OR;
-	}
-	virtual bool acceptsUnaryOperator(Token::Value _operator) const override
-	{
-		return _operator == Token::NOT || _operator == Token::DELETE;
-	}
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
 
 	virtual unsigned getCalldataEncodedSize() const { return 1; }
 	virtual bool isValueType() const override { return true; }
 
 	virtual std::string toString() const override { return "bool"; }
-	virtual u256 literalValue(Literal const& _literal) const override;
+	virtual u256 literalValue(Literal const* _literal) const override;
 };
 
 /**
@@ -241,20 +277,26 @@ class ContractType: public Type
 public:
 	virtual Category getCategory() const override { return Category::CONTRACT; }
 	ContractType(ContractDefinition const& _contract): m_contract(_contract) {}
-	/// Contracts can be converted to themselves and to addresses.
+	/// Contracts can be implicitly converted to super classes and to addresses.
+	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	/// Contracts can be converted to themselves and to integers.
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
-	virtual u256 getStorageSize() const override;
 	virtual bool isValueType() const override { return true; }
 	virtual std::string toString() const override;
 
 	virtual MemberList const& getMembers() const override;
 
+	ContractDefinition const& getContractDefinition() const { return m_contract; }
+
 	/// Returns the function type of the constructor. Note that the location part of the function type
 	/// is not used, as this type cannot be the type of a variable or expression.
 	std::shared_ptr<FunctionType const> const& getConstructorType() const;
 
-	unsigned getFunctionIndex(std::string const& _functionName) const;
+	/// @returns the identifier of the function with the given name or Invalid256 if such a name does
+	/// not exist.
+	u256 getFunctionIdentifier(std::string const& _functionName) const;
 
 private:
 	ContractDefinition const& m_contract;
@@ -272,11 +314,7 @@ class StructType: public Type
 public:
 	virtual Category getCategory() const override { return Category::STRUCT; }
 	StructType(StructDefinition const& _struct): m_struct(_struct) {}
-	virtual bool acceptsUnaryOperator(Token::Value _operator) const override
-	{
-		return _operator == Token::DELETE;
-	}
-
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual u256 getStorageSize() const override;
 	virtual bool canLiveOutsideStorage() const override;
@@ -302,17 +340,27 @@ class FunctionType: public Type
 {
 public:
 	/// The meaning of the value(s) on the stack referencing the function:
-	/// INTERNAL: jump tag, EXTERNAL: contract address + function index,
+	/// INTERNAL: jump tag, EXTERNAL: contract address + function identifier,
 	/// BARE: contract address (non-abi contract call)
 	/// OTHERS: special virtual function, nothing on the stack
-	enum class Location { INTERNAL, EXTERNAL, SEND, SHA3, SUICIDE, ECRECOVER, SHA256, RIPEMD160, BARE };
+	enum class Location { INTERNAL, EXTERNAL, CREATION, SEND,
+						  SHA3, SUICIDE,
+						  ECRECOVER, SHA256, RIPEMD160,
+						  LOG0, LOG1, LOG2, LOG3, LOG4,
+						  SET_GAS, SET_VALUE, BLOCKHASH,
+						  BARE };
 
 	virtual Category getCategory() const override { return Category::FUNCTION; }
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
-	FunctionType(TypePointers const& _parameterTypes, TypePointers const& _returnParameterTypes,
+	FunctionType(strings const& _parameterTypes, strings const& _returnParameterTypes,
 				 Location _location = Location::INTERNAL):
+		FunctionType(parseElementaryTypeVector(_parameterTypes), parseElementaryTypeVector(_returnParameterTypes),
+					 _location) {}
+	FunctionType(TypePointers const& _parameterTypes, TypePointers const& _returnParameterTypes,
+				 Location _location = Location::INTERNAL,
+				 bool _gasSet = false, bool _valueSet = false):
 		m_parameterTypes(_parameterTypes), m_returnParameterTypes(_returnParameterTypes),
-		m_location(_location) {}
+		m_location(_location), m_gasSet(_gasSet), m_valueSet(_valueSet) {}
 
 	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
 	TypePointers const& getReturnParameterTypes() const { return m_returnParameterTypes; }
@@ -323,13 +371,27 @@ public:
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable function type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned getSizeOnStack() const override;
+	virtual MemberList const& getMembers() const override;
 
 	Location const& getLocation() const { return m_location; }
+	std::string getCanonicalSignature() const;
+
+	bool gasSet() const { return m_gasSet; }
+	bool valueSet() const { return m_valueSet; }
+
+	/// @returns a copy of this type, where gas or value are set manually. This will never set one
+	/// of the parameters to fals.
+	TypePointer copyAndSetGasOrValue(bool _setGas, bool _setValue) const;
 
 private:
+	static TypePointers parseElementaryTypeVector(strings const& _types);
+
 	TypePointers m_parameterTypes;
 	TypePointers m_returnParameterTypes;
-	Location m_location;
+	Location const m_location;
+	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack
+	bool const m_valueSet = false; ///< true iff the value to be sent is on the stack
+	mutable std::unique_ptr<MemberList> m_members;
 };
 
 /**
@@ -364,6 +426,7 @@ public:
 	virtual Category getCategory() const override { return Category::VOID; }
 	VoidType() {}
 
+	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }
 	virtual std::string toString() const override { return "void"; }
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable void type requested.")); }
@@ -379,18 +442,24 @@ class TypeType: public Type
 {
 public:
 	virtual Category getCategory() const override { return Category::TYPE; }
-	TypeType(TypePointer const& _actualType): m_actualType(_actualType) {}
-
+	TypeType(TypePointer const& _actualType, ContractDefinition const* _currentContract = nullptr):
+		m_actualType(_actualType), m_currentContract(_currentContract) {}
 	TypePointer const& getActualType() const { return m_actualType; }
 
+	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 getStorageSize() const override { BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage size of non-storable type type requested.")); }
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual std::string toString() const override { return "type(" + m_actualType->toString() + ")"; }
+	virtual MemberList const& getMembers() const override;
 
 private:
 	TypePointer m_actualType;
+	/// Context in which this type is used (influences visibility etc.), can be nullptr.
+	ContractDefinition const* m_currentContract;
+	/// List of member types, will be lazy-initialized because of recursive references.
+	mutable std::unique_ptr<MemberList> m_members;
 };
 
 
@@ -405,6 +474,12 @@ public:
 	virtual Category getCategory() const override { return Category::MAGIC; }
 
 	MagicType(Kind _kind);
+
+	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override
+	{
+		return TypePointer();
+	}
+
 	virtual bool operator==(Type const& _other) const;
 	virtual bool canBeStored() const override { return false; }
 	virtual bool canLiveOutsideStorage() const override { return true; }

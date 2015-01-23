@@ -18,10 +18,13 @@ Window
 	}
 	function open()
 	{
-		visible = true
+		visible = true;
 	}
 	function close()
 	{
-		visible = false
+		visible = false;
+		modalDialogContent.source = "";
+		modalDialogContent.sourceComponent = undefined;
+		modalDialog.destroy();
 	}
 }
