@@ -78,7 +78,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	if (m_s.balance(m_t.sender()) < cost)
 	{
 		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_t.sender());
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)cost, (bigint)m_s.balance(m_t.sender())));
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(cost, (bigint)m_s.balance(m_t.sender())));
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
