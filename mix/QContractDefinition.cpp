@@ -38,9 +38,6 @@ QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const
 	else
 		m_constructor = new QFunctionDefinition();
 
-	auto interfaceFunctions = _contract->getInterfaceFunctions();
-	unsigned i = 0;
-	for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it, ++i)
-		m_functions.append(new QFunctionDefinition(it->second, i));
-}
+	for (auto const& it: _contract->getInterfaceFunctions())
+		m_functions.append(new QFunctionDefinition(it.second));}
 
