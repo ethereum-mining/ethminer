@@ -23,6 +23,7 @@
 #include <random>
 #include <chrono>
 #include <mutex>
+#include <libdevcore/Guards.h>
 #include "SHA3.h"
 #include "FileSystem.h"
 #include "CryptoPP.h"
@@ -139,7 +140,7 @@ h256 Nonce::get(bool _commit)
 	static h256 s_seed;
 	static string s_seedFile(getDataDir() + "/seed");
 	static mutex s_x;
-	lock_guard<mutex> l(s_x);
+	Guard l(s_x);
 	if (!s_seed)
 	{
 		static Nonce s_nonce;

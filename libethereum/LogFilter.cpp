@@ -68,14 +68,15 @@ bool LogFilter::matches(State const& _s, unsigned _i) const
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 {
 	LogEntries ret;
-	for (LogEntry const& e: _m.log())
-	{
-		if (!m_addresses.empty() && !m_addresses.count(e.address))
-			continue;
-		for (auto const& t: m_topics)
-			if (!std::count(e.topics.begin(), e.topics.end(), t))
+	if (matches(_m.bloom()))
+		for (LogEntry const& e: _m.log())
+		{
+			if (!m_addresses.empty() && !m_addresses.count(e.address))
 				continue;
-		ret.push_back(e);
-	}
+			for (auto const& t: m_topics)
+				if (!std::count(e.topics.begin(), e.topics.end(), t))
+					continue;
+			ret.push_back(e);
+		}
 	return ret;
 }

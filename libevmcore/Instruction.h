@@ -73,7 +73,7 @@ enum class Instruction: uint8_t
 	EXTCODESIZE,		///< get external code size (from another contract)
 	EXTCODECOPY,		///< copy external code (from another contract)
 
-	PREVHASH = 0x40,	///< get hash of most recent complete block
+	BLOCKHASH = 0x40,	///< get hash of most recent complete block
 	COINBASE,			///< get the block's coinbase address
 	TIMESTAMP,			///< get the block's timestamp
 	NUMBER,				///< get the block's number
@@ -213,6 +213,14 @@ inline Instruction swapInstruction(unsigned _number)
 	if (asserts(1 <= _number && _number <= 16))
 		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid SWAP instruction requested."));
 	return Instruction(unsigned(Instruction::SWAP1) + _number - 1);
+}
+
+/// @returns the LOG<_number> instruction
+inline Instruction logInstruction(unsigned _number)
+{
+	if (asserts(_number <= 4))
+		BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("Invalid LOG instruction requested."));
+	return Instruction(unsigned(Instruction::LOG0) + _number);
 }
 
 /// Information structure for a particular instruction.

@@ -53,15 +53,17 @@ void CompilerContext::addAndInitializeVariable(VariableDeclaration const& _decla
 {
 	addVariable(_declaration);
 
-	unsigned const size = _declaration.getType()->getSizeOnStack();
-	for (unsigned i = 0; i < size; ++i)
+	int const size = _declaration.getType()->getSizeOnStack();
+	for (int i = 0; i < size; ++i)
 		*this << u256(0);
 	m_asm.adjustDeposit(-size);
 }
 
 void CompilerContext::addFunction(FunctionDefinition const& _function)
 {
-	m_functionEntryLabels.insert(std::make_pair(&_function, m_asm.newTag()));
+	eth::AssemblyItem tag(m_asm.newTag());
+	m_functionEntryLabels.insert(make_pair(&_function, tag));
+	m_virtualFunctionEntryLabels.insert(make_pair(_function.getName(), tag));
 }
 
 bytes const& CompilerContext::getCompiledContract(const ContractDefinition& _contract) const
@@ -83,6 +85,13 @@ eth::AssemblyItem CompilerContext::getFunctionEntryLabel(FunctionDefinition cons
 	return res->second.tag();
 }
 
+eth::AssemblyItem CompilerContext::getVirtualFunctionEntryLabel(FunctionDefinition const& _function) const
+{
+	auto res = m_virtualFunctionEntryLabels.find(_function.getName());
+	solAssert(res != m_virtualFunctionEntryLabels.end(), "Function entry label not found.");
+	return res->second.tag();
+}
+
 unsigned CompilerContext::getBaseStackOffsetOfVariable(Declaration const& _declaration) const
 {
 	auto res = m_localVariables.find(&_declaration);
@@ -93,6 +102,11 @@ unsigned CompilerContext::getBaseStackOffsetOfVariable(Declaration const& _decla
 unsigned CompilerContext::baseToCurrentStackOffset(unsigned _baseOffset) const
 {
 	return _baseOffset + m_asm.deposit();
+}
+
+unsigned CompilerContext::currentToBaseStackOffset(unsigned _offset) const
+{
+	return -baseToCurrentStackOffset(-_offset);
 }
 
 u256 CompilerContext::getStorageLocationOfVariable(const Declaration& _declaration) const

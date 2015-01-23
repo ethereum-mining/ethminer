@@ -57,12 +57,6 @@ enum ClientWorkState
 	Deleted
 };
 
-enum class NodeMode
-{
-	PeerServer,
-	Full
-};
-
 class VersionChecker
 {
 public:
@@ -84,10 +78,14 @@ struct InstalledFilter
 
 	LogFilter filter;
 	unsigned refCount = 1;
+	LocalisedLogEntries changes;
 };
 
 static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
+
+static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
+static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
 
 struct ClientWatch
 {
@@ -95,7 +93,7 @@ struct ClientWatch
 	explicit ClientWatch(h256 _id): id(_id) {}
 
 	h256 id;
-	unsigned changes = 1;
+	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
@@ -108,9 +106,9 @@ struct WorkChannel: public LogChannel { static const char* name() { return "-W-"
 #define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
 
 template <class T> struct ABISerialiser {};
-template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { return _t.asBytes(); } };
+template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { static_assert(N <= 32, "Cannot serialise hash > 32 bytes."); static_assert(N > 0, "Cannot serialise zero-length hash."); return bytes(32 - N, 0) + _t.asBytes(); } };
 template <> struct ABISerialiser<u256> { static bytes serialise(u256 const& _t) { return h256(_t).asBytes(); } };
-template <> struct ABISerialiser<u160> { static bytes serialise(u160 const& _t) { return h160(_t).asBytes(); } };
+template <> struct ABISerialiser<u160> { static bytes serialise(u160 const& _t) { return bytes(12, 0) + h160(_t).asBytes(); } };
 template <> struct ABISerialiser<string32> { static bytes serialise(string32 const& _t) { return bytesConstRef((byte const*)_t.data(), 32).toBytes(); } };
 
 inline bytes abiInAux() { return {}; }
@@ -119,15 +117,15 @@ template <class T, class ... U> bytes abiInAux(T const& _t, U const& ... _u)
 	return ABISerialiser<T>::serialise(_t) + abiInAux(_u ...);
 }
 
-template <class ... T> bytes abiIn(byte _id, T const& ... _t)
+template <class ... T> bytes abiIn(std::string _id, T const& ... _t)
 {
-	return bytes(1, _id) + abiInAux(_t ...);
+	return sha3(_id).ref().cropped(0, 4).toBytes() + abiInAux(_t ...);
 }
 
 template <class T> struct ABIDeserialiser {};
-template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { FixedHash<N> ret; io_t.cropped(0, N).populate(ret.ref()); return ret; } };
+template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { static_assert(N <= 32, "Parameter sizes must be at most 32 bytes."); FixedHash<N> ret; io_t.cropped(32 - N, N).populate(ret.ref()); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<u256> { static u256 deserialise(bytesConstRef& io_t) { u256 ret = fromBigEndian<u256>(io_t.cropped(0, 32)); io_t = io_t.cropped(32); return ret; } };
-template <> struct ABIDeserialiser<u160> { static u256 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(0, 20)); io_t = io_t.cropped(20); return ret; } };
+template <> struct ABIDeserialiser<u160> { static u160 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(12, 20)); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(vector_ref<char>(ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
 
 template <class T> T abiOut(bytes const& _data)
@@ -188,11 +186,11 @@ public:
 	virtual unsigned installWatch(LogFilter const& _filter);
 	virtual unsigned installWatch(h256 _filterId);
 	virtual void uninstallWatch(unsigned _watchId);
-	virtual bool peekWatch(unsigned _watchId) const { std::lock_guard<std::mutex> l(m_filterLock); try { return m_watches.at(_watchId).changes != 0; } catch (...) { return false; } }
-	virtual bool checkWatch(unsigned _watchId) { std::lock_guard<std::mutex> l(m_filterLock); bool ret = false; try { ret = m_watches.at(_watchId).changes != 0; m_watches.at(_watchId).changes = 0; } catch (...) {} return ret; }
+	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const;
+	virtual LocalisedLogEntries checkWatch(unsigned _watchId);
 
-	virtual LogEntries logs(unsigned _watchId) const { try { std::lock_guard<std::mutex> l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LogEntries(); } }
-	virtual LogEntries logs(LogFilter const& _filter) const;
+	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
+	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
 
 	// [EXTRA API]:
 
@@ -292,11 +290,11 @@ private:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(LogBloom _pendingTransactionBloom, h256Set& o_changed) const;
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewBlock(h256 _blockHash, h256Set& o_changed) const;
+	void appendFromNewBlock(h256 const& _blockHash, h256Set& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
@@ -313,7 +311,7 @@ private:
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
-	mutable boost::shared_mutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
+	mutable SharedMutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
@@ -321,7 +319,7 @@ private:
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	std::vector<Miner> m_miners;
-	mutable boost::shared_mutex x_miners;
+	mutable SharedMutex x_miners;
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?

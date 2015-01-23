@@ -39,7 +39,7 @@
             { "name": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
             { "name": "eth_uninstallFilter", "params": [0], "order": [], "returns": true},
-            { "name": "eth_changed", "params": [0], "order": [], "returns": false},
+            { "name": "eth_changed", "params": [0], "order": [], "returns": []},
             { "name": "eth_filterLogs", "params": [0], "order": [], "returns": []},
             { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
 

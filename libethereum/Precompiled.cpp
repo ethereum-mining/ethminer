@@ -75,11 +75,17 @@ static bytes ripemd160Code(bytesConstRef _in)
 	return ret;
 }
 
+static bytes identityCode(bytesConstRef _in)
+{
+	return _in.toBytes();
+}
+
 static const std::map<unsigned, PrecompiledAddress> c_precompiled =
 {
 	{ 1, { [](bytesConstRef) -> bigint { return (bigint)500; }, ecrecoverCode }},
 	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, sha256Code }},
-	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }}
+	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)50 + (i.size() + 31) / 32 * 50; }, ripemd160Code }},
+	{ 4, { [](bytesConstRef i) -> bigint { return (bigint)1 + (i.size() + 31) / 32 * 1; }, identityCode }}
 };
 
 std::map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()

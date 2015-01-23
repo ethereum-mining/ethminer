@@ -16,10 +16,12 @@
 */
 /**
  * @author Christian <c@ethdev.com>
+ * @author Gav Wood <g@ethdev.com>
  * @date 2014
  * Full-stack compiler that converts a source code string to bytecode.
  */
 
+#include <boost/algorithm/string.hpp>
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
@@ -28,6 +30,8 @@
 #include <libsolidity/Compiler.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/InterfaceHandler.h>
+
+#include <libdevcrypto/SHA3.h>
 
 using namespace std;
 
@@ -38,7 +42,7 @@ namespace solidity
 
 bool CompilerStack::addSource(string const& _name, string const& _content)
 {
-	bool existed = m_sources.count(_name);
+	bool existed = m_sources.count(_name) != 0;
 	reset(true);
 	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
 	return existed;
@@ -110,20 +114,59 @@ void CompilerStack::compile(bool _optimize)
 		for (ASTPointer<ASTNode> const& node: source->ast->getNodes())
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 			{
-				m_globalContext->setCurrentContract(*contract);
 				shared_ptr<Compiler> compiler = make_shared<Compiler>(_optimize);
-				compiler->compileContract(*contract, m_globalContext->getMagicVariables(),
-										  contractBytecode);
+				compiler->compileContract(*contract, contractBytecode);
 				Contract& compiledContract = m_contracts[contract->getName()];
 				compiledContract.bytecode = compiler->getAssembledBytecode();
+				compiledContract.runtimeBytecode = compiler->getRuntimeBytecode();
 				compiledContract.compiler = move(compiler);
 				contractBytecode[compiledContract.contract] = &compiledContract.bytecode;
 			}
 }
 
+string CompilerStack::expanded(string const& _sourceCode)
+{
+	// TODO: populate some nicer way.
+	static const map<string, string> c_requires = {
+		{ "Config", "contract Config{function lookup(uint256 service)constant returns(address a){}function kill(){}function unregister(uint256 id){}function register(uint256 id,address service){}}" },
+		{ "owned", "contract owned{function owned(){owner = msg.sender;}address owner;}" },
+		{ "mortal", "#require owned\ncontract mortal is owned {function kill() { if (msg.sender == owner) suicide(owner); }}" },
+		{ "NameReg", "contract NameReg{function register(string32 name){}function addressOf(string32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(string32 name){}}" },
+		{ "named", "#require Config NameReg\ncontract named is mortal, owned {function named(string32 name) {NameReg(Config().lookup(1)).register(name);}" },
+		{ "std", "#require owned mortal Config NameReg named" },
+	};
+	string sub;
+	set<string> got;
+	function<string(string const&)> localExpanded;
+	localExpanded = [&](string const& s) -> string
+	{
+		string ret = s;
+		for (size_t p = 0; p != string::npos;)
+			if ((p = ret.find("#require ")) != string::npos)
+			{
+				string n = ret.substr(p + 9, ret.find_first_of('\n', p + 9) - p - 9);
+				ret.replace(p, n.size() + 9, "");
+				vector<string> rs;
+				boost::split(rs, n, boost::is_any_of(" \t,"), boost::token_compress_on);
+				for (auto const& r: rs)
+					if (!got.count(r))
+					{
+						if (c_requires.count(r))
+							sub.append("\n" + localExpanded(c_requires.at(r)) + "\n");
+						got.insert(r);
+					}
+			}
+			// TODO: remove once we have genesis contracts.
+			else if ((p = ret.find("Config()")) != string::npos)
+				ret.replace(p, 8, "Config(0x661005d2720d855f1d9976f88bb10c1a3398c77f)");
+		return ret;
+	};
+	return sub + localExpanded(_sourceCode);
+}
+
 bytes const& CompilerStack::compile(string const& _sourceCode, bool _optimize)
 {
-	parse(_sourceCode);
+	parse(expanded(_sourceCode));
 	compile(_optimize);
 	return getBytecode();
 }
@@ -133,6 +176,16 @@ bytes const& CompilerStack::getBytecode(string const& _contractName) const
 	return getContract(_contractName).bytecode;
 }
 
+bytes const& CompilerStack::getRuntimeBytecode(string const& _contractName) const
+{
+	return getContract(_contractName).runtimeBytecode;
+}
+
+dev::h256 CompilerStack::getContractCodeHash(string const& _contractName) const
+{
+	return dev::sha3(getRuntimeBytecode(_contractName));
+}
+
 void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractName) const
 {
 	getContract(_contractName).compiler->streamAssembly(_outStream);
@@ -140,10 +193,15 @@ void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractN
 
 string const& CompilerStack::getInterface(string const& _contractName) const
 {
-	return getJsonDocumentation(_contractName, DocumentationType::ABI_INTERFACE);
+	return getMetadata(_contractName, DocumentationType::ABI_INTERFACE);
 }
 
-string const& CompilerStack::getJsonDocumentation(string const& _contractName, DocumentationType _type) const
+string const& CompilerStack::getSolidityInterface(string const& _contractName) const
+{
+	return getMetadata(_contractName, DocumentationType::ABI_SOLIDITY_INTERFACE);
+}
+
+string const& CompilerStack::getMetadata(string const& _contractName, DocumentationType _type) const
 {
 	if (!m_parseSuccessful)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Parsing was not successful."));
@@ -161,6 +219,9 @@ string const& CompilerStack::getJsonDocumentation(string const& _contractName, D
 		break;
 	case DocumentationType::ABI_INTERFACE:
 		doc = &contract.interface;
+		break;
+	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+		doc = &contract.solidityInterface;
 		break;
 	default:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Illegal documentation type."));

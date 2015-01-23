@@ -285,8 +285,6 @@ Token::Value Scanner::scanMultiLineDocComment()
 	bool endFound = false;
 	bool charsAdded = false;
 
-	advance(); //consume the last '*' at /**
-	skipWhitespaceExceptLF();
 	while (!isSourcePastEndOfInput())
 	{
 		//handle newlines in multline comments
@@ -354,11 +352,20 @@ Token::Value Scanner::scanSlash()
 			return Token::WHITESPACE;
 		else if (m_char == '*')
 		{
-			Token::Value comment;
-			m_nextSkippedComment.location.start = firstSlashPosition;
-			comment = scanMultiLineDocComment();
-			m_nextSkippedComment.location.end = getSourcePos();
-			m_nextSkippedComment.token = comment;
+			advance(); //consume the last '*' at /**
+			skipWhitespaceExceptLF();
+
+			// special case of a closed normal multiline comment
+			if (!m_source.isPastEndOfInput() && m_source.get(0) == '/')
+				advance(); //skip the closing slash
+			else // we actually have a multiline documentation comment
+			{
+				Token::Value comment;
+				m_nextSkippedComment.location.start = firstSlashPosition;
+				comment = scanMultiLineDocComment();
+				m_nextSkippedComment.location.end = getSourcePos();
+				m_nextSkippedComment.token = comment;
+			}
 			return Token::WHITESPACE;
 		}
 		else
@@ -448,7 +455,7 @@ void Scanner::scanToken()
 				token = Token::ADD;
 			break;
 		case '-':
-			// - -- -= Number
+			// - -- -=
 			advance();
 			if (m_char == '-')
 			{
@@ -457,8 +464,6 @@ void Scanner::scanToken()
 			}
 			else if (m_char == '=')
 				token = selectToken(Token::ASSIGN_SUB);
-			else if (m_char == '.' || isDecimalDigit(m_char))
-				token = scanNumber('-');
 			else
 				token = Token::SUB;
 			break;
@@ -643,8 +648,7 @@ Token::Value Scanner::scanNumber(char _charSeen)
 	}
 	else
 	{
-		if (_charSeen == '-')
-			addLiteralChar('-');
+		solAssert(_charSeen == 0, "");
 		// if the first character is '0' we must check for octals and hex
 		if (m_char == '0')
 		{
@@ -696,24 +700,6 @@ Token::Value Scanner::scanNumber(char _charSeen)
 	return Token::NUMBER;
 }
 
-
-// ----------------------------------------------------------------------------
-// Keyword Matcher
-
-
-static Token::Value keywordOrIdentifierToken(string const& _input)
-{
-	// The following macros are used inside TOKEN_LIST and cause non-keyword tokens to be ignored
-	// and keywords to be put inside the keywords variable.
-#define KEYWORD(name, string, precedence) {string, Token::name},
-#define TOKEN(name, string, precedence)
-	static const map<string, Token::Value> keywords({TOKEN_LIST(TOKEN, KEYWORD)});
-#undef KEYWORD
-#undef TOKEN
-	auto it = keywords.find(_input);
-	return it == keywords.end() ? Token::IDENTIFIER : it->second;
-}
-
 Token::Value Scanner::scanIdentifierOrKeyword()
 {
 	solAssert(isIdentifierStart(m_char), "");
@@ -723,7 +709,7 @@ Token::Value Scanner::scanIdentifierOrKeyword()
 	while (isIdentifierPart(m_char))
 		addLiteralCharAndAdvance();
 	literal.complete();
-	return keywordOrIdentifierToken(m_nextToken.literal);
+	return Token::fromIdentifierOrKeyword(m_nextToken.literal);
 }
 
 char CharStream::advanceAndGet(size_t _chars)

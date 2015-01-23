@@ -75,7 +75,7 @@ int main()
 		cnote << i;*/
 	return 0;
 }
-#else
+#elif 0
 int main()
 {
 	KeyPair u = KeyPair::create();
@@ -94,6 +94,12 @@ int main()
 	s.execute(LastHashes(), t.rlp());
 	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
+}
+#else
+int main()
+{
+	cnote << KeyPair(Secret("0000000000000000000000000000000000000000000000000000000000000000")).address();
+	cnote << KeyPair(Secret("1111111111111111111111111111111111111111111111111111111111111111")).address();
 }
 #endif
 

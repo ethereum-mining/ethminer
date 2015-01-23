@@ -1,16 +1,13 @@
 /*
 	This file is part of cpp-ethereum.
-
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
-
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -38,7 +35,7 @@ using namespace dev::eth;
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
-	m_lastHashes(_s.getLastHashes(_bc)),
+	m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
 	m_depth(_level)
 {}
 
@@ -56,7 +53,7 @@ void Executive::accrueSubState(SubState& _parentContext)
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp);
+	m_t = Transaction(_rlp, CheckSignature::Sender);
 
 	// Avoid invalid transactions.
 	auto nonceReq = m_s.transactionsFrom(m_t.sender());
@@ -149,9 +146,17 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
 	// Execute _init.
-	m_vm = VMFactory::create(_gas);
-	m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	return _init.empty();
+	if (_init.empty())
+	{
+		m_s.m_cache[m_newAddress].setCode({});
+		m_endGas = _gas;
+	}
+	else
+	{
+		m_vm = VMFactory::create(_gas);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	}
+	return !m_ext;
 }
 
 OnOpFunc Executive::simpleTrace()
@@ -192,7 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
-				m_s.m_cache[m_newAddress].setCode(m_out);
+				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
 		catch (StepsDone const&)
@@ -223,7 +228,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 	return true;
 }
 
-void Executive::finalize(OnOpFunc const&)
+void Executive::finalize()
 {
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
