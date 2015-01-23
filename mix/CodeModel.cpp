@@ -61,7 +61,7 @@ CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compil
 		m_bytes = _compiler.getBytecode();
 		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
 		dev::solidity::InterfaceHandler interfaceHandler;
-		m_contractDefinition = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
+		m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	}
 	else
 		m_contract.reset(new QContractDefinition());
@@ -75,7 +75,7 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
 	m_assemblyCode(_prev.m_assemblyCode),
-	m_contractDefinition(_prev.m_contractDefinition),
+	m_contractInterface(_prev.m_contractInterface),
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
@@ -164,7 +164,7 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 {
 	m_compiling = false;
-	bool contractChanged = m_result->contractDefinition() != _newResult->contractDefinition();
+	bool contractChanged = m_result->contractInterface() != _newResult->contractInterface();
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
@@ -172,7 +172,7 @@ void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 	{
 		emit codeChanged();
 		if (contractChanged)
-			emit contractDefinitionChanged();
+			emit contractInterfaceChanged();
 	}
 }
 

@@ -103,7 +103,10 @@ void ClientModel::debugState(QVariantMap _state)
 		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 
 		for (auto p = params.cbegin(); p != params.cend(); ++p)
-			transactionSettings.parameterValues.insert(std::make_pair(p.key(), (qvariant_cast<QEther*>(p.value()))->toU256Wei()));
+		{
+			QBigInt* param = qvariant_cast<QBigInt*>(p.value());
+			transactionSettings.parameterValues.insert(std::make_pair(p.key(), boost::get<dev::u256>(param->internalValue())));
+		}
 
 		transactionSequence.push_back(transactionSettings);
 	}
