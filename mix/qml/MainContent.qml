@@ -21,6 +21,9 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
+	property alias rightViewVisible : rightView.visible
+	property alias webViewVisible : webPreview.visible
+
 	onWidthChanged:
 	{
 		if (rightView.visible)
@@ -64,28 +67,29 @@ Rectangle {
 		useTransactionDefaultValue: true
 	}
 
-	function toggleRightView()
-	{
+
+	function toggleRightView() {
 		if (!rightView.visible)
 			rightView.show();
 		else
 			rightView.hide();
 	}
 
-	function ensureRightView()
-	{
+	function ensureRightView() {
 		if (!rightView.visible)
 			rightView.show();
 	}
 
-	function hideRightView()
-	{
+	function hideRightView() {
 		if (rightView.visible)
 			rightView.hide();
 	}
 
-	function rightViewVisible()
-	{
+	function toggleWebPreview() {
+		webPreview.visible = !webPreview.visible;
+	}
+
+	function rightViewVisible()	{
 		return rightView.visible;
 	}
 
@@ -164,11 +168,21 @@ Rectangle {
 				id: contentView
 				width: parent.width - projectList.width
 				height: parent.height
-				CodeEditorView {
-								height: parent.height
-								anchors.top: parent.top
-								width: parent.width
-							}
+				SplitView {
+					anchors.fill: parent
+					orientation: Qt.Vertical
+					CodeEditorView {
+						height: parent.height * 0.6
+						anchors.top: parent.top
+						Layout.fillWidth: true
+						Layout.fillHeight: true
+					}
+					WebPreview {
+						id: webPreview
+						height: parent.height * 0.4
+						Layout.fillWidth: true
+					}
+				}
 			}
 
 			Splitter
