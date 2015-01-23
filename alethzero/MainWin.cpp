@@ -1674,7 +1674,7 @@ string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compil
 	{
 		ret += it.first.abridged();
 		ret += " :";
-		ret += it.second->getName() + "\n";
+		ret += it.second.getName() + "\n";
 	}
 	return ret;
 }
