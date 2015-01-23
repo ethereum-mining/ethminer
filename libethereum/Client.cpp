@@ -642,7 +642,7 @@ Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
-	return Transaction(b[1][_i].data());
+	return Transaction(b[1][_i].data(), CheckSignature::Range);
 }
 
 BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const

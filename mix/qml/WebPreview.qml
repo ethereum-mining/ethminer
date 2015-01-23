@@ -27,10 +27,10 @@ Item {
 	}
 
 	function updateContract() {
-		var contractDefinition = codeModel.code.contractDefinition;
-		if (contractDefinition === "")
-			contractDefinition = "[]"
-		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + contractDefinition + ")");
+		var contractInterface = codeModel.code.contractInterface;
+		if (contractInterface === "")
+			contractInterface = "[]"
+		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + contractInterface + ")");
 	}
 
 	function reloadOnSave() {
@@ -68,7 +68,7 @@ Item {
 
 	Connections {
 		target: codeModel
-		onContractDefinitionChanged: reload();
+		onContractInterfaceChanged: reload();
 	}
 
 	Connections {
