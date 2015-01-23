@@ -27,10 +27,7 @@ Item {
 	}
 
 	function updateContract() {
-		var contractInterface = codeModel.code.contractInterface;
-		if (contractInterface === "")
-			contractInterface = "[]"
-		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + contractInterface + ")");
+		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
 	}
 
 	function reloadOnSave() {
