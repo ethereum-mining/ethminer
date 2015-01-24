@@ -135,7 +135,6 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_qweb->poll();
 	});
 	
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -531,9 +530,6 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-	
-	if (m_qweb)
-		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 	{
