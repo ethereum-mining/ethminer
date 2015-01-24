@@ -36,7 +36,6 @@
         <file>qml/js/Debugger.js</file>
         <file>qml/NewProjectDialog.qml</file>
         <file>qml/ProjectModel.qml</file>
-        <file>qml/CodeEditor.qml</file>
         <file>qml/CodeEditorView.qml</file>
         <file>qml/js/ProjectModel.js</file>
         <file>qml/Ether.qml</file>
