@@ -16,11 +16,11 @@ reloadPage = function() {
 	preview.contentWindow.location.reload();
 };
 
-updateContract = function(address, definition) {
+updateContract = function(address, contractFace) {
 	if (window.web3) {
 		window.contractAddress = address;
-		window.contractDefinition = definition;
-		window.contract = window.web3.eth.contract(address, definition);
+		window.contractInterface = contractFace;
+		window.contract = window.web3.eth.contract(address, contractFace);
 	}
 };
 
