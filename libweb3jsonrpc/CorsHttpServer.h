@@ -24,11 +24,11 @@
 namespace jsonrpc
 {
 
-class CorsHttpServer : public HttpServer
+class CorsHttpServer: public HttpServer
 {
 public:
 	using HttpServer::HttpServer;
-	bool virtual SendResponse(const std::string& _response, void* _addInfo = NULL);
+	bool virtual SendResponse(std::string const& _response, void* _addInfo = NULL);
 };
 
 }
