@@ -58,7 +58,7 @@ QString QWebThree::callMethod(QString _json)
 	return m_response;
 }
 
-void QWebThree::onDataProcessed(QString _json, QString _addInfo)
+void QWebThree::onDataProcessed(QString _json, QString)
 {
 	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
 	syncResponse(QString::fromUtf8(QJsonDocument(f).toJson()));
