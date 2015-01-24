@@ -102,7 +102,7 @@ static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
 	return {begin(list), end(list)};
 }
 
-static QString contentsOfQResource(string const& res)
+QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -178,13 +178,13 @@ Main::Main(QWidget *parent) :
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
 
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_qweb->poll();
 	});
 
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -432,6 +432,11 @@ void Main::on_jsInput_returnPressed()
 {
 	eval(ui->jsInput->text());
 	ui->jsInput->setText("");
+}
+
+QVariant Main::evalRaw(QString const& _js)
+{
+	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
 }
 
 void Main::eval(QString const& _js)
@@ -1178,9 +1183,6 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-
-	if (m_qweb)
-		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 	{

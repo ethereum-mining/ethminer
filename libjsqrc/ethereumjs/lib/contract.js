@@ -23,9 +23,6 @@
 var web3 = require('./web3'); // jshint ignore:line
 var abi = require('./abi');
 
-/// method signature length in bytes
-var ETH_METHOD_SIGNATURE_LENGTH = 4;
-
 /**
  * This method should be called when we want to call / transact some solidity method from javascript
  * it returns an object which has same methods available as solidity contract description
@@ -39,50 +36,77 @@ var ETH_METHOD_SIGNATURE_LENGTH = 4;
  *
  * var myContract = web3.eth.contract('0x0123123121', abi); // creation of contract object
  *
- * myContract.myMethod('this is test string param for call').call(); // myMethod call
- * myContract.myMethod('this is test string param for transact').transact() // myMethod transact
+ * myContract.myMethod('this is test string param for call'); // myMethod call (implicit, default)
+ * myContract.myMethod('this is test string param for call').call(); // myMethod call (explicit)
+ * myContract.transact().myMethod('this is test string param for transact'); // myMethod transact
  *
  * @param address - address of the contract, which should be called
  * @param desc - abi json description of the contract, which is being created
  * @returns contract object
  */
+
 var contract = function (address, desc) {
     var inputParser = abi.inputParser(desc);
     var outputParser = abi.outputParser(desc);
 
-    var contract = {};
+    var result = {};
+
+    result.call = function (options) {
+        result._isTransact = false;
+        result._options = options;
+        return result;
+    };
+
+    result.transact = function (options) {
+        result._isTransact = true;
+        result._options = options;
+        return result;
+    };
 
     desc.forEach(function (method) {
-        contract[method.name] = function () {
+
+        var displayName = abi.methodDisplayName(method.name);
+        var typeName = abi.methodTypeName(method.name);
+
+        var impl = function () {
             var params = Array.prototype.slice.call(arguments);
-            var parsed = inputParser[method.name].apply(null, params);
+            var signature = abi.methodSignature(method.name);
+            var parsed = inputParser[displayName][typeName].apply(null, params);
 
-            var onSuccess = function (result) {
-                return outputParser[method.name](result);
-            };
+            var options = result._options || {};
+            options.to = address;
+            options.data = signature + parsed;
+            
+            var isTransact = result._isTransact;
+            
+            // reset
+            result._options = {};
+            result._isTransact = false;
 
-            return {
-                call: function (extra) {
-                    extra = extra || {};
-                    extra.to = address;
-                    return abi.methodSignature(desc, method.name).then(function (signature) {
-                        extra.data = signature.slice(0, 2 + ETH_METHOD_SIGNATURE_LENGTH * 2) + parsed;
-                        return web3.eth.call(extra).then(onSuccess);
-                    });
-                },
-                transact: function (extra) {
-                    extra = extra || {};
-                    extra.to = address;
-                    return abi.methodSignature(desc, method.name).then(function (signature) {
-                        extra.data = signature.slice(0, 2 + ETH_METHOD_SIGNATURE_LENGTH * 2) + parsed;
-                        return web3.eth.transact(extra).then(onSuccess);
-                    });
-                }
-            };
+            if (isTransact) {
+                // it's used byt natspec.js
+                // TODO: figure out better way to solve this
+                web3._currentContractAbi = desc;
+                web3._currentContractAddress = address;
+
+                // transactions do not have any output, cause we do not know, when they will be processed
+                web3.eth.transact(options);
+                return;
+            }
+            
+            var output = web3.eth.call(options);
+            return outputParser[displayName][typeName](output);
         };
+
+        if (result[displayName] === undefined) {
+            result[displayName] = impl;
+        }
+
+        result[displayName][typeName] = impl;
+
     });
 
-    return contract;
+    return result;
 };
 
 module.exports = contract;

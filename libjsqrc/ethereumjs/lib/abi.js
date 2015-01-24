@@ -32,6 +32,9 @@ BigNumber.config({ ROUNDING_MODE: BigNumber.ROUND_DOWN });
 
 var ETH_PADDING = 32;
 
+/// method signature length in bytes
+var ETH_METHOD_SIGNATURE_LENGTH = 4;
+
 /// Finds first index of array element matching pattern
 /// @param array
 /// @param callback pattern
@@ -330,15 +333,37 @@ var fromAbiOutput = function (json, methodName, output) {
     return result;
 };
 
+/// @returns display name for method eg. multiply(uint256) -> multiply
+var methodDisplayName = function (method) {
+    var length = method.indexOf('('); 
+    return length !== -1 ? method.substr(0, length) : method;
+};
+
+/// @returns overloaded part of method's name
+var methodTypeName = function (method) {
+    /// TODO: make it not vulnerable
+    var length = method.indexOf('(');
+    return length !== -1 ? method.substr(length + 1, method.length - 1 - (length + 1)) : "";
+};
+
 /// @param json abi for contract
 /// @returns input parser object for given json abi
 var inputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
-        parser[method.name] = function () {
+        var displayName = methodDisplayName(method.name); 
+        var typeName = methodTypeName(method.name);
+
+        var impl = function () {
             var params = Array.prototype.slice.call(arguments);
             return toAbiInput(json, method.name, params);
         };
+       
+        if (parser[displayName] === undefined) {
+            parser[displayName] = impl;
+        }
+
+        parser[displayName][typeName] = impl;
     });
 
     return parser;
@@ -349,32 +374,35 @@ var inputParser = function (json) {
 var outputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
-        parser[method.name] = function (output) {
+
+        var displayName = methodDisplayName(method.name); 
+        var typeName = methodTypeName(method.name);
+
+        var impl = function (output) {
             return fromAbiOutput(json, method.name, output);
         };
+
+        if (parser[displayName] === undefined) {
+            parser[displayName] = impl;
+        }
+
+        parser[displayName][typeName] = impl;
     });
 
     return parser;
 };
 
-/// @param json abi for contract
 /// @param method name for which we want to get method signature
 /// @returns (promise) contract method signature for method with given name
-var methodSignature = function (json, name) {
-    var method = json[findMethodIndex(json, name)];
-    var result = name + '(';
-    var inputTypes = method.inputs.map(function (inp) {
-        return inp.type;
-    });
-    result += inputTypes.join(',');
-    result += ')';
-
-    return web3.sha3(web3.fromAscii(result));
+var methodSignature = function (name) {
+    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + ETH_METHOD_SIGNATURE_LENGTH * 2);
 };
 
 module.exports = {
     inputParser: inputParser,
     outputParser: outputParser,
-    methodSignature: methodSignature
+    methodSignature: methodSignature,
+    methodDisplayName: methodDisplayName,
+    methodTypeName: methodTypeName
 };
 
