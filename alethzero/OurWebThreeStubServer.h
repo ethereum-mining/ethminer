@@ -35,7 +35,7 @@ public:
 						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
+	virtual bool authenticate(dev::TransactionSkeleton const& _t);
 
 signals:
 	void onNewId(QString _s);
@@ -44,5 +44,21 @@ private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
 
 	dev::WebThreeDirect* m_web3;
+	Main* m_main;
+};
+
+
+class QNatspecExpressionEvaluator: public QObject
+{
+	Q_OBJECT
+	
+public:
+	QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main);
+	virtual ~QNatspecExpressionEvaluator();
+	
+	QString evalExpression(QString const& _expression);
+	
+private:
+	OurWebThreeStubServer* m_server;
 	Main* m_main;
 };
