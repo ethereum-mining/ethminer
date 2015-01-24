@@ -221,7 +221,7 @@ void ClientModel::showDebugError(QString const& _error)
 ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
 	Address newAddress;
-	if (!ctrTransaction.isEmpty())
+	if (!_ctrTransaction.isEmpty())
 		newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
 	else
 	{
