@@ -121,7 +121,7 @@ signals:
 
 private:
 	QString contractAddress() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& ctrTransaction = TransactionSettings());
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& _ctrTransaction = TransactionSettings());
 	ExecutionResult deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	ExecutionResult callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 
