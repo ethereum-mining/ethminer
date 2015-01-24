@@ -218,11 +218,11 @@ void ClientModel::showDebugError(QString const& _error)
 	m_context->displayMessageDialog(tr("Debugger"), _error);
 }
 
-ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& ctrTransaction)
+ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
 	Address newAddress;
 	if (!ctrTransaction.isEmpty())
-		newAddress = m_client->transact(m_client->userAccount().secret(), ctrTransaction.value, _code, ctrTransaction.gas, ctrTransaction.gasPrice);
+		newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
 	else
 	{
 		u256 gasPrice = 10000000000000;
