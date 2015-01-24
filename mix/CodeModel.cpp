@@ -62,6 +62,8 @@ CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compil
 		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
 		dev::solidity::InterfaceHandler interfaceHandler;
 		m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
+		if (m_contractInterface.isEmpty())
+			m_contractInterface = "[]";
 	}
 	else
 		m_contract.reset(new QContractDefinition());

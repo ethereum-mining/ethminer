@@ -35,7 +35,7 @@ Item {
 			editor.onEditorTextChanged.connect(function() {
 				codeModel.registerCodeChange(editor.getText());
 			});
-		editor.setText(data);
+		editor.setText(data, document.syntaxMode);
 	}
 
 	Connections {
