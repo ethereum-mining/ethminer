@@ -20,7 +20,7 @@ Rectangle {
 
 	property alias rightViewVisible : rightView.visible
 	property alias webViewVisible : webPreview.visible
-	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical
+	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 
 	onWidthChanged:
 	{
