@@ -12,7 +12,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 include_directories(..)
 
-find_package (Qt5WebEngine)
+find_package (Qt5WebEngine QUIET)
 qt5_add_resources(UI_RESOURCES qml.qrc)
 
 file(GLOB HEADERS "*.h")
