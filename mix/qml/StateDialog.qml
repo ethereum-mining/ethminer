@@ -8,8 +8,8 @@ Window {
 	id: modalStateDialog
 	modality: Qt.WindowModal
 
-	width:640
-	height:480
+	width: 640
+	height: 480
 
 	visible: false
 
@@ -99,7 +99,7 @@ Window {
 		anchors.right: parent.right;
 
 		Button {
-			text: qsTr("Ok");
+			text: qsTr("OK");
 			onClicked: {
 				close();
 				accepted();
@@ -184,7 +184,7 @@ Window {
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
 				transactionsModel.set(transactionDialog.transactionIndex, item);
-				stateTransactions[index] = item;
+				stateTransactions[transactionDialog.transactionIndex] = item;
 			} else {
 				transactionsModel.append(item);
 				stateTransactions.push(item);

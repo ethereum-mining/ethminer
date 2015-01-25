@@ -71,6 +71,8 @@ struct WorldState
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
+QString contentsOfQResource(std::string const& res);
+
 class Main : public QMainWindow
 {
 	Q_OBJECT
@@ -87,6 +89,8 @@ public:
 	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData);
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
+	
+	QVariant evalRaw(QString const& _js);
 
 public slots:
 	void load(QString _file);
@@ -104,6 +108,7 @@ private slots:
 	void on_mine_triggered();
 	void on_send_clicked();
 	void on_create_triggered();
+	void on_killAccount_triggered();
 	void on_net_triggered();
 	void on_verbosity_valueChanged();
 	void on_ourAccounts_doubleClicked();

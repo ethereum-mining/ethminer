@@ -46,6 +46,10 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();
 		h256 s = rlp[field = 8].toInt<u256>();
+
+		if (rlp.itemCount() > 9)
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("to many fields in the transaction RLP"));
+
 		m_vrs = SignatureStruct{ r, s, v };
 		if (_checkSig >= CheckSignature::Range && !m_vrs.isValid())
 			BOOST_THROW_EXCEPTION(InvalidSignature());

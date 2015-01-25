@@ -102,7 +102,7 @@ static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
 	return {begin(list), end(list)};
 }
 
-static QString contentsOfQResource(string const& res)
+QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -112,7 +112,7 @@ static QString contentsOfQResource(string const& res)
 }
 
 //Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
-Address c_newConfig = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
 Main::Main(QWidget *parent) :
@@ -178,13 +178,13 @@ Main::Main(QWidget *parent) :
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
 
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_qweb->poll();
 	});
 
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -432,6 +432,11 @@ void Main::on_jsInput_returnPressed()
 {
 	eval(ui->jsInput->text());
 	ui->jsInput->setText("");
+}
+
+QVariant Main::evalRaw(QString const& _js)
+{
+	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
 }
 
 void Main::eval(QString const& _js)
@@ -783,6 +788,7 @@ void Main::on_importKeyFile_triggered()
 				}
 			}
 
+			cnote << k.address();
 			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 			{
 				if (m_myKeys.empty())
@@ -1178,9 +1184,6 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-
-	if (m_qweb)
-		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 	{
@@ -1990,14 +1993,69 @@ bool beginsWith(Address _a, bytes const& _b)
 void Main::on_create_triggered()
 {
 	bool ok = true;
-	QString s = QInputDialog::getText(this, "Special Beginning?", "If you want a special key, enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	QStringList items = {"No vanity (instant)", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
+	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 0, false, &ok));
 	if (!ok)
 		return;
+
+	bytes bs;
+	if (v == StringMatch)
+	{
+		QString s = QInputDialog::getText(this, "Vanity Beginning?", "Enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+		if (!ok)
+			return;
+		bs = fromHex(s.toStdString());
+	}
+
 	KeyPair p;
-	while (!beginsWith(p.address(), asBytes(s.toStdString())))
-		p = KeyPair::create();
+	bool keepGoing = true;
+	unsigned done = 0;
+	function<void()> f = [&]() {
+		KeyPair lp;
+		while (keepGoing)
+		{
+			done++;
+			if (done % 1000 == 0)
+				cnote << "Tried" << done << "keys";
+			lp = KeyPair::create();
+			auto a = lp.address();
+			if (v == NoVanity ||
+				(v == FirstTwo && a[0] == a[1]) ||
+				(v == FirstTwoNextTwo && a[0] == a[1] && a[2] == a[3]) ||
+				(v == FirstThree && a[0] == a[1] && a[1] == a[2]) ||
+				(v == FirstFour && a[0] == a[1] && a[1] == a[2] && a[2] == a[3]) ||
+				(v == StringMatch && beginsWith(lp.address(), bs))
+			)
+				break;
+		}
+		if (keepGoing)
+			p = lp;
+		keepGoing = false;
+	};
+	vector<std::thread*> ts;
+	for (unsigned t = 0; t < std::thread::hardware_concurrency() - 1; ++t)
+		ts.push_back(new std::thread(f));
+	f();
+	for (std::thread* t: ts)
+	{
+		t->join();
+		delete t;
+	}
 	m_myKeys.append(p);
 	keysChanged();
+}
+
+void Main::on_killAccount_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	{
+		auto k = m_myKeys[ui->ourAccounts->currentRow()];
+		if (ethereum()->balanceAt(k.address()) != 0 && QMessageBox::critical(this, "Kill Account?!", "Account " + render(k.address()) + " has " + QString::fromStdString(formatBalance(ethereum()->balanceAt(k.address()))) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\nAre you sure you want to continue?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+			return;
+		m_myKeys.erase(m_myKeys.begin() + ui->ourAccounts->currentRow());
+		keysChanged();
+	}
 }
 
 void Main::on_debugStep_triggered()
