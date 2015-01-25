@@ -18,7 +18,6 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.elems[RuntimeData::Caller]       = eth2llvm(fromAddress(_ext.caller));
 	m_data.elems[RuntimeData::Origin]       = eth2llvm(fromAddress(_ext.origin));
 	m_data.elems[RuntimeData::CallValue]    = eth2llvm(_ext.value);
-	m_data.elems[RuntimeData::CallDataSize] = eth2llvm(_ext.data.size());
 	m_data.elems[RuntimeData::GasPrice]     = eth2llvm(_ext.gasPrice);
 	m_data.elems[RuntimeData::CoinBase]     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
 	m_data.elems[RuntimeData::TimeStamp]    = eth2llvm(_ext.currentBlock.timestamp);
@@ -28,6 +27,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.callData = _ext.data.data();
 	m_data.code     = _ext.code.data();
 	m_data.codeSize = _ext.code.size();
+	m_data.callDataSize = _ext.data.size();
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(_ext.code, &m_data, env);

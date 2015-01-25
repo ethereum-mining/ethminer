@@ -25,7 +25,8 @@ llvm::StructType* RuntimeManager::getRuntimeDataType()
 			llvm::ArrayType::get(Type::Word, RuntimeData::_size),	// i256[]
 			Type::BytePtr,		// callData
 			Type::BytePtr,		// code
-			Type::Size			// codeSize
+			Type::Size,			// codeSize
+			Type::Size			// callDataSize
 		};
 		type = llvm::StructType::create(elems, "RuntimeData");
 	}
@@ -62,7 +63,6 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::Caller:		return "caller";
 	case RuntimeData::Origin:		return "origin";
 	case RuntimeData::CallValue:	return "callvalue";
-	case RuntimeData::CallDataSize:	return "calldatasize";
 	case RuntimeData::GasPrice:		return "gasprice";
 	case RuntimeData::CoinBase:		return "coinbase";
 	case RuntimeData::TimeStamp:	return "timestamp";
@@ -128,7 +128,11 @@ void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
 void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size)
 {
 	set(RuntimeData::ReturnDataOffset, _offset);
-	set(RuntimeData::ReturnDataSize, _size);
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
+	assert(ptr->getType() == Type::Size->getPointerTo());
+	assert(_size->getType() == Type::Word);
+	auto size64 = getBuilder().CreateTrunc(_size, Type::Size);
+	getBuilder().CreateStore(size64, ptr);
 }
 
 void RuntimeManager::registerSuicide(llvm::Value* _balanceAddress)
@@ -151,7 +155,6 @@ llvm::Value* RuntimeManager::get(Instruction _inst)
 	case Instruction::CALLER:		return get(RuntimeData::Caller);
 	case Instruction::ORIGIN:		return get(RuntimeData::Origin);
 	case Instruction::CALLVALUE:	return get(RuntimeData::CallValue);
-	case Instruction::CALLDATASIZE:	return get(RuntimeData::CallDataSize);
 	case Instruction::GASPRICE:		return get(RuntimeData::GasPrice);
 	case Instruction::COINBASE:		return get(RuntimeData::CoinBase);
 	case Instruction::TIMESTAMP:	return get(RuntimeData::TimeStamp);
@@ -177,6 +180,14 @@ llvm::Value* RuntimeManager::getCodeSize()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 3);
 	auto value = getBuilder().CreateLoad(ptr, "codeSize");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
+}
+
+llvm::Value* RuntimeManager::getCallDataSize()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
+	auto value = getBuilder().CreateLoad(ptr, "callDataSize");
 	assert(value->getType() == Type::Size);
 	return getBuilder().CreateZExt(value, Type::Word);
 }

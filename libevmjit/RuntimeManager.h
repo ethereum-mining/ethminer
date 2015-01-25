@@ -27,6 +27,7 @@ public:
 	llvm::Value* getCallData();
 	llvm::Value* getCode();
 	llvm::Value* getCodeSize();
+	llvm::Value* getCallDataSize();
 	void setGas(llvm::Value* _gas);
 
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);

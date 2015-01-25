@@ -19,7 +19,6 @@ struct RuntimeData
 		Caller,
 		Origin,
 		CallValue,
-		CallDataSize,
 		GasPrice,
 		CoinBase,
 		TimeStamp,
@@ -30,7 +29,6 @@ struct RuntimeData
 		_size,
 
 		ReturnDataOffset = CallValue,	// Reuse 2 fields for return data reference
-		ReturnDataSize = CallDataSize,
 		SuicideDestAddress = Address,	///< Suicide balance destination address
 	};
 
@@ -38,6 +36,7 @@ struct RuntimeData
 	byte const* callData = nullptr;
 	byte const* code = nullptr;
 	uint64_t codeSize = 0;
+	uint64_t callDataSize = 0;
 };
 
 /// VM Environment (ExtVM) opaque type

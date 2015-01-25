@@ -116,7 +116,7 @@ extern "C"
 			index = std::numeric_limits<decltype(index)>::max(); // set max to fill with 0 leter
 
 		auto data = _rtData->callData;
-		auto size = _rtData->elems[RuntimeData::CallDataSize].a;
+		auto size = _rtData->callDataSize;
 		for (auto i = 0; i < 32; ++i)
 		{
 			if (index < size)
