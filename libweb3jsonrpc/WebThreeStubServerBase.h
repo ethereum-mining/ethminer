@@ -130,7 +130,8 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Address, dev::KeyPair> m_accounts;
+	std::map<dev::Address, dev::KeyPair> m_accountsLookup;
+	std::vector<dev::Address> m_accounts;
 
 	std::map<dev::Public, dev::Secret> m_ids;
 	std::map<unsigned, dev::Public> m_shhWatches;
