@@ -25,7 +25,6 @@
 #include <jsonrpccpp/server.h>
 #include <libdevcore/CommonJS.h>
 #include <libethereum/Transaction.h>
-#include <libqwebthree/QWebThree.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "QContractDefinition.h"
