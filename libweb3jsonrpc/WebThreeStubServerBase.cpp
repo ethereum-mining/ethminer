@@ -307,6 +307,12 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	return ret;
 }
 
+bool WebThreeStubServerBase::eth_flush()
+{
+	client()->flushTransactions();
+	return true;
+}
+
 std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 {
 	std::string ret;

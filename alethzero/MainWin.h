@@ -108,6 +108,7 @@ private slots:
 	void on_mine_triggered();
 	void on_send_clicked();
 	void on_create_triggered();
+	void on_killAccount_triggered();
 	void on_net_triggered();
 	void on_verbosity_valueChanged();
 	void on_ourAccounts_doubleClicked();
