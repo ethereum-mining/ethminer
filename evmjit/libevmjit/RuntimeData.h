@@ -26,7 +26,6 @@ struct RuntimeData
 		Number,
 		Difficulty,
 		GasLimit,
-		CodeSize,
 
 		_size,
 
@@ -38,6 +37,7 @@ struct RuntimeData
 	i256 elems[_size] = {};
 	byte const* callData = nullptr;
 	byte const* code = nullptr;
+	uint64_t codeSize = 0;
 };
 
 /// VM Environment (ExtVM) opaque type

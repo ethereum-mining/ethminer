@@ -638,7 +638,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::ORIGIN:
 		case Instruction::CALLVALUE:
 		case Instruction::CALLDATASIZE:
-		case Instruction::CODESIZE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
 		case Instruction::TIMESTAMP:
@@ -650,6 +649,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			stack.push(_runtimeManager.get(inst));
 			break;
 		}
+
+		case Instruction::CODESIZE:
+			// TODO: Use constant
+			stack.push(_runtimeManager.getCodeSize());
+			break;
 
 		case Instruction::BLOCKHASH:
 		{
@@ -695,7 +699,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCode();    // TODO: Code & its size are constants, feature #80814234
-			auto srcSize = _runtimeManager.get(RuntimeData::CodeSize);
+			auto srcSize = _runtimeManager.getCodeSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;

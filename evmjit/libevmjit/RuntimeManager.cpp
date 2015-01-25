@@ -24,7 +24,8 @@ llvm::StructType* RuntimeManager::getRuntimeDataType()
 		{
 			llvm::ArrayType::get(Type::Word, RuntimeData::_size),	// i256[]
 			Type::BytePtr,		// callData
-			Type::BytePtr		// code
+			Type::BytePtr,		// code
+			Type::Size			// codeSize
 		};
 		type = llvm::StructType::create(elems, "RuntimeData");
 	}
@@ -68,7 +69,6 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::Number:		return "number";
 	case RuntimeData::Difficulty:	return "difficulty";
 	case RuntimeData::GasLimit:		return "gaslimit";
-	case RuntimeData::CodeSize:		return "codesize";
 	}
 }
 }
@@ -158,20 +158,27 @@ llvm::Value* RuntimeManager::get(Instruction _inst)
 	case Instruction::NUMBER:		return get(RuntimeData::Number);
 	case Instruction::DIFFICULTY:	return get(RuntimeData::Difficulty);
 	case Instruction::GASLIMIT:		return get(RuntimeData::GasLimit);
-	case Instruction::CODESIZE:		return get(RuntimeData::CodeSize);
 	}
 }
 
 llvm::Value* RuntimeManager::getCallData()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 1, "calldataPtr");
-	return getBuilder().CreateLoad(ptr, "calldata");
+	return getBuilder().CreateLoad(ptr, "callData");
 }
 
 llvm::Value* RuntimeManager::getCode()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 2, "codePtr");
 	return getBuilder().CreateLoad(ptr, "code");
+}
+
+llvm::Value* RuntimeManager::getCodeSize()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 3);
+	auto value = getBuilder().CreateLoad(ptr, "codeSize");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
 }
 
 llvm::Value* RuntimeManager::getJmpBuf()
