@@ -76,11 +76,12 @@ public:
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
 	/// @returns address of the last executed contract
 	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
-
-public slots:
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
-	void apiRequest(QString const& _message);
+	/// @returns RPC response in Json format
+	Q_INVOKABLE QString apiCall(QString const& _message);
+
+public slots:
 	/// Run the contract constructor and show debugger window.
 	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
