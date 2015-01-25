@@ -25,9 +25,9 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.elems[RuntimeData::Number]       = eth2llvm(_ext.currentBlock.number);
 	m_data.elems[RuntimeData::Difficulty]   = eth2llvm(_ext.currentBlock.difficulty);
 	m_data.elems[RuntimeData::GasLimit]     = eth2llvm(_ext.currentBlock.gasLimit);
-	m_data.elems[RuntimeData::CodeSize]     = eth2llvm(_ext.code.size());
 	m_data.callData = _ext.data.data();
 	m_data.code     = _ext.code.data();
+	m_data.codeSize = _ext.code.size();
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(_ext.code, &m_data, env);
