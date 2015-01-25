@@ -24,6 +24,7 @@
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <libwebthree/WebThree.h>
+
 #include "MainWin.h"
 
 using namespace std;
@@ -54,7 +55,7 @@ bool OurWebThreeStubServer::showAuthenticationPopup(std::string const& _title, s
 	return userInput.exec() == QMessageBox::Ok;
 }
 
-bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t)
 {
 	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
 	if (contractCodeHash == EmptySHA3)
@@ -63,10 +64,41 @@ bool OurWebThreeStubServer::authenticate(dev::TransactionSkeleton const& _t) con
 		return true;
 
 	std::string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
+	
 	if (userNotice.empty())
 		return showAuthenticationPopup("Unverified Pending Transaction",
 									   "An undocumented transaction is about to be executed.");
 
+	QNatspecExpressionEvaluator evaluator(this, m_main);
+	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
+
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Pending Transaction", userNotice);
 }
+
+QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main)
+: m_server(_server), m_main(_main)
+{}
+
+QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
+{}
+
+QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression)
+{
+	
+	// evaluate the natspec
+	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
+	
+	// _expression should be in the format like this
+	// auto toEval = QString::fromStdString("the result of calling multiply(4) is `multiply(4)`");
+	auto toEval = _expression;
+	auto result = m_main->evalRaw("evaluateExpression('" + toEval + "')");
+	
+	return result.toString();
+}
+
+
+
+
+
+

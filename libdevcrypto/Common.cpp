@@ -22,6 +22,7 @@
 
 #include <random>
 #include <chrono>
+#include <thread>
 #include <mutex>
 #include <libdevcore/Guards.h>
 #include "SHA3.h"
@@ -96,12 +97,16 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 
 KeyPair KeyPair::create()
 {
-	static mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+	static boost::thread_specific_ptr<mt19937_64> s_eng;
+	static unsigned s_id = 0;
+	if (!s_eng.get())
+		s_eng.reset(new mt19937_64(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count() + ++s_id));
+
 	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
-		KeyPair ret(FixedHash<32>::random(s_eng));
+		KeyPair ret(FixedHash<32>::random(*s_eng.get()));
 		if (ret.address())
 			return ret;
 	}
