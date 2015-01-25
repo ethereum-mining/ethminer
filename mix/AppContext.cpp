@@ -33,7 +33,7 @@
 #include "Exceptions.h"
 #include "AppContext.h"
 #include "QEther.h"
-#include <libwebthree/WebThree.h>
+#include "HttpServer.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -44,19 +44,9 @@ const QString c_projectFileName = "project.mix";
 AppContext::AppContext(QQmlApplicationEngine* _engine)
 {
 	m_applicationEngine = _engine;
-	//m_webThree = std::unique_ptr<dev::WebThreeDirect>(new WebThreeDirect(std::string("Mix/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/Mix", false, {"eth", "shh"}));
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
-/*
-	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
-	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
-	qmlRegisterSingletonType(QUrl("qrc:/qml/ProjectModel.qml"), "org.ethereum.qml.ProjectModel", 1, 0, "ProjectModel");
-	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
-	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
-	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
-	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
-*/
 }
 
 AppContext::~AppContext()
@@ -82,6 +72,7 @@ void AppContext::load()
 	}
 	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
 	appLoaded();
 }

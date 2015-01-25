@@ -104,7 +104,7 @@ function addFile(fileName) {
 	return docData.documentId;
 }
 
-function findDocument(documentId)
+function getDocumentIndex(documentId)
 {
 	for (var i = 0; i < projectListModel.count; i++)
 		if (projectListModel.get(i).documentId === documentId)
@@ -114,7 +114,38 @@ function findDocument(documentId)
 }
 
 function openDocument(documentId) {
-	documentOpened(projectListModel.get(findDocument(documentId)));
+	if (documentId !== currentDocumentId) {
+		documentOpened(projectListModel.get(getDocumentIndex(documentId)));
+		currentDocumentId = documentId;
+	}
+}
+
+function openNextDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var nextDocId = "";
+	while (nextDocId === "") {
+		docIndex++;
+		if (docIndex >= projectListModel.count)
+			docIndex = 0;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			nextDocId = document.documentId;
+	}
+	openDocument(nextDocId);
+}
+
+function openPrevDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var prevDocId = "";
+	while (prevDocId === "") {
+		docIndex--;
+		if (docIndex < 0)
+			docIndex = projectListModel.count - 1;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			prevDocId = document.documentId;
+	}
+	openDocument(prevDocId);
 }
 
 function doCloseProject() {
@@ -160,7 +191,7 @@ function doAddExistingFiles(files) {
 }
 
 function renameDocument(documentId, newName) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		var sourcePath = document.path;
@@ -174,12 +205,12 @@ function renameDocument(documentId, newName) {
 }
 
 function getDocument(documentId) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	return projectListModel.get(i);
 }
 
 function removeDocument(documentId) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		projectListModel.remove(i);
