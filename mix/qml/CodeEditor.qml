@@ -15,6 +15,10 @@ Item {
 		return codeEditor.text;
 	}
 
+	function setFocus() {
+		codeEditor.forceActiveFocus();
+	}
+
 	anchors.fill: parent
 	id: contentView
 	width: parent.width

@@ -18,6 +18,10 @@ Item {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
 			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
 		}
+		setFocus();
+	}
+
+	function setFocus() {
 		editorBrowser.forceActiveFocus();
 	}
 
