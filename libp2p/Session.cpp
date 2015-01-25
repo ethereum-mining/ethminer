@@ -286,7 +286,7 @@ bool Session::interpret(RLP const& _r)
 			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
 //			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_peers.count(id) << (m_server->m_peers.count(id) ? isPrivateAddress(m_server->m_peers.at(id)->address.address()) : -1);
 
-			// ignore if dist(us,item) - dist(us,them) > 1
+			// todo: draft spec: ignore if dist(us,item) - dist(us,them) > 1
 			
 			// TODO: isPrivate
 			if (!m_server->m_netPrefs.localNetworking && isPrivateAddress(peerAddress))
@@ -309,7 +309,7 @@ bool Session::interpret(RLP const& _r)
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), 30303), ep)));
+			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), ep.port()), ep)));
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 			LAMEPEER:;

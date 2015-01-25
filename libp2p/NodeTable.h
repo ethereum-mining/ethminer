@@ -41,7 +41,7 @@ struct NodeEntry: public Node
 	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw);
 	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp);
 
-	const unsigned distance;	///< Node's distance (xor of _src as integer).
+	unsigned const distance;	///< Node's distance (xor of _src as integer).
 };
 
 enum NodeTableEventType {
@@ -53,20 +53,20 @@ class NodeTableEventHandler
 {
 	friend class NodeTable;
 public:
-	virtual void processEvent(NodeId _n, NodeTableEventType _e) =0;
+	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e) =0;
 	
 protected:
 	/// Called by NodeTable on behalf of an implementation (Host) to process new events without blocking nodetable.
 	void processEvents()
 	{
-		std::list<std::pair<NodeId,NodeTableEventType>> events;
+		std::list<std::pair<NodeId, NodeTableEventType>> events;
 		{
 			Guard l(x_events);
-			if (!m_nodeEvents.size())
+			if (!m_nodeEventHandler.size())
 				return;
-			m_nodeEvents.unique();
-			for (auto const& n: m_nodeEvents) events.push_back(std::make_pair(n,m_events[n]));
-			m_nodeEvents.clear();
+			m_nodeEventHandler.unique();
+			for (auto const& n: m_nodeEventHandler) events.push_back(std::make_pair(n,m_events[n]));
+			m_nodeEventHandler.clear();
 			m_events.clear();
 		}
 		for (auto const& e: events)
@@ -74,11 +74,11 @@ protected:
 	}
 	
 	/// Called by NodeTable to append event.
-	virtual void appendEvent(NodeId _n, NodeTableEventType _e) { Guard l(x_events); m_nodeEvents.push_back(_n); m_events[_n] = _e; }
+	virtual void appendEvent(NodeId _n, NodeTableEventType _e) { Guard l(x_events); m_nodeEventHandler.push_back(_n); m_events[_n] = _e; }
 	
 	Mutex x_events;
-	std::list<NodeId> m_nodeEvents;
-	std::map<NodeId,NodeTableEventType> m_events;
+	std::list<NodeId> m_nodeEventHandler;
+	std::map<NodeId, NodeTableEventType> m_events;
 };
 	
 /**
@@ -143,7 +143,7 @@ public:
 	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
 	/// Set event handler for NodeEntryAdded and NodeEntryRemoved events.
-	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEvents.reset(_handler); }
+	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
 	
 	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryRemoved events. Events are coalesced by type whereby old events are ignored.
 	void processEvents();
@@ -160,7 +160,7 @@ public:
 	std::list<NodeId> nodes() const;
 	std::list<NodeEntry> state() const;
 	
-	bool haveNode(NodeId _id) { Guard l(x_nodes); return !!m_nodes[_id]; }
+	bool haveNode(NodeId _id) { Guard l(x_nodes); return m_nodes.count(_id); }
 	Node operator[](NodeId _id);
 	std::shared_ptr<NodeEntry> getNodeEntry(NodeId _id);
 	
@@ -212,7 +212,7 @@ protected:
 	/// Sends FindNeighbor packet. See doFindNode.
 	void requestNeighbours(NodeEntry const& _node, NodeId _target) const;
 
-	std::unique_ptr<NodeTableEventHandler> m_nodeEvents;		///< Event handler for node events.
+	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;		///< Event handler for node events.
 	
 	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.

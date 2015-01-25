@@ -148,7 +148,7 @@ struct NodeIPEndpoint
 	bi::udp::endpoint udp;
 	bi::tcp::endpoint tcp;
 	
-	operator bool() const { return udp.address().is_unspecified() && tcp.address().is_unspecified(); }
+	operator bool() const { return !udp.address().is_unspecified() || !tcp.address().is_unspecified(); }
 };
 
 struct Node
