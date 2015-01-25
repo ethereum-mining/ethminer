@@ -40,7 +40,7 @@ using namespace dev::p2p;
 
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
-void HostNodeTableHandler::processEvent(NodeId _n, NodeTableEventType _e)
+void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType const& _e)
 {
 	m_host.onNodeTableEvent(_n, _e);
 }
@@ -158,6 +158,8 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		RecursiveGuard l(x_sessions);
+		// TODO: temporary loose-coupling; if m_peers already has peer,
+		//       it is same as _s->m_peer. (fixing next PR)
 		if (!m_peers.count(_s->m_peer->id))
 			m_peers[_s->m_peer->id] = _s->m_peer;
 		m_sessions[_s->m_peer->id] = _s;
@@ -172,7 +174,7 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 		}
 }
 
-void Host::onNodeTableEvent(NodeId _n, NodeTableEventType _e)
+void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 {
 
 	if (_e == NodeEntryAdded)
@@ -320,6 +322,7 @@ void Host::runAcceptor()
 				}
 			}
 			
+			// asio doesn't close socket on error
 			if (!success && s->is_open())
 			{
 				boost::system::error_code ec;
@@ -393,25 +396,25 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
 }
 
-void Host::connect(std::shared_ptr<Peer> const& _n)
+void Host::connect(std::shared_ptr<Peer> const& _p)
 {
 	if (!m_run)
 		return;
 	
-	if (havePeerSession(_n->id))
+	if (havePeerSession(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node already connected.";
 		return;
 	}
 	
-	if (!m_nodeTable->haveNode(_n->id))
+	if (!m_nodeTable->haveNode(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node not in node table.";
 		return;
 	}
 	
 	// prevent concurrently connecting to a node
-	Peer *nptr = _n.get();
+	Peer *nptr = _p.get();
 	{
 		Guard l(x_pendingNodeConns);
 		if (m_pendingNodeConns.count(nptr))
@@ -419,22 +422,22 @@ void Host::connect(std::shared_ptr<Peer> const& _n)
 		m_pendingNodeConns.insert(nptr);
 	}
 	
-	clog(NetConnect) << "Attempting connection to node" << _n->id.abridged() << "@" << _n->peerEndpoint() << "from" << id().abridged();
+	clog(NetConnect) << "Attempting connection to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "from" << id().abridged();
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
-	s->async_connect(_n->peerEndpoint(), [=](boost::system::error_code const& ec)
+	s->async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
-			clog(NetConnect) << "Connection refused to node" << _n->id.abridged() << "@" << _n->peerEndpoint() << "(" << ec.message() << ")";
-			_n->lastDisconnect = TCPError;
-			_n->lastAttempted = std::chrono::system_clock::now();
+			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
+			_p->lastDisconnect = TCPError;
+			_p->lastAttempted = std::chrono::system_clock::now();
 		}
 		else
 		{
-			clog(NetConnect) << "Connected to" << _n->id.abridged() << "@" << _n->peerEndpoint();
+			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
 			
-			_n->lastConnected = std::chrono::system_clock::now();
-			auto ps = make_shared<Session>(this, std::move(*s), _n);
+			_p->lastConnected = std::chrono::system_clock::now();
+			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();
 			
 		}
@@ -480,8 +483,8 @@ void Host::run(boost::system::error_code const&)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
 	
-	if (chrono::steady_clock::now() - m_lastPing >= chrono::seconds(30))	// ping every 30s.
-		keepAlivePeers();
+	disconnectLatePeers();
+	keepAlivePeers();
 	
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
@@ -541,17 +544,27 @@ void Host::doWork()
 
 void Host::keepAlivePeers()
 {
+	if (chrono::steady_clock::now() < m_lastPing + c_keepAliveInterval)
+		return;
+	
 	RecursiveGuard l(x_sessions);
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
-		{
-			if (chrono::steady_clock::now() - pp->m_lastReceived >= chrono::seconds(60))
-				pp->disconnect(PingTimeout);
-			else
 				pp->ping();
-		}
 
 	m_lastPing = chrono::steady_clock::now();
+}
+
+void Host::disconnectLatePeers()
+{
+	if (chrono::steady_clock::now() < m_lastPing + c_keepAliveTimeOut)
+		return;
+
+	RecursiveGuard l(x_sessions);
+	for (auto p: m_sessions)
+		if (auto pp = p.second.lock())
+			if (pp->m_lastReceived < m_lastPing + c_keepAliveTimeOut)
+				pp->disconnect(PingTimeout);
 }
 
 bytes Host::saveNodes() const
@@ -563,7 +576,9 @@ bytes Host::saveNodes() const
 		for (auto const& i: m_peers)
 		{
 			Peer const& n = *(i.second);
-			// TODO: PoC-7: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
+			// TODO: alpha: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
+			// TODO: alpha: if/how to save private addresses
+			// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
 			if (chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.peerEndpoint().port() > 0 && n.peerEndpoint().port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.peerEndpoint().address()))
 			{
 				nodes.appendList(10);
@@ -571,7 +586,8 @@ bytes Host::saveNodes() const
 					nodes << n.peerEndpoint().address().to_v4().to_bytes();
 				else
 					nodes << n.peerEndpoint().address().to_v6().to_bytes();
-				nodes << n.peerEndpoint().port() << n.id /* << (int)n.idOrigin */ << 0
+				// TODO: alpha: replace 0 with trust-state of node
+				nodes << n.peerEndpoint().port() << n.id << 0
 					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
 					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
 					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;

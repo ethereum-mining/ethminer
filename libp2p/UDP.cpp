@@ -29,29 +29,26 @@ h256 RLPXDatagramFace::sign(Secret const& _k)
 	
 	RLPStream rlpxstream;
 //	rlpxstream.appendRaw(toPublic(_k).asBytes()); // for mdc-based signature
-	rlpxstream.appendRaw(bytes(1, packetType()));
+	rlpxstream.appendRaw(bytes(1, packetType())); // prefix by 1 byte for type
 	streamRLP(rlpxstream);
-	bytes rlpBytes(rlpxstream.out());
+	bytes rlpxBytes(rlpxstream.out());
 	
-	bytesConstRef rlp(&rlpBytes);
-	h256 hash(dev::sha3(rlp));
-	Signature sig = dev::sign(_k, hash);
+	bytesConstRef rlpx(&rlpxBytes);
+	h256 sighash(dev::sha3(rlpx)); // H(type||data)
+	Signature sig = dev::sign(_k, sighash); // S(H(type||data))
 	
-	data.resize(h256::size + Signature::size + rlp.size());
-	bytesConstRef packetHash(&data[0], h256::size);
+	data.resize(h256::size + Signature::size + rlpx.size());
+	bytesConstRef rlpxHash(&data[0], h256::size);
+	bytesConstRef rlpxSig(&data[h256::size], Signature::size);
+	bytesConstRef rlpxPayload(&data[h256::size + Signature::size], rlpx.size());
+	
+	sig.ref().copyTo(rlpxSig);
+	rlpx.copyTo(rlpxPayload);
+	
+	bytesConstRef signedRLPx(&data[h256::size], data.size() - h256::size);
+	dev::sha3(signedRLPx).ref().copyTo(rlpxHash);
 
-	bytesConstRef signedPayload(&data[h256::size], Signature::size + rlp.size());
-	bytesConstRef payloadSig(&data[h256::size], Signature::size);
-	bytesConstRef payload(&data[h256::size + Signature::size], rlp.size());
-	
-	sig.ref().copyTo(payloadSig);
-//	rlp.cropped(Public::size, rlp.size() - Public::size).copyTo(payload);
-	rlp.copyTo(payload);
-	
-//	hash.ref().copyTo(packetHash); // for mdc-based signature
-	dev::sha3(signedPayload).ref().copyTo(packetHash);
-
-	return std::move(hash);
+	return std::move(sighash);
 };
 
 Public RLPXDatagramFace::authenticate(bytesConstRef _sig, bytesConstRef _rlp)

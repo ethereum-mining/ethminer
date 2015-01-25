@@ -101,7 +101,7 @@ class HostNodeTableHandler: public NodeTableEventHandler
 {
 	friend class Host;
 	HostNodeTableHandler(Host& _host);
-	virtual void processEvent(NodeId _n, NodeTableEventType _e);
+	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
 	Host& m_host;
 };
 	
@@ -111,9 +111,11 @@ class HostNodeTableHandler: public NodeTableEventHandler
  *
  * @todo onNodeTableEvent: move peer-connection logic into ensurePeers
  * @todo handshake: gracefully disconnect peer if peer already connected
+ * @todo abstract socket -> IPConnection
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  * @todo write host identifier to disk w/nodes
+ * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
  */
 class Host: public Worker
 {
@@ -128,6 +130,12 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 	
+	/// Interval at which Host::run will call keepAlivePeers to ping peers.
+	std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
+
+	/// Disconnect timeout after failure to respond to keepAlivePeers ping.
+	std::chrono::seconds const c_keepAliveTimeOut = std::chrono::seconds(1);
+	
 	/// Default host for current version of client.
 	static std::string pocHost();
 	
@@ -141,9 +149,8 @@ public:
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 	
-	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); if (m_sessions.count(_id)) return !!m_sessions[_id].lock(); else return false; }
+	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
-	/// Add node.
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
 	
 	/// Set ideal number of peers.
@@ -187,21 +194,24 @@ public:
 	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
 protected:
-	void onNodeTableEvent(NodeId _n, NodeTableEventType _e);
+	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
 
 private:
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
-	void connect(std::shared_ptr<Peer> const& _n);
+	void connect(std::shared_ptr<Peer> const& _p);
 	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
 	
+	/// Disconnect peers which didn't respond to keepAlivePeers ping prior to c_keepAliveTimeOut.
+	void disconnectLatePeers();
+	
 	/// Called only from startedWorking().
 	void runAcceptor();
 	
-	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections.
+	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections. If successful, socket is moved to Session via std::move.
 	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId = NodeId());
 	
 	void seal(bytes& _b);

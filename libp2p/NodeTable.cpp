@@ -55,8 +55,8 @@ NodeTable::~NodeTable()
 
 void NodeTable::processEvents()
 {
-	if (m_nodeEvents)
-		m_nodeEvents->processEvents();
+	if (m_nodeEventHandler)
+		m_nodeEventHandler->processEvents();
 }
 
 shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
@@ -80,8 +80,8 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	else
 	{
 		clog(NodeTableNote) << "p2p.nodes.add " << _node.id.abridged();
-		if (m_nodeEvents)
-			m_nodeEvents->appendEvent(_node.id, NodeEntryAdded);
+		if (m_nodeEventHandler)
+			m_nodeEventHandler->appendEvent(_node.id, NodeEntryAdded);
 		
 		ret.reset(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
 		m_nodes[_node.id] = ret;
@@ -341,8 +341,8 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 	}
 	
 	clog(NodeTableNote) << "p2p.nodes.drop " << _n->id.abridged();
-	if (m_nodeEvents)
-		m_nodeEvents->appendEvent(_n->id, NodeEntryRemoved);
+	if (m_nodeEventHandler)
+		m_nodeEventHandler->appendEvent(_n->id, NodeEntryRemoved);
 }
 
 NodeTable::NodeBucket& NodeTable::bucket(NodeEntry const* _n)
@@ -367,23 +367,25 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 		return;
 	}
 	
-	bytesConstRef rlpBytes(hashedBytes.cropped(Signature::size, hashedBytes.size() - Signature::size));
+	bytesConstRef signedBytes(hashedBytes.cropped(Signature::size, hashedBytes.size() - Signature::size));
 
 	// todo: verify sig via known-nodeid and MDC, or, do ping/pong auth if node/endpoint is unknown/untrusted
 	
 	bytesConstRef sigBytes(_packet.cropped(h256::size, Signature::size));
-	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(rlpBytes)));
+	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(signedBytes)));
 	if (!nodeid)
 	{
 		clog(NodeTableMessageSummary) << "Invalid Message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
-	if (rlpBytes[0] && rlpBytes[0] < 4)
+	unsigned packetType = signedBytes[0];
+	if (packetType && packetType < 4)
 		noteNode(nodeid, _from);
 	
 	// todo: switch packet-type
-	RLP rlp(rlpBytes.cropped(1, rlpBytes.size() - 1));
+	bytesConstRef rlpBytes(_packet.cropped(h256::size + Signature::size + 1));
+	RLP rlp(rlpBytes);
 	unsigned itemCount = rlp.itemCount();
 	try {
 		switch (itemCount)
@@ -404,7 +406,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						if (auto n = (*this)[it->first.first])
 							addNode(n);
 						
-						m_evictions.erase(it);
+						it = m_evictions.erase(it);
 					}
 				
 				break;
@@ -447,7 +449,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			}
 				
 			default:
-				clog(NodeTableMessageSummary) << "Invalid Message, " << std::hex << rlpBytes[0] << ", received from " << _from.address().to_string() << ":" << _from.port();
+				clog(NodeTableWarn) << "Invalid Message, " << hex << packetType << ", received from " << _from.address().to_string() << ":" << dec << _from.port();
 				return;
 		}
 	}
@@ -456,7 +458,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 		clog(NodeTableWarn) << "Exception processing message from " << _from.address().to_string() << ":" << _from.port();
 	}
 }
-	
+
 void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 {
 	if (_ec || !m_socketPtr->isOpen())
