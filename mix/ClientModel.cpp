@@ -68,10 +68,9 @@ ClientModel::~ClientModel()
 {
 }
 
-void ClientModel::apiRequest(QString const& _message)
+QString ClientModel::apiCall(QString const& _message)
 {
-	(void)_message;
-//	m_qWebThree->postMessage(_message);
+	return m_qWebThree->callMethod(_message);
 }
 
 QString ClientModel::contractAddress() const
