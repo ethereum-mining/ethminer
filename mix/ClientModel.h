@@ -32,9 +32,6 @@ using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
 Q_DECLARE_METATYPE(dev::mix::ExecutionResult)
 
-class QWebThree;
-class QWebThreeConnector;
-
 namespace dev
 {
 namespace mix
@@ -42,6 +39,7 @@ namespace mix
 
 class AppContext;
 class Web3Server;
+class RpcConnector;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -124,8 +122,7 @@ private:
 	AppContext* m_context;
 	std::atomic<bool> m_running;
 	std::unique_ptr<MixClient> m_client;
-	QWebThree* m_qWebThree;
-	std::unique_ptr<QWebThreeConnector> m_qWebThreeConnector;
+	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
 };
 
