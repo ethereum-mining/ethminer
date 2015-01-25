@@ -14,7 +14,7 @@ evmjit_result evmjit_run(void* _data, void* _env)
 	ExecutionEngine engine;
 
 	auto codePtr = data->code;
-	auto codeSize = data->elems[RuntimeData::CodeSize].a;
+	auto codeSize = data->codeSize;
 	bytes bytecode;
 	bytecode.insert(bytecode.end(), codePtr, codePtr + codeSize);
 
