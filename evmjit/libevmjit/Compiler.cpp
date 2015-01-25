@@ -637,7 +637,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CALLER:
 		case Instruction::ORIGIN:
 		case Instruction::CALLVALUE:
-		case Instruction::CALLDATASIZE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
 		case Instruction::TIMESTAMP:
@@ -653,6 +652,10 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CODESIZE:
 			// TODO: Use constant
 			stack.push(_runtimeManager.getCodeSize());
+			break;
+
+		case Instruction::CALLDATASIZE:
+			stack.push(_runtimeManager.getCallDataSize());
 			break;
 
 		case Instruction::BLOCKHASH:
@@ -686,7 +689,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCallData();
-			auto srcSize = _runtimeManager.get(RuntimeData::CallDataSize);
+			auto srcSize = _runtimeManager.getCallDataSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;
