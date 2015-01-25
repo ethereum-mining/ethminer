@@ -130,6 +130,11 @@ Item {
 		onProjectClosed: {
 			projectList.currentIndex = -1;
 		}
+		onDocumentOpened: {
+			if (projectList.currentItem.documentId !== document.documentId)
+				projectList.currentIndex = projectModel.getDocumentIndex(document.documentId);
+
+		}
 	}
 }
 

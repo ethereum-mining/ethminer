@@ -109,7 +109,7 @@ Item {
 		id: httpServer
 		listen: true
 		accept: true
-		port: 8892
+		port: 8893
 		onClientConnected: {
 			console.log(_request.content);
 			var response = clientModel.apiCall(_request.content);
@@ -149,7 +149,6 @@ Item {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			id: webView
-			experimental.settings.localContentCanAccessFileUrls: true
 			experimental.settings.localContentCanAccessRemoteUrls: true
 			onJavaScriptConsoleMessage: {
 				console.log(sourceID + ":" + lineNumber + ":" + message);

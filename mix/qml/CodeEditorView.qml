@@ -68,6 +68,8 @@ Item {
 			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
 			onVisibleChanged: {
 				loadIfNotLoaded()
+				if (visible && item)
+					loader.item.setFocus();
 			}
 			Component.onCompleted: {
 				loadIfNotLoaded()
