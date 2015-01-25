@@ -11,12 +11,12 @@ var addrConfig = create(compile("config"));
 var addrNameReg = initService("namereg", addrConfig);
 var addrGavsino = initServiceVal("gavmble", addrNameReg, "1000000000000000000");
 
-var abiNameReg = [{"constant":true,"inputs":[{"name":"name","type":"string32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":false,"inputs":[],"name":"kill","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"string32"}]},{"constant":false,"inputs":[{"name":"name","type":"string32"}],"name":"register","outputs":[]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]}];
+var abiNameReg = [{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"getName","outputs":[{"name":"o_name","type":"string32"}]},{"constant":false,"inputs":[{"name":"name","type":"string32"}],"name":"register","outputs":[]},{"constant":true,"inputs":[{"name":"name","type":"string32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":true,"inputs":[{"name":"_name","type":"string32"}],"name":"getAddress","outputs":[{"name":"o_owner","type":"address"}]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"string32"}]}];
 var regName = function(account, name) { return web3.eth.contract(addrNameReg, abiNameReg).transact({'from': account, 'gas': 10000}).register(name); };
 
-regName(accounts[0], 'Gav');
 send(web3.eth.accounts[0], '100000000000000000000', web3.eth.accounts[1]);
-regName(accounts[1], 'Gav Would');
+regName(web3.eth.accounts[0], 'Gav');
+regName(web3.eth.accounts[1], 'Gav Would');
 
 /*
 // ASYNC API
