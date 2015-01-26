@@ -1700,7 +1700,7 @@ void Main::on_data_textChanged()
 //				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
-				solidity += "<pre>var " + QString::fromStdString(compiler.getContractNames().back()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
+				solidity += "<pre>var " + QString::fromStdString(compiler.getContractNames().front()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
