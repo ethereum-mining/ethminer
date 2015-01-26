@@ -106,11 +106,10 @@ void ClientModel::debugState(QVariantMap _state)
 	QVariantList transactions = _state.value("transactions").toList();
 
 	std::vector<TransactionSettings> transactionSequence;
-
+	TransactionSettings constructorTr;
 	for (auto const& t: transactions)
 	{
 		QVariantMap transaction = t.toMap();
-
 		QString functionId = transaction.value("functionId").toString();
 		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
@@ -124,12 +123,15 @@ void ClientModel::debugState(QVariantMap _state)
 			transactionSettings.parameterValues.insert(std::make_pair(p.key(), boost::get<dev::u256>(param->internalValue())));
 		}
 
-		transactionSequence.push_back(transactionSettings);
+		if (transaction.value("executeConstructor").toBool())
+			constructorTr = transactionSettings;
+		else
+			transactionSequence.push_back(transactionSettings);
 	}
-	executeSequence(transactionSequence, balance);
+	executeSequence(transactionSequence, balance, constructorTr);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& ctrTransaction)
 {
 	if (m_running)
 		throw (std::logic_error("debugging already running"));
@@ -179,8 +181,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 			//run contract creation first
 			m_client->resetState(_balance);
-			ExecutionResult debuggingContent = deployContract(contractCode);
-			Address address = m_contractAddress;
+			ExecutionResult debuggingContent = deployContract(contractCode, ctrTransaction);
+			Address address = m_contractAddress
 			for (unsigned i = 0; i < _sequence.size(); ++i)
 				debuggingContent = callContract(address, transactonData.at(i), _sequence.at(i));
 
@@ -231,13 +233,19 @@ void ClientModel::showDebugError(QString const& _error)
 	m_context->displayMessageDialog(tr("Debugger"), _error);
 }
 
-ExecutionResult ClientModel::deployContract(bytes const& _code)
+ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	u256 gasPrice = 10000000000000;
-	u256 gas = 125000;
-	u256 amount = 100;
+	Address newAddress;
+	if (!_ctrTransaction.isEmpty())
+		newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	else
+	{
+		u256 gasPrice = 10000000000000;
+		u256 gas = 125000;
+		u256 amount = 100;
+		newAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
+	}
 
-	Address newAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
 	if (newAddress != m_contractAddress)
 	{
 		m_contractAddress = newAddress;
@@ -256,4 +264,3 @@ ExecutionResult ClientModel::callContract(Address const& _contract, bytes const&
 
 }
 }
-

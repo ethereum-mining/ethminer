@@ -4,6 +4,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
 
 Rectangle {
 	color: "#ededed"
@@ -67,15 +68,22 @@ Rectangle {
 		id: stateListModel
 
 		function addState() {
-			var etherComponent = Qt.createComponent("qrc:/qml/EtherValue.qml");
-			var ether = etherComponent.createObject(stateListContainer);
-			ether.setValue("100000000000000000000000000");
-			ether.setUnit(QEther.Wei);
+			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
 			var item = {
 				title: "",
 				balance: ether,
 				transactions: []
 			};
+
+			var ctorTr = {
+				value: QEtherHelper.createEther("100", QEther.Wei),
+				functionId:  qsTr("Constructor"),
+				gas: QEtherHelper.createEther("125000", QEther.Wei),
+				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
+				executeConstructor: true
+			};
+
+			item.transactions.push(ctorTr);
 			stateDialog.open(stateListModel.count, item);
 		}
 
