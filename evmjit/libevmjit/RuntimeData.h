@@ -14,42 +14,42 @@ struct RuntimeData
 {
 	enum Index
 	{
+		Gas,
+		GasPrice,
+		CallData,
+		CallDataSize,
 		Address,
 		Caller,
 		Origin,
 		CallValue,
-		GasPrice,
 		CoinBase,
 		Difficulty,
 		GasLimit,
-		CallData,
+		Number,
+		Timestamp,
 		Code,
 		CodeSize,
-		CallDataSize,
-		Gas,
-		BlockNumber,
-		BlockTimestamp,
 
 		SuicideDestAddress = Address,		///< Suicide balance destination address
 		ReturnData 		   = CallData,		///< Return data pointer (set only in case of RETURN)
 		ReturnDataSize 	   = CallDataSize,	///< Return data size (set only in case of RETURN)
 	};
 
-	i256 address;
-	i256 caller;
-	i256 origin;
-	i256 callValue;
-	i256 gasPrice;
-	i256 coinBase;
-	i256 difficulty;
-	i256 gasLimit;
+	int64_t 	gas = 0;
+	int64_t 	gasPrice = 0;
 	byte const* callData = nullptr;
+	uint64_t 	callDataSize = 0;
+	i256 		address;
+	i256 		caller;
+	i256 		origin;
+	i256 		callValue;
+	i256 		coinBase;
+	i256 		difficulty;
+	i256 		gasLimit;
+	uint64_t 	number = 0;
+	uint64_t 	timestamp = 0;
 	byte const* code = nullptr;
-	uint64_t codeSize = 0;
-	uint64_t callDataSize = 0;
-	int64_t gas = 0;
-	uint64_t blockNumber = 0;
-	uint64_t blockTimestamp = 0;
+	uint64_t 	codeSize = 0;
 };
 
 /// VM Environment (ExtVM) opaque type

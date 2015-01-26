@@ -641,9 +641,13 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::COINBASE:
 		case Instruction::DIFFICULTY:
 		case Instruction::GASLIMIT:
+		case Instruction::NUMBER:
+		case Instruction::TIMESTAMP:
 		{
 			// Pushes an element of runtime data on stack
-			stack.push(_runtimeManager.get(inst));
+			auto value = _runtimeManager.get(inst);
+			value = m_builder.CreateZExt(value, Type::Word);
+			stack.push(value);
 			break;
 		}
 
@@ -654,14 +658,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 		case Instruction::CALLDATASIZE:
 			stack.push(_runtimeManager.getCallDataSize());
-			break;
-
-		case Instruction::NUMBER:
-			stack.push(_runtimeManager.getBlockNumber());
-			break;
-
-		case Instruction::TIMESTAMP:
-			stack.push(_runtimeManager.getBlockTimestamp());
 			break;
 
 		case Instruction::BLOCKHASH:
