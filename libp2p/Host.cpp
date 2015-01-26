@@ -626,7 +626,7 @@ void Host::restoreNodes(bytesConstRef _b)
 				auto id = (NodeId)i[2];
 				if (!m_peers.count(id))
 				{
-					// TODO: p2p Important :)
+					// TODO: p2p import/export :)
 //					auto n = noteNode(id, ep);
 //					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 //					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
