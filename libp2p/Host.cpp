@@ -52,7 +52,8 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_alias(move(getHostIdentifier()))
+	m_alias(move(getHostIdentifier())),
+	m_lastPing(chrono::time_point<chrono::steady_clock>::min())
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -483,8 +484,8 @@ void Host::run(boost::system::error_code const&)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
 	
-	disconnectLatePeers();
 	keepAlivePeers();
+	disconnectLatePeers();
 	
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
@@ -544,7 +545,7 @@ void Host::doWork()
 
 void Host::keepAlivePeers()
 {
-	if (chrono::steady_clock::now() < m_lastPing + c_keepAliveInterval)
+	if (chrono::steady_clock::now() - c_keepAliveInterval < m_lastPing)
 		return;
 	
 	RecursiveGuard l(x_sessions);
@@ -557,13 +558,14 @@ void Host::keepAlivePeers()
 
 void Host::disconnectLatePeers()
 {
-	if (chrono::steady_clock::now() < m_lastPing + c_keepAliveTimeOut)
+	auto now = chrono::steady_clock::now();
+	if (now - c_keepAliveTimeOut < m_lastPing)
 		return;
 
 	RecursiveGuard l(x_sessions);
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
-			if (pp->m_lastReceived < m_lastPing + c_keepAliveTimeOut)
+			if (now - c_keepAliveTimeOut > m_lastPing && pp->m_lastReceived < m_lastPing)
 				pp->disconnect(PingTimeout);
 }
 

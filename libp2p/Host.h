@@ -134,7 +134,7 @@ public:
 	std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
 
 	/// Disconnect timeout after failure to respond to keepAlivePeers ping.
-	std::chrono::seconds const c_keepAliveTimeOut = std::chrono::seconds(1);
+	std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
 	
 	/// Default host for current version of client.
 	static std::string pocHost();
