@@ -8,8 +8,8 @@ Window {
 	id: modalStateDialog
 	modality: Qt.WindowModal
 
-	width:640
-	height:480
+	width: 640
+	height: 480
 
 	visible: false
 
@@ -184,7 +184,7 @@ Window {
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
 				transactionsModel.set(transactionDialog.transactionIndex, item);
-				stateTransactions[index] = item;
+				stateTransactions[transactionDialog.transactionIndex] = item;
 			} else {
 				transactionsModel.append(item);
 				stateTransactions.push(item);
