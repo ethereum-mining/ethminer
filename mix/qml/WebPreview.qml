@@ -62,12 +62,12 @@ Item {
 	Connections {
 		target: clientModel
 		onContractAddressChanged: reload();
+		onRunComplete: reload();
 	}
 
 	Connections {
 		target: codeModel
 		onContractInterfaceChanged: reload();
-		onRunCompleted: reload();
 	}
 
 	Connections {
