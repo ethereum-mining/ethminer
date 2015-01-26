@@ -61,7 +61,7 @@ private:
 };
 
 ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
+	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector()), m_contractAddress(Address())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QEther*>("QEther*");
@@ -92,8 +92,7 @@ QString ClientModel::apiCall(QString const& _message)
 
 QString ClientModel::contractAddress() const
 {
-	QString address = QString::fromStdString(dev::toJS(m_client->lastContractAddress()));
-	return address;
+	return QString::fromStdString(dev::toJS(m_contractAddress));
 }
 
 void ClientModel::debugDeployment()
@@ -181,7 +180,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 			//run contract creation first
 			m_client->resetState(_balance);
 			ExecutionResult debuggingContent = deployContract(contractCode);
-			Address address = debuggingContent.contractAddress;
+			Address address = m_contractAddress;
 			for (unsigned i = 0; i < _sequence.size(); ++i)
 				debuggingContent = callContract(address, transactonData.at(i), _sequence.at(i));
 
@@ -238,19 +237,20 @@ ExecutionResult ClientModel::deployContract(bytes const& _code)
 	u256 gas = 125000;
 	u256 amount = 100;
 
-	Address lastAddress = m_client->lastContractAddress();
 	Address newAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
-	ExecutionResult r = m_client->lastExecutionResult();
-	if (newAddress != lastAddress)
+	if (newAddress != m_contractAddress)
+	{
+		m_contractAddress = newAddress;
 		contractAddressChanged();
+	}
+	ExecutionResult r = m_client->record().back().transactions.back();
 	return r;
 }
 
 ExecutionResult ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
 	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
-	ExecutionResult r = m_client->lastExecutionResult();
-	r.contractAddress = _contract;
+	ExecutionResult r = m_client->record().back().transactions.back();
 	return r;
 }
 

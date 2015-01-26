@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include <vector>
 #include <libethereum/Interface.h>
+#include <libethereum/Client.h>
 
 namespace dev
 {
@@ -53,14 +55,26 @@ struct MachineState
  */
 struct ExecutionResult
 {
+	ExecutionResult(): receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
+
 	std::vector<MachineState> machineStates;
 	bytes executionCode;
 	bytesConstRef executionData;
-	Address contractAddress;
-	bool contentAvailable;
-	std::string message;
 	bytes returnValue;
+	dev::eth::TransactionReceipt receipt;
 };
+
+using ExecutionResults = std::vector<ExecutionResult>;
+
+struct Block
+{
+	ExecutionResults transactions;
+	h256 hash;
+	dev::eth::State state;
+	dev::eth::BlockInfo info;
+};
+
+using Blocks = std::vector<Block>;
 
 class MixClient: public dev::eth::Interface
 {
@@ -68,9 +82,9 @@ public:
 	MixClient();
 	/// Reset state to the empty state with given balance.
 	void resetState(u256 _balance);
-	const KeyPair& userAccount() const { return m_userAccount; }
-	const ExecutionResult lastExecutionResult() const { ReadGuard l(x_state); return m_lastExecutionResult; }
-	const Address lastContractAddress() const { ReadGuard l(x_state); return m_lastExecutionResult.contractAddress; }
+	KeyPair const& userAccount() const { return m_userAccount; }
+	void mine();
+	Blocks const& record() const { return m_blocks; }
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -113,12 +127,16 @@ public:
 private:
 	void executeTransaction(bytesConstRef _rlp, eth::State& _state);
 	void validateBlock(int _block) const;
+	void noteChanged(h256Set const& _filters);
 
 	KeyPair m_userAccount;
 	eth::State m_state;
 	OverlayDB m_stateDB;
 	mutable boost::shared_mutex x_state;
-	ExecutionResult m_lastExecutionResult;
+	mutable std::mutex m_filterLock;
+	std::map<h256, dev::eth::InstalledFilter> m_filters;
+	std::map<unsigned, dev::eth::ClientWatch> m_watches;
+	Blocks m_blocks;
 };
 
 }

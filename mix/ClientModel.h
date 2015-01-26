@@ -124,6 +124,7 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
+	Address m_contractAddress;
 };
 
 }
