@@ -36,6 +36,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <functional>
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -116,6 +117,15 @@ inline unsigned int toLog2(u256 _x)
 	for (ret = 0; _x >>= 1; ++ret) {}
 	return ret;
 }
+
+/// RAII utility class whose destructor calls a given function.
+class ScopeGuard {
+public:
+	ScopeGuard(std::function<void(void)> _f): m_f(_f) {}
+	~ScopeGuard() { m_f(); }
+private:
+	std::function<void(void)> m_f;
+};
 
 // Assertions...
 
