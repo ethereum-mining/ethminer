@@ -69,12 +69,31 @@ std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Va
 	return std::make_pair(m_builder.CreateLoad(m_arg3), m_builder.CreateLoad(m_result));
 }
 
-std::pair<llvm::Value*, llvm::Value*> Arith256::sdiv(llvm::Value* _arg1, llvm::Value* _arg2)
+std::pair<llvm::Value*, llvm::Value*> Arith256::sdiv(llvm::Value* _x, llvm::Value* _y)
 {
-	m_builder.CreateStore(_arg1, m_arg1);
-	m_builder.CreateStore(_arg2, m_arg2);
-	createCall(m_sdiv, {m_arg1, m_arg2, m_arg3, m_result});
-	return std::make_pair(m_builder.CreateLoad(m_arg3), m_builder.CreateLoad(m_result));
+	auto xIsNeg = m_builder.CreateICmpSLT(_x, Constant::get(0));
+	auto xNeg = m_builder.CreateSub(Constant::get(0), _x);
+	auto xAbs = m_builder.CreateSelect(xIsNeg, xNeg, _x);
+
+	auto yIsNeg = m_builder.CreateICmpSLT(_y, Constant::get(0));
+	auto yNeg = m_builder.CreateSub(Constant::get(0), _y);
+	auto yAbs = m_builder.CreateSelect(yIsNeg, yNeg, _y);
+
+	m_builder.CreateStore(xAbs, m_arg1);
+	m_builder.CreateStore(yAbs, m_arg2);
+	createCall(m_div, {m_arg1, m_arg2, m_arg3, m_result});
+	auto qAbs = m_builder.CreateLoad(m_arg3);
+	auto rAbs = m_builder.CreateLoad(m_result);
+
+	// the reminder has the same sign as dividend
+	auto rNeg = m_builder.CreateSub(Constant::get(0), rAbs);
+	auto r = m_builder.CreateSelect(xIsNeg, rNeg, rAbs);
+
+	auto qNeg = m_builder.CreateSub(Constant::get(0), qAbs);
+	auto xyOpposite = m_builder.CreateXor(xIsNeg, yIsNeg);
+	auto q = m_builder.CreateSelect(xyOpposite, qNeg, qAbs);
+
+	return std::make_pair(q, r);
 }
 
 llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
@@ -151,14 +170,6 @@ namespace
 
 	const auto nLimbs = sizeof(i256) / sizeof(mp_limb_t);
 
-	// FIXME: Not thread-safe
-	static mp_limb_t mod_limbs[] = {0, 0, 0, 0, 1};
-	static_assert(sizeof(mod_limbs) / sizeof(mod_limbs[0]) == nLimbs + 1, "mp_limb_t size mismatch");
-	static const mpz_t mod{nLimbs + 1, nLimbs + 1, &mod_limbs[0]};
-
-	static mp_limb_t tmp_limbs[nLimbs + 2];
-	static mpz_t tmp{nLimbs + 2, 0, &tmp_limbs[0]};
-
 	int countLimbs(i256 const* _n)
 	{
 		static const auto limbsInWord = sizeof(_n->a) / sizeof(mp_limb_t);
@@ -173,25 +184,6 @@ namespace
 		l -= limbsInWord;
 		if (_n->a != 0) return l;
 		return 0;
-	}
-
-	void u2s(mpz_t _u)
-	{
-		if (static_cast<std::make_signed<mp_limb_t>::type>(_u->_mp_d[nLimbs - 1]) < 0)
-		{
-			mpz_sub(tmp, mod, _u);
-			mpz_set(_u, tmp);
-			_u->_mp_size = -_u->_mp_size;
-		}
-	}
-
-	void s2u(mpz_t _s)
-	{
-		if (_s->_mp_size < 0)
-		{
-			mpz_add(tmp, mod, _s);
-			mpz_set(_s, tmp);
-		}
 	}
 }
 
@@ -223,24 +215,6 @@ extern "C"
 		mpz_t r{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_mod)};
 
 		mpz_tdiv_qr(q, r, x, y);
-	}
-
-	EXPORT void arith_sdiv(i256* _arg1, i256* _arg2, i256* o_div, i256* o_mod)
-	{
-		*o_div = {};
-		*o_mod = {};
-		if (isZero(_arg2))
-			return;
-
-		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
-		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t q{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_div)};
-		mpz_t r{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_mod)};
-		u2s(x);
-		u2s(y);
-		mpz_tdiv_qr(q, r, x, y);
-		s2u(q);
-		s2u(r);
 	}
 
 	EXPORT void arith_exp(i256* _arg1, i256* _arg2, i256* o_result)
