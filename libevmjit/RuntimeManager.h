@@ -28,8 +28,6 @@ public:
 	llvm::Value* getCode();
 	llvm::Value* getCodeSize();
 	llvm::Value* getCallDataSize();
-	llvm::Value* getBlockNumber();
-	llvm::Value* getBlockTimestamp();
 	void setGas(llvm::Value* _gas);
 
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);

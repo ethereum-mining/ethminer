@@ -22,21 +22,21 @@ llvm::StructType* RuntimeManager::getRuntimeDataType()
 	{
 		llvm::Type* elems[] =
 		{
+			Type::Size,		// gas
+			Type::Size,		// gasPrice
+			Type::BytePtr,	// callData
+			Type::Size,		// callDataSize
 			Type::Word,		// address
 			Type::Word,		// caller
 			Type::Word,		// origin
-			Type::Word,		// address
-			Type::Word,		// address
-			Type::Word,		// address
-			Type::Word,		// address
-			Type::Word,		// address
-			Type::BytePtr,	// callData
-			Type::BytePtr,	// code
-			Type::Size,		// codeSize
-			Type::Size,		// callDataSize
-			Type::Size,		// gas
+			Type::Word,		// callValue
+			Type::Word,		// coinBase
+			Type::Word,		// difficulty
+			Type::Word,		// gasLimit
 			Type::Size,		// blockNumber
 			Type::Size,		// blockTimestamp
+			Type::BytePtr,	// code
+			Type::Size,		// codeSize
 		};
 		type = llvm::StructType::create(elems, "RuntimeData");
 	}
@@ -81,8 +81,8 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::CodeSize:		return "code";
 	case RuntimeData::CallDataSize:	return "callDataSize";
 	case RuntimeData::Gas:			return "gas";
-	case RuntimeData::BlockNumber:	return "number";
-	case RuntimeData::BlockTimestamp:	return "timestamp";
+	case RuntimeData::Number:	return "number";
+	case RuntimeData::Timestamp:	return "timestamp";
 	}
 }
 }
@@ -178,6 +178,8 @@ llvm::Value* RuntimeManager::get(Instruction _inst)
 	case Instruction::COINBASE:		return get(RuntimeData::CoinBase);
 	case Instruction::DIFFICULTY:	return get(RuntimeData::Difficulty);
 	case Instruction::GASLIMIT:		return get(RuntimeData::GasLimit);
+	case Instruction::NUMBER:		return get(RuntimeData::Number);
+	case Instruction::TIMESTAMP:	return get(RuntimeData::Timestamp);
 	}
 }
 
@@ -201,20 +203,6 @@ llvm::Value* RuntimeManager::getCodeSize()
 llvm::Value* RuntimeManager::getCallDataSize()
 {
 	auto value = get(RuntimeData::CallDataSize);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
-}
-
-llvm::Value* RuntimeManager::getBlockNumber()
-{
-	auto value = get(RuntimeData::BlockNumber);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
-}
-
-llvm::Value* RuntimeManager::getBlockTimestamp()
-{
-	auto value = get(RuntimeData::BlockTimestamp);
 	assert(value->getType() == Type::Size);
 	return getBuilder().CreateZExt(value, Type::Word);
 }
