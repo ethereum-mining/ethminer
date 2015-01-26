@@ -125,7 +125,7 @@ class Host: public Worker
 	
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bool _start = false);
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences());
 
 	/// Will block on network process events.
 	virtual ~Host();

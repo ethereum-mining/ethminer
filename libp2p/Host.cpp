@@ -45,7 +45,7 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
-Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool _start):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n):
 	Worker("p2p", 0),
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
@@ -60,8 +60,6 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bool
 			clog(NetNote) << "IP Address: " << address << " = " << (isPrivateAddress(address) ? "[LOCAL]" : "[PEER]");
 	
 	clog(NetNote) << "Id:" << id();
-	if (_start)
-		start();
 }
 
 Host::~Host()
@@ -300,16 +298,34 @@ void Host::runAcceptor()
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_tcpPublic << ")";
 		m_accepting = true;
+
+		// socket is created outside of acceptor-callback
+		// An allocated socket is necessary as asio can use the socket
+		// until the callback succeeds or fails.
+		//
+		// Until callback succeeds or fails, we can't dealloc it.
+		//
+		// Callback is guaranteed to be called via asio or when
+		// m_tcp4Acceptor->stop() is called by Host.
+		//
+		// All exceptions are caught so they don't halt asio and so the
+		// socket is deleted.
+		//
+		// It's possible for an accepted connection to return an error in which
+		// case the socket may be open and must be closed to prevent asio from
+		// processing socket events after socket is deallocated.
 		
-		bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
+		bi::tcp::socket *s = new bi::tcp::socket(m_ioService);
 		m_tcp4Acceptor.async_accept(*s, [=](boost::system::error_code ec)
 		{
+			// if no error code, doHandshake takes ownership
 			bool success = false;
 			if (!ec)
 			{
 				try
 				{
-					// incoming connection so we don't yet know nodeid
+					// doHandshake takes ownersihp of *s via std::move
+					// incoming connection; we don't yet know nodeid
 					doHandshake(s, NodeId());
 					success = true;
 				}
