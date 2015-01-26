@@ -20,16 +20,16 @@ Runtime::Runtime(RuntimeData* _data, Env* _env) :
 
 bytes_ref Runtime::getReturnData() const
 {
-	// TODO: Handle large indexes
-	auto offset = static_cast<size_t>(m_data.elems[RuntimeData::ReturnDataOffset].a);
+	auto data = m_data.callData;
 	auto size = static_cast<size_t>(m_data.callDataSize);
 
-	assert(offset + size <= m_memory.size() || size == 0);
-	if (offset + size > m_memory.size())
+	if (data < m_memory.data() || data >= m_memory.data() + m_memory.size() || size == 0)
+	{
+		assert(size == 0); // data can be an invalid pointer only if size is 0
 		return {};
+	}
 
-	auto dataBeg = m_memory.data() + offset;
-	return bytes_ref{dataBeg, size};
+	return bytes_ref{data, size};
 }
 
 }

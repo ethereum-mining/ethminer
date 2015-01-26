@@ -27,7 +27,6 @@ struct RuntimeData
 
 		_size,
 
-		ReturnDataOffset = CallValue,	// Reuse 2 fields for return data reference
 		SuicideDestAddress = Address,	///< Suicide balance destination address
 	};
 

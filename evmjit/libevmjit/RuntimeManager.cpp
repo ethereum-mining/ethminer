@@ -127,7 +127,12 @@ void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
 
 void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size)
 {
-	set(RuntimeData::ReturnDataOffset, _offset);
+	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 3);
+	auto mem = getBuilder().CreateLoad(memPtr, "memory");
+	auto returnDataPtr = getBuilder().CreateGEP(mem, _offset);
+	auto callDataPtr = getBuilder().CreateStructGEP(getDataPtr(), 1);
+	getBuilder().CreateStore(returnDataPtr, callDataPtr);
+
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
 	assert(ptr->getType() == Type::Size->getPointerTo());
 	assert(_size->getType() == Type::Word);
