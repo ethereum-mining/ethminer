@@ -14,7 +14,6 @@ struct RuntimeData
 {
 	enum Index
 	{
-		Gas,
 		Address,
 		Caller,
 		Origin,
@@ -37,6 +36,7 @@ struct RuntimeData
 	byte const* code = nullptr;
 	uint64_t codeSize = 0;
 	uint64_t callDataSize = 0;
+	int64_t gas = 0;
 };
 
 /// VM Environment (ExtVM) opaque type

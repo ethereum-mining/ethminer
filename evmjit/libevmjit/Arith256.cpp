@@ -65,7 +65,6 @@ llvm::Value* Arith256::mul(llvm::Value* _arg1, llvm::Value* _arg2)
 
 llvm::Value* Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-
 	//return Endianness::toNative(m_builder, binaryOp(m_div, Endianness::toBE(m_builder, _arg1), Endianness::toBE(m_builder, _arg2)));
 	return binaryOp(m_div, _arg1, _arg2);
 }
