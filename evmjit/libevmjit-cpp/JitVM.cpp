@@ -22,14 +22,14 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	if (_ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.blockTimestamp)>::max())
 		BOOST_THROW_EXCEPTION(OutOfGas());
 
-	m_data.elems[RuntimeData::Address]      = eth2llvm(fromAddress(_ext.myAddress));
-	m_data.elems[RuntimeData::Caller]       = eth2llvm(fromAddress(_ext.caller));
-	m_data.elems[RuntimeData::Origin]       = eth2llvm(fromAddress(_ext.origin));
-	m_data.elems[RuntimeData::CallValue]    = eth2llvm(_ext.value);
-	m_data.elems[RuntimeData::GasPrice]     = eth2llvm(_ext.gasPrice);
-	m_data.elems[RuntimeData::CoinBase]     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
-	m_data.elems[RuntimeData::Difficulty]   = eth2llvm(_ext.currentBlock.difficulty);
-	m_data.elems[RuntimeData::GasLimit]     = eth2llvm(_ext.currentBlock.gasLimit);
+	m_data.address      = eth2llvm(fromAddress(_ext.myAddress));
+	m_data.caller       = eth2llvm(fromAddress(_ext.caller));
+	m_data.origin       = eth2llvm(fromAddress(_ext.origin));
+	m_data.callValue    = eth2llvm(_ext.value);
+	m_data.gasPrice     = eth2llvm(_ext.gasPrice);
+	m_data.coinBase     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
+	m_data.difficulty   = eth2llvm(_ext.currentBlock.difficulty);
+	m_data.gasLimit     = eth2llvm(_ext.currentBlock.gasLimit);
 	m_data.callData = _ext.data.data();
 	m_data.code     = _ext.code.data();
 	m_data.codeSize = _ext.code.size();
@@ -43,7 +43,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:
-		_ext.suicide(right160(llvm2eth(m_data.elems[RuntimeData::SuicideDestAddress])));
+		_ext.suicide(right160(llvm2eth(m_data.address)));
 		break;
 
 	case ReturnCode::BadJumpDestination:
