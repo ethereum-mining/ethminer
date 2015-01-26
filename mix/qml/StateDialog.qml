@@ -171,7 +171,7 @@ Window {
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
 				transactionsModel.set(transactionDialog.transactionIndex, item);
-				stateTransactions[index] = item;
+				stateTransactions[transactionDialog.transactionIndex] = item;
 			} else {
 				transactionsModel.append(item);
 				stateTransactions.push(item);

@@ -12,7 +12,7 @@
 CodeMirror.defineMode("solidity", function(config) {
   var indentUnit = config.indentUnit;
 
-  var keywords = { "delete":true, "break":true, "case":true, "const":true, "continue":true, "contract":true, "default":true,
+  var keywords = { "delete":true, "break":true, "case":true, "constant":true, "continue":true, "contract":true, "default":true,
 		"do":true, "else":true, "is":true, "for":true, "function":true, "if":true, "import":true, "mapping":true, "new":true,
 		"public":true, "private":true, "return":true, "returns":true, "struct":true, "switch":true, "var":true, "while":true,
 		"int":true, "uint":true, "hash":true, "bool":true, "string":true, "string0":true, "text":true, "real":true,

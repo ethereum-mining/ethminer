@@ -79,6 +79,7 @@ public:
 	virtual int eth_defaultBlock();
 	virtual std::string eth_gasPrice();
 	virtual Json::Value eth_filterLogs(int const& _id);
+	virtual bool eth_flush();
 	virtual Json::Value eth_logs(Json::Value const& _json);
 	virtual bool eth_listening();
 	virtual bool eth_mining();
@@ -129,7 +130,8 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Address, dev::KeyPair> m_accounts;
+	std::map<dev::Address, dev::KeyPair> m_accountsLookup;
+	std::vector<dev::Address> m_accounts;
 
 	std::map<dev::Public, dev::Secret> m_ids;
 	std::map<unsigned, dev::Public> m_shhWatches;

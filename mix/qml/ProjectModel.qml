@@ -25,6 +25,7 @@ Item {
 	property bool haveUnsavedChanges: false
 	property string projectPath: ""
 	property string projectTitle: ""
+	property string currentDocumentId: ""
 	property var listModel: projectListModel
 
 	//interface
@@ -39,9 +40,12 @@ Item {
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	//function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
+	function openNextDocument() { ProjectModelCode.openNextDocument(); }
+	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
+	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 
 	Connections {
 		target: appContext

@@ -82,6 +82,7 @@ var ethMethods = function () {
     { name: 'transaction', call: transactionCall },
     { name: 'uncle', call: uncleCall },
     { name: 'compilers', call: 'eth_compilers' },
+    { name: 'flush', call: 'eth_flush' },
     { name: 'lll', call: 'eth_lll' },
     { name: 'solidity', call: 'eth_solidity' },
     { name: 'serpent', call: 'eth_serpent' },
@@ -267,6 +268,15 @@ var web3 = {
 
     /// eth object prototype
     eth: {
+        contractFromAbi: function (abi) {
+            return function(addr) {
+                // Default to address of Config. TODO: rremove prior to genesis.
+                addr = addr || '0xc6d9d2cd449a754c494264e1809c50e34d64562b';
+                var ret = web3.eth.contract(addr, abi);
+                ret.address = addr;
+                return ret;
+            };
+        },
         watch: function (params) {
             return new web3.filter(params, ethWatch);
         }
