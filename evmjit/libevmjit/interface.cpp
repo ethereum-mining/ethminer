@@ -1,34 +1,36 @@
-#include "interface.h"
-#include <cstring>
 #include "ExecutionEngine.h"
 
 extern "C"
 {
 
-evmjit_result evmjit_run(void* _data, void* _env)
+using namespace dev::eth::jit;
+
+void* evmjit_create() noexcept
 {
-	using namespace dev::eth::jit;
+	return new(std::nothrow) ExecutionEngine;
+}
 
-	auto data = static_cast<RuntimeData*>(_data);
+void evmjit_destroy(ExecutionEngine* _engine) noexcept
+{
+	delete _engine;
+}
 
-	ExecutionEngine engine;
-
-	auto codePtr = data->code;
-	auto codeSize = data->codeSize;
-	bytes bytecode;
-	bytecode.insert(bytecode.end(), codePtr, codePtr + codeSize);
-
-	auto returnCode = engine.run(bytecode, data, static_cast<Env*>(_env));
-	evmjit_result result = {static_cast<int32_t>(returnCode), 0, nullptr};
-	if (returnCode == ReturnCode::Return && std::get<0>(engine.returnData))
+int evmjit_run(ExecutionEngine* _engine, RuntimeData* _data, Env* _env) noexcept
+{
+	try
 	{
-		// TODO: Optimized returning data. Allocating memory on client side by callback function might be a good idea
-		result.returnDataSize = std::get<1>(engine.returnData);
-		result.returnData = std::malloc(result.returnDataSize);
-		std::memcpy(result.returnData, std::get<0>(engine.returnData), result.returnDataSize);
-	}
+		auto codePtr = _data->code;
+		auto codeSize = _data->codeSize;
+		bytes bytecode;
+		bytecode.insert(bytecode.end(), codePtr, codePtr + codeSize);
 
-	return result;
+		auto returnCode = _engine->run(bytecode, _data, _env);
+		return static_cast<int>(returnCode);
+	}
+	catch(...)
+	{
+		return static_cast<int>(ReturnCode::UnexpectedException);
+	}
 }
 
 }

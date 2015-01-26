@@ -47,7 +47,7 @@ struct RuntimeData
 	i256 		difficulty;
 	i256 		gasLimit;
 	uint64_t 	number = 0;
-	uint64_t 	timestamp = 0;
+	int64_t 	timestamp = 0;
 	byte const* code = nullptr;
 	uint64_t 	codeSize = 0;
 };
