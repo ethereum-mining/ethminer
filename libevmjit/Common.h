@@ -22,14 +22,16 @@ enum class ReturnCode
 	Return = 1,
 	Suicide = 2,
 
-	BadJumpDestination = 101,
-	OutOfGas = 102,
-	StackTooSmall = 103,
-	BadInstruction = 104,
+	OutOfGas = -1,
+	BadJumpDestination = -2,
+	StackTooSmall = -3,
+	BadInstruction = -4,
 
-	LLVMConfigError = 201,
-	LLVMCompileError = 202,
-	LLVMLinkError = 203,
+	LLVMConfigError = -5,
+	LLVMCompileError = -6,
+	LLVMLinkError = -7,
+
+	UnexpectedException = -8,
 };
 
 /// Representation of 256-bit value binary compatible with LLVM i256
