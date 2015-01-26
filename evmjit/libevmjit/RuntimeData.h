@@ -20,8 +20,6 @@ struct RuntimeData
 		CallValue,
 		GasPrice,
 		CoinBase,
-		TimeStamp,
-		Number,
 		Difficulty,
 		GasLimit,
 
@@ -36,6 +34,8 @@ struct RuntimeData
 	uint64_t codeSize = 0;
 	uint64_t callDataSize = 0;
 	int64_t gas = 0;
+	uint64_t blockNumber = 0;
+	uint64_t blockTimestamp = 0;
 };
 
 /// VM Environment (ExtVM) opaque type
