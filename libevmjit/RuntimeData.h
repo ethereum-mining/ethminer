@@ -22,13 +22,27 @@ struct RuntimeData
 		CoinBase,
 		Difficulty,
 		GasLimit,
+		CallData,
+		Code,
+		CodeSize,
+		CallDataSize,
+		Gas,
+		BlockNumber,
+		BlockTimestamp,
 
-		_size,
-
-		SuicideDestAddress = Address,	///< Suicide balance destination address
+		SuicideDestAddress = Address,		///< Suicide balance destination address
+		ReturnData 		   = CallData,		///< Return data pointer (set only in case of RETURN)
+		ReturnDataSize 	   = CallDataSize,	///< Return data size (set only in case of RETURN)
 	};
 
-	i256 elems[_size] = {};
+	i256 address;
+	i256 caller;
+	i256 origin;
+	i256 callValue;
+	i256 gasPrice;
+	i256 coinBase;
+	i256 difficulty;
+	i256 gasLimit;
 	byte const* callData = nullptr;
 	byte const* code = nullptr;
 	uint64_t codeSize = 0;
