@@ -28,6 +28,8 @@ llvm::StructType* RuntimeManager::getRuntimeDataType()
 			Type::Size,			// codeSize
 			Type::Size,			// callDataSize
 			Type::Size,			// gas
+			Type::Size,			// blockNumber
+			Type::Size,			// blockTimestamp
 		};
 		type = llvm::StructType::create(elems, "RuntimeData");
 	}
@@ -65,8 +67,6 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::CallValue:	return "callvalue";
 	case RuntimeData::GasPrice:		return "gasprice";
 	case RuntimeData::CoinBase:		return "coinbase";
-	case RuntimeData::TimeStamp:	return "timestamp";
-	case RuntimeData::Number:		return "number";
 	case RuntimeData::Difficulty:	return "difficulty";
 	case RuntimeData::GasLimit:		return "gaslimit";
 	}
@@ -161,8 +161,6 @@ llvm::Value* RuntimeManager::get(Instruction _inst)
 	case Instruction::CALLVALUE:	return get(RuntimeData::CallValue);
 	case Instruction::GASPRICE:		return get(RuntimeData::GasPrice);
 	case Instruction::COINBASE:		return get(RuntimeData::CoinBase);
-	case Instruction::TIMESTAMP:	return get(RuntimeData::TimeStamp);
-	case Instruction::NUMBER:		return get(RuntimeData::Number);
 	case Instruction::DIFFICULTY:	return get(RuntimeData::Difficulty);
 	case Instruction::GASLIMIT:		return get(RuntimeData::GasLimit);
 	}
@@ -192,6 +190,22 @@ llvm::Value* RuntimeManager::getCallDataSize()
 {
 	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 4);
 	auto value = getBuilder().CreateLoad(ptr, "callDataSize");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
+}
+
+llvm::Value* RuntimeManager::getBlockNumber()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 6);
+	auto value = getBuilder().CreateLoad(ptr, "number");
+	assert(value->getType() == Type::Size);
+	return getBuilder().CreateZExt(value, Type::Word);
+}
+
+llvm::Value* RuntimeManager::getBlockTimestamp()
+{
+	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), 7);
+	auto value = getBuilder().CreateLoad(ptr, "timestamp");
 	assert(value->getType() == Type::Size);
 	return getBuilder().CreateZExt(value, Type::Word);
 }
