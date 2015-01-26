@@ -113,9 +113,10 @@ Rectangle {
 				Action {
 					id: debugRunActionIcon
 					onTriggered: {
-						mainContent.toggleRightView();
-						if (mainContent.rightViewVisible)
-							clientModel.debugDeployment();
+						if (mainContent.rightViewIsVisible())
+							mainContent.hideRightView()
+						else
+							mainContent.startQuickDebugging();
 					}
 					enabled: false
 				}

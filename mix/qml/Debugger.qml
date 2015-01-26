@@ -114,6 +114,7 @@ Rectangle {
 		contentWidth: parent.width
 		Rectangle
 		{
+			color: "transparent"
 			anchors.fill: parent
 			ColumnLayout
 			{
@@ -317,7 +318,7 @@ Rectangle {
 					Rectangle {
 						Layout.fillWidth: true
 						height: parent.height //- 2 * stateListContainer.border.width
-
+						color: "transparent"
 						ColumnLayout
 						{
 							width: parent.width
@@ -431,6 +432,7 @@ Rectangle {
 					Rectangle
 					{
 						id: storageRect
+						color: "transparent"
 						width: parent.width
 						Layout.minimumHeight: 25
 						Layout.maximumHeight: 223
@@ -506,6 +508,7 @@ Rectangle {
 					Rectangle
 					{
 						id: memoryRect;
+						color: "transparent"
 						height: 25
 						width: parent.width
 						Layout.minimumHeight: 25
@@ -527,6 +530,7 @@ Rectangle {
 					Rectangle
 					{
 						id: callDataRect
+						color: "transparent"
 						height: 25
 						width: parent.width
 						Layout.minimumHeight: 25
