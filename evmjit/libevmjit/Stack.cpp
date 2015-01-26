@@ -73,7 +73,7 @@ extern "C"
 	{
 		auto& stack = _rt->getStack();
 		if (stack.size() < _count)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		stack.erase(stack.end() - _count, stack.end());
 	}
@@ -92,7 +92,7 @@ extern "C"
 		auto& stack = _rt->getStack();
 		// TODO: encode _index and stack size in the return code
 		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		*o_ret = *(stack.rbegin() + _index);
 	}
@@ -102,7 +102,7 @@ extern "C"
 		auto& stack = _rt->getStack();
 		// TODO: encode _index and stack size in the return code
 		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		*(stack.rbegin() + _index) = *_word;
 	}
