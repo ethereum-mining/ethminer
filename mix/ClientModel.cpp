@@ -22,9 +22,9 @@
 #include <QDebug>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <jsonrpccpp/server.h>
 #include <libdevcore/CommonJS.h>
 #include <libethereum/Transaction.h>
-#include <libqwebthree/QWebThree.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "QContractDefinition.h"
@@ -38,10 +38,30 @@
 
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::mix;
+
+namespace dev
+{
+namespace mix
+{
+
+class RpcConnector: public jsonrpc::AbstractServerConnector
+{
+public:
+	virtual bool StartListening() override { return true; }
+	virtual bool StopListening() override { return true; }
+	virtual bool SendResponse(std::string const& _response, void*) override
+	{
+		m_response = QString::fromStdString(_response);
+		return true;
+	}
+	QString response() const { return m_response; }
+
+private:
+	QString m_response;
+};
 
 ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false), m_qWebThree(nullptr)
+	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QEther*>("QEther*");
@@ -55,11 +75,7 @@ ClientModel::ClientModel(AppContext* _context):
 	connect(this, &ClientModel::dataAvailable, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient());
 
-	m_qWebThree = new QWebThree(this);
-	m_qWebThreeConnector.reset(new QWebThreeConnector());
-	m_qWebThreeConnector->setQWeb(m_qWebThree);
-	m_web3Server.reset(new Web3Server(*m_qWebThreeConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
-	connect(m_qWebThree, &QWebThree::response, this, &ClientModel::apiResponse);
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
 
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
@@ -68,10 +84,10 @@ ClientModel::~ClientModel()
 {
 }
 
-void ClientModel::apiRequest(QString const& _message)
+QString ClientModel::apiCall(QString const& _message)
 {
-	(void)_message;
-//	m_qWebThree->postMessage(_message);
+	m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
+	return m_rpcConnector->response();
 }
 
 QString ClientModel::contractAddress() const
@@ -244,4 +260,7 @@ ExecutionResult ClientModel::callContract(Address const& _contract, bytes const&
 	ExecutionResult r = m_client->lastExecutionResult();
 	r.contractAddress = _contract;
 	return r;
+}
+
+}
 }

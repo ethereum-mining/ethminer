@@ -23,6 +23,7 @@ Rectangle {
 
 	property alias rightViewVisible : rightView.visible
 	property alias webViewVisible : webPreview.visible
+	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 
 	onWidthChanged:
 	{
@@ -94,9 +95,21 @@ Rectangle {
 		webPreview.visible = !webPreview.visible;
 	}
 
+	function toggleWebPreviewOrientation() {
+		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
+	}
+
+
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 		rightView: rightPaneTabs;
+	}
+
+	Settings {
+		id: mainLayoutSettings
+		property alias codeWebOrientation: codeWebSplitter.orientation
+		property alias webWidth: webPreview.width
+		property alias webHeight: webPreview.height
 	}
 
 	GridLayout
@@ -170,6 +183,12 @@ Rectangle {
 				width: parent.width - projectList.width
 				height: parent.height
 				SplitView {
+					 handleDelegate: Rectangle {
+						width: 4
+						height: 4
+						color: "#cccccc"
+					 }
+					id: codeWebSplitter
 					anchors.fill: parent
 					orientation: Qt.Vertical
 					CodeEditorView {
@@ -181,7 +200,10 @@ Rectangle {
 					WebPreview {
 						id: webPreview
 						height: parent.height * 0.4
-						Layout.fillWidth: true
+						Layout.fillWidth: codeWebSplitter.orientation === Qt.Vertical
+						Layout.fillHeight: codeWebSplitter.orientation === Qt.Horizontal
+						Layout.minimumHeight: 200
+						Layout.minimumWidth: 200
 					}
 				}
 			}

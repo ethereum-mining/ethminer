@@ -32,9 +32,6 @@ using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
 Q_DECLARE_METATYPE(AssemblyDebuggerData)
 Q_DECLARE_METATYPE(dev::mix::ExecutionResult)
 
-class QWebThree;
-class QWebThreeConnector;
-
 namespace dev
 {
 namespace mix
@@ -42,6 +39,7 @@ namespace mix
 
 class AppContext;
 class Web3Server;
+class RpcConnector;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -81,11 +79,12 @@ public:
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
 	/// @returns address of the last executed contract
 	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
-
-public slots:
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
-	void apiRequest(QString const& _message);
+	/// @returns RPC response in Json format
+	Q_INVOKABLE QString apiCall(QString const& _message);
+
+public slots:
 	/// Run the contract constructor and show debugger window.
 	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -128,8 +127,7 @@ private:
 	AppContext* m_context;
 	std::atomic<bool> m_running;
 	std::unique_ptr<MixClient> m_client;
-	QWebThree* m_qWebThree;
-	std::unique_ptr<QWebThreeConnector> m_qWebThreeConnector;
+	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
 };
 

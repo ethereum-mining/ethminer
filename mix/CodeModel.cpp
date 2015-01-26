@@ -46,6 +46,7 @@ CompilationResult::CompilationResult():
 	m_successful(false),
 	m_codeHash(qHash(QString())),
 	m_contract(new QContractDefinition()),
+	m_contractInterface("[]"),
 	m_codeHighlighter(new CodeHighlighter())
 {}
 

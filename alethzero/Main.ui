@@ -148,6 +148,7 @@
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
     <addaction name="exportKey"/>
+    <addaction name="killAccount"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
    </widget>
@@ -2065,6 +2066,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Use &amp;LLVM-EVM</string>
+   </property>
+  </action>
+  <action name="killAccount">
+   <property name="text">
+    <string>&amp;Kill Account</string>
    </property>
   </action>
  </widget>

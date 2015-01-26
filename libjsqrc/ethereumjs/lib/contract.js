@@ -37,7 +37,7 @@ var abi = require('./abi');
  * var myContract = web3.eth.contract('0x0123123121', abi); // creation of contract object
  *
  * myContract.myMethod('this is test string param for call'); // myMethod call (implicit, default)
- * myContract.myMethod('this is test string param for call').call(); // myMethod call (explicit)
+ * myContract.call().myMethod('this is test string param for call'); // myMethod call (explicit)
  * myContract.transact().myMethod('this is test string param for transact'); // myMethod transact
  *
  * @param address - address of the contract, which should be called
@@ -46,6 +46,18 @@ var abi = require('./abi');
  */
 
 var contract = function (address, desc) {
+
+    desc.forEach(function (method) {
+        // workaround for invalid assumption that method.name is the full anonymous prototype of the method.
+        // it's not. it's just the name. the rest of the code assumes it's actually the anonymous
+        // prototype, so we make it so as a workaround.
+        if (method.name.indexOf('(') === -1) {
+            var displayName = method.name;
+            var typeName = method.inputs.map(function(i){return i.type}).join();
+            method.name = displayName + '(' + typeName + ')';
+        }
+    });
+
     var inputParser = abi.inputParser(desc);
     var outputParser = abi.outputParser(desc);
 
@@ -63,6 +75,15 @@ var contract = function (address, desc) {
         return result;
     };
 
+    result._options = {};
+    ['gas', 'gasPrice', 'value', 'from'].forEach(function(p) {
+        result[p] = function (v) {
+            result._options[p] = v;
+            return result;
+        };
+    });
+
+
     desc.forEach(function (method) {
 
         var displayName = abi.methodDisplayName(method.name);
@@ -77,11 +98,12 @@ var contract = function (address, desc) {
             options.to = address;
             options.data = signature + parsed;
             
-            var isTransact = result._isTransact;
+            var isTransact = result._isTransact === true || (result._isTransact !== false && !method.constant);
+            var collapse = options.collapse !== false;
             
             // reset
             result._options = {};
-            result._isTransact = false;
+            result._isTransact = null;
 
             if (isTransact) {
                 // it's used byt natspec.js
@@ -95,7 +117,15 @@ var contract = function (address, desc) {
             }
             
             var output = web3.eth.call(options);
-            return outputParser[displayName][typeName](output);
+            var ret = outputParser[displayName][typeName](output);
+            if (collapse)
+            {
+                if (ret.length == 1)
+                    ret = ret[0];
+                else if (ret.length == 0)
+                    ret = null;
+            }
+            return ret;
         };
 
         if (result[displayName] === undefined) {
