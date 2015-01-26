@@ -29,10 +29,8 @@ Arith256::Arith256(llvm::IRBuilder<>& _builder) :
 	llvm::Type* arg3Types[] = {Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr};
 
 	m_mul = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_mul", getModule());
-	m_div = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_div", getModule());
-	m_mod = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_mod", getModule());
-	m_sdiv = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_sdiv", getModule());
-	m_smod = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_smod", getModule());
+	m_div = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_div", getModule());
+	m_sdiv = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_sdiv", getModule());
 	m_exp = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_exp", getModule());
 	m_addmod = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_addmod", getModule());
 	m_mulmod = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_mulmod", getModule());
@@ -63,25 +61,20 @@ llvm::Value* Arith256::mul(llvm::Value* _arg1, llvm::Value* _arg2)
 	return binaryOp(m_mul, _arg1, _arg2);
 }
 
-llvm::Value* Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
+std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	//return Endianness::toNative(m_builder, binaryOp(m_div, Endianness::toBE(m_builder, _arg1), Endianness::toBE(m_builder, _arg2)));
-	return binaryOp(m_div, _arg1, _arg2);
+	m_builder.CreateStore(_arg1, m_arg1);
+	m_builder.CreateStore(_arg2, m_arg2);
+	createCall(m_div, {m_arg1, m_arg2, m_arg3, m_result});
+	return std::make_pair(m_builder.CreateLoad(m_arg3), m_builder.CreateLoad(m_result));
 }
 
-llvm::Value* Arith256::mod(llvm::Value* _arg1, llvm::Value* _arg2)
+std::pair<llvm::Value*, llvm::Value*> Arith256::sdiv(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	return binaryOp(m_mod, _arg1, _arg2);
-}
-
-llvm::Value* Arith256::sdiv(llvm::Value* _arg1, llvm::Value* _arg2)
-{
-	return binaryOp(m_sdiv, _arg1, _arg2);
-}
-
-llvm::Value* Arith256::smod(llvm::Value* _arg1, llvm::Value* _arg2)
-{
-	return binaryOp(m_smod, _arg1, _arg2);
+	m_builder.CreateStore(_arg1, m_arg1);
+	m_builder.CreateStore(_arg2, m_arg2);
+	createCall(m_sdiv, {m_arg1, m_arg2, m_arg3, m_result});
+	return std::make_pair(m_builder.CreateLoad(m_arg3), m_builder.CreateLoad(m_result));
 }
 
 llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
@@ -217,66 +210,37 @@ extern "C"
 		*o_result = mul(*_arg1, *_arg2);
 	}
 
-	EXPORT void arith_div(i256* _arg1, i256* _arg2, i256* o_result)
+	EXPORT void arith_div(i256* _arg1, i256* _arg2, i256* o_div, i256* o_mod)
 	{
-		*o_result = {};
+		*o_div = {};
+		*o_mod = {};
 		if (isZero(_arg2))
 			return;
 
 		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
 		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
+		mpz_t q{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_div)};
+		mpz_t r{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_mod)};
 
-		mpz_tdiv_q(z, x, y);
-
-//		auto arg1 = llvm2eth(*_arg1);
-//		auto arg2 = llvm2eth(*_arg2);
-//		auto res = arg2 == 0 ? arg2 : arg1 / arg2;
-//		std::cout << "DIV " << arg1 << "/" << arg2 << " = " << res << std::endl;
-//		gmp_printf("GMP %Zd / %Zd = %Zd\n", x, y, z);
+		mpz_tdiv_qr(q, r, x, y);
 	}
 
-	EXPORT void arith_mod(i256* _arg1, i256* _arg2, i256* o_result)
+	EXPORT void arith_sdiv(i256* _arg1, i256* _arg2, i256* o_div, i256* o_mod)
 	{
-		*o_result = {};
+		*o_div = {};
+		*o_mod = {};
 		if (isZero(_arg2))
 			return;
 
 		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
 		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
-
-		mpz_tdiv_r(z, x, y);
-	}
-
-	EXPORT void arith_sdiv(i256* _arg1, i256* _arg2, i256* o_result)
-	{
-		*o_result = {};
-		if (isZero(_arg2))
-			return;
-
-		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
-		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
+		mpz_t q{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_div)};
+		mpz_t r{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_mod)};
 		u2s(x);
 		u2s(y);
-		mpz_tdiv_q(z, x, y);
-		s2u(z);
-	}
-
-	EXPORT void arith_smod(i256* _arg1, i256* _arg2, i256* o_result)
-	{
-		*o_result = {};
-		if (isZero(_arg2))
-			return;
-
-		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
-		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
-		u2s(x);
-		u2s(y);
-		mpz_tdiv_r(z, x, y);
-		s2u(z);
+		mpz_tdiv_qr(q, r, x, y);
+		s2u(q);
+		s2u(r);
 	}
 
 	EXPORT void arith_exp(i256* _arg1, i256* _arg2, i256* o_result)
