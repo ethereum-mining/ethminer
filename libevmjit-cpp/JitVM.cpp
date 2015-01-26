@@ -13,7 +13,9 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 {
 	using namespace jit;
 
-	m_data.elems[RuntimeData::Gas]          = eth2llvm(m_gas);
+	if (m_gas > std::numeric_limits<decltype(m_data.gas)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas()); // Do not accept requests with gas > 2^63 (int64 max)
+
 	m_data.elems[RuntimeData::Address]      = eth2llvm(fromAddress(_ext.myAddress));
 	m_data.elems[RuntimeData::Caller]       = eth2llvm(fromAddress(_ext.caller));
 	m_data.elems[RuntimeData::Origin]       = eth2llvm(fromAddress(_ext.origin));
@@ -28,6 +30,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.code     = _ext.code.data();
 	m_data.codeSize = _ext.code.size();
 	m_data.callDataSize = _ext.data.size();
+	m_data.gas = static_cast<decltype(m_data.gas)>(m_gas);
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(_ext.code, &m_data, env);
@@ -49,7 +52,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 		break;
 	}
 
-	m_gas = llvm2eth(m_data.elems[RuntimeData::Gas]);
+	m_gas = m_data.gas; // TODO: Remove m_gas field
 	return {std::get<0>(m_engine.returnData), std::get<1>(m_engine.returnData)};
 }
 
