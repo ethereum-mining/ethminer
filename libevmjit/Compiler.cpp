@@ -639,8 +639,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CALLVALUE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
-		case Instruction::TIMESTAMP:
-		case Instruction::NUMBER:
 		case Instruction::DIFFICULTY:
 		case Instruction::GASLIMIT:
 		{
@@ -656,6 +654,14 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 		case Instruction::CALLDATASIZE:
 			stack.push(_runtimeManager.getCallDataSize());
+			break;
+
+		case Instruction::NUMBER:
+			stack.push(_runtimeManager.getBlockNumber());
+			break;
+
+		case Instruction::TIMESTAMP:
+			stack.push(_runtimeManager.getBlockTimestamp());
 			break;
 
 		case Instruction::BLOCKHASH:

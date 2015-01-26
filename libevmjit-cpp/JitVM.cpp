@@ -16,14 +16,18 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	if (m_gas > std::numeric_limits<decltype(m_data.gas)>::max())
 		BOOST_THROW_EXCEPTION(OutOfGas()); // Do not accept requests with gas > 2^63 (int64 max)
 
+	if (_ext.currentBlock.number > std::numeric_limits<decltype(m_data.blockNumber)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
+	if (_ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.blockTimestamp)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
 	m_data.elems[RuntimeData::Address]      = eth2llvm(fromAddress(_ext.myAddress));
 	m_data.elems[RuntimeData::Caller]       = eth2llvm(fromAddress(_ext.caller));
 	m_data.elems[RuntimeData::Origin]       = eth2llvm(fromAddress(_ext.origin));
 	m_data.elems[RuntimeData::CallValue]    = eth2llvm(_ext.value);
 	m_data.elems[RuntimeData::GasPrice]     = eth2llvm(_ext.gasPrice);
 	m_data.elems[RuntimeData::CoinBase]     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
-	m_data.elems[RuntimeData::TimeStamp]    = eth2llvm(_ext.currentBlock.timestamp);
-	m_data.elems[RuntimeData::Number]       = eth2llvm(_ext.currentBlock.number);
 	m_data.elems[RuntimeData::Difficulty]   = eth2llvm(_ext.currentBlock.difficulty);
 	m_data.elems[RuntimeData::GasLimit]     = eth2llvm(_ext.currentBlock.gasLimit);
 	m_data.callData = _ext.data.data();
@@ -31,6 +35,8 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.codeSize = _ext.code.size();
 	m_data.callDataSize = _ext.data.size();
 	m_data.gas = static_cast<decltype(m_data.gas)>(m_gas);
+	m_data.blockNumber = static_cast<decltype(m_data.blockNumber)>(_ext.currentBlock.number);
+	m_data.blockTimestamp = static_cast<decltype(m_data.blockTimestamp)>(_ext.currentBlock.timestamp);
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(_ext.code, &m_data, env);
