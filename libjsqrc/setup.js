@@ -22,10 +22,6 @@
 
 navigator.qt = _web3;
 
-if (window.Promise === undefined) {
-	window.Promise = ES6Promise.Promise;
-}
-
 var web3 = require('web3');
 web3.setProvider(new web3.providers.QtSyncProvider());
 
