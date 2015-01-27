@@ -15,10 +15,8 @@ public:
 	Arith256(llvm::IRBuilder<>& _builder);
 
 	llvm::Value* mul(llvm::Value* _arg1, llvm::Value* _arg2);
-	llvm::Value* div(llvm::Value* _arg1, llvm::Value* _arg2);
-	llvm::Value* mod(llvm::Value* _arg1, llvm::Value* _arg2);
-	llvm::Value* sdiv(llvm::Value* _arg1, llvm::Value* _arg2);
-	llvm::Value* smod(llvm::Value* _arg1, llvm::Value* _arg2);
+	std::pair<llvm::Value*, llvm::Value*> div(llvm::Value* _arg1, llvm::Value* _arg2);
+	std::pair<llvm::Value*, llvm::Value*> sdiv(llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* exp(llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 	llvm::Value* addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
@@ -33,8 +31,6 @@ private:
 	llvm::Value* ternaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
 	llvm::Function* m_mul;
-	llvm::Function* m_sdiv;
-	llvm::Function* m_smod;
 	llvm::Function* m_mulmod;
 	llvm::Function* m_addmod;
 
