@@ -112,15 +112,16 @@ ASTPointer<ImportDirective> Parser::parseImportDirective()
 ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 {
 	ASTNodeFactory nodeFactory(*this);
-	ASTPointer<ASTString> docstring;
+	ASTPointer<ASTString> docString;
 	if (m_scanner->getCurrentCommentLiteral() != "")
-		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
+		docString = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
 	expectToken(Token::CONTRACT);
 	ASTPointer<ASTString> name = expectIdentifierToken();
 	vector<ASTPointer<InheritanceSpecifier>> baseContracts;
 	vector<ASTPointer<StructDefinition>> structs;
 	vector<ASTPointer<VariableDeclaration>> stateVariables;
 	vector<ASTPointer<FunctionDefinition>> functions;
+	vector<ASTPointer<ModifierDefinition>> modifiers;
 	if (m_scanner->getCurrentToken() == Token::IS)
 		do
 		{
@@ -142,7 +143,7 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 			expectToken(Token::COLON);
 		}
 		else if (currentToken == Token::FUNCTION)
-			functions.push_back(parseFunctionDefinition(visibilityIsPublic));
+			functions.push_back(parseFunctionDefinition(visibilityIsPublic, name.get()));
 		else if (currentToken == Token::STRUCT)
 			structs.push_back(parseStructDefinition());
 		else if (currentToken == Token::IDENTIFIER || currentToken == Token::MAPPING ||
@@ -152,13 +153,15 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 			stateVariables.push_back(parseVariableDeclaration(allowVar));
 			expectToken(Token::SEMICOLON);
 		}
+		else if (currentToken == Token::MODIFIER)
+			modifiers.push_back(parseModifierDefinition());
 		else
-			BOOST_THROW_EXCEPTION(createParserError("Function, variable or struct declaration expected."));
+			BOOST_THROW_EXCEPTION(createParserError("Function, variable, struct or modifier declaration expected."));
 	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::RBRACE);
-	return nodeFactory.createNode<ContractDefinition>(name, docstring, baseContracts, structs,
-													  stateVariables, functions);
+	return nodeFactory.createNode<ContractDefinition>(name, docString, baseContracts, structs,
+													  stateVariables, functions, modifiers);
 }
 
 ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
@@ -178,7 +181,7 @@ ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
 	return nodeFactory.createNode<InheritanceSpecifier>(name, arguments);
 }
 
-ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
+ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic, ASTString const* _contractName)
 {
 	ASTNodeFactory nodeFactory(*this);
 	ASTPointer<ASTString> docstring;
@@ -189,10 +192,18 @@ ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
 	ASTPointer<ASTString> name(expectIdentifierToken());
 	ASTPointer<ParameterList> parameters(parseParameterList());
 	bool isDeclaredConst = false;
-	if (m_scanner->getCurrentToken() == Token::CONST)
+	vector<ASTPointer<ModifierInvocation>> modifiers;
+	while (true)
 	{
-		isDeclaredConst = true;
-		m_scanner->next();
+		if (m_scanner->getCurrentToken() == Token::CONST)
+		{
+			isDeclaredConst = true;
+			m_scanner->next();
+		}
+		else if (m_scanner->getCurrentToken() == Token::IDENTIFIER)
+			modifiers.push_back(parseModifierInvocation());
+		else
+			break;
 	}
 	ASTPointer<ParameterList> returnParameters;
 	if (m_scanner->getCurrentToken() == Token::RETURNS)
@@ -210,9 +221,10 @@ ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
 	}
 	ASTPointer<Block> block = parseBlock();
 	nodeFactory.setEndPositionFromNode(block);
-	return nodeFactory.createNode<FunctionDefinition>(name, _isPublic, docstring,
-													  parameters,
-													  isDeclaredConst, returnParameters, block);
+	bool const c_isConstructor = (_contractName && *name == *_contractName);
+	return nodeFactory.createNode<FunctionDefinition>(name, _isPublic, c_isConstructor, docstring,
+													  parameters, isDeclaredConst, modifiers,
+													  returnParameters, block);
 }
 
 ASTPointer<StructDefinition> Parser::parseStructDefinition()
@@ -239,6 +251,50 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(bool _allowVar)
 	ASTPointer<TypeName> type = parseTypeName(_allowVar);
 	nodeFactory.markEndPosition();
 	return nodeFactory.createNode<VariableDeclaration>(type, expectIdentifierToken());
+}
+
+ASTPointer<ModifierDefinition> Parser::parseModifierDefinition()
+{
+	ScopeGuard resetModifierFlag([this]() { m_insideModifier = false; });
+	m_insideModifier = true;
+
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<ASTString> docstring;
+	if (m_scanner->getCurrentCommentLiteral() != "")
+		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
+
+	expectToken(Token::MODIFIER);
+	ASTPointer<ASTString> name(expectIdentifierToken());
+	ASTPointer<ParameterList> parameters;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+		parameters = parseParameterList();
+	else
+	{
+		// create an empty parameter list at a zero-length location
+		ASTNodeFactory nodeFactory(*this);
+		nodeFactory.setLocationEmpty();
+		parameters = nodeFactory.createNode<ParameterList>(vector<ASTPointer<VariableDeclaration>>());
+	}
+	ASTPointer<Block> block = parseBlock();
+	nodeFactory.setEndPositionFromNode(block);
+	return nodeFactory.createNode<ModifierDefinition>(name, docstring, parameters, block);
+}
+
+ASTPointer<ModifierInvocation> Parser::parseModifierInvocation()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<Identifier> name = ASTNodeFactory(*this).createNode<Identifier>(expectIdentifierToken());
+	vector<ASTPointer<Expression>> arguments;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+	{
+		m_scanner->next();
+		arguments = parseFunctionCallArguments();
+		nodeFactory.markEndPosition();
+		expectToken(Token::RPAREN);
+	}
+	else
+		nodeFactory.setEndPositionFromNode(name);
+	return nodeFactory.createNode<ModifierInvocation>(name, arguments);
 }
 
 ASTPointer<TypeName> Parser::parseTypeName(bool _allowVar)
@@ -353,8 +409,16 @@ ASTPointer<Statement> Parser::parseStatement()
 			nodeFactory.setEndPositionFromNode(expression);
 		}
 		statement = nodeFactory.createNode<Return>(expression);
+		break;
 	}
-	break;
+	case Token::IDENTIFIER:
+		if (m_insideModifier && m_scanner->getCurrentLiteral() == "_")
+		{
+			statement = ASTNodeFactory(*this).createNode<PlaceholderStatement>();
+			m_scanner->next();
+			return statement;
+		}
+	// fall-through
 	default:
 		statement = parseVarDefOrExprStmt();
 	}

@@ -70,6 +70,7 @@ public:
 	void resetState(u256 _balance);
 	const KeyPair& userAccount() const { return m_userAccount; }
 	const ExecutionResult lastExecutionResult() const { ReadGuard l(x_state); return m_lastExecutionResult; }
+	const Address lastContractAddress() const { ReadGuard l(x_state); return m_lastExecutionResult.contractAddress; }
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;

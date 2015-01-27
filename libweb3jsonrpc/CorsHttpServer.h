@@ -24,7 +24,7 @@
 namespace jsonrpc
 {
 
-class CorsHttpServer : public HttpServer
+class CorsHttpServer: public HttpServer
 {
 public:
 	using HttpServer::HttpServer;

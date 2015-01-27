@@ -50,9 +50,11 @@ private:
 	ASTPointer<ImportDirective> parseImportDirective();
 	ASTPointer<ContractDefinition> parseContractDefinition();
 	ASTPointer<InheritanceSpecifier> parseInheritanceSpecifier();
-	ASTPointer<FunctionDefinition> parseFunctionDefinition(bool _isPublic);
+	ASTPointer<FunctionDefinition> parseFunctionDefinition(bool _isPublic, ASTString const* _contractName);
 	ASTPointer<StructDefinition> parseStructDefinition();
 	ASTPointer<VariableDeclaration> parseVariableDeclaration(bool _allowVar);
+	ASTPointer<ModifierDefinition> parseModifierDefinition();
+	ASTPointer<ModifierInvocation> parseModifierInvocation();
 	ASTPointer<TypeName> parseTypeName(bool _allowVar);
 	ASTPointer<Mapping> parseMapping();
 	ASTPointer<ParameterList> parseParameterList(bool _allowEmpty = true);
@@ -90,6 +92,8 @@ private:
 	ParserError createParserError(std::string const& _description) const;
 
 	std::shared_ptr<Scanner> m_scanner;
+	/// Flag that signifies whether '_' is parsed as a PlaceholderStatement or a regular identifier.
+	bool m_insideModifier = false;
 };
 
 }

@@ -35,7 +35,7 @@ Item {
 			editor.onEditorTextChanged.connect(function() {
 				codeModel.registerCodeChange(editor.getText());
 			});
-		editor.setText(data);
+		editor.setText(data, document.syntaxMode);
 	}
 
 	Connections {
@@ -56,26 +56,27 @@ Item {
 		}
 	}
 
-	CodeEditor {
-		id: codeEditor
-	}
-
 	Repeater {
 		id: editors
 		model: editorListModel
 		delegate: Loader {
-			active: false;
+			id: loader
+			active: false
 			asynchronous: true
 			anchors.fill:  parent
-			sourceComponent: codeEditor
+			source: "CodeEditor.qml"
 			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
 			onVisibleChanged: {
 				loadIfNotLoaded()
+				if (visible && item)
+					loader.item.setFocus();
 			}
 			Component.onCompleted: {
 				loadIfNotLoaded()
 			}
-			onLoaded: { doLoadDocument(item, editorListModel.get(index)) }
+			onLoaded: {
+				doLoadDocument(loader.item, editorListModel.get(index))
+			}
 
 			function loadIfNotLoaded () {
 				if(visible && !active) {

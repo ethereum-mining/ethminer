@@ -940,6 +940,97 @@ BOOST_AUTO_TEST_CASE(type_conversions_cleanup)
 														   0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22}));
 }
 
+BOOST_AUTO_TEST_CASE(convert_string_to_string)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function pipeTrough(string3 input) returns (string3 ret) {
+				return string3(input);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("pipeTrough(string3)", "abc") == encodeArgs("abc"));
+}
+
+BOOST_AUTO_TEST_CASE(convert_hash_to_string_same_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function hashToString(hash h) returns (string32 s) {
+				return string32(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	u256 a("0x6162630000000000000000000000000000000000000000000000000000000000");
+	BOOST_CHECK(callContractFunction("hashToString(hash256)", a) == encodeArgs(a));
+}
+
+BOOST_AUTO_TEST_CASE(convert_hash_to_string_different_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function hashToString(hash160 h) returns (string20 s) {
+				return string20(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("hashToString(hash160)", u160("0x6161626361626361626361616263616263616263")) ==
+						encodeArgs(string("aabcabcabcaabcabcabc")));
+}
+
+BOOST_AUTO_TEST_CASE(convert_string_to_hash_same_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function stringToHash(string32 s) returns (hash h) {
+				return hash(s);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("stringToHash(string32)", string("abc2")) ==
+					encodeArgs(u256("0x6162633200000000000000000000000000000000000000000000000000000000")));
+}
+
+BOOST_AUTO_TEST_CASE(convert_string_to_hash_different_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function stringToHash(string20 s) returns (hash160 h) {
+				return hash160(s);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("stringToHash(string20)", string("aabcabcabcaabcabcabc")) ==
+					encodeArgs(u160("0x6161626361626361626361616263616263616263")));
+}
+
+
+BOOST_AUTO_TEST_CASE(convert_string_to_hash_different_min_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function stringToHash(string1 s) returns (hash8 h) {
+				return hash8(s);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("stringToHash(string1)", string("a")) ==
+					encodeArgs(u256("0x61")));
+}
+
+
+BOOST_AUTO_TEST_CASE(convert_hash_to_string_different_min_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function HashToString(hash8 h) returns (string1 s) {
+				return string1(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("HashToString(hash8)", u256("0x61")) ==
+					encodeArgs(string("a")));
+}
 
 BOOST_AUTO_TEST_CASE(send_ether)
 {
@@ -1545,7 +1636,7 @@ BOOST_AUTO_TEST_CASE(single_copy_with_multiple_inheritance)
 		}
 		contract A is Base { function setViaA(uint i) { setData(i); } }
 		contract B is Base { function getViaB() returns (uint i) { return getViaBase(); } }
-		contract Derived is A, B, Base { }
+		contract Derived is Base, B, A { }
 	)";
 	compileAndRun(sourceCode, 0, "Derived");
 	BOOST_CHECK(callContractFunction("getViaB()") == encodeArgs(0));
@@ -1610,6 +1701,28 @@ BOOST_AUTO_TEST_CASE(function_usage_in_constructor_arguments)
 	BOOST_CHECK(callContractFunction("getA()") == encodeArgs(2));
 }
 
+BOOST_AUTO_TEST_CASE(virtual_function_usage_in_constructor_arguments)
+{
+	char const* sourceCode = R"(
+		contract BaseBase {
+			uint m_a;
+			function BaseBase(uint a) {
+				m_a = a;
+			}
+			function overridden() returns (uint r) { return 1; }
+			function g() returns (uint r) { return overridden(); }
+		}
+		contract Base is BaseBase(BaseBase.g()) {
+		}
+		contract Derived is Base() {
+			function getA() returns (uint r) { return m_a; }
+			function overridden() returns (uint r) { return 2; }
+		}
+	)";
+	compileAndRun(sourceCode, 0, "Derived");
+	BOOST_CHECK(callContractFunction("getA()") == encodeArgs(2));
+}
+
 BOOST_AUTO_TEST_CASE(constructor_argument_overriding)
 {
 	char const* sourceCode = R"(
@@ -1620,12 +1733,133 @@ BOOST_AUTO_TEST_CASE(constructor_argument_overriding)
 			}
 		}
 		contract Base is BaseBase(2) { }
-		contract Derived is Base, BaseBase(3) {
+		contract Derived is BaseBase(3), Base {
 			function getA() returns (uint r) { return m_a; }
 		}
 	)";
 	compileAndRun(sourceCode, 0, "Derived");
 	BOOST_CHECK(callContractFunction("getA()") == encodeArgs(3));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function getOne() nonFree returns (uint r) { return 1; }
+			modifier nonFree { if (msg.value > 0) _ }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getOne()") == encodeArgs(0));
+	BOOST_CHECK(callContractFunctionWithValue("getOne()", 1) == encodeArgs(1));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_local_variables)
+{
+	char const* sourceCode = R"(
+		contract C {
+			modifier mod1 { var a = 1; var b = 2; _ }
+			modifier mod2(bool a) { if (a) return; else _ }
+			function f(bool a) mod1 mod2(a) returns (uint r) { return 3; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f(bool)", true) == encodeArgs(0));
+	BOOST_CHECK(callContractFunction("f(bool)", false) == encodeArgs(3));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_loop)
+{
+	char const* sourceCode = R"(
+		contract C {
+			modifier repeat(uint count) { for (var i = 0; i < count; ++i) _ }
+			function f() repeat(10) returns (uint r) { r += 1; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f()") == encodeArgs(10));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_multi_invocation)
+{
+	char const* sourceCode = R"(
+		contract C {
+			modifier repeat(bool twice) { if (twice) _ _ }
+			function f(bool twice) repeat(twice) returns (uint r) { r += 1; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f(bool)", false) == encodeArgs(1));
+	BOOST_CHECK(callContractFunction("f(bool)", true) == encodeArgs(2));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_multi_with_return)
+{
+	// Here, the explicit return prevents the second execution
+	char const* sourceCode = R"(
+		contract C {
+			modifier repeat(bool twice) { if (twice) _ _ }
+			function f(bool twice) repeat(twice) returns (uint r) { r += 1; return r; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f(bool)", false) == encodeArgs(1));
+	BOOST_CHECK(callContractFunction("f(bool)", true) == encodeArgs(1));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_overriding)
+{
+	char const* sourceCode = R"(
+		contract A {
+			function f() mod returns (bool r) { return true; }
+			modifier mod { _ }
+		}
+		contract C is A {
+			modifier mod { }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f()") == encodeArgs(false));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_calling_functions_in_creation_context)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint data;
+			function A() mod1 { f1(); }
+			function f1() mod2 { data |= 0x1; }
+			function f2() { data |= 0x20; }
+			function f3() { }
+			modifier mod1 { f2(); _ }
+			modifier mod2 { f3(); }
+			function getData() returns (uint r) { return data; }
+		}
+		contract C is A {
+			modifier mod1 { f4(); _ }
+			function f3() { data |= 0x300; }
+			function f4() { data |= 0x4000; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(0x4300));
+}
+
+BOOST_AUTO_TEST_CASE(function_modifier_for_constructor)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint data;
+			function A() mod1 { data |= 2; }
+			modifier mod1 { data |= 1; _ }
+			function getData() returns (uint r) { return data; }
+		}
+		contract C is A {
+			modifier mod1 { data |= 4; _ }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(4 | 2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

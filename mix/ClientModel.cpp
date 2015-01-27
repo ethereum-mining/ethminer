@@ -22,9 +22,9 @@
 #include <QDebug>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <jsonrpccpp/server.h>
 #include <libdevcore/CommonJS.h>
 #include <libethereum/Transaction.h>
-#include "ClientModel.h"
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "QContractDefinition.h"
@@ -33,13 +33,35 @@
 #include "CodeModel.h"
 #include "ClientModel.h"
 #include "QEther.h"
+#include "Web3Server.h"
+#include "ClientModel.h"
 
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::mix;
+
+namespace dev
+{
+namespace mix
+{
+
+class RpcConnector: public jsonrpc::AbstractServerConnector
+{
+public:
+	virtual bool StartListening() override { return true; }
+	virtual bool StopListening() override { return true; }
+	virtual bool SendResponse(std::string const& _response, void*) override
+	{
+		m_response = QString::fromStdString(_response);
+		return true;
+	}
+	QString response() const { return m_response; }
+
+private:
+	QString m_response;
+};
 
 ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false)
+	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QIntType*>("QIntType*");
@@ -57,7 +79,25 @@ ClientModel::ClientModel(AppContext* _context):
 	connect(this, &ClientModel::dataAvailable, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient());
 
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
+
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
+}
+
+ClientModel::~ClientModel()
+{
+}
+
+QString ClientModel::apiCall(QString const& _message)
+{
+	m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
+	return m_rpcConnector->response();
+}
+
+QString ClientModel::contractAddress() const
+{
+	QString address = QString::fromStdString(dev::toJS(m_client->lastContractAddress()));
+	return address;
 }
 
 void ClientModel::debugDeployment()
@@ -71,11 +111,10 @@ void ClientModel::debugState(QVariantMap _state)
 	QVariantList transactions = _state.value("transactions").toList();
 
 	std::vector<TransactionSettings> transactionSequence;
-
+	TransactionSettings constructorTr;
 	for (auto const& t: transactions)
 	{
 		QVariantMap transaction = t.toMap();
-
 		QString functionId = transaction.value("functionId").toString();
 		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
@@ -88,12 +127,16 @@ void ClientModel::debugState(QVariantMap _state)
 			QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(p.value());
 			transactionSettings.parameterValues.push_back(param);
 		}
-		transactionSequence.push_back(transactionSettings);
+
+		if (transaction.value("executeConstructor").toBool())
+			constructorTr = transactionSettings;
+		else
+			transactionSequence.push_back(transactionSettings);
 	}
-	executeSequence(transactionSequence, balance);
+	executeSequence(transactionSequence, balance, constructorTr);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& ctrTransaction)
 {
 	if (m_running)
 		throw (std::logic_error("debugging already running"));
@@ -136,7 +179,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 			//run contract creation first
 			m_client->resetState(_balance);
-			ExecutionResult debuggingContent = deployContract(contractCode);
+			ExecutionResult debuggingContent = deployContract(contractCode, ctrTransaction);
 			Address address = debuggingContent.contractAddress;
 			for (unsigned i = 0; i < _sequence.size(); ++i)
 				debuggingContent = callContract(address, transactonData.at(i), _sequence.at(i));
@@ -188,15 +231,23 @@ void ClientModel::showDebugError(QString const& _error)
 	m_context->displayMessageDialog(tr("Debugger"), _error);
 }
 
-ExecutionResult ClientModel::deployContract(bytes const& _code)
+ExecutionResult ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	u256 gasPrice = 10000000000000;
-	u256 gas = 125000;
-	u256 amount = 100;
+	Address newAddress;
+	if (!_ctrTransaction.isEmpty())
+		newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	else
+	{
+		u256 gasPrice = 10000000000000;
+		u256 gas = 125000;
+		u256 amount = 100;
+		newAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
+	}
 
-	Address contractAddress = m_client->transact(m_client->userAccount().secret(), amount, _code, gas, gasPrice);
+	Address lastAddress = m_client->lastContractAddress();
 	ExecutionResult r = m_client->lastExecutionResult();
-	r.contractAddress = contractAddress;
+	if (newAddress != lastAddress)
+		contractAddressChanged();
 	return r;
 }
 
@@ -208,3 +259,5 @@ ExecutionResult ClientModel::callContract(Address const& _contract, bytes const&
 	return r;
 }
 
+}
+}

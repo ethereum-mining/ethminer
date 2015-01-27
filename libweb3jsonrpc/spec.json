@@ -22,6 +22,7 @@
 
             { "name": "eth_transact", "params": [{}], "order": [], "returns": ""},
             { "name": "eth_call", "params": [{}], "order": [], "returns": ""},
+            { "name": "eth_flush", "params": [], "order": [], "returns" : true},
 
             { "name": "eth_blockByHash", "params": [""],"order": [], "returns": {}},
             { "name": "eth_blockByNumber", "params": [0],"order": [], "returns": {}},

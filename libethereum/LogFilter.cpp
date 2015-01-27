@@ -72,11 +72,12 @@ LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 		for (LogEntry const& e: _m.log())
 		{
 			if (!m_addresses.empty() && !m_addresses.count(e.address))
-				continue;
+				goto continue2;
 			for (auto const& t: m_topics)
 				if (!std::count(e.topics.begin(), e.topics.end(), t))
-					continue;
+					goto continue2;
 			ret.push_back(e);
+			continue2:;
 		}
 	return ret;
 }

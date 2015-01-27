@@ -22,6 +22,7 @@
 
 #include <set>
 #include <queue>
+#include <functional>
 #include <boost/range/iterator_range.hpp>
 #include <libsolidity/ASTVisitor.h>
 
@@ -38,8 +39,15 @@ namespace solidity
 class CallGraph: private ASTConstVisitor
 {
 public:
+	using FunctionOverrideResolver = std::function<FunctionDefinition const*(std::string const&)>;
+	using ModifierOverrideResolver = std::function<ModifierDefinition const*(std::string const&)>;
+
+	CallGraph(FunctionOverrideResolver const& _functionOverrideResolver,
+			  ModifierOverrideResolver const& _modifierOverrideResolver):
+		m_functionOverrideResolver(&_functionOverrideResolver),
+		m_modifierOverrideResolver(&_modifierOverrideResolver) {}
+
 	void addNode(ASTNode const& _node);
-	void computeCallGraph();
 
 	std::set<FunctionDefinition const*> const& getCalls();
 
@@ -48,10 +56,13 @@ private:
 	virtual bool visit(Identifier const& _identifier) override;
 	virtual bool visit(MemberAccess const& _memberAccess) override;
 
-	void addFunction(FunctionDefinition const& _function);
+	void computeCallGraph();
 
+	FunctionOverrideResolver const* m_functionOverrideResolver;
+	ModifierOverrideResolver const* m_modifierOverrideResolver;
+	std::set<ASTNode const*> m_nodesSeen;
 	std::set<FunctionDefinition const*> m_functionsSeen;
-	std::queue<FunctionDefinition const*> m_workQueue;
+	std::queue<ASTNode const*> m_workQueue;
 };
 
 }
