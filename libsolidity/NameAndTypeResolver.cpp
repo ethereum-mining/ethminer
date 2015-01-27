@@ -60,6 +60,11 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 		ReferencesResolver resolver(*structDef, *this, &_contract, nullptr);
 	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
 		ReferencesResolver resolver(*variable, *this, &_contract, nullptr);
+	for (ASTPointer<ModifierDefinition> const& modifier: _contract.getFunctionModifiers())
+	{
+		m_currentScope = &m_scopes[modifier.get()];
+		ReferencesResolver resolver(*modifier, *this, &_contract, nullptr);
+	}
 	for (ASTPointer<FunctionDefinition> const& function: _contract.getDefinedFunctions())
 	{
 		m_currentScope = &m_scopes[function.get()];
@@ -111,7 +116,7 @@ void NameAndTypeResolver::linearizeBaseContracts(ContractDefinition& _contract) 
 {
 	// order in the lists is from derived to base
 	// list of lists to linearize, the last element is the list of direct bases
-	list<list<ContractDefinition const*>> input(1, {&_contract});
+	list<list<ContractDefinition const*>> input(1, {});
 	for (ASTPointer<InheritanceSpecifier> const& baseSpecifier: _contract.getBaseContracts())
 	{
 		ASTPointer<Identifier> baseName = baseSpecifier->getName();
@@ -119,14 +124,15 @@ void NameAndTypeResolver::linearizeBaseContracts(ContractDefinition& _contract) 
 														baseName->getReferencedDeclaration());
 		if (!base)
 			BOOST_THROW_EXCEPTION(baseName->createTypeError("Contract expected."));
-		// "push_back" has the effect that bases mentioned earlier can overwrite members of bases
-		// mentioned later
-		input.back().push_back(base);
+		// "push_front" has the effect that bases mentioned later can overwrite members of bases
+		// mentioned earlier
+		input.back().push_front(base);
 		vector<ContractDefinition const*> const& basesBases = base->getLinearizedBaseContracts();
 		if (basesBases.empty())
 			BOOST_THROW_EXCEPTION(baseName->createTypeError("Definition of base has to precede definition of derived contract"));
 		input.push_front(list<ContractDefinition const*>(basesBases.begin(), basesBases.end()));
 	}
+	input.back().push_front(&_contract);
 	vector<ContractDefinition const*> result = cThreeMerge(input);
 	if (result.empty())
 		BOOST_THROW_EXCEPTION(_contract.createTypeError("Linearization of inheritance graph impossible"));
@@ -226,6 +232,19 @@ void DeclarationRegistrationHelper::endVisit(FunctionDefinition&)
 	closeCurrentScope();
 }
 
+bool DeclarationRegistrationHelper::visit(ModifierDefinition& _modifier)
+{
+	registerDeclaration(_modifier, true);
+	m_currentFunction = &_modifier;
+	return true;
+}
+
+void DeclarationRegistrationHelper::endVisit(ModifierDefinition&)
+{
+	m_currentFunction = nullptr;
+	closeCurrentScope();
+}
+
 void DeclarationRegistrationHelper::endVisit(VariableDefinition& _variableDefinition)
 {
 	// Register the local variables with the function
@@ -292,8 +311,7 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 
 bool ReferencesResolver::visit(Return& _return)
 {
-	solAssert(m_returnParameters, "Return parameters not set.");
-	_return.setFunctionReturnParameters(*m_returnParameters);
+	_return.setFunctionReturnParameters(m_returnParameters);
 	return true;
 }
 

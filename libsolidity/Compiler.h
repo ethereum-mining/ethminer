@@ -21,6 +21,7 @@
  */
 
 #include <ostream>
+#include <functional>
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerContext.h>
 
@@ -30,7 +31,8 @@ namespace solidity {
 class Compiler: private ASTConstVisitor
 {
 public:
-	explicit Compiler(bool _optimize = false): m_optimize(_optimize), m_context(), m_returnTag(m_context.newTag()) {}
+	explicit Compiler(bool _optimize = false): m_optimize(_optimize), m_context(),
+		m_returnTag(m_context.newTag()) {}
 
 	void compileContract(ContractDefinition const& _contract,
 						 std::map<ContractDefinition const*, bytes const*> const& _contracts);
@@ -49,7 +51,10 @@ private:
 								   std::vector<ASTPointer<Expression>> const& _arguments);
 	void appendConstructorCall(FunctionDefinition const& _constructor);
 	/// Recursively searches the call graph and returns all functions referenced inside _nodes.
-	std::set<FunctionDefinition const*> getFunctionsCalled(std::set<ASTNode const*> const& _nodes);
+	/// _resolveOverride is called to resolve virtual function overrides.
+	std::set<FunctionDefinition const*> getFunctionsCalled(std::set<ASTNode const*> const& _nodes,
+					std::function<FunctionDefinition const*(std::string const&)> const& _resolveFunctionOverride,
+					std::function<ModifierDefinition const*(std::string const&)> const& _resolveModifierOverride);
 	void appendFunctionSelector(ContractDefinition const& _contract);
 	/// Creates code that unpacks the arguments for the given function, from memory if
 	/// @a _fromMemory is true, otherwise from call data. @returns the size of the data in bytes.
@@ -67,8 +72,13 @@ private:
 	virtual bool visit(Return const& _return) override;
 	virtual bool visit(VariableDefinition const& _variableDefinition) override;
 	virtual bool visit(ExpressionStatement const& _expressionStatement) override;
+	virtual bool visit(PlaceholderStatement const&) override;
 
-	void compileExpression(Expression const& _expression);
+	/// Appends one layer of function modifier code of the current function, or the function
+	/// body itself if the last modifier was reached.
+	void appendModifierOrFunctionCode();
+
+	void compileExpression(Expression const& _expression, TypePointer const& _targetType = TypePointer());
 
 	bool const m_optimize;
 	CompilerContext m_context;
@@ -76,6 +86,9 @@ private:
 	std::vector<eth::AssemblyItem> m_breakTags; ///< tag to jump to for a "break" statement
 	std::vector<eth::AssemblyItem> m_continueTags; ///< tag to jump to for a "continue" statement
 	eth::AssemblyItem m_returnTag; ///< tag to jump to for a "return" statement
+	unsigned m_modifierDepth = 0;
+	FunctionDefinition const* m_currentFunction;
+	unsigned m_stackCleanupForReturn; ///< this number of stack elements need to be removed before jump to m_returnTag
 };
 
 }

@@ -30,7 +30,7 @@ using namespace dev::eth;
 
 #define ETH_ADDRESS_DEBUG 0
 
-Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
+Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 {
 	int field = 0;
 	RLP rlp(_rlpData);
@@ -46,8 +46,14 @@ Transaction::Transaction(bytesConstRef _rlpData, bool _checkSender)
 		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();
 		h256 s = rlp[field = 8].toInt<u256>();
+
+		if (rlp.itemCount() > 9)
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("to many fields in the transaction RLP"));
+
 		m_vrs = SignatureStruct{ r, s, v };
-		if (_checkSender)
+		if (_checkSig >= CheckSignature::Range && !m_vrs.isValid())
+			BOOST_THROW_EXCEPTION(InvalidSignature());
+		if (_checkSig == CheckSignature::Sender)
 			m_sender = sender();
 	}
 	catch (Exception& _e)

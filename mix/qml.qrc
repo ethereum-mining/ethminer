@@ -36,17 +36,18 @@
         <file>qml/js/Debugger.js</file>
         <file>qml/NewProjectDialog.qml</file>
         <file>qml/ProjectModel.qml</file>
-        <file>qml/CodeEditor.qml</file>
         <file>qml/CodeEditorView.qml</file>
         <file>qml/js/ProjectModel.js</file>
-        <file>qml/WebPreview.qml</file>
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
-        <file>qml/QVariableDefinition.qml</file>
+	<file>qml/QVariableDefinition.qml</file>
         <file>qml/QBoolType.qml</file>
         <file>qml/QHashType.qml</file>
         <file>qml/QIntType.qml</file>
         <file>qml/QRealType.qml</file>
+        <file>qml/js/QEtherHelper.js</file>
+        <file>qml/js/TransactionHelper.js</file>
+        <file>qml/Splitter.qml</file>
     </qresource>
 </RCC>

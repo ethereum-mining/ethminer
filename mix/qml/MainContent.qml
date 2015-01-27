@@ -3,6 +3,10 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
+import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Rectangle {
 
@@ -17,29 +21,95 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
-	function toggleRightView()
+	property alias rightViewVisible : rightView.visible
+	property alias webViewVisible : webPreview.visible
+	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
+
+	onWidthChanged:
 	{
+		if (rightView.visible)
+			contentView.width = parent.width - projectList.width - rightView.width;
+		else
+			contentView.width = parent.width - projectList.width;
+	}
+
+	function startQuickDebugging()
+	{
+		var item = TransactionHelper.defaultTransaction();
+		item.executeConstructor = true;
+		if (codeModel.code.contract.constructor.parameters.length === 0)
+		{
+			ensureRightView();
+			startF5Debugging(item);
+		}
+		else
+			transactionDialog.open(0, item);
+	}
+
+	function startF5Debugging(transaction)
+	{
+		var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+		var state = {
+			title: "",
+			balance: ether,
+			transactions: [transaction]
+		};
+		clientModel.debugState(state);
+	}
+
+	TransactionDialog {
+		id: transactionDialog
+		onAccepted: {
+			ensureRightView();
+			var item = transactionDialog.getItem();
+			item.executeConstructor = true;
+			startF5Debugging(item);
+		}
+		useTransactionDefaultValue: true
+	}
+
+
+	function toggleRightView() {
 		if (!rightView.visible)
 			rightView.show();
 		else
 			rightView.hide();
 	}
 
-	function ensureRightView()
-	{
+	function ensureRightView() {
 		if (!rightView.visible)
 			rightView.show();
 	}
 
-	function hideRightView()
+	function rightViewIsVisible()
 	{
+		return rightView.visible;
+	}
+
+	function hideRightView() {
 		if (rightView.visible)
 			rightView.hide();
 	}
 
+	function toggleWebPreview() {
+		webPreview.visible = !webPreview.visible;
+	}
+
+	function toggleWebPreviewOrientation() {
+		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
+	}
+
+
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 		rightView: rightPaneTabs;
+	}
+
+	Settings {
+		id: mainLayoutSettings
+		property alias codeWebOrientation: codeWebSplitter.orientation
+		property alias webWidth: webPreview.width
+		property alias webHeight: webPreview.height
 	}
 
 	GridLayout
@@ -78,53 +148,99 @@ Rectangle {
 			}
 		}
 
-		SplitView {
-			resizing: false
-			Layout.row: 1
-			orientation: Qt.Horizontal;
+		Rectangle {
 			Layout.fillWidth: true
 			Layout.preferredHeight: root.height - headerView.height;
 
+			Settings {
+				id: splitSettings
+				property alias projectWidth: projectList.width
+				property alias contentViewWidth: contentView.width
+				property alias rightViewWidth: rightView.width
+			}
+
 			ProjectList	{
+				anchors.left: parent.left
 				id: projectList
 				width: 200
 				height: parent.height
 				Layout.minimumWidth: 200
 			}
 
+			Splitter
+			{
+				id: resizeLeft
+				itemToStick: projectList
+				itemMinimumWidth: projectList.Layout.minimumWidth
+				direction: "right"
+				brother: contentView
+				color: "#a2a2a2"
+			}
+
 			Rectangle {
+				anchors.left: projectList.right
 				id: contentView
 				width: parent.width - projectList.width
 				height: parent.height
-				CodeEditorView {
-								height: parent.height
-								anchors.top: parent.top
-								width: parent.width
-							}
+				SplitView {
+					 handleDelegate: Rectangle {
+						width: 4
+						height: 4
+						color: "#cccccc"
+					 }
+					id: codeWebSplitter
+					anchors.fill: parent
+					orientation: Qt.Vertical
+					CodeEditorView {
+						height: parent.height * 0.6
+						anchors.top: parent.top
+						Layout.fillWidth: true
+						Layout.fillHeight: true
+					}
+					WebPreview {
+						id: webPreview
+						height: parent.height * 0.4
+						Layout.fillWidth: codeWebSplitter.orientation === Qt.Vertical
+						Layout.fillHeight: codeWebSplitter.orientation === Qt.Horizontal
+						Layout.minimumHeight: 200
+						Layout.minimumWidth: 200
+					}
+				}
+			}
+
+			Splitter
+			{
+				id: resizeRight
+				visible: false;
+				itemToStick: rightView
+				itemMinimumWidth: rightView.Layout.minimumWidth
+				direction: "left"
+				brother: contentView
+				color: "#a2a2a2"
 			}
 
 			Rectangle {
 				visible: false;
 				id: rightView;
 
-				Keys.onEscapePressed:
-				{
-					hide();
-				}
+				Keys.onEscapePressed: hide()
 
 				function show() {
 					visible = true;
+					resizeRight.visible = true;
 					contentView.width = parent.width - projectList.width - rightView.width;
 				}
 
 				function hide() {
+					resizeRight.visible = false;
 					visible = false;
 					contentView.width = parent.width - projectList.width;
 				}
 
 				height: parent.height;
-				width: 450
-				Layout.minimumWidth: 450
+				width: 515
+				Layout.minimumWidth: 515
+				anchors.right: parent.right
 				Rectangle {
 					anchors.fill: parent;
 					id: rightPaneView
