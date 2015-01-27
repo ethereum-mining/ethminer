@@ -47,7 +47,10 @@ void MixClient::resetState(u256 _balance)
 	WriteGuard l(x_state);
 	m_state = eth::State(Address(), m_stateDB, BaseState::Empty);
 	m_state.addBalance(m_userAccount.address(), _balance);
-	m_blocks = Blocks { Block() };
+	Block genesis;
+	genesis.state = m_state;
+	Block open;
+	m_blocks = Blocks { genesis, open }; //last block contains a list of pending transactions to be finalized
 }
 
 void MixClient::executeTransaction(bytesConstRef _rlp, State& _state)
@@ -113,7 +116,7 @@ void MixClient::executeTransaction(bytesConstRef _rlp, State& _state)
 
 void MixClient::validateBlock(int _block) const
 {
-	if ((unsigned)_block >= m_blocks.size() - 1)
+	if (_block != -1 && _block != 0 && (unsigned)_block >= m_blocks.size() - 1)
 	{
 		InvalidBlockException exception;
 		exception << BlockIndex(_block);
@@ -131,6 +134,18 @@ void MixClient::mine()
 	block.hash = block.info.hash;
 	m_blocks.push_back(Block());
 }
+
+State const& MixClient::asOf(int _block) const
+{
+	validateBlock(_block);
+	if (_block == 0)
+		return m_blocks[m_blocks.size() - 2].state;
+	else if (_block == -1)
+		return m_state;
+	else
+		return m_blocks[_block].state;
+}
+
 
 void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
@@ -180,37 +195,32 @@ bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _
 
 u256 MixClient::balanceAt(Address _a, int _block) const
 {
-	validateBlock(_block);
 	ReadGuard l(x_state);
-	return m_blocks[_block].state.balance(_a);
+	return asOf(_block).balance(_a);
 }
 
 u256 MixClient::countAt(Address _a, int _block) const
 {
-	validateBlock(_block);
 	ReadGuard l(x_state);
-	return m_blocks[_block].state.transactionsFrom(_a);
+	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 MixClient::stateAt(Address _a, u256 _l, int _block) const
 {
-	validateBlock(_block);
 	ReadGuard l(x_state);
-	return m_blocks[_block].state.storage(_a, _l);
+	return asOf(_block).storage(_a, _l);
 }
 
 bytes MixClient::codeAt(Address _a, int _block) const
 {
-	validateBlock(_block);
 	ReadGuard l(x_state);
-	return m_blocks[_block].state.code(_a);
+	return asOf(_block).code(_a);
 }
 
 std::map<u256, u256> MixClient::storageAt(Address _a, int _block) const
 {
-	validateBlock(_block);
 	ReadGuard l(x_state);
-	return m_blocks[_block].state.storage(_a);
+	return asOf(_block).storage(_a);
 }
 
 eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
@@ -222,40 +232,20 @@ eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
 eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned blockNumber = m_blocks.size();
+	unsigned blockNumber = m_blocks.size() - 1;
 	unsigned begin = std::min<unsigned>(blockNumber, (unsigned)_f.latest());
 	unsigned end = std::min(blockNumber, std::min(begin, (unsigned)_f.earliest()));
 	unsigned m = _f.max();
 	unsigned s = _f.skip();
-
-	// Handle pending transactions differently as they're not on the block chain.
-	if (begin > blockNumber)
-	{
-		ReadGuard l(x_state);
-		for (unsigned i = 0; i < m_state.pending().size(); ++i)
-		{
-			// Might have a transaction that contains a matching log.
-			TransactionReceipt const& tr = m_state.receipt(i);
-			LogEntries le = _f.matches(tr);
-			if (le.size())
-			{
-				for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-					if (s)
-						s--;
-					else
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin));
-			}
-		}
-		begin = blockNumber;
-	}
 	unsigned n = begin;
 	for (; ret.size() != m && n != end; n--)
 	{
-		// check block bloom
-		if (_f.matches(m_blocks[n].info.logBloom))
+		bool pendingBlock = n == blockNumber;
+		if (pendingBlock || _f.matches(m_blocks[n].info.logBloom))
+		{
 			for (ExecutionResult const& t: m_blocks[n].transactions)
 			{
-				if (_f.matches(t.receipt.bloom()))
+				if (pendingBlock || _f.matches(t.receipt.bloom()))
 				{
 					LogEntries le = _f.matches(t.receipt);
 					if (le.size())
@@ -270,8 +260,7 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 					}
 				}
 			}
-		if (n == end)
-			break;
+		}
 	}
 	return ret;
 }

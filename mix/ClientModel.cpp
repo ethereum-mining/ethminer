@@ -90,6 +90,12 @@ QString ClientModel::apiCall(QString const& _message)
 	return m_rpcConnector->response();
 }
 
+void ClientModel::mine()
+{
+	m_client->mine();
+	newBlock();
+}
+
 QString ClientModel::contractAddress() const
 {
 	return QString::fromStdString(dev::toJS(m_contractAddress));
@@ -182,7 +188,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 			//run contract creation first
 			m_client->resetState(_balance);
 			ExecutionResult debuggingContent = deployContract(contractCode, ctrTransaction);
-			Address address = m_contractAddress
+			Address address = m_contractAddress;
 			for (unsigned i = 0; i < _sequence.size(); ++i)
 				debuggingContent = callContract(address, transactonData.at(i), _sequence.at(i));
 

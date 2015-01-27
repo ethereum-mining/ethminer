@@ -84,6 +84,9 @@ public:
 	/// @returns RPC response in Json format
 	Q_INVOKABLE QString apiCall(QString const& _message);
 
+	/// Simulate mining. Creates a new block
+	Q_INVOKABLE void mine();
+
 public slots:
 	/// Run the contract constructor and show debugger window.
 	void debugDeployment();
@@ -107,6 +110,8 @@ signals:
 	void runFailed(QString const& _message);
 	/// Contract address changed
 	void contractAddressChanged();
+	/// Execution state changed
+	void newBlock();
 	/// Execution state changed
 	void stateChanged();
 	/// Show debugger window request

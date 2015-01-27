@@ -49,7 +49,7 @@ Window {
 		}
 
 		if (functionIndex == -1 && functionsModel.count > 0)
-			functionIndex = 0; //@todo suggest unused funtion
+			functionIndex = 0; //@todo suggest unused function
 
 		functionComboBox.currentIndex = functionIndex;
 		paramsModel.clear();
