@@ -37,12 +37,18 @@ class QVariableDefinition: public QObject
 	Q_PROPERTY(QVariableDeclaration* declaration READ declaration CONSTANT)
 
 public:
+	QVariableDefinition() {}
 	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(), m_value(_value), m_dec(_def) {}
 
 	/// Return the associated declaration of this variable definition.
-	QVariableDeclaration* declaration() const { return m_dec; }
+	Q_INVOKABLE QVariableDeclaration* declaration() const { return m_dec; }
 	/// Return the variable value.
 	QString value() const { return m_value; }
+	Q_INVOKABLE void setValue(QString _value) { m_value = _value; }
+	Q_INVOKABLE void setDeclaration(QVariableDeclaration* _dec) { m_dec = _dec; }
+	virtual bytes encodeValue() = 0;
+	virtual void decodeValue(std::string const& _rawValue) = 0;
+	virtual int length() = 0;
 
 private:
 	QString m_value;
@@ -67,7 +73,71 @@ private:
 	QList<QVariableDefinition*> m_def;
 };
 
+class QIntType: public QVariableDefinition
+{
+	Q_OBJECT
+
+public:
+	QIntType() {}
+	QIntType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	dev::bytes encodeValue() override;
+	void decodeValue(std::string const& _rawValue) override;
+	int length() override;
+};
+
+class QRealType: public QVariableDefinition
+{
+	Q_OBJECT
+
+public:
+	QRealType() {}
+	QRealType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	dev::bytes encodeValue() override;
+	void decodeValue(std::string const& _rawValue) override;
+	int length() override;
+};
+
+class QStringType: public QVariableDefinition
+{
+	Q_OBJECT
+
+public:
+	QStringType() {}
+	QStringType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	dev::bytes encodeValue() override;
+	void decodeValue(std::string const& _rawValue) override;
+	int length() override;
+};
+
+class QHashType: public QVariableDefinition
+{
+	Q_OBJECT
+
+public:
+	QHashType() {}
+	QHashType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	dev::bytes encodeValue() override;
+	void decodeValue(std::string const& _rawValue) override;
+	int length() override;
+};
+
+class QBoolType: public QVariableDefinition
+{
+	Q_OBJECT
+
+public:
+	QBoolType() {}
+	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	dev::bytes encodeValue() override;
+	void decodeValue(std::string const& _rawValue) override;
+	int length() override;
+};
+
 }
 }
 
-Q_DECLARE_METATYPE(dev::mix::QVariableDefinition*)
+//Q_DECLARE_METATYPE(dev::mix::QVariableDefinition*)
+Q_DECLARE_METATYPE(dev::mix::QIntType*)
+Q_DECLARE_METATYPE(dev::mix::QStringType*)
+Q_DECLARE_METATYPE(dev::mix::QHashType*)
+Q_DECLARE_METATYPE(dev::mix::QBoolType*)

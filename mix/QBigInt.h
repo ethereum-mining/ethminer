@@ -28,6 +28,7 @@
 #include <QQmlEngine>
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/Common.h>
+#include "QVariableDefinition.h"
 
 using namespace dev;
 

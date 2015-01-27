@@ -43,5 +43,10 @@
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
+        <file>qml/QVariableDefinition.qml</file>
+        <file>qml/QBoolType.qml</file>
+        <file>qml/QHashType.qml</file>
+        <file>qml/QIntType.qml</file>
+        <file>qml/QRealType.qml</file>
     </qresource>
 </RCC>

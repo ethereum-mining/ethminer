@@ -33,6 +33,8 @@ QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDefinition const
 	for (unsigned i = 0; i < parameters.size(); i++)
 		m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
 
+
+
 	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = _f->getReturnParameters();
 	for (unsigned i = 0; i < returnParameters.size(); i++)
 		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));

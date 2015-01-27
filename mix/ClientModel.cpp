@@ -42,6 +42,10 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false)
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
+	qRegisterMetaType<QIntType*>("QIntType*");
+	qRegisterMetaType<QStringType*>("QStringType*");
+	qRegisterMetaType<QRealType*>("QRealType*");
+	qRegisterMetaType<QHashType*>("QHashType*");
 	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -80,8 +84,10 @@ void ClientModel::debugState(QVariantMap _state)
 		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 
 		for (auto p = params.cbegin(); p != params.cend(); ++p)
-			transactionSettings.parameterValues.insert(std::make_pair(p.key(), (qvariant_cast<QEther*>(p.value()))->toU256Wei()));
-
+		{
+			QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(p.value());
+			transactionSettings.parameterValues.push_back(param);
+		}
 		transactionSequence.push_back(transactionSettings);
 	}
 	executeSequence(transactionSequence, balance);
@@ -123,15 +129,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					throw std::runtime_error("function " + t.functionId.toStdString() + " not found");
 
 				c.encode(f);
-				for (int p = 0; p < f->parametersList().size(); p++)
-				{
-					QVariableDeclaration* var = (QVariableDeclaration*)f->parametersList().at(p);
-					u256 value = 0;
-					auto v = t.parameterValues.find(var->name());
-					if (v != t.parameterValues.cend())
-						value = v->second;
-					c.encode(var, value);
-				}
+				for (int p = 0; p < t.parameterValues.size(); p++)
+					c.push(t.parameterValues.at(p)->encodeValue());
 				transactonData.emplace_back(c.encodedData());
 			}
 

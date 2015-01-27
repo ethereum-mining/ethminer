@@ -28,6 +28,8 @@ Window {
 		valueField.value = item.value;
 		var functionId = item.functionId;
 		itemParams = item.parameters !== undefined ? item.parameters : {};
+		console.log("opening ...");
+		console.log(JSON.stringify(itemParams));
 		functionsModel.clear();
 		var functionIndex = -1;
 		var functions = codeModel.code.contract.functions;
@@ -41,21 +43,48 @@ Window {
 			functionIndex = 0; //@todo suggest unused funtion
 
 		functionComboBox.currentIndex = functionIndex;
+		console.log("opening2 ...");
+		console.log(JSON.stringify(itemParams));
 		loadParameters();
 		visible = true;
 		valueField.focus = true;
 	}
 
 	function loadParameters() {
+		console.log("opening3 ...");
+		console.log(JSON.stringify(itemParams));
 		if (!paramsModel)
 			return;
+		console.log("opening4 ...");
+		console.log(JSON.stringify(itemParams));
 		paramsModel.clear();
+		console.log("opening5 ...");
+		console.log(JSON.stringify(itemParams));
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
 			for (var p = 0; p < parameters.length; p++) {
 				var pname = parameters[p].name;
-				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
+				var varComponent;
+				var type = parameters[p].type;
+				console.log("type : " + type);
+				console.log("name : " + pname);
+				if (type.indexOf("int") !== -1)
+					varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
+				else if (type.indexOf("real") !== -1)
+					varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
+				else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
+					varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
+				else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
+					varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
+				var param = varComponent.createObject(modalTransactionDialog);
+				var value = itemParams[pname] !== undefined ? itemParams[pname].value : "";
+
+				console.log("loading parameters");
+				console.log(JSON.stringify(itemParams));
+				param.setValue(value);
+				param.setDeclaration(parameters[p]);
+				paramsModel.append({ internalValue: param, name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value : "" });
 			}
 		}
 	}
@@ -76,11 +105,16 @@ Window {
 		}
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
-			var param = intComponent.createObject(modalTransactionDialog);
-			param.setValue(parameter.value);
-			item.parameters[parameter.name] = param;
+			//var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
+			//var param = intComponent.createObject(modalTransactionDialog);
+			//param.setValue(parameter.value);
+			//parameter.internalValue.setValue(parameter.value);
+			console.log("onget");
+			console.log(JSON.stringify(parameter));
+			item.parameters[parameter.name] = parameter;
 		}
+		console.log("return item");
+		console.log(JSON.stringify(item));
 		return item;
 	}
 
