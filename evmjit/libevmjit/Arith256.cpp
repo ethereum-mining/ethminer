@@ -6,6 +6,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <gmp.h>
+#include <iostream>
 
 namespace dev
 {
@@ -30,38 +31,45 @@ Arith256::Arith256(llvm::IRBuilder<>& _builder) :
 	llvm::Type* arg3Types[] = {Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr};
 
 	m_mul = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_mul", getModule());
-	m_div = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_div", getModule());
-	m_mod = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_mod", getModule());
 	m_sdiv = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_sdiv", getModule());
 	m_smod = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_smod", getModule());
-	m_exp = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_exp", getModule());
 	m_addmod = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_addmod", getModule());
 	m_mulmod = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_mulmod", getModule());
 }
 
+void Arith256::debug(llvm::Value* _value, char _c)
+{
+	if (!m_debug)
+	{
+		llvm::Type* argTypes[] = {Type::Word, m_builder.getInt8Ty()};
+		m_debug = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "debug", getModule());
+	}
+	createCall(m_debug, {_value, m_builder.getInt8(_c)});
+}
+
 llvm::Function* Arith256::getDivFunc()
 {
-	if (!m_newDiv)
+	if (!m_div)
 	{
 		// Based of "Improved shift divisor algorithm" from "Software Integer Division" by Microsoft Research
 		// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
 
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
 		auto retType = llvm::StructType::get(m_builder.getContext(), llvm::ArrayRef<llvm::Type*>{argTypes});
-		m_newDiv = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, "arith.div", getModule());
+		m_div = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, "arith.div", getModule());
 
-		auto x = &m_newDiv->getArgumentList().front();
+		auto x = &m_div->getArgumentList().front();
 		x->setName("x");
 		auto yArg = x->getNextNode();
 		yArg->setName("y");
 
 		InsertPointGuard guard{m_builder};
 
-		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), "Entry", m_newDiv);
-		auto mainBB = llvm::BasicBlock::Create(m_builder.getContext(), "Main", m_newDiv);
-		auto loopBB = llvm::BasicBlock::Create(m_builder.getContext(), "Loop", m_newDiv);
-		auto continueBB = llvm::BasicBlock::Create(m_builder.getContext(), "Continue", m_newDiv);
-		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", m_newDiv);
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), "Entry", m_div);
+		auto mainBB = llvm::BasicBlock::Create(m_builder.getContext(), "Main", m_div);
+		auto loopBB = llvm::BasicBlock::Create(m_builder.getContext(), "Loop", m_div);
+		auto continueBB = llvm::BasicBlock::Create(m_builder.getContext(), "Continue", m_div);
+		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", m_div);
 
 		m_builder.SetInsertPoint(entryBB);
 		auto yNonZero = m_builder.CreateICmpNE(yArg, Constant::get(0));
@@ -119,7 +127,83 @@ llvm::Function* Arith256::getDivFunc()
 		ret = m_builder.CreateInsertValue(ret, rRet, 1, "ret");
 		m_builder.CreateRet(ret);
 	}
-	return m_newDiv;
+	return m_div;
+}
+
+llvm::Function* Arith256::getExpFunc()
+{
+	if (!m_exp)
+	{
+		llvm::Type* argTypes[] = {Type::Word, Type::Word};
+		m_exp = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "arith.exp", getModule());
+
+		auto base = &m_exp->getArgumentList().front();
+		base->setName("base");
+		auto exponent = base->getNextNode();
+		exponent->setName("exponent");
+
+		InsertPointGuard guard{m_builder};
+
+		//	while (e != 0) {
+		//		if (e % 2 == 1)
+		//			r *= b;
+		//		b *= b;
+		//		e /= 2;
+		//	}
+
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), "Entry", m_exp);
+		auto headerBB = llvm::BasicBlock::Create(m_builder.getContext(), "LoopHeader", m_exp);
+		auto bodyBB = llvm::BasicBlock::Create(m_builder.getContext(), "LoopBody", m_exp);
+		auto updateBB = llvm::BasicBlock::Create(m_builder.getContext(), "ResultUpdate", m_exp);
+		auto continueBB = llvm::BasicBlock::Create(m_builder.getContext(), "Continue", m_exp);
+		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", m_exp);
+
+		m_builder.SetInsertPoint(entryBB);
+		auto a1 = m_builder.CreateAlloca(Type::Word, nullptr, "a1");
+		auto a2 = m_builder.CreateAlloca(Type::Word, nullptr, "a2");
+		auto a3 = m_builder.CreateAlloca(Type::Word, nullptr, "a3");
+		m_builder.CreateBr(headerBB);
+
+		m_builder.SetInsertPoint(headerBB);
+		auto r = m_builder.CreatePHI(Type::Word, 2, "r");
+		auto b = m_builder.CreatePHI(Type::Word, 2, "b");
+		auto e = m_builder.CreatePHI(Type::Word, 2, "e");
+		auto eNonZero = m_builder.CreateICmpNE(e, Constant::get(0), "e.nonzero");
+		m_builder.CreateCondBr(eNonZero, bodyBB, returnBB);
+
+		m_builder.SetInsertPoint(bodyBB);
+		auto eOdd = m_builder.CreateICmpNE(m_builder.CreateAnd(e, Constant::get(1)), Constant::get(0), "e.isodd");
+		m_builder.CreateCondBr(eOdd, updateBB, continueBB);
+
+		m_builder.SetInsertPoint(updateBB);
+		m_builder.CreateStore(r, a1);
+		m_builder.CreateStore(b, a2);
+		createCall(m_mul, {a1, a2, a3});
+		auto r0 = m_builder.CreateLoad(a3, "r0");
+		m_builder.CreateBr(continueBB);
+
+		m_builder.SetInsertPoint(continueBB);
+		auto r1 = m_builder.CreatePHI(Type::Word, 2, "r1");
+		r1->addIncoming(r, bodyBB);
+		r1->addIncoming(r0, updateBB);
+		m_builder.CreateStore(b, a1);
+		m_builder.CreateStore(b, a2);
+		createCall(m_mul, {a1, a2, a3});
+		auto b1 = m_builder.CreateLoad(a3, "b1");
+		auto e1 = m_builder.CreateLShr(e, Constant::get(1), "e1");
+		m_builder.CreateBr(headerBB);
+
+		r->addIncoming(Constant::get(1), entryBB);
+		r->addIncoming(r1, continueBB);
+		b->addIncoming(base, entryBB);
+		b->addIncoming(b1, continueBB);
+		e->addIncoming(exponent, entryBB);
+		e->addIncoming(e1, continueBB);
+
+		m_builder.SetInsertPoint(returnBB);
+		m_builder.CreateRet(r);
+	}
+	return m_exp;
 }
 
 
@@ -168,7 +252,7 @@ llvm::Value* Arith256::smod(llvm::Value* _arg1, llvm::Value* _arg2)
 
 llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	return binaryOp(m_exp, _arg1, _arg2);
+	return createCall(getExpFunc(), {_arg1, _arg2});
 }
 
 llvm::Value* Arith256::addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
@@ -233,6 +317,13 @@ namespace
 		return {lo, (uint64_t)mid, hi};
 	}
 
+	inline void mul(i256* x, i256* y)
+	{
+		auto a = (uint256*) x;
+		auto b = (uint256*) y;
+		*a = mul(*a, *b);
+	}
+
 	bool isZero(i256 const* _n)
 	{
 		return _n->a == 0 && _n->b == 0 && _n->c == 0 && _n->d == 0;
@@ -293,6 +384,11 @@ extern "C"
 {
 
 	using namespace dev::eth::jit;
+
+	EXPORT void debug(uint64_t a, uint64_t b, uint64_t c, uint64_t d, char z)
+	{
+		std::cerr << "DEBUG " << z << ": " << d << c << b << a << std::endl;
+	}
 
 	EXPORT void arith_mul(uint256* _arg1, uint256* _arg2, uint256* o_result)
 	{
