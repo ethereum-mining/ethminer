@@ -37,6 +37,7 @@ ApplicationWindow {
 			title: qsTr("Debug")
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
+			MenuItem { action: mineAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -76,6 +77,13 @@ ApplicationWindow {
 		onTriggered: Qt.quit();
 	}
 
+	Action {
+		id: mineAction
+		text: "Mine"
+		shortcut: "Ctrl+M"
+		onTriggered: clientModel.mine();
+		enabled: codeModel.hasContract && !clientModel.running
+	}
 	Action {
 		id: debugRunAction
 		text: "&Run"

@@ -128,6 +128,7 @@ private:
 	void executeTransaction(bytesConstRef _rlp, eth::State& _state);
 	void validateBlock(int _block) const;
 	void noteChanged(h256Set const& _filters);
+	dev::eth::State const& asOf(int _block) const;
 
 	KeyPair m_userAccount;
 	eth::State m_state;
