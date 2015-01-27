@@ -4,6 +4,7 @@
 #include "Endianness.h"
 
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <gmp.h>
 
 namespace dev
@@ -38,8 +39,90 @@ Arith256::Arith256(llvm::IRBuilder<>& _builder) :
 	m_mulmod = Function::Create(FunctionType::get(Type::Void, arg3Types, false), Linkage::ExternalLinkage, "arith_mulmod", getModule());
 }
 
-Arith256::~Arith256()
-{}
+llvm::Function* Arith256::getDivFunc()
+{
+	if (!m_newDiv)
+	{
+		// Based of "Improved shift divisor algorithm" from "Software Integer Division" by Microsoft Research
+		// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
+
+		llvm::Type* argTypes[] = {Type::Word, Type::Word};
+		auto retType = llvm::StructType::get(m_builder.getContext(), llvm::ArrayRef<llvm::Type*>{argTypes});
+		m_newDiv = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, "arith.div", getModule());
+
+		auto x = &m_newDiv->getArgumentList().front();
+		x->setName("x");
+		auto yArg = x->getNextNode();
+		yArg->setName("y");
+
+		InsertPointGuard guard{m_builder};
+
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), "Entry", m_newDiv);
+		auto mainBB = llvm::BasicBlock::Create(m_builder.getContext(), "Main", m_newDiv);
+		auto loopBB = llvm::BasicBlock::Create(m_builder.getContext(), "Loop", m_newDiv);
+		auto continueBB = llvm::BasicBlock::Create(m_builder.getContext(), "Continue", m_newDiv);
+		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", m_newDiv);
+
+		m_builder.SetInsertPoint(entryBB);
+		auto yNonZero = m_builder.CreateICmpNE(yArg, Constant::get(0));
+		auto yLEx = m_builder.CreateICmpULE(yArg, x);
+		auto r0 = m_builder.CreateSelect(yNonZero, x, Constant::get(0), "r0");
+		m_builder.CreateCondBr(m_builder.CreateAnd(yLEx, yNonZero), mainBB, returnBB);
+
+		m_builder.SetInsertPoint(mainBB);
+		auto ctlzIntr = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, Type::Word);
+		// both y and r are non-zero
+		auto yLz = m_builder.CreateCall2(ctlzIntr, yArg, m_builder.getInt1(true), "y.lz");
+		auto rLz = m_builder.CreateCall2(ctlzIntr, r0, m_builder.getInt1(true), "r.lz");
+		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
+		auto shlBy0 = m_builder.CreateICmpEQ(i0, Constant::get(0));
+		auto y0 = m_builder.CreateShl(yArg, i0);
+		y0 = m_builder.CreateSelect(shlBy0, yArg, y0, "y0"); // Workaround for LLVM bug: shl by 0 produces wrong result
+		m_builder.CreateBr(loopBB);
+
+		m_builder.SetInsertPoint(loopBB);
+		auto yPhi = m_builder.CreatePHI(Type::Word, 2, "y.phi");
+		auto rPhi = m_builder.CreatePHI(Type::Word, 2, "r.phi");
+		auto iPhi = m_builder.CreatePHI(Type::Word, 2, "i.phi");
+		auto qPhi = m_builder.CreatePHI(Type::Word, 2, "q.phi");
+		auto rUpdate = m_builder.CreateNUWSub(rPhi, yPhi);
+		auto qUpdate = m_builder.CreateOr(qPhi, Constant::get(1));	// q += 1, q lowest bit is 0
+		auto rGEy = m_builder.CreateICmpUGE(rPhi, yPhi);
+		auto r1 = m_builder.CreateSelect(rGEy, rUpdate, rPhi, "r1");
+		auto q1 = m_builder.CreateSelect(rGEy, qUpdate, qPhi, "q");
+		auto iZero = m_builder.CreateICmpEQ(iPhi, Constant::get(0));
+		m_builder.CreateCondBr(iZero, returnBB, continueBB);
+
+		m_builder.SetInsertPoint(continueBB);
+		auto i2 = m_builder.CreateNUWSub(iPhi, Constant::get(1));
+		auto q2 = m_builder.CreateShl(q1, Constant::get(1));
+		auto y2 = m_builder.CreateUDiv(yPhi, Constant::get(2));
+		m_builder.CreateBr(loopBB);
+
+		yPhi->addIncoming(y0, mainBB);
+		yPhi->addIncoming(y2, continueBB);
+		rPhi->addIncoming(r0, mainBB);
+		rPhi->addIncoming(r1, continueBB);
+		iPhi->addIncoming(i0, mainBB);
+		iPhi->addIncoming(i2, continueBB);
+		qPhi->addIncoming(Constant::get(0), mainBB);
+		qPhi->addIncoming(q2, continueBB);
+
+		m_builder.SetInsertPoint(returnBB);
+		auto qRet = m_builder.CreatePHI(Type::Word, 2, "q.ret");
+		qRet->addIncoming(Constant::get(0), entryBB);
+		qRet->addIncoming(q1, loopBB);
+		auto rRet = m_builder.CreatePHI(Type::Word, 2, "r.ret");
+		rRet->addIncoming(r0, entryBB);
+		rRet->addIncoming(r1, loopBB);
+		auto ret = m_builder.CreateInsertValue(llvm::UndefValue::get(retType), qRet, 0, "ret0");
+		ret = m_builder.CreateInsertValue(ret, rRet, 1, "ret");
+		m_builder.CreateRet(ret);
+	}
+	return m_newDiv;
+}
+
+
 
 llvm::Value* Arith256::binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2)
 {
@@ -65,13 +148,12 @@ llvm::Value* Arith256::mul(llvm::Value* _arg1, llvm::Value* _arg2)
 
 llvm::Value* Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	//return Endianness::toNative(m_builder, binaryOp(m_div, Endianness::toBE(m_builder, _arg1), Endianness::toBE(m_builder, _arg2)));
-	return binaryOp(m_div, _arg1, _arg2);
+	return m_builder.CreateExtractValue(createCall(getDivFunc(), {_arg1, _arg2}), 0, "div");
 }
 
 llvm::Value* Arith256::mod(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	return binaryOp(m_mod, _arg1, _arg2);
+	return m_builder.CreateExtractValue(createCall(getDivFunc(), {_arg1, _arg2}), 1, "mod");
 }
 
 llvm::Value* Arith256::sdiv(llvm::Value* _arg1, llvm::Value* _arg2)
@@ -215,38 +297,6 @@ extern "C"
 	EXPORT void arith_mul(uint256* _arg1, uint256* _arg2, uint256* o_result)
 	{
 		*o_result = mul(*_arg1, *_arg2);
-	}
-
-	EXPORT void arith_div(i256* _arg1, i256* _arg2, i256* o_result)
-	{
-		*o_result = {};
-		if (isZero(_arg2))
-			return;
-
-		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
-		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
-
-		mpz_tdiv_q(z, x, y);
-
-//		auto arg1 = llvm2eth(*_arg1);
-//		auto arg2 = llvm2eth(*_arg2);
-//		auto res = arg2 == 0 ? arg2 : arg1 / arg2;
-//		std::cout << "DIV " << arg1 << "/" << arg2 << " = " << res << std::endl;
-//		gmp_printf("GMP %Zd / %Zd = %Zd\n", x, y, z);
-	}
-
-	EXPORT void arith_mod(i256* _arg1, i256* _arg2, i256* o_result)
-	{
-		*o_result = {};
-		if (isZero(_arg2))
-			return;
-
-		mpz_t x{nLimbs, countLimbs(_arg1), reinterpret_cast<mp_limb_t*>(_arg1)};
-		mpz_t y{nLimbs, countLimbs(_arg2), reinterpret_cast<mp_limb_t*>(_arg2)};
-		mpz_t z{nLimbs, 0, reinterpret_cast<mp_limb_t*>(o_result)};
-
-		mpz_tdiv_r(z, x, y);
 	}
 
 	EXPORT void arith_sdiv(i256* _arg1, i256* _arg2, i256* o_result)

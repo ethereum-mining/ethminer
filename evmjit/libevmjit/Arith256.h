@@ -13,7 +13,6 @@ class Arith256 : public CompilerHelper
 {
 public:
 	Arith256(llvm::IRBuilder<>& _builder);
-	virtual ~Arith256();
 
 	llvm::Value* mul(llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* div(llvm::Value* _arg1, llvm::Value* _arg2);
@@ -25,6 +24,8 @@ public:
 	llvm::Value* addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
 private:
+	llvm::Function* getDivFunc();
+
 	llvm::Value* binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* ternaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
@@ -36,6 +37,8 @@ private:
 	llvm::Function* m_exp;
 	llvm::Function* m_mulmod;
 	llvm::Function* m_addmod;
+
+	llvm::Function* m_newDiv = nullptr;
 
 	llvm::Value* m_arg1;
 	llvm::Value* m_arg2;
