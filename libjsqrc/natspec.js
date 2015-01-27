@@ -29,6 +29,16 @@ var getContractMethods = function (address, abi) {
     return web3.eth.contract(address, abi);
 };
 
+/// Function called to get all contract method input variables
+/// @returns hashmap with all contract's method input variables
+var getContractInputParams = function (abi, methodName, params) {
+    var method = web3.abi.getMethodWithName(abi, methodName);
+    return method.inputs.reduce(function (acc, current, index) {
+        acc[current.name] = params[index];
+        return acc;
+    }, {});
+};
+
 /// Should be called to evaluate single expression
 /// Is internally using javascript's 'eval' method
 /// Should be checked if it is safe
@@ -37,12 +47,16 @@ var evaluateExpression = function (expression) {
     var self = this;
     var abi = web3._currentContractAbi;
     var address = web3._currentContractAddress;
+    var methodName = web3._currentContractMethodName;
+    var params = web3._currentContractMethodParams;
 
     var storage = getContractProperties(address, abi); 
     var methods = getContractMethods(address, abi);
+    var inputParams = getContractInputParams(abi, methodName, params);
 
     copyToContext(storage, self);
     copyToContext(methods, self);
+    copyToContext(inputParams, self);
 
     // TODO: test if it is safe
     var evaluatedExpression = "";
