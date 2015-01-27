@@ -23,22 +23,24 @@ public:
 	llvm::Value* mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 	llvm::Value* addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
+	void debug(llvm::Value* _value, char _c);
+
 private:
 	llvm::Function* getDivFunc();
+	llvm::Function* getExpFunc();
 
 	llvm::Value* binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* ternaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
 	llvm::Function* m_mul;
-	llvm::Function* m_div;
-	llvm::Function* m_mod;
 	llvm::Function* m_sdiv;
 	llvm::Function* m_smod;
-	llvm::Function* m_exp;
 	llvm::Function* m_mulmod;
 	llvm::Function* m_addmod;
 
-	llvm::Function* m_newDiv = nullptr;
+	llvm::Function* m_div = nullptr;
+	llvm::Function* m_exp = nullptr;
+	llvm::Function* m_debug = nullptr;
 
 	llvm::Value* m_arg1;
 	llvm::Value* m_arg2;
