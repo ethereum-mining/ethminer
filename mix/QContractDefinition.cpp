@@ -34,7 +34,10 @@ using namespace dev::mix;
 QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
 {
 	if (_contract->getConstructor() != nullptr)
-		m_constructor = new QFunctionDefinition(_contract->getConstructor(), -1);
+	{
+		FunctionDescription desc(_contract->getConstructor());
+		m_constructor = new QFunctionDefinition(desc);
+	}
 	else
 		m_constructor = new QFunctionDefinition();
 
