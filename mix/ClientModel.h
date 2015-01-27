@@ -54,7 +54,7 @@ struct TransactionSettings
 	/// Gas price
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
-	std::map<QString, u256> parameterValues;
+	QList<QVariableDefinition*> parameterValues;
 };
 
 

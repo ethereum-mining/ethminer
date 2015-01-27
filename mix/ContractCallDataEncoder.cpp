@@ -44,26 +44,9 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, bool _value)
+void ContractCallDataEncoder::push(bytes _b)
 {
-	return encode(_dec, QString(formatBool(_value)));
-}
-
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, QString _value)
-{
-	int padding = this->padding(_dec->type());
-	bytes data = padded(jsToBytes(_value.toStdString()), padding);
-	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
-}
-
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, u256 _value)
-{
-	int padding = this->padding(_dec->type());
-	std::ostringstream s;
-	s << std::hex << "0x" << _value;
-	bytes data = padded(jsToBytes(s.str()), padding);
-	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
-	encodedData();
+	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
 }
 
 QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> _returnParameters, bytes _value)
@@ -74,37 +57,79 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
-		int padding = this->padding(dec->type());
-		std::string rawParam = returnValue.substr(0, padding * 2);
-		r.append(new QVariableDefinition(dec, convertToReadable(unpadLeft(rawParam), dec)));
-		returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+		QVariableDefinition* def = nullptr;
+		if (dec->type().contains("int"))
+			def = new QIntType(dec, QString());
+		else if (dec->type().contains("real"))
+			def = new QRealType(dec, QString());
+		else if (dec->type().contains("string") || dec->type().contains("text"))
+			def = new QStringType(dec, QString());
+		else if (dec->type().contains("hash") || dec->type().contains("address"))
+			def = new QHashType(dec, QString());
+
+		def->decodeValue(returnValue);
+		r.push_back(def);
+		returnValue = returnValue.substr(def->length(), returnValue.length() - 1);
+
+		/*QStringList tLength = typeLength(dec->type());
+
+		QRegExp intTest("(uint|int|hash|address)");
+		QRegExp stringTest("(string|text)");
+		QRegExp realTest("(real|ureal)");
+		if (intTest.indexIn(dec->type()) != -1)
+		{
+			std::string rawParam = returnValue.substr(0, (tLength.first().toInt() / 8) * 2);
+			QString value = resolveNumber(QString::fromStdString(rawParam));
+			r.append(new QVariableDefinition(dec, value));
+			returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+		}
+		else if (dec->type() == "bool")
+		{
+			std::string rawParam = returnValue.substr(0, 2);
+			std::string unpadded = unpadLeft(rawParam);
+			r.append(new QVariableDefinition(dec, QString::fromStdString(unpadded)));
+			returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+		}
+		else if (stringTest.indexIn(dec->type()) != -1)
+		{
+			if (tLength.length() == 0)
+			{
+				QString strLength = QString::fromStdString(returnValue.substr(0, 2));
+				returnValue = returnValue.substr(2, returnValue.length() - 1);
+				QString strValue = QString::fromStdString(returnValue.substr(0, strLength.toInt()));
+				r.append(new QVariableDefinition(dec, strValue));
+				returnValue = returnValue.substr(strValue.length(), returnValue.length() - 1);
+			}
+			else
+			{
+				std::string rawParam = returnValue.substr(0, (tLength.first().toInt() / 8) * 2);
+				r.append(new QVariableDefinition(dec, QString::fromStdString(rawParam)));
+				returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+			}
+		}
+		else if (realTest.indexIn(dec->type()) != -1)
+		{
+			QString value;
+			for (QString str: tLength)
+			{
+				std::string rawParam = returnValue.substr(0, (str.toInt() / 8) * 2);
+				QString value = resolveNumber(QString::fromStdString(rawParam));
+				value += value + "x";
+				returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+			}
+			r.append(new QVariableDefinition(dec, value));
+		}*/
 	}
 	return r;
 }
 
-int ContractCallDataEncoder::padding(QString type)
+QString ContractCallDataEncoder::resolveNumber(QString const& _rawParam)
 {
-	// TODO : to be improved (load types automatically from solidity library).
-	if (type.indexOf("uint") != -1)
-		return integerPadding(type.remove("uint").toInt());
-	else if (type.indexOf("int") != -1)
-		return integerPadding(type.remove("int").toInt());
-	else if (type.indexOf("bool") != -1)
-		return 1;
-	else if ((type.indexOf("address") != -1))
-		return 32;
-	else
-		return 0;
-}
-
-int ContractCallDataEncoder::integerPadding(int bitValue)
-{
-	return bitValue / 8;
-}
-
-QString ContractCallDataEncoder::formatBool(bool _value)
-{
-	return (_value ? "1" : "0");
+	std::string unPadded = unpadLeft(_rawParam.toStdString());
+	int x = std::stol(unPadded, nullptr, 16);
+	std::stringstream ss;
+	ss << std::dec << x;
+	return QString::fromStdString(ss.str());
 }
 
 QString ContractCallDataEncoder::convertToReadable(std::string _v, QVariableDeclaration* _dec)
