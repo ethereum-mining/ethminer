@@ -47,8 +47,9 @@ class Watch;
 
 struct InstalledFilter
 {
-	InstalledFilter(TopicFilter const& _f): filter(_f) {}
+	InstalledFilter(FullTopic const& _f): full(_f), filter(fullToFilter(_f)) {}
 
+	FullTopic full;
 	TopicFilter filter;
 	unsigned refCount = 1;
 };
@@ -70,7 +71,8 @@ public:
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
 	unsigned installWatch(TopicMask const& _mask);
-	virtual unsigned installWatch(TopicFilter const& _filter) = 0;
+	virtual FullTopic getFilter(unsigned _id) const = 0;
+	virtual unsigned installWatch(FullTopic const& _filter) = 0;
 	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
@@ -108,6 +110,7 @@ public:
 	Watch(Interface& _c, TopicFilter const& _tf): m_c(&_c), m_id(_c.installWatch(_tf)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
+	FullTopic fullTopic() const { return m_c ? m_c->fullTopic(m_id) : FullTopic(); }
 	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }
 	h256s peek() { return m_c ? m_c->peekWatch(m_id) : h256s(); }
 

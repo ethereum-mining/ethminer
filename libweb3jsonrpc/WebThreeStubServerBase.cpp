@@ -173,9 +173,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
-static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
+static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt;
+	shh::BuildTopic bt;
 	Public to;
 
 	if (_json["to"].isString())
@@ -190,7 +190,7 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
 	}
-	return make_pair(bt.toTopicMask(), to);
+	return make_pair(bt, to);
 }
 
 static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
@@ -571,6 +571,7 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 	if (!pub || m_ids.count(pub))
 		for (h256 const& h: face()->checkWatch(_id))
 		{
+			face()->watchFilter(_id).topics();
 			auto e = face()->envelope(h);
 			shh::Message m;
 			if (pub)
