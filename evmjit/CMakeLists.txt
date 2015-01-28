@@ -4,7 +4,7 @@ project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else()
 	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC")
 endif()

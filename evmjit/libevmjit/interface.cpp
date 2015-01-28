@@ -5,17 +5,22 @@ extern "C"
 
 using namespace dev::eth::jit;
 
-void* evmjit_create() noexcept
+#ifdef _MSC_VER
+#define _ALLOW_KEYWORD_MACROS
+#define noexcept throw()
+#endif
+
+EXPORT void* evmjit_create() noexcept
 {
 	return new(std::nothrow) ExecutionEngine;
 }
 
-void evmjit_destroy(ExecutionEngine* _engine) noexcept
+EXPORT void evmjit_destroy(ExecutionEngine* _engine) noexcept
 {
 	delete _engine;
 }
 
-int evmjit_run(ExecutionEngine* _engine, RuntimeData* _data, Env* _env) noexcept
+EXPORT int evmjit_run(ExecutionEngine* _engine, RuntimeData* _data, Env* _env) noexcept
 {
 	try
 	{
