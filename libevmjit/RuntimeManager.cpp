@@ -148,7 +148,8 @@ void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size
 {
 	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 3);
 	auto mem = getBuilder().CreateLoad(memPtr, "memory");
-	auto returnDataPtr = getBuilder().CreateGEP(mem, _offset);
+	auto idx = m_builder.CreateTrunc(_offset, Type::Size, "idx"); // Never allow memory index be a type bigger than i64 // TODO: Report bug & fix to LLVM
+	auto returnDataPtr = getBuilder().CreateGEP(mem, idx);
 	set(RuntimeData::ReturnData, returnDataPtr);
 
 	auto size64 = getBuilder().CreateTrunc(_size, Type::Size);
