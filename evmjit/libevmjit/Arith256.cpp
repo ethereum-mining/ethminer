@@ -5,9 +5,7 @@
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <gmp.h>
 #include <iostream>
-#include <iomanip>
 
 namespace dev
 {
