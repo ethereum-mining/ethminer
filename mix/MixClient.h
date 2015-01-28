@@ -24,7 +24,6 @@
 #pragma once
 
 #include <vector>
-#include <QObject>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
 
@@ -83,10 +82,8 @@ struct Block
 using Blocks = std::vector<Block>;
 
 
-class MixClient: public QObject, public dev::eth::Interface
+class MixClient: public dev::eth::Interface
 {
-	Q_OBJECT
-
 public:
 	MixClient();
 	/// Reset state to the empty state with given balance.
@@ -132,10 +129,6 @@ public:
 	void stopMining() override;
 	bool isMining() override;
 	eth::MineProgress miningProgress() const override;
-
-signals:
-	void stateReset();
-	void newTransaction();
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);

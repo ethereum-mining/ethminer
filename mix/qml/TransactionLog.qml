@@ -44,6 +44,10 @@ Item {
 			title: qsTr("Returned")
 			width: 120
 		}
+		onActivated:  {
+			var item = logModel.get(row);
+			clientModel.debugTransaction(item.block, item.index);
+		}
 	}
 
 	ListModel {

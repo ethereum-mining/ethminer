@@ -159,9 +159,14 @@ Item {
 			stateDialog.open(index, stateList[index], defaultStateIndex === index);
 		}
 
+		function debugDefaultState() {
+			if (defaultStateIndex >= 0)
+				runState(defaultStateIndex);
+		}
+
 		function runState(index) {
 			var item = stateList[index];
-			clientModel.debugState(item);
+			clientModel.setupState(item);
 		}
 
 		function deleteState(index) {
