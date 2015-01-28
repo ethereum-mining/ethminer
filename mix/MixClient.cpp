@@ -36,7 +36,6 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-
 const Secret c_stdSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 
 MixClient::MixClient():
