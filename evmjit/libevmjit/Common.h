@@ -2,6 +2,13 @@
 
 #include <vector>
 #include <tuple>
+#include <cstdint>
+
+#ifdef _MSC_VER
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
 
 namespace dev
 {
