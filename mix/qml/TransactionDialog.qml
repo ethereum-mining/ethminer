@@ -223,17 +223,17 @@ Window {
 
 				TableViewColumn {
 					role: "name"
-					title: "Name"
+					title: qsTr("Name")
 					width: 120
 				}
 				TableViewColumn {
 					role: "type"
-					title: "Type"
+					title: qsTr("Type")
 					width: 120
 				}
 				TableViewColumn {
 					role: "value"
-					title: "Value"
+					title: qsTr("Value")
 					width: 120
 				}
 

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <atomic>
+#include <map>
 #include "DebuggingStateWrapper.h"
 #include "MixClient.h"
 
@@ -40,6 +41,7 @@ namespace mix
 class AppContext;
 class Web3Server;
 class RpcConnector;
+class QEther;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -47,6 +49,10 @@ struct TransactionSettings
 	TransactionSettings() {}
 	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
 		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(u256 _value, u256 _gas, u256 _gasPrice):
+		value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _stdContract):
+		stdContractUrl(_stdContract) {}
 
 	/// Contract function name
 	QString functionId;
@@ -58,10 +64,40 @@ struct TransactionSettings
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
 	std::map<QString, u256> parameterValues;
+	/// Standard contract url
+	QString stdContractUrl;
 
 public:
 	/// @returns true if the functionId has not be set
 	bool isEmpty() const { return functionId.isNull() || functionId.isEmpty(); }
+};
+
+
+class TransactionLogEntry: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(unsigned block MEMBER m_block CONSTANT)
+	Q_PROPERTY(unsigned index MEMBER m_index CONSTANT)
+	Q_PROPERTY(QString contract MEMBER m_contract CONSTANT)
+	Q_PROPERTY(QString function MEMBER m_function CONSTANT)
+	Q_PROPERTY(QString value MEMBER m_value CONSTANT)
+	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
+	Q_PROPERTY(QString returned MEMBER m_returned CONSTANT)
+
+public:
+	TransactionLogEntry():
+		m_block(0), m_index(0) {}
+	TransactionLogEntry(int _block, int _index, QString _contract, QString _function, QString _value, QString _address, QString _returned):
+		m_block(_block), m_index(_index), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned) {}
+
+private:
+	unsigned m_block;
+	unsigned m_index;
+	QString m_contract;
+	QString m_function;
+	QString m_value;
+	QString m_address;
+	QString m_returned;
 };
 
 
@@ -76,7 +112,7 @@ public:
 	ClientModel(AppContext* _context);
 	~ClientModel();
 	/// @returns true if currently executing contract code
-	Q_PROPERTY(bool running MEMBER m_running NOTIFY stateChanged)
+	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
 	/// @returns address of the last executed contract
 	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
 	/// ethereum.js RPC request entry point
@@ -96,7 +132,7 @@ public slots:
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
-	void showDebugger(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	void showDebugger();
 	/// Update UI with transaction run error.
 	void showDebugError(QString const& _error);
 
@@ -113,21 +149,24 @@ signals:
 	/// Execution state changed
 	void newBlock();
 	/// Execution state changed
-	void stateChanged();
+	void runStateChanged();
 	/// Show debugger window request
 	void showDebuggerWindow();
 	/// ethereum.js RPC response ready
 	/// @param _message RPC response in Json format
 	void apiResponse(QString const& _message);
-
-	/// Emited when machine states are available.
-	void dataAvailable(QList<QVariableDefinition*> const& _returnParams = QList<QVariableDefinition*>(), QList<QObject*> const& _wStates = QList<QObject*>(), AssemblyDebuggerData const& _code = AssemblyDebuggerData());
+	/// New transaction log entry
+	void newTransaction(TransactionLogEntry* _tr);
+	/// State (transaction log) cleared
+	void stateCleared();
 
 private:
 	QString contractAddress() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance, TransactionSettings const& _ctrTransaction = TransactionSettings());
-	ExecutionResult deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
-	ExecutionResult callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
+	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
+	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
+	void onNewTransaction();
+	void onStateReset();
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
@@ -135,6 +174,7 @@ private:
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
 	Address m_contractAddress;
+	std::map<QString, Address> m_stdContractAddresses;
 };
 
 }
