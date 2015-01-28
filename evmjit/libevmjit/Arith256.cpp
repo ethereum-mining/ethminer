@@ -333,7 +333,9 @@ llvm::Value* Arith256::mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Valu
 
 namespace
 {
+#ifdef __SIZEOF_INT128__
 	using uint128 = __uint128_t;
+#endif
 
 	struct uint256
 	{
