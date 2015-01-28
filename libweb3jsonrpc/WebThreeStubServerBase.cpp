@@ -123,16 +123,18 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else if (_json["address"].isString())
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topics"].empty())
+	if (!_json["topics"].empty() && _json["topics"].isArray())
 	{
-		if (_json["topics"].isArray())
+		unsigned i = 0;
+		for (auto t: _json["topics"])
 		{
-			for (auto i: _json["topics"])
-				if (i.isString())
-					filter.topic(jsToU256(i.asString()));
+			if (t.isArray())
+				for (auto tt: t)
+					filter.topic(i, jsToFixed<32>(tt.asString()));
+			else if (t.isString())
+				filter.topic(i, jsToFixed<32>(t.asString()));
+			i++;
 		}
-		else if(_json["topics"].isString())
-			filter.topic(jsToU256(_json["topics"].asString()));
 	}
 	return filter;
 }
