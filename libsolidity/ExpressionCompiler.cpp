@@ -48,6 +48,12 @@ void ExpressionCompiler::appendTypeConversion(CompilerContext& _context, Type co
 	compiler.appendTypeConversion(_typeOnStack, _targetType, _cleanupNeeded);
 }
 
+void ExpressionCompiler::appendStateVariableAccessor(CompilerContext& _context, VariableDeclaration const& _varDecl, bool _optimize)
+{
+	ExpressionCompiler compiler(_context, _optimize);
+	compiler.appendStateVariableAccessor(_varDecl);
+}
+
 bool ExpressionCompiler::visit(Assignment const& _assignment)
 {
 	_assignment.getRightHandSide().accept(*this);
@@ -789,6 +795,13 @@ unsigned ExpressionCompiler::appendArgumentCopyToMemory(TypePointers const& _typ
 	return length;
 }
 
+void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
+{
+	m_currentLValue.fromStateVariable(_varDecl, _varDecl.getType());
+	solAssert(m_currentLValue.isInStorage(), "");
+	m_currentLValue.retrieveValueFromStorage(_varDecl.getType(), true);
+}
+
 ExpressionCompiler::LValue::LValue(CompilerContext& _compilerContext, LValueType _type, Type const& _dataType,
 								   unsigned _baseStackOffset):
 	m_context(&_compilerContext), m_type(_type), m_baseStackOffset(_baseStackOffset)
@@ -816,21 +829,7 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 		break;
 	}
 	case STORAGE:
-		if (!_expression.getType()->isValueType())
-			break; // no distinction between value and reference for non-value types
-		if (!_remove)
-			*m_context << eth::Instruction::DUP1;
-		if (m_size == 1)
-			*m_context << eth::Instruction::SLOAD;
-		else
-			for (unsigned i = 0; i < m_size; ++i)
-			{
-				*m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD << eth::Instruction::SWAP1;
-				if (i + 1 < m_size)
-					*m_context << u256(1) << eth::Instruction::ADD;
-				else
-					*m_context << eth::Instruction::POP;
-			}
+		retrieveValueFromStorage(_expression.getType(), _remove);
 		break;
 	case MEMORY:
 		if (!_expression.getType()->isValueType())
@@ -843,6 +842,25 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 													  << errinfo_comment("Unsupported location type."));
 		break;
 	}
+}
+
+void ExpressionCompiler::LValue::retrieveValueFromStorage(TypePointer const& _type, bool _remove) const
+{
+	if (!_type->isValueType())
+		return; // no distinction between value and reference for non-value types
+	if (!_remove)
+		*m_context << eth::Instruction::DUP1;
+	if (m_size == 1)
+		*m_context << eth::Instruction::SLOAD;
+	else
+		for (unsigned i = 0; i < m_size; ++i)
+		{
+			*m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD << eth::Instruction::SWAP1;
+			if (i + 1 < m_size)
+				*m_context << u256(1) << eth::Instruction::ADD;
+			else
+				*m_context << eth::Instruction::POP;
+		}
 }
 
 void ExpressionCompiler::LValue::storeValue(Expression const& _expression, bool _move) const
@@ -951,6 +969,14 @@ void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(Expression co
 	}
 }
 
+void ExpressionCompiler::LValue::fromStateVariable(Declaration const& _varDecl, TypePointer const& _type)
+{
+	m_type = STORAGE;
+	solAssert(_type->getStorageSize() <= numeric_limits<unsigned>::max(), "The storage size of " + _type->toString() + " should fit in an unsigned");
+	*m_context << m_context->getStorageLocationOfVariable(_varDecl);
+	m_size = unsigned(_type->getStorageSize());
+}
+
 void ExpressionCompiler::LValue::fromIdentifier(Identifier const& _identifier, Declaration const& _declaration)
 {
 	if (m_context->isLocalVariable(&_declaration))
@@ -961,10 +987,7 @@ void ExpressionCompiler::LValue::fromIdentifier(Identifier const& _identifier, D
 	}
 	else if (m_context->isStateVariable(&_declaration))
 	{
-		m_type = STORAGE;
-		solAssert(_identifier.getType()->getStorageSize() <= numeric_limits<unsigned>::max(), "The storage size of " + _identifier.getType()->toString() + " should fit in unsigned");
-		m_size = unsigned(_identifier.getType()->getStorageSize());
-		*m_context << m_context->getStorageLocationOfVariable(_declaration);
+		fromStateVariable(_declaration, _identifier.getType());
 	}
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_identifier.getLocation())

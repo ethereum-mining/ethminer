@@ -68,19 +68,23 @@ void ContractDefinition::checkTypeRequirements()
 	set<FixedHash<4>> hashes;
 	for (auto const& hashAndFunction: getInterfaceFunctionList())
 	{
-		FixedHash<4> const& hash = hashAndFunction.first;
+		FixedHash<4> const& hash = std::get<0>(hashAndFunction);
 		if (hashes.count(hash))
-			BOOST_THROW_EXCEPTION(createTypeError("Function signature hash collision for " +
-												  hashAndFunction.second->getCanonicalSignature()));
+			BOOST_THROW_EXCEPTION(createTypeError(
+									  std::string("Function signature hash collision for ") +
+									  std::get<1>(hashAndFunction)->getCanonicalSignature(std::get<2>(hashAndFunction)->getName())));
 		hashes.insert(hash);
 	}
 }
 
-map<FixedHash<4>, FunctionDefinition const*> ContractDefinition::getInterfaceFunctions() const
+map<FixedHash<4>, FunctionDescription> ContractDefinition::getInterfaceFunctions() const
 {
-	vector<pair<FixedHash<4>, FunctionDefinition const*>> exportedFunctionList = getInterfaceFunctionList();
-	map<FixedHash<4>, FunctionDefinition const*> exportedFunctions(exportedFunctionList.begin(),
-																   exportedFunctionList.end());
+	auto exportedFunctionList = getInterfaceFunctionList();
+
+	map<FixedHash<4>, FunctionDescription> exportedFunctions;
+	for (auto const& it: exportedFunctionList)
+		exportedFunctions.insert(make_pair(std::get<0>(it), FunctionDescription(std::get<1>(it), std::get<2>(it))));
+
 	solAssert(exportedFunctionList.size() == exportedFunctions.size(),
 			  "Hash collision at Function Definition Hash calculation");
 
@@ -134,20 +138,31 @@ void ContractDefinition::checkIllegalOverrides() const
 	}
 }
 
-vector<pair<FixedHash<4>, FunctionDefinition const*>> const& ContractDefinition::getInterfaceFunctionList() const
+vector<tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>> const& ContractDefinition::getInterfaceFunctionList() const
 {
 	if (!m_interfaceFunctionList)
 	{
 		set<string> functionsSeen;
-		m_interfaceFunctionList.reset(new vector<pair<FixedHash<4>, FunctionDefinition const*>>());
+		m_interfaceFunctionList.reset(new vector<tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>>());
 		for (ContractDefinition const* contract: getLinearizedBaseContracts())
+		{
 			for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
 				if (f->isPublic() && !f->isConstructor() && functionsSeen.count(f->getName()) == 0)
 				{
 					functionsSeen.insert(f->getName());
 					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
-					m_interfaceFunctionList->push_back(make_pair(hash, f.get()));
+					m_interfaceFunctionList->push_back(make_tuple(hash, make_shared<FunctionType>(*f, false), f.get()));
 				}
+
+			for (ASTPointer<VariableDeclaration> const& v: contract->getStateVariables())
+				if (v->isPublic() && functionsSeen.count(v->getName()) == 0)
+				{
+					FunctionType ftype(*v);
+					functionsSeen.insert(v->getName());
+					FixedHash<4> hash(dev::sha3(ftype.getCanonicalSignature(v->getName())));
+					m_interfaceFunctionList->push_back(make_tuple(hash, make_shared<FunctionType>(*v), v.get()));
+				}
+		}
 	}
 	return *m_interfaceFunctionList;
 }
@@ -219,7 +234,7 @@ void FunctionDefinition::checkTypeRequirements()
 
 string FunctionDefinition::getCanonicalSignature() const
 {
-	return getName() + FunctionType(*this).getCanonicalSignature();
+	return FunctionType(*this).getCanonicalSignature(getName());
 }
 
 Declaration::LValueType VariableDeclaration::getLValueType() const
@@ -503,6 +518,104 @@ void Literal::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Invalid literal value."));
 }
+
+std::string const& ParamDescription::getName() const
+{
+	return m_description.first;
+}
+
+std::string const& ParamDescription::getType() const
+{
+	return m_description.second;
+}
+
+ASTPointer<ASTString> FunctionDescription::getDocumentation() const
+{
+	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
+	if (function)
+		return function->getDocumentation();
+
+	return ASTPointer<ASTString>();
+}
+
+string FunctionDescription::getSignature() const
+{
+	return m_description.first->getCanonicalSignature(m_description.second->getName());
+}
+
+string FunctionDescription::getName() const
+{
+	return m_description.second->getName();
+}
+
+bool FunctionDescription::isConstant() const
+{
+	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
+	if (function)
+		return function->isDeclaredConst();
+
+	return true;
+}
+
+vector<ParamDescription> const FunctionDescription::getParameters() const
+{
+	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
+	if (function)
+	{
+		vector<ParamDescription> paramsDescription;
+		for (auto const& param: function->getParameters())
+			paramsDescription.push_back(ParamDescription(param->getName(), param->getType()->toString()));
+
+		return paramsDescription;
+	}
+
+	// else for now let's assume no parameters to accessors
+	// LTODO: fix this for mapping types
+	return {};
+}
+
+vector<ParamDescription> const FunctionDescription::getReturnParameters() const
+{
+	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
+	if (function)
+	{
+		vector<ParamDescription> paramsDescription;
+		for (auto const& param: function->getReturnParameters())
+			paramsDescription.push_back(ParamDescription(param->getName(), param->getType()->toString()));
+
+		return paramsDescription;
+	}
+
+	auto vardecl = dynamic_cast<VariableDeclaration const*>(m_description.second);
+	return {ParamDescription(vardecl->getName(), vardecl->getType()->toString())};
+}
+
+Declaration const* FunctionDescription::getDeclaration() const
+{
+	return m_description.second;
+}
+
+VariableDeclaration const* FunctionDescription::getVariableDeclaration() const
+{
+	return dynamic_cast<VariableDeclaration const*>(m_description.second);
+}
+
+FunctionDefinition const* FunctionDescription::getFunctionDefinition() const
+{
+	return dynamic_cast<FunctionDefinition const*>(m_description.second);
+}
+
+shared_ptr<FunctionType const> FunctionDescription::getFunctionTypeShared() const
+{
+	return m_description.first;
+}
+
+
+FunctionType const* FunctionDescription::getFunctionType() const
+{
+	return m_description.first.get();
+}
+
 
 }
 }

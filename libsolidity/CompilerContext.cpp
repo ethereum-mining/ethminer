@@ -59,11 +59,11 @@ void CompilerContext::addAndInitializeVariable(VariableDeclaration const& _decla
 		*this << u256(0);
 }
 
-void CompilerContext::addFunction(FunctionDefinition const& _function)
+void CompilerContext::addFunction(Declaration const& _decl)
 {
 	eth::AssemblyItem tag(m_asm.newTag());
-	m_functionEntryLabels.insert(make_pair(&_function, tag));
-	m_virtualFunctionEntryLabels.insert(make_pair(_function.getName(), tag));
+	m_functionEntryLabels.insert(make_pair(&_decl, tag));
+	m_virtualFunctionEntryLabels.insert(make_pair(_decl.getName(), tag));
 }
 
 void CompilerContext::addModifier(ModifierDefinition const& _modifier)
@@ -83,9 +83,9 @@ bool CompilerContext::isLocalVariable(Declaration const* _declaration) const
 	return m_localVariables.count(_declaration);
 }
 
-eth::AssemblyItem CompilerContext::getFunctionEntryLabel(FunctionDefinition const& _function) const
+eth::AssemblyItem CompilerContext::getFunctionEntryLabel(Declaration const& _declaration) const
 {
-	auto res = m_functionEntryLabels.find(&_function);
+	auto res = m_functionEntryLabels.find(&_declaration);
 	solAssert(res != m_functionEntryLabels.end(), "Function entry label not found.");
 	return res->second.tag();
 }
