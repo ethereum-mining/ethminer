@@ -51,8 +51,8 @@ struct TransactionSettings
 		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 	TransactionSettings(u256 _value, u256 _gas, u256 _gasPrice):
 		value(_value), gas(_gas), gasPrice(_gasPrice) {}
-	TransactionSettings(QString const& _stdContract):
-		stdContractUrl(_stdContract) {}
+	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
+		functionId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
 	/// Contract function name
 	QString functionId;
@@ -66,10 +66,6 @@ struct TransactionSettings
 	std::map<QString, u256> parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
-
-public:
-	/// @returns true if the functionId has not be set
-	bool isEmpty() const { return functionId.isNull() || functionId.isEmpty(); }
 };
 
 
@@ -100,7 +96,6 @@ private:
 	QString m_returned;
 };
 
-
 /**
  * @brief Ethereum state control
  */
@@ -128,7 +123,9 @@ public slots:
 	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
-	void debugState(QVariantMap _state);
+	void setupState(QVariantMap _state);
+	/// Show the debugger for a specified transaction
+	Q_INVOKABLE void debugTransaction(unsigned _block, unsigned _index);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -167,6 +164,7 @@ private:
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();
+	void showDebuggerForTransaction(ExecutionResult const& _t);
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
@@ -175,6 +173,7 @@ private:
 	std::unique_ptr<Web3Server> m_web3Server;
 	Address m_contractAddress;
 	std::map<QString, Address> m_stdContractAddresses;
+	std::map<Address, QString> m_stdContractNames;
 };
 
 }

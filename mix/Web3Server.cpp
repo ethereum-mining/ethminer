@@ -53,3 +53,18 @@ void Web3Server::put(std::string const& _name, std::string const& _key, std::str
 	std::string k(_name + "/" + _key);
 	m_db[k] = _value;
 }
+
+
+std::string Web3Server::eth_transact(Json::Value const& _json)
+{
+	std::string ret = WebThreeStubServerBase::eth_transact(_json);
+	emit newTransaction();
+	return ret;
+}
+
+std::string Web3Server::eth_call(Json::Value const& _json)
+{
+	std::string ret = WebThreeStubServerBase::eth_call(_json);
+	emit newTransaction();
+	return ret;
+}

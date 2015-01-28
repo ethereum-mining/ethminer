@@ -36,8 +36,11 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
+
+const Secret c_stdSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
+
 MixClient::MixClient():
-	m_userAccount(KeyPair::create())
+	m_userAccount(c_stdSecret)
 {
 	resetState(10000000 * ether);
 }
@@ -51,7 +54,6 @@ void MixClient::resetState(u256 _balance)
 	genesis.state = m_state;
 	Block open;
 	m_blocks = Blocks { genesis, open }; //last block contains a list of pending transactions to be finalized
-	emit stateReset();
 }
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state)
@@ -120,7 +122,6 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 		}
 	}
 	noteChanged(changed);
-	emit newTransaction();
 }
 
 void MixClient::validateBlock(int _block) const
