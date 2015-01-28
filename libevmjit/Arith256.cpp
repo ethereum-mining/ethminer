@@ -231,7 +231,7 @@ llvm::Function* Arith256::getAddModFunc()
 		auto s = m_builder.CreateAdd(x512, y512, "s");
 		auto d = createCall(getDivFunc(i512Ty), {s, m512});
 		auto r = m_builder.CreateExtractValue(d, 1, "r");
-		m_builder.CreateRet(r);
+		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_addmod;
 }
@@ -268,7 +268,7 @@ llvm::Function* Arith256::getMulModFunc()
 		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
 		auto d = createCall(getDivFunc(i512Ty), {p, m});
 		auto r = m_builder.CreateExtractValue(d, 1, "r");
-		m_builder.CreateRet(r);
+		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_mulmod;
 }
@@ -335,6 +335,69 @@ namespace
 {
 #ifdef __SIZEOF_INT128__
 	using uint128 = __uint128_t;
+#else
+	struct uint128
+	{
+		uint64_t lo = 0;
+		uint64_t hi = 0;
+
+		uint128(uint64_t lo) : lo(lo) {}
+
+		uint128 operator+(uint128 a)
+		{
+			uint128 r = 0;
+			bool overflow = lo > std::numeric_limits<uint64_t>::max() - a.lo;
+			r.lo = lo + a.lo;
+			r.hi = hi + a.hi + overflow;
+			return r;
+		}
+
+		uint128 operator>>(int s)
+		{
+			assert(s == 64);
+			return hi;
+		}
+
+		uint128 operator<<(int s)
+		{
+			assert(s == 64);
+			uint128 r = 0;
+			r.hi = lo;
+			return r;
+		}
+
+		explicit operator uint64_t() { return lo; }
+
+		static uint128 mul(uint64_t a, uint64_t b)
+		{
+			auto x_lo = 0xFFFFFFFF & a;
+			auto y_lo = 0xFFFFFFFF & b;
+			auto x_hi = a >> 32;
+			auto y_hi = b >> 32;
+
+			auto t1 = x_lo * y_lo;
+			auto t2 = x_lo * y_hi;
+			auto t3 = x_hi * y_lo;
+			auto t4 = x_hi * y_hi;
+
+			auto lo = (uint32_t)t1;
+			auto mid = (uint64_t)(t1 >> 32) + (uint32_t)t2 + (uint32_t)t3;
+			auto hi = (uint64_t)(t2 >> 32) + (t3 >> 32) + t4 + (mid >> 32);
+
+			uint128 r = 0;
+			r.lo = (uint64_t)lo + (mid << 32);
+			r.hi = hi;
+			return r;
+		}
+
+		uint128 operator*(uint128 a)
+		{
+			auto t1 = mul(lo, a.lo);
+			auto t2 = mul(lo, a.hi);
+			auto t3 = mul(hi, a.lo);
+			return t1 + (t2 << 64) + (t3 << 64);
+		}
+	};
 #endif
 
 	struct uint256
@@ -352,11 +415,6 @@ namespace
 		explicit operator uint128()
 		{
 			return *((uint128*)&lo);
-		}
-
-		uint256 operator|(uint256 a)
-		{
-			return {lo | a.lo, mid | a.mid, hi | a.hi};
 		}
 
 		uint256 operator+(uint256 a)
@@ -387,10 +445,10 @@ namespace
 	{
 		auto t1 = (uint128) x.lo * y.lo;
 		auto t2 = (uint128) x.lo * y.mid;
-		auto t3 = x.lo * y.hi;
+		auto t3 = (uint128) x.lo * y.hi;
 		auto t4 = (uint128) x.mid * y.lo;
 		auto t5 = (uint128) x.mid * y.mid;
-		auto t6 = x.mid * y.hi;
+		auto t6 = (uint128) x.mid * y.hi;
 		auto t7 = x.hi * y.lo;
 		auto t8 = x.hi * y.mid;
 
@@ -437,6 +495,24 @@ extern "C"
 
 	EXPORT void arith_mul(uint256* _arg1, uint256* _arg2, uint256* o_result)
 	{
+		uint128 a = 1;
+		uint128 b = 2;
+
+		auto c = a * b;
+		assert(c.lo == 2);
+		assert(c.hi == 0);
+
+		a = uint64_t(-1);
+		c = a * b;
+		assert(c.hi == 1);
+
+		b = a;
+
+		c = a * b;
+		assert(c.hi == 18446744073709551614);
+		auto d = a + b;
+		assert(d.hi == 1);
+
 		*o_result = mul(*_arg1, *_arg2);
 	}
 
