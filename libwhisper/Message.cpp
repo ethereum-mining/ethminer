@@ -26,7 +26,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Message::Message(Envelope const& _e, Secret const& _s)
+Message::Message(Envelope const& _e, Secret const& _s, unsigned _topicIndex)
 {
 	try
 	{
@@ -34,7 +34,18 @@ Message::Message(Envelope const& _e, Secret const& _s)
 		if (_s)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
-		if (populate(_s ? b : _e.data()))
+			else{}
+		else
+		{
+			// public - need to get the key through combining with the topic/topicIndex we know.
+			if (_e.data().size() < _e.topics().size() * 32)
+				return;
+			// get key from decrypted topic key: just xor
+			if (!decrypt(_s ^ h256(bytesConstRef(&(_e.data())).cropped(32 * _topicIndex, 32)), bytesConstRef(&(_e.data())).cropped(32 * _e.topics().size()), b))
+				return;
+		}
+
+		if (populate(b))
 			m_to = KeyPair(_s).pub();
 	}
 	catch (...)	// Invalid secret? TODO: replace ... with InvalidSecret
@@ -63,7 +74,7 @@ bool Message::populate(bytes const& _data)
 	return true;
 }
 
-Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigned _workToProve) const
+Envelope Message::seal(Secret _from, FullTopic const& _topic, unsigned _ttl, unsigned _workToProve) const
 {
 	Envelope ret(time(0) + _ttl, _ttl, _topic);
 

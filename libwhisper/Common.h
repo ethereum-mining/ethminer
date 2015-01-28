@@ -62,6 +62,7 @@ enum WhisperPacket
 using TopicPart = FixedHash<4>;
 
 using Topic = std::vector<TopicPart>;
+using FullTopic = std::vector<h256>;
 
 class BuildTopic
 {
@@ -75,7 +76,9 @@ public:
 	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
 
 	operator Topic() const { return toTopic(); }
+	operator FullTopic() const { return toFullTopic(); }
 	Topic toTopic() const;
+	FullTopic toFullTopic() const { return m_parts; }
 
 protected:
 	BuildTopic& shiftBytes(bytes const& _b);
@@ -108,6 +111,7 @@ public:
 	bool matches(Envelope const& _m) const;
 
 private:
+	h256s m_parts;
 	TopicMasks m_topicMasks;
 };
 
