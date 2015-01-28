@@ -9,17 +9,13 @@ Item {
 		Component.onCompleted: {
 
 			//TODO: load a list, dependencies, ets, from external files
-			var configSource = fileIo.readFile("qrc:///stdc/config.sol");
-			var nameRegSource = fileIo.readFile("qrc:///stdc/namereg.sol");
 			contractListModel.append({
 				name: "Config",
-				url: "qrc:///stdc/config.sol",
-				source: configSource
+				url: "qrc:///stdc/std.sol",
 			});
 			contractListModel.append({
 				name: "NameReg",
-				url: "qrc:///stdc/namereg.sol",
-				source: nameRegSource
+				url: "qrc:///stdc/std.sol",
 			});
 		}
 	}

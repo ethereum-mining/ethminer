@@ -47,8 +47,6 @@ QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const
 
 QFunctionDefinition* QContractDefinition::getFunction(dev::FixedHash<4> _hash)
 {
-	if (m_constructor->hash() == _hash)
-		return m_constructor;
 	for (auto const& f: m_functions)
 		if (f->hash() == _hash)
 			return f;

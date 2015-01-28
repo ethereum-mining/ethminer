@@ -133,7 +133,7 @@ public:
 	/// Apply text document formatting. @todo Move this to editor module
 	void updateFormatting(QTextDocument* _document);
 	/// Get contract code by url. Contract is compiled on first access and cached
-	dev::bytes const& getStdContractCode(QString const& _url);
+	dev::bytes const& getStdContractCode(QString const& _contractName, QString const& _url);
 
 signals:
 	/// Emited on compilation state change
@@ -166,7 +166,7 @@ private:
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
-	std::map<QString, dev::bytes> m_compiledContracts; //by url
+	std::map<QString, dev::bytes> m_compiledContracts; //by name
 	friend class BackgroundWorker;
 };
 

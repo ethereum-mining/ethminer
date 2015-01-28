@@ -48,6 +48,7 @@
         <file>qml/ContractLibrary.qml</file>
         <file>stdc/config.sol</file>
         <file>stdc/namereg.sol</file>
+        <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
     </qresource>
 </RCC>
