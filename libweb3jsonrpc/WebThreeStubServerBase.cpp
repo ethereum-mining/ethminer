@@ -62,7 +62,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	res["hash"] = toJS(_t.sha3());
 	res["input"] = jsFromBinary(_t.data());
 	res["to"] = toJS(_t.receiveAddress());
-	res["from"] = toJS(_t.sender());
+	res["from"] = toJS(_t.safeSender());
 	res["gas"] = (int)_t.gas();
 	res["gasPrice"] = toJS(_t.gasPrice());
 	res["nonce"] = toJS(_t.nonce());
