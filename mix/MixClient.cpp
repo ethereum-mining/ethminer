@@ -126,11 +126,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 void MixClient::validateBlock(int _block) const
 {
 	if (_block != -1 && _block != 0 && (unsigned)_block >= m_blocks.size() - 1)
-	{
-		InvalidBlockException exception;
-		exception << BlockIndex(_block);
-		BOOST_THROW_EXCEPTION(exception);
-	}
+		BOOST_THROW_EXCEPTION(InvalidBlockException() << BlockIndex(_block));
 }
 
 void MixClient::mine()
@@ -244,31 +240,23 @@ eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
 eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned blockNumber = m_blocks.size() - 1;
-	unsigned begin = std::min<unsigned>(blockNumber, (unsigned)_f.latest());
-	unsigned end = std::min(blockNumber, std::min(begin, (unsigned)_f.earliest()));
-	unsigned m = _f.max();
-	unsigned s = _f.skip();
-	unsigned n = begin;
-	for (; ret.size() != m && n != end; n--)
+	unsigned blockCount = m_blocks.size(); //last block contains pending transactions
+	unsigned block = std::min<unsigned>(blockCount, (unsigned)_f.latest());
+	unsigned end = std::min(blockCount, std::min(block, (unsigned)_f.earliest()));
+	for (; ret.size() != _f.max() && block != end; block--)
 	{
-		bool pendingBlock = n == blockNumber;
-		if (pendingBlock || _f.matches(m_blocks[n].info.logBloom))
+		bool pendingBlock = (block == blockCount);
+		if (pendingBlock || _f.matches(m_blocks[block].info.logBloom))
 		{
-			for (ExecutionResult const& t: m_blocks[n].transactions)
+			for (ExecutionResult const& t: m_blocks[block].transactions)
 			{
 				if (pendingBlock || _f.matches(t.receipt.bloom()))
 				{
-					LogEntries le = _f.matches(t.receipt);
-					if (le.size())
+					LogEntries logEntries = _f.matches(t.receipt);
+					if (logEntries.size())
 					{
-						for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-						{
-							if (s)
-								s--;
-							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n));
-						}
+						for (unsigned entry = _f.skip(); entry < logEntries.size() && ret.size() != _f.max(); ++entry)
+							ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
 					}
 				}
 			}
