@@ -26,17 +26,17 @@ public:
 private:
 	llvm::Function* getDivFunc(llvm::Type* _type);
 	llvm::Function* getExpFunc();
+	llvm::Function* getAddModFunc();
 	llvm::Function* getMulModFunc();
 
 	llvm::Value* binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2);
-	llvm::Value* ternaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 
 	llvm::Function* m_mul;
-	llvm::Function* m_addmod;
 
 	llvm::Function* m_div = nullptr;
 	llvm::Function* m_div512 = nullptr;
 	llvm::Function* m_exp = nullptr;
+	llvm::Function* m_addmod = nullptr;
 	llvm::Function* m_mulmod = nullptr;
 	llvm::Function* m_debug = nullptr;
 
