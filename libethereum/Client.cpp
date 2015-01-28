@@ -642,14 +642,20 @@ Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
-	return Transaction(b[1][_i].data(), CheckSignature::Range);
+	if (_i < b[1].itemCount())
+		return Transaction(b[1][_i].data(), CheckSignature::Range);
+	else
+		return Transaction();
 }
 
 BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
-	return BlockInfo::fromHeader(b[2][_i].data());
+	if (_i < b[2].itemCount())
+		return BlockInfo::fromHeader(b[2][_i].data());
+	else
+		return BlockInfo();
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const

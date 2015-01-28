@@ -43,20 +43,21 @@ bool LogFilter::matches(LogBloom _bloom) const
 {
 	if (m_addresses.size())
 	{
-		for (auto i: m_addresses)
+		for (auto const& i: m_addresses)
 			if (_bloom.containsBloom<3>(dev::sha3(i)))
 				goto OK1;
 		return false;
 	}
 	OK1:
-	if (m_topics.size())
-	{
-		for (auto i: m_topics)
-			if (_bloom.containsBloom<3>(dev::sha3(i)))
-				goto OK2;
-		return false;
-	}
-	OK2:
+	for (auto const& t: m_topics)
+		if (t.size())
+		{
+			for (auto const& i: t)
+				if (_bloom.containsBloom<3>(dev::sha3(i)))
+					goto OK2;
+			return false;
+			OK2:;
+		}
 	return true;
 }
 
@@ -73,8 +74,8 @@ LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 		{
 			if (!m_addresses.empty() && !m_addresses.count(e.address))
 				goto continue2;
-			for (auto const& t: m_topics)
-				if (!std::count(e.topics.begin(), e.topics.end(), t))
+			for (unsigned i = 0; i < 4; ++i)
+				if (!m_topics[i].empty() && (e.topics.size() < i || !m_topics[i].count(e.topics[i])))
 					goto continue2;
 			ret.push_back(e);
 			continue2:;

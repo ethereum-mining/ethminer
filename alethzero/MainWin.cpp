@@ -311,7 +311,7 @@ void Main::installBalancesWatch()
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
-			tf.address(c).topic(h256(i.address(), h256::AlignRight));
+			tf.address(c).topic(0, h256(i.address(), h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
