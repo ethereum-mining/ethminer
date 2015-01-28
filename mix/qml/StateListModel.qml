@@ -21,15 +21,23 @@ Item {
 	}
 
 	function fromPlainTransactionItem(t) {
-		return {
+		var r = {
 			functionId: t.functionId,
 			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
 			gas: QEtherHelper.createEther(t.gas.value, t.gas.unit),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			executeConstructor: t.executeConstructor,
-			stdContract: t.stdContract
+			stdContract: t.stdContract,
+			parameters: {}
 		};
+		for (var key in t.parameters) {
+			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
+			var param = intComponent.createObject();
+			param.setValue(t.parameters[key]);
+			r.parameters[key] = param;
+		}
+		return r;
 	}
 
 	function toPlainStateItem(s) {
@@ -41,15 +49,19 @@ Item {
 	}
 
 	function toPlainTransactionItem(t) {
-		return {
+		var r = {
 			functionId: t.functionId,
 			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
 			gas:  { value: t.gas.value, unit: t.gas.unit },
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			executeConstructor: t.executeConstructor,
-			stdContract: t.stdContract
+			stdContract: t.stdContract,
+			parameters: {}
 		};
+		for (var key in t.parameters)
+			r.parameters[key] = t.parameters[key].value();
+		return r;
 	}
 
 	Connections {
@@ -80,7 +92,7 @@ Item {
 			projectData.defaultStateIndex = defaultStateIndex;
 		}
 		onNewProject: {
-			var state = toPlainTransactionItem(stateListModel.createDefaultState());
+			var state = toPlainStateItem(stateListModel.createDefaultState());
 			state.title = qsTr("Default");
 			projectData.states = [ state ];
 			projectData.defaultStateIndex = 0;

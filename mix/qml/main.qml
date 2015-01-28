@@ -4,14 +4,14 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
-import CodeEditorExtensionManager 1.0
+import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 
 ApplicationWindow {
 	id: mainApplication
 	visible: true
 	width: 1200
-	height: 600
+	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("mix")
@@ -50,11 +50,6 @@ ApplicationWindow {
 		}
 	}
 
-	Component.onCompleted: {
-		setX(Screen.width / 2 - width / 2);
-		setY(Screen.height / 2 - height / 2);
-	}
-
 	MainContent {
 		id: mainContent;
 		anchors.fill: parent
@@ -68,6 +63,14 @@ ApplicationWindow {
 	AlertMessageDialog {
 		objectName: "alertMessageDialog"
 		id: messageDialog
+	}
+
+	Settings {
+		id: mainWindowSettings
+		property alias mainWidth: mainApplication.width
+		property alias mainHeight: mainApplication.height
+		property alias mainX: mainApplication.x
+		property alias mainY: mainApplication.y
 	}
 
 	Action {

@@ -12,11 +12,12 @@ contract NameRegister {
 #require Config, owned
 contract NameReg is owned, NameRegister {
 	function NameReg() {
-		toName[Config()] = "Config";
-		toAddress["Config"] = Config();
+		address addrConfig = 0xf025d81196b72fba60a1d4dddad12eeb8360d828;
+		toName[addrConfig] = "Config";
+		toAddress["Config"] = addrConfig;
 		toName[this] = "NameReg";
 		toAddress["NameReg"] = this;
-		Config().register(1, this);
+		Config(addrConfig).register(1, this);
 		log1(0, hash256(Config()));
 		log1(0, hash256(this));
 	}

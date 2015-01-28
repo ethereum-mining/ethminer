@@ -48,6 +48,12 @@ Item {
 			var item = logModel.get(row);
 			clientModel.debugTransaction(item.block, item.index);
 		}
+		Keys.onPressed: {
+			if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logModel.count) {
+				var item = logModel.get(currentRow);
+				appContext.toClipboard(item.returned);
+			}
+		}
 	}
 
 	ListModel {
