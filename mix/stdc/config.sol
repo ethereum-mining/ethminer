@@ -31,7 +31,7 @@ contract Config is mortal {
 contract Config{function lookup(uint256 service)constant returns(address a){}function kill(){}function unregister(uint256 id){}function register(uint256 id,address service){}}
 
 // Example Solidity use:
-address addrConfig = 0x661005d2720d855f1d9976f88bb10c1a3398c77f;
+address addrConfig = 0xf025d81196b72fba60a1d4dddad12eeb8360d828;
 address addrNameReg = Config(addrConfig).lookup(1);
 
 // JS Interface:

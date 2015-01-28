@@ -69,15 +69,23 @@ struct TransactionSettings
 };
 
 
+/// UI Transaction log record
 class TransactionLogEntry: public QObject
 {
 	Q_OBJECT
+	/// Transaction block number
 	Q_PROPERTY(unsigned block MEMBER m_block CONSTANT)
+	/// Transaction index within the block
 	Q_PROPERTY(unsigned index MEMBER m_index CONSTANT)
+	/// Contract name if any
 	Q_PROPERTY(QString contract MEMBER m_contract CONSTANT)
+	/// Function name if any
 	Q_PROPERTY(QString function MEMBER m_function CONSTANT)
+	/// Transaction value
 	Q_PROPERTY(QString value MEMBER m_value CONSTANT)
+	/// Receiving address
 	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
+	/// Returned value or transaction address in case of creation
 	Q_PROPERTY(QString returned MEMBER m_returned CONSTANT)
 
 public:
