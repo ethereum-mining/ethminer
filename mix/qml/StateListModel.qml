@@ -23,6 +23,7 @@ Item {
 	function fromPlainTransactionItem(t) {
 		return {
 			functionId: t.functionId,
+			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
 			gas: QEtherHelper.createEther(t.gas.value, t.gas.unit),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
@@ -34,7 +35,7 @@ Item {
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
-			balance: { balance: s.balance.value, unit: s.balance.unit },
+			balance: { value: s.balance.value, unit: s.balance.unit },
 			transactions: s.transactions.map(toPlainTransactionItem)
 		};
 	}
@@ -42,6 +43,7 @@ Item {
 	function toPlainTransactionItem(t) {
 		return {
 			functionId: t.functionId,
+			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
 			gas:  { value: t.gas.value, unit: t.gas.unit },
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
@@ -59,8 +61,10 @@ Item {
 		onProjectLoaded: {
 			if (!projectData.states)
 				projectData.states = [];
-			if (projectData.defaultStateIndex)
+			if (projectData.defaultStateIndex !== undefined)
 				defaultStateIndex = projectData.defaultStateIndex;
+			else
+				defaultStateIndex = -1;
 			var items = projectData.states;
 			for(var i = 0; i < items.length; i++) {
 				var item = fromPlainStateItem(items[i]);
@@ -88,10 +92,13 @@ Item {
 		onAccepted: {
 			var item = stateDialog.getItem();
 			if (stateDialog.stateIndex < stateListModel.count) {
-				defaultStateIndex = stateDialog.isDefault;
+				if (stateDialog.isDefault)
+					defaultStateIndex = stateIndex;
 				stateList[stateDialog.stateIndex] = item;
 				stateListModel.set(stateDialog.stateIndex, item);
 			} else {
+				if (stateDialog.isDefault)
+					defaultStateIndex = 0;
 				stateList.push(item);
 				stateListModel.append(item);
 			}

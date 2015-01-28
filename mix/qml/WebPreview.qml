@@ -112,9 +112,14 @@ Item {
 		accept: true
 		port: 8893
 		onClientConnected: {
-			console.log(_request.content);
+			//filter polling spam
+			//TODO: do it properly
+			var log = _request.content.indexOf("eth_changed") < 0;
+			if (log)
+				console.log(_request.content);
 			var response = clientModel.apiCall(_request.content);
-			console.log(response);
+			if (log)
+				console.log(response);
 			_request.setResponse(response);
 		}
 	}

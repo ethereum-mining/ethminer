@@ -44,3 +44,14 @@ QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const
 		m_functions.append(new QFunctionDefinition(it->second, i));
 }
 
+
+QFunctionDefinition* QContractDefinition::getFunction(FixedHash<4> _hash)
+{
+	if (m_constructor->hash() == _hash)
+		return m_constructor;
+	for (auto const& f: m_functions)
+		if (f->hash() == _hash)
+			return f;
+
+	return nullptr;
+}

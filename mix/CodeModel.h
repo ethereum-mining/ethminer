@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <atomic>
+#include <map>
 #include <QObject>
 #include <QThread>
 #include <libdevcore/Common.h>
@@ -131,6 +132,8 @@ public:
 	bool hasContract() const;
 	/// Apply text document formatting. @todo Move this to editor module
 	void updateFormatting(QTextDocument* _document);
+	/// Get contract code by url. Contract is compiled on first access and cached
+	dev::bytes const& getStdContractCode(QString const& _url);
 
 signals:
 	/// Emited on compilation state change
@@ -163,6 +166,7 @@ private:
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
+	std::map<QString, dev::bytes> m_compiledContracts; //by url
 	friend class BackgroundWorker;
 };
 

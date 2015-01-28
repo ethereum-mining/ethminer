@@ -24,6 +24,7 @@
 #pragma once
 
 #include <vector>
+#include <QObject>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
 
@@ -58,9 +59,14 @@ struct ExecutionResult
 	ExecutionResult(): receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
 
 	std::vector<MachineState> machineStates;
+	bytes transactionData;
 	bytes executionCode;
 	bytesConstRef executionData;
 	bytes returnValue;
+	dev::Address address;
+	dev::Address sender;
+	dev::Address contractAddress;
+	dev::u256 value;
 	dev::eth::TransactionReceipt receipt;
 };
 
@@ -76,8 +82,11 @@ struct Block
 
 using Blocks = std::vector<Block>;
 
-class MixClient: public dev::eth::Interface
+
+class MixClient: public QObject, public dev::eth::Interface
 {
+	Q_OBJECT
+
 public:
 	MixClient();
 	/// Reset state to the empty state with given balance.
@@ -124,8 +133,12 @@ public:
 	bool isMining() override;
 	eth::MineProgress miningProgress() const override;
 
+signals:
+	void stateReset();
+	void newTransaction();
+
 private:
-	void executeTransaction(bytesConstRef _rlp, eth::State& _state);
+	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
 	void validateBlock(int _block) const;
 	void noteChanged(h256Set const& _filters);
 	dev::eth::State const& asOf(int _block) const;
