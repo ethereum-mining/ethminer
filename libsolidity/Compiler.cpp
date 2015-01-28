@@ -46,15 +46,26 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
 			if (!function->isConstructor())
 				m_context.addFunction(*function);
+
+		for (ASTPointer<VariableDeclaration> const& vardecl: contract->getStateVariables())
+			if (vardecl->isPublic())
+				m_context.addFunction(*vardecl);
+
 		for (ASTPointer<ModifierDefinition> const& modifier: contract->getFunctionModifiers())
 			m_context.addModifier(*modifier);
 	}
 
 	appendFunctionSelector(_contract);
 	for (ContractDefinition const* contract: _contract.getLinearizedBaseContracts())
+	{
 		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
 			if (!function->isConstructor())
 				function->accept(*this);
+
+		for (ASTPointer<VariableDeclaration> const& vardecl: contract->getStateVariables())
+			if (vardecl->isPublic())
+				generateAccessorCode(*vardecl);
+	}
 
 	// Swap the runtime context with the creation-time context
 	swap(m_context, m_runtimeContext);
@@ -177,13 +188,14 @@ void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
 	unsigned argumentSize = 0;
 	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
 		argumentSize += CompilerUtils::getPaddedSize(var->getType()->getCalldataEncodedSize());
+
 	if (argumentSize > 0)
 	{
 		m_context << u256(argumentSize);
 		m_context.appendProgramSize();
 		m_context << u256(CompilerUtils::dataStartOffset); // copy it to byte four as expected for ABI calls
 		m_context << eth::Instruction::CODECOPY;
-		appendCalldataUnpacker(_constructor, true);
+		appendCalldataUnpacker(FunctionType(_constructor).getParameterTypes(), true);
 	}
 	m_context.appendJumpTo(m_context.getFunctionEntryLabel(_constructor));
 	m_context << returnTag;
@@ -201,7 +213,7 @@ set<FunctionDefinition const*> Compiler::getFunctionsCalled(set<ASTNode const*> 
 
 void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 {
-	map<FixedHash<4>, FunctionDefinition const*> interfaceFunctions = _contract.getInterfaceFunctions();
+	map<FixedHash<4>, FunctionDescription> interfaceFunctions = _contract.getInterfaceFunctions();
 	map<FixedHash<4>, const eth::AssemblyItem> callDataUnpackerEntryPoints;
 
 	// retrieve the function signature hash from the calldata
@@ -209,7 +221,6 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	CompilerUtils(m_context).loadFromMemory(0, 4, false, true);
 
 	// stack now is: 1 0 <funhash>
-	// for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it)
 	for (auto const& it: interfaceFunctions)
 	{
 		callDataUnpackerEntryPoints.insert(std::make_pair(it.first, m_context.newTag()));
@@ -220,29 +231,28 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 
 	for (auto const& it: interfaceFunctions)
 	{
-		FunctionDefinition const& function = *it.second;
+		FunctionType const* functionType = it.second.getFunctionType();
 		m_context << callDataUnpackerEntryPoints.at(it.first);
 		eth::AssemblyItem returnTag = m_context.pushNewTag();
-		appendCalldataUnpacker(function);
-		m_context.appendJumpTo(m_context.getFunctionEntryLabel(function));
+		appendCalldataUnpacker(functionType->getParameterTypes());
+		m_context.appendJumpTo(m_context.getFunctionEntryLabel(*it.second.getDeclaration()));
 		m_context << returnTag;
-		appendReturnValuePacker(function);
+		appendReturnValuePacker(functionType->getReturnParameterTypes());
 	}
 }
 
-unsigned Compiler::appendCalldataUnpacker(FunctionDefinition const& _function, bool _fromMemory)
+unsigned Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory)
 {
 	// We do not check the calldata size, everything is zero-padded.
 	unsigned dataOffset = CompilerUtils::dataStartOffset; // the 4 bytes of the function hash signature
 	//@todo this can be done more efficiently, saving some CALLDATALOAD calls
-	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
+	for (TypePointer const& type: _typeParameters)
 	{
-		unsigned const c_numBytes = var->getType()->getCalldataEncodedSize();
+		unsigned const c_numBytes = type->getCalldataEncodedSize();
 		if (c_numBytes > 32)
 			BOOST_THROW_EXCEPTION(CompilerError()
-								  << errinfo_sourceLocation(var->getLocation())
-								  << errinfo_comment("Type " + var->getType()->toString() + " not yet supported."));
-		bool const c_leftAligned = var->getType()->getCategory() == Type::Category::STRING;
+								  << errinfo_comment("Type " + type->toString() + " not yet supported."));
+		bool const c_leftAligned = type->getCategory() == Type::Category::STRING;
 		bool const c_padToWords = true;
 		dataOffset += CompilerUtils(m_context).loadFromMemory(dataOffset, c_numBytes, c_leftAligned,
 															  !_fromMemory, c_padToWords);
@@ -250,26 +260,26 @@ unsigned Compiler::appendCalldataUnpacker(FunctionDefinition const& _function, b
 	return dataOffset;
 }
 
-void Compiler::appendReturnValuePacker(FunctionDefinition const& _function)
+void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 {
 	//@todo this can be also done more efficiently
 	unsigned dataOffset = 0;
-	vector<ASTPointer<VariableDeclaration>> const& parameters = _function.getReturnParameters();
-	unsigned stackDepth = CompilerUtils(m_context).getSizeOnStack(parameters);
-	for (unsigned i = 0; i < parameters.size(); ++i)
+	unsigned stackDepth = 0;
+	for (TypePointer const& type: _typeParameters)
+		stackDepth += type->getSizeOnStack();
+
+	for (TypePointer const& type: _typeParameters)
 	{
-		Type const& paramType = *parameters[i]->getType();
-		unsigned numBytes = paramType.getCalldataEncodedSize();
+		unsigned numBytes = type->getCalldataEncodedSize();
 		if (numBytes > 32)
 			BOOST_THROW_EXCEPTION(CompilerError()
-								  << errinfo_sourceLocation(parameters[i]->getLocation())
-								  << errinfo_comment("Type " + paramType.toString() + " not yet supported."));
-		CompilerUtils(m_context).copyToStackTop(stackDepth, paramType);
-		ExpressionCompiler::appendTypeConversion(m_context, paramType, paramType, true);
-		bool const c_leftAligned = paramType.getCategory() == Type::Category::STRING;
+								  << errinfo_comment("Type " + type->toString() + " not yet supported."));
+		CompilerUtils(m_context).copyToStackTop(stackDepth, *type);
+		ExpressionCompiler::appendTypeConversion(m_context, *type, *type, true);
+		bool const c_leftAligned = type->getCategory() == Type::Category::STRING;
 		bool const c_padToWords = true;
 		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, c_leftAligned, c_padToWords);
-		stackDepth -= paramType.getSizeOnStack();
+		stackDepth -= type->getSizeOnStack();
 	}
 	// note that the stack is not cleaned up here
 	m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
@@ -280,6 +290,21 @@ void Compiler::registerStateVariables(ContractDefinition const& _contract)
 	for (ContractDefinition const* contract: boost::adaptors::reverse(_contract.getLinearizedBaseContracts()))
 		for (ASTPointer<VariableDeclaration> const& variable: contract->getStateVariables())
 			m_context.addStateVariable(*variable);
+}
+
+void Compiler::generateAccessorCode(VariableDeclaration const& _varDecl)
+{
+	m_context.startNewFunction();
+	m_breakTags.clear();
+	m_continueTags.clear();
+
+	m_context << m_context.getFunctionEntryLabel(_varDecl);
+	ExpressionCompiler::appendStateVariableAccessor(m_context, _varDecl);
+
+	unsigned sizeOnStack = _varDecl.getType()->getSizeOnStack();
+	solAssert(sizeOnStack <= 15, "Illegal variable stack size detected");
+	m_context << eth::dupInstruction(sizeOnStack + 1);
+	m_context << eth::Instruction::JUMP;
 }
 
 bool Compiler::visit(FunctionDefinition const& _function)
