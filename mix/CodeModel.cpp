@@ -190,19 +190,22 @@ void CodeModel::updateFormatting(QTextDocument* _document)
 	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
 }
 
-dev::bytes const& CodeModel::getStdContractCode(const QString &_url)
+dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, const QString& _url)
 {
-	auto cached = m_compiledContracts.find(_url);
+	auto cached = m_compiledContracts.find(_contractName);
 	if (cached != m_compiledContracts.end())
 		return cached->second;
 
 	FileIo fileIo;
 	std::string source = fileIo.readFile(_url).toStdString();
-	solidity::CompilerStack cs;
+	solidity::CompilerStack cs(false);
 	cs.setSource(source);
 	cs.compile(false);
-	dev::bytes code = cs.getBytecode();
-	m_compiledContracts.insert(std::make_pair(_url, std::move(code)));
-	return m_compiledContracts.at(_url);
+	for(std::string name: cs.getContractNames())
+	{
+		dev::bytes code = cs.getBytecode(name);
+		m_compiledContracts.insert(std::make_pair(QString::fromStdString(name), std::move(code)));
+	}
+	return m_compiledContracts.at(_contractName);
 }
 

@@ -179,7 +179,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				if (!transaction.stdContractUrl.isEmpty())
 				{
 					//std contract
-					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.stdContractUrl);
+					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.functionId, transaction.stdContractUrl);
 					Address address = deployContract(stdContractCode, transaction);
 					m_stdContractAddresses[transaction.functionId] = address;
 					m_stdContractNames[address] = transaction.functionId;
