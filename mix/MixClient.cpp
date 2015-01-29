@@ -290,8 +290,7 @@ unsigned MixClient::installWatch(eth::LogFilter const& _f)
 	h256 h = _f.sha3();
 	{
 		Guard l(m_filterLock);
-		if (!m_filters.count(h))
-			m_filters.insert(std::make_pair(h, _f));
+		m_filters.insert(std::make_pair(h, _f));
 	}
 	return installWatch(h);
 }
