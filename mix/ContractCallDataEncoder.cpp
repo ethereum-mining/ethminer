@@ -35,7 +35,6 @@ using namespace dev::mix;
 
 bytes ContractCallDataEncoder::encodedData()
 {
-	qDebug() << " encoded data " << QString::fromStdString(toJS(m_encodedData));
 	return m_encodedData;
 }
 

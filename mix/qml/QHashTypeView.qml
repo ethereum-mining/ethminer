@@ -10,7 +10,6 @@ Item
 			id: textinput
 			text: text
 			anchors.fill: parent
-			onTextChanged: editRoot.textChanged()
 			MouseArea {
 				id: mouseArea
 				anchors.fill: parent

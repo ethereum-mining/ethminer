@@ -66,7 +66,6 @@ dev::bytes QIntType::encodeValue()
 		i = i + dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") + 1;
 	std::ostringstream s;
 	s << std::hex << "0x" << i;
-	qDebug() << " int input " << QString::fromStdString(toJS(padded(jsToBytes(s.str()), 32)));
 	return padded(jsToBytes(s.str()), 32);
 }
 
@@ -78,7 +77,6 @@ void QIntType::decodeValue(std::string const& _rawValue)
 		bigint = bigint - dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") - 1;
 	std::ostringstream s;
 	s << std::dec << bigint;
-	qDebug() << " int output " << QString::fromStdString(s.str());
 	setValue(QString::fromStdString(s.str()));
 }
 
@@ -87,7 +85,7 @@ void QIntType::decodeValue(std::string const& _rawValue)
  */
 dev::bytes QHashType::encodeValue()
 {
-	return padded(asBytes(value().toStdString()), 32);
+	return padded(jsToBytes("0x" + value().toStdString()), 32);
 }
 
 void QHashType::decodeValue(std::string const& _rawValue)
@@ -140,7 +138,6 @@ void QStringType::decodeValue(std::string const& _rawValue)
  */
 dev::bytes QBoolType::encodeValue()
 {
-	qDebug() << QString::fromStdString(toJS(padded(jsToBytes(value().toStdString()), 32)));
 	return padded(jsToBytes(value().toStdString()), 32);
 }
 
