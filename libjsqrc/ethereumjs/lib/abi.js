@@ -55,6 +55,16 @@ var findMethodIndex = function (json, methodName) {
     });
 };
 
+/// @returns method with given method name
+var getMethodWithName = function (json, methodName) {
+    var index = findMethodIndex(json, methodName);
+    if (index === -1) {
+        console.error('method ' + methodName + ' not found in the abi');
+        return undefined;
+    }
+    return json[index];
+};
+
 /// @param string string to be padded
 /// @param number of characters that result string should have
 /// @param sign, by default 0
@@ -128,7 +138,7 @@ var formatInputReal = function (value) {
 
 var dynamicTypeBytes = function (type, value) {
     // TODO: decide what to do with array of strings
-    if (arrayType(type) || type == 'string')    // only string itself that is dynamic; stringX is static length.
+    if (arrayType(type) || type === 'string')    // only string itself that is dynamic; stringX is static length.
         return formatInputInt(value.length); 
     return "";
 };
@@ -158,13 +168,8 @@ var inputTypes = setupInputTypes();
 /// @returns bytes representation of input params
 var toAbiInput = function (json, methodName, params) {
     var bytes = "";
-    var index = findMethodIndex(json, methodName);
 
-    if (index === -1) {
-        return;
-    }
-
-    var method = json[index];
+    var method = getMethodWithName(json, methodName);
     var padding = ETH_PADDING * 2;
 
     /// first we iterate in search for dynamic 
@@ -251,7 +256,7 @@ var formatOutputAddress = function (value) {
 };
 
 var dynamicBytesLength = function (type) {
-    if (arrayType(type) || type == 'string')   // only string itself that is dynamic; stringX is static length.
+    if (arrayType(type) || type === 'string')   // only string itself that is dynamic; stringX is static length.
         return ETH_PADDING * 2;
     return 0;
 };
@@ -280,16 +285,10 @@ var outputTypes = setupOutputTypes();
 /// @param bytes representtion of output 
 /// @returns array of output params 
 var fromAbiOutput = function (json, methodName, output) {
-    var index = findMethodIndex(json, methodName);
-
-    if (index === -1) {
-        return;
-    }
-
+    
     output = output.slice(2);
-
     var result = [];
-    var method = json[index];
+    var method = getMethodWithName(json, methodName);
     var padding = ETH_PADDING * 2;
 
     var dynamicPartLength = method.outputs.reduce(function (acc, curr) {
@@ -403,6 +402,7 @@ module.exports = {
     outputParser: outputParser,
     methodSignature: methodSignature,
     methodDisplayName: methodDisplayName,
-    methodTypeName: methodTypeName
+    methodTypeName: methodTypeName,
+    getMethodWithName: getMethodWithName
 };
 
