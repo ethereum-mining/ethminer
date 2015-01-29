@@ -1,6 +1,7 @@
 #include "ExecutionEngine.h"
 
 #include <chrono>
+#include <cstdlib>	// env options
 
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
@@ -18,13 +19,6 @@
 #include "Runtime.h"
 #include "Compiler.h"
 #include "Cache.h"
-
-#if defined(NDEBUG)
-#define DEBUG_ENV_OPTION(name) false
-#else
-#include <cstdlib>
-#define DEBUG_ENV_OPTION(name) (std::getenv(#name) != nullptr)
-#endif
 
 namespace dev
 {
@@ -67,13 +61,21 @@ std::string codeHash(code_iterator _begin, code_iterator _end)
 	return std::to_string(hash);
 }
 
+bool getEnvOption(char const* _name, bool _default)
+{
+	auto var = std::getenv(_name);
+	if (!var)
+		return _default;
+	return std::strtol(var, nullptr, 10) != 0;
+}
+
 }
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
 	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
-	static auto debugDumpModule = DEBUG_ENV_OPTION(EVMJIT_DUMP_MODULE);
-	static bool objectCacheEnabled = !DEBUG_ENV_OPTION(EVMJIT_CACHE_OFF);
+	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
+	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
 
 	auto codeBegin = _data->code;
 	auto codeEnd = codeBegin + _data->codeSize;
