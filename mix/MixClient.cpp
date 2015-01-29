@@ -247,9 +247,7 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 	{
 		bool pendingBlock = (block == blockCount);
 		if (pendingBlock || _f.matches(m_blocks[block].info.logBloom))
-		{
 			for (ExecutionResult const& t: m_blocks[block].transactions)
-			{
 				if (pendingBlock || _f.matches(t.receipt.bloom()))
 				{
 					LogEntries logEntries = _f.matches(t.receipt);
@@ -259,8 +257,6 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 							ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
 					}
 				}
-			}
-		}
 	}
 	return ret;
 }
