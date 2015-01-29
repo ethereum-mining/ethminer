@@ -45,17 +45,11 @@ namespace shh
 
 class Watch;
 
-struct FilterKey
-{
-	unsigned topicIndex = (unsigned)-1;
-	Secret key;
-};
-
 struct InstalledFilter
 {
 	InstalledFilter(FullTopic const& _f): full(_f), filter(_f) {}
 
-	FilterKey filterKey() const { unsigned i; for (i = 0; i < full.size() && !full[i]; ++i) {} return i < full.size() ? FilterKey{i, full[i]} : FilterKey(); }
+	FilterKey filterKey() const { unsigned i; for (i = 0; i < full.size() && !full[i]; ++i) {} return i < full.size() ? FilterKey(i, full[i]) : FilterKey(); }
 
 	FullTopic full;
 	TopicFilter filter;
@@ -116,7 +110,6 @@ public:
 	Watch(Interface& _c, FullTopic const& _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
-	FullTopic fullTopic() const { return m_c ? m_c->getFilter(m_id) : FullTopic(); }
 	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }
 	h256s peek() { return m_c ? m_c->peekWatch(m_id) : h256s(); }
 

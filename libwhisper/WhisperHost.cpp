@@ -56,7 +56,7 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
-	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
+	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
 	if (_m.expiry() <= time(0))
 		return;
