@@ -41,6 +41,7 @@ namespace solidity
 class Type; // forward
 class FunctionType; // forward
 using TypePointer = std::shared_ptr<Type const>;
+using FunctionTypePointer = std::shared_ptr<FunctionType const>;
 using TypePointers = std::vector<TypePointer>;
 
 /**
@@ -295,7 +296,7 @@ public:
 
 	/// Returns the function type of the constructor. Note that the location part of the function type
 	/// is not used, as this type cannot be the type of a variable or expression.
-	std::shared_ptr<FunctionType const> const& getConstructorType() const;
+	FunctionTypePointer const& getConstructorType() const;
 
 	/// @returns the identifier of the function with the given name or Invalid256 if such a name does
 	/// not exist.
@@ -307,7 +308,7 @@ private:
 	/// members.
 	bool m_super;
 	/// Type of the constructor, @see getConstructorType. Lazily initialized.
-	mutable std::shared_ptr<FunctionType const> m_constructorType;
+	mutable FunctionTypePointer m_constructorType;
 	/// List of member types, will be lazy-initialized because of recursive references.
 	mutable std::unique_ptr<MemberList> m_members;
 };
@@ -371,8 +372,10 @@ public:
 
 	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
 	std::vector<std::string> const& getParameterNames() const { return m_parameterNames; }
+	std::vector<std::string> const getParameterTypeNames() const;
 	TypePointers const& getReturnParameterTypes() const { return m_returnParameterTypes; }
 	std::vector<std::string> const& getReturnParameterNames() const { return m_returnParameterNames; }
+	std::vector<std::string> const getReturnParameterTypeNames() const;
 
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString() const override;
@@ -383,7 +386,20 @@ public:
 	virtual MemberList const& getMembers() const override;
 
 	Location const& getLocation() const { return m_location; }
-	std::string getCanonicalSignature(std::string const& _name) const;
+	/// @returns the canonical signature of this function type given the function name
+	/// If @a _name is not provided (empty string) then the @c m_declaration member of the
+	/// function type is used
+	std::string getCanonicalSignature(std::string const& _name = "") const;
+	Declaration const& getDeclaration() const
+	{
+		solAssert(m_declaration, "Requested declaration from a FunctionType that has none");
+		return *m_declaration;
+	}
+	bool hasDeclaration() const { return !!m_declaration; }
+	bool isConstant() const { return m_isConstant; }
+	/// @return A shared pointer of an ASTString.
+	/// Can contain a nullptr in which case indicates absence of documentation
+	ASTPointer<ASTString> getDocumentation() const;
 
 	bool gasSet() const { return m_gasSet; }
 	bool valueSet() const { return m_valueSet; }
@@ -402,7 +418,9 @@ private:
 	Location const m_location;
 	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack
 	bool const m_valueSet = false; ///< true iff the value to be sent is on the stack
+	bool m_isConstant;
 	mutable std::unique_ptr<MemberList> m_members;
+	Declaration const* m_declaration = nullptr;
 };
 
 /**

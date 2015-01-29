@@ -39,7 +39,7 @@ class QFunctionDefinition: public QBasicNodeDefinition
 
 public:
 	QFunctionDefinition() {}
-	QFunctionDefinition(solidity::FunctionDescription const& _f);
+	QFunctionDefinition(solidity::FunctionTypePointer const& _f);
 	/// Get all input parameters of this function.
 	QList<QVariableDeclaration*> const& parametersList() const { return m_parameters; }
 	/// Get all input parameters of this function as QML property.
