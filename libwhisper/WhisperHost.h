@@ -51,7 +51,7 @@ public:
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 
-	virtual FullTopic getFilter(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return FullTopic(); } }
+	virtual FilterKey filterKey(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).filterKey(); } catch (...) { return FilterKey(); } }
 	virtual unsigned installWatch(FullTopic const& _filter) override;
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;

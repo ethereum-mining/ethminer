@@ -45,6 +45,8 @@ enum IncludeNonce
 	WithNonce = 1
 };
 
+static const unsigned NotPublic = (unsigned)-1;
+
 class Envelope
 {
 	friend class Message;
@@ -64,7 +66,7 @@ public:
 	Topic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(Secret const& _s = Secret(), unsigned _topicIndex = (unsigned)-1) const;
+	Message open(Secret const& _s, unsigned _topicIndex = NotPublic) const;
 
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
@@ -84,8 +86,6 @@ enum /*Message Flags*/
 {
 	ContainsSignature = 1
 };
-
-static const unsigned NotPublic = (unsigned)-1;
 
 /// An (unencrypted) message, constructed from the combination of an Envelope, and, potentially,
 /// a Secret key to decrypt the Message.
