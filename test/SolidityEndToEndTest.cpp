@@ -882,6 +882,43 @@ BOOST_AUTO_TEST_CASE(constructor)
 	testSolidityAgainstCpp("get(uint256)", get, u256(7));
 }
 
+BOOST_AUTO_TEST_CASE(simple_accessor)
+{
+	char const* sourceCode = "contract test {\n"
+							 "  uint256 data;\n"
+							 "  function test() {\n"
+							 "    data = 8;\n"
+							 "  }\n"
+							 "}\n";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("data()") == encodeArgs(8));
+}
+
+BOOST_AUTO_TEST_CASE(multiple_elementary_accessors)
+{
+	char const* sourceCode = "contract test {\n"
+							 "  uint256 data;\n"
+							 "  string6 name;\n"
+							 "  hash a_hash;\n"
+							 "  address an_address;\n"
+							 "  function test() {\n"
+							 "    data = 8;\n"
+							 "    name = \"Celina\";\n"
+							 "    a_hash = sha3(123);\n"
+							 "    an_address = address(0x1337);\n"
+							 "    super_secret_data = 42;\n"
+							 "  }\n"
+							 "  private:"
+							 "  uint256 super_secret_data;"
+							 "}\n";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("data()") == encodeArgs(8));
+	BOOST_CHECK(callContractFunction("name()") == encodeArgs("Celina"));
+	BOOST_CHECK(callContractFunction("a_hash()") == encodeArgs(dev::sha3(toBigEndian(u256(123)))));
+	BOOST_CHECK(callContractFunction("an_address()") == encodeArgs(toBigEndian(u160(0x1337))));
+	BOOST_CHECK(callContractFunction("super_secret_data()") == bytes());
+}
+
 BOOST_AUTO_TEST_CASE(balance)
 {
 	char const* sourceCode = "contract test {\n"
@@ -1860,6 +1897,62 @@ BOOST_AUTO_TEST_CASE(function_modifier_for_constructor)
 	)";
 	compileAndRun(sourceCode);
 	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(4 | 2));
+}
+
+BOOST_AUTO_TEST_CASE(use_std_lib)
+{
+	char const* sourceCode = R"(
+		import "mortal";
+		contract Icarus is mortal { }
+	)";
+	m_addStandardSources = true;
+	u256 amount(130);
+	u160 address(23);
+	compileAndRun(sourceCode, amount, "Icarus");
+	u256 balanceBefore = m_state.balance(m_sender);
+	BOOST_CHECK(callContractFunction("kill()") == bytes());
+	BOOST_CHECK(!m_state.addressHasCode(m_contractAddress));
+	BOOST_CHECK(m_state.balance(m_sender) > balanceBefore);
+}
+
+BOOST_AUTO_TEST_CASE(crazy_elementary_typenames_on_stack)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function f() returns (uint r) {
+				uint; uint; uint; uint;
+				int x = -7;
+				var a = uint;
+				return a(x);
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f()") == encodeArgs(u256(-7)));
+}
+
+BOOST_AUTO_TEST_CASE(super)
+{
+	char const* sourceCode = R"(
+		contract A { function f() returns (uint r) { return 1; } }
+		contract B is A { function f() returns (uint r) { return super.f() | 2; } }
+		contract C is A { function f() returns (uint r) { return super.f() | 4; } }
+		contract D is B, C { function f() returns (uint r) { return super.f() | 8; } }
+	)";
+	compileAndRun(sourceCode, 0, "D");
+	BOOST_CHECK(callContractFunction("f()") == encodeArgs(1 | 2 | 4 | 8));
+}
+
+BOOST_AUTO_TEST_CASE(super_in_constructor)
+{
+	char const* sourceCode = R"(
+		contract A { function f() returns (uint r) { return 1; } }
+		contract B is A { function f() returns (uint r) { return super.f() | 2; } }
+		contract C is A { function f() returns (uint r) { return super.f() | 4; } }
+		contract D is B, C { uint data; function D() { data = super.f() | 8; } function f() returns (uint r) { return data; } }
+	)";
+	compileAndRun(sourceCode, 0, "D");
+	BOOST_CHECK(callContractFunction("f()") == encodeArgs(1 | 2 | 4 | 8));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

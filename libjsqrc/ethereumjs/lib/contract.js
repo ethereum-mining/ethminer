@@ -53,7 +53,7 @@ var contract = function (address, desc) {
         // prototype, so we make it so as a workaround.
         if (method.name.indexOf('(') === -1) {
             var displayName = method.name;
-            var typeName = method.inputs.map(function(i){return i.type}).join();
+            var typeName = method.inputs.map(function(i){return i.type; }).join();
             method.name = displayName + '(' + typeName + ')';
         }
     });
@@ -110,6 +110,8 @@ var contract = function (address, desc) {
                 // TODO: figure out better way to solve this
                 web3._currentContractAbi = desc;
                 web3._currentContractAddress = address;
+                web3._currentContractMethodName = method.name;
+                web3._currentContractMethodParams = params;
 
                 // transactions do not have any output, cause we do not know, when they will be processed
                 web3.eth.transact(options);
@@ -120,9 +122,9 @@ var contract = function (address, desc) {
             var ret = outputParser[displayName][typeName](output);
             if (collapse)
             {
-                if (ret.length == 1)
+                if (ret.length === 1)
                     ret = ret[0];
-                else if (ret.length == 0)
+                else if (ret.length === 0)
                     ret = null;
             }
             return ret;

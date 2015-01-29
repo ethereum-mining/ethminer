@@ -39,6 +39,7 @@ class QVariableDeclaration: public QBasicNodeDefinition
 public:
 	QVariableDeclaration() {}
 	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
+	QVariableDeclaration(solidity::ParamDescription const& _v): QBasicNodeDefinition(_v.getName()), m_type(QString::fromStdString(_v.getType())) {}
 	Q_INVOKABLE QString type() const { return m_type; }
 
 private:

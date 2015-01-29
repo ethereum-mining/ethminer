@@ -62,6 +62,9 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		if (protocolVersion != version())
 			disable("Invalid protocol version.");
 
+		for (auto const& m: host()->all())
+			m_unseen.insert(make_pair(0, m.first));
+
 		if (session()->id() < host()->host()->id())
 			sendMessages();
 		break;

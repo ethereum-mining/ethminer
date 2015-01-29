@@ -39,7 +39,7 @@
 #endif
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
